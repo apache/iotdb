@@ -65,6 +65,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
@@ -319,8 +320,7 @@ public class SessionConnection {
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new IoTDBConnectionException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+      throw new IoTDBConnectionException(SessionMessages.CLOSE_SESSION_ERROR, e);
     } finally {
       if (transport != null) {
         transport.close();
@@ -415,7 +415,7 @@ public class SessionConnection {
       try {
         dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       } catch (RedirectException e) {
-        throw new StatementExecutionException("need to redirect query, should not see this.", e);
+        throw new StatementExecutionException(SessionMessages.REDIRECT_QUERY_ERROR, e);
       }
       return dataSet.hasNext();
     } finally {
@@ -919,7 +919,7 @@ public class SessionConnection {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn(
-              "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+              SessionMessages.THREAD_INTERRUPTED_DURING_RETRY,
               Thread.currentThread().getName(),
               i,
               retryIntervalInMs);
@@ -997,7 +997,7 @@ public class SessionConnection {
         // 1. the current datanode is unreachable (TException)
         // 2. the current datanode is partitioned with other nodes (not in availableNodes)
         // 3. asymmetric network partition
-        logger.debug("Retry attempt #{}, Reconnecting to other datanode", retryAttempt);
+        logger.debug(SessionMessages.RETRY_RECONNECTING, retryAttempt);
         reconnect();
       }
       try {
@@ -1005,7 +1005,7 @@ public class SessionConnection {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn(
-            "Thread {} was interrupted during retry {} with wait time {} ms. Exiting retry loop.",
+            SessionMessages.THREAD_INTERRUPTED_DURING_RETRY,
             Thread.currentThread().getName(),
             retryAttempt,
             retryIntervalInMs);
@@ -1142,7 +1142,7 @@ public class SessionConnection {
                 try {
                   v.close();
                 } catch (IoTDBConnectionException e) {
-                  logger.warn("close connection failed, {}", e.getMessage());
+                  logger.warn(SessionMessages.CLOSE_CONNECTION_FAILED, e.getMessage());
                 }
               }
               return this;

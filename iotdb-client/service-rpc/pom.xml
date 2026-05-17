@@ -83,6 +83,10 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+            </plugin>
             <!--
         Generate an OSGI compatible MANIFEST file.
       -->

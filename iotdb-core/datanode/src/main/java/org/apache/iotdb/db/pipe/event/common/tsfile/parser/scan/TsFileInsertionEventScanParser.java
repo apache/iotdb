@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -379,7 +380,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       return tablet;
     } catch (final Exception e) {
       close();
-      throw new PipeException("Failed to get next tablet insertion event.", e);
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_GET_NEXT_TABLET_INSERTION_EVENT, e);
     }
   }
 
@@ -485,7 +486,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             }
             break;
           default:
-            throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
+            throw new UnSupportedDataTypeException(
+                DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
         }
       }
     } else {
@@ -531,7 +533,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           }
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported" + data.getDataType());
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED + data.getDataType());
       }
     }
     return isNeedFillTime;

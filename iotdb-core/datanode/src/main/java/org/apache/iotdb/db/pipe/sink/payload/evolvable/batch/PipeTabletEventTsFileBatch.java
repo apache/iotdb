@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -140,7 +141,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       }
     } else {
       LOGGER.warn(
-          "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
+          DataNodePipeMessages.BATCH_ID_UNSUPPORTED_EVENT_TYPE_WHEN_CONSTRUCTING,
           currentBatchId.get(),
           event,
           event.getClass());

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -101,12 +102,12 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
           latch.countDown();
           continue;
         }
-        LOGGER.info("[RepairScheduler] start check tsfile: {}", sourceFile);
+        LOGGER.info(StorageEngineMessages.REPAIR_START_CHECK_TSFILE, sourceFile);
         RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(sourceFile);
         scanUtil.scanTsFile(true);
         checkTaskStatusAndMayStop();
         if (scanUtil.isBrokenFile()) {
-          LOGGER.warn("[RepairScheduler] {} is skipped because it is broken", sourceFile);
+          LOGGER.warn(StorageEngineMessages.REPAIR_SKIPPED_BROKEN_FILE, sourceFile);
           sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
           latch.countDown();
           continue;

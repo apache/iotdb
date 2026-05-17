@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.plan.relational.planner.ir;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -129,7 +130,7 @@ public class GlobalTimePredicateExtractVisitor
 
       return new Pair<>(null, true);
     } else {
-      throw new IllegalStateException("Illegal state in visitLogicalExpression");
+      throw new IllegalStateException(CalcMessages.ILLEGAL_STATE_IN_VISIT_LOGICAL_EXPRESSION);
     }
   }
 

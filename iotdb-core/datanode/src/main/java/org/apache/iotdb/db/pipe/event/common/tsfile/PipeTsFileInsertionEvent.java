@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -520,7 +521,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public ProgressIndex forceGetProgressIndex() {
     if (resource.isEmpty()) {
       LOGGER.warn(
-          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+          DataNodePipeMessages.SKIPPING_TEMPORARY_TSFILE_S_PROGRESSINDEX_WILL_REPORT, tsFile);
       return MinimumProgressIndex.INSTANCE;
     }
     if (Objects.nonNull(overridingProgressIndex)) {
@@ -604,7 +605,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return;
       }
       if (!waitForTsFileClose()) {
-        LOGGER.info("Temporary tsFile {} detected, will skip its transfer.", tsFile);
+        LOGGER.info(DataNodePipeMessages.TEMPORARY_TSFILE_DETECTED_WILL_SKIP_ITS_TRANSFER, tsFile);
         return;
       }
       if (isTableModelEvent()) {
@@ -734,7 +735,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return getDeviceSet().stream().anyMatch(treePattern::mayOverlapWithDevice);
     } catch (final Exception e) {
       LOGGER.info(
-          "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
+          DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE,
           pipeName,
           resource.getTsFilePath(),
           e);
@@ -805,14 +806,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
           if (retryCount++ % 100 == 0) {
             LOGGER.warn(
-                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
                 callerName,
                 getTsFile(),
                 tabletEventCount,
                 retryCount);
           } else if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
-                "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
+                DataNodePipeMessages.FAILED_TO_ALLOCATE_MEMORY_FOR_PARSING_TSFILE,
                 callerName,
                 getTsFile(),
                 tabletEventCount,
@@ -851,8 +852,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final long timeoutMs, final boolean objectPathsOnly) throws PipeException {
     try {
       if (!waitForTsFileClose()) {
-        LOGGER.warn(
-            "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
+        LOGGER.warn(DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_S_PARSING_WHICH, tsFile);
         return Collections.emptyList();
       }
       waitForResourceEnough4Parsing(timeoutMs);
@@ -899,13 +899,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
       if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
-            "Wait for memory enough for parsing {} for {} seconds.",
+            DataNodePipeMessages.WAIT_FOR_MEMORY_ENOUGH_FOR_PARSING_FOR,
             resource != null ? resource.getTsFilePath() : "tsfile",
             waitTimeSeconds);
         lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Wait for memory enough for parsing {} for {} seconds.",
+            DataNodePipeMessages.WAIT_FOR_MEMORY_ENOUGH_FOR_PARSING_FOR,
             resource != null ? resource.getTsFilePath() : "tsfile",
             waitTimeSeconds);
       }
@@ -921,7 +921,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final long currentTime = System.currentTimeMillis();
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
-        "Wait for memory enough for parsing {} for {} seconds.",
+        DataNodePipeMessages.WAIT_FOR_MEMORY_ENOUGH_FOR_PARSING_FOR,
         resource != null ? resource.getTsFilePath() : "tsfile",
         waitTimeSeconds);
   }
@@ -1122,7 +1122,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
         PipeTsFileInsertionEvent.this.close();
       } catch (final Exception e) {
-        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
+        LOGGER.warn(
+            DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_TSFILE_ERROR, tsFile.getPath(), e);
       }
     }
   }

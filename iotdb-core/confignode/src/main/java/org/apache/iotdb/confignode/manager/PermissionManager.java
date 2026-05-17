@@ -29,6 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -64,7 +66,7 @@ public class PermissionManager {
   public TSStatus operatePermission(AuthorPlan authorPlan, boolean isGeneratedByPipe) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
-    LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
+    LOGGER.info(ManagerMessages.AUTH_RUN_AUTH_PLAN, authorPlan.toString());
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.RCreateUser
@@ -84,7 +86,7 @@ public class PermissionManager {
       }
       return tsStatus;
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -101,7 +103,7 @@ public class PermissionManager {
     try {
       return (PermissionInfoResp) getConsensusManager().read(authorPlan);
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PermissionInfoResp(res);
@@ -154,6 +156,7 @@ public class PermissionManager {
 
   public TSStatus enableSeparationOfPowers(
       String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
-    throw new UnsupportedOperationException("Enable separation of powers is not supported");
+    throw new UnsupportedOperationException(
+        ManagerMessages.ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED);
   }
 }

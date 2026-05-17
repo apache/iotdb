@@ -17,6 +17,7 @@
 package org.apache.iotdb.commons.external.collections4.iterators;
 
 import org.apache.iotdb.commons.external.collections4.ResettableListIterator;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class ListIteratorWrapper<E> implements ResettableListIterator<E> {
   public ListIteratorWrapper(final Iterator<? extends E> iterator) {
     super();
     if (iterator == null) {
-      throw new NullPointerException("Iterator must not be null");
+      throw new NullPointerException(CommonMessages.ITERATOR_MUST_NOT_BE_NULL);
     }
     this.iterator = iterator;
   }

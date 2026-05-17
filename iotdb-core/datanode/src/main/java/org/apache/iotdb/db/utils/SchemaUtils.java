@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableSet;
@@ -249,7 +250,8 @@ public class SchemaUtils {
         return true;
       default:
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationFunction));
+            String.format(
+                DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION_FMT, aggregationFunction));
     }
   }
 
@@ -300,7 +302,7 @@ public class SchemaUtils {
         return Collections.emptyList();
       default:
         throw new IllegalArgumentException(
-            String.format("Invalid Aggregation function: %s", aggregationType));
+            String.format(DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION_FMT, aggregationType));
     }
   }
 

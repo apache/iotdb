@@ -143,6 +143,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import com.timecho.iotdb.confignode.procedure.consensus.request.write.auth.EnableSeparationOfAdminPowersPlan;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -193,7 +194,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       final ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException(
+            ConfigNodeMessages.UNRECOGNIZED_LOG_CONFIGPHYSICALPLANTYPE + planType);
       }
 
       final ConfigPhysicalPlan plan;
@@ -629,7 +631,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new DropExternalServicePlan();
           break;
         default:
-          throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
+          throw new IOException(
+              ConfigNodeMessages.UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE + planType);
       }
       plan.deserializeImpl(buffer);
       return plan;

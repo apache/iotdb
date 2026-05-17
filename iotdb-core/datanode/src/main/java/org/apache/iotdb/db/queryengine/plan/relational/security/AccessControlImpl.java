@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -203,7 +204,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanSelectFromDatabase4Pipe(
       final String userName, final String databaseName, IAuditEntity auditEntity) {
     if (Objects.isNull(userName)) {
-      throw new AccessDeniedException("User not exists");
+      throw new AccessDeniedException(DataNodeQueryMessages.USER_NOT_EXISTS);
     }
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.SELECT, auditEntity);
@@ -297,7 +298,8 @@ public class AccessControlImpl implements AccessControl {
           DNAuditLogger.getInstance()
               .recordObjectAuthenticationAuditLog(
                   auditEntity.setResult(false), statement::getUserName);
-          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+          throw new AccessDeniedException(
+              DataNodeQueryMessages.ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF);
         }
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           // the superuser can alter anyone

@@ -365,7 +365,8 @@ public class StrictTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
         }
         return RpcUtils.SUCCESS_STATUS;
       default:
-        throw new UnsupportedOperationException("Unsupported authorType: " + authorType);
+        throw new UnsupportedOperationException(
+            TimechoServerMessages.UNSUPPORTED_AUTHOR_TYPE + authorType);
     }
   }
 

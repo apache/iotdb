@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -45,10 +46,11 @@ public class SnapshotLogger implements AutoCloseable {
   public SnapshotLogger(File logFile) throws IOException {
     this.logFile = logFile;
     if (!logFile.getParentFile().exists() && !logFile.getParentFile().mkdirs()) {
-      throw new IOException("Cannot create parent folder for " + logFile.getAbsolutePath());
+      throw new IOException(
+          StorageEngineMessages.CANNOT_CREATE_PARENT_FOLDER + logFile.getAbsolutePath());
     }
     if (!this.logFile.createNewFile()) {
-      throw new IOException("Cannot create file " + logFile.getAbsolutePath());
+      throw new IOException(StorageEngineMessages.CANNOT_CREATE_FILE + logFile.getAbsolutePath());
     }
     fos = new FileOutputStream(logFile);
     os = new BufferedOutputStream(fos);

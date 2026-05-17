@@ -87,6 +87,9 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -403,7 +406,7 @@ public class ClusterSchemaManager {
       } catch (final DatabaseNotExistsException e) {
         // Skip pre-deleted Database
         LOGGER.warn(
-            "The Database: {} doesn't exist. Maybe it has been pre-deleted.",
+            ManagerMessages.THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE,
             databaseSchema.getName());
         continue;
       }
@@ -426,7 +429,7 @@ public class ClusterSchemaManager {
         }
         infoMap.put(database, ttl);
       } catch (final DatabaseNotExistsException e) {
-        LOGGER.warn("Database: {} doesn't exist", databases, e);
+        LOGGER.warn(ManagerMessages.DATABASE_DOESN_T_EXIST, databases, e);
       }
     }
     return infoMap;
@@ -530,7 +533,7 @@ public class ClusterSchemaManager {
               databaseSchema.getSchemaReplicationFactor(),
               allocatedSchemaRegionGroupCount);
       LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+          ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
           databaseSchema.getName(),
           maxSchemaRegionGroupNum);
 
@@ -558,7 +561,7 @@ public class ClusterSchemaManager {
               databaseSchema.getDataReplicationFactor(),
               allocatedDataRegionGroupCount);
       LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+          ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
           databaseSchema.getName(),
           maxDataRegionGroupNum);
 
@@ -840,7 +843,8 @@ public class ClusterSchemaManager {
     if (databaseSchema.getTTL() < 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be non-negative.");
+              .setMessage(
+                  ProcedureMessages.FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE);
     }
 
     if (!databaseSchema.isSetSchemaReplicationFactor()) {
@@ -903,11 +907,13 @@ public class ClusterSchemaManager {
     } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
+              .setMessage(
+                  ProcedureMessages
+                      .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
+      LOGGER.warn(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -1171,7 +1177,7 @@ public class ClusterSchemaManager {
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Failed to sync template {} extension info to DataNode {}",
+            ManagerMessages.FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE,
             template.getName(),
             dataNodeLocationMap.get(entry.getKey()));
         return RpcUtils.getStatus(
@@ -1201,7 +1207,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new ShowTablePlan(database, isDetails)))
           .convertToTShowTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TShowTableResp(res);
@@ -1214,7 +1220,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new ShowTable4InformationSchemaPlan()))
           .convertToTShowTable4InformationSchemaResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TShowTable4InformationSchemaResp(res);
@@ -1230,7 +1236,7 @@ public class ClusterSchemaManager {
                   .read(new DescTablePlan(database, tableName, isDetails)))
           .convertToTDescTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TDescTableResp(res);
@@ -1243,7 +1249,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new DescTable4InformationSchemaPlan()))
           .convertToTDescTable4InformationSchemaResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TDescTable4InformationSchemaResp(res);
@@ -1256,7 +1262,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))
           .convertToTFetchTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TFetchTableResp(res);
@@ -1513,7 +1519,7 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_ALREADY_EXISTS,
-              String.format("Table '%s.%s' already exists.", database, newName)),
+              String.format(ProcedureMessages.TABLE_ALREADY_EXISTS, database, newName)),
           null);
     }
 

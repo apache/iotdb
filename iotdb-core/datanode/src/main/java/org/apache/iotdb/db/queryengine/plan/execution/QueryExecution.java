@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -145,7 +146,7 @@ public class QueryExecution implements IQueryExecution {
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
+                LOGGER.debug(DataNodeQueryMessages.RELEASE_QUERY_RESOURCE_STATE, state);
               }
               cause = stateMachine.getFailureException();
               releaseResource(cause);
@@ -168,7 +169,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
-      LOGGER.debug("[SkipExecute]");
+      LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE);
       if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
@@ -184,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
 
     if (skipExecute()) {
       // TODO move this judgement to analyze state?
-      LOGGER.debug("[SkipExecute After LogicalPlan]");
+      LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE_AFTER_LOGICAL_PLAN);
       if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
@@ -232,22 +233,22 @@ public class QueryExecution implements IQueryExecution {
 
   private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
-      LOGGER.warn("[ReachMaxRetryCount]");
+      LOGGER.warn(DataNodeQueryMessages.REACHMAXRETRYCOUNT);
       stateMachine.transitionToFailed();
       return getStatus();
     }
-    LOGGER.warn("error when executing query. {}", stateMachine.getFailureMessage());
+    LOGGER.warn(DataNodeQueryMessages.ERROR_WHEN_EXECUTING_QUERY, stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
-    LOGGER.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
+    LOGGER.info(DataNodeQueryMessages.WAITBEFORERETRY_WAIT_MS, RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
-      LOGGER.warn("interrupted when waiting retry");
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPTED_WHEN_WAITING_RETRY);
       Thread.currentThread().interrupt();
     }
     retryCount++;
-    LOGGER.info("[Retry] retry count is: {}", retryCount);
+    LOGGER.info(DataNodeQueryMessages.RETRY_RETRY_COUNT_IS, retryCount);
     stateMachine.transitionToQueued();
     // force invalid PartitionCache
     planner.invalidatePartitionCache();
@@ -432,7 +433,7 @@ public class QueryExecution implements IQueryExecution {
     while (true) {
       try {
         if (resultHandle.isAborted()) {
-          LOGGER.warn("[ResultHandleAborted]");
+          LOGGER.warn(DataNodeQueryMessages.RESULTHANDLEABORTED);
           stateMachine.transitionToAborted();
           if (stateMachine.getFailureStatus() != null) {
             throw new IoTDBException(
@@ -449,7 +450,7 @@ public class QueryExecution implements IQueryExecution {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          LOGGER.debug("[ResultHandleFinished]");
+          LOGGER.debug(DataNodeQueryMessages.RESULT_HANDLE_FINISHED);
           stateMachine.transitionToFinished();
           return Optional.empty();
         }

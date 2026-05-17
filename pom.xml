@@ -210,6 +210,9 @@
         <moduleA.enabled>true</moduleA.enabled>
         <moduleB.enabled>true</moduleB.enabled>
         <version.suffix/>
+        <i18n.locale>en</i18n.locale>
+        <!-- Filename suffix for locale-specific distribution packages (empty for default en, e.g. "-zh" when with-zh-locale is active) -->
+        <locale.suffix/>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -951,6 +954,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-i18n-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/main/i18n/${i18n.locale}</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.felix</groupId>
@@ -2018,6 +2035,13 @@
                 <moduleA.enabled>false</moduleA.enabled>
                 <moduleB.enabled>true</moduleB.enabled>
                 <version.suffix>-basic</version.suffix>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
+                <locale.suffix>-zh</locale.suffix>
             </properties>
         </profile>
     </profiles>

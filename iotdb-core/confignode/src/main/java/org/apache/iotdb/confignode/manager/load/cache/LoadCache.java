@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -805,7 +806,8 @@ public class LoadCache {
    */
   public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
     long startTime = System.currentTimeMillis();
-    LOGGER.info("[RegionElection] Wait for leader election of RegionGroups: {}", regionGroupIds);
+    LOGGER.info(
+        ManagerMessages.REGIONELECTION_WAIT_FOR_LEADER_ELECTION_OF_REGIONGROUPS, regionGroupIds);
     while (System.currentTimeMillis() - startTime <= LEADER_ELECTION_WAITING_TIMEOUT) {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
@@ -816,26 +818,27 @@ public class LoadCache {
             }
           });
       if (allRegionLeaderElected.get()) {
-        LOGGER.info("[RegionElection] The leader of RegionGroups: {} is elected.", regionGroupIds);
+        LOGGER.info(
+            ManagerMessages.REGIONELECTION_THE_LEADER_OF_REGIONGROUPS_IS_ELECTED, regionGroupIds);
         return;
       }
       try {
         TimeUnit.MILLISECONDS.sleep(WAIT_LEADER_INTERVAL);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupt when wait for leader election", e);
+        LOGGER.warn(ManagerMessages.INTERRUPT_WHEN_WAIT_FOR_LEADER_ELECTION, e);
         return;
       }
     }
 
     LOGGER.warn(
-        "[RegionElection] The leader of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
+        ManagerMessages.REGIONELECTION_THE_LEADER_OF_REGIONGROUPS_IS_NOT_DETERMINED_AFTER_10,
         regionGroupIds);
   }
 
   public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyGraph)) {
-      LOGGER.info("[Topology] Cluster topology changed, latest: {}", latestTopology);
+      LOGGER.info(ManagerMessages.TOPOLOGY_CLUSTER_TOPOLOGY_CHANGED_LATEST, latestTopology);
       for (int fromId : latestTopology.keySet()) {
         for (int toId : latestTopology.keySet()) {
           boolean originReachable =
@@ -844,7 +847,7 @@ public class LoadCache {
               latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
           if (originReachable != newReachable) {
             LOGGER.info(
-                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                ManagerMessages.TOPOLOGY_TOPOLOGY_OF_DATANODE_IS_NOW_TO_DATANODE,
                 fromId,
                 newReachable ? "reachable" : "unreachable",
                 toId);

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.schema;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -75,8 +76,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
     if (!sourceMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region extractor metrics, extractor map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_SCHEMA_REGION_1);
     }
   }
 
@@ -110,9 +110,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!sourceMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe schema region source metrics, IoTDBSchemaRegionSource({}) does not exist",
-          taskID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {

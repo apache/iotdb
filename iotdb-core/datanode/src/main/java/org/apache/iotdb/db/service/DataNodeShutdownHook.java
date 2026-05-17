@@ -35,6 +35,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
@@ -252,9 +253,9 @@ public class DataNodeShutdownHook extends Thread {
       return client.reportDataNodeShutdown(nodeLocation).getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode();
     } catch (ClientManagerException e) {
-      logger.error("Failed to borrow ConfigNodeClient", e);
+      logger.error(DataNodeMiscMessages.FAILED_BORROW_CONFIG_NODE_CLIENT, e);
     } catch (TException e) {
-      logger.error("Failed to report shutdown", e);
+      logger.error(DataNodeMiscMessages.FAILED_REPORT_SHUTDOWN, e);
     }
     return false;
   }

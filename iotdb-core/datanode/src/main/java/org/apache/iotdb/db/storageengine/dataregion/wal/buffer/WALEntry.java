@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -81,7 +82,7 @@ public abstract class WALEntry implements SerializedSize {
     } else if (value instanceof ObjectNode) {
       this.type = WALEntryType.OBJECT_FILE_NODE;
     } else {
-      throw new RuntimeException("Unknown WALEntry type");
+      throw new RuntimeException(StorageEngineMessages.UNKNOWN_WAL_ENTRY_TYPE);
     }
     walFlushListener = new WALFlushListener(wait);
   }
@@ -141,7 +142,7 @@ public abstract class WALEntry implements SerializedSize {
         value = (ObjectNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       default:
-        throw new RuntimeException("Unknown WALEntry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNKNOWN_WAL_ENTRY_TYPE_WITH_VALUE + type);
     }
     return new WALInfoEntry(type, memTableId, value);
   }

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
@@ -121,7 +122,7 @@ public class EventService {
                 0,
                 HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("Event service is started successfully.");
+        LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -132,7 +133,7 @@ public class EventService {
       if (currentEventServiceFuture != null) {
         currentEventServiceFuture.cancel(false);
         currentEventServiceFuture = null;
-        LOGGER.info("Event service is stopped successfully.");
+        LOGGER.info(ManagerMessages.EVENT_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
       synchronized (this) {
         previousNodeStatisticsMap.clear();
@@ -177,7 +178,7 @@ public class EventService {
 
   private void recordNodeStatistics(
       Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
-    LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
+    LOGGER.info(ManagerMessages.NODESTATISTICS_NODESTATISTICSMAP);
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
       recordNodeStatistics(
@@ -231,7 +232,7 @@ public class EventService {
   private void recordRegionGroupStatistics(
       Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
           differentRegionGroupStatisticsMap) {
-    LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
+    LOGGER.info(ManagerMessages.REGIONGROUPSTATISTICS_REGIONGROUPSTATISTICSMAP);
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
       recordRegionGroupStatistics(
@@ -322,7 +323,7 @@ public class EventService {
   private void recordConsensusGroupStatistics(
       Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
           differentConsensusGroupStatisticsMap) {
-    LOGGER.info("[ConsensusGroupStatistics] ConsensusGroupStatisticsMap: ");
+    LOGGER.info(ManagerMessages.CONSENSUSGROUPSTATISTICS_CONSENSUSGROUPSTATISTICSMAP);
     for (Map.Entry<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
         consensusGroupStatisticsEntry : differentConsensusGroupStatisticsMap.entrySet()) {
       if (!Objects.equals(

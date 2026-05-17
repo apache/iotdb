@@ -90,8 +90,12 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
         .getConfig()
         .setObjectStorageTsFileOutput("com.timecho.iotdb.os.fileSystem.OSTsFileOutput");
 
-    logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
-    logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
+    logger.info(
+        TimechoServerMessages.IOTDB_DATANODE_ENVIRONMENT_VARIABLES,
+        IoTDBConfig.getEnvironmentVariables());
+    logger.info(
+        TimechoServerMessages.IOTDB_DATANODE_DEFAULT_CHARSET,
+        Charset.defaultCharset().displayName());
     DataNode dataNode = dataNodeSupplier.get();
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
@@ -152,7 +156,7 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
           .initHardwareCodeFile(
               IoTDBDescriptor.getInstance().getConfig().getSystemDir(), hardwareCode);
     } catch (Exception e) {
-      logger.error("hardware generation failed.");
+      logger.error(TimechoServerMessages.HARDWARE_GENERATION_FAILED);
     }
   }
 

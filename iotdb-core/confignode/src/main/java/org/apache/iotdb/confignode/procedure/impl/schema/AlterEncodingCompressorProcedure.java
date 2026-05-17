@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.MetadataProcedureConflictCheckable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -137,7 +138,7 @@ public class AlterEncodingCompressorProcedure
         case ALTER_SCHEMA_REGION:
           if (LOGGER.isInfoEnabled()) {
             LOGGER.info(
-                "Alter encoding {} & compressor {} in schema region for timeSeries {}",
+                ProcedureMessages.ALTER_ENCODING_COMPRESSOR_IN_SCHEMA_REGION_FOR_TIMESERIES,
                 SerializeUtils.deserializeEncodingNullable(encoding),
                 SerializeUtils.deserializeCompressorNullable(compressor),
                 requestMessage);
@@ -147,18 +148,18 @@ public class AlterEncodingCompressorProcedure
           }
           break;
         case CLEAR_CACHE:
-          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
           invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, false);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AlterEncodingCompressor-[{}] costs {}ms",
+          ProcedureMessages.ALTERENCODINGCOMPRESSOR_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }
@@ -232,8 +233,10 @@ public class AlterEncodingCompressorProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter encoding compressor %s in schema regions failed. Failures: %s",
-                            requestMessage, printFailureMap()))));
+                            ProcedureMessages
+                                .ALTER_ENCODING_COMPRESSOR_IN_SCHEMA_REGIONS_FAILED_FAILURES,
+                            requestMessage,
+                            printFailureMap()))));
             interruptTask();
           }
         };

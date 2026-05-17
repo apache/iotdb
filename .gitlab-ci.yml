@@ -93,6 +93,17 @@ ut-others:
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
 
+compile-check-zh:
+  stage: test
+  tags:
+    - timechodb
+  script:
+    - 'mvn clean package -P with-integration-tests,with-zh-locale -DskipTests -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+  needs: []
+
 session-builder-coverage-check:
   stage: test
   tags:
@@ -525,29 +536,41 @@ cd-deploy:
     - ssh-keyscan -H "$DEPLOY_HOST_2" >> ~/.ssh/known_hosts
   script:
     - cd "$CI_PROJECT_DIR"
+    # 先打英文包
     - mvn clean package -pl distribution -DskipTests -am -s $MAVEN_SETTINGS_XML
+    # 再打中文包（with-zh-locale），输出文件名带 -zh 后缀
+    - mvn clean package -pl distribution -DskipTests -am -P with-zh-locale -s $MAVEN_SETTINGS_XML
     - |
       set -e  # 只保留 -e，移除 -u 和 -o pipefail 进行调试
-      
+
       echo "=== 开始文件处理 ==="
-      
-      # 更安全的文件查找方式
-      if ! find distribution/target -name 'timechodb-*-bin.zip' -type f | grep -q .; then
-        echo "错误: 在 distribution/target 中未找到 timechodb-*-bin.zip 文件"
-        echo "distribution/target 目录内容:"
+
+      # 英文 bin 包：timechodb-VERSION-bin.zip ；中文 bin 包：timechodb-VERSION-zh-bin.zip
+      EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
+      ZH_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
+
+      if [ -z "$EN_ZIP" ]; then
+        echo "错误: 在 distribution/target 中未找到英文 timechodb-*-bin.zip 文件"
         ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
         exit 1
       fi
-      
-      ZIP_FILE=$(find distribution/target -name 'timechodb-*-bin.zip' -type f | head -n 1)
-      echo "找到ZIP文件: $ZIP_FILE"
-      
+      if [ -z "$ZH_ZIP" ]; then
+        echo "错误: 在 distribution/target 中未找到中文 timechodb-*-zh-bin.zip 文件"
+        ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
+        exit 1
+      fi
+      echo "找到英文ZIP文件: $EN_ZIP"
+      echo "找到中文ZIP文件: $ZH_ZIP"
+
       TIMESTAMP=$(date +%Y%m%d%H%M%S)
       SHORT_SHA=${CI_COMMIT_SHORT_SHA:-$(git rev-parse --short HEAD)}
       RENAMED_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}.zip"
-      
-      echo "复制文件: $ZIP_FILE -> $RENAMED_ZIP"
-      cp "$ZIP_FILE" "$RENAMED_ZIP"
+      RENAMED_ZH_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}-zh.zip"
+
+      echo "复制文件: $EN_ZIP -> $RENAMED_ZIP"
+      cp "$EN_ZIP" "$RENAMED_ZIP"
+      echo "复制文件: $ZH_ZIP -> $RENAMED_ZH_ZIP"
+      cp "$ZH_ZIP" "$RENAMED_ZH_ZIP"
       
       # 生成元数据文件
       METADATA_FILE="distribution/target/deploy-info-${TIMESTAMP}-${SHORT_SHA}.csv"
@@ -606,16 +629,21 @@ cd-deploy:
       
       # 部署文件
       echo "开始部署文件..."
-      echo "传输ZIP文件..."
+      echo "传输英文ZIP文件..."
       scp -o ConnectTimeout=30 "$RENAMED_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
       # scp -o ConnectTimeout=30 "$RENAMED_ZIP" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
-      
+
+      echo "传输中文ZIP文件..."
+      scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
+      # scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
+
       echo "传输元数据文件..."
       scp -o ConnectTimeout=30 "$METADATA_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
       # scp -o ConnectTimeout=30 "$METADATA_FILE" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
       
       echo "=== 部署完成 ==="
-      echo "文件已部署到: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
+      echo "英文文件已部署到: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZIP")"
+      echo "中文文件已部署到: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZH_ZIP")"
       # echo "文件已部署到: $DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
 
   environment:

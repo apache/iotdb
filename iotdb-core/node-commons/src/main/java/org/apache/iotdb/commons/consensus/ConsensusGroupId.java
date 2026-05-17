@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import java.util.Objects;
 
@@ -116,7 +117,8 @@ public abstract class ConsensusGroupId implements Comparable<ConsensusGroupId> {
                         TConsensusGroupType.ConfigRegion.name().length() + 1,
                         groupIdString.length() - 1)));
       } else {
-        throw new IllegalArgumentException("Unrecognized ConsensusGroupId: " + groupIdString);
+        throw new IllegalArgumentException(
+            String.format(CommonMessages.UNRECOGNIZED_CONSENSUS_GROUP_ID, groupIdString));
       }
       return groupId;
     }

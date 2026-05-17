@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
@@ -85,7 +86,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           LOGGER.info(
-              "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
+              ProcedureMessages.PID_ADDREGION_STARTED_WILL_BE_ADDED_TO_DATANODE,
               getProcId(),
               regionId,
               simplifiedLocation(targetDataNode));
@@ -130,7 +131,8 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
                   env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
               LOGGER.info(
-                  "waitTaskFinish() returns PROCESSING, which means the waiting has been interrupted, this procedure will end without rollback");
+                  ProcedureMessages
+                      .WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED);
               return Flow.NO_MORE_STATE;
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
@@ -142,9 +144,9 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
         case UPDATE_REGION_LOCATION_CACHE:
           handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Running);
           setKillPoint(state);
-          LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
+          LOGGER.info(ProcedureMessages.PID_ADDREGION_STATE_COMPLETE, getProcId(), state);
           LOGGER.info(
-              "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              ProcedureMessages.PID_ADDREGION_SUCCESS_HAS_BEEN_ADDED_TO_DATANODE_PROCEDURE_TOOK,
               getProcId(),
               regionId,
               simplifiedLocation(targetDataNode),
@@ -153,13 +155,13 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
           return Flow.NO_MORE_STATE;
         default:
-          throw new ProcedureException("Unsupported state: " + state.name());
+          throw new ProcedureException(ProcedureMessages.UNSUPPORTED_STATE + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("[pid{}][AddRegion] state {} failed", getProcId(), state, e);
+      LOGGER.error(ProcedureMessages.PID_ADDREGION_STATE_FAILED, getProcId(), state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
+    LOGGER.info(ProcedureMessages.PID_ADDREGION_STATE_COMPLETE, getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -193,9 +195,10 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
       ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason, Exception e)
       throws ProcedureException {
     if (e != null) {
-      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getProcId(), reason, e);
+      LOGGER.warn(
+          ProcedureMessages.PID_ADDREGION_START_TO_ROLL_BACK_BECAUSE, getProcId(), reason, e);
     } else {
-      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getProcId(), reason);
+      LOGGER.warn(ProcedureMessages.PID_ADDREGION_START_TO_ROLL_BACK_BECAUSE, getProcId(), reason);
     }
     handler.removeRegionLocation(regionId, targetDataNode);
 
@@ -206,11 +209,12 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
             .orElseThrow(
                 () ->
                     new ProcedureException(
-                        "[pid{}][AddRegion] Cannot roll back, because cannot find the correct locations"))
+                        ProcedureMessages
+                            .PID_ADDREGION_CANNOT_ROLL_BACK_BECAUSE_CANNOT_FIND_THE_CORRECT))
             .getDataNodeLocations();
     if (correctDataNodeLocations.remove(targetDataNode)) {
       LOGGER.warn(
-          "[pid{}][AddRegion] It appears that consensus write has not modified the local partition table. "
+          ProcedureMessages.PID_ADDREGION_IT_APPEARS_THAT_CONSENSUS_WRITE_HAS_NOT_MODIFIED
               + "Please verify whether a leader change has occurred during this stage. "
               + "If this log is triggered without a leader change, it indicates a potential bug in the partition table.",
           getProcId());
@@ -228,7 +232,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
                 Collectors.toMap(
                     TDataNodeLocation::getDataNodeId, dataNodeLocation -> dataNodeLocation));
     LOGGER.info(
-        "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} will be reset to {}",
+        ProcedureMessages.PID_ADDREGION_RESET_PEER_LIST_PEER_LIST_OF_CONSENSUS_GROUP_3,
         getProcId(),
         regionId,
         relatedDataNodeLocationMap.values().stream()
@@ -243,7 +247,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
         (dataNodeId, resetResult) -> {
           if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
-                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully reset to {}",
+                ProcedureMessages.PID_ADDREGION_RESET_PEER_LIST_PEER_LIST_OF_CONSENSUS_GROUP_2,
                 getProcId(),
                 regionId,
                 dataNodeId,
@@ -251,7 +255,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           } else {
             // TODO: more precise
             LOGGER.warn(
-                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                ProcedureMessages.PID_ADDREGION_RESET_PEER_LIST_PEER_LIST_OF_CONSENSUS_GROUP,
                 getProcId(),
                 regionId,
                 dataNodeId,
@@ -298,7 +302,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
       targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOGGER.error("Error in deserialize {}", this.getClass(), e);
+      LOGGER.error(ProcedureMessages.ERROR_IN_DESERIALIZE, this.getClass(), e);
     }
   }
 

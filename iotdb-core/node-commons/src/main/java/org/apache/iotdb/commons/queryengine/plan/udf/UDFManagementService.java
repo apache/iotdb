@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.udf;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
@@ -91,7 +92,7 @@ public class UDFManagementService {
 
   public Model checkAndGetModel(UDFInformation udfInformation) {
     if (!udfInformation.isAvailable()) {
-      throw new UDFManagementException("UDFInformation is not available");
+      throw new UDFManagementException(QueryMessages.UDF_INFORMATION_NOT_AVAILABLE);
     }
     Model model;
     if (udfInformation.getUdfType().isTreeModel()) {
@@ -150,8 +151,9 @@ public class UDFManagementService {
     if (checkIsBuiltInFunctionName(model, udfInformation.getFunctionName())) {
       String errorMessage =
           String.format(
-              "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
-              udfInformation.getFunctionName(), udfInformation.getClassName());
+              QueryMessages.UDF_REGISTER_CONFLICT_BUILTIN,
+              udfInformation.getFunctionName(),
+              udfInformation.getClassName());
 
       LOGGER.warn(errorMessage);
       throw new UDFManagementException(errorMessage);
@@ -168,9 +170,7 @@ public class UDFManagementService {
         && UDFExecutableManager.getInstance().isLocalJarConflicted(udfInformation)) {
       String errorMessage =
           String.format(
-              "Failed to register function %s(%s), "
-                  + "because existed md5 of jar file for function %s is different from the new jar file. ",
-              functionName, className, functionName);
+              QueryMessages.UDF_REGISTER_JAR_MD5_CONFLICT, functionName, className, functionName);
       LOGGER.warn(errorMessage);
       throw new UDFManagementException(errorMessage);
     }
@@ -209,8 +209,7 @@ public class UDFManagementService {
         | ClassCastException e) {
       String errorMessage =
           String.format(
-              "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
-              functionName.toUpperCase(), className, e);
+              QueryMessages.UDF_REGISTER_INSTANCE_FAILED, functionName.toUpperCase(), className, e);
       LOGGER.warn(errorMessage, e);
       throw new UDFManagementException(errorMessage);
     }
@@ -250,15 +249,12 @@ public class UDFManagementService {
     } else if (SQLFunction.class.isAssignableFrom(clazz)) {
       model = Model.TABLE;
     } else {
-      throw new UDFManagementException(
-          "Unsupported UDF class type. Only UDF and SQLFunction are supported.");
+      throw new UDFManagementException(QueryMessages.UDF_CLASS_TYPE_UNSUPPORTED);
     }
     UDFInformation information = udfTable.getUDFInformation(model, functionName);
     if (information == null) {
       String errorMessage =
-          String.format(
-              "Failed to reflect UDF instance, because UDF %s has not been registered.",
-              functionName.toUpperCase());
+          String.format(QueryMessages.UDF_REFLECT_NOT_REGISTERED, functionName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new UDFException(errorMessage);
     }
@@ -272,8 +268,10 @@ public class UDFManagementService {
         | IllegalAccessException e) {
       String errorMessage =
           String.format(
-              "Failed to reflect UDF %s(%s) instance, because %s",
-              functionName, information.getClassName(), e);
+              QueryMessages.UDF_REFLECT_INSTANCE_FAILED,
+              functionName,
+              information.getClassName(),
+              e);
       LOGGER.warn(errorMessage, e);
       throw new UDFException(errorMessage);
     }

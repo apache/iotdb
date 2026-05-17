@@ -136,7 +136,7 @@ public class SharedStorageCompactionUtils {
         return Collections.emptyList();
       }
     } catch (Exception e) {
-      LOGGER.error("Fail to pull remote replica from endpoint {}", endPoint, e);
+      LOGGER.error(TimechoServerMessages.FAIL_TO_PULL_REMOTE_REPLICA_FROM_ENDPOINT, endPoint, e);
       return Collections.emptyList();
     }
 
@@ -162,7 +162,7 @@ public class SharedStorageCompactionUtils {
         resources.add(new TsFileResource(tsFile, TsFileResourceStatus.NORMAL_ON_REMOTE));
       }
     } catch (Exception e) {
-      LOGGER.error("Fail to persist remote replica of endpoint {}", endPoint, e);
+      LOGGER.error(TimechoServerMessages.FAIL_TO_PERSIST_REMOTE_REPLICA_OF_ENDPOINT, endPoint, e);
       for (File newFile : newFiles) {
         newFile.delete();
       }

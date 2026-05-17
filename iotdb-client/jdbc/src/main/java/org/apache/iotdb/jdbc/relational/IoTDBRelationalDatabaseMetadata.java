@@ -23,6 +23,7 @@ import org.apache.iotdb.jdbc.Field;
 import org.apache.iotdb.jdbc.IoTDBAbstractDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -175,7 +176,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
       sqlKeywordsThatArentSQL92 = keywordBuf.toString();
 
     } catch (Exception e) {
-      LOGGER.error("Error when initializing SQL keywords: ", e);
+      LOGGER.error(JdbcMessages.RELATIONAL_INIT_SQL_KEYWORDS_ERROR, e);
       throw new RuntimeException(e);
     }
   }
@@ -616,7 +617,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     try {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
-      LOGGER.error("Get primary keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.RELATIONAL_GET_PRIMARY_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }

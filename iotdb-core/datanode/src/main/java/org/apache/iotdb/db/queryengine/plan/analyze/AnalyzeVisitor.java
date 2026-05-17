@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -456,7 +457,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     ISchemaTree schemaTree;
     try {
-      logger.debug("[StartFetchSchema]");
+      logger.debug(DataNodeQueryMessages.START_FETCH_SCHEMA);
       PathPatternTree authorizedPatternTree = queryStatement.getAuthorityScope();
       // If the authority scope of query statement contains full path, we should fetch schema
       // without template. Otherwise, the result ISchemaTree may contain template series that is
@@ -478,7 +479,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // make sure paths in alias series is fetched (fetch physical paths)
       updateSchemaTreeByAliasSeries(analysis, schemaTree, context, canSeeAuditDB);
     } finally {
-      logger.debug("[EndFetchSchema]");
+      logger.debug(DataNodeQueryMessages.END_FETCH_SCHEMA);
       long schemaFetchCost = System.nanoTime() - startTime;
       context.setFetchSchemaCost(schemaFetchCost);
       QueryPlanCostMetricSet.getInstance().recordTreePlanCost(SCHEMA_FETCHER, schemaFetchCost);
@@ -542,7 +543,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree schemaTree,
       MPPQueryContext context) {
     if (analysis.hasValueFilter()) {
-      throw new SemanticException("Only time filters are supported in LAST query");
+      throw new SemanticException(
+          DataNodeQueryMessages.ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY);
     }
     analyzeLastOrderBy(analysis, queryStatement);
 
@@ -687,7 +689,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (useLogicalView
         && analysis.getTreeStatement() instanceof QueryStatement
         && (((QueryStatement) analysis.getTreeStatement()).isGroupByTag())) {
-      throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
+      throw new SemanticException(DataNodeQueryMessages.VIEWS_CANNOT_BE_USED_IN_GROUP_BY_TAGS);
     }
 
     if (needToReFetch) {
@@ -1509,7 +1511,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     if (analysis.hasValueFilter()) {
-      throw new SemanticException("Only time filters are supported in GROUP BY TAGS query");
+      throw new SemanticException(
+          DataNodeQueryMessages.ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_GROUP_BY);
     }
 
     List<String> tagKeys = queryStatement.getGroupByTagComponent().getTagKeys();
@@ -2254,7 +2257,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
         break;
       default:
-        throw new UnsupportedOperationException("Unsupported window type");
+        throw new UnsupportedOperationException(DataNodeQueryMessages.UNSUPPORTED_WINDOW_TYPE);
     }
     analysis.setGroupByParameter(groupByParameter);
   }
@@ -2348,7 +2351,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Aggregation expression shouldn't exist in group by clause.
       List<Expression> aggregationExpression = searchAggregationExpressions(expressions.get(0));
       if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
-        throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
+        throw new SemanticException(
+            DataNodeQueryMessages.AGGREGATION_EXPRESSION_SHOULDN_T_EXIST_IN_GROUP_BY);
       }
       groupByExpression = normalizeExpression(expressions.get(0));
     }
@@ -2381,7 +2385,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setGroupByExpression(groupByExpression);
       analysis.setGroupByParameter(groupByParameter);
     } else {
-      throw new SemanticException("Unsupported window type");
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_WINDOW_TYPE);
     }
   }
 
@@ -2389,7 +2393,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, Expression groupByExpression, double delta) {
     TSDataType type = analyzeExpressionType(analysis, groupByExpression);
     if (delta != 0 && !type.isNumeric()) {
-      throw new SemanticException("Only support numeric type when delta != 0");
+      throw new SemanticException(DataNodeQueryMessages.ONLY_SUPPORT_NUMERIC_TYPE_WHEN_DELTA_0);
     }
   }
 
@@ -2397,7 +2401,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, Expression groupByExpression, Expression keepExpression) {
     TSDataType type = analyzeExpressionType(analysis, groupByExpression);
     if (type != TSDataType.BOOLEAN) {
-      throw new SemanticException("Only support boolean type in predict of group by series");
+      throw new SemanticException(
+          DataNodeQueryMessages.ONLY_SUPPORT_BOOLEAN_TYPE_IN_PREDICT_OF_GROUP);
     }
 
     // check keep Expression
@@ -2437,7 +2442,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if ((groupByTimeComponent.getInterval().containsMonth()
             || groupByTimeComponent.getSlidingStep().containsMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
-      throw new SemanticException("Group by month doesn't support order by time desc now.");
+      throw new SemanticException(DataNodeQueryMessages.GROUP_BY_MONTH_DOESN_T_SUPPORT_ORDER_BY);
     }
     if (!queryStatement.isCqQueryBody()
         && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
@@ -3475,13 +3480,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
       // request schema fetch API
-      logger.debug("[StartFetchSchema]");
+      logger.debug(DataNodeQueryMessages.START_FETCH_SCHEMA);
       ISchemaTree schemaTree =
           schemaFetcher.fetchSchema(
               patternTree, true, context, showTimeSeriesStatement.isCanSeeAuditDB());
       updateSchemaTreeByViews(
           analysis, schemaTree, context, showTimeSeriesStatement.isCanSeeAuditDB());
-      logger.debug("[EndFetchSchema]]");
+      logger.debug(DataNodeQueryMessages.END_FETCH_SCHEMA);
 
       analyzeLastSourceAndDataPartition(
           analysis,
@@ -4378,7 +4383,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     // TODO Constant folding optimization for Where Predicate after True/False Constant introduced
     if (allReadableDataNodeLocations.isEmpty()) {
-      throw new StatementAnalyzeException("no Running DataNodes");
+      throw new StatementAnalyzeException(DataNodeQueryMessages.NO_RUNNING_DATANODES);
     }
     analysis.setReadableDataNodeLocations(allReadableDataNodeLocations);
 
@@ -4413,7 +4418,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     List<TDataNodeLocation> allReadableDataNodeLocations = getReadableDataNodeLocations();
     if (allReadableDataNodeLocations.isEmpty()) {
-      throw new StatementAnalyzeException("no Running DataNodes");
+      throw new StatementAnalyzeException(DataNodeQueryMessages.NO_RUNNING_DATANODES);
     }
     analysis.setReadableDataNodeLocations(allReadableDataNodeLocations);
 

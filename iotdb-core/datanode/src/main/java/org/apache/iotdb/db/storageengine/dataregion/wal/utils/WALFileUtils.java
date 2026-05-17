@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import com.timecho.iotdb.commons.secret.SecretKey;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -106,7 +107,7 @@ public class WALFileUtils {
     if (matcher.find()) {
       return Long.parseLong(matcher.group(WAL_VERSION_ID));
     }
-    throw new RuntimeException("Invalid wal file name: " + filename);
+    throw new RuntimeException(StorageEngineMessages.INVALID_WAL_FILE_NAME + filename);
   }
 
   /** Parse start search index from filename. */
@@ -115,7 +116,7 @@ public class WALFileUtils {
     if (matcher.find()) {
       return Long.parseLong(matcher.group(WAL_START_SEARCH_INDEX));
     }
-    throw new RuntimeException("Invalid wal file name: " + filename);
+    throw new RuntimeException(StorageEngineMessages.INVALID_WAL_FILE_NAME + filename);
   }
 
   /** Parse status code from filename. */
@@ -124,7 +125,7 @@ public class WALFileUtils {
     if (matcher.find()) {
       return WALFileStatus.valueOf(Integer.parseInt(matcher.group(WAL_STATUS_CODE)));
     }
-    throw new RuntimeException("Invalid wal file name: " + filename);
+    throw new RuntimeException(StorageEngineMessages.INVALID_WAL_FILE_NAME + filename);
   }
 
   /** Sort wal files by version id with ascending order. */

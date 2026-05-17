@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
@@ -133,7 +134,7 @@ public class CompactionRecoverManager {
                 }
               });
     } catch (IOException e) {
-      logger.error("recover mods file error on list files:{}", timePartitionDir, e);
+      logger.error(StorageEngineMessages.RECOVER_MODS_FILE_ERROR, timePartitionDir, e);
     }
   }
 
@@ -178,7 +179,7 @@ public class CompactionRecoverManager {
           }
           break;
         default:
-          logger.warn("Unknown compaction task type {}", type);
+          logger.warn(StorageEngineMessages.UNKNOWN_COMPACTION_TASK_TYPE, type);
           return;
       }
     }

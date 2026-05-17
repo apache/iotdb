@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
@@ -384,6 +385,6 @@ public class PipeSinkConstant {
   // SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY above
 
   private PipeSinkConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

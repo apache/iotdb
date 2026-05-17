@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TClassifyReq;
 import org.apache.iotdb.ainode.rpc.thrift.TClassifyResp;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -180,7 +181,7 @@ public class ClassifyTableFunction implements TableFunction {
     // modelId should never be null or empty
     if (modelId == null || modelId.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
+          String.format(QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY, MODEL_ID_PARAMETER_NAME));
     }
 
     String timeColumn =
@@ -189,7 +190,8 @@ public class ClassifyTableFunction implements TableFunction {
 
     if (timeColumn.isEmpty()) {
       throw new SemanticException(
-          String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
+          String.format(
+              QueryMessages.PARAM_SHOULD_NOT_BE_NULL_OR_EMPTY_DOT, TIMECOL_PARAMETER_NAME));
     }
 
     // predicated columns should never contain partition by columns and time column
@@ -308,8 +310,7 @@ public class ClassifyTableFunction implements TableFunction {
       if (inputEndTime < inputStartTime) {
         throw new SemanticException(
             String.format(
-                "input end time should never less than start time, start time is %s, end time is %s",
-                inputStartTime, inputEndTime));
+                QueryMessages.INPUT_END_TIME_LESS_THAN_START_TIME, inputStartTime, inputEndTime));
       }
 
       // predicated columns
@@ -365,8 +366,7 @@ public class ClassifyTableFunction implements TableFunction {
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String message =
-            String.format(
-                "Error occurred while executing classify:[%s]", resp.getStatus().getMessage());
+            String.format(QueryMessages.CLASSIFY_EXECUTION_ERROR, resp.getStatus().getMessage());
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
 

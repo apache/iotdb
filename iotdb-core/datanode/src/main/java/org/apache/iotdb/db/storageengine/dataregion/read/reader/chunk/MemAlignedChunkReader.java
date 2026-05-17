@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
@@ -72,12 +73,12 @@ public class MemAlignedChunkReader implements IChunkReader {
 
   @Override
   public boolean hasNextSatisfiedPage() throws IOException {
-    throw new IOException("mem chunk reader does not support this method");
+    throw new IOException(StorageEngineMessages.MEM_CHUNK_READER_NOT_SUPPORT_METHOD);
   }
 
   @Override
   public BatchData nextPageData() throws IOException {
-    throw new IOException("mem chunk reader does not support this method");
+    throw new IOException(StorageEngineMessages.MEM_CHUNK_READER_NOT_SUPPORT_METHOD);
   }
 
   @Override

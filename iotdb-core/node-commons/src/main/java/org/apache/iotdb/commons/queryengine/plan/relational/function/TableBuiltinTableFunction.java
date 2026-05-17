@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ClassifyTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
@@ -92,7 +93,8 @@ public enum TableBuiltinTableFunction {
       case "classify":
         return new ClassifyTableFunction();
       default:
-        throw new UnsupportedOperationException("Unsupported table function: " + functionName);
+        throw new UnsupportedOperationException(
+            String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
     }
   }
 }

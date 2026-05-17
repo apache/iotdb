@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -234,7 +235,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    LOGGER.info(DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED);
 
     setTsFileModelInfoToStatement();
     if (reconstructStatementIfMiniFileConverted()) {
@@ -298,7 +299,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         setRealStatement(analysis);
         return true;
       }
-      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      LOGGER.info(DataNodeQueryMessages.ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING);
       return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
@@ -313,7 +314,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+          LOGGER.warn(DataNodeQueryMessages.TSFILE_IS_EMPTY, tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -391,7 +392,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final EncryptParameter param = reader.getEncryptParam();
       if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
           || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
-        throw new SemanticException("The encryption way of the TsFile is not supported.");
+        throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
       }
 
       this.isTableModelTsFile.set(i, isTableModelFile);
@@ -425,7 +426,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
-      LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
+      LOGGER.warn(
+          DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
+          tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.processor;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -112,7 +113,7 @@ public class PipeProcessorMetrics implements IMetricSet {
       deregister(taskID);
     }
     if (!processorMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe processor metrics, processor map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_PROCESSOR_METRICS);
     }
   }
 
@@ -182,9 +183,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor tablet event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_TABLET_EVENT, taskID);
       return;
     }
     rate.mark();
@@ -196,9 +195,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor tsfile event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_TSFILE_EVENT, taskID);
       return;
     }
     rate.mark();
@@ -210,9 +207,7 @@ public class PipeProcessorMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe processor heartbeat event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_PROCESSOR_HEARTBEAT_EVENT, taskID);
       return;
     }
     rate.mark();

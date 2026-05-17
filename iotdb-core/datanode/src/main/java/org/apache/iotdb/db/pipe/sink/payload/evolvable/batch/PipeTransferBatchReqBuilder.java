@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
@@ -139,7 +140,9 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
       throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
-          "Unsupported event {} type {} when building transfer request", event, event.getClass());
+          DataNodePipeMessages.UNSUPPORTED_EVENT_TYPE_WHEN_BUILDING_TRANSFER_REQUEST,
+          event,
+          event.getClass());
       return;
     }
 
@@ -213,7 +216,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
               .reduce(0, Integer::sum);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to get the size of PipeTransferBatchReqBuilder, return 0. Exception: {}",
+          DataNodePipeMessages.FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER,
           e.getMessage(),
           e);
       return 0;

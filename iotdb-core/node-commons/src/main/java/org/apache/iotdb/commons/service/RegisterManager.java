@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public class RegisterManager {
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
-        logger.debug("{} has already been registered. skip", service.getID().getName());
+        logger.debug(ServiceMessages.SERVICE_ALREADY_REGISTERED, service.getID().getName());
         return;
       }
     }
@@ -52,7 +53,7 @@ public class RegisterManager {
     service.start();
     long endTime = System.currentTimeMillis();
     logger.info(
-        "The {} service is started successfully, which takes {} ms.",
+        ServiceMessages.SERVICE_STARTED_WITH_TIME,
         service.getID().getName(),
         (endTime - startTime));
   }
@@ -64,13 +65,13 @@ public class RegisterManager {
     for (IService service : iServices) {
       try {
         service.waitAndStop(deregisterTimeOut);
-        logger.debug("{} deregistered", service.getID());
+        logger.debug(ServiceMessages.SERVICE_DEREGISTERED, service.getID());
       } catch (Exception e) {
-        logger.error("Failed to stop {} because:", service.getID().getName(), e);
+        logger.error(ServiceMessages.FAILED_TO_STOP_SERVICE_BECAUSE, service.getID().getName(), e);
       }
     }
     iServices.clear();
-    logger.info("deregister all service.");
+    logger.info(ServiceMessages.DEREGISTER_ALL_SERVICE);
   }
 
   /** stop all service and clear iService list. */
@@ -81,7 +82,7 @@ public class RegisterManager {
       service.shutdown(deregisterTimeOut);
     }
     iServices.clear();
-    logger.info("deregister all service.");
+    logger.info(ServiceMessages.DEREGISTER_ALL_SERVICE);
   }
 
   @TestOnly

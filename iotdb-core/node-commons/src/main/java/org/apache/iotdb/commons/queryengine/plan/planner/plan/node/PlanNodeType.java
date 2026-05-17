@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -221,7 +223,7 @@ public enum PlanNodeType {
         ServiceLoader.load(IPlanNodeDeserializerProvider.class);
     for (IPlanNodeDeserializerProvider provider : loader) {
       if (deserializer != null) {
-        throw new IllegalStateException("Multiple IPlanNodeDeserializerProvider found");
+        throw new IllegalStateException(QueryMessages.MULTIPLE_PLAN_NODE_DESERIALIZER_PROVIDER);
       }
       deserializer = provider.getDeserializer();
     }

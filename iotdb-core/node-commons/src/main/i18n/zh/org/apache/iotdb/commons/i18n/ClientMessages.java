@@ -1,0 +1,93 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.i18n;
+
+public final class ClientMessages {
+
+  // ClientManager
+  public static final String RETURN_CLIENT_TO_POOL_FAILED =
+      "归还客户端 {} 到节点 {} 的连接池失败。";
+  public static final String RETURN_CLIENT_NULL_NODE =
+      "归还客户端 {} 到连接池失败，因为节点为空。"
+          + "这可能导致资源泄漏，请检查您的代码。";
+  public static final String CLEAR_CLIENT_POOL_FAILED =
+      "清除节点 {} 的所有连接池客户端失败。";
+
+  // ThriftClient
+  public static final String EXCEPTION_LEVEL_DETAIL =
+      "第 {} 层异常，类名 {}，消息 {}";
+  public static final String ROOT_CAUSE_DETAIL =
+      "根因消息 {}，本地化消息 {}，";
+  public static final String BROKEN_PIPE_CLEAR_CONNECTIONS =
+      "发送 RPC 时发生管道断裂错误，需要清除所有之前缓存的连接，错误信息为 {}";
+
+  // Async/Sync clients - invalidation
+  public static final String CLIENT_INVALIDATED = "此客户端已被标记为失效";
+  public static final String CLIENT_INVALIDATED_WITH_ID =
+      "客户端 %d 已被标记为失效";
+
+  // Async clients - readiness check
+  public static final String UNEXPECTED_EXCEPTION_IN_CLIENT =
+      "客户端 {} 中发生意外异常：{}";
+  public static final String UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG =
+      "客户端 {} 中发生意外异常，错误信息为 {}";
+
+  // Async clients - timeout management
+  public static final String TIMEOUT_ALREADY_SET =
+      "此客户端的超时时间已被设置为 {}。"
+          + "如需将其设置为 {}，请先调用 recoverTimeout() 方法。";
+  public static final String TIMEOUT_NOT_MODIFIED =
+      "此客户端的超时时间未被修改，无法重置";
+
+  // AsyncPipeDataTransferServiceClient
+  public static final String FAILED_TO_SET_TIMEOUT_DYNAMICALLY =
+      "动态设置超时时间失败，改为静态设置";
+  public static final String HANDSHAKE_FINISHED = "客户端 {} 握手完成";
+  public static final String MANUALLY_CLOSING_TRANSPORT =
+      "正在手动关闭传输通道以防止资源泄漏。";
+  public static final String METHOD_STATE_RESET =
+      "由于管理器未运行，方法状态已被重置。";
+
+  // AsyncThriftClientFactory
+  public static final String CANNOT_CREATE_ASYNC_FACTORY =
+      "无法创建异步 Thrift 客户端工厂 %s";
+
+  // SyncThriftClientWithErrorHandler
+  public static final String ERROR_IN_CALLING_METHOD =
+      "调用方法 %s 时出错，原因：%s";
+
+  // BorrowNullClientManagerException
+  public static final String CANNOT_BORROW_CLIENT_NULL_NODE =
+      "无法为空节点借用客户端";
+
+  // AsyncRequestManager
+  public static final String ASYNC_REQUEST_TIMEOUT =
+      "{} 超时。重试：{}/{}";
+  public static final String ASYNC_REQUEST_INTERRUPTED =
+      "{} 被中断。重试：{}/{}";
+  public static final String ASYNC_REQUEST_FAILED_AFTER_RETRIES =
+      "{} 在 {} 次重试后仍然失败，请求索引：{}";
+  public static final String UNSUPPORTED_REQUEST_TYPE =
+      "不支持的请求类型 %s，请在 AsyncRequestManager::initActionMapBuilder() 中配置";
+  public static final String ASYNC_REQUEST_FAILED_ON_NODE =
+      "{} 在节点 {} 上失败，原因 {}，正在进行第 {} 次重试...";
+
+  private ClientMessages() {}
+}

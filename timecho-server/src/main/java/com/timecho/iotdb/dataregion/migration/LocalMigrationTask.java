@@ -60,7 +60,8 @@ public class LocalMigrationTask extends MigrationTask {
       migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to copy TsFile from local {} to local {}", srcFile, destTsFile, e);
+        logger.error(
+            TimechoServerMessages.FAIL_TO_COPY_TSFILE_FROM_LOCAL_TO_LOCAL, srcFile, destTsFile, e);
       }
       cleanup();
       return;

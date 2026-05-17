@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.schema.node.common;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
@@ -210,10 +211,9 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
 
   @Override
   public N getChild(String name) {
-    logger.warn("current node {} is a MeasurementMNode, can not get child {}", getName(), name);
+    logger.warn(SchemaMessages.MEASUREMENT_NODE_CANNOT_GET_CHILD_LOG, getName(), name);
     throw new RuntimeException(
-        String.format(
-            "current node %s is a MeasurementMNode, can not get child %s", getName(), name));
+        String.format(SchemaMessages.MEASUREMENT_NODE_CANNOT_GET_CHILD, getName(), name));
   }
 
   @Override
@@ -264,17 +264,17 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
 
   @Override
   public IDatabaseMNode<N> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IDeviceMNode<N> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IInternalMNode<N> getAsInternalMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

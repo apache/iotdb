@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
@@ -85,10 +87,10 @@ public final class MultiProducerSequencer {
 
   public MultiProducerSequencer(int bufferSize, Sequence[] gatingSequences) {
     if (bufferSize < 1) {
-      throw new IllegalArgumentException("bufferSize must not be less than 1");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_NOT_BE_LESS_THAN_1);
     }
     if (Integer.bitCount(bufferSize) != 1) {
-      throw new IllegalArgumentException("bufferSize must be a power of 2");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_BE_A_POWER_OF_2);
     }
 
     this.bufferSize = bufferSize;
@@ -111,7 +113,7 @@ public final class MultiProducerSequencer {
    */
   public long next(int n) {
     if (n < 1) {
-      throw new IllegalArgumentException("n must be > 0");
+      throw new IllegalArgumentException(DataNodePipeMessages.N_MUST_BE_0);
     }
 
     long current;

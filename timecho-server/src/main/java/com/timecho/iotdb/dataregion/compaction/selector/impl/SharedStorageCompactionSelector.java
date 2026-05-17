@@ -66,7 +66,7 @@ public class SharedStorageCompactionSelector implements ICrossSpaceSelector {
         return Collections.emptyList();
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to select shared storage compaction task.", e);
+      LOGGER.warn(TimechoServerMessages.FAILED_TO_SELECT_SHARED_STORAGE_COMPACTION_TASK, e);
       return Collections.emptyList();
     }
     long timeCost = System.currentTimeMillis() - startTime;

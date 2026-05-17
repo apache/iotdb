@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.rescon.quotas;
 
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -159,7 +160,7 @@ public class DefaultOperationQuota implements OperationQuota {
           }
           break;
         default:
-          throw new RuntimeException("Invalid statement type: " + s.getType());
+          throw new RuntimeException(StorageEngineMessages.INVALID_STATEMENT_TYPE + s.getType());
       }
       writeConsumed = estimateConsume(numWrites, avgSize);
     }

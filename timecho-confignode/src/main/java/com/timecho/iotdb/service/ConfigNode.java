@@ -111,7 +111,7 @@ public class ConfigNode extends org.apache.iotdb.confignode.service.ConfigNode {
           .initHardwareCodeFile(
               ConfigNodeDescriptor.getInstance().getConf().getSystemDir(), hardwareCode);
     } catch (Exception e) {
-      LOGGER.error("hardware generation failed.");
+      LOGGER.error(TimechoConfigNodeMessages.HARDWARE_GENERATION_FAILED);
     }
   }
 

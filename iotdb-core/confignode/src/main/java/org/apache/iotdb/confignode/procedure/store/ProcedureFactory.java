@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -108,8 +109,8 @@ public class ProcedureFactory implements IProcedureFactory {
     short typeCode = buffer.getShort();
     ProcedureType procedureType = ProcedureType.convertToProcedureType(typeCode);
     if (procedureType == null) {
-      LOGGER.error("unrecognized log type " + typeCode);
-      throw new IOException("unrecognized log type " + typeCode);
+      LOGGER.error(ProcedureMessages.UNRECOGNIZED_LOG_TYPE + typeCode);
+      throw new IOException(ProcedureMessages.UNRECOGNIZED_LOG_TYPE + typeCode);
     }
 
     Procedure procedure;
@@ -420,14 +421,16 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DataPartitionTableIntegrityCheckProcedure();
         break;
       default:
-        LOGGER.error("Unknown Procedure type: {}", typeCode);
-        throw new IOException("Unknown Procedure type: " + typeCode);
+        LOGGER.error(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE_2, typeCode);
+        throw new IOException(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE + typeCode);
     }
     try {
       procedure.deserialize(buffer);
     } catch (ThriftSerDeException e) {
       LOGGER.warn(
-          "Catch exception while deserializing procedure, this procedure will be ignored.", e);
+          ProcedureMessages
+              .CATCH_EXCEPTION_WHILE_DESERIALIZING_PROCEDURE_THIS_PROCEDURE_WILL_BE_IGNORED,
+          e);
       procedure = null;
     }
     return procedure;
@@ -577,7 +580,7 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
-        "Procedure type " + procedure.getClass() + " is not supported");
+        ProcedureMessages.PROCEDURE_TYPE + procedure.getClass() + " is not supported");
   }
 
   private static class ProcedureFactoryHolder {

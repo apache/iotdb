@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +64,7 @@ public class RepairTaskRecoverLogParser {
         } else if (curLine.startsWith(RepairLogger.cannotRepairFileLogPrefix)) {
           parseFileLog(curLine.trim());
         } else {
-          throw new IllegalArgumentException("Unknown format of repair log");
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_REPAIR_LOG_FORMAT);
         }
       }
       if (currentTimePartitionCannotRepairFiles != null
@@ -78,7 +80,8 @@ public class RepairTaskRecoverLogParser {
     }
     String[] values = line.split(" ");
     if (values.length != 2) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     repairTaskStartTime = Long.parseLong(values[1]);
   }
@@ -89,7 +92,8 @@ public class RepairTaskRecoverLogParser {
     }
     String[] values = line.split(" ");
     if (values.length != 4) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     currentTimePartition = new RepairTimePartition(values[1], values[2], Long.parseLong(values[3]));
     currentTimePartitionCannotRepairFiles = new HashSet<>();
@@ -97,7 +101,8 @@ public class RepairTaskRecoverLogParser {
 
   private void parseFileLog(String line) {
     if (line.length() <= RepairLogger.cannotRepairFileLogPrefix.length()) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     String filePath = line.substring(RepairLogger.cannotRepairFileLogPrefix.length());
     File f = new File(filePath.trim());

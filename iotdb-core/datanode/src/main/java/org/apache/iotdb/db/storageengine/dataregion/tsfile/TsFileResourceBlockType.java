@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -52,7 +54,7 @@ public enum TsFileResourceBlockType {
       case 3:
         return PIPE_MARK;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(StorageEngineMessages.INVALID_INPUT + type);
     }
   }
 }

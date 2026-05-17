@@ -151,6 +151,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
@@ -705,7 +706,7 @@ public class ConfigPlanExecutor {
         // PipeUnsetTemplate plan will not be written here, and exists only after pipe
         // sender collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException(
-            String.format("Plan type %s is not supported.", physicalPlan.getType()));
+            String.format(ConfigNodeMessages.PLAN_TYPE_IS_NOT_SUPPORTED, physicalPlan.getType()));
       case TestOnly:
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
@@ -718,11 +719,13 @@ public class ConfigPlanExecutor {
     // if it does not exist, print a log to warn there may have a problem.
     if (!snapshotDir.exists()) {
       LOGGER.warn(
-          "snapshot directory [{}] is not exist,start to create it.",
+          ConfigNodeMessages.SNAPSHOT_DIRECTORY_IS_NOT_EXIST_START_TO_CREATE_IT,
           snapshotDir.getAbsolutePath());
       // Try to create a directory to enable snapshot operation
       if (!snapshotDir.mkdirs()) {
-        LOGGER.error("snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
+        LOGGER.error(
+            ConfigNodeMessages.SNAPSHOT_DIRECTORY_CAN_NOT_BE_CREATED,
+            snapshotDir.getAbsolutePath());
         return false;
       }
     }
@@ -731,7 +734,8 @@ public class ConfigPlanExecutor {
     // which may result in incorrect results.
     File[] fileList = snapshotDir.listFiles();
     if (fileList != null && fileList.length > 0) {
-      LOGGER.error("Snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      LOGGER.error(
+          ConfigNodeMessages.SNAPSHOT_DIRECTORY_IS_NOT_EMPTY, snapshotDir.getAbsolutePath());
       return false;
     }
 
@@ -742,16 +746,17 @@ public class ConfigPlanExecutor {
           try {
             long startTime = System.currentTimeMillis();
             LOGGER.info(
-                "[ConfigNodeSnapshot] Start to take snapshot for {} into {}",
+                ConfigNodeMessages.CONFIGNODESNAPSHOT_START_TO_TAKE_SNAPSHOT_FOR_INTO,
                 x.getClass().getName(),
                 snapshotDir.getAbsolutePath());
             takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
             LOGGER.info(
-                "[ConfigNodeSnapshot] Finish to take snapshot for {}, time consumption: {} ms",
+                ConfigNodeMessages
+                    .CONFIGNODESNAPSHOT_FINISH_TO_TAKE_SNAPSHOT_FOR_TIME_CONSUMPTION_MS,
                 x.getClass().getName(),
                 System.currentTimeMillis() - startTime);
           } catch (TException | IOException e) {
-            LOGGER.error("Take snapshot error", e);
+            LOGGER.error(ConfigNodeMessages.TAKE_SNAPSHOT_ERROR, e);
             takeSnapshotResult = false;
           } finally {
             // If any snapshot fails, the whole fails
@@ -762,7 +767,8 @@ public class ConfigPlanExecutor {
           }
         });
     if (result.get()) {
-      LOGGER.info("[ConfigNodeSnapshot] Task snapshot success, snapshotDir: {}", snapshotDir);
+      LOGGER.info(
+          ConfigNodeMessages.CONFIGNODESNAPSHOT_TASK_SNAPSHOT_SUCCESS_SNAPSHOTDIR, snapshotDir);
     }
     return result.get();
   }
@@ -770,7 +776,7 @@ public class ConfigPlanExecutor {
   public void loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
-          "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
+          ConfigNodeMessages.SNAPSHOT_DIRECTORY_IS_NOT_EXIST_CAN_NOT_LOAD_SNAPSHOT_WITH,
           latestSnapshotRootDir.getAbsolutePath());
       return;
     }
@@ -782,22 +788,22 @@ public class ConfigPlanExecutor {
               try {
                 final long startTime = System.currentTimeMillis();
                 LOGGER.info(
-                    "[ConfigNodeSnapshot] Start to load snapshot for {} from {}",
+                    ConfigNodeMessages.CONFIGNODESNAPSHOT_START_TO_LOAD_SNAPSHOT_FOR_FROM,
                     x.getClass().getName(),
                     latestSnapshotRootDir.getAbsolutePath());
                 x.processLoadSnapshot(latestSnapshotRootDir);
                 LOGGER.info(
-                    "[ConfigNodeSnapshot] Load snapshot for {} cost {} ms",
+                    ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_FOR_COST_MS,
                     x.getClass().getName(),
                     System.currentTimeMillis() - startTime);
               } catch (final TException | IOException e) {
                 result.set(false);
-                LOGGER.error("Load snapshot error", e);
+                LOGGER.error(ConfigNodeMessages.LOAD_SNAPSHOT_ERROR, e);
               }
             });
     if (result.get()) {
       LOGGER.info(
-          "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
+          ConfigNodeMessages.CONFIGNODESNAPSHOT_LOAD_SNAPSHOT_SUCCESS_LATESTSNAPSHOTROOTDIR,
           latestSnapshotRootDir);
     }
   }

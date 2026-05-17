@@ -163,10 +163,10 @@ public class RegulateManager {
     launchLicenseFileMonitorService();
 
     executor.submit(this::activeNodeMonitorService);
-    logger.info("Active node watching service launched successfully");
+    logger.info(TimechoConfigNodeMessages.ACTIVE_NODE_WATCHING_SERVICE_LAUNCHED);
 
     executor.submit(this::expirationWarningService);
-    logger.info("Expiration warning service launched successfully");
+    logger.info(TimechoConfigNodeMessages.EXPIRATION_WARNING_SERVICE_LAUNCHED);
   }
 
   private void initLicense() {
@@ -193,17 +193,19 @@ public class RegulateManager {
         logger.error(msg);
         throw new LicenseException(msg);
       }
-      logger.info("successfully create activation dir at {}", activationDir.getAbsolutePath());
+      logger.info(
+          TimechoConfigNodeMessages.SUCCESSFULLY_CREATE_ACTIVATION_DIR,
+          activationDir.getAbsolutePath());
     }
   }
 
   private void tryLoadLicenseForTheFirstTime() {
     File file = new File(LICENSE_FILE_PATH);
     if (file.exists()) {
-      logger.info("License file detected during ConfigNode's starting.");
+      logger.info(TimechoConfigNodeMessages.LICENSE_FILE_DETECTED_DURING_STARTING);
       tryLoadLicenseFromFile();
     } else {
-      logger.info("License file not detected during ConfigNode's starting.");
+      logger.info(TimechoConfigNodeMessages.LICENSE_FILE_NOT_DETECTED_DURING_STARTING);
     }
   }
 
@@ -213,17 +215,17 @@ public class RegulateManager {
     try {
       licenseFileMonitor.start();
     } catch (Exception e) {
-      logger.error("start licenseFileMonitor fail");
+      logger.error(TimechoConfigNodeMessages.START_LICENSE_FILE_MONITOR_FAIL);
       throw new LicenseException(e);
     }
-    logger.info("License file watching service launched successfully");
+    logger.info(TimechoConfigNodeMessages.LICENSE_FILE_WATCHING_SERVICE_LAUNCHED);
   }
 
   private class LicenseFileAlterationListener extends FileAlterationListenerAdaptor {
     @Override
     public void onFileCreate(File file) {
       if (LICENSE_FILE_NAME.equals(file.getName())) {
-        logger.info("license file creation detected");
+        logger.info(TimechoConfigNodeMessages.LICENSE_FILE_CREATION_DETECTED);
         tryLoadLicenseFromFile();
       }
     }
@@ -231,7 +233,7 @@ public class RegulateManager {
     @Override
     public void onFileChange(File file) {
       if (LICENSE_FILE_NAME.equals(file.getName())) {
-        logger.info("license file modification detected");
+        logger.info(TimechoConfigNodeMessages.LICENSE_FILE_MODIFICATION_DETECTED);
         tryLoadLicenseFromFile();
       }
     }
@@ -239,7 +241,7 @@ public class RegulateManager {
     @Override
     public void onFileDelete(File file) {
       if (LICENSE_FILE_NAME.equals(file.getName())) {
-        logger.info("license file deletion detected");
+        logger.info(TimechoConfigNodeMessages.LICENSE_FILE_DELETION_DETECTED);
         lottery.licenseFileNotExistOrInvalid();
         lottery.logActivateStatus(false);
       }

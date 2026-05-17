@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -101,7 +103,8 @@ public enum SchemaRegionPlanType {
     final byte code = buffer.get();
     final SchemaRegionPlanType type = PLAN_TYPE_TABLE[code];
     if (type == null) {
-      throw new IllegalArgumentException("Unrecognized SchemaRegionPlanType of " + code);
+      throw new IllegalArgumentException(
+          DataNodeSchemaMessages.UNRECOGNIZED_SCHEMA_REGION_PLAN_TYPE + code);
     }
     return type;
   }

@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -206,7 +207,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
-    throw new IllegalStateException("Each operation should have permission check.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.EACH_OPERATION_SHOULD_HAVE_PERMISSION_CHECK);
   }
 
   @Override
@@ -710,7 +712,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                 .collect(Collectors.toList()),
             statement.getNodeNameList());
       default:
-        throw new IllegalArgumentException("Unknown authorType: " + authorType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_AUTHORTYPE + authorType);
     }
   }
 
@@ -1748,7 +1750,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     } catch (IOException e) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(false).setAuditLogOperation(AuditLogOperation.CONTROL), () -> "");
-      return AuthorityChecker.getTSStatus(false, "Failed to check config item permission");
+      return AuthorityChecker.getTSStatus(
+          false, DataNodeQueryMessages.FAILED_TO_CHECK_CONFIG_ITEM_PERMISSION);
     }
   }
 

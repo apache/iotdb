@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCompactionCandidateStatus;
@@ -492,7 +493,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         serializedSharedModFile();
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to serialize shared mod file", e);
+      LOGGER.warn(StorageEngineMessages.FAILED_TO_SERIALIZE_SHARED_MOD_FILE, e);
     }
   }
 
@@ -536,7 +537,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (ExecutionException | IOException e) {
-        LOGGER.error("Failed to get shared mod file", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_GET_SHARED_MOD_FILE, e);
       }
     }
     return sharedModFile;
@@ -555,10 +556,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
             exclusiveModFile = exclusiveModFileFuture.get();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Upgrading mod file interrupted", e);
+            LOGGER.warn(StorageEngineMessages.UPGRADING_MOD_FILE_INTERRUPTED, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           } catch (ExecutionException e) {
-            LOGGER.warn("Cannot upgrade mod file", e);
+            LOGGER.warn(StorageEngineMessages.CANNOT_UPGRADE_MOD_FILE, e);
             exclusiveModFile = ModificationFile.getExclusiveMods(this);
           }
         } else {
@@ -648,7 +649,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -662,7 +663,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex);
+        LOGGER.debug(StorageEngineMessages.TIME_INDEX_VALUE, timeIndex);
       }
       throw e;
     }
@@ -717,7 +718,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     readLock();
     try {
       if (!resourceFileExists()) {
-        throw new IOException("resource file not found");
+        throw new IOException(StorageEngineMessages.RESOURCE_FILE_NOT_FOUND);
       }
       try (InputStream inputStream =
           FSFactoryProducer.getFSFactory()
@@ -726,7 +727,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
         ITimeIndex timeIndexFromResourceFile =
             ITimeIndex.createTimeIndex(inputStream, deserializer);
         if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
-          throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
+          throw new IOException(
+              StorageEngineMessages.CANNOT_BUILD_DEVICE_TIME_INDEX + file.getPath());
         }
         return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
       } catch (Exception e) {
@@ -895,7 +897,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       fsFactory.deleteIfExists(
           new File(file.getAbsolutePath() + TsFileIOWriter.CHUNK_METADATA_TEMP_FILE_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     if (!removeResourceFile(onRemote)) {
@@ -904,7 +906,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     try {
       removeModFile();
     } catch (IOException e) {
-      LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.MODIFICATION_FILE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -919,7 +921,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       }
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
-      LOGGER.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error(StorageEngineMessages.TSFILE_RESOURCE_CANNOT_BE_DELETED, file, e.getMessage());
       return false;
     }
     return true;
@@ -1403,7 +1405,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
       }
       return 0;
     } catch (IOException e) {
-      LOGGER.error("File name may not meet the standard naming specifications.", e);
+      LOGGER.error(StorageEngineMessages.FILE_NAME_NOT_STANDARD, e);
       throw new RuntimeException(e.getMessage());
     }
   }
@@ -1590,7 +1592,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         ModificationFile newMFile = getExclusiveModFile();
         exclusiveIterator = newMFile != null ? newMFile.getModIterator(0) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.exclusiveModIterator = exclusiveIterator;
@@ -1600,7 +1602,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
         sharedIterator =
             getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
       } catch (IOException e) {
-        LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_READ_MODS, exclusiveModFile, this, e);
       }
 
       this.sharedModIterator = sharedIterator;

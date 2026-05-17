@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -62,7 +64,7 @@ public enum DeleteNodeType {
       case 2:
         return RelationalDeleteDataNode.deserializeFromDAL(buffer);
       default:
-        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }
   }
 }

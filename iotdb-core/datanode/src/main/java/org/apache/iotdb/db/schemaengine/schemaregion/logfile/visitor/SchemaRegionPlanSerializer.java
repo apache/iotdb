@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DropAliasSeriesNode;
@@ -135,7 +136,8 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     public SchemaRegionPlanSerializationResult visitSchemaRegionPlan(
         final ISchemaRegionPlan plan, final DataOutputStream dataOutputStream) {
       throw new UnsupportedOperationException(
-          String.format("%s plan doesn't support serialization.", plan.getPlanType().name()));
+          String.format(
+              DataNodeSchemaMessages.PLAN_NOT_SUPPORT_SERIALIZATION, plan.getPlanType().name()));
     }
 
     @Override

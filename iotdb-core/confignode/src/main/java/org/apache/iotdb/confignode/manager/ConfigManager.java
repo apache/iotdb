@@ -110,6 +110,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
@@ -573,7 +574,7 @@ public class ConfigManager implements IManager {
               dataNodeLocation.getDataNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "The DataNode-{} will be shutdown soon, mark it as Unknown",
+          ManagerMessages.THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
           dataNodeLocation.getDataNodeId());
     }
     return status;
@@ -921,7 +922,7 @@ public class ConfigManager implements IManager {
         partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
-    LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", dbSlotMap, resp);
+    LOGGER.debug(ManagerMessages.GETSCHEMAPARTITION_RECEIVE_PATHS_RETURN, dbSlotMap, resp);
 
     return resp;
   }
@@ -1021,7 +1022,8 @@ public class ConfigManager implements IManager {
       Map<String, List<TSeriesPartitionSlot>> databaseNameSlotMap, TSchemaPartitionTableResp resp) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return TSchemaPartitionTableResp: {}",
+          ManagerMessages
+              .GETORCREATESCHEMAPARTITION_RECEIVE_DATABASENAMESLOTMAP_RETURN_TSCHEMAPARTITIONTABLERESP,
           System.lineSeparator(),
           databaseNameSlotMap,
           partitionTableRespToString(resp));
@@ -1039,7 +1041,8 @@ public class ConfigManager implements IManager {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[GetOrCreateSchemaPartition]:{}Receive PathPatternTree: {}, Return TSchemaPartitionTableResp: {}",
+          ManagerMessages
+              .GETORCREATESCHEMAPARTITION_RECEIVE_PATHPATTERNTREE_RETURN_TSCHEMAPARTITIONTABLERESP,
           lineSeparator,
           devicePathString,
           partitionTableRespToString(resp));
@@ -1126,7 +1129,7 @@ public class ConfigManager implements IManager {
 
     schemaNodeManagementRespString.append(lineSeparator).append("}");
     LOGGER.info(
-        "[GetNodePathsPartition]:{}Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp: {}",
+        ManagerMessages.GETNODEPATHSPARTITION_RECEIVED_PARTIALPATH_LEVEL_PATHPATTERNTREE_RESP,
         lineSeparator,
         partialPath,
         level,
@@ -1148,7 +1151,7 @@ public class ConfigManager implements IManager {
     resp = queryResult.convertToTDataPartitionTableResp();
 
     LOGGER.debug(
-        "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}",
+        ManagerMessages.GETDATAPARTITION_INTERFACE_RECEIVE_PARTITIONSLOTSMAP_RETURN,
         getDataPartitionPlan.getPartitionSlotsMap(),
         resp);
 
@@ -1245,7 +1248,7 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        "[GetOrCreateDataPartition]:{}Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}",
+        ManagerMessages.GET_OR_CREATE_DATA_PARTITION_RESP_LOG,
         lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);
@@ -1254,7 +1257,7 @@ public class ConfigManager implements IManager {
   protected TSStatus confirmLeader() {
     if (NodeStatus.Removing == CommonDescriptor.getInstance().getConfig().getNodeStatus()) {
       TSStatus status = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      status.setMessage("ConfigNode is Removing");
+      status.setMessage(ManagerMessages.CONFIGNODE_IS_REMOVING);
       return status;
     }
     // Make sure the consensus layer has been initialized
@@ -1572,9 +1575,10 @@ public class ConfigManager implements IManager {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
+        LOGGER.warn(
+            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_RETRY_CREATING_PEER_FOR_CONSENSUS_GROUP);
       } catch (ConsensusException e) {
-        LOGGER.error("Failed to create peer for consensus group", e);
+        LOGGER.error(ManagerMessages.FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP, e);
         break;
       }
     }
@@ -1606,7 +1610,7 @@ public class ConfigManager implements IManager {
               configNodeLocation.getConfigNodeId(),
               new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
-          "The ConfigNode-{} will be shutdown soon, mark it as Unknown",
+          ManagerMessages.THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN,
           configNodeLocation.getConfigNodeId());
     }
     return status;
@@ -1912,7 +1916,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus loadConfiguration() {
-    throw new UnsupportedOperationException("not implement yet");
+    throw new UnsupportedOperationException(ManagerMessages.NOT_IMPLEMENT_YET);
   }
 
   @Override
@@ -2025,7 +2029,8 @@ public class ConfigManager implements IManager {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          LOGGER.warn("Unexpected interruption during retry getting latest region route map");
+          LOGGER.warn(
+              ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_RETRY_GETTING_LATEST_REGION_ROUTE_MAP);
           resp.getStatus().setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
           return resp;
         }
@@ -2956,12 +2961,12 @@ public class ConfigManager implements IManager {
     newUnknownDataList.forEach(
         dataNodeLocation -> runningDataNodeLocationMap.remove(dataNodeLocation.getDataNodeId()));
 
-    LOGGER.info("Start transfer of {}", newUnknownDataList);
+    LOGGER.info(ManagerMessages.START_TRANSFER_OF, newUnknownDataList);
     // Transfer trigger
     TSStatus transferResult =
         triggerManager.transferTrigger(newUnknownDataList, runningDataNodeLocationMap);
     if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Fail to transfer because {}, will retry", transferResult.getMessage());
+      LOGGER.warn(ManagerMessages.FAIL_TO_TRANSFER_BECAUSE_WILL_RETRY, transferResult.getMessage());
     }
 
     return transferResult;
@@ -3037,7 +3042,8 @@ public class ConfigManager implements IManager {
               .size()
           > 1) {
         return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-            .setMessage("Cannot specify view pattern to match more than one tree database.");
+            .setMessage(
+                ManagerMessages.CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE);
       }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {

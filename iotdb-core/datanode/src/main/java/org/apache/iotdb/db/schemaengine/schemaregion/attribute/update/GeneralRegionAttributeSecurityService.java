@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -148,7 +149,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
               // May fail due to region shutdown, migration or other reasons
               // Just ignore
               skipNextSleep = false;
-              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
+              LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_WRITE_ATTR_COMMIT, schemaRegionId);
             }
           });
     }
@@ -163,7 +164,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showClusterResp = client.showCluster();
     } catch (final ClientManagerException | TException e) {
-      LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
+      LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_FETCH_DATANODE_LOCATIONS);
       return Collections.emptyMap();
     }
     dataNodeId2FailureDurationAndTimesMap.clear();
