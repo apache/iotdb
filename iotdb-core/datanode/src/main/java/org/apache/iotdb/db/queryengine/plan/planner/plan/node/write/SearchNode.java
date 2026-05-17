@@ -28,6 +28,8 @@ import java.util.List;
 
 public abstract class SearchNode extends WritePlanNode implements ComparableConsensusRequest {
 
+  private static final long LAST_FRAGMENT_MASK = Long.MIN_VALUE;
+
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
@@ -36,6 +38,8 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
    * value should start from 1
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
+
+  protected boolean isLastFragment = false;
 
   protected SearchNode(PlanNodeId id) {
     super(id);
@@ -49,6 +53,39 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
   public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
     return this;
+  }
+
+  public boolean isLastFragment() {
+    return isLastFragment;
+  }
+
+  public SearchNode setLastFragment(boolean lastFragment) {
+    isLastFragment = lastFragment;
+    return this;
+  }
+
+  protected long getEncodedSearchIndex() {
+    if (searchIndex == NO_CONSENSUS_INDEX || !isLastFragment) {
+      return searchIndex;
+    }
+    return searchIndex | LAST_FRAGMENT_MASK;
+  }
+
+  public static long extractSearchIndex(long encodedSearchIndex) {
+    if (encodedSearchIndex == NO_CONSENSUS_INDEX) {
+      return encodedSearchIndex;
+    }
+    return encodedSearchIndex & ~LAST_FRAGMENT_MASK;
+  }
+
+  public static boolean isLastFragment(long encodedSearchIndex) {
+    return encodedSearchIndex != NO_CONSENSUS_INDEX
+        && (encodedSearchIndex & LAST_FRAGMENT_MASK) != 0;
+  }
+
+  protected void setSearchIndexFromWAL(long encodedSearchIndex) {
+    this.searchIndex = extractSearchIndex(encodedSearchIndex);
+    this.isLastFragment = isLastFragment(encodedSearchIndex);
   }
 
   public abstract SearchNode merge(List<SearchNode> searchNodes);
