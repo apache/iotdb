@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -304,7 +305,7 @@ public class AlignedChunkData implements ChunkData {
     } else {
       byte[] data = new byte[size];
       if (size != stream.read(data)) {
-        throw new IOException("TsFileData byte array read error, size mismatch.");
+        throw new IOException(StorageEngineMessages.TSFILE_DATA_BYTE_ARRAY_SIZE_MISMATCH);
       }
       this.chunkData = ByteBuffer.wrap(data);
     }

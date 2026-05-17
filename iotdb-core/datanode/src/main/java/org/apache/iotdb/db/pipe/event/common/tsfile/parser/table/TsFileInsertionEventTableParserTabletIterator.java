@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -204,7 +205,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     chunkMetadataIterator.next();
                 if (alignedChunkMetadata == null) {
                   throw new PipeException(
-                      "Table model tsfile parsing does not support this type of ChunkMeta");
+                      DataNodePipeMessages.TABLE_MODEL_TSFILE_PARSING_DOES_NOT_SUPPORT);
                 }
 
                 // Reduce the number of times Chunks are read
@@ -524,7 +525,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               binary.getValues() == null ? Binary.EMPTY_VALUE.getValues() : binary.getValues());
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
       }
     }
     return needFillTime || hasNonDeletedField;

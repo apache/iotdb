@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
@@ -260,7 +261,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e);
       } else {
         LOGGER.info(
-            "Exception in pipe event processing, ignored because pipe is dropped.{}",
+            DataNodePipeMessages.EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE,
             e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
@@ -291,7 +292,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
-          "Exception occurred when closing pipe processor subtask {}, root cause: {}",
+          DataNodePipeMessages.EXCEPTION_OCCURRED_WHEN_CLOSING_PIPE_PROCESSOR_SUBTASK,
           taskID,
           ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);

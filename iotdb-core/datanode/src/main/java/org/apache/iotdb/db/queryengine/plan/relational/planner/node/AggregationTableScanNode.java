@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -629,11 +630,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
   @Override
   public void setPushDownLimit(long pushDownLimit) {
-    throw new IllegalStateException("Should never push down limit to AggregationTableScanNode.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_LIMIT_TO_AGGREGATIONTABLESCANNODE);
   }
 
   @Override
   public void setPushDownOffset(long pushDownOffset) {
-    throw new IllegalStateException("Should never push down offset to AggregationTableScanNode.");
+    throw new IllegalStateException(
+        DataNodeQueryMessages.SHOULD_NEVER_PUSH_DOWN_OFFSET_TO_AGGREGATIONTABLESCANNODE);
   }
 }

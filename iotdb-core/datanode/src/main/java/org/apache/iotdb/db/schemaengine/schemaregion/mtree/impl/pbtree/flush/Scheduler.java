@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
@@ -93,16 +94,16 @@ public class Scheduler {
       flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
     } catch (MetadataException e) {
       LOGGER.warn(
-          "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
+          DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION_BECAUSE,
           regionId,
           e.getMessage(),
           e);
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
-        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.info(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       } else {
-        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.debug(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       }
       store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
       flushingRegionSet.remove(regionId);

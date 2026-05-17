@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestC
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -72,7 +73,7 @@ public class ClusterManager {
 
   public void checkClusterId() {
     if (clusterInfo.getClusterId() != null) {
-      LOGGER.info("clusterID: {}", clusterInfo.getClusterId());
+      LOGGER.info(ManagerMessages.CLUSTERID, clusterInfo.getClusterId());
       return;
     }
     generateClusterId();
@@ -90,7 +91,7 @@ public class ClusterManager {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for get cluster id.");
+        LOGGER.warn(ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_GET_CLUSTER_ID);
         break;
       }
     }

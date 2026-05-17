@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -306,8 +307,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
       if (!declaredAsPassThrough
           && !columns.stream().allMatch(PassThroughColumn::isPartitioningColumn)) {
-        throw new IllegalArgumentException(
-            "non-partitioning pass-through column for non-pass-through source of a table function");
+        throw new IllegalArgumentException(QueryMessages.NON_PARTITIONING_PASS_THROUGH);
       }
       this.columns = ImmutableList.copyOf(columns);
       this.declaredAsPassThrough = declaredAsPassThrough;

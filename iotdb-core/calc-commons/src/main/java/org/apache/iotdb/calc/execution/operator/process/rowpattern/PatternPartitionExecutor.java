@@ -27,6 +27,7 @@ import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.Match
 import org.apache.iotdb.calc.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SkipToPosition;
@@ -409,7 +410,7 @@ public final class PatternPartitionExecutor {
         lastSkippedPosition = position - 1;
         break;
       default:
-        throw new IllegalStateException("unexpected SKIP TO position: " + skipToPosition);
+        throw new IllegalStateException(CalcMessages.UNEXPECTED_SKIP_TO_POSITION + skipToPosition);
     }
   }
 

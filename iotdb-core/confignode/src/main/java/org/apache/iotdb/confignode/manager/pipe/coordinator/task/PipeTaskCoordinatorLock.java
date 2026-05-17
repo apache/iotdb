@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,15 +44,17 @@ public class PipeTaskCoordinatorLock {
 
   public void lock() {
     LOGGER.debug(
-        "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
+        ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
+        Thread.currentThread().getName());
     try {
       semaphore.acquire();
       LOGGER.debug(
-          "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
+          ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
+          Thread.currentThread().getName());
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error(
-          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
+          ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
           Thread.currentThread().getName());
     }
   }
@@ -58,21 +62,23 @@ public class PipeTaskCoordinatorLock {
   public boolean tryLock() {
     try {
       LOGGER.debug(
-          "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
+          ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
+          Thread.currentThread().getName());
       if (semaphore.tryAcquire(10, TimeUnit.SECONDS)) {
         LOGGER.debug(
-            "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
+            ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
+            Thread.currentThread().getName());
         return true;
       } else {
         LOGGER.info(
-            "PipeTaskCoordinator lock failed to acquire by thread {} because of timeout",
+            ManagerMessages.PIPETASKCOORDINATOR_LOCK_FAILED_TO_ACQUIRE_BY_THREAD_BECAUSE_OF_TIMEOUT,
             Thread.currentThread().getName());
         return false;
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error(
-          "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
+          ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
           Thread.currentThread().getName());
       return false;
     }
@@ -81,7 +87,8 @@ public class PipeTaskCoordinatorLock {
   public void unlock() {
     semaphore.release();
     LOGGER.debug(
-        "PipeTaskCoordinator lock released by thread {}", Thread.currentThread().getName());
+        ManagerMessages.PIPETASKCOORDINATOR_LOCK_RELEASED_BY_THREAD,
+        Thread.currentThread().getName());
   }
 
   public boolean isLocked() {

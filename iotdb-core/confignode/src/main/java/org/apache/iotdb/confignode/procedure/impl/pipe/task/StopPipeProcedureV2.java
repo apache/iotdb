@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -62,7 +64,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StopPipeProcedureV2: executeFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMVALIDATETASK, pipeName);
 
     pipeTaskInfo.get().checkBeforeStopPipe(pipeName);
 
@@ -71,14 +73,15 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StopPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK, pipeName);
     isStoppedByRuntimeExceptionBeforeStop =
         pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("StopPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
 
     TSStatus response;
     try {
@@ -89,7 +92,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
                       pipeName, PipeStatus.STOPPED, false));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -100,13 +103,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
-    LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to stop pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_STOP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           pipeName,
           exceptionMessage);
     }
@@ -114,19 +117,20 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StopPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_ROLLBACKFROMVALIDATETASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StopPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("StopPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.STOPPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS, pipeName);
     TSStatus response;
     try {
       response =
@@ -136,7 +140,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
                       pipeName, PipeStatus.RUNNING, isStoppedByRuntimeExceptionBeforeStop));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -147,14 +151,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
-    LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.STOPPIPEPROCEDUREV2_ROLLBACKFROMOPERATEONDATANODES, pipeName);
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to rollback stop pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_ROLLBACK_STOP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED,
           pipeName,
           exceptionMessage);
     }

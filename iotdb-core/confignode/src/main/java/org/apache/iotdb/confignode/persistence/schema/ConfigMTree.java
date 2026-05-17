@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
@@ -497,7 +498,8 @@ public class ConfigMTree {
     IConfigMNode child;
 
     if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
-      throw new MetadataException("Template already exists on " + cur.getFullPath());
+      throw new MetadataException(
+          ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + cur.getFullPath());
     }
 
     for (int i = 1; i < nodeNames.length; i++) {
@@ -507,7 +509,8 @@ public class ConfigMTree {
       }
       cur = child;
       if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
-        throw new MetadataException("Template already exists on " + cur.getFullPath());
+        throw new MetadataException(
+            ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + cur.getFullPath());
       }
     }
 
@@ -526,7 +529,8 @@ public class ConfigMTree {
         continue;
       }
       if (child.getSchemaTemplateId() != NON_TEMPLATE) {
-        throw new MetadataException("Template already exists on " + child.getFullPath());
+        throw new MetadataException(
+            ConfigNodeMessages.TEMPLATE_ALREADY_EXISTS_ON + child.getFullPath());
       }
       checkTemplateOnSubtree(child);
     }
@@ -658,7 +662,7 @@ public class ConfigMTree {
     }
     if (cur.getSchemaTemplateId() != templateId) {
       throw new MetadataException(
-          String.format("Template %s is not set on path %s", templateId, path));
+          String.format(ConfigNodeMessages.TEMPLATE_IS_NOT_SET_ON_PATH, templateId, path));
     }
     return cur;
   }
@@ -972,7 +976,7 @@ public class ConfigMTree {
     }
     if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Dropping tag or time column is not supported.");
+      throw new SemanticException(ConfigNodeMessages.DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED);
     }
 
     node.addPreDeletedColumn(columnName);
@@ -1001,13 +1005,14 @@ public class ConfigMTree {
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
     if (columnSchema.getColumnCategory() != TsTableColumnCategory.FIELD) {
-      throw new SemanticException("Can only alter datatype of FIELD columns");
+      throw new SemanticException(ConfigNodeMessages.CAN_ONLY_ALTER_DATATYPE_OF_FIELD_COLUMNS);
     }
     if (!MetadataUtils.canAlter(columnSchema.getDataType(), dataType)) {
       throw new SemanticException(
           String.format(
-              "New type %s is not compatible with the existing one %s",
-              dataType, columnSchema.getDataType()));
+              ConfigNodeMessages.NEW_TYPE_IS_NOT_COMPATIBLE_WITH_THE_EXISTING_ONE,
+              dataType,
+              columnSchema.getDataType()));
     }
 
     node.addPreAlteredColumn(columnName, dataType);
@@ -1220,7 +1225,7 @@ public class ConfigMTree {
           name = tableNode.getName();
           break;
         default:
-          logger.error("Unrecognized node type {} when recovering the mTree.", type);
+          logger.error(ConfigNodeMessages.UNRECOGNIZED_NODE_TYPE_WHEN_RECOVERING_THE_MTREE, type);
           return;
       }
     }

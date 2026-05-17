@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -76,7 +77,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
     }
 
     if (!tsFile.exists()) {
-      logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
+      logger.error(StorageEngineMessages.TSFILE_MISSING_SKIP_RECOVERY, tsFile);
       return;
     }
 

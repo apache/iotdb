@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
@@ -159,7 +160,8 @@ public class PipeSinkSubtaskManager {
                 closeException);
           }
           throw new PipeException(
-              "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+              DataNodePipeMessages.FAILED_TO_CONSTRUCT_PIPECONNECTOR_BECAUSE_OF + e.getMessage(),
+              e);
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
@@ -178,7 +180,7 @@ public class PipeSinkSubtaskManager {
       }
 
       LOGGER.info(
-          "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and callbackExecutor {}.",
+          DataNodePipeMessages.PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED,
           attributeSortedString,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());
@@ -215,7 +217,7 @@ public class PipeSinkSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
       executor.shutdown();
       LOGGER.info(
-          "The executor {} and {} has been successfully shutdown.",
+          DataNodePipeMessages.THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());
     }
@@ -252,7 +254,7 @@ public class PipeSinkSubtaskManager {
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
-          "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
+          DataNodePipeMessages.FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK + attributeSortedString);
     }
 
     // All subtasks share the same pending queue

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
@@ -129,7 +130,7 @@ public class ReleaseFlushMonitor {
               }
             }
           } catch (InterruptedException e) {
-            logger.info("ReleaseTaskMonitor thread is interrupted.");
+            logger.info(DataNodeSchemaMessages.RELEASE_TASK_MONITOR_INTERRUPTED);
             Thread.currentThread().interrupt();
           }
         });
@@ -172,8 +173,7 @@ public class ReleaseFlushMonitor {
         blockObject.wait(MAX_WAITING_TIME_WHEN_RELEASING);
       } catch (InterruptedException e) {
         logger.warn(
-            "Interrupt because the release task and flush task did not finish within {} milliseconds.",
-            MAX_WAITING_TIME_WHEN_RELEASING);
+            DataNodeSchemaMessages.RELEASE_FLUSH_TASK_TIMEOUT, MAX_WAITING_TIME_WHEN_RELEASING);
         Thread.currentThread().interrupt();
       }
     }

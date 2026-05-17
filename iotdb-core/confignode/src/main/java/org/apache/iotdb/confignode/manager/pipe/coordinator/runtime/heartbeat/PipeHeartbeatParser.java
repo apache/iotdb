@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -93,7 +94,8 @@ public class PipeHeartbeatParser {
                   configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
               if (pipeTaskInfo == null) {
                 LOGGER.warn(
-                    "Failed to acquire lock when parseHeartbeat from node (id={}).", nodeId);
+                    ManagerMessages.FAILED_TO_ACQUIRE_LOCK_WHEN_PARSEHEARTBEAT_FROM_NODE_ID,
+                    nodeId);
                 return;
               }
 
@@ -125,7 +127,8 @@ public class PipeHeartbeatParser {
         configManager.getNodeManager().getRegisteredDataNodeCount()
             + (PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled() ? 1 : 0);
     if (expectedNodeCount <= 0) {
-      LOGGER.warn("Expected pipe heartbeat node count is {}, fallback to 1.", expectedNodeCount);
+      LOGGER.warn(
+          ManagerMessages.EXPECTED_PIPE_HEARTBEAT_NODE_COUNT_IS_FALLBACK_TO_1, expectedNodeCount);
       return 1;
     }
     return expectedNodeCount;
@@ -140,7 +143,7 @@ public class PipeHeartbeatParser {
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
         LOGGER.info(
-            "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
+            ManagerMessages.PIPERUNTIMECOORDINATOR_MEETS_ERROR_IN_UPDATING_PIPEMETAKEEPER
                 + "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}",
             pipeMetaFromCoordinator);
         continue;
@@ -161,7 +164,7 @@ public class PipeHeartbeatParser {
         if (uncompletedDataNodeIds.isEmpty()) {
           pipeTaskInfo.get().removePipeMeta(staticMeta.getPipeName());
           LOGGER.info(
-              "Detected completion of pipe {}, static meta: {}, remove it.",
+              ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
               staticMeta.getPipeName(),
               staticMeta);
           needWriteConsensusOnConfigNodes.set(true);
@@ -188,7 +191,8 @@ public class PipeHeartbeatParser {
             pipeTaskMetaMapFromAgent.get(runtimeMetaFromCoordinator.getKey());
         if (runtimeMetaFromAgent == null) {
           LOGGER.debug(
-              "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}",
+              ManagerMessages
+                  .NO_CORRESPONDING_PIPE_IS_RUNNING_IN_THE_REPORTED_DATAREGION_RUNTIMEMETAFROMAGENT,
               runtimeMetaFromCoordinator);
           continue;
         }
@@ -251,7 +255,7 @@ public class PipeHeartbeatParser {
               needPushPipeMetaToDataNodes.set(false);
 
               LOGGER.warn(
-                  "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.",
+                  ManagerMessages.DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
                   exception,
                   pipeName);
             }

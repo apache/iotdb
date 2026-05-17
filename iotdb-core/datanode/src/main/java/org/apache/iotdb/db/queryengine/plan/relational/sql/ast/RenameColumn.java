@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -65,7 +66,8 @@ public final class RenameColumn extends Statement {
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
     if (!view) {
-      throw new SemanticException("The renaming for base table column is currently unsupported");
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_RENAMING_FOR_BASE_TABLE_COLUMN_IS_CURRENTLY);
     }
   }
 

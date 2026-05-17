@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.isession;
 
+import org.apache.iotdb.isession.i18n.ISessionMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -333,7 +334,7 @@ public class SessionDataSet implements ISessionDataSet {
       }
 
       if (dataType.equals(TSDataType.OBJECT)) {
-        throw new StatementExecutionException("OBJECT Type only support getString");
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
       }
       return ioTDBRpcDataSet.getBinary(columnIndex);
     }
@@ -345,7 +346,7 @@ public class SessionDataSet implements ISessionDataSet {
       }
 
       if (dataType.equals(TSDataType.OBJECT)) {
-        throw new StatementExecutionException("OBJECT Type only support getString");
+        throw new StatementExecutionException(ISessionMessages.OBJECT_TYPE_ONLY_SUPPORT_GET_STRING);
       }
       return ioTDBRpcDataSet.getBinary(columnName);
     }

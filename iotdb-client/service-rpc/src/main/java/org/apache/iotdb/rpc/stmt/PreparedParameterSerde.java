@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.stmt;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -61,7 +63,7 @@ public class PreparedParameterSerde {
       return ByteBuffer.wrap(outputStream.getBuf(), 0, outputStream.size());
     } catch (IOException e) {
       // Should not happen with PublicBAOS
-      throw new IllegalStateException("Failed to serialize parameters", e);
+      throw new IllegalStateException(RpcMessages.FAILED_TO_SERIALIZE_PARAMETERS, e);
     }
   }
 
@@ -126,7 +128,7 @@ public class PreparedParameterSerde {
     buffer.rewind();
     int count = ReadWriteIOUtils.readInt(buffer);
     if (count < 0 || count > buffer.remaining()) {
-      throw new IllegalArgumentException("Invalid parameter count: " + count);
+      throw new IllegalArgumentException(RpcMessages.INVALID_PARAMETER_COUNT + count);
     }
 
     List<DeserializedParam> result = new ArrayList<>(count);
@@ -160,7 +162,7 @@ public class PreparedParameterSerde {
       case BLOB:
         return ReadWriteIOUtils.readBinary(buffer).getValues();
       default:
-        throw new IllegalArgumentException("Unsupported type: " + type);
+        throw new IllegalArgumentException(RpcMessages.UNSUPPORTED_TYPE + type);
     }
   }
 

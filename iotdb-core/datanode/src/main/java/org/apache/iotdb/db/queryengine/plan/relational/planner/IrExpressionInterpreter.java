@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCase
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
@@ -644,7 +645,8 @@ public class IrExpressionInterpreter {
             toExpression(right, type(rightExpression)));
       } else {
         if (!(left instanceof Number) || !(right instanceof Number)) {
-          throw new IllegalArgumentException("Both object must be type of number");
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.BOTH_OBJECT_MUST_BE_TYPE_OF_NUMBER);
         }
 
         if (left instanceof Integer && right instanceof Integer) {
@@ -742,7 +744,7 @@ public class IrExpressionInterpreter {
               comparisonExpression.getLeft());
         default:
           throw new IllegalStateException(
-              "Unexpected value: " + comparisonExpression.getOperator());
+              DataNodeQueryMessages.UNEXPECTED_VALUE + comparisonExpression.getOperator());
       }
     }
 
@@ -938,7 +940,8 @@ public class IrExpressionInterpreter {
 
     @Override
     public Object visitExpression(Expression node, Object context) {
-      throw new SemanticException("not yet implemented: " + node.getClass().getName());
+      throw new SemanticException(
+          DataNodeQueryMessages.NOT_YET_IMPLEMENTED + node.getClass().getName());
     }
 
     private List<Type> types(Expression... expressions) {

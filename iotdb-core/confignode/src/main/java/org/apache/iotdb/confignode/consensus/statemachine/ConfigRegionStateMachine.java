@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -125,7 +126,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException e) {
-      LOGGER.error("Execute non-query plan failed", e);
+      LOGGER.error(ConfigNodeMessages.EXECUTE_NON_QUERY_PLAN_FAILED, e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
 
@@ -148,7 +149,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         result = ConfigPhysicalPlan.Factory.create(request.serializeToByteBuffer());
       } catch (Exception e) {
         LOGGER.error(
-            "Deserialization error for write plan, request: {}, bytebuffer: {}",
+            ConfigNodeMessages.DESERIALIZATION_ERROR_FOR_WRITE_PLAN_REQUEST_BYTEBUFFER,
             request,
             request.serializeToByteBuffer(),
             e);
@@ -158,7 +159,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       result = request;
     } else {
       LOGGER.error(
-          "Unexpected write plan, request: {}, bytebuffer: {}",
+          ConfigNodeMessages.UNEXPECTED_WRITE_PLAN_REQUEST_BYTEBUFFER,
           request,
           request.serializeToByteBuffer());
       return null;
@@ -172,7 +173,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (request instanceof ConfigPhysicalReadPlan) {
       plan = (ConfigPhysicalReadPlan) request;
     } else {
-      LOGGER.error("Unexpected read plan : {}", request);
+      LOGGER.error(ConfigNodeMessages.UNEXPECTED_READ_PLAN, request);
       return null;
     }
     return read(plan);
@@ -184,7 +185,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       result = executor.executeQueryPlan(plan);
     } catch (final UnknownPhysicalPlanTypeException | AuthException e) {
-      LOGGER.error("Execute query plan failed", e);
+      LOGGER.error(ConfigNodeMessages.EXECUTE_QUERY_PLAN_FAILED, e);
       result = null;
     }
     return result;
@@ -201,7 +202,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       } catch (IOException e) {
         if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
           LOGGER.warn(
-              "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
+              ConfigNodeMessages
+                  .CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_THE_HISTORICAL,
               e);
         }
       }
@@ -221,7 +223,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(
-            "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
+            ConfigNodeMessages.CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP,
             e);
       }
     }
@@ -234,7 +236,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
               + "the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
@@ -248,7 +250,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     LOGGER.info(
-        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
             + "start cleaning up related services",
         currentNodeId,
         currentNodeTEndPoint);
@@ -273,7 +275,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
     LOGGER.info(
-        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
             + "all services on old leader are unavailable now.",
         currentNodeId,
         currentNodeTEndPoint);
@@ -282,7 +284,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   @Override
   public void notifyLeaderReady() {
     LOGGER.info(
-        "Current node [nodeId: {}, ip:port: {}] becomes config region leader",
+        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
@@ -333,7 +335,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
 
     LOGGER.info(
-        "Current node [nodeId: {}, ip:port: {}] as config region leader is ready to work",
+        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
   }
@@ -364,14 +366,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         Files.move(
             simpleLogFile.toPath(), completedFilePath.toPath(), StandardCopyOption.ATOMIC_MOVE);
       } catch (IOException e) {
-        LOGGER.error("Can't force logWriter for ConfigNode SimpleConsensus mode", e);
+        LOGGER.error(
+            ConfigNodeMessages.CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE, e);
       }
       for (int retry = 0; retry < 5; retry++) {
         try {
           simpleLogWriter.close();
         } catch (IOException e) {
           LOGGER.warn(
-              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, "
+              ConfigNodeMessages.CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE
                   + "filePath: {}, retry: {}",
               simpleLogFile.getAbsolutePath(),
               retry);
@@ -380,7 +383,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             TimeUnit.SECONDS.sleep(1);
           } catch (InterruptedException e2) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during the close method of logWriter");
+            LOGGER.warn(
+                ConfigNodeMessages.UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER);
           }
           continue;
         }
@@ -398,7 +402,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       endIndex = endIndex + 1;
     } catch (Exception e) {
       LOGGER.error(
-          "Can't serialize current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode", e);
+          ConfigNodeMessages
+              .CAN_T_SERIALIZE_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE,
+          e);
     }
   }
 
@@ -416,7 +422,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           logReader = new SingleFileLogReader(logFile);
         } catch (FileNotFoundException e) {
           LOGGER.error(
-              "InitStandAloneConfigNode meets error, can't find standalone log files, filePath: {}",
+              ConfigNodeMessages
+                  .INITSTANDALONECONFIGNODE_MEETS_ERROR_CAN_T_FIND_STANDALONE_LOG_FILES_FILEPATH,
               logFile.getAbsolutePath(),
               e);
           continue;
@@ -436,7 +443,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
               PipeConfigNodeAgent.runtime().listener().tryListenToPlan(nextPlan, false);
             }
           } catch (UnknownPhysicalPlanTypeException e) {
-            LOGGER.error("Try listen to plan failed", e);
+            LOGGER.error(ConfigNodeMessages.TRY_LISTEN_TO_PLAN_FAILED, e);
           }
         }
         logReader.close();
@@ -464,7 +471,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       try {
         simpleLogWriter.force();
       } catch (IOException e) {
-        LOGGER.error("Can't force logWriter for ConfigNode flushWALForSimpleConsensus", e);
+        LOGGER.error(
+            ConfigNodeMessages.CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS, e);
       }
     }
   }
@@ -474,14 +482,16 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     try {
       if (!simpleLogFile.createNewFile()) {
         LOGGER.warn(
-            "ConfigNode SimpleConsensusFile has existed，filePath:{}",
+            ConfigNodeMessages.CONFIGNODE_SIMPLECONSENSUSFILE_HAS_EXISTED_FILEPATH,
             simpleLogFile.getAbsolutePath());
       }
       simpleLogWriter = new LogWriter(simpleLogFile, false);
-      LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", simpleLogFile.getAbsolutePath());
+      LOGGER.info(
+          ConfigNodeMessages.CREATE_CONFIGNODE_SIMPLECONSENSUSFILE,
+          simpleLogFile.getAbsolutePath());
     } catch (Exception e) {
       LOGGER.warn(
-          "Create ConfigNode SimpleConsensusFile failed, filePath: {}",
+          ConfigNodeMessages.CREATE_CONFIGNODE_SIMPLECONSENSUSFILE_FAILED_FILEPATH,
           simpleLogFile.getAbsolutePath(),
           e);
     }

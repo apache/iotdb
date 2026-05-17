@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 
 import org.slf4j.Logger;
@@ -41,7 +42,7 @@ public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
 
   private WindowEvaluationTaskPoolManager() {
     final int nThreads = IoTDBDescriptor.getInstance().getConfig().getWindowEvaluationThreadCount();
-    LOGGER.info("WindowEvaluationTaskPoolManager is initializing, thread number: {}", nThreads);
+    LOGGER.info(DataNodeMiscMessages.WINDOW_EVAL_POOL_INIT, nThreads);
     pool =
         new ThreadPoolExecutor(
             nThreads,

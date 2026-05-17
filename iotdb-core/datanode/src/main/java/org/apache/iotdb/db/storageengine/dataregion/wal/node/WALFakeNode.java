@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -145,7 +146,7 @@ public class WALFakeNode implements IWALNode {
 
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
-        Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));
+        Status.FAILURE, new WALException(StorageEngineMessages.CANNOT_WRITE_WAL_INTO_FAKE_NODE, e));
   }
 
   public static WALFakeNode getSuccessInstance() {

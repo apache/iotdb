@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -76,7 +78,8 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
       // Skip by setting the subscriptionInfo to null
       subscriptionInfo = null;
       LOGGER.info(
-          "TopicMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
+          ProcedureMessages
+              .TOPICMETASYNCPROCEDURE_ACQUIRELOCK_SKIP_THE_PROCEDURE_DUE_TO_THE_LAST_EXECUTION,
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -91,7 +94,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
 
   @Override
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("TopicMetaSyncProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_EXECUTEFROMVALIDATE);
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -100,7 +103,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   @Override
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES);
 
     final List<TopicMeta> topicMetaList = new ArrayList<>();
     subscriptionInfo.get().getAllTopicMeta().forEach(topicMetaList::add);
@@ -112,7 +115,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
               .getConsensusManager()
               .write(new TopicHandleMetaChangePlan(topicMetaList));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -124,32 +127,32 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
     if (pushTopicMetaHasException(respMap)) {
       throw new SubscriptionException(
-          String.format("Failed to push topic meta to dataNodes, details: %s", respMap));
+          String.format(ProcedureMessages.FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS, respMap));
     }
   }
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("TopicMetaSyncProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_ROLLBACKFROMVALIDATE);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("TopicMetaSyncProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("TopicMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Do nothing
   }

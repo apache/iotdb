@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -76,12 +77,12 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
 
   @Override
   public boolean flushNonAlignedChunk(Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 
   @Override
@@ -89,18 +90,18 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       ChunkMetadataElement chunkMetadataElement,
       int subTaskId,
       AbstractCompactionFlushController flushController) {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 
   @Override
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 
   @Override
   public boolean flushAlignedPage(AlignedPageElement alignedPageElement, int subTaskId) {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 
   @Override
@@ -109,6 +110,6 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws PageException, IOException {
-    throw new RuntimeException("Does not support this method in ReadPointInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_READ_POINT_WRITER);
   }
 }

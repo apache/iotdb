@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.PlainQueueSerializer;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializer;
@@ -124,7 +125,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .writeQueueToFile(fileOutputStream, queue, this::serializeToByteBuffer);
       } else {
         throw new UnsupportedOperationException(
-            "Unknown serializer type: " + serializerType.getType());
+            PipeMessages.UNKNOWN_SERIALIZER_TYPE + serializerType.getType());
       }
     }
   }
@@ -149,7 +150,8 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
             .get()
             .loadQueueFromFile(inputStream, queue, this::deserializeFromByteBuffer);
       } else {
-        throw new UnsupportedOperationException("Unknown serializer type: " + type.getType());
+        throw new UnsupportedOperationException(
+            PipeMessages.UNKNOWN_SERIALIZER_TYPE + type.getType());
       }
     }
   }
