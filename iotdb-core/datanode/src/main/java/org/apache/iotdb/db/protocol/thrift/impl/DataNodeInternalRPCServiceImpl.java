@@ -275,6 +275,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataPartitionTableGeneratorProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -3402,6 +3403,52 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               e,
               OperationType.CHECK_DATA_PARTITION_TABLE_STATUS,
               TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+    }
+    return resp;
+  }
+
+  @Override
+  public TGetDataPartitionTableGeneratorProgressResp getDataPartitionTableGeneratorProgress() {
+    TGetDataPartitionTableGeneratorProgressResp resp =
+        new TGetDataPartitionTableGeneratorProgressResp();
+
+    if (currentGenerator == null) {
+      resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
+      resp.setProgress(0.0);
+      resp.setMessage("No DataPartitionTable generation task found");
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return resp;
+    }
+
+    switch (currentGenerator.getStatus()) {
+      case IN_PROGRESS:
+        resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
+        resp.setProgress(currentGenerator.getProgress());
+        resp.setMessage(
+            String.format(
+                "DataPartitionTable generation in progress: %.1f%%",
+                currentGenerator.getProgress() * 100));
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        break;
+      case COMPLETED:
+        resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
+        resp.setProgress(1.0);
+        resp.setMessage("DataPartitionTable generation completed successfully");
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        break;
+      case FAILED:
+        resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+        resp.setProgress(currentGenerator.getProgress());
+        resp.setMessage(
+            "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        break;
+      default:
+        resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
+        resp.setProgress(currentGenerator.getProgress());
+        resp.setMessage("Unknown task status: " + currentGenerator.getStatus());
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        break;
     }
     return resp;
   }

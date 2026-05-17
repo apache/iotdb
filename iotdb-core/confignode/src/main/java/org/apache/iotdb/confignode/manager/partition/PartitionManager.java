@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -540,6 +541,18 @@ public class PartitionManager {
 
   public void markDataPartitionTableIntegrityCheckProcedureFinished() {
     dataPartitionTableIntegrityCheckProcedureRunning.set(false);
+  }
+
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager
+        .getProcedureManager()
+        .getUnfinishedDataPartitionTableIntegrityCheckProcedure()
+        .map(procedure -> procedure.getProgress(configManager.getProcedureManager().getEnv()))
+        .orElseGet(
+            () ->
+                new TShowRepairDataPartitionTableProgressResp(
+                        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "IDLE", 100.0)
+                    .setMessage("No running DataPartitionTable integrity check procedure"));
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
