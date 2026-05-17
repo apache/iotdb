@@ -74,8 +74,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -1622,5 +1625,70 @@ public class SessionPoolTest {
     }
 
     return Collections.singletonList(tsBlock);
+  }
+
+  // Regression test for graceful shutdown
+  @Test(timeout = 5000)
+  public void testCloseNotifiesWaitingThreads() throws Exception {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(6667)
+            .user("root")
+            .password("root")
+            .maxSize(1)
+            .waitToGetSessionTimeoutInMs(10000)
+            .build();
+
+    try {
+      Session mockSession = Mockito.mock(Session.class);
+      ConcurrentLinkedDeque<ISession> queue =
+          (ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(pool, "queue");
+      queue.push(mockSession);
+      Whitebox.setInternalState(pool, "size", 1);
+
+      ISession occupiedSession = (ISession) Whitebox.invokeMethod(pool, "getSession");
+      assertEquals(mockSession, occupiedSession);
+      assertEquals(0, queue.size());
+
+      final Exception[] caughtException = {null};
+      CountDownLatch latch = new CountDownLatch(1);
+
+      Thread waiterThread =
+          new Thread(
+              () -> {
+                try {
+                  latch.countDown();
+                  Whitebox.invokeMethod(pool, "getSession");
+                } catch (Exception e) {
+                  caughtException[0] = e;
+                }
+              });
+      waiterThread.start();
+
+      assertTrue("Waiter thread should have started", latch.await(10, TimeUnit.SECONDS));
+      // Give it a moment to enter the wait(1000) block in getSession()
+      Thread.sleep(200);
+
+      pool.close();
+
+      waiterThread.join(500);
+      assertTrue("Waiter thread should be unblocked quickly", !waiterThread.isAlive());
+
+      assertNotNull("Waiter thread should have caught an exception", caughtException[0]);
+      assertTrue(
+          "Exception should be IoTDBConnectionException",
+          caughtException[0] instanceof IoTDBConnectionException);
+      assertTrue(
+          "Exception message should indicate pool is closed",
+          caughtException[0].getMessage().contains("closed"));
+
+    } finally {
+      try {
+        pool.close();
+      } catch (Exception e) {
+        // ignore
+      }
+    }
   }
 }
