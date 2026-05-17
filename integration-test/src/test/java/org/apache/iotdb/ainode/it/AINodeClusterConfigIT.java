@@ -24,16 +24,15 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -44,39 +43,56 @@ import static org.junit.Assert.assertEquals;
 @Category({AIClusterIT.class})
 public class AINodeClusterConfigIT {
 
-  @Before
-  public void setUp() throws Exception {
-    // Init 1C1D1A cluster environment
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
-  public void aiNodeRegisterAndRemoveTestInTree() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      aiNodeRegisterAndRemoveTest(statement);
-    }
-  }
-
-  @Test
-  public void aiNodeRegisterAndRemoveTestInTable() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      aiNodeRegisterAndRemoveTest(statement);
-    }
-  }
-
-  private void aiNodeRegisterAndRemoveTest(Statement statement) throws SQLException {
+  public void aiNodeRegisterAndRemoveTest() throws SQLException {
     String show_sql = "SHOW AINODES";
     String title = "NodeID,Status,InternalAddress,InternalPort";
-    try (ResultSet resultSet = statement.executeQuery(show_sql)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, title);
+
+    // Verify AINode exists via both dialects before removal
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, show_sql, title);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, show_sql, title);
+    }
+
+    // Remove AINode
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("REMOVE AINODE");
+      waitForAINodeRemoval(statement, show_sql, title);
+    }
+
+    // Verify removal is visible via table dialect as well
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(show_sql)) {
+        checkHeader(resultSet.getMetaData(), title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(0, count);
+      }
+    }
+  }
+
+  private static void verifyAINodeExists(Statement statement, String showSql, String title)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(showSql)) {
+      checkHeader(resultSet.getMetaData(), title);
       int count = 0;
       while (resultSet.next()) {
         assertEquals("2", resultSet.getString(1));
@@ -85,22 +101,23 @@ public class AINodeClusterConfigIT {
       }
       assertEquals(1, count);
     }
-    String remove_sql = "REMOVE AINODE";
-    statement.execute(remove_sql);
+  }
+
+  private static void waitForAINodeRemoval(Statement statement, String showSql, String title)
+      throws SQLException {
     for (int retry = 0; retry < 500; retry++) {
-      try (ResultSet resultSet = statement.executeQuery(show_sql)) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, title);
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        checkHeader(resultSet.getMetaData(), title);
         int count = 0;
         while (resultSet.next()) {
           count++;
         }
         if (count == 0) {
-          return; // Successfully removed the AI node
+          return;
         }
       }
       try {
-        Thread.sleep(1000); // Wait before retrying
+        Thread.sleep(1000);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
