@@ -51,6 +51,9 @@ public class GroupByTimeParameter {
   // if it is left close and right open interval
   private boolean leftCRightO;
 
+  // if the right boundary is closed (inclusive)
+  private boolean rightClosed;
+
   public GroupByTimeParameter() {}
 
   public GroupByTimeParameter(
@@ -59,11 +62,22 @@ public class GroupByTimeParameter {
       TimeDuration interval,
       TimeDuration slidingStep,
       boolean leftCRightO) {
+    this(startTime, endTime, interval, slidingStep, leftCRightO, false);
+  }
+
+  public GroupByTimeParameter(
+      long startTime,
+      long endTime,
+      TimeDuration interval,
+      TimeDuration slidingStep,
+      boolean leftCRightO,
+      boolean rightClosed) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
     this.leftCRightO = leftCRightO;
+    this.rightClosed = rightClosed;
   }
 
   public GroupByTimeParameter(GroupByTimeComponent groupByTimeComponent) {
@@ -72,6 +86,7 @@ public class GroupByTimeParameter {
     this.interval = groupByTimeComponent.getInterval();
     this.slidingStep = groupByTimeComponent.getSlidingStep();
     this.leftCRightO = groupByTimeComponent.isLeftCRightO();
+    this.rightClosed = groupByTimeComponent.isRightClosed();
   }
 
   public long getStartTime() {
@@ -114,6 +129,14 @@ public class GroupByTimeParameter {
     this.leftCRightO = leftCRightO;
   }
 
+  public boolean isRightClosed() {
+    return rightClosed;
+  }
+
+  public void setRightClosed(boolean rightClosed) {
+    this.rightClosed = rightClosed;
+  }
+
   public boolean hasOverlap() {
     return interval.getTotalDuration(TimestampPrecisionUtils.currPrecision)
         > slidingStep.getTotalDuration(TimestampPrecisionUtils.currPrecision);
@@ -125,6 +148,7 @@ public class GroupByTimeParameter {
     interval.serialize(buffer);
     slidingStep.serialize(buffer);
     ReadWriteIOUtils.write(leftCRightO, buffer);
+    ReadWriteIOUtils.write(rightClosed, buffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -133,6 +157,7 @@ public class GroupByTimeParameter {
     interval.serialize(stream);
     slidingStep.serialize(stream);
     ReadWriteIOUtils.write(leftCRightO, stream);
+    ReadWriteIOUtils.write(rightClosed, stream);
   }
 
   public static GroupByTimeParameter deserialize(ByteBuffer buffer) {
@@ -142,6 +167,7 @@ public class GroupByTimeParameter {
     groupByTimeParameter.setInterval(TimeDuration.deserialize(buffer));
     groupByTimeParameter.setSlidingStep(TimeDuration.deserialize(buffer));
     groupByTimeParameter.setLeftCRightO(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeParameter.setRightClosed(ReadWriteIOUtils.readBool(buffer));
     return groupByTimeParameter;
   }
 
@@ -155,11 +181,12 @@ public class GroupByTimeParameter {
         && this.endTime == other.endTime
         && this.interval.equals(other.interval)
         && this.slidingStep.equals(other.slidingStep)
-        && this.leftCRightO == other.leftCRightO;
+        && this.leftCRightO == other.leftCRightO
+        && this.rightClosed == other.rightClosed;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(startTime, endTime, interval, slidingStep, leftCRightO);
+    return Objects.hash(startTime, endTime, interval, slidingStep, leftCRightO, rightClosed);
   }
 }

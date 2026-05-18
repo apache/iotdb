@@ -87,6 +87,7 @@ public class AggregationUtil {
           groupByTimeParameter.getSlidingStep(),
           ascending,
           groupByTimeParameter.isLeftCRightO(),
+          groupByTimeParameter.isRightClosed(),
           outputPartialTimeWindow,
           zoneId);
     }
