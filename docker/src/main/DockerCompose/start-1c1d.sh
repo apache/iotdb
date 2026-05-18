@@ -23,6 +23,12 @@ function on_stop(){
 
 trap 'on_stop' SIGTERM SIGKILL SIGQUIT SIGINT
 
+export IOTDB_HOME="${IOTDB_HOME:-/iotdb}"
+
+if [[ -f /iotdb/sbin/iotdb-docker-env.sh ]]; then
+    . /iotdb/sbin/iotdb-docker-env.sh all
+fi
+
 bash /iotdb/sbin/start-confignode.sh &
 sleep 5
 bash /iotdb/sbin/start-datanode.sh

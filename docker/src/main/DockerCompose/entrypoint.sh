@@ -38,6 +38,9 @@ trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 
 
 replace-conf-from-env.sh $start_what
+if [[ -f "${current_path}/iotdb-docker-env.sh" ]]; then
+    . "${current_path}/iotdb-docker-env.sh" "$start_what"
+fi
 
 case "$1" in
     datanode)
