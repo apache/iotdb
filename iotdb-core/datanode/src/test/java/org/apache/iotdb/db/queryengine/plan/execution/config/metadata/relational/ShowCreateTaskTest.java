@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 
 import org.junit.Test;
 
@@ -51,6 +53,20 @@ public class ShowCreateTaskTest {
         "CREATE DATABASE \"test_db\" WITH (ttl='"
             + IoTDBConstant.TTL_INFINITE
             + "',time_partition_interval=604800000,schema_region_group_num=0,data_region_group_num=1)",
+        ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
+  }
+
+  @Test
+  public void testShowCreateDatabaseSQLShouldQuoteIdentifierAndKeepFiniteTTL() {
+    final TDatabaseInfo databaseInfo = new TDatabaseInfo();
+    databaseInfo.setName("test\"db");
+    databaseInfo.setTTL(123L);
+    databaseInfo.setTimePartitionInterval(1000L);
+    databaseInfo.setMinSchemaRegionNum(2);
+    databaseInfo.setMinDataRegionNum(3);
+
+    assertEquals(
+        "CREATE DATABASE \"test\"\"db\" WITH (ttl=123,time_partition_interval=1000,schema_region_group_num=2,data_region_group_num=3)",
         ShowCreateDatabaseTask.getShowCreateDatabaseSQL(databaseInfo));
   }
 
@@ -142,5 +158,38 @@ public class ShowCreateTaskTest {
             + " WITH SOURCE ('extractor'='iotdb-extractor')"
             + " WITH SINK ('connector'='iotdb-thrift-connector')",
         ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
+  }
+
+  @Test
+  public void testShowCreateTopicSQLShouldSanitizeInternalAttributes() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put("table", "test_table");
+    topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    topicAttributes.put("format", "SubscriptionTsFileHandler");
+    topicAttributes.put("database", "test_db");
+    topicAttributes.put("__audit.topic", "audit");
+
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1L, topicAttributes);
+
+    assertEquals(
+        "CREATE TOPIC \"test_topic\" WITH ('database'='test_db','format'='SubscriptionTsFileHandler','table'='test_table')",
+        ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, true));
+    assertEquals(
+        "CREATE TOPIC `test_topic` WITH ('database'='test_db','format'='SubscriptionTsFileHandler','table'='test_table')",
+        ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, false));
+  }
+
+  @Test
+  public void testShowCreateTopicSQLShouldOmitEmptyWithClause() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    topicAttributes.put("__audit.topic", "audit");
+
+    final TopicMeta topicMeta = new TopicMeta("test`topic", 1L, topicAttributes);
+
+    assertEquals(
+        "CREATE TOPIC \"test`topic\"", ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, true));
+    assertEquals(
+        "CREATE TOPIC `test``topic`", ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, false));
   }
 }

@@ -138,6 +138,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -255,6 +256,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionT
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -297,6 +299,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
@@ -2996,6 +2999,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               ? showTopicResp.getTopicInfoList()
               : Collections.emptyList(),
           future);
+    } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCreateTopic(
+      final ShowCreateTopicStatement showCreateTopicStatement) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
+    }
+
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetAllTopicInfoResp getAllTopicInfoResp = configNodeClient.getAllTopicInfo();
+      if (getAllTopicInfoResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(getAllTopicInfoResp.getStatus()));
+        return future;
+      }
+
+      final TopicMeta topicMeta =
+          getAllTopicInfoResp.getAllTopicInfo().stream()
+              .map(TopicMeta::deserialize)
+              .filter(
+                  meta ->
+                      meta.visibleUnder(showCreateTopicStatement.isTableModel())
+                          && meta.getTopicName().equals(showCreateTopicStatement.getTopicName()))
+              .findFirst()
+              .orElse(null);
+      if (topicMeta == null) {
+        future.setException(
+            new IoTDBException(
+                String.format(
+                    "Failed to show create topic %s, the topic does not exist.",
+                    showCreateTopicStatement.getTopicName()),
+                TSStatusCode.TOPIC_NOT_EXIST_ERROR.getStatusCode()));
+        return future;
+      }
+
+      ShowCreateTopicTask.buildTsBlock(topicMeta, showCreateTopicStatement.isTableModel(), future);
     } catch (final Exception e) {
       future.setException(e);
     }

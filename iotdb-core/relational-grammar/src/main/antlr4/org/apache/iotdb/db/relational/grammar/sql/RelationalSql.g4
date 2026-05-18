@@ -111,6 +111,7 @@ statement
     | createTopicStatement
     | dropTopicStatement
     | showTopicsStatement
+    | showCreateTopicStatement
     | showSubscriptionsStatement
     | dropSubscriptionStatement
 
@@ -556,6 +557,10 @@ dropTopicStatement
 
 showTopicsStatement
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopicStatement
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptionsStatement

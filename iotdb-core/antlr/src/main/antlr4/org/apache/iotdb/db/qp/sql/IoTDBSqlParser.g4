@@ -59,7 +59,7 @@ ddlStatement
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
+    | createTopic | dropTopic | showTopics | showCreateTopic | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -732,6 +732,10 @@ dropTopic
 
 showTopics
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showCreateTopic
+    : SHOW CREATE TOPIC topicName=identifier
     ;
 
 showSubscriptions

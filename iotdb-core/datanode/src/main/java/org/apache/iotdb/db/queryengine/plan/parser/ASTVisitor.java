@@ -217,6 +217,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -4461,6 +4462,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return showTopicsStatement;
+  }
+
+  @Override
+  public Statement visitShowCreateTopic(IoTDBSqlParser.ShowCreateTopicContext ctx) {
+    final ShowCreateTopicStatement showCreateTopicStatement = new ShowCreateTopicStatement();
+
+    if (ctx.topicName != null) {
+      showCreateTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in SHOW CREATE TOPIC, please enter topicName.");
+    }
+
+    return showCreateTopicStatement;
   }
 
   @Override

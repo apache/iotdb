@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
@@ -213,6 +214,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -1358,6 +1360,13 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   public IConfigTask visitShowCreatePipe(ShowCreatePipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCreatePipeTask(node.getPipeName(), context.getSession().getUserName());
+  }
+
+  @Override
+  public IConfigTask visitShowCreateTopic(ShowCreateTopic node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new ShowCreateTopicTask(node);
   }
 
   @Override

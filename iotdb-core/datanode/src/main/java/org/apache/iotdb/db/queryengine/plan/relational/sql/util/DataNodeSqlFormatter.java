@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -801,6 +802,15 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     } else {
       builder.append("SHOW TOPIC ").append(node.getTopicName());
     }
+
+    return null;
+  }
+
+  @Override
+  public Void visitShowCreateTopic(ShowCreateTopic node, Integer context) {
+    builder
+        .append("SHOW CREATE TOPIC ")
+        .append(ShowCreateTableTask.getIdentifier(node.getTopicName()));
 
     return null;
   }

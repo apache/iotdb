@@ -135,6 +135,8 @@ public class ColumnHeaderConstant {
   // column names for show topics statement
   public static final String TOPIC_NAME = "TopicName";
   public static final String TOPIC_CONFIGS = "TopicConfigs";
+  public static final String TOPIC = "Topic";
+  public static final String CREATE_TOPIC = "Create Topic";
 
   // column names for show subscriptions statement
   public static final String CONSUMER_GROUP_NAME = "ConsumerGroupName";
@@ -613,6 +615,11 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TOPIC_NAME, TSDataType.TEXT),
           new ColumnHeader(TOPIC_CONFIGS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateTopicColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TOPIC, TSDataType.TEXT),
+          new ColumnHeader(CREATE_TOPIC, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSubscriptionColumnHeaders =
       ImmutableList.of(

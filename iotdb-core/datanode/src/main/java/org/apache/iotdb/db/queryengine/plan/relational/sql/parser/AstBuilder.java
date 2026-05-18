@@ -226,6 +226,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -1420,6 +1421,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     final String topicName =
         getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
     return new ShowTopics(topicName);
+  }
+
+  @Override
+  public Node visitShowCreateTopicStatement(
+      RelationalSqlParser.ShowCreateTopicStatementContext ctx) {
+    return new ShowCreateTopic(((Identifier) visit(ctx.topicName)).getValue());
   }
 
   @Override

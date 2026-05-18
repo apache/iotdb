@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
@@ -247,6 +248,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropTopic(DropTopicStatement dropTopicStatement);
 
   SettableFuture<ConfigTaskResult> showTopics(ShowTopicsStatement showTopicsStatement);
+
+  SettableFuture<ConfigTaskResult> showCreateTopic(
+      ShowCreateTopicStatement showCreateTopicStatement);
 
   SettableFuture<ConfigTaskResult> alterEncodingCompressor(
       String queryId, AlterEncodingCompressorStatement alterEncodingCompressorStatement);
