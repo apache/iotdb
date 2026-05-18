@@ -47,8 +47,8 @@ public class OpcDaServerHandleTest {
     assertItem(itemPositions, tablet, "factory.status.d1.s2", false, 2L);
     assertItem(itemPositions, tablet, "factory.status.d2.s1", 21L, 1L);
     assertItem(itemPositions, tablet, "factory.status.d2.s2", true, 1L);
-    assertItem(itemPositions, tablet, "factory.status.__NULL__.s1", 31L, 3L);
-    assertItem(itemPositions, tablet, "factory.status.__NULL__.s2", false, 3L);
+    assertItem(itemPositions, tablet, "factory.status.s1", 31L, 3L);
+    assertItem(itemPositions, tablet, "factory.status.s2", false, 3L);
   }
 
   @Test
@@ -78,6 +78,18 @@ public class OpcDaServerHandleTest {
     assertItem(itemPositions, tablet, "factory.status.[NULL].c.s1", 33L, 1L);
     assertItem(itemPositions, tablet, "factory.status.[ESC][NULL][ESC].c.s1", 55L, 2L);
     assertItem(itemPositions, tablet, "factory.status.[ESC]ESC[ESC].c.s1", 66L, 3L);
+  }
+
+  @Test
+  public void testGenerateTableModelItemIdShouldRetainTrailingNullTags() {
+    final Tablet tablet = generateTrailingNullTagTablet();
+
+    final Map<String, OpcDaServerHandle.ItemValuePosition> itemPositions =
+        OpcDaServerHandle.collectLatestTableModelItemPositions(tablet, "factory");
+
+    Assert.assertEquals(2, itemPositions.size());
+    assertItem(itemPositions, tablet, "factory.status.line1.s1", 11L, 1L);
+    assertItem(itemPositions, tablet, "factory.status.line1.tail.s1", 22L, 2L);
   }
 
   private static void assertItem(
@@ -142,6 +154,21 @@ public class OpcDaServerHandleTest {
     addRow(tablet, 0, 1L, new String[] {null, "c"}, 33L);
     addRow(tablet, 1, 2L, new String[] {"[NULL]", "c"}, 55L);
     addRow(tablet, 2, 3L, new String[] {"[ESC]", "c"}, 66L);
+    return tablet;
+  }
+
+  private static Tablet generateTrailingNullTagTablet() {
+    final List<String> measurementNames = Arrays.asList("tag1", "tag2", "s1");
+    final List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT64);
+    final List<ColumnCategory> columnTypes =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.TAG, ColumnCategory.FIELD);
+
+    final Tablet tablet = new Tablet("status", measurementNames, dataTypes, columnTypes, 2);
+    tablet.initBitMaps();
+
+    addRow(tablet, 0, 1L, new String[] {"line1", null}, 11L);
+    addRow(tablet, 1, 2L, new String[] {"line1", "tail"}, 22L);
     return tablet;
   }
 

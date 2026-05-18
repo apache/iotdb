@@ -333,8 +333,8 @@ public class OpcDaServerHandle implements Closeable {
       final String measurementName,
       final TableModelItemIdEncodingConfig tableModelItemIdEncodingConfig) {
     // In table model, tablet.getDeviceID(rowIndex) already contains the table name as the first
-    // segment, followed by tag columns in declaration order. We prefix it with the database name
-    // and append the field measurement to build the OPC DA item id.
+    // segment, followed by tag columns in declaration order. Tail null tags are trimmed by the
+    // underlying device-id normalization to stay aligned with the database-side semantics.
     //
     // Examples:
     // 1. database=factory, deviceId=status.d1, measurement=s1 -> factory.status.d1.s1
@@ -343,8 +343,8 @@ public class OpcDaServerHandle implements Closeable {
     //    This case exists because '.' is also the OPC DA item-id path separator. If the raw tag
     //    value "a.b" were written directly, it would be indistinguishable from two segments "a"
     //    and "b", so it must be escaped first.
-    // 3. database=factory, deviceId=status.__NULL__, measurement=s1
-    //    where the tag column is null -> factory.status.__NULL__.s1
+    // 3. database=factory, logical tags are ["line1", null], measurement=s1
+    //    -> factory.status.line1.s1 because the tail null tag is trimmed during normalization.
     final StringBuilder builder =
         new StringBuilder(tableModelItemIdEncodingConfig.encodeSegment(tableModelDatabaseName));
     for (final Object segment : tablet.getDeviceID(rowIndex).getSegments()) {
