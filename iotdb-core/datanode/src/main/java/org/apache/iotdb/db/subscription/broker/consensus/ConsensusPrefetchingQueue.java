@@ -28,7 +28,6 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
-import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -130,7 +129,9 @@ public class ConsensusPrefetchingQueue {
 
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
 
-  /** Guards queue state transitions that touch replay positioning, seek state, and lane buffers. */
+  /**
+   * Guards queue state transitions that touch replay positioning, seek state, and writer buffers.
+   */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isClosed = false;
@@ -225,20 +226,19 @@ public class ConsensusPrefetchingQueue {
    * once a follower-origin localSeq has already been materialized into queue state, the WAL path
    * must not materialize it again.
    */
-  private final Map<WriterLaneId, Long> materializedFollowerProgressByWriter =
-      new ConcurrentHashMap<>();
+  private final Map<Integer, Long> materializedFollowerProgressByWriter = new ConcurrentHashMap<>();
 
   /**
-   * Lane state keyed by writer identity. Release gating reasons in terms of writer lanes and safe
-   * frontiers instead of a region-level committed frontier.
+   * Per-writer state used to release entries by writer progress and safe frontiers instead of a
+   * region-level committed frontier.
    */
-  private final Map<WriterLaneId, WriterLaneState> writerLanes = new ConcurrentHashMap<>();
+  private final Map<Integer, WriterState> writerStates = new ConcurrentHashMap<>();
 
   /**
-   * Realtime lane buffers used by both pending replay and WAL catch-up so queue materialization
-   * converges on the same per-writer lane representation before batch delivery.
+   * Realtime writer buffers used by both pending replay and WAL catch-up so queue materialization
+   * converges on the same per-writer representation before batch delivery.
    */
-  private final Map<WriterLaneId, NavigableMap<Long, PreparedEntry>> realtimeEntriesByLane =
+  private final Map<Integer, NavigableMap<Long, PreparedEntry>> realtimeEntriesByWriter =
       new ConcurrentHashMap<>();
 
   /**
@@ -766,7 +766,7 @@ public class ConsensusPrefetchingQueue {
     regionProgress
         .getWriterPositions()
         .keySet()
-        .forEach(writerId -> trackWriterLane(writerId.getNodeId()));
+        .forEach(writerId -> trackWriterState(writerId.getNodeId()));
   }
 
   private void clearRecoveryWriterProgress() {
@@ -928,8 +928,7 @@ public class ConsensusPrefetchingQueue {
     if (!shouldTrackFollowerProgressForDedup(request)) {
       return false;
     }
-    final Long materializedLocalSeq =
-        materializedFollowerProgressByWriter.get(new WriterLaneId(request.getNodeId()));
+    final Long materializedLocalSeq = materializedFollowerProgressByWriter.get(request.getNodeId());
     return Objects.nonNull(materializedLocalSeq)
         && request.getProgressLocalSeq() <= materializedLocalSeq;
   }
@@ -939,7 +938,7 @@ public class ConsensusPrefetchingQueue {
       return;
     }
     materializedFollowerProgressByWriter.merge(
-        new WriterLaneId(request.getNodeId()), request.getProgressLocalSeq(), Math::max);
+        request.getNodeId(), request.getProgressLocalSeq(), Math::max);
   }
 
   private int compareWriterProgress(
@@ -951,56 +950,53 @@ public class ConsensusPrefetchingQueue {
     return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
   }
 
-  private WriterLaneState trackWriterLane(final int writerNodeId) {
-    return writerLanes.computeIfAbsent(
-        new WriterLaneId(writerNodeId), ignored -> new WriterLaneState());
+  private WriterState trackWriterState(final int writerNodeId) {
+    return writerStates.computeIfAbsent(writerNodeId, ignored -> new WriterState());
   }
 
-  private void refreshWriterLaneSafeFrontiers() {
-    final Map<WriterSafeFrontierTracker.WriterIdentity, Long> safePts =
+  private void refreshWriterSafeFrontiers() {
+    final Map<Integer, Long> safePts =
         serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePts();
-    for (final Map.Entry<WriterSafeFrontierTracker.WriterIdentity, Long> entry :
-        safePts.entrySet()) {
-      final WriterLaneState laneState = trackWriterLane(entry.getKey().getWriterNodeId());
-      laneState.effectiveSafePt = Math.max(laneState.effectiveSafePt, entry.getValue());
+    for (final Map.Entry<Integer, Long> entry : safePts.entrySet()) {
+      final WriterState writerState = trackWriterState(entry.getKey());
+      writerState.effectiveSafePt = Math.max(writerState.effectiveSafePt, entry.getValue());
     }
   }
 
-  private <T extends LaneBufferedEntry> PriorityQueue<LaneFrontier> buildLaneFrontiers(
-      final Map<WriterLaneId, ?> laneEntriesByLane, final Function<WriterLaneId, T> headSupplier) {
-    refreshWriterLaneSafeFrontiers();
-    final PriorityQueue<LaneFrontier> frontiers = new PriorityQueue<>();
+  private <T extends WriterBufferedEntry> PriorityQueue<WriterFrontier> buildWriterFrontiers(
+      final Map<Integer, ?> writerEntriesByWriter, final Function<Integer, T> headSupplier) {
+    refreshWriterSafeFrontiers();
+    final PriorityQueue<WriterFrontier> frontiers = new PriorityQueue<>();
     final boolean useActiveWriterBarriers = shouldUseActiveWriterBarriers();
-    final Set<WriterLaneId> laneIds = ConcurrentHashMap.newKeySet();
+    final Set<Integer> writerNodeIds = ConcurrentHashMap.newKeySet();
     final Set<Integer> seenActiveWriterNodeIds = ConcurrentHashMap.newKeySet();
-    laneIds.addAll(writerLanes.keySet());
-    laneIds.addAll(laneEntriesByLane.keySet());
-    for (final WriterLaneId laneId : laneIds) {
-      final WriterLaneState laneState = writerLanes.get(laneId);
-      if (Objects.nonNull(laneState) && laneState.closed) {
+    writerNodeIds.addAll(writerStates.keySet());
+    writerNodeIds.addAll(writerEntriesByWriter.keySet());
+    for (final int writerNodeId : writerNodeIds) {
+      final WriterState writerState = writerStates.get(writerNodeId);
+      if (Objects.nonNull(writerState) && writerState.closed) {
         continue;
       }
-      final T head = headSupplier.apply(laneId);
+      final T head = headSupplier.apply(writerNodeId);
       if (Objects.nonNull(head)) {
-        if (isLaneRuntimeActive(laneId)) {
-          seenActiveWriterNodeIds.add(laneId.writerNodeId);
+        if (isWriterRuntimeActive(writerNodeId)) {
+          seenActiveWriterNodeIds.add(writerNodeId);
         }
-        frontiers.add(LaneFrontier.forHead(laneId, head));
+        frontiers.add(WriterFrontier.forHead(writerNodeId, head));
         continue;
       }
-      if (Objects.nonNull(laneState)
-          && laneState.effectiveSafePt > 0
+      if (Objects.nonNull(writerState)
+          && writerState.effectiveSafePt > 0
           && useActiveWriterBarriers
-          && isLaneRuntimeActive(laneId)) {
-        seenActiveWriterNodeIds.add(laneId.writerNodeId);
-        frontiers.add(LaneFrontier.forBarrier(laneId, laneState.effectiveSafePt));
+          && isWriterRuntimeActive(writerNodeId)) {
+        seenActiveWriterNodeIds.add(writerNodeId);
+        frontiers.add(WriterFrontier.forBarrier(writerNodeId, writerState.effectiveSafePt));
       }
     }
     if (useActiveWriterBarriers) {
       for (final Integer activeWriterNodeId : activeWriterNodeIds) {
         if (!seenActiveWriterNodeIds.contains(activeWriterNodeId)) {
-          frontiers.add(
-              LaneFrontier.forBarrier(new WriterLaneId(activeWriterNodeId), Long.MIN_VALUE));
+          frontiers.add(WriterFrontier.forBarrier(activeWriterNodeId, Long.MIN_VALUE));
           break;
         }
       }
@@ -1013,34 +1009,35 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void bufferRealtimeEntry(final PreparedEntry entry) {
-    final WriterLaneId laneId = new WriterLaneId(entry.writerNodeId);
-    realtimeEntriesByLane
-        .computeIfAbsent(laneId, ignored -> new TreeMap<>())
+    realtimeEntriesByWriter
+        .computeIfAbsent(entry.writerNodeId, ignored -> new TreeMap<>())
         .put(entry.localSeq, entry);
   }
 
-  private PreparedEntry peekRealtimeEntry(final WriterLaneId laneId) {
-    final NavigableMap<Long, PreparedEntry> laneEntries = realtimeEntriesByLane.get(laneId);
-    if (Objects.isNull(laneEntries) || laneEntries.isEmpty()) {
+  private PreparedEntry peekRealtimeEntry(final int writerNodeId) {
+    final NavigableMap<Long, PreparedEntry> writerEntries =
+        realtimeEntriesByWriter.get(writerNodeId);
+    if (Objects.isNull(writerEntries) || writerEntries.isEmpty()) {
       return null;
     }
-    final Map.Entry<Long, PreparedEntry> firstEntry = laneEntries.firstEntry();
+    final Map.Entry<Long, PreparedEntry> firstEntry = writerEntries.firstEntry();
     return Objects.nonNull(firstEntry) ? firstEntry.getValue() : null;
   }
 
-  private void removeRealtimeEntry(final WriterLaneId laneId, final long localSeq) {
-    final NavigableMap<Long, PreparedEntry> laneEntries = realtimeEntriesByLane.get(laneId);
-    if (Objects.isNull(laneEntries)) {
+  private void removeRealtimeEntry(final int writerNodeId, final long localSeq) {
+    final NavigableMap<Long, PreparedEntry> writerEntries =
+        realtimeEntriesByWriter.get(writerNodeId);
+    if (Objects.isNull(writerEntries)) {
       return;
     }
-    laneEntries.remove(localSeq);
-    if (laneEntries.isEmpty()) {
-      realtimeEntriesByLane.remove(laneId);
+    writerEntries.remove(localSeq);
+    if (writerEntries.isEmpty()) {
+      realtimeEntriesByWriter.remove(writerNodeId);
     }
   }
 
-  private PriorityQueue<LaneFrontier> buildRealtimeLaneFrontiers() {
-    return buildLaneFrontiers(realtimeEntriesByLane, this::peekRealtimeEntry);
+  private PriorityQueue<WriterFrontier> buildRealtimeWriterFrontiers() {
+    return buildWriterFrontiers(realtimeEntriesByWriter, this::peekRealtimeEntry);
   }
 
   private SubscriptionEvent pollInternal(final String consumerId) {
@@ -1204,7 +1201,7 @@ public class ConsensusPrefetchingQueue {
         tryCatchUpFromWAL(observedSeekGeneration);
       }
 
-      if (!drainBufferedRealtimeLanes(
+      if (!drainBufferedRealtimeWriters(
           lingerBatch, observedSeekGeneration, maxTablets, maxBatchBytes)) {
         resetRoundStateForSeek(seekGeneration.get());
         return PrefetchRoundResult.rescheduleNow();
@@ -1258,7 +1255,7 @@ public class ConsensusPrefetchingQueue {
     LOGGER.info(
         "ConsensusPrefetchingQueue {}: periodic stats, lag={}, pendingDelta={}, walDelta={}, "
             + "pendingTotal={}, walTotal={}, pendingQueueSize={}, prefetchingQueueSize={}, "
-            + "inFlightEventsSize={}, realtimeLaneCount={}, walHasNext={}, isActive={}, subtaskScheduled={}",
+            + "inFlightEventsSize={}, realtimeWriterCount={}, walHasNext={}, isActive={}, subtaskScheduled={}",
         this,
         getLag(),
         currentPendingAcceptedEntries - lastPendingAcceptedEntries,
@@ -1268,7 +1265,7 @@ public class ConsensusPrefetchingQueue {
         pendingEntries.size(),
         prefetchingQueue.size(),
         inFlightEvents.size(),
-        realtimeEntriesByLane.size(),
+        realtimeEntriesByWriter.size(),
         hasReadableWalEntries(),
         isActive,
         Objects.nonNull(prefetchSubtask) && prefetchSubtask.isScheduledOrRunning());
@@ -1348,7 +1345,9 @@ public class ConsensusPrefetchingQueue {
   }
 
   private boolean hasImmediatePrefetchableWork() {
-    return !pendingEntries.isEmpty() || !realtimeEntriesByLane.isEmpty() || hasReadableWalEntries();
+    return !pendingEntries.isEmpty()
+        || !realtimeEntriesByWriter.isEmpty()
+        || hasReadableWalEntries();
   }
 
   private boolean hasHistoricalWalLag() {
@@ -1386,7 +1385,7 @@ public class ConsensusPrefetchingQueue {
     if (Objects.isNull(preparedEntry)) {
       return true;
     }
-    if (!appendPreparedEntryViaRealtimeLane(
+    if (!appendPreparedEntryViaRealtimeWriter(
         batchState, preparedEntry, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
       return false;
     }
@@ -1795,7 +1794,7 @@ public class ConsensusPrefetchingQueue {
     final int writerNodeId =
         indexedRequest.getNodeId() >= 0 ? indexedRequest.getNodeId() : insertNode.getNodeId();
 
-    trackWriterLane(writerNodeId);
+    trackWriterState(writerNodeId);
     final long maxTs = extractMaxTime(insertNode);
     if (maxTs > maxObservedTimestamp) {
       maxObservedTimestamp = maxTs;
@@ -1910,32 +1909,32 @@ public class ConsensusPrefetchingQueue {
     return estimatedBytes;
   }
 
-  private boolean appendPreparedEntryViaRealtimeLane(
+  private boolean appendPreparedEntryViaRealtimeWriter(
       final DeliveryBatchState batchState,
       final PreparedEntry preparedEntry,
       final long expectedSeekGeneration,
       final int maxTablets,
       final long maxBatchBytes) {
     bufferRealtimeEntry(preparedEntry);
-    return drainRealtimeLanes(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes);
+    return drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes);
   }
 
   private int getRealtimeBufferedEntryCount() {
     int count = 0;
-    for (final NavigableMap<Long, PreparedEntry> laneEntries : realtimeEntriesByLane.values()) {
-      count += laneEntries.size();
+    for (final NavigableMap<Long, PreparedEntry> writerEntries : realtimeEntriesByWriter.values()) {
+      count += writerEntries.size();
     }
     return count;
   }
 
-  private boolean drainBufferedRealtimeLanes(
+  private boolean drainBufferedRealtimeWriters(
       final DeliveryBatchState batchState,
       final long expectedSeekGeneration,
       final int maxTablets,
       final long maxBatchBytes) {
-    while (!realtimeEntriesByLane.isEmpty()) {
+    while (!realtimeEntriesByWriter.isEmpty()) {
       final int bufferedBefore = getRealtimeBufferedEntryCount();
-      if (!drainRealtimeLanes(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
+      if (!drainRealtimeWriters(batchState, expectedSeekGeneration, maxTablets, maxBatchBytes)) {
         return false;
       }
 
@@ -1955,9 +1954,9 @@ public class ConsensusPrefetchingQueue {
     return true;
   }
 
-  private boolean canAppendLaneEntry(
+  private boolean canAppendWriterEntry(
       final DeliveryBatchState batchState,
-      final LaneBufferedEntry entry,
+      final WriterBufferedEntry entry,
       final long entryEstimatedBytes,
       final int maxEntries,
       final int maxTablets,
@@ -1978,58 +1977,58 @@ public class ConsensusPrefetchingQueue {
         || writerChanged);
   }
 
-  private boolean drainRealtimeLanes(
+  private boolean drainRealtimeWriters(
       final DeliveryBatchState batchState,
       final long expectedSeekGeneration,
       final int maxTablets,
       final long maxBatchBytes) {
-    return drainLaneEntries(
+    return drainWriterEntries(
         batchState,
-        this::buildRealtimeLaneFrontiers,
+        this::buildRealtimeWriterFrontiers,
         this::peekRealtimeEntry,
         entry -> true,
-        (laneId, entry) -> removeRealtimeEntry(laneId, entry.localSeq),
+        (writerNodeId, entry) -> removeRealtimeEntry(writerNodeId, entry.localSeq),
         Integer.MAX_VALUE,
         maxTablets,
         maxBatchBytes,
         true);
   }
 
-  private <T extends LaneBufferedEntry> boolean drainLaneEntries(
+  private <T extends WriterBufferedEntry> boolean drainWriterEntries(
       final DeliveryBatchState batchState,
-      final Supplier<PriorityQueue<LaneFrontier>> frontierSupplier,
-      final Function<WriterLaneId, T> headSupplier,
+      final Supplier<PriorityQueue<WriterFrontier>> frontierSupplier,
+      final Function<Integer, T> headSupplier,
       final Predicate<T> releasePredicate,
-      final BiConsumer<WriterLaneId, T> removeHeadAction,
+      final BiConsumer<Integer, T> removeHeadAction,
       final int maxEntries,
       final int maxTablets,
       final long maxBatchBytes,
       final boolean trackLingerTime) {
     while (true) {
-      final PriorityQueue<LaneFrontier> frontiers = frontierSupplier.get();
+      final PriorityQueue<WriterFrontier> frontiers = frontierSupplier.get();
       if (frontiers.isEmpty()) {
         return true;
       }
-      final LaneFrontier frontier = frontiers.peek();
+      final WriterFrontier frontier = frontiers.peek();
       if (Objects.isNull(frontier) || frontier.isBarrier) {
         return true;
       }
-      final T laneHead = headSupplier.apply(frontier.laneId);
-      if (Objects.isNull(laneHead)) {
+      final T writerHead = headSupplier.apply(frontier.writerNodeId);
+      if (Objects.isNull(writerHead)) {
         return true;
       }
-      if (!releasePredicate.test(laneHead)) {
-        return true;
-      }
-
-      final long entryEstimatedBytes = estimateTabletsBytes(laneHead.getTablets());
-      if (!canAppendLaneEntry(
-          batchState, laneHead, entryEstimatedBytes, maxEntries, maxTablets, maxBatchBytes)) {
+      if (!releasePredicate.test(writerHead)) {
         return true;
       }
 
-      removeHeadAction.accept(frontier.laneId, laneHead);
-      batchState.append(laneHead, entryEstimatedBytes, trackLingerTime);
+      final long entryEstimatedBytes = estimateTabletsBytes(writerHead.getTablets());
+      if (!canAppendWriterEntry(
+          batchState, writerHead, entryEstimatedBytes, maxEntries, maxTablets, maxBatchBytes)) {
+        return true;
+      }
+
+      removeHeadAction.accept(frontier.writerNodeId, writerHead);
+      batchState.append(writerHead, entryEstimatedBytes, trackLingerTime);
     }
   }
 
@@ -2383,8 +2382,8 @@ public class ConsensusPrefetchingQueue {
       inFlightEvents.values().forEach(event -> event.cleanUp(true));
       inFlightEvents.clear();
 
-      realtimeEntriesByLane.clear();
-      writerLanes.clear();
+      realtimeEntriesByWriter.clear();
+      writerStates.clear();
       clearRecoveryWriterProgress();
       materializedFollowerProgressByWriter.clear();
       pendingEntries.clear();
@@ -2644,8 +2643,8 @@ public class ConsensusPrefetchingQueue {
     pendingEntries.clear();
 
     // 3. Reset per-writer release state and source-level dedup frontiers.
-    realtimeEntriesByLane.clear();
-    writerLanes.clear();
+    realtimeEntriesByWriter.clear();
+    writerStates.clear();
     clearRecoveryWriterProgress();
     materializedFollowerProgressByWriter.clear();
     if (Objects.nonNull(request.committedRegionProgress)
@@ -3120,9 +3119,9 @@ public class ConsensusPrefetchingQueue {
     return orderMode;
   }
 
-  private boolean isLaneRuntimeActive(final WriterLaneId laneId) {
+  private boolean isWriterRuntimeActive(final int writerNodeId) {
     final Set<Integer> writerNodeIds = activeWriterNodeIds;
-    return writerNodeIds.isEmpty() || writerNodeIds.contains(laneId.writerNodeId);
+    return writerNodeIds.isEmpty() || writerNodeIds.contains(writerNodeId);
   }
 
   public void applyRuntimeState(final ConsensusRegionRuntimeState runtimeState) {
@@ -3234,8 +3233,8 @@ public class ConsensusPrefetchingQueue {
     result.put("activeWriterCount", String.valueOf(activeWriterNodeIds.size()));
     result.put("runtimeActiveWriterCount", String.valueOf(runtimeActiveWriterNodeIds.size()));
     result.put("recoveryWriterCount", String.valueOf(recoveryWriterProgressByWriter.size()));
-    result.put("writerLaneCount", String.valueOf(writerLanes.size()));
-    result.put("realtimeLaneCount", String.valueOf(realtimeEntriesByLane.size()));
+    result.put("writerStateCount", String.valueOf(writerStates.size()));
+    result.put("realtimeWriterCount", String.valueOf(realtimeEntriesByWriter.size()));
     return result;
   }
 
@@ -3246,7 +3245,7 @@ public class ConsensusPrefetchingQueue {
 
   // ======================== Inner Classes ========================
 
-  private interface LaneBufferedEntry {
+  private interface WriterBufferedEntry {
     List<Tablet> getTablets();
 
     long getPhysicalTime();
@@ -3281,7 +3280,7 @@ public class ConsensusPrefetchingQueue {
     }
 
     private void append(
-        final LaneBufferedEntry entry,
+        final WriterBufferedEntry entry,
         final long entryEstimatedBytes,
         final boolean trackLingerTime) {
       if (tablets.isEmpty()) {
@@ -3317,37 +3316,12 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private static final class WriterLaneId {
-    private final int writerNodeId;
-
-    private WriterLaneId(final int writerNodeId) {
-      this.writerNodeId = writerNodeId;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (!(obj instanceof WriterLaneId)) {
-        return false;
-      }
-      final WriterLaneId that = (WriterLaneId) obj;
-      return writerNodeId == that.writerNodeId;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(writerNodeId);
-    }
-  }
-
-  private static final class WriterLaneState {
+  private static final class WriterState {
     private long effectiveSafePt = 0L;
     private boolean closed = false;
   }
 
-  private static final class PreparedEntry implements LaneBufferedEntry {
+  private static final class PreparedEntry implements WriterBufferedEntry {
     private final List<Tablet> tablets;
     private final long physicalTime;
     private final int writerNodeId;
@@ -3398,29 +3372,29 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private static final class LaneFrontier implements Comparable<LaneFrontier> {
-    private final WriterLaneId laneId;
+  private static final class WriterFrontier implements Comparable<WriterFrontier> {
+    private final int writerNodeId;
     private final OrderingKey orderingKey;
     private final boolean isBarrier;
 
-    private LaneFrontier(
-        final WriterLaneId laneId, final OrderingKey orderingKey, final boolean isBarrier) {
-      this.laneId = laneId;
+    private WriterFrontier(
+        final int writerNodeId, final OrderingKey orderingKey, final boolean isBarrier) {
+      this.writerNodeId = writerNodeId;
       this.orderingKey = orderingKey;
       this.isBarrier = isBarrier;
     }
 
-    private static LaneFrontier forHead(final WriterLaneId laneId, final LaneBufferedEntry entry) {
-      return new LaneFrontier(laneId, entry.getOrderingKey(), false);
+    private static WriterFrontier forHead(final int writerNodeId, final WriterBufferedEntry entry) {
+      return new WriterFrontier(writerNodeId, entry.getOrderingKey(), false);
     }
 
-    private static LaneFrontier forBarrier(final WriterLaneId laneId, final long effectiveSafePt) {
-      return new LaneFrontier(
-          laneId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
+    private static WriterFrontier forBarrier(final int writerNodeId, final long effectiveSafePt) {
+      return new WriterFrontier(
+          writerNodeId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
     }
 
     @Override
-    public int compareTo(final LaneFrontier other) {
+    public int compareTo(final WriterFrontier other) {
       int cmp = orderingKey.compareTo(other.orderingKey);
       if (cmp != 0) {
         return cmp;
@@ -3428,12 +3402,12 @@ public class ConsensusPrefetchingQueue {
       if (isBarrier != other.isBarrier) {
         return isBarrier ? -1 : 1;
       }
-      cmp = Integer.compare(laneId.writerNodeId, other.laneId.writerNodeId);
+      cmp = Integer.compare(writerNodeId, other.writerNodeId);
       return cmp;
     }
   }
 
-  /** Composite ordering key (physicalTime, nodeId, localSeq) for lane ordering. */
+  /** Composite ordering key (physicalTime, nodeId, localSeq) for writer ordering. */
   static final class OrderingKey implements Comparable<OrderingKey> {
     final long physicalTime;
     final int nodeId;

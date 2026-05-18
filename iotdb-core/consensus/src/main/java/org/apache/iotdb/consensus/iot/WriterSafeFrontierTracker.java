@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Tracks per-writer safe frontier on the receiving side.
@@ -37,13 +36,12 @@ public class WriterSafeFrontierTracker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriterSafeFrontierTracker.class);
 
-  private final Map<WriterIdentity, WriterFrontierState> states = new HashMap<>();
+  private final Map<Integer, WriterFrontierState> states = new HashMap<>();
 
   public synchronized void recordAppliedProgress(
       final long physicalTime, final int writerNodeId, final long appliedLocalSeq) {
-    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId);
     final WriterFrontierState state =
-        states.computeIfAbsent(writerIdentity, ignored -> new WriterFrontierState());
+        states.computeIfAbsent(writerNodeId, ignored -> new WriterFrontierState());
     state.appliedLocalSeq = Math.max(state.appliedLocalSeq, appliedLocalSeq);
     if (physicalTime > 0) {
       state.effectiveSafePt = Math.max(state.effectiveSafePt, physicalTime);
@@ -56,9 +54,8 @@ public class WriterSafeFrontierTracker {
     if (safePhysicalTime <= 0) {
       return;
     }
-    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId);
     final WriterFrontierState state =
-        states.computeIfAbsent(writerIdentity, ignored -> new WriterFrontierState());
+        states.computeIfAbsent(writerNodeId, ignored -> new WriterFrontierState());
     final SafeHlc candidate = new SafeHlc(safePhysicalTime, barrierLocalSeq);
     if (state.appliedLocalSeq >= barrierLocalSeq) {
       state.effectiveSafePt = Math.max(state.effectiveSafePt, safePhysicalTime);
@@ -79,24 +76,24 @@ public class WriterSafeFrontierTracker {
     }
     LOGGER.warn(
         "Observed incomparable safeHLC for writer {}. keep pending={}, ignore candidate={}",
-        writerIdentity,
+        writerNodeId,
         pending,
         candidate);
   }
 
   public synchronized long getEffectiveSafePt(final int writerNodeId) {
-    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId));
-    return Objects.nonNull(state) ? state.effectiveSafePt : 0L;
+    final WriterFrontierState state = states.get(writerNodeId);
+    return state != null ? state.effectiveSafePt : 0L;
   }
 
   public synchronized SafeHlc getPendingSafeHlc(final int writerNodeId) {
-    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId));
-    return Objects.nonNull(state) ? state.pendingSafeHlc : null;
+    final WriterFrontierState state = states.get(writerNodeId);
+    return state != null ? state.pendingSafeHlc : null;
   }
 
-  public synchronized Map<WriterIdentity, Long> snapshotEffectiveSafePts() {
-    final Map<WriterIdentity, Long> snapshot = new HashMap<>();
-    for (final Map.Entry<WriterIdentity, WriterFrontierState> entry : states.entrySet()) {
+  public synchronized Map<Integer, Long> snapshotEffectiveSafePts() {
+    final Map<Integer, Long> snapshot = new HashMap<>();
+    for (final Map.Entry<Integer, WriterFrontierState> entry : states.entrySet()) {
       snapshot.put(entry.getKey(), entry.getValue().effectiveSafePt);
     }
     return Collections.unmodifiableMap(snapshot);
@@ -116,40 +113,6 @@ public class WriterSafeFrontierTracker {
   private static boolean dominates(final SafeHlc left, final SafeHlc right) {
     return left.safePhysicalTime >= right.safePhysicalTime
         && left.barrierLocalSeq >= right.barrierLocalSeq;
-  }
-
-  public static final class WriterIdentity {
-    private final int writerNodeId;
-
-    public WriterIdentity(final int writerNodeId) {
-      this.writerNodeId = writerNodeId;
-    }
-
-    public int getWriterNodeId() {
-      return writerNodeId;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (!(obj instanceof WriterIdentity)) {
-        return false;
-      }
-      final WriterIdentity that = (WriterIdentity) obj;
-      return writerNodeId == that.writerNodeId;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(writerNodeId);
-    }
-
-    @Override
-    public String toString() {
-      return "WriterIdentity{" + "writerNodeId=" + writerNodeId + '}';
-    }
   }
 
   public static final class SafeHlc {
