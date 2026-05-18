@@ -47,9 +47,11 @@ public class TimeSeriesSchemaSourceTest {
             Collections.emptyMap(),
             SchemaConstant.ALL_MATCH_SCOPE);
 
-    assertTrue(countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
+    assertTrue(
+        countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
     assertTrue(countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.AUDIT_DATABASE)));
-    assertTrue(countSource.shouldSkipSchemaRegion(mockSchemaRegion(Audit.TABLE_MODEL_AUDIT_DATABASE)));
+    assertTrue(
+        countSource.shouldSkipSchemaRegion(mockSchemaRegion(Audit.TABLE_MODEL_AUDIT_DATABASE)));
     assertFalse(countSource.shouldSkipSchemaRegion(mockSchemaRegion("root.sg")));
   }
 
@@ -90,7 +92,8 @@ public class TimeSeriesSchemaSourceTest {
             Collections.emptyMap(),
             SchemaConstant.ALL_MATCH_SCOPE);
 
-    assertTrue(countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
+    assertTrue(
+        countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
     assertTrue(countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.AUDIT_DATABASE)));
     assertFalse(countSource.shouldSkipSchemaRegion(mockSchemaRegion("root.sg")));
   }
@@ -131,7 +134,8 @@ public class TimeSeriesSchemaSourceTest {
             SchemaConstant.ALL_MATCH_SCOPE,
             null);
 
-    assertFalse(showSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
+    assertFalse(
+        showSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
     assertFalse(showSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.AUDIT_DATABASE)));
   }
 

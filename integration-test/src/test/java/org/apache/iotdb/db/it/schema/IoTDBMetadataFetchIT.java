@@ -504,8 +504,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           "CREATE TIMESERIES root.count_it.src.s1 WITH DATATYPE = INT32, ENCODING = PLAIN");
       statement.execute(
           "CREATE TIMESERIES root.count_it.src.s2 WITH DATATYPE = INT32, ENCODING = PLAIN");
-      statement.execute(
-          "CREATE VIEW root.count_it.dst.v1 AS SELECT s1 FROM root.count_it.src;");
+      statement.execute("CREATE VIEW root.count_it.dst.v1 AS SELECT s1 FROM root.count_it.src;");
 
       final long localCount = queryCount(statement, "COUNT TIMESERIES root.count_it.**");
       assertEquals(3L, localCount);

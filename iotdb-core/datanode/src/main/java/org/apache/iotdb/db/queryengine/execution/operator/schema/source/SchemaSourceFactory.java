@@ -48,16 +48,7 @@ public class SchemaSourceFactory {
       Map<Integer, Template> templateMap,
       PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
-        pathPattern,
-        isPrefixMatch,
-        0,
-        0,
-        schemaFilter,
-        templateMap,
-        false,
-        true,
-        scope,
-        null);
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, true, scope, null);
   }
 
   // show time series
