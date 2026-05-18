@@ -559,7 +559,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
                   ? TEMPLATE_NODE_SERVICE_LIB_WITH_EXTERNAL_SERVICE_PATH
                   : TEMPLATE_NODE_LIB_PATH);
       this.instance = processBuilder.start();
-      logger.info("In test {} {} started.", getTestLogDirName(), getId());
+      logger.info(
+          "In test {} {} started, isExternalServiceRelatedTest is {}.",
+          getTestLogDirName(),
+          getId(),
+          isExternalServiceRelatedTest);
     } catch (IOException ex) {
       throw new AssertionError("Start node failed. " + ex);
     }
