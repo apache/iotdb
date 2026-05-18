@@ -268,11 +268,11 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -2553,14 +2553,6 @@ public class ConfigManager implements IManager {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new TGetCommitProgressResp(status);
     }
-    final String key =
-        req.getConsumerGroupId()
-            + "##"
-            + req.getTopicName()
-            + "##"
-            + req.getRegionId()
-            + "##"
-            + req.getDataNodeId();
     final String keyPrefix =
         req.getConsumerGroupId() + "##" + req.getTopicName() + "##" + req.getRegionId() + "##";
     final org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper keeper =
@@ -2606,11 +2598,10 @@ public class ConfigManager implements IManager {
   }
 
   private static ByteBuffer serializeRegionProgress(final RegionProgress regionProgress) {
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (final PublicBAOS baos = new PublicBAOS();
         final DataOutputStream dos = new DataOutputStream(baos)) {
       regionProgress.serialize(dos);
-      dos.flush();
-      return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
+      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size()).asReadOnlyBuffer();
     } catch (final IOException e) {
       throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
     }

@@ -51,18 +51,7 @@ public class CommitProgressHandleMetaChangePlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.writeInt(regionProgressMap.size());
-    for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
-      final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
-      final ByteBuffer valueBuffer = entry.getValue().asReadOnlyBuffer();
-      valueBuffer.rewind();
-      final byte[] valueBytes = new byte[valueBuffer.remaining()];
-      valueBuffer.get(valueBytes);
-      stream.writeInt(keyBytes.length);
-      stream.write(keyBytes);
-      stream.writeInt(valueBytes.length);
-      stream.write(valueBytes);
-    }
+    CommitProgressKeeper.serializeRegionProgressMapToStream(regionProgressMap, stream);
   }
 
   @Override

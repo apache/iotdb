@@ -103,6 +103,28 @@ public class CommitProgressKeeperTest {
     }
   }
 
+  @Test
+  public void testRegionProgressMapSerializationRoundTrip() throws Exception {
+    final String firstKey = CommitProgressKeeper.generateKey("cg", "topicA", "1_1", 3);
+    final String secondKey = CommitProgressKeeper.generateKey("cg", "topicB", "1_2", 5);
+    final RegionProgress firstProgress = createRegionProgress("1_1", 7, 100L, 10L);
+    final RegionProgress secondProgress = createRegionProgress("1_2", 8, 200L, 20L);
+    final Map<String, ByteBuffer> progressMap = new LinkedHashMap<>();
+    progressMap.put(firstKey, serialize(firstProgress));
+    progressMap.put(secondKey, serialize(secondProgress));
+
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (DataOutputStream dos = new DataOutputStream(baos)) {
+      CommitProgressKeeper.serializeRegionProgressMapToStream(progressMap, dos);
+    }
+
+    final Map<String, ByteBuffer> restored =
+        CommitProgressKeeper.deserializeRegionProgressFromBuffer(
+            ByteBuffer.wrap(baos.toByteArray()));
+    assertEquals(firstProgress, RegionProgress.deserialize(restored.get(firstKey)));
+    assertEquals(secondProgress, RegionProgress.deserialize(restored.get(secondKey)));
+  }
+
   private static RegionProgress createRegionProgress(
       final String regionId, final int nodeId, final long physicalTime, final long localSeq) {
     return createRegionProgress(

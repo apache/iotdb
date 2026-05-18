@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -84,20 +86,7 @@ public class CommitProgressKeeper {
   }
 
   public void processTakeSnapshot(final FileOutputStream fileOutputStream) throws IOException {
-    final int regionSize = regionProgressMap.size();
-    fileOutputStream.write(ByteBuffer.allocate(4).putInt(regionSize).array());
-    for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
-      final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
-      final ByteBuffer progressBuffer = copyBuffer(entry.getValue());
-      final byte[] progressBytes = new byte[progressBuffer.remaining()];
-      progressBuffer.get(progressBytes);
-      final ByteBuffer buffer = ByteBuffer.allocate(4 + keyBytes.length + 4 + progressBytes.length);
-      buffer.putInt(keyBytes.length);
-      buffer.put(keyBytes);
-      buffer.putInt(progressBytes.length);
-      buffer.put(progressBytes);
-      fileOutputStream.write(buffer.array());
-    }
+    serializeRegionProgressMapToStream(regionProgressMap, new DataOutputStream(fileOutputStream));
   }
 
   public void processLoadSnapshot(final FileInputStream fileInputStream) throws IOException {
@@ -117,7 +106,7 @@ public class CommitProgressKeeper {
       if (fileInputStream.read(keyBytes) != keyLen) {
         throw new IOException("Unexpected EOF reading region progress key");
       }
-      final String key = new String(keyBytes, "UTF-8");
+      final String key = new String(keyBytes, StandardCharsets.UTF_8);
       final byte[] valueLenBytes = new byte[4];
       if (fileInputStream.read(valueLenBytes) != 4) {
         throw new IOException("Unexpected EOF reading region progress value length");
@@ -131,10 +120,19 @@ public class CommitProgressKeeper {
     }
   }
 
-  public void serializeToStream(final java.io.DataOutputStream stream) throws IOException {
-    stream.writeInt(regionProgressMap.size());
+  public void serializeToStream(final DataOutputStream stream) throws IOException {
+    serializeRegionProgressMapToStream(regionProgressMap, stream);
+  }
+
+  public static void serializeRegionProgressMapToStream(
+      final Map<String, ByteBuffer> regionProgressMap, final DataOutputStream stream)
+      throws IOException {
+    stream.writeInt(Objects.nonNull(regionProgressMap) ? regionProgressMap.size() : 0);
+    if (Objects.isNull(regionProgressMap)) {
+      return;
+    }
     for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
-      final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
+      final byte[] keyBytes = entry.getKey().getBytes(StandardCharsets.UTF_8);
       final ByteBuffer progressBuffer = copyBuffer(entry.getValue());
       final byte[] progressBytes = new byte[progressBuffer.remaining()];
       progressBuffer.get(progressBytes);
@@ -156,7 +154,7 @@ public class CommitProgressKeeper {
       final int keyLen = buffer.getInt();
       final byte[] keyBytes = new byte[keyLen];
       buffer.get(keyBytes);
-      final String key = new String(keyBytes, java.nio.charset.StandardCharsets.UTF_8);
+      final String key = new String(keyBytes, StandardCharsets.UTF_8);
       final int valueLen = buffer.getInt();
       final byte[] valueBytes = new byte[valueLen];
       buffer.get(valueBytes);

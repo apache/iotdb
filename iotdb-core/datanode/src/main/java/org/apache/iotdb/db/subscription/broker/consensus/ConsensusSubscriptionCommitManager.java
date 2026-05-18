@@ -43,6 +43,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -791,7 +792,6 @@ public class ConsensusSubscriptionCommitManager {
     try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final DataOutputStream dos = new DataOutputStream(baos)) {
       state.serialize(dos);
-      dos.flush();
       return baos.toByteArray();
     }
   }
@@ -990,11 +990,10 @@ public class ConsensusSubscriptionCommitManager {
     if (Objects.isNull(regionProgress)) {
       return null;
     }
-    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (final PublicBAOS baos = new PublicBAOS();
         final DataOutputStream dos = new DataOutputStream(baos)) {
       regionProgress.serialize(dos);
-      dos.flush();
-      return ByteBuffer.wrap(baos.toByteArray());
+      return ByteBuffer.wrap(baos.getBuf(), 0, baos.size());
     } catch (final IOException e) {
       LOGGER.warn("Failed to serialize committed region progress {}", regionProgress, e);
       return null;

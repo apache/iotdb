@@ -227,6 +227,46 @@ public class ConsensusSubscriptionCommitStateTest {
   }
 
   @Test
+  public void testProgressFileNameEncodesForbiddenTopicComponents() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("systemWithForbiddenTopicComponents");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId region = new DataRegionId(9);
+      final String regionId = region.toString();
+      final WriterId writerId = new WriterId(regionId, 9);
+      final WriterProgress progress = new WriterProgress(900L, 9L);
+      final String consumerGroupId = "cg:/\\*?\"<>|";
+      final String topicName = "topic:/\\*?\"<>|";
+
+      manager.receiveProgressBroadcast(consumerGroupId, topicName, regionId, writerId, progress);
+
+      final File progressDir = new File(systemDir, "subscription/consensus_progress");
+      final File[] metaFiles = progressDir.listFiles((dir, name) -> name.endsWith(".meta"));
+      assertNotNull(metaFiles);
+      assertEquals(1, metaFiles.length);
+      for (final char forbidden : ":/\\*?\"<>|".toCharArray()) {
+        assertFalse(
+            "Meta file should not contain OS-forbidden character " + forbidden,
+            metaFiles[0].getName().indexOf(forbidden) >= 0);
+      }
+
+      final ConsensusSubscriptionCommitManager recoveredManager = newCommitManager(systemDir);
+      final Map<String, ByteBuffer> collectedProgress =
+          recoveredManager.collectAllRegionProgress(13);
+      assertEquals(
+          progress,
+          RegionProgress.deserialize(
+                  collectedProgress.get(
+                      consumerGroupId + "##" + topicName + "##" + regionId + "##13"))
+              .getWriterPositions()
+              .get(writerId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
   public void testRecoverAllSkipsMalformedTopicProgressFile() throws Exception {
     final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     final File systemDir = temporaryFolder.newFolder("systemWithMalformedProgress");

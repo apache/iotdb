@@ -1615,7 +1615,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
       final Map<String, ByteBuffer> regionProgress =
           SubscriptionAgent.broker().collectAllRegionCommitProgress(dataNodeId);
-      logSuspiciousRegionProgressPayloads(regionProgress);
       return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
           .setCommitRegionProgress(regionProgress);
     } catch (Exception e) {
@@ -1641,78 +1640,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.warn("Error occurred when receiving subscription progress broadcast", e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
-  }
-
-  private static void logSuspiciousRegionProgressPayloads(
-      final Map<String, ByteBuffer> regionProgress) {
-    if (Objects.isNull(regionProgress) || regionProgress.isEmpty()) {
-      return;
-    }
-    for (final Map.Entry<String, ByteBuffer> entry : regionProgress.entrySet()) {
-      if (isSuspiciousRegionProgressPayload(entry.getValue())) {
-        LOGGER.warn(
-            "PULL_COMMIT_PROGRESS datanode send suspicious payload, key={}, summary={}",
-            entry.getKey(),
-            summarizeRegionProgressPayload(entry.getValue()));
-      }
-    }
-  }
-
-  private static boolean isSuspiciousRegionProgressPayload(final ByteBuffer buffer) {
-    if (Objects.isNull(buffer)) {
-      return true;
-    }
-    final ByteBuffer duplicate = buffer.slice();
-    if (duplicate.remaining() < Integer.BYTES) {
-      return true;
-    }
-    final int firstInt = duplicate.getInt();
-    return firstInt < 0 || firstInt > 1_000_000;
-  }
-
-  private static String summarizeRegionProgressPayload(final ByteBuffer buffer) {
-    if (Objects.isNull(buffer)) {
-      return "null";
-    }
-    final int position = buffer.position();
-    final int limit = buffer.limit();
-    final int capacity = buffer.capacity();
-    final ByteBuffer duplicate = buffer.slice();
-    final int remaining = duplicate.remaining();
-    final String firstIntSummary;
-    if (remaining >= Integer.BYTES) {
-      final int firstInt = duplicate.getInt();
-      firstIntSummary = firstInt + "(0x" + String.format("%08x", firstInt) + ")";
-      duplicate.position(0);
-    } else {
-      firstIntSummary = "n/a";
-    }
-    final int sampleLength = Math.min(16, remaining);
-    final byte[] sample = new byte[sampleLength];
-    duplicate.get(sample, 0, sampleLength);
-    return "pos="
-        + position
-        + ", limit="
-        + limit
-        + ", capacity="
-        + capacity
-        + ", remaining="
-        + remaining
-        + ", firstInt="
-        + firstIntSummary
-        + ", firstBytes="
-        + bytesToHex(sample);
-  }
-
-  private static String bytesToHex(final byte[] bytes) {
-    if (Objects.isNull(bytes) || bytes.length == 0) {
-      return "<empty>";
-    }
-    final StringBuilder builder = new StringBuilder(bytes.length * 2);
-    for (final byte b : bytes) {
-      builder.append(String.format("%02x", b));
-    }
-    return builder.toString();
   }
 
   @Override
