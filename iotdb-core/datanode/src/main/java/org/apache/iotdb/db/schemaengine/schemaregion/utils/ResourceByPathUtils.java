@@ -166,10 +166,35 @@ public abstract class ResourceByPathUtils {
       }
 
       if (!isWorkMemTable) {
+        /*
+         * 1. Q1 queries this TVList while it is still in the working memtable and records a smaller
+         *    visible row count.
+         * 2. Later writes append out-of-order rows to the same TVList, then FLUSH moves the
+         *    memtable to the flushing list.
+         * 3. Q2 queries the flushing memtable. If Q2 directly reuses the original mutable TVList,
+         *    Q2's query-side sort may reorder the indices in place.
+         * 4. Q1 continues to read with its old row count and the reordered indices. The converted
+         *    value index can exceed Q1's bitmap range and cause out-of-bound access.
+         *
+         * Therefore, this flushing branch can reuse the original list only when it is already
+         * sorted or no active query is using it. Otherwise, Q2 should read from
+         * workingListForFlush.
+         */
+        boolean canUseListDirectly = list.isSorted() || list.getQueryContextSet().isEmpty();
         LOGGER.debug(
             "Flushing MemTable - add current query context to mutable TVList's query list");
-        list.getQueryContextSet().add(context);
-        tvListQueryMap.put(list, list.rowCount());
+        if (canUseListDirectly) {
+          list.getQueryContextSet().add(context);
+          tvListQueryMap.put(list, list.rowCount());
+        } else {
+          TVList workingListForFlushSort = memChunk.initWorkingListForFlushIfNecessary(list, true);
+          // The flush list shares value arrays with the original list, so keep the original list
+          // referenced by this query until the query finishes.
+          list.getQueryContextSet().add(context);
+          workingListForFlushSort.getQueryContextSet().add(context);
+          context.addTVListToSet(Collections.singletonMap(list, 0));
+          tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
+        }
       } else {
         if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
