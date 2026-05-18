@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
@@ -180,8 +181,10 @@ public abstract class TreePattern {
     if (hasPatternInclusionKey && (hasLegacyPathKey || hasLegacyPatternKey)) {
       final String msg =
           String.format(
-              "Pipe: %s cannot be used together with %s or %s.",
-              SOURCE_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_KEY, SOURCE_PATH_KEY);
+              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH,
+              SOURCE_PATTERN_INCLUSION_KEY,
+              SOURCE_PATTERN_KEY,
+              SOURCE_PATH_KEY);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -219,8 +222,9 @@ public abstract class TreePattern {
             EXTRACTOR_PATH_EXCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY)) {
       final String msg =
           String.format(
-              "Pipe: %s cannot be used together with %s.",
-              SOURCE_PATTERN_INCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY);
+              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION,
+              SOURCE_PATTERN_INCLUSION_KEY,
+              SOURCE_PATH_EXCLUSION_KEY);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -256,9 +260,7 @@ public abstract class TreePattern {
     if (inclusionPatterns.isEmpty()) {
       final String msg =
           String.format(
-              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
-                  + "This pipe pattern will match nothing. "
-                  + "Inclusion: %s, Exclusion: %s",
+              PipeMessages.EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN,
               sourceParameters.getStringByKeys(
                   EXTRACTOR_PATTERN_INCLUSION_KEY,
                   SOURCE_PATTERN_INCLUSION_KEY,
@@ -399,7 +401,8 @@ public abstract class TreePattern {
 
     if (path != null && pattern != null) {
       final String msg =
-          String.format("Pipe: %s and %s cannot be used together.", pathKeyName, patternKeyName);
+          String.format(
+              PipeMessages.PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER, pathKeyName, patternKeyName);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -439,7 +442,7 @@ public abstract class TreePattern {
 
     if (!allowMultiple && patterns.size() > 1) {
       final String msg =
-          String.format("Pipe: The parameter %s only supports a single pattern now.", parameterKey);
+          String.format(PipeMessages.PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN, parameterKey);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -692,7 +695,7 @@ public abstract class TreePattern {
 
     if (!allowMultiple && patterns.size() > 1) {
       final String msg =
-          String.format("Pipe: The parameter %s only supports a single pattern now.", parameterKey);
+          String.format(PipeMessages.PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN, parameterKey);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -854,7 +857,7 @@ public abstract class TreePattern {
     } catch (final Exception e) {
       // This check is best-effort. Do not fail construction.
       LOGGER.warn(
-          "Pipe: Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].",
+          PipeMessages.FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK,
           inclusion.getPattern(),
           exclusion.getPattern(),
           e);
@@ -866,18 +869,15 @@ public abstract class TreePattern {
       // All inclusion paths are covered by the exclusion
       final String msg =
           String.format(
-              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
-                  + "This pipe pattern will match nothing. "
-                  + "Inclusion: [%s], Exclusion: [%s]",
-              inclusion.getPattern(), exclusion.getPattern());
+              PipeMessages.EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN,
+              inclusion.getPattern(),
+              exclusion.getPattern());
       LOGGER.warn(msg);
       throw new PipeException(msg);
     } else if (coveredCount > 0) {
       // Some inclusion paths are covered
       LOGGER.warn(
-          "Pipe: The provided exclusion pattern covers {} out of {} inclusion paths. "
-              + "These paths will be excluded. "
-              + "Inclusion: [{}], Exclusion: [{}]",
+          PipeMessages.EXCLUSION_PATTERN_COVERS_PART_OF_INCLUSION_PATHS,
           coveredCount,
           inclusionPaths.size(),
           inclusion.getPattern(),
