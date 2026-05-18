@@ -1400,7 +1400,7 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+        log.error("", e);
         log.info(e.getMessage());
       }
 
@@ -1540,7 +1540,7 @@ public class IoTDBAlterColumnTypeIT {
         // Accumulator query test
         standardAccumulatorQueryTest(session, from, newType);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+        log.error("", e);
         log.info(e.getMessage());
       }
 
@@ -1610,7 +1610,7 @@ public class IoTDBAlterColumnTypeIT {
         standardSelectTest(session, from, to);
         standardAccumulatorQueryTest(session, from);
       } catch (Exception e) {
-        log.error("{}", e.getStackTrace());
+        log.error("", e);
         log.info(e.getMessage());
       }
 
