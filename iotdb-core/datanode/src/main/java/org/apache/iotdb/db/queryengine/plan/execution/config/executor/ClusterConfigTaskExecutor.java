@@ -81,6 +81,7 @@ import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -118,6 +119,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -162,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -232,6 +235,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Rem
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateDatabaseTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
@@ -2741,6 +2746,65 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> showCreatePipe(
+      final String pipeName, final String userName) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TShowPipeReq tShowPipeReq =
+          new TShowPipeReq().setPipeName(pipeName).setIsTableModel(true);
+      if (Objects.nonNull(userName)) {
+        tShowPipeReq.setUserName(userName);
+      }
+      final TShowPipeResp showPipeResp = configNodeClient.showPipe(tShowPipeReq);
+      if (showPipeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(showPipeResp.getStatus()));
+        return future;
+      }
+      if (!showPipeResp.isSetPipeInfoList() || showPipeResp.getPipeInfoList().isEmpty()) {
+        future.setException(
+            new IoTDBException(
+                String.format("Failed to show create pipe %s, the pipe does not exist.", pipeName),
+                TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()));
+        return future;
+      }
+
+      final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
+      if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                String.format(
+                    "Failed to get pipe info from config node, status is %s.",
+                    getAllPipeInfoResp.getStatus()),
+                TSStatusCode.PIPE_ERROR.getStatusCode()));
+        return future;
+      }
+
+      final PipeMeta pipeMeta =
+          getAllPipeInfoResp.getAllPipeInfo().stream()
+              .map(PipeMeta::deserialize4Coordinator)
+              .filter(
+                  meta ->
+                      meta.getStaticMeta().visibleUnder(true)
+                          && meta.getStaticMeta().getPipeName().equals(pipeName))
+              .findFirst()
+              .orElse(null);
+      if (pipeMeta == null) {
+        future.setException(
+            new IoTDBException(
+                String.format("Failed to show create pipe %s, the pipe does not exist.", pipeName),
+                TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()));
+        return future;
+      }
+
+      ShowCreatePipeTask.buildTsBlock(pipeMeta, future);
+    } catch (final Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showSubscriptions(
       final ShowSubscriptionsStatement showSubscriptionsStatement) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
@@ -4134,6 +4198,46 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
+    } catch (final IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showCreateDatabase(final String database) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+      future.setException(
+          new IoTDBException(
+              "The system database does not support show create.",
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    }
+
+    final List<String> databasePathPattern = Arrays.asList(ROOT, database);
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
+      final TShowDatabaseResp resp = client.showDatabase(req);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus()));
+        return future;
+      }
+
+      final TDatabaseInfo databaseInfo =
+          resp.isSetDatabaseInfoMap() ? resp.getDatabaseInfoMap().get(database) : null;
+      if (databaseInfo == null) {
+        future.setException(
+            new IoTDBException(
+                String.format("Unknown database %s", database),
+                TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+        return future;
+      }
+
+      ShowCreateDatabaseTask.buildTsBlock(databaseInfo, future);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }

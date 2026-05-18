@@ -286,6 +286,51 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
+  public void testShowCreateDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create database test_show_create_db with (ttl=300, schema_region_group_num=DEFAULT, data_region_group_num=DEFAULT, time_partition_interval=100000)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create database test_show_create_db"),
+          "Database,Create Database,",
+          Collections.singleton(
+              "test_show_create_db,CREATE DATABASE \"test_show_create_db\" WITH (ttl=300,time_partition_interval=100000,schema_region_group_num=0,data_region_group_num=0),"));
+    }
+  }
+
+  @Test
+  public void testShowCreatePipe() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create pipe test_show_create_pipe ('sink'='do-nothing-sink')");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create pipe test_show_create_pipe"),
+          "Pipe,Create Pipe,",
+          Collections.singleton(
+              "test_show_create_pipe,CREATE PIPE \"test_show_create_pipe\" WITH SINK ('sink'='do-nothing-sink'),"));
+    }
+  }
+
+  @Test
+  public void testShowCreateInformationSchemaDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.executeQuery("show create database information_schema");
+        fail("show create database information_schema shouldn't succeed");
+      } catch (final SQLException e) {
+        assertEquals("701: The system database does not support show create.", e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testDatabaseWithSpecificCharacters() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
