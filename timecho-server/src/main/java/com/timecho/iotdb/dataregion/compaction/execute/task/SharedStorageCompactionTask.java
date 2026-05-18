@@ -21,6 +21,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import com.timecho.iotdb.dataregion.compaction.selector.impl.SharedStorageCompactionSelector;
 import com.timecho.iotdb.dataregion.compaction.selector.utils.SharedStorageCompactionTaskResource;
 import com.timecho.iotdb.dataregion.compaction.tool.SharedStorageCompactionUtils;
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
 import com.timecho.iotdb.os.utils.RemoteStorageBlock;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;

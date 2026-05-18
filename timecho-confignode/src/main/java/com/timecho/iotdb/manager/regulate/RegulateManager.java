@@ -43,6 +43,7 @@ import com.timecho.iotdb.commons.external.io.monitor.FileAlterationListenerAdapt
 import com.timecho.iotdb.commons.external.io.monitor.FileAlterationMonitor;
 import com.timecho.iotdb.commons.external.io.monitor.FileAlterationObserver;
 import com.timecho.iotdb.commons.utils.OSUtils;
+import com.timecho.iotdb.i18n.TimechoConfigNodeMessages;
 import com.timecho.iotdb.manager.TimechoConfigManager;
 import org.apache.ratis.util.AutoCloseableLock;
 import org.slf4j.Logger;

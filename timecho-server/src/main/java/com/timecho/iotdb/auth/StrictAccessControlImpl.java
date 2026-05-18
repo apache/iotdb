@@ -38,6 +38,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.i18n.TimechoServerMessages;
+
 public class StrictAccessControlImpl extends AccessControlImpl {
   public StrictAccessControlImpl(
       ITableAuthChecker authChecker, StrictTreeAccessCheckVisitor visitor) {

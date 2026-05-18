@@ -30,6 +30,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

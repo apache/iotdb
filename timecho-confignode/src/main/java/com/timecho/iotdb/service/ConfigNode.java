@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 
 import com.timecho.iotdb.commons.secret.SecretKey;
 import com.timecho.iotdb.commons.utils.OSUtils;
+import com.timecho.iotdb.i18n.TimechoConfigNodeMessages;
 import com.timecho.iotdb.manager.TimechoConfigManager;
 import com.timecho.iotdb.manager.regulate.RegulateManager;
 import com.timecho.iotdb.service.thrift.TimechoConfigNodeRPCServiceProcessor;

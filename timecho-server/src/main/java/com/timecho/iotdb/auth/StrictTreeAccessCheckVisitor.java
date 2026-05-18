@@ -35,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import com.timecho.iotdb.i18n.TimechoServerMessages;
+
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;

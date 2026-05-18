@@ -22,6 +22,7 @@ package com.timecho.iotdb.dataregion.migration;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
