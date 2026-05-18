@@ -59,8 +59,12 @@ public class CountDBTask implements IConfigTask {
       final Map<String, ?> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final Predicate<String> canSeenDB) {
+    // information_schema is synthesized in table model rather than returned from ConfigNode.
     final long databaseCount =
-        databaseInfoMap.keySet().stream().filter(canSeenDB::test).count()
+        databaseInfoMap.keySet().stream()
+                .filter(databaseName -> !INFORMATION_DATABASE.equals(databaseName))
+                .filter(canSeenDB::test)
+                .count()
             + (canSeenDB.test(INFORMATION_DATABASE) ? 1 : 0);
 
     final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
