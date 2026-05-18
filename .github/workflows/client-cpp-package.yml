@@ -113,11 +113,37 @@ jobs:
         run: |
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
-      - name: Upload zip artifact
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TARGET_DIR="iotdb-client/client-cpp/target"
+          shopt -s nullglob
+          cd "$TARGET_DIR"
+          zips=(client-cpp-*-cpp-*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "No zip packages found in ${TARGET_DIR}"
+            exit 1
+          fi
+          hash_file() {
+            local file="$1"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$file"
+            else
+              shasum -a 256 "$file"
+            fi
+          }
+          for zip in "${zips[@]}"; do
+            hash_file "$zip" | awk '{print $1}' > "${zip}.sha256"
+            echo "Generated ${zip}.sha256"
+          done
+      - name: Upload package artifacts
         uses: actions/upload-artifact@v6
         with:
           name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          path: |
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip.sha256
           if-no-files-found: error
 
   package-macos:
@@ -162,11 +188,37 @@ jobs:
         run: |
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
-      - name: Upload zip artifact
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TARGET_DIR="iotdb-client/client-cpp/target"
+          shopt -s nullglob
+          cd "$TARGET_DIR"
+          zips=(client-cpp-*-cpp-*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "No zip packages found in ${TARGET_DIR}"
+            exit 1
+          fi
+          hash_file() {
+            local file="$1"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$file"
+            else
+              shasum -a 256 "$file"
+            fi
+          }
+          for zip in "${zips[@]}"; do
+            hash_file "$zip" | awk '{print $1}' > "${zip}.sha256"
+            echo "Generated ${zip}.sha256"
+          done
+      - name: Upload package artifacts
         uses: actions/upload-artifact@v6
         with:
           name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          path: |
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip.sha256
           if-no-files-found: error
 
   package-windows:
@@ -230,9 +282,35 @@ jobs:
             MVN_ARGS+=("-Diotdb-tools-thrift.version=${IOTDB_TOOLS_THRIFT_VERSION}")
           fi
           "${MVN_ARGS[@]}"
-      - name: Upload zip artifact
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TARGET_DIR="iotdb-client/client-cpp/target"
+          shopt -s nullglob
+          cd "$TARGET_DIR"
+          zips=(client-cpp-*-cpp-*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "No zip packages found in ${TARGET_DIR}"
+            exit 1
+          fi
+          hash_file() {
+            local file="$1"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$file"
+            else
+              shasum -a 256 "$file"
+            fi
+          }
+          for zip in "${zips[@]}"; do
+            hash_file "$zip" | awk '{print $1}' > "${zip}.sha256"
+            echo "Generated ${zip}.sha256"
+          done
+      - name: Upload package artifacts
         uses: actions/upload-artifact@v6
         with:
           name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          path: |
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+            iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip.sha256
           if-no-files-found: error
