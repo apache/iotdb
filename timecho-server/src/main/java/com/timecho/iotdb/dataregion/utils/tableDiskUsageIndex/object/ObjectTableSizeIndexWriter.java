@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.Da
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import com.google.common.io.BaseEncoding;
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

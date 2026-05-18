@@ -14,6 +14,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchLeaderRemoteReplicaResp;
 
 import com.timecho.iotdb.dataregion.compaction.selector.utils.SharedStorageCompactionTaskResource;
 import com.timecho.iotdb.dataregion.compaction.tool.SharedStorageCompactionUtils;
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;

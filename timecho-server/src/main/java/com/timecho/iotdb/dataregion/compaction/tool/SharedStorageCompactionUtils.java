@@ -19,6 +19,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchIoTConsensusProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchLeaderRemoteReplicaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchLeaderRemoteReplicaResp;
 
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;

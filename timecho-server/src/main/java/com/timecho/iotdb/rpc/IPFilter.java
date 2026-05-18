@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 
 import com.timecho.iotdb.commons.external.listmatch.PatternList;
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

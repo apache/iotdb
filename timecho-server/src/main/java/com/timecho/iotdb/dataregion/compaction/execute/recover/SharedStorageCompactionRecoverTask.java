@@ -10,6 +10,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.timecho.iotdb.dataregion.compaction.tool.SharedStorageCompactionUtils;
+import com.timecho.iotdb.i18n.TimechoServerMessages;
 import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSPath;
