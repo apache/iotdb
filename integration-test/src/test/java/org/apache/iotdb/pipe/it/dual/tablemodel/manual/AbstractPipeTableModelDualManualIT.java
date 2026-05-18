@@ -34,11 +34,16 @@ public abstract class AbstractPipeTableModelDualManualIT {
   @Before
   public void setUp() {
     MultiEnvFactory.createEnv(2);
+    MultiEnvFactory.setIsExternalServiceRelatedTest(needExternalService());
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
+  }
+
+  protected boolean needExternalService() {
+    return false;
   }
 
   protected void setupConfig() {

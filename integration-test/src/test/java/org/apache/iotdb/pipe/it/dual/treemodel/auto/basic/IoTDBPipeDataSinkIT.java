@@ -63,6 +63,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Override
+  protected boolean needExternalService() {
+    return true;
+  }
+
+  @Override
   protected void setupConfig() {
     super.setupConfig();
     senderEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
