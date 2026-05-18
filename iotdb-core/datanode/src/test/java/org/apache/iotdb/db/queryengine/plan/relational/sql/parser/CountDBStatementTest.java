@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
@@ -31,6 +32,7 @@ import org.junit.Test;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class CountDBStatementTest {
@@ -45,13 +47,10 @@ public class CountDBStatementTest {
   }
 
   @Test
-  public void testCountDatabaseStatement() {
-    final Statement statement =
-        sqlParser.createStatement("count database", ZoneId.systemDefault(), clientSession);
-
-    assertTrue(statement instanceof CountDB);
-    assertEquals("COUNT DATABASES", statement.toString());
-    assertEquals("COUNT DATABASES", DataNodeSqlFormatter.formatDataNodeSql(statement));
+  public void testCountDatabaseStatementRejected() {
+    assertThrows(
+        ParsingException.class,
+        () -> sqlParser.createStatement("count database", ZoneId.systemDefault(), clientSession));
   }
 
   @Test

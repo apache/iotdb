@@ -205,7 +205,7 @@ showDatabasesStatement
     ;
 
 countDatabasesStatement
-    : COUNT (DATABASE | DATABASES)
+    : COUNT DATABASES
     ;
 
 createDbStatement
