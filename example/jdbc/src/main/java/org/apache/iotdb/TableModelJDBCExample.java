@@ -52,10 +52,12 @@ public class TableModelJDBCExample {
 
       // or use full qualified table name
       statement.execute(
-          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, "
+              + "model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
 
       statement.execute(
-          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, "
+              + "temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
       try (ResultSet resultSet = statement.executeQuery(SHOW_TABLES)) {
