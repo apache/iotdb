@@ -834,13 +834,9 @@ public class IoTDBDatabaseIT {
       statement.execute("create database db2");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("count databases"),
-          "count,",
-          Collections.singleton("3,"));
+          statement.executeQuery("count databases"), "count,", Collections.singleton("3,"));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("count database"),
-          "count,",
-          Collections.singleton("3,"));
+          statement.executeQuery("count database"), "count,", Collections.singleton("3,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select count(*) from information_schema.databases"),
           "_col0,",
@@ -862,13 +858,9 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       TestUtils.assertResultSetEqual(
-          userStmt.executeQuery("count databases"),
-          "count,",
-          Collections.singleton("1,"));
+          userStmt.executeQuery("count databases"), "count,", Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
-          userStmt.executeQuery("count database"),
-          "count,",
-          Collections.singleton("1,"));
+          userStmt.executeQuery("count database"), "count,", Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
@@ -901,9 +893,7 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       TestUtils.assertResultSetEqual(
-          userStmt.executeQuery("count databases"),
-          "count,",
-          Collections.singleton("2,"));
+          userStmt.executeQuery("count databases"), "count,", Collections.singleton("2,"));
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
