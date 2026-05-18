@@ -48,6 +48,14 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC+08:00"));
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
+    // Must be set before @BeforeClass runs, which is triggered inside super.run().
+    // Otherwise tests that initialize the cluster in @BeforeClass will create node wrappers
+    // with the default value (false) and never pick up the category-driven value.
+    final boolean externalServiceRelated = isExternalServiceRelatedTest();
+    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setIsExternalServiceRelatedTest(externalServiceRelated);
+    }
+    MultiEnvFactory.setIsExternalServiceRelatedTest(externalServiceRelated);
     super.run(notifier);
   }
 
@@ -58,10 +66,8 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     final long currentTime = System.currentTimeMillis();
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
-      EnvFactory.getEnv().setIsExternalServiceRelatedTest(isExternalServiceRelatedTest());
     }
     MultiEnvFactory.setTestMethodName(description.getMethodName());
-    MultiEnvFactory.setIsExternalServiceRelatedTest(isExternalServiceRelatedTest());
 
     if (Thread.currentThread().getName().equals("main")) {
       Thread.currentThread().setName("main-" + description.getMethodName());
