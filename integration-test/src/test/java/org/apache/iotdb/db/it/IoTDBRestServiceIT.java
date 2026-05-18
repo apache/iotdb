@@ -77,6 +77,7 @@ public class IoTDBRestServiceIT {
   @BeforeClass
   public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
+    baseEnv.setIsExternalServiceRelatedTest(true);
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
     baseEnv.initClusterEnvironment();

@@ -22,9 +22,7 @@ package org.apache.iotdb.it.framework;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.EnvType;
 import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.category.NeedExternalServiceJarIT;
 
-import org.junit.experimental.categories.Category;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
@@ -48,14 +46,6 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC+08:00"));
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
-    // Must be set before @BeforeClass runs, which is triggered inside super.run().
-    // Otherwise tests that initialize the cluster in @BeforeClass will create node wrappers
-    // with the default value (false) and never pick up the category-driven value.
-    final boolean externalServiceRelated = isExternalServiceRelatedTest();
-    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
-      EnvFactory.getEnv().setIsExternalServiceRelatedTest(externalServiceRelated);
-    }
-    MultiEnvFactory.setIsExternalServiceRelatedTest(externalServiceRelated);
     super.run(notifier);
   }
 
@@ -77,18 +67,5 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     final String testName = description.getClassName() + "." + description.getMethodName();
     logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
     listener.addTestStat(new IoTDBTestStat(testName, timeCost));
-  }
-
-  private boolean isExternalServiceRelatedTest() {
-    Category category = getTestClass().getAnnotation(Category.class);
-    if (category == null) {
-      return false;
-    }
-    for (Class<?> c : category.value()) {
-      if (NeedExternalServiceJarIT.class.isAssignableFrom(c)) {
-        return true;
-      }
-    }
-    return false;
   }
 }

@@ -73,6 +73,7 @@ public class IoTDBMQTTServiceJsonIT {
   @BeforeClass
   public static void beforeClass() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
+    baseEnv.setIsExternalServiceRelatedTest(true);
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
     baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
     baseEnv.initClusterEnvironment();

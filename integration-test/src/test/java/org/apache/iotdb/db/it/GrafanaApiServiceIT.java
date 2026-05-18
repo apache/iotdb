@@ -67,6 +67,7 @@ public class GrafanaApiServiceIT {
   public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.setIsExternalServiceRelatedTest(true);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();

@@ -55,6 +55,7 @@ public class IoTDBRestServiceCaseWhenThenIT {
   @Before
   public void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
+    baseEnv.setIsExternalServiceRelatedTest(true);
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
