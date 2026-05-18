@@ -81,7 +81,7 @@ public class OpcDaServerHandleTest {
   }
 
   @Test
-  public void testGenerateTableModelItemIdShouldRetainTrailingNullTags() {
+  public void testGenerateTableModelItemIdShouldTrimTrailingNullTags() {
     final Tablet tablet = generateTrailingNullTagTablet();
 
     final Map<String, OpcDaServerHandle.ItemValuePosition> itemPositions =
