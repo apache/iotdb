@@ -171,11 +171,17 @@ public abstract class ResourceByPathUtils {
         list.getQueryContextSet().add(context);
         tvListQueryMap.put(list, list.rowCount());
       } else {
-        if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
+        boolean isSorted;
+        int rowCount;
+        synchronized (list) {
+          isSorted = list.isSorted();
+          rowCount = list.rowCount();
+        }
+        if (isSorted || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
               "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
           list.getQueryContextSet().add(context);
-          tvListQueryMap.put(list, list.rowCount());
+          tvListQueryMap.put(list, rowCount);
         } else {
           /*
            * +----------------------+
