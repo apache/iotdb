@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -174,7 +175,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
         } catch (final IoTDBException e) {
           t = e;
-          throw new RuntimeException("Failed to Fetch Subquery Result.", e);
+          throw new RuntimeException(DataNodeQueryMessages.FAILED_TO_FETCH_SUBQUERY_RESULT, e);
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
           continue;

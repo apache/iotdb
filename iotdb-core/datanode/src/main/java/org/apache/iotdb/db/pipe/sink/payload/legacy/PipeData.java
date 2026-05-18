@@ -20,6 +20,7 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.legacy;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader;
 
 import org.slf4j.Logger;
@@ -81,9 +82,9 @@ public abstract class PipeData {
         pipeData = new DeletionPipeData();
         break;
       default:
-        LOGGER.error("Deserialize PipeData error because Unknown type {}.", type);
+        LOGGER.error(DataNodePipeMessages.DESERIALIZE_PIPEDATA_ERROR_BECAUSE_UNKNOWN_TYPE_1, type);
         throw new UnsupportedOperationException(
-            "Deserialize PipeData error because Unknown type " + type);
+            DataNodePipeMessages.DESERIALIZE_PIPEDATA_ERROR_BECAUSE_UNKNOWN_TYPE + type);
     }
     pipeData.deserialize(stream);
     return pipeData;
@@ -116,7 +117,7 @@ public abstract class PipeData {
         case 1:
           return PipeDataType.DELETION;
         default:
-          throw new IllegalArgumentException("Invalid input: " + type);
+          throw new IllegalArgumentException(DataNodePipeMessages.INVALID_INPUT + type);
       }
     }
   }

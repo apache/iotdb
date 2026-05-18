@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
@@ -160,7 +161,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -202,7 +206,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -245,7 +252,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -286,7 +296,8 @@ public class PipeMemoryManager {
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn(
+            DataNodePipeMessages.FORCEALLOCATE_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY, e);
       }
     }
 
@@ -308,7 +319,7 @@ public class PipeMemoryManager {
   public synchronized void resize(
       final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
-      LOGGER.warn("forceResize: cannot resize a null or released memory block");
+      LOGGER.warn(DataNodePipeMessages.FORCERESIZE_CANNOT_RESIZE_A_NULL_OR_RELEASED);
       return;
     }
 
@@ -363,7 +374,8 @@ public class PipeMemoryManager {
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceResize: interrupted while waiting for available memory", e);
+        LOGGER.warn(
+            DataNodePipeMessages.FORCERESIZE_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY, e);
       }
     }
 

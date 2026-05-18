@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -136,7 +137,7 @@ public class OpcUaServerBuilder implements Closeable {
   public OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
-      throw new PipeException("Unable to create security dir: " + securityDir);
+      throw new PipeException(DataNodePipeMessages.UNABLE_CREATE_SECURITY_DIR + securityDir);
     }
 
     final File pkiDir = securityDir.resolve("pki").toFile();
@@ -157,7 +158,7 @@ public class OpcUaServerBuilder implements Closeable {
     trustListManager = new DefaultTrustListManager(pkiDir);
 
     LOGGER.info(
-        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+        DataNodePipeMessages.CERTIFICATE_DIRECTORY_IS_PLEASE_MOVE_CERTIFICATES_FROM,
         pkiDir.getAbsolutePath());
 
     final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
@@ -356,7 +357,7 @@ public class OpcUaServerBuilder implements Closeable {
       try {
         trustListManager.close();
       } catch (final IOException e) {
-        LOGGER.warn("Failed to close trustListManager, because {}.", e.getMessage());
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TRUSTLISTMANAGER_BECAUSE, e.getMessage());
       }
     }
   }

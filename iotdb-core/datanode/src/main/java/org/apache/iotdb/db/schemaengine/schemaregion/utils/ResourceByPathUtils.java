@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
@@ -89,7 +90,7 @@ public abstract class ResourceByPathUtils {
     } else if (path instanceof NonAlignedFullPath) {
       return new MeasurementResourceByPathUtils(path);
     }
-    throw new UnsupportedOperationException("Should call exact sub class!");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.SHOULD_CALL_EXACT_SUB_CLASS);
   }
 
   public abstract ITimeSeriesMetadata generateTimeSeriesMetadata(
@@ -210,7 +211,7 @@ public abstract class ResourceByPathUtils {
       }
     } catch (MemoryNotEnoughException ex) {
       LOGGER.warn(
-          "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypes {}",
+          DataNodeSchemaMessages.FAILED_TO_RESERVE_MEMORY_TVLIST,
           listRamInfo.getRamSize(),
           listRamInfo.getTimestampsSize(),
           listRamInfo.getArrayMemCost(),

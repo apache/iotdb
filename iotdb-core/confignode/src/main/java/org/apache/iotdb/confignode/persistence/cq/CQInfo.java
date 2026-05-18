@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -118,15 +119,15 @@ public class CQInfo implements SnapshotProcessor {
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
-        LOGGER.warn("Drop CQ {} failed, because it doesn't exist.", cqId);
+        LOGGER.warn(ConfigNodeMessages.DROP_CQ_FAILED_BECAUSE_IT_DOESN_T_EXIST, cqId);
       } else if ((md5.isPresent() && !md5.get().equals(cqEntry.md5))) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
-        LOGGER.warn("Drop CQ {} failed, because its MD5 doesn't match.", cqId);
+        LOGGER.warn(ConfigNodeMessages.DROP_CQ_FAILED_BECAUSE_ITS_MD5_DOESN_T_MATCH, cqId);
       } else {
         cqMap.remove(cqId);
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
-        LOGGER.info("Drop CQ {} successfully.", cqId);
+        LOGGER.info(ConfigNodeMessages.DROP_CQ_SUCCESSFULLY, cqId);
       }
       return res;
     } finally {
@@ -217,7 +218,7 @@ public class CQInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot of CQInfo, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_OF_CQINFO_BECAUSE_SNAPSHOT_FILE_IS,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -253,7 +254,7 @@ public class CQInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot of CQInfo, snapshot file [{}] does not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_OF_CQINFO_SNAPSHOT_FILE_DOES_NOT,
           snapshotFile.getAbsolutePath());
       return;
     }

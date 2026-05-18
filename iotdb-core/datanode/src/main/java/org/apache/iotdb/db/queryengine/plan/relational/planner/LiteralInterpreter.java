@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -55,7 +56,7 @@ public class LiteralInterpreter {
 
   public Object evaluate(Expression node, Type type) {
     if (!(node instanceof Literal)) {
-      throw new IllegalArgumentException("node must be a Literal");
+      throw new IllegalArgumentException(DataNodeQueryMessages.NODE_MUST_BE_A_LITERAL);
     }
     // return node.accept(new LiteralVisitor(type), null);
     return new LiteralVisitor(type).process(node, null);
@@ -70,7 +71,7 @@ public class LiteralInterpreter {
 
     @Override
     public Object visitLiteral(Literal node, Void context) {
-      throw new UnsupportedOperationException("Unhandled literal type: " + node);
+      throw new UnsupportedOperationException(DataNodeQueryMessages.UNHANDLED_LITERAL_TYPE + node);
     }
 
     @Override
@@ -110,7 +111,8 @@ public class LiteralInterpreter {
       } else if (type.equals(DateType.DATE)) {
         return Integer.parseInt(node.getValue());
       } else {
-        throw new SemanticException(String.format("No literal form for type %s", type));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.NO_LITERAL_FORM_FOR_TYPE, type));
       }
     }
 

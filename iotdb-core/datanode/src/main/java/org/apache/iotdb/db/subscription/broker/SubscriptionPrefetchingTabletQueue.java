@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -134,7 +135,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           // 2. Check previous response type and offset
           final short responseType = response.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-            final String errorMessage = String.format("unexpected response type: %s", responseType);
+            final String errorMessage =
+                String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
             return ev;
@@ -156,7 +158,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
             default:
               {
                 final String errorMessage =
-                    String.format("unexpected response type: %s", responseType);
+                    String.format(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE_FMT, responseType);
                 LOGGER.warn(errorMessage);
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
@@ -195,7 +197,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     try {
       return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
     } catch (final Exception e) {
-      LOGGER.error("Subscription: unexpected exception (broken invariant) {}", e, e);
+      LOGGER.error(DataNodeMiscMessages.SUBSCRIPTION_UNEXPECTED_EXCEPTION, e, e);
     }
     return false;
   }

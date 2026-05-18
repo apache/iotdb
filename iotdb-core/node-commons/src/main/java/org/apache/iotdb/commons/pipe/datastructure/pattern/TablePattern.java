@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -128,7 +129,7 @@ public class TablePattern {
       return new TablePattern(
           isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
     } catch (final Exception e) {
-      throw new PipeException("Illegal database or table pattern. Detail: " + e.getMessage(), e);
+      throw new PipeException(PipeMessages.ILLEGAL_DB_OR_TABLE_PATTERN + e.getMessage(), e);
     }
   }
 

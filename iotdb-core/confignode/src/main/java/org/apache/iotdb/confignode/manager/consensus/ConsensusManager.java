@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -88,7 +89,7 @@ public class ConsensusManager {
   public void start() throws IOException {
     consensusImpl.start();
     if (SystemPropertiesUtils.isRestarted()) {
-      LOGGER.info("Init ConsensusManager successfully when restarted");
+      LOGGER.info(ManagerMessages.INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED);
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
@@ -101,7 +102,9 @@ public class ConsensusManager {
                     new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
       } catch (ConsensusException e) {
         LOGGER.error(
-            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+            ManagerMessages
+                .SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_CREATELOCALPEER_API,
+            e);
       }
     }
     isInitialized = true;
@@ -262,7 +265,7 @@ public class ConsensusManager {
       File oldWalDir = new File(consensusDir, "simple");
       if (oldWalDir.exists() && !oldWalDir.renameTo(new File(getConfigRegionDir()))) {
         LOGGER.warn(
-            "upgrade ConfigNode consensus wal dir for SimpleConsensus from version/1.0 to version/1.1 failed, "
+            ManagerMessages.UPGRADE_CONFIGNODE_CONSENSUS_WAL_DIR_FOR_SIMPLECONSENSUS_FROM_VERSION_1
                 + "you maybe need to rename the simple dir to 0_0 manually.");
       }
     }
@@ -276,7 +279,7 @@ public class ConsensusManager {
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations)
       throws ConsensusException {
-    LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
+    LOGGER.info(ManagerMessages.CREATEPEERFORCONSENSUSGROUP, configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
@@ -367,7 +370,7 @@ public class ConsensusManager {
       try {
         TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME_MS);
       } catch (InterruptedException e) {
-        LOGGER.warn("ConsensusManager getLeaderPeer been interrupted, ", e);
+        LOGGER.warn(ManagerMessages.CONSENSUSMANAGER_GETLEADERPEER_BEEN_INTERRUPTED, e);
         Thread.currentThread().interrupt();
       }
     }
@@ -437,7 +440,8 @@ public class ConsensusManager {
             Thread.sleep(RETRY_WAIT_TIME_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+            LOGGER.warn(
+                ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
             break;
           }
         }

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuilti
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
@@ -56,7 +57,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;

@@ -2182,6 +2182,17 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
 
+# Whether the load_tsfile supports path allowed dirs check.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_source_path_check_enable=false
+
+# Comma-separated list of directories from which user-issued LOAD TSFILE statements can read.
+# If empty, IoTDB only permits LOAD sources under the internal load TsFile directories.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_allowed_dirs=
+
 # Whether to enable the active listening mode for tsfile loading.
 # effectiveMode: hot_reload
 # Datatype: Boolean

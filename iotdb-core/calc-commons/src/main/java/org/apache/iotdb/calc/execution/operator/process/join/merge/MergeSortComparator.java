@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.join.merge;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 
@@ -102,7 +103,8 @@ public class MergeSortComparator {
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
         break;
       default:
-        throw new IllegalArgumentException("Data type: " + dataType + " cannot be ordered");
+        throw new IllegalArgumentException(
+            String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, dataType));
     }
     if (!asc) {
       comparator = comparator.reversed();

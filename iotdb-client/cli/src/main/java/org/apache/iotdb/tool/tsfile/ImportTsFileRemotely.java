@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.tsfile;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -309,7 +310,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               "",
               "");
     } catch (final TTransportException e) {
-      throw new PipeException("Sync client init error because " + e.getMessage());
+      throw new PipeException(String.format(CliMessages.SYNC_CLIENT_INIT_ERROR, e.getMessage()));
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.Partiti
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.util.List;
@@ -78,7 +79,7 @@ public class GroupsFrame implements Frame {
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
-        throw new SemanticException("UNBOUND FOLLOWING is not allowed in frame start!");
+        throw new SemanticException(CalcMessages.UNBOUND_FOLLOWING_NOT_ALLOWED_IN_FRAME_START);
     }
 
     int frameEnd;
@@ -97,7 +98,7 @@ public class GroupsFrame implements Frame {
         break;
       default:
         // UNBOUND_PRECEDING is not allowed in frame end
-        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame end!");
+        throw new SemanticException(CalcMessages.UNBOUND_PRECEDING_NOT_ALLOWED_IN_FRAME_END);
     }
 
     // Empty frame

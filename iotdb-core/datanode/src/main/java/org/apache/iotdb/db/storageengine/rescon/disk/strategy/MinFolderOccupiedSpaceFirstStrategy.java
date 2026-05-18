@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
 
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import java.io.IOException;
 
@@ -47,7 +48,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       try {
         space = JVMCommonUtils.getOccupiedSpace(folder);
       } catch (IOException e) {
-        LOGGER.error("Cannot calculate occupied space for path {}.", folder, e);
+        LOGGER.error(StorageEngineMessages.CANNOT_CALC_OCCUPIED_SPACE, folder, e);
         continue;
       }
       if (space < minSpace) {

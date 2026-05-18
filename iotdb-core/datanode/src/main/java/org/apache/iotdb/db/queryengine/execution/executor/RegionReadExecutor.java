@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -101,7 +102,8 @@ public class RegionReadExecutor {
         return resp;
       }
     } catch (final ConsensusGroupNotExistException e) {
-      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      LOGGER.warn(
+          DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_CONSENSUSGROUP_FAILED, groupId, e);
       final String errorMsg = String.format(ERROR_MSG_FORMAT, e.getMessage());
       final RegionExecutionResult resp =
           RegionExecutionResult.create(
@@ -112,7 +114,8 @@ public class RegionReadExecutor {
       resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {
-      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      LOGGER.warn(
+          DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_CONSENSUSGROUP_FAILED, groupId, e);
       RegionExecutionResult resp =
           RegionExecutionResult.create(
               false, String.format(ERROR_MSG_FORMAT, e.getMessage()), null);
@@ -152,7 +155,7 @@ public class RegionReadExecutor {
         return resp;
       }
     } catch (Throwable t) {
-      LOGGER.warn("Execute FragmentInstance in QueryExecutor failed.", t);
+      LOGGER.warn(DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_QUERYEXECUTOR_FAILED, t);
       return RegionExecutionResult.create(
           false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
     }

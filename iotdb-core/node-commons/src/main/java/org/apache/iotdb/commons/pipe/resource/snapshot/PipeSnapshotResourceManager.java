@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.resource.snapshot;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -111,9 +112,8 @@ public abstract class PipeSnapshotResourceManager {
     // Recursively find the parent path until meets the pipe snapshot dir
     while (!pipeCopiedSnapshotDirs.contains(parentFile.getName())) {
       if (parentFile.getParentFile() == null) {
-        LOGGER.warn("Cannot find correct target snapshot path in pipe dir for {}", snapshotPath);
-        throw new IOException(
-            "Cannot find correct target snapshot path in pipe dir for " + snapshotPath);
+        LOGGER.warn(PipeMessages.CANNOT_FIND_SNAPSHOT_PATH, snapshotPath);
+        throw new IOException(PipeMessages.CANNOT_FIND_SNAPSHOT_PATH_EXCEPTION + snapshotPath);
       }
       parentFile = parentFile.getParentFile();
     }
