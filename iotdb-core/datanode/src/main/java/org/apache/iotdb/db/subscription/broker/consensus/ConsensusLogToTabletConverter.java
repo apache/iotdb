@@ -289,7 +289,8 @@ public class ConsensusLogToTabletConverter {
     final String[] measurements = node.getMeasurements();
     final TSDataType[] dataTypes = node.getDataTypes();
     final Object[] values = node.getValues();
-    final List<Integer> matchedColumnIndices = getMatchedTableColumnIndices(measurements);
+    final List<Integer> matchedColumnIndices =
+        getMatchedTableColumnIndices(measurements, node.getColumnCategories());
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
     }
@@ -345,7 +346,8 @@ public class ConsensusLogToTabletConverter {
     final Object[] columns = node.getColumns();
     final BitMap[] bitMaps = node.getBitMaps();
     final int rowCount = node.getRowCount();
-    final List<Integer> matchedColumnIndices = getMatchedTableColumnIndices(measurements);
+    final List<Integer> matchedColumnIndices =
+        getMatchedTableColumnIndices(measurements, node.getColumnCategories());
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
     }
@@ -424,20 +426,46 @@ public class ConsensusLogToTabletConverter {
   }
 
   /**
-   * Returns indices of table columns that match the configured column pattern. If no table column
-   * pattern is specified, all non-null columns are returned.
+   * Returns indices of table columns to emit. If any column matches the configured column pattern,
+   * all TAG columns are also kept so consumers can reconstruct the row-level table-model device ID.
+   * If no table column pattern is specified, all non-null columns are returned.
    */
-  private List<Integer> getMatchedTableColumnIndices(final String[] measurements) {
-    final List<Integer> matchedIndices = new ArrayList<>(measurements.length);
+  private List<Integer> getMatchedTableColumnIndices(
+      final String[] measurements, final TsTableColumnCategory[] columnCategories) {
+    final boolean[] selectedColumns = new boolean[measurements.length];
+    boolean hasMatchedColumn = false;
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] == null) {
         continue;
       }
       if (tableColumnPattern == null || tableColumnPattern.matcher(measurements[i]).matches()) {
+        selectedColumns[i] = true;
+        hasMatchedColumn = true;
+      }
+    }
+
+    if (!hasMatchedColumn) {
+      return Collections.emptyList();
+    }
+
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null && isTagColumn(columnCategories, i)) {
+        selectedColumns[i] = true;
+      }
+    }
+
+    final List<Integer> matchedIndices = new ArrayList<>(measurements.length);
+    for (int i = 0; i < selectedColumns.length; i++) {
+      if (selectedColumns[i]) {
         matchedIndices.add(i);
       }
     }
     return matchedIndices;
+  }
+
+  private boolean isTagColumn(
+      final TsTableColumnCategory[] columnCategories, final int columnIndex) {
+    return columnCategories != null && columnCategories[columnIndex] == TsTableColumnCategory.TAG;
   }
 
   private ColumnCategory toTsFileColumnCategory(

@@ -79,12 +79,32 @@ public class ConsensusLogToTabletConverterTest {
     final Tablet tablet = tablets.get(0);
     Assert.assertEquals(StatementTestUtils.tableName(), tablet.getTableName());
     Assert.assertEquals(3, tablet.getRowSize());
-    Assert.assertEquals(1, tablet.getSchemas().size());
-    Assert.assertEquals("m1", tablet.getSchemas().get(0).getMeasurementName());
-    Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(0));
+    Assert.assertEquals(2, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("m1", tablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, tablet.getColumnTypes().get(0));
+    Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(1));
     Assert.assertArrayEquals(new long[] {10L, 11L, 12L}, tablet.getTimestamps());
+    Assert.assertEquals("id:10", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
     Assert.assertArrayEquals(
-        new double[] {10.0, 11.0, 12.0}, (double[]) tablet.getValues()[0], 0.0);
+        new double[] {10.0, 11.0, 12.0}, (double[]) tablet.getValues()[1], 0.0);
+  }
+
+  @Test
+  public void testConvertRelationalInsertRowNodeKeepsTagColumnsForMatchedField() {
+    final ConsensusLogToTabletConverter converter = createConverter("m1");
+
+    final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertRowNode(11));
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(2, tablet.getSchemas().size());
+    Assert.assertEquals("id1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals("m1", tablet.getSchemas().get(1).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.TAG, tablet.getColumnTypes().get(0));
+    Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(1));
+    Assert.assertEquals("id:11", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
+    Assert.assertEquals(11.0, ((double[]) tablet.getValues()[1])[0], 0.0);
   }
 
   @Test
