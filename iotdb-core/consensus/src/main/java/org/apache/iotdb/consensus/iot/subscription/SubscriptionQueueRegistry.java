@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -48,29 +49,30 @@ public class SubscriptionQueueRegistry {
     this.consensusGroupId = consensusGroupId;
   }
 
-  public void register(
+  public synchronized void register(
       final BlockingQueue<IndexedConsensusRequest> queue,
       final SubscriptionWalRetentionPolicy retentionPolicy) {
     queues.put(queue, retentionPolicy);
   }
 
-  public void unregister(final BlockingQueue<IndexedConsensusRequest> queue) {
+  // Shares the monitor with offer() so unregister() is a real stop-receiving barrier.
+  public synchronized void unregister(final BlockingQueue<IndexedConsensusRequest> queue) {
     queues.remove(queue);
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return queues.isEmpty();
   }
 
-  public int size() {
+  public synchronized int size() {
     return queues.size();
   }
 
-  public Collection<SubscriptionWalRetentionPolicy> getRetentionPolicies() {
-    return queues.values();
+  public synchronized Collection<SubscriptionWalRetentionPolicy> getRetentionPolicies() {
+    return new ArrayList<>(queues.values());
   }
 
-  public void offer(final IndexedConsensusRequest indexedConsensusRequest) {
+  public synchronized void offer(final IndexedConsensusRequest indexedConsensusRequest) {
     final int queueCount = queues.size();
     if (queueCount <= 0) {
       return;

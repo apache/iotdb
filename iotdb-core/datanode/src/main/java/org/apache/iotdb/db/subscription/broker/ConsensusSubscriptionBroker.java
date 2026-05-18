@@ -72,6 +72,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   private final Map<String, TopicOwnershipSnapshot> topicOwnershipSnapshots =
       new ConcurrentHashMap<>();
 
+  private final Object queueLifecycleLock = new Object();
+
   public ConsensusSubscriptionBroker(final String brokerId) {
     this.brokerId = brokerId;
     this.topicNameToConsensusPrefetchingQueues = new ConcurrentHashMap<>();
@@ -584,52 +586,54 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final long tailStartSearchIndex,
       final long initialRuntimeVersion,
       final boolean initialActive) {
-    // Get or create the list of queues for this topic
-    final List<ConsensusPrefetchingQueue> queues =
-        topicNameToConsensusPrefetchingQueues.computeIfAbsent(
-            topicName, k -> new CopyOnWriteArrayList<>());
+    synchronized (queueLifecycleLock) {
+      // Get or create the list of queues for this topic
+      final List<ConsensusPrefetchingQueue> queues =
+          topicNameToConsensusPrefetchingQueues.computeIfAbsent(
+              topicName, k -> new CopyOnWriteArrayList<>());
 
-    // Check for duplicate region binding
-    for (final ConsensusPrefetchingQueue existing : queues) {
-      if (consensusGroupId.equals(existing.getConsensusGroupId()) && !existing.isClosed()) {
-        LOGGER.info(
-            "Subscription: consensus prefetching queue for topic [{}], region [{}] "
-                + "in consumer group [{}] already exists, skipping",
-            topicName,
-            consensusGroupId,
-            brokerId);
-        return;
+      // Check for duplicate region binding
+      for (final ConsensusPrefetchingQueue existing : queues) {
+        if (consensusGroupId.equals(existing.getConsensusGroupId()) && !existing.isClosed()) {
+          LOGGER.info(
+              "Subscription: consensus prefetching queue for topic [{}], region [{}] "
+                  + "in consumer group [{}] already exists, skipping",
+              topicName,
+              consensusGroupId,
+              brokerId);
+          return;
+        }
       }
-    }
 
-    // Create the per-region consensus queue for this topic.
-    final ConsensusPrefetchingQueue consensusQueue =
-        new ConsensusPrefetchingQueue(
-            brokerId,
-            topicName,
-            orderMode,
-            consensusGroupId,
-            serverImpl,
-            retentionPolicy,
-            converter,
-            commitManager,
-            fallbackCommittedRegionProgress,
-            tailStartSearchIndex,
-            initialRuntimeVersion,
-            initialActive);
-    queues.add(consensusQueue);
-    LOGGER.info(
-        "Subscription: create consensus prefetching queue bound to topic [{}] for consumer group [{}], "
-            + "consensusGroupId={}, fallbackCommittedRegionProgress={}, "
-            + "tailStartSearchIndex={}, initialRuntimeVersion={}, initialActive={}, totalRegionQueues={}",
-        topicName,
-        brokerId,
-        consensusGroupId,
-        fallbackCommittedRegionProgress,
-        tailStartSearchIndex,
-        initialRuntimeVersion,
-        initialActive,
-        queues.size());
+      // Create the per-region consensus queue for this topic.
+      final ConsensusPrefetchingQueue consensusQueue =
+          new ConsensusPrefetchingQueue(
+              brokerId,
+              topicName,
+              orderMode,
+              consensusGroupId,
+              serverImpl,
+              retentionPolicy,
+              converter,
+              commitManager,
+              fallbackCommittedRegionProgress,
+              tailStartSearchIndex,
+              initialRuntimeVersion,
+              initialActive);
+      queues.add(consensusQueue);
+      LOGGER.info(
+          "Subscription: create consensus prefetching queue bound to topic [{}] for consumer group [{}], "
+              + "consensusGroupId={}, fallbackCommittedRegionProgress={}, "
+              + "tailStartSearchIndex={}, initialRuntimeVersion={}, initialActive={}, totalRegionQueues={}",
+          topicName,
+          brokerId,
+          consensusGroupId,
+          fallbackCommittedRegionProgress,
+          tailStartSearchIndex,
+          initialRuntimeVersion,
+          initialActive,
+          queues.size());
+    }
   }
 
   public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
@@ -649,35 +653,39 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   public int unbindByRegion(final ConsensusGroupId regionId) {
-    int closedCount = 0;
-    for (final Map.Entry<String, List<ConsensusPrefetchingQueue>> entry :
-        topicNameToConsensusPrefetchingQueues.entrySet()) {
-      final List<ConsensusPrefetchingQueue> queues = entry.getValue();
-      final int beforeSize = queues.size();
-      queues.removeIf(
-          q -> {
-            if (!regionId.equals(q.getConsensusGroupId())) {
-              return false;
-            }
-            q.close();
-            LOGGER.info(
-                "Subscription: closed consensus prefetching queue for topic [{}] region [{}] "
-                    + "in consumer group [{}] due to region removal",
-                entry.getKey(),
-                regionId,
-                brokerId);
-            return true;
-          });
-      closedCount += beforeSize - queues.size();
-      if (queues.isEmpty()) {
-        topicNameToConsensusPrefetchingQueues.remove(entry.getKey(), queues);
-        topicConsumerLastPollMs.remove(entry.getKey());
-        topicOwnershipSnapshots.remove(entry.getKey());
-      } else {
-        topicOwnershipSnapshots.remove(entry.getKey());
+    final List<ConsensusPrefetchingQueue> queuesToClose = new ArrayList<>();
+    final List<String> topicNamesToLog = new ArrayList<>();
+    synchronized (queueLifecycleLock) {
+      for (final Map.Entry<String, List<ConsensusPrefetchingQueue>> entry :
+          topicNameToConsensusPrefetchingQueues.entrySet()) {
+        final List<ConsensusPrefetchingQueue> queues = entry.getValue();
+        for (final ConsensusPrefetchingQueue queue : new ArrayList<>(queues)) {
+          if (regionId.equals(queue.getConsensusGroupId())) {
+            queues.remove(queue);
+            queuesToClose.add(queue);
+            topicNamesToLog.add(entry.getKey());
+          }
+        }
+        if (queues.isEmpty()) {
+          topicNameToConsensusPrefetchingQueues.remove(entry.getKey(), queues);
+          topicConsumerLastPollMs.remove(entry.getKey());
+          topicOwnershipSnapshots.remove(entry.getKey());
+        } else {
+          topicOwnershipSnapshots.remove(entry.getKey());
+        }
       }
     }
-    return closedCount;
+
+    for (int i = 0; i < queuesToClose.size(); i++) {
+      queuesToClose.get(i).close();
+      LOGGER.info(
+          "Subscription: closed consensus prefetching queue for topic [{}] region [{}] "
+              + "in consumer group [{}] due to region removal",
+          topicNamesToLog.get(i),
+          regionId,
+          brokerId);
+    }
+    return queuesToClose.size();
   }
 
   /**
@@ -748,27 +756,30 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   private void closeAndRemoveConsensusPrefetchingQueues(
       final String topicName, final boolean warnIfMissing) {
-    final List<ConsensusPrefetchingQueue> queues =
-        topicNameToConsensusPrefetchingQueues.get(topicName);
-    if (Objects.isNull(queues) || queues.isEmpty()) {
-      if (warnIfMissing) {
-        LOGGER.warn(
-            "Subscription: consensus prefetching queues bound to topic [{}] for consumer group [{}] do not exist",
-            topicName,
-            brokerId);
+    final List<ConsensusPrefetchingQueue> queuesToClose;
+    synchronized (queueLifecycleLock) {
+      final List<ConsensusPrefetchingQueue> queues =
+          topicNameToConsensusPrefetchingQueues.remove(topicName);
+      if (Objects.isNull(queues) || queues.isEmpty()) {
+        if (warnIfMissing) {
+          LOGGER.warn(
+              "Subscription: consensus prefetching queues bound to topic [{}] for consumer group [{}] do not exist",
+              topicName,
+              brokerId);
+        }
+        return;
       }
-      return;
+      queuesToClose = new ArrayList<>(queues);
+      topicConsumerLastPollMs.remove(topicName);
+      topicOwnershipSnapshots.remove(topicName);
     }
 
-    for (final ConsensusPrefetchingQueue q : queues) {
+    for (final ConsensusPrefetchingQueue q : queuesToClose) {
       q.close();
     }
-    topicNameToConsensusPrefetchingQueues.remove(topicName);
-    topicConsumerLastPollMs.remove(topicName);
-    topicOwnershipSnapshots.remove(topicName);
     LOGGER.info(
         "Subscription: drop all {} consensus prefetching queue(s) bound to topic [{}] for consumer group [{}]",
-        queues.size(),
+        queuesToClose.size(),
         topicName,
         brokerId);
   }

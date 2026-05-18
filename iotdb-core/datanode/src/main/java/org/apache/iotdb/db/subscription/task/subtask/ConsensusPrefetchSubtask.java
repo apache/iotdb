@@ -236,6 +236,7 @@ public class ConsensusPrefetchSubtask {
   }
 
   public boolean isScheduledOrRunning() {
+    // Keep this read under the same monitor as close()/awaitIdle() wait conditions.
     synchronized (monitor) {
       return scheduledOrRunning;
     }

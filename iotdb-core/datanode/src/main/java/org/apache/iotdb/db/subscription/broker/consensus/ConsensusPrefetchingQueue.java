@@ -2863,6 +2863,11 @@ public class ConsensusPrefetchingQueue {
       releaseWriteLock();
     }
 
+    // Stop receiving real-time in-memory writes before flushing close-time batches. Requests that
+    // remain in pendingEntries have not advanced subscription progress and can be replayed from WAL
+    // if this queue is created again.
+    deregisterPendingEntriesFromConsensusServer();
+
     prefetchBinding = detachPrefetchSubtask();
 
     if (Objects.nonNull(seekRequestToFail)) {
@@ -2902,20 +2907,21 @@ public class ConsensusPrefetchingQueue {
       }
 
       try {
-        // Deregister from IoTConsensusServerImpl (stop receiving in-memory data).
-        serverImpl.deregisterSubscriptionQueue(pendingEntries);
-      } catch (final Exception e) {
-        LOGGER.warn("ConsensusPrefetchingQueue {}: error during deregister", this, e);
+        cleanUp();
       } finally {
-        try {
-          cleanUp();
-        } finally {
-          // Persist progress before closing
-          commitManager.persistAll();
-        }
+        // Persist progress before closing
+        commitManager.persistAll();
       }
     } finally {
       closeRequested = false;
+    }
+  }
+
+  private void deregisterPendingEntriesFromConsensusServer() {
+    try {
+      serverImpl.deregisterSubscriptionQueue(pendingEntries);
+    } catch (final Exception e) {
+      LOGGER.warn("ConsensusPrefetchingQueue {}: error during deregister", this, e);
     }
   }
 
