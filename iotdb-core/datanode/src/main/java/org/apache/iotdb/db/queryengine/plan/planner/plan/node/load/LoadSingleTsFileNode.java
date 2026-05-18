@@ -60,6 +60,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final TsFileResource resource;
   private final boolean isTableModel;
   private final String database;
+  private final int databaseLevel;
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
@@ -71,6 +72,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final TsFileResource resource,
       final boolean isTableModel,
       final String database,
+      final int databaseLevel,
       final boolean deleteAfterLoad,
       final long writePointCount,
       final boolean needDecodeTsFile) {
@@ -79,6 +81,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.resource = resource;
     this.isTableModel = isTableModel;
     this.database = database;
+    this.databaseLevel = databaseLevel;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
     this.needDecodeTsFile = needDecodeTsFile;
@@ -176,6 +179,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return database;
   }
 
+  public int getDatabaseLevel() {
+    return databaseLevel;
+  }
+
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
     return null;
@@ -261,6 +268,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && Objects.equals(resource, loadSingleTsFileNode.resource)
         && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
         && Objects.equals(database, loadSingleTsFileNode.database)
+        && Objects.equals(databaseLevel, loadSingleTsFileNode.databaseLevel)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
@@ -273,6 +281,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         resource,
         isTableModel,
         database,
+        databaseLevel,
         needDecodeTsFile,
         deleteAfterLoad,
         localRegionReplicaSet);

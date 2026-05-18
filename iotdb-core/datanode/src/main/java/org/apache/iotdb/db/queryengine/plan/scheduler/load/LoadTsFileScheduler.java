@@ -30,10 +30,12 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -181,7 +183,8 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
-        partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
+        partitionFetcher.setDatabase(
+            getPartitionQueryDatabase(node, isGeneratedByPipe), node.getDatabaseLevel());
 
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
@@ -640,7 +643,38 @@ public class LoadTsFileScheduler implements IScheduler {
 
   static String getPartitionQueryDatabase(
       final LoadSingleTsFileNode node, final boolean isGeneratedByPipe) {
-    return node.isTableModel() || isGeneratedByPipe ? node.getDatabase() : null;
+    if (node.isTableModel()) {
+      return node.getDatabase();
+    }
+    if (!isGeneratedByPipe) {
+      return null;
+    }
+    return node.getDatabase() != null
+        ? node.getDatabase()
+        : inferDatabaseName(node.getTsFileResource().getDevices(), node.getDatabaseLevel());
+  }
+
+  private static String inferDatabaseName(final Set<IDeviceID> devices, final int databaseLevel) {
+    if (devices == null || devices.isEmpty()) {
+      return null;
+    }
+    return inferDatabaseName(devices.iterator().next(), databaseLevel);
+  }
+
+  private static String inferDatabaseName(final IDeviceID deviceID, final int databaseLevel) {
+    try {
+      final String[] deviceNodes = new PartialPath(deviceID).getNodes();
+      final int databaseNodesLength = databaseLevel + 1;
+      if (deviceNodes.length < databaseNodesLength) {
+        return null;
+      }
+      final String[] databaseNodes = new String[databaseNodesLength];
+      System.arraycopy(deviceNodes, 0, databaseNodes, 0, databaseNodesLength);
+      return new PartialPath(databaseNodes).getFullPath();
+    } catch (final IllegalPathException e) {
+      LOGGER.warn("Failed to infer database name from device {}.", deviceID, e);
+      return null;
+    }
   }
 
   private LoadTsFileStatement buildRetryTreeLoadStatement(
@@ -853,13 +887,15 @@ public class LoadTsFileScheduler implements IScheduler {
   private static class DataPartitionBatchFetcher {
     private final IPartitionFetcher fetcher;
     private String database;
+    private int databaseLevel;
 
     public DataPartitionBatchFetcher(IPartitionFetcher fetcher) {
       this.fetcher = fetcher;
     }
 
-    public void setDatabase(String database) {
+    public void setDatabase(String database, int databaseLevel) {
       this.database = database;
+      this.databaseLevel = databaseLevel;
     }
 
     public List<TRegionReplicaSet> queryDataPartition(
@@ -875,14 +911,17 @@ public class LoadTsFileScheduler implements IScheduler {
         replicaSets.addAll(
             subSlotList.stream()
                 .map(
-                    pair ->
-                        // database is an explicit database hint for table-model loads and
-                        // pipe-generated tree-model loads.
-                        database != null
-                            ? dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right, database)
-                            : dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right))
+                    pair -> {
+                      // database is an explicit database hint for table-model loads and
+                      // pipe-generated tree-model loads. When a pipe-generated tree-model load
+                      // only carries database-level, infer the database from the device.
+                      final String queryDatabase =
+                          database != null ? database : inferDatabaseName(pair.left, databaseLevel);
+                      return queryDatabase != null
+                          ? dataPartition.getDataRegionReplicaSetForWriting(
+                              pair.left, pair.right, queryDatabase)
+                          : dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right);
+                    })
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -901,9 +940,12 @@ public class LoadTsFileScheduler implements IScheduler {
                 DataPartitionQueryParam queryParam =
                     new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
                 // database is an explicit database hint for table-model loads and
-                // pipe-generated tree-model loads.
-                if (database != null) {
-                  queryParam.setDatabaseName(database);
+                // pipe-generated tree-model loads. When a pipe-generated tree-model load
+                // only carries database-level, infer the database from the device.
+                final String queryDatabase =
+                    database != null ? database : inferDatabaseName(entry.getKey(), databaseLevel);
+                if (queryDatabase != null) {
+                  queryParam.setDatabaseName(queryDatabase);
                 }
                 return queryParam;
               })

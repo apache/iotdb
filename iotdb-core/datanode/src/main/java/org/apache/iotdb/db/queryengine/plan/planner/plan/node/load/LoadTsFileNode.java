@@ -47,6 +47,7 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<TsFileResource> resources;
   private final List<Boolean> isTableModel;
   private final String database;
+  private final int databaseLevel;
   private final boolean needDecode4TimeColumn;
 
   public LoadTsFileNode(
@@ -54,11 +55,13 @@ public class LoadTsFileNode extends WritePlanNode {
       final List<TsFileResource> resources,
       final List<Boolean> isTableModel,
       final String database,
+      final int databaseLevel,
       final boolean needDecode4TimeColumn) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
+    this.databaseLevel = databaseLevel;
     this.needDecode4TimeColumn = needDecode4TimeColumn;
   }
 
@@ -128,6 +131,7 @@ public class LoadTsFileNode extends WritePlanNode {
               resources.get(i),
               isTableModel.get(i),
               database,
+              databaseLevel,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
               needDecode4TimeColumn));
@@ -151,6 +155,7 @@ public class LoadTsFileNode extends WritePlanNode {
                 resources.get(i),
                 isTableModel.get(i),
                 database,
+                databaseLevel,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn));
@@ -173,11 +178,12 @@ public class LoadTsFileNode extends WritePlanNode {
     LoadTsFileNode loadTsFileNode = (LoadTsFileNode) o;
     return Objects.equals(resources, loadTsFileNode.resources)
         && Objects.equals(database, loadTsFileNode.database)
+        && Objects.equals(databaseLevel, loadTsFileNode.databaseLevel)
         && Objects.equals(isTableModel, loadTsFileNode.isTableModel);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(resources, database, isTableModel);
+    return Objects.hash(resources, database, databaseLevel, isTableModel);
   }
 }
