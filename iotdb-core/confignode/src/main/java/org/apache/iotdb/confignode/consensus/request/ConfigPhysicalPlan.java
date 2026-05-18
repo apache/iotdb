@@ -163,6 +163,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
     return this.type;
   }
 
+  public short getPlanTypeId() {
+    return type.getPlanType();
+  }
+
   @Override
   public ByteBuffer serializeToByteBuffer() {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();

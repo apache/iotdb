@@ -54,7 +54,13 @@ import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTe
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 
 public abstract class ConfigPhysicalPlanVisitor<R, C> {
+  private final TimechoConfigPhysicalPlanVisitor<R, C> timechoVisitor =
+      new TimechoConfigPhysicalPlanVisitor<>();
+
   public R process(final ConfigPhysicalPlan plan, final C context) {
+    if (isTimechoPlan(plan)) {
+      return timechoVisitor.process(plan, context);
+    }
     switch (plan.getType()) {
       case CreateDatabase:
         return visitCreateDatabase((DatabaseSchemaPlan) plan, context);
@@ -205,6 +211,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       default:
         return visitPlan(plan, context);
     }
+  }
+
+  protected boolean isTimechoPlan(final ConfigPhysicalPlan plan) {
+    return plan.getPlanTypeId() < 0;
   }
 
   /** Top Level Description */
