@@ -1365,9 +1365,6 @@ public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
    * delegates to {@link MigratorLogHelper#logSummary}.
    */
   private void logSummary(String label, Map<TConsensusGroupId, MigrateOption> result) {
-    if (!LOGGER.isDebugEnabled()) {
-      return;
-    }
 
     long[] mc = computeMigrationsAndCost(result);
     long migrations = mc[0];

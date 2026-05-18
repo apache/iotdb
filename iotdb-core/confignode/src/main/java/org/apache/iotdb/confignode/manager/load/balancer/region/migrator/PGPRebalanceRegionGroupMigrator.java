@@ -168,10 +168,6 @@ public class PGPRebalanceRegionGroupMigrator implements IRegionGroupMigrator {
       List<TRegionReplicaSet> beforeGroups,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap) {
 
-    if (!LOGGER.isDebugEnabled()) {
-      return;
-    }
-
     // Build regionCounter and diskCounter from afterGroups
     Map<Integer, Integer> regionCounter = new HashMap<>();
     Map<Integer, Long> diskCounter = new HashMap<>();
