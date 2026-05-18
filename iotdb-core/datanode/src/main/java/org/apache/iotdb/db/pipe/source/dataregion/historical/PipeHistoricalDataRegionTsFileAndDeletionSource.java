@@ -58,6 +58,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -929,6 +930,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               skipIfNoPrivileges,
               historicalDataExtractionStartTime,
               historicalDataExtractionEndTime);
+      event.setHasObject(
+          TierManager.getInstance().isDataRegionObjectDirExists(String.valueOf(dataRegionId)));
 
       // if using IoTV2, assign a replicateIndex for this event
       if (shouldAssignReplicateIndexForIoTV2(event)) {
