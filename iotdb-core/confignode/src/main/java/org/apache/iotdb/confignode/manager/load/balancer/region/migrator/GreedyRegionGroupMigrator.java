@@ -242,10 +242,6 @@ public class GreedyRegionGroupMigrator implements IRegionGroupMigrator {
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups) {
 
-    if (!LOGGER.isDebugEnabled()) {
-      return;
-    }
-
     // Build regionCounter from currentPlacement
     Map<Integer, Integer> regionCounter = new HashMap<>();
     for (int nodeId : allNodeIds) {

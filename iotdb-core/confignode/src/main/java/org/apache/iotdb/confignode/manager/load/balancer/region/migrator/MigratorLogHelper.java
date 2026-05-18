@@ -94,7 +94,7 @@ public class MigratorLogHelper {
     long varRegion = computeVariance(regionCounter, allNodeIds, 1L);
     long varDisk = computeVariance(diskCounter, allNodeIds, DISK_SCALE_FACTOR);
 
-    logger.debug(
+    logger.info(
         "[{}] [{}] regionCounter={}, diskCounter={}, Var(region)={}, Var(disk)={}, migrations={}, cost={}MB",
         tag,
         label,
