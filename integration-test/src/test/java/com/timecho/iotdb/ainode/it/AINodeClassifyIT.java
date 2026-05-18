@@ -19,7 +19,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.ainode.it.AINodeModelManageIT.registerUserDefinedModel;
+import static org.apache.iotdb.ainode.it.AINodeSharedClusterIT.registerUserDefinedModel;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable2;
 
