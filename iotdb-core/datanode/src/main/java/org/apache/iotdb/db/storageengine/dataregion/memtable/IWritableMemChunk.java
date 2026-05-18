@@ -126,4 +126,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   TVList getWorkingTVList();
 
   void setWorkingTVList(TVList list);
+
+  TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList);
 }
