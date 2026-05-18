@@ -495,6 +495,26 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void showCountTimeSeriesExcludeInternalDatabaseAndIncludeView() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      final long baseVisibleCount = queryCount(statement, "COUNT TIMESERIES root.ln*.**");
+      statement.execute("CREATE DATABASE root.count_it");
+      statement.execute(
+          "CREATE TIMESERIES root.count_it.src.s1 WITH DATATYPE = INT32, ENCODING = PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.count_it.src.s2 WITH DATATYPE = INT32, ENCODING = PLAIN");
+      statement.execute(
+          "CREATE VIEW root.count_it.dst.v1 AS SELECT s1 FROM root.count_it.src;");
+
+      final long localCount = queryCount(statement, "COUNT TIMESERIES root.count_it.**");
+      assertEquals(3L, localCount);
+      assertEquals(
+          baseVisibleCount + localCount, queryCount(statement, "COUNT TIMESERIES root.**"));
+    }
+  }
+
+  @Test
   public void showCountTimeSeriesWithTag() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -863,6 +883,13 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       } finally {
         statement.execute("delete timeseries root.sg1.d0.*");
       }
+    }
+  }
+
+  private long queryCount(final Statement statement, final String sql) throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(sql)) {
+      Assert.assertTrue(resultSet.next());
+      return resultSet.getLong(1);
     }
   }
 }
