@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.container.ConfigMNodeContainer;
 import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigTableInfo;
@@ -221,7 +222,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   @Override
   public IDatabaseMNode<IConfigMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(ConfigNodeMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

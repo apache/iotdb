@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -182,7 +183,7 @@ public abstract class TabletInsertionEventParser {
     this.rowCount = this.timestampColumn.length;
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTROWNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertRowNode,
           getPattern(),
           this.sourceEvent.getStartTime(),
@@ -276,7 +277,7 @@ public abstract class TabletInsertionEventParser {
     this.rowCount = this.timestampColumn.length;
     if (rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTTABLETNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertTabletNode,
           getPattern(),
           sourceEvent.getStartTime(),
@@ -383,7 +384,7 @@ public abstract class TabletInsertionEventParser {
     this.rowCount = this.timestampColumn.length;
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.TABLET_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           tablet,
           getPattern(),
           this.sourceEvent.getStartTime(),

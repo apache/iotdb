@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -51,7 +52,7 @@ public class AlterTimeSeriesTask implements IConfigTask {
       }
       return configTaskExecutor.alterTimeSeriesDataType(queryId, alterTimeSeriesStatement);
     } else {
-      throw new UnsupportedOperationException("Not support current statement");
+      throw new UnsupportedOperationException(DataNodeQueryMessages.NOT_SUPPORT_CURRENT_STATEMENT);
     }
   }
 }

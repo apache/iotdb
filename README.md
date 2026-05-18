@@ -314,6 +314,16 @@ Under the iotdb/iotdb-client path:
 
 After being built, the IoTDB cli is located at the folder "cli/target".
 
+### Build with Chinese Log & Error Messages
+
+IoTDB supports compile-time internationalization (i18n) for log and error messages. By default, messages are in English. To build with Chinese messages, activate the `with-zh-locale` Maven profile:
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+This works by swapping the source directory `src/main/i18n/en` (default) with `src/main/i18n/zh`, where each module keeps locale-specific Java constant classes containing translated message strings.
+
 ### Build Others
 
 Use `-P with-cpp` for compiling the cpp client. (For more details, read client-cpp's Readme file.)

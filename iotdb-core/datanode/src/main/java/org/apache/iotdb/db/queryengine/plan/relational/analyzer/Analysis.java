@@ -61,6 +61,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -679,7 +680,9 @@ public class Analysis implements IAnalysis {
         .get(NodeRef.of(table))
         .getHandle()
         .orElseThrow(
-            () -> new IllegalArgumentException(format("%s is not a table reference", table)));
+            () ->
+                new IllegalArgumentException(
+                    format(DataNodeQueryMessages.S_IS_NOT_A_TABLE_REFERENCE, table)));
   }
 
   public Collection<TableSchema> getTables() {

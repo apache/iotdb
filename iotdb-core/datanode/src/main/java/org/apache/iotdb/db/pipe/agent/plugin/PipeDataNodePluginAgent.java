@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderM
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
@@ -253,10 +254,12 @@ public class PipeDataNodePluginAgent {
     final PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
 
     if (oldPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, oldPluginName));
     }
     if (newPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, newPluginName));
     }
 
     return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));

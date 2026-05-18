@@ -52,6 +52,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAINodeLocationResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -185,8 +186,7 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
         TimeUnit.MILLISECONDS.sleep(RETRY_INTERVAL_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn(
-            "Unexpected interruption when waiting to try to connect to AINode, may because current node has been down. Will break current execution process to avoid meaningless wait.");
+        logger.warn(DataNodeMiscMessages.UNEXPECTED_INTERRUPTION_CONNECT_AINODE);
         break;
       }
       tryToConnect(property.getConnectionTimeoutMs());
@@ -201,11 +201,11 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
         connect(endpoint, timeoutMs);
         return;
       } catch (TException e) {
-        LOGGER.warn("The current AINode may have been down {}, because", endpoint, e);
+        LOGGER.warn(DataNodeMiscMessages.AINODE_MAY_DOWN, endpoint, e);
         CURRENT_LOCATION.set(null);
       }
     } else {
-      LOGGER.warn("Cannot connect to any AINode due to there are no available ones.");
+      LOGGER.warn(DataNodeMiscMessages.CANNOT_CONNECT_ANY_AINODE);
     }
     if (transport != null) {
       transport.close();

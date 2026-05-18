@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ArithmeticBinaryExpression;
@@ -165,7 +166,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitExpression(Expression expression, Function<String, TSDataType> context) {
       throw new UnsupportedOperationException(
-          "Unsupported expression type: " + expression.getClass().getName());
+          DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE + expression.getClass().getName());
     }
 
     @Override
@@ -547,7 +548,7 @@ public class ExpressionTypeAnalyzer {
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:
         throw new IllegalArgumentException(
-            "Invalid Aggregation function: " + aggregateFunctionName);
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregateFunctionName);
     }
   }
 }

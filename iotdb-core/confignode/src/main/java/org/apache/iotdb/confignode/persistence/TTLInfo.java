@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -198,7 +199,7 @@ public class TTLInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot of TTLInfo, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_OF_TTLINFO_BECAUSE_SNAPSHOT_FILE_IS,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -218,7 +219,7 @@ public class TTLInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot of TTLInfo, snapshot file [{}] does not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_OF_TTLINFO_SNAPSHOT_FILE_DOES_NOT,
           snapshotFile.getAbsolutePath());
       return;
     }

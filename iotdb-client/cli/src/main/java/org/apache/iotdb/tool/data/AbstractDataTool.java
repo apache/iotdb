@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
@@ -143,7 +144,7 @@ public abstract class AbstractDataTool {
       }
       String msg = String.format("Required values for option '%s' not provided", name);
       LOGGER.info(msg);
-      LOGGER.info("Use -help for more information");
+      LOGGER.info(CliMessages.USE_HELP_FOR_MORE);
       throw new ArgsErrorException(msg);
     }
     return str;

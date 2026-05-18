@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -93,7 +94,8 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("Clone of InternalCreateTimeSeriesNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_INTERNALCREATETIMESERIESNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override

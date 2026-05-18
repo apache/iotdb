@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +84,7 @@ public final class BatchEventProcessor<T> implements Runnable {
       } catch (final InterruptedException ex) {
         if (running) {
           Thread.currentThread().interrupt();
-          LOGGER.info("Processor interrupted");
+          LOGGER.info(DataNodePipeMessages.PROCESSOR_INTERRUPTED);
         }
         break;
       } catch (final Throwable ex) {
@@ -95,7 +97,7 @@ public final class BatchEventProcessor<T> implements Runnable {
     if (!running) {
       drainRemainingPublishedEvents(nextSequence);
     }
-    LOGGER.info("Processor stopped");
+    LOGGER.info(DataNodePipeMessages.PROCESSOR_STOPPED);
   }
 
   private long processAvailableEvents(long nextSequence, long availableSequence) throws Throwable {
@@ -133,17 +135,19 @@ public final class BatchEventProcessor<T> implements Runnable {
   private static class DefaultExceptionHandler<T> implements ExceptionHandler<T> {
     @Override
     public void handleEventException(Throwable ex, long sequence, T event) {
-      LoggerFactory.getLogger(getClass()).error("Exception processing: {} {}", sequence, event, ex);
+      LoggerFactory.getLogger(getClass())
+          .error(DataNodePipeMessages.EXCEPTION_PROCESSING, sequence, event, ex);
     }
 
     @Override
     public void handleOnStartException(Throwable ex) {
-      LoggerFactory.getLogger(getClass()).error("Exception during onStart()", ex);
+      LoggerFactory.getLogger(getClass()).error(DataNodePipeMessages.EXCEPTION_DURING_ONSTART, ex);
     }
 
     @Override
     public void handleOnShutdownException(Throwable ex) {
-      LoggerFactory.getLogger(getClass()).error("Exception during onShutdown()", ex);
+      LoggerFactory.getLogger(getClass())
+          .error(DataNodePipeMessages.EXCEPTION_DURING_ONSHUTDOWN, ex);
     }
   }
 }

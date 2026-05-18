@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -173,7 +174,7 @@ public class TDigest implements Serializable {
    */
   public void add(double x, int w) {
     if (Double.isNaN(x)) {
-      throw new IllegalArgumentException("Cannot add NaN to t-digest");
+      throw new IllegalArgumentException(CalcMessages.CANNOT_ADD_NAN_TO_T_DIGEST);
     }
     if (tempUsed >= tempWeight.length - lastUsedCell - 1) {
       mergeNewValues();
@@ -206,7 +207,7 @@ public class TDigest implements Serializable {
 
   private void add(double[] m, double[] w, int count) {
     if (m.length != w.length) {
-      throw new IllegalArgumentException("Arrays not same length");
+      throw new IllegalArgumentException(CalcMessages.ARRAYS_NOT_SAME_LENGTH);
     }
     if (m.length < count + lastUsedCell) {
       // make room to add existing centroids
@@ -414,7 +415,7 @@ public class TDigest implements Serializable {
    */
   public double cdf(double x) {
     if (Double.isNaN(x) || Double.isInfinite(x)) {
-      throw new IllegalArgumentException(String.format("Invalid value: %f", x));
+      throw new IllegalArgumentException(String.format(CalcMessages.INVALID_VALUE, x));
     }
     mergeNewValues();
 
@@ -505,7 +506,7 @@ public class TDigest implements Serializable {
       if (x == mean[n - 1]) {
         return 1 - 0.5 / totalWeight;
       } else {
-        throw new IllegalStateException("Can't happen ... loop fell through");
+        throw new IllegalStateException(CalcMessages.CANT_HAPPEN_LOOP_FELL_THROUGH);
       }
     }
   }
@@ -519,7 +520,7 @@ public class TDigest implements Serializable {
    */
   public double quantile(double q) {
     if (q < 0 || q > 1) {
-      throw new SemanticException("percentage should be in [0,1], got " + q);
+      throw new SemanticException(CalcMessages.PERCENTAGE_SHOULD_BE_IN_0_1 + q);
     }
     mergeNewValues();
 

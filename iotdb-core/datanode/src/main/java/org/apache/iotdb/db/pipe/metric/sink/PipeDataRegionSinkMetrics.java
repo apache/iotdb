@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric.sink;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -268,7 +269,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
       deregister(taskID);
     }
     if (!sinkMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe data region sink metrics, sink map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_DATA_REGION);
     }
   }
 
@@ -446,9 +447,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   public void deregister(final String taskID) {
     if (!sinkMap.containsKey(taskID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe data region sink metrics, PipeSinkSubtask({}) does not exist",
-          taskID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_DATA_REGION_SINK, taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -463,9 +462,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region sink tablet event, PipeSinkSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK, taskID);
       return;
     }
     rate.mark();
@@ -477,9 +474,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.info(
-          "Failed to mark pipe data region sink tsfile event, PipeSinkSubtask({}) does not exist",
-          taskID);
+      LOGGER.info(DataNodePipeMessages.FAILED_TO_MARK_PIPE_DATA_REGION_SINK_1, taskID);
       return;
     }
     rate.mark();

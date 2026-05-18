@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -141,7 +142,7 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.SERVICES:
           return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
         default:
-          throw new UnsupportedOperationException("Unknown table: " + tableName);
+          throw new UnsupportedOperationException(DataNodeQueryMessages.UNKNOWN_TABLE + tableName);
       }
     }
   }

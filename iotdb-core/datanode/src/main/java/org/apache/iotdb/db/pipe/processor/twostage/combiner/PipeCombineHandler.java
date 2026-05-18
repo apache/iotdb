@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultResponse;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
@@ -125,7 +126,7 @@ public class PipeCombineHandler {
               configNodeClient.showRegion(
                   new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.DataRegion));
           if (showRegionResp == null || !showRegionResp.isSetRegionInfoList()) {
-            throw new PipeException("Failed to fetch data region ids");
+            throw new PipeException(DataNodePipeMessages.FAILED_TO_FETCH_DATA_REGION_IDS);
           }
           for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
             if (!RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
@@ -135,13 +136,13 @@ public class PipeCombineHandler {
                 regionInfo.getConsensusGroupId().getId(), regionInfo.getDataNodeId());
           }
         } catch (ClientManagerException | TException e) {
-          throw new PipeException("Failed to fetch data nodes", e);
+          throw new PipeException(DataNodePipeMessages.FAILED_TO_FETCH_DATA_NODES, e);
         }
 
         ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.set(System.currentTimeMillis());
 
         LOGGER.info(
-            "Fetched data region ids {} at {}",
+            DataNodePipeMessages.FETCHED_DATA_REGION_IDS_AT,
             ALL_REGION_ID_2_DATANODE_ID_MAP,
             ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.get());
       }
@@ -152,7 +153,7 @@ public class PipeCombineHandler {
           regionId -> !ALL_REGION_ID_2_DATANODE_ID_MAP.containsKey(regionId));
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
-            "Two stage aggregate pipe (pipeName={}, creationTime={}) related region ids {}",
+            DataNodePipeMessages.TWO_STAGE_AGGREGATE_PIPE_PIPENAME_CREATIONTIME_RELATED,
             pipeName,
             creationTime,
             pipeRelatedRegionIdSet);
@@ -183,7 +184,8 @@ public class PipeCombineHandler {
             entry -> {
               if (!entry.getValue().isComplete()) {
                 LOGGER.info(
-                    "Clean outdated incomplete combiner: pipeName={}, creationTime={}, combineId={}",
+                    DataNodePipeMessages
+                        .CLEAN_OUTDATED_INCOMPLETE_COMBINER_PIPENAME_CREATIONTIME_COMBINEID,
                     pipeName,
                     creationTime,
                     entry.getKey());

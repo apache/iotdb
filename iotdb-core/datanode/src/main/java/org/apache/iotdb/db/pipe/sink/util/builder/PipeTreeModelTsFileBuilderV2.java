@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -69,7 +70,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(final String dataBase, final Tablet tablet) {
     throw new UnsupportedOperationException(
-        "PipeTreeModelTsFileBuilderV2 does not support table model tablet to build TSFile");
+        DataNodePipeMessages.PIPETREEMODELTSFILEBUILDERV2_DOES_NOT_SUPPORT_TABLE_MODEL_TABLET);
   }
 
   @Override
@@ -86,7 +87,8 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       return writeTabletsToTsFiles();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when PipeTreeModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
+          DataNodePipeMessages
+              .EXCEPTION_OCCURRED_WHEN_PIPETREEMODELTSFILEBUILDERV2_WRITING_TABLETS_TO,
           e.getMessage(),
           e);
       return fallbackBuilder.convertTabletToTsFileWithDBInfo();
@@ -122,7 +124,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
       sealedFiles.add(new Pair<>(null, writer.getFile()));
     } catch (final Exception e) {
       LOGGER.warn(
-          "Batch id = {}: Failed to write tablets into tsfile, because {}",
+          DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
           currentBatchId.get(),
           e.getMessage(),
           e);

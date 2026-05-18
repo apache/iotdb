@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.Utils;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -104,7 +105,7 @@ public interface IStateMachine {
    * @return true if all snapshot dir delete successfully
    */
   default boolean clearSnapshot() {
-    throw new UnsupportedOperationException("not implemented yet");
+    throw new UnsupportedOperationException(ConsensusMessages.NOT_IMPLEMENTED_YET);
   }
 
   /**

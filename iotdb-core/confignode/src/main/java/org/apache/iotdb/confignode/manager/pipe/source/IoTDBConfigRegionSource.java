@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
@@ -100,7 +101,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
         .getConfigNodeConsensusProtocolClass()
         .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       throw new PipeException(
-          "IoTDBConfigRegionSource does not transferring events under simple consensus");
+          ManagerMessages
+              .IOTDBCONFIGREGIONSOURCE_DOES_NOT_TRANSFERRING_EVENTS_UNDER_SIMPLE_CONSENSUS);
     }
 
     super.customize(parameters, configuration);
@@ -121,7 +123,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", pipeName));
+          String.format(ManagerMessages.FAILED_TO_CHECK_PASSWORD_FOR_PIPE, pipeName));
     }
   }
 
@@ -146,7 +148,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
               new ConfigRegionId(ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId()),
               true);
     } catch (final ConsensusException e) {
-      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+      throw new PipeException(
+          ManagerMessages.EXCEPTION_ENCOUNTERED_WHEN_TRIGGERING_SCHEMA_REGION_SNAPSHOT, e);
     }
   }
 
@@ -283,7 +286,7 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
     if (skipIfNoPrivileges) {
       return Optional.empty();
     }
-    throw new AccessDeniedException("Not has privilege to transfer plan: " + plan);
+    throw new AccessDeniedException(ManagerMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + plan);
   }
 
   @Override

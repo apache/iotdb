@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -112,7 +113,7 @@ public class MemoryManager {
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("exactAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn(CommonMessages.MEMORY_ALLOC_INTERRUPTED, e);
       }
     }
 
@@ -293,7 +294,7 @@ public class MemoryManager {
     try {
       block.close();
     } catch (Exception e) {
-      LOGGER.error("releaseWithOutNotify: failed to close memory block {}", block, e);
+      LOGGER.error(CommonMessages.MEMORY_RELEASE_FAILED, block, e);
     }
   }
 
@@ -317,7 +318,7 @@ public class MemoryManager {
         name,
         (managerName, manager) -> {
           if (sizeInBytes < 0) {
-            LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
+            LOGGER.warn(CommonMessages.MEMORY_SIZE_SHOULD_BE_POSITIVE, name);
             return null;
           }
           if (manager != null) {
@@ -435,7 +436,7 @@ public class MemoryManager {
       try {
         block.close();
       } catch (Exception e) {
-        LOGGER.error("releaseWithOutNotify: failed to close memory block", e);
+        LOGGER.error(CommonMessages.MEMORY_RELEASE_FAILED_NO_DETAIL, e);
       }
     }
     allocatedMemoryBlocks.clear();

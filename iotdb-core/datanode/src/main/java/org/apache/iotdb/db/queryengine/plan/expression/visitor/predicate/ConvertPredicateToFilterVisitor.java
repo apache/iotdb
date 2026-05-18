@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -143,12 +144,13 @@ public class ConvertPredicateToFilterVisitor
   @Override
   public Filter visitIsNullExpression(IsNullExpression isNullExpression, Context context) {
     if (!isNullExpression.isNot()) {
-      throw new IllegalArgumentException("IS NULL cannot be pushed down");
+      throw new IllegalArgumentException(DataNodeQueryMessages.IS_NULL_CANNOT_BE_PUSHED_DOWN);
     }
 
     Expression operand = isNullExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL/IS NOT NULL");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL_IS_NOT);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -162,7 +164,8 @@ public class ConvertPredicateToFilterVisitor
   public Filter visitLikeExpression(LikeExpression likeExpression, Context context) {
     Expression operand = likeExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support LIKE/NOT LIKE");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE_NOT_LIKE);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -182,7 +185,8 @@ public class ConvertPredicateToFilterVisitor
   public Filter visitRegularExpression(RegularExpression regularExpression, Context context) {
     Expression operand = regularExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP/NOT REGEXP");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_REGEXP_NOT_REGEXP);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -518,7 +522,8 @@ public class ConvertPredicateToFilterVisitor
   @Override
   public Filter visitGroupByTimeExpression(
       GroupByTimeExpression groupByTimeExpression, Context context) {
-    throw new IllegalArgumentException("GroupByTime filter cannot exist in value filter.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER);
   }
 
   public static class Context {

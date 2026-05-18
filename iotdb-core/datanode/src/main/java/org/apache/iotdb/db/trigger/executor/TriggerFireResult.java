@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.trigger.executor;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 public enum TriggerFireResult {
   SUCCESS(0, "Trigger fires successfully"),
 
@@ -43,7 +45,8 @@ public enum TriggerFireResult {
       case 2:
         return TERMINATION;
       default:
-        throw new UnsupportedOperationException("Unsupported TriggerFireResult Type");
+        throw new UnsupportedOperationException(
+            DataNodeMiscMessages.UNSUPPORTED_TRIGGER_FIRE_RESULT_TYPE);
     }
   }
 

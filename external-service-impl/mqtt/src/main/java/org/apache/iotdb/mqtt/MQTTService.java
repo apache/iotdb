@@ -22,6 +22,7 @@ package org.apache.iotdb.mqtt;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
 
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
@@ -62,7 +63,7 @@ public class MQTTService implements IExternalService {
     try {
       server.startServer(config, handlers, null, authenticator, null);
     } catch (IOException e) {
-      throw new RuntimeException("Exception while starting server", e);
+      throw new RuntimeException(MqttMessages.SERVER_START_EXCEPTION, e);
     }
 
     LOG.info(
@@ -74,9 +75,9 @@ public class MQTTService implements IExternalService {
         .addShutdownHook(
             new Thread(
                 () -> {
-                  LOG.info("Stopping IoTDB MQTT service...");
+                  LOG.info(MqttMessages.STOPPING_MQTT_SERVICE);
                   shutdown();
-                  LOG.info("IoTDB MQTT service stopped.");
+                  LOG.info(MqttMessages.MQTT_SERVICE_STOPPED);
                 }));
   }
 

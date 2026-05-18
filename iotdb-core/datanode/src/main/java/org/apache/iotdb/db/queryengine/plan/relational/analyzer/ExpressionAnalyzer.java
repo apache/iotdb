@@ -87,6 +87,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -579,7 +580,7 @@ public class ExpressionAnalyzer {
     public Type visitDereferenceExpression(
         DereferenceExpression node, StackableAstVisitorContext<Context> context) {
       if (isQualifiedAllFieldsReference(node)) {
-        throw new SemanticException("<identifier>.* not allowed in this context");
+        throw new SemanticException(DataNodeQueryMessages.IDENTIFIER_NOT_ALLOWED_IN_THIS_CONTEXT);
       }
 
       QualifiedName qualifiedName = DereferenceExpression.getQualifiedName(node);
@@ -653,7 +654,9 @@ public class ExpressionAnalyzer {
       RowType rowType = (RowType) baseType;
 
       Identifier field =
-          node.getField().orElseThrow(() -> new NoSuchElementException("No value present"));
+          node.getField()
+              .orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
       String fieldName = field.getValue();
 
       boolean foundFieldName = false;
@@ -881,7 +884,7 @@ public class ExpressionAnalyzer {
         case MINUS:
           return getOperator(context, node, OperatorType.NEGATION, node.getValue());
         default:
-          throw new IllegalArgumentException("Unknown sign: " + node.getSign());
+          throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_SIGN + node.getSign());
       }
     }
 
@@ -964,7 +967,7 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitDecimalLiteral(
         DecimalLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("DecimalLiteral is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.DECIMALLITERAL_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -976,7 +979,7 @@ public class ExpressionAnalyzer {
     @Override
     public Type visitGenericLiteral(
         GenericLiteral node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("GenericLiteral is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.GENERICLITERAL_IS_NOT_SUPPORTED_YET);
     }
 
     @Override
@@ -1012,7 +1015,8 @@ public class ExpressionAnalyzer {
         windowFunctions.add(NodeRef.of(node));
       } else {
         if (node.isDistinct() && !isAggregation) {
-          throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+          throw new SemanticException(
+              DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
         }
       }
 
@@ -1038,7 +1042,8 @@ public class ExpressionAnalyzer {
             case "NEXT":
               return setExpressionType(node, analyzePhysicalNavigation(node, context, name));
             default:
-              throw new SemanticException("unexpected pattern recognition function " + name);
+              throw new SemanticException(
+                  DataNodeQueryMessages.UNEXPECTED_PATTERN_RECOGNITION_FUNCTION + name);
           }
         }
       }
@@ -1060,7 +1065,8 @@ public class ExpressionAnalyzer {
       }
 
       if (node.isDistinct() && !isAggregation) {
-        throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+        throw new SemanticException(
+            DataNodeQueryMessages.DISTINCT_IS_NOT_SUPPORTED_FOR_NON_AGGREGATION_FUNCTIONS);
       }
 
       int argumentsNum = node.getArguments().size();
@@ -1194,20 +1200,26 @@ public class ExpressionAnalyzer {
           (argument instanceof DereferenceExpression)
               ? ((DereferenceExpression) argument)
                   .getField()
-                  .orElseThrow(() -> new SemanticException("the input field does not exist"))
+                  .orElseThrow(
+                      () ->
+                          new SemanticException(
+                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
                   .toString()
               : argument.toString();
 
       for (Field field : visibleFields) {
         if (field
             .getName()
-            .orElseThrow(() -> new SemanticException("the field in table does not have a name"))
+            .orElseThrow(
+                () ->
+                    new SemanticException(
+                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
             .equalsIgnoreCase(argumentName)) {
           return field.getType() == TIMESTAMP;
         }
       }
       // should never reach here
-      throw new SemanticException("the input argument does not exist");
+      throw new SemanticException(DataNodeQueryMessages.THE_INPUT_ARGUMENT_DOES_NOT_EXIST);
     }
 
     /** Retrieves the effective time column name from the relation's visible fields. */
@@ -1238,7 +1250,8 @@ public class ExpressionAnalyzer {
     private Type analyzeMatchNumber(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
       if (!node.getArguments().isEmpty()) {
-        throw new SemanticException("MATCH_NUMBER pattern recognition function takes no arguments");
+        throw new SemanticException(
+            DataNodeQueryMessages.MATCH_NUMBER_PATTERN_RECOGNITION_FUNCTION_TAKES_NO_ARGUMENTS);
       }
 
       patternRecognitionInputs.add(new PatternFunctionAnalysis(node, new MatchNumberDescriptor()));
@@ -1331,7 +1344,8 @@ public class ExpressionAnalyzer {
           anchor = PatternRecognitionAnalysis.NavigationAnchor.LAST;
           break;
         default:
-          throw new IllegalStateException("Unexpected navigation anchor: " + name);
+          throw new IllegalStateException(
+              DataNodeQueryMessages.UNEXPECTED_NAVIGATION_ANCHOR + name);
       }
 
       Type type =
@@ -1365,7 +1379,8 @@ public class ExpressionAnalyzer {
           case RUNNING:
             return NavigationMode.RUNNING;
           default:
-            throw new IllegalArgumentException("Unexpected mode: " + mode.getMode());
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.UNEXPECTED_MODE + mode.getMode());
         }
       } else {
         return NavigationMode.RUNNING;
@@ -1643,7 +1658,7 @@ public class ExpressionAnalyzer {
     public Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
 
       if (parameters.isEmpty()) {
-        throw new SemanticException("Query takes no parameters");
+        throw new SemanticException(DataNodeQueryMessages.QUERY_TAKES_NO_PARAMETERS);
       }
       if (node.getId() >= parameters.size()) {
         throw new SemanticException(
@@ -1654,7 +1669,7 @@ public class ExpressionAnalyzer {
 
       Expression providedValue = parameters.get(NodeRef.of(node));
       if (providedValue == null) {
-        throw new SemanticException("No value provided for parameter");
+        throw new SemanticException(DataNodeQueryMessages.NO_VALUE_PROVIDED_FOR_PARAMETER);
       }
       Type resultType = process(providedValue, context);
       return setExpressionType(node, resultType);
@@ -1669,7 +1684,8 @@ public class ExpressionAnalyzer {
         Type type = process(node.getExpression(), context);
 
         if (!(type instanceof TimestampType)) {
-          throw new SemanticException(String.format("Cannot extract from %s", type));
+          throw new SemanticException(
+              String.format(DataNodeQueryMessages.CANNOT_EXTRACT_FROM, type));
         }
       }
 
@@ -1704,16 +1720,18 @@ public class ExpressionAnalyzer {
       try {
         type = metadata.getType(toTypeSignature(node.getType()));
       } catch (TypeNotFoundException e) {
-        throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNKNOWN_TYPE, node.getType()));
       }
 
       if (type.equals(UNKNOWN)) {
-        throw new SemanticException("UNKNOWN is not a valid type");
+        throw new SemanticException(DataNodeQueryMessages.UNKNOWN_IS_NOT_A_VALID_TYPE);
       }
 
       Type value = process(node.getExpression(), context);
       if (!value.equals(UNKNOWN) && !node.isTypeOnly() && (!metadata.canCoerce(value, type))) {
-        throw new SemanticException(String.format("Cannot cast %s to %s", value, type));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.CANNOT_CAST_TO, value, type));
       }
 
       return setExpressionType(node, type);
@@ -1902,10 +1920,12 @@ public class ExpressionAnalyzer {
         FrameBound.Type endType =
             frame.getEnd().orElse(new FrameBound(null, CURRENT_ROW)).getType();
         if (startType == UNBOUNDED_FOLLOWING) {
-          throw new SemanticException("Window frame start cannot be UNBOUNDED FOLLOWING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_START_CANNOT_BE_UNBOUNDED_FOLLOWING);
         }
         if (endType == UNBOUNDED_PRECEDING) {
-          throw new SemanticException("Window frame end cannot be UNBOUNDED PRECEDING");
+          throw new SemanticException(
+              DataNodeQueryMessages.WINDOW_FRAME_END_CANNOT_BE_UNBOUNDED_PRECEDING);
         }
         if ((startType == CURRENT_ROW) && (endType == PRECEDING)) {
           throw new SemanticException(
@@ -1983,7 +2003,8 @@ public class ExpressionAnalyzer {
             }
           }
         } else {
-          throw new SemanticException("Unsupported frame type: " + frame.getType());
+          throw new SemanticException(
+              DataNodeQueryMessages.UNSUPPORTED_FRAME_TYPE + frame.getType());
         }
       }
     }
@@ -2123,7 +2144,7 @@ public class ExpressionAnalyzer {
 
     @Override
     public Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
-      throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
+      throw new SemanticException(DataNodeQueryMessages.COLUMNS_ONLY_SUPPORT_TO_BE_USED_IN_SELECT);
     }
 
     private Type getOperator(
@@ -2183,7 +2204,8 @@ public class ExpressionAnalyzer {
       }
 
       if (!firstType.equals(secondType)) {
-        throw new SemanticException(String.format("%s: %s vs %s", message, firstType, secondType));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.TYPE_MISMATCH_FMT, message, firstType, secondType));
       }
 
       return firstType;
@@ -2441,7 +2463,8 @@ public class ExpressionAnalyzer {
         || name.equals("NEXT")
         || name.equals("CLASSIFIER")
         || name.equals("MATCH_NUMBER"))) {
-      throw new SemanticException("Unknown pattern recognition function: " + name);
+      throw new SemanticException(
+          DataNodeQueryMessages.UNKNOWN_PATTERN_RECOGNITION_FUNCTION + name);
     } else {
       return true;
     }
@@ -2669,10 +2692,10 @@ public class ExpressionAnalyzer {
         parameters,
         warningCollector,
         expression -> {
-          throw new IllegalStateException("Cannot access preanalyzed types");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_PREANALYZED_TYPES);
         },
         functionCall -> {
-          throw new IllegalStateException("Cannot access resolved windows");
+          throw new IllegalStateException(DataNodeQueryMessages.CANNOT_ACCESS_RESOLVED_WINDOWS);
         });
   }
 

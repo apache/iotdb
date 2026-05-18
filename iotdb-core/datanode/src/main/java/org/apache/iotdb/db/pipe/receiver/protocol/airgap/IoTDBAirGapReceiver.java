@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.db.protocol.session.ClientSession;
@@ -73,7 +74,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     socket.setSoTimeout(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
     socket.setKeepAlive(true);
 
-    LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
+    LOGGER.info(DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_STARTED_SOCKET, receiverId, socket);
 
     SessionManager.getInstance().registerSession(new ClientSession(socket));
 
@@ -83,15 +84,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         receive();
       }
       LOGGER.info(
-          "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
-          receiverId,
-          socket);
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_SOCKET, receiverId, socket);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Pipe air gap receiver {} closed because of exception. Socket: {}",
-          receiverId,
-          socket,
-          e);
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF_1, receiverId, socket, e);
       throw e;
     } finally {
       // session will be closed and removed here
@@ -112,9 +108,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // We directly close the socket here.
       if (!checkSum(data)) {
         LOGGER.warn(
-            "Pipe air gap receiver {} closed because of checksum failed. Socket: {}",
-            receiverId,
-            socket);
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CLOSED_BECAUSE_OF, receiverId, socket);
         try {
           fail();
         } finally {
@@ -136,14 +130,14 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       handleReq(req, System.currentTimeMillis());
     } catch (final PipeConnectionException e) {
       LOGGER.info(
-          "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_SOCKET_CLOSED_WHEN,
           receiverId,
           socket,
           e.getMessage());
       socket.close();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Pipe air gap receiver {}: Exception during handling receiving. Socket: {}",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_EXCEPTION_DURING_HANDLING,
           receiverId,
           socket,
           e);
@@ -162,7 +156,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         || status.getCode()
             == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
       LOGGER.info(
-          "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TSSTATUS_IS_ENCOUNTERED,
           receiverId,
           resp.getStatus());
       ok();
@@ -173,20 +167,18 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(
-          "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
+      LOGGER.info(DataNodePipeMessages.TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP);
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);
       } else {
         LOGGER.warn(
-            "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.",
-            receiverId);
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_TEMPORARY_UNAVAILABLE_RETRY, receiverId);
         fail();
       }
     } else {
       LOGGER.warn(
-          "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
+          DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_HANDLE_DATA_FAILED,
           receiverId,
           resp.getStatus(),
           req);
@@ -215,7 +207,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       final long actualChecksum = crc32.getValue();
       if (expectedChecksum != actualChecksum) {
         LOGGER.warn(
-            "Pipe air gap receiver {}: checksum failed, expected: {}, actual: {}",
+            DataNodePipeMessages.PIPE_AIR_GAP_RECEIVER_CHECKSUM_FAILED_EXPECTED,
             receiverId,
             expectedChecksum,
             actualChecksum);
@@ -306,7 +298,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream readBytes == -1 indicates EOF, namely the
       // socket is closed
       if (readBytes == -1) {
-        throw new PipeConnectionException("Socket closed when executing readTillFull.");
+        throw new PipeConnectionException(
+            DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_READTILLFULL);
       }
       alreadyReadBytes += readBytes;
     }
@@ -328,7 +321,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream skippedBytes == 0 indicates EOF, namely the
       // socket is closed
       if (skippedBytes == 0) {
-        throw new PipeConnectionException("Socket closed when executing skipTillEnough.");
+        throw new PipeConnectionException(
+            DataNodePipeMessages.SOCKET_CLOSED_WHEN_EXECUTING_SKIPTILLENOUGH);
       }
       currentSkippedBytes += skippedBytes;
     }

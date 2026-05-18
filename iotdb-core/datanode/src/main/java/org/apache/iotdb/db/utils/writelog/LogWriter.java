@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.writelog;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +87,7 @@ public class LogWriter implements ILogWriter {
         channel.force(true);
       }
     } catch (ClosedChannelException ignored) {
-      logger.warn("someone interrupt current thread, so no need to do write for io safety");
+      logger.warn(DataNodeMiscMessages.INTERRUPTED_NO_WRITE);
     }
   }
 

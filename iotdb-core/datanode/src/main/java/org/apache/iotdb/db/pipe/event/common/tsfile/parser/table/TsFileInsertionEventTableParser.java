@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -182,7 +183,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                     return hasNext;
                   } catch (Exception e) {
                     close();
-                    throw new PipeException("Error while parsing tsfile insertion event", e);
+                    throw new PipeException(
+                        DataNodePipeMessages.ERROR_WHILE_PARSING_TSFILE_INSERTION_EVENT, e);
                   }
                 }
 

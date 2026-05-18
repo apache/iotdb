@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
@@ -109,10 +110,10 @@ public class CompactionRecoverTask {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Recover compaction error", e);
+      LOGGER.error(StorageEngineMessages.RECOVER_COMPACTION_ERROR, e);
     } finally {
       if (!recoverSuccess) {
-        LOGGER.error("{} [Compaction][Recover] Failed to recover compaction", fullStorageGroupName);
+        LOGGER.error(StorageEngineMessages.COMPACTION_RECOVER_FAILED, fullStorageGroupName);
       } else {
         if (compactionLogFile.exists()) {
           try {

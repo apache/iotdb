@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -92,7 +93,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
     throw new UnsupportedOperationException(
-        "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.");
+        ManagerMessages.THE_REMOVENODEREPLICASELECT_METHOD_OF_GREEDYREGIONGROUPALLOCATOR_IS_YET);
   }
 
   private List<TDataNodeLocation> buildWeightList(
