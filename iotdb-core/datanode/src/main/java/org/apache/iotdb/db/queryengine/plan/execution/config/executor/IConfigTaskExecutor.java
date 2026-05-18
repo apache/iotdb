@@ -234,6 +234,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showPipes(
       ShowPipesStatement showPipesStatement, String userName);
 
+  SettableFuture<ConfigTaskResult> showCreatePipe(String pipeName, String userName);
+
   SettableFuture<ConfigTaskResult> showSubscriptions(
       ShowSubscriptionsStatement showSubscriptionsStatement);
 
@@ -332,6 +334,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showDatabases(
       final ShowDB showDB, final Predicate<String> canSeenDB);
+
+  SettableFuture<ConfigTaskResult> showCreateDatabase(final String database);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
