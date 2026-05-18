@@ -54,6 +54,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
@@ -1088,7 +1089,8 @@ public class DataNodeTableOperatorGenerator
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
-    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.VALID_TREEDEVICEVIEWSCANNODE_IS_NOT_EXPECTED_HERE);
   }
 
   @Override
@@ -1932,7 +1934,8 @@ public class DataNodeTableOperatorGenerator
         if (timeColumnOfTargetTable == null) {
           timeColumnOfTargetTable = inputColumns.get(i);
         } else {
-          throw new SemanticException("Multiple columns with TIME category found");
+          throw new SemanticException(
+              DataNodeQueryMessages.MULTIPLE_COLUMNS_WITH_TIME_CATEGORY_FOUND);
         }
         continue;
       }
@@ -1943,7 +1946,7 @@ public class DataNodeTableOperatorGenerator
       inputColumnCategories.add(columnCategory);
     }
     if (timeColumnOfTargetTable == null) {
-      throw new SemanticException("Missing TIME category column");
+      throw new SemanticException(DataNodeQueryMessages.MISSING_TIME_CATEGORY_COLUMN);
     }
 
     long statementSizePerLine =

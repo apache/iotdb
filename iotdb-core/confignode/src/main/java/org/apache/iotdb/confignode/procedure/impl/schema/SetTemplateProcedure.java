@@ -38,6 +38,8 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -105,48 +107,58 @@ public class SetTemplateProcedure
       switch (state) {
         case VALIDATE_TEMPLATE_EXISTENCE:
           LOGGER.info(
-              "Check template existence set on path {} when try setting template {}",
+              ProcedureMessages.CHECK_TEMPLATE_EXISTENCE_SET_ON_PATH_WHEN_TRY_SETTING_TEMPLATE,
               templateSetPath,
               templateName);
           validateTemplateExistence(env);
           break;
         case PRE_SET:
-          LOGGER.info("Pre set schemaengine template {} on path {}", templateName, templateSetPath);
+          LOGGER.info(
+              ProcedureMessages.PRE_SET_SCHEMAENGINE_TEMPLATE_ON_PATH,
+              templateName,
+              templateSetPath);
           preSetTemplate(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
-              "Pre release schemaengine template {} set on path {}", templateName, templateSetPath);
+              ProcedureMessages.PRE_RELEASE_SCHEMAENGINE_TEMPLATE_SET_ON_PATH,
+              templateName,
+              templateSetPath);
           preReleaseTemplate(env);
           break;
         case VALIDATE_TIMESERIES_EXISTENCE:
           LOGGER.info(
-              "Check timeseries existence under path {} when try setting template {}",
+              ProcedureMessages.CHECK_TIMESERIES_EXISTENCE_UNDER_PATH_WHEN_TRY_SETTING_TEMPLATE,
               templateSetPath,
               templateName);
           validateTimeSeriesExistence(env);
           break;
         case COMMIT_SET:
           LOGGER.info(
-              "Commit set schemaengine template {} on path {}", templateName, templateSetPath);
+              ProcedureMessages.COMMIT_SET_SCHEMAENGINE_TEMPLATE_ON_PATH,
+              templateName,
+              templateSetPath);
           commitSetTemplate(env);
           setNextState(SetTemplateState.COMMIT_RELEASE);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
-              "Commit release schemaengine template {} set on path {}",
+              ProcedureMessages.COMMIT_RELEASE_SCHEMAENGINE_TEMPLATE_SET_ON_PATH,
               templateName,
               templateSetPath);
           commitReleaseTemplate(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized SetTemplateState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_SETTEMPLATESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "SetSchemaTemplate-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.SETSCHEMATEMPLATE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -160,7 +172,7 @@ public class SetTemplateProcedure
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(checkTemplateSettablePlan);
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       resp = new TemplateInfoResp();
@@ -188,7 +200,7 @@ public class SetTemplateProcedure
       setNextState(SetTemplateState.PRE_RELEASE);
     } else {
       LOGGER.warn(
-          "Failed to pre set template {} on path {} due to {}",
+          ProcedureMessages.FAILED_TO_PRE_SET_TEMPLATE_ON_PATH_DUE_TO,
           templateName,
           templateSetPath,
           status.getMessage());
@@ -218,11 +230,13 @@ public class SetTemplateProcedure
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Failed to sync template {} pre-set info on path {} to DataNode {}",
+            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
             templateName,
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
-        setFailure(new ProcedureException(new MetadataException("Pre set template failed")));
+        setFailure(
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
         return;
       }
     }
@@ -237,7 +251,7 @@ public class SetTemplateProcedure
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan);
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();
@@ -327,7 +341,8 @@ public class SetTemplateProcedure
                     new ProcedureException(
                         new MetadataException(
                             String.format(
-                                "Set template %s to %s failed when [check time series existence on DataNode] because "
+                                ProcedureMessages
+                                        .SET_TEMPLATE_TO_FAILED_WHEN_CHECK_TIME_SERIES_EXISTENCE_ON
                                     + "failed to check time series existence in all replicaset of schemaRegion %s. Failures: %s",
                                 templateName,
                                 templateSetPath,
@@ -370,7 +385,7 @@ public class SetTemplateProcedure
       setNextState(SetTemplateState.COMMIT_RELEASE);
     } else {
       LOGGER.warn(
-          "Failed to commit set template {} on path {} due to {}",
+          ProcedureMessages.FAILED_TO_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO,
           templateName,
           templateSetPath,
           status.getMessage());
@@ -400,7 +415,7 @@ public class SetTemplateProcedure
     for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Failed to sync template {} commit-set info on path {} to DataNode {}",
+            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_COMMIT_SET_INFO_ON_PATH_TO,
             templateName,
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
@@ -408,8 +423,11 @@ public class SetTemplateProcedure
             new ProcedureException(
                 new MetadataException(
                     String.format(
-                        "Failed to set schemaengine template %s on path %s because there's failure on DataNode %s",
-                        templateName, templateSetPath, dataNodeLocationMap.get(entry.getKey())))));
+                        ProcedureMessages
+                            .FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S,
+                        templateName,
+                        templateSetPath,
+                        dataNodeLocationMap.get(entry.getKey())))));
         return;
       }
     }
@@ -433,21 +451,21 @@ public class SetTemplateProcedure
       switch (state) {
         case PRE_SET:
           LOGGER.info(
-              "Start rollback pre set schemaengine template {} on path {}",
+              ProcedureMessages.START_ROLLBACK_PRE_SET_SCHEMAENGINE_TEMPLATE_ON_PATH,
               templateName,
               templateSetPath);
           rollbackPreSet(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
-              "Start rollback pre release schemaengine template {} on path {}",
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_SCHEMAENGINE_TEMPLATE_ON_PATH,
               templateName,
               templateSetPath);
           rollbackPreRelease(env);
           break;
         case COMMIT_SET:
           LOGGER.info(
-              "Start rollback commit set schemaengine template {} on path {}",
+              ProcedureMessages.START_ROLLBACK_COMMIT_SET_SCHEMAENGINE_TEMPLATE_ON_PATH,
               templateName,
               templateSetPath);
           rollbackCommitSet(env);
@@ -455,7 +473,9 @@ public class SetTemplateProcedure
       }
     } finally {
       LOGGER.info(
-          "Rollback SetTemplate-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_SETTEMPLATE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -472,7 +492,7 @@ public class SetTemplateProcedure
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to rollback pre set template {} on path {} due to {}",
+          ProcedureMessages.FAILED_TO_ROLLBACK_PRE_SET_TEMPLATE_ON_PATH_DUE_TO,
           templateName,
           templateSetPath,
           status.getMessage());
@@ -508,12 +528,13 @@ public class SetTemplateProcedure
       // all dataNodes must clear the related template cache
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "Failed to rollback pre release template info of template {} set on path {} on DataNode {}",
+            ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET,
             template.getName(),
             templateSetPath,
             dataNodeLocationMap.get(entry.getKey()));
         setFailure(
-            new ProcedureException(new MetadataException("Rollback pre release template failed")));
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.ROLLBACK_PRE_RELEASE_TEMPLATE_FAILED)));
       }
     }
   }
@@ -531,7 +552,7 @@ public class SetTemplateProcedure
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to rollback commit set template {} on path {} due to {}",
+          ProcedureMessages.FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO,
           templateName,
           templateSetPath,
           status.getMessage());

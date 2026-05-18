@@ -21,6 +21,8 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -468,7 +470,8 @@ public abstract class AlignedTVList extends TVList {
       case OBJECT:
         return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
       default:
-        throw new IllegalArgumentException(dataTypes.get(columnIndex) + " is not supported");
+        throw new IllegalArgumentException(
+            dataTypes.get(columnIndex) + StorageEngineMessages.IS_NOT_SUPPORTED);
     }
   }
 
@@ -1486,7 +1489,7 @@ public abstract class AlignedTVList extends TVList {
   public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     if (dataType != TSDataType.VECTOR) {
-      throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      throw new UnSupportedDataTypeException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
     }
     int dataTypeNum = stream.readInt();
     List<TSDataType> dataTypes = new ArrayList<>(dataTypeNum);

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -82,7 +83,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
-    throw new UnsupportedOperationException("InsertRowsOfOneDeviceNode not support merge");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.INSERTROWSOFONEDEVICENODE_NOT_SUPPORT_MERGE);
   }
 
   public InsertRowsOfOneDeviceNode(
@@ -145,7 +147,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -240,7 +242,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
           DataNodeDevicePathCache.getInstance()
               .getPartialPath((ReadWriteIOUtils.readString(byteBuffer)));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWSOFONEDEVICENODE, e);
     }
 
     int size = byteBuffer.getInt();

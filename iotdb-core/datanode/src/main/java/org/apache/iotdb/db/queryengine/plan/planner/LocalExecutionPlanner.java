@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
@@ -185,7 +186,8 @@ public class LocalExecutionPlanner {
         root = node.accept(new DataNodeTableOperatorGenerator(metadata), context);
         break;
       default:
-        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+        throw new IllegalArgumentException(
+            String.format(DataNodeQueryMessages.UNKNOWN_SQL_DIALECT, sqlDialect));
     }
     return root;
   }

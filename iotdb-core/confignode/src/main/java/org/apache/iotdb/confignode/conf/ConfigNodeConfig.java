@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -1240,7 +1241,7 @@ public class ConfigNodeConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        LOGGER.warn("Failed to get field {}", configField, e);
+        LOGGER.warn(ConfigNodeMessages.FAILED_TO_GET_FIELD, configField, e);
       }
     }
     return configMessage.toString();

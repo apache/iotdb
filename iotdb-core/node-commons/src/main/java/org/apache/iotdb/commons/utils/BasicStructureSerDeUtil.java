@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -110,7 +112,7 @@ public class BasicStructureSerDeUtil {
    */
   public static int write(List<String> stringList, DataOutputStream stream) throws IOException {
     if (stringList == null) {
-      throw new IllegalArgumentException("stringList must not be null!");
+      throw new IllegalArgumentException(UtilMessages.STRING_LIST_MUST_NOT_BE_NULL);
     }
     int res = 0;
     int size = stringList.size();

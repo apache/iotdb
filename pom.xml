@@ -165,6 +165,7 @@
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
         <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -947,6 +948,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-i18n-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/main/i18n/${i18n.locale}</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.felix</groupId>
@@ -2005,6 +2020,12 @@
             <id>enforce</id>
             <properties>
                 <enforcer.skip>false</enforcer.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
             </properties>
         </profile>
     </profiles>

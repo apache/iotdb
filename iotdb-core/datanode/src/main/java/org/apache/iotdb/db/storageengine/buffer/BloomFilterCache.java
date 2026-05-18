@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
@@ -68,7 +69,9 @@ public class BloomFilterCache {
 
   private BloomFilterCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("BloomFilterCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info(
+          StorageEngineMessages.BLOOM_FILTER_CACHE_SIZE,
+          CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -107,7 +110,7 @@ public class BloomFilterCache {
       BloomFilter bloomFilter = lruCache.get(key, loader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get bloomFilter from cache where filePath is: {}", key.filePath);
+        DEBUG_LOGGER.info(StorageEngineMessages.GET_BLOOM_FILTER_FROM_CACHE, key.filePath);
       }
 
       return bloomFilter;

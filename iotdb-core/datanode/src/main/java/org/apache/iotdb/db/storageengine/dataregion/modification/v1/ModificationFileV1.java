@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationWriter;
@@ -154,7 +155,7 @@ public class ModificationFileV1 implements AutoCloseable {
     close();
     boolean deleted = FSFactoryProducer.getFSFactory().getFile(filePath).delete();
     if (!deleted) {
-      logger.warn("Delete ModificationFile {} failed.", filePath);
+      logger.warn(StorageEngineMessages.DELETE_MODIFICATION_FILE_FAILED, filePath);
     }
   }
 
@@ -185,7 +186,7 @@ public class ModificationFileV1 implements AutoCloseable {
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
       } catch (IOException e) {
-        logger.error("Cannot create hardlink for {}", filePath, e);
+        logger.error(StorageEngineMessages.CANNOT_CREATE_HARDLINK, filePath, e);
         return null;
       }
     }
@@ -230,7 +231,7 @@ public class ModificationFileV1 implements AutoCloseable {
           allSettledModifications.addAll(settledModifications);
         }
       } catch (IOException e) {
-        logger.error("compact mods file exception of {}", filePath, e);
+        logger.error(StorageEngineMessages.COMPACT_MODS_FILE_EXCEPTION, filePath, e);
       }
 
       try {
@@ -238,7 +239,7 @@ public class ModificationFileV1 implements AutoCloseable {
         this.remove();
         // rename new mods file to origin name
         Files.move(new File(newModsFileName).toPath(), new File(filePath).toPath());
-        logger.info("{} settle successful", filePath);
+        logger.info(StorageEngineMessages.SETTLE_SUCCESSFUL, filePath);
 
         if (getSize() > COMPACT_THRESHOLD) {
           logger.warn(
@@ -247,7 +248,7 @@ public class ModificationFileV1 implements AutoCloseable {
               getSize());
         }
       } catch (IOException e) {
-        logger.error("remove origin file or rename new mods file error.", e);
+        logger.error(StorageEngineMessages.REMOVE_ORIGIN_OR_RENAME_MODS_ERROR, e);
       }
       hasCompacted = true;
     }

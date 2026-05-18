@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.downsampling.tumbling;
 
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.PartialPathLastObjectCache;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -76,7 +77,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
     super.customize(parameters, configuration);
 
     LOGGER.info(
-        "TumblingTimeSamplingProcessor in {} is initialized with {}: {}s, {}: {}, {}: {}.",
+        DataNodePipeMessages.TUMBLINGTIMESAMPLINGPROCESSOR_IN_IS_INITIALIZED_WITH_S,
         dataBaseNameWithPathSeparator,
         PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY,
         intervalInCurrentPrecision,

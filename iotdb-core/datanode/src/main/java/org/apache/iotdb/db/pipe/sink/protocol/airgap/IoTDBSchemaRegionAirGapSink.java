@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -52,13 +53,13 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionAirGapSink can't transfer TabletInsertionEvent.");
+        DataNodePipeMessages.IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT);
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionAirGapSink can't transfer TsFileInsertionEvent.");
+        DataNodePipeMessages.IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT);
   }
 
   @Override
@@ -73,7 +74,9 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
-            "IoTDBSchemaRegionAirGapSink does not support transferring generic event: {}.", event);
+            DataNodePipeMessages
+                .IOTDBSCHEMAREGIONAIRGAPSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+            event);
       }
     } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -191,7 +194,7 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           true);
     } else {
       LOGGER.info(
-          "Successfully transferred schema region snapshot {}, {} and {}.",
+          DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_SCHEMA_REGION_SNAPSHOT_AND,
           mtreeSnapshotFile,
           tagLogSnapshotFile,
           attributeSnapshotFile);
@@ -207,7 +210,7 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The schema region air gap connector does not support transferring single file piece bytes.");
+        DataNodePipeMessages.THE_SCHEMA_REGION_AIR_GAP_CONNECTOR_DOES);
   }
 
   @Override

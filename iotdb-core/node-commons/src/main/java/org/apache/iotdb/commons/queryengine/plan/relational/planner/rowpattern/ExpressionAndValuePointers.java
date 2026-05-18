@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 
@@ -176,7 +177,7 @@ public class ExpressionAndValuePointers {
       } else if (assignment.valuePointer instanceof AggregationValuePointer) {
         ReadWriteIOUtils.write(3, byteBuffer);
       } else {
-        throw new IllegalArgumentException("Unknown ValuePointer type");
+        throw new IllegalArgumentException(QueryMessages.UNKNOWN_VALUE_POINTER_TYPE);
       }
 
       if (assignment.valuePointer instanceof MatchNumberValuePointer) {
@@ -191,7 +192,7 @@ public class ExpressionAndValuePointers {
         AggregationValuePointer.serialize(
             (AggregationValuePointer) assignment.valuePointer, byteBuffer);
       } else {
-        throw new IllegalArgumentException("Unknown ValuePointer type");
+        throw new IllegalArgumentException(QueryMessages.UNKNOWN_VALUE_POINTER_TYPE);
       }
     }
 
@@ -208,7 +209,7 @@ public class ExpressionAndValuePointers {
       } else if (assignment.valuePointer instanceof AggregationValuePointer) {
         ReadWriteIOUtils.write(3, stream);
       } else {
-        throw new IllegalArgumentException("Unknown ValuePointer type");
+        throw new IllegalArgumentException(QueryMessages.UNKNOWN_VALUE_POINTER_TYPE);
       }
 
       if (assignment.valuePointer instanceof MatchNumberValuePointer) {
@@ -222,7 +223,7 @@ public class ExpressionAndValuePointers {
         AggregationValuePointer.serialize(
             (AggregationValuePointer) assignment.valuePointer, stream);
       } else {
-        throw new IllegalArgumentException("Unknown ValuePointer type");
+        throw new IllegalArgumentException(QueryMessages.UNKNOWN_VALUE_POINTER_TYPE);
       }
     }
 
@@ -241,7 +242,7 @@ public class ExpressionAndValuePointers {
       } else if (type == 3) {
         valuePointer = AggregationValuePointer.deserialize(byteBuffer);
       } else {
-        throw new IllegalArgumentException("Unknown ValuePointer type");
+        throw new IllegalArgumentException(QueryMessages.UNKNOWN_VALUE_POINTER_TYPE);
       }
 
       return new Assignment(symbol, valuePointer);

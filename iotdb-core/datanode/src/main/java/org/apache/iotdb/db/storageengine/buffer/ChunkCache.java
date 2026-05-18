@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -83,7 +84,8 @@ public class ChunkCache {
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
-      LOGGER.info("ChunkCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+      LOGGER.info(
+          StorageEngineMessages.CHUNK_CACHE_SIZE, CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -164,7 +166,7 @@ public class ChunkCache {
       Chunk chunk = lruCache.get(chunkCacheKey, chunkLoader);
 
       if (debug) {
-        DEBUG_LOGGER.info("get chunk from cache whose key is: {}", chunkCacheKey);
+        DEBUG_LOGGER.info(StorageEngineMessages.GET_CHUNK_FROM_CACHE, chunkCacheKey);
       }
 
       return constructChunk(chunk, timeRangeList, chunkStatistic);

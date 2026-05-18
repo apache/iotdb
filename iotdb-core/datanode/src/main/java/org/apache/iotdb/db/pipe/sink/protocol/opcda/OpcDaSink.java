@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -94,7 +96,8 @@ public class OpcDaSink implements PipeConnector {
         validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_PROGID_KEY));
 
     if (!System.getProperty("os.name").toLowerCase().startsWith("windows")) {
-      throw new PipeParameterNotValidException("opc-da-sink must run on windows system.");
+      throw new PipeParameterNotValidException(
+          DataNodePipeMessages.OPC_DA_SINK_MUST_RUN_ON_WINDOWS);
     }
 
     createTableModelItemIdEncodingConfig(validator.getParameters());

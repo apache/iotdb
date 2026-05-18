@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -101,7 +102,8 @@ public class OpcDaServerHandle implements Closeable {
 
     if (hr.intValue() != WinError.S_OK.intValue()) {
       throw new PipeException(
-          "Failed to connect to server, error code: 0x" + Integer.toHexString(hr.intValue()));
+          DataNodePipeMessages.FAILED_TO_CONNECT_TO_SERVER_ERROR_CODE
+              + Integer.toHexString(hr.intValue()));
     }
 
     opcServer = new OpcDaHeader.IOPCServer(ppvServer.getValue());
@@ -126,12 +128,13 @@ public class OpcDaServerHandle implements Closeable {
 
     if (hr2 == WinError.S_OK.intValue()) {
       LOGGER.info(
-          "Create group successfully! Server handle: {}, update rate: {} ms",
+          DataNodePipeMessages.CREATE_GROUP_SUCCESSFULLY_SERVER_HANDLE_UPDATE_RATE,
           phServerGroup.getValue(),
           pRevisedUpdateRate.getValue());
     } else {
       throw new PipeException(
-          "Failed to create group，error code: 0x" + Integer.toHexString(hr.intValue()));
+          DataNodePipeMessages.FAILED_TO_CREATE_GROUP_ERROR_CODE_0X
+              + Integer.toHexString(hr.intValue()));
     }
 
     final IUnknown groupUnknown = new Unknown(phOPCGroup.getValue());
@@ -142,10 +145,13 @@ public class OpcDaServerHandle implements Closeable {
         groupUnknown.QueryInterface(
             new Guid.REFIID(new Guid.GUID.ByReference(IID_IOPCItemMgt).getPointer()), ppvItemMgt);
     if (hr.intValue() == WinError.S_OK.intValue()) {
-      LOGGER.info("Acquire IOPCItemMgt successfully! Interface address: {}", ppvItemMgt.getValue());
+      LOGGER.info(
+          DataNodePipeMessages.ACQUIRE_IOPCITEMMGT_SUCCESSFULLY_INTERFACE_ADDRESS,
+          ppvItemMgt.getValue());
     } else {
       throw new PipeException(
-          "Failed to acquire IOPCItemMgt, error code: 0x" + Integer.toHexString(hr.intValue()));
+          DataNodePipeMessages.FAILED_TO_ACQUIRE_IOPCITEMMGT_ERROR_CODE_0X
+              + Integer.toHexString(hr.intValue()));
     }
 
     itemMgt = new OpcDaHeader.IOPCItemMgt(ppvItemMgt.getValue());
@@ -156,10 +162,13 @@ public class OpcDaServerHandle implements Closeable {
         groupUnknown.QueryInterface(
             new Guid.REFIID(new Guid.GUID.ByReference(IID_IOPCSyncIO).getPointer()), ppvSyncIO);
     if (hr.intValue() == WinError.S_OK.intValue()) {
-      LOGGER.info("Acquire IOPCSyncIO successfully! Interface address: {}", ppvSyncIO.getValue());
+      LOGGER.info(
+          DataNodePipeMessages.ACQUIRE_IOPCSYNCIO_SUCCESSFULLY_INTERFACE_ADDRESS,
+          ppvSyncIO.getValue());
     } else {
       throw new PipeException(
-          "Failed to acquire IOPCSyncIO, error code: 0x" + Integer.toHexString(hr.intValue()));
+          DataNodePipeMessages.FAILED_TO_ACQUIRE_IOPCSYNCIO_ERROR_CODE_0X
+              + Integer.toHexString(hr.intValue()));
     }
     syncIO = new OpcDaHeader.IOPCSyncIO(ppvSyncIO.getValue());
   }
@@ -186,11 +195,11 @@ public class OpcDaServerHandle implements Closeable {
               pclsid.Data4[5],
               pclsid.Data4[6],
               pclsid.Data4[7]);
-      LOGGER.info("Successfully converted progID {} to CLSID: {{}}", progID, clsidStr);
+      LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID, progID, clsidStr);
       return clsidStr;
     } else {
       throw new PipeException(
-          "Error: ProgID is invalid or unregistered, (HRESULT=0x"
+          DataNodePipeMessages.ERROR_PROGID_IS_INVALID_OR_UNREGISTERED_HRESULT
               + Integer.toHexString(hr.intValue())
               + ")");
     }
@@ -489,10 +498,10 @@ public class OpcDaServerHandle implements Closeable {
 
       try {
         if (itemError == WinError.S_OK.intValue()) {
-          LOGGER.debug("Successfully added item {}.", itemId);
+          LOGGER.debug(DataNodePipeMessages.SUCCESSFULLY_ADDED_ITEM, itemId);
         } else {
           throw new PipeException(
-              "Failed to add item "
+              DataNodePipeMessages.FAILED_TO_ADD_ITEM
                   + itemId
                   + ", opc error code: 0x"
                   + Integer.toHexString(itemError));
@@ -503,7 +512,8 @@ public class OpcDaServerHandle implements Closeable {
     }
 
     if (hr != WinError.S_OK.intValue()) {
-      throw new PipeException("Failed to add item, win error code: 0x" + Integer.toHexString(hr));
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_ADD_ITEM_WIN_ERROR_CODE + Integer.toHexString(hr));
     }
 
     final Pointer pItemResults = ppItemResults.getValue();
@@ -538,7 +548,7 @@ public class OpcDaServerHandle implements Closeable {
       try {
         if (itemError != WinError.S_OK.intValue()) {
           throw new PipeException(
-              "Failed to write "
+              DataNodePipeMessages.FAILED_TO_WRITE
                   + itemId
                   + ", value: "
                   + value
@@ -551,7 +561,8 @@ public class OpcDaServerHandle implements Closeable {
     }
 
     if (hr != WinError.S_OK.intValue()) {
-      throw new PipeException("Failed to write, win error code: 0x" + Integer.toHexString(hr));
+      throw new PipeException(
+          DataNodePipeMessages.FAILED_TO_WRITE_WIN_ERROR_CODE_0X + Integer.toHexString(hr));
     }
   }
 
@@ -578,7 +589,8 @@ public class OpcDaServerHandle implements Closeable {
       case OBJECT:
         return Variant.VT_BSTR;
       default:
-        throw new UnSupportedDataTypeException("UnSupported dataType " + dataType);
+        throw new UnSupportedDataTypeException(
+            DataNodePipeMessages.UNSUPPORTED_DATATYPE + dataType);
     }
   }
 
@@ -617,7 +629,7 @@ public class OpcDaServerHandle implements Closeable {
         value.setValue(Variant.VT_BSTR, bstr);
         break;
       default:
-        throw new UnSupportedDataTypeException("UnSupported dataType " + type);
+        throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED_DATATYPE + type);
     }
     return value;
   }

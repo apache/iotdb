@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -195,7 +196,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           int oldLeaderId = currentLeaderMap.get(regionGroupId);
           if (newLeaderId != -1 && !newLeaderId.equals(oldLeaderId)) {
             LOGGER.info(
-                "[LeaderBalancer] Try to change the leader of Region: {} to DataNode: {} ",
+                ManagerMessages.LEADERBALANCER_TRY_TO_CHANGE_THE_LEADER_OF_REGION_TO_DATANODE,
                 regionGroupId,
                 newLeaderId);
             switch (consensusProtocolClass) {
@@ -271,7 +272,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           lastFailedTimeForLeaderBalance.put(
               clientHandler.getRequest(i).getRegionId(), currentTime);
           LOGGER.error(
-              "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}",
+              ManagerMessages.LEADERBALANCER_FAILED_TO_CHANGE_THE_LEADER_OF_REGION_TO_DATANODE,
               clientHandler.getRequest(i).getRegionId(),
               clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
         }
@@ -305,7 +306,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                     final TDataNodeLocation dataNodeLocation =
                         getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
                     if (dataNodeLocation == null) {
-                      LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
+                      LOGGER.warn(ManagerMessages.DATANODELOCATION_IS_NULL_DATANODEID, dataNodeId);
                       return;
                     }
                     invalidateSchemaCacheRequestHandler.putNodeLocation(
@@ -347,12 +348,13 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           TSStatus result = configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
-                "[IoTConsensusV2 Leader Changed] Successfully flush old leader {} for region {}",
+                ManagerMessages
+                    .IOTCONSENSUSV2_LEADER_CHANGED_SUCCESSFULLY_FLUSH_OLD_LEADER_FOR_REGION,
                 oldLeaderId,
                 regionGroupIds);
           } else {
             LOGGER.info(
-                "[IoTConsensusV2 Leader Changed] Failed to flush old leader {} for region {}",
+                ManagerMessages.IOTCONSENSUSV2_LEADER_CHANGED_FAILED_TO_FLUSH_OLD_LEADER_FOR_REGION,
                 oldLeaderId,
                 regionGroupIds);
           }
@@ -435,13 +437,13 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   private void recordRegionPriorityMap(
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentPriorityMap) {
-    LOGGER.info("[RegionPriority] RegionPriorityMap: ");
+    LOGGER.info(ManagerMessages.REGIONPRIORITY_REGIONPRIORITYMAP);
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : differentPriorityMap.entrySet()) {
       if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
         LOGGER.info(
-            "[RegionPriority]\t {}: {}->{}",
+            ManagerMessages.REGIONPRIORITY,
             regionPriorityEntry.getKey(),
             regionPriorityEntry.getValue().getLeft() == null
                 ? "null"
@@ -493,7 +495,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   public void waitForPriorityUpdate(List<TConsensusGroupId> regionGroupIds) {
     long startTime = System.currentTimeMillis();
     LOGGER.info(
-        "[RegionPriority] Wait for Region priority update of RegionGroups: {}", regionGroupIds);
+        ManagerMessages.REGIONPRIORITY_WAIT_FOR_REGION_PRIORITY_UPDATE_OF_REGIONGROUPS,
+        regionGroupIds);
     while (System.currentTimeMillis() - startTime <= REGION_PRIORITY_WAITING_TIMEOUT) {
       AtomicBoolean allRegionPriorityCalculated = new AtomicBoolean(true);
       priorityMapLock.readLock().lock();
@@ -509,7 +512,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
       }
       if (allRegionPriorityCalculated.get()) {
         LOGGER.info(
-            "[RegionPriority] The routing priority of RegionGroups: {} is calculated.",
+            ManagerMessages.REGIONPRIORITY_THE_ROUTING_PRIORITY_OF_REGIONGROUPS_IS_CALCULATED,
             regionGroupIds);
         return;
       }
@@ -517,13 +520,13 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         TimeUnit.MILLISECONDS.sleep(WAIT_PRIORITY_INTERVAL);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupt when wait for calculating Region priority", e);
+        LOGGER.warn(ManagerMessages.INTERRUPT_WHEN_WAIT_FOR_CALCULATING_REGION_PRIORITY, e);
         return;
       }
     }
 
     LOGGER.warn(
-        "[RegionPriority] The routing priority of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
+        ManagerMessages.REGIONPRIORITY_THE_ROUTING_PRIORITY_OF_REGIONGROUPS_IS_NOT_DETERMINED_AFTER,
         regionGroupIds);
   }
 

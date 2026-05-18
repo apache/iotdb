@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
@@ -113,7 +114,7 @@ public final class AstUtil {
       throw new SemanticException(
           String.format("Cannot insert identifier %s, please use string literal", expression));
     }
-    throw new SemanticException("Unsupported expression: " + expression);
+    throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
   }
 
   public static long expressionToTimestamp(Expression expression, ZoneId zoneId) {
@@ -121,13 +122,13 @@ public final class AstUtil {
     if (expression instanceof LongLiteral) {
       timestamp = ((LongLiteral) expression).getParsedValue();
     } else if (expression instanceof NullLiteral) {
-      throw new SemanticException("Timestamp cannot be null");
+      throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
     } else if (expression instanceof StringLiteral) {
       timestamp =
           parseDateTimeFormat(
               ((StringLiteral) expression).getValue(), CommonDateTimeUtils.currentTime(), zoneId);
     } else {
-      throw new SemanticException("Unsupported expression: " + expression);
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression);
     }
     return timestamp;
   }

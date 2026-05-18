@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -106,7 +107,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
-        LOGGER.warn("Cannot increase reference count for event: {}, ignore it in batch.", event);
+        LOGGER.warn(DataNodePipeMessages.CANNOT_INCREASE_REFERENCE_COUNT_FOR_EVENT_IGNORE, event);
       }
     }
 

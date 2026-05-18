@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -466,7 +467,8 @@ public class JoinNode extends TwoChildProcessNode {
         case LESS_THAN_OR_EQUAL:
           return false;
         default:
-          throw new IllegalArgumentException("Invalid operator type: " + operator);
+          throw new IllegalArgumentException(
+              String.format(QueryMessages.INVALID_OPERATOR_TYPE, operator));
       }
     }
 
@@ -526,7 +528,7 @@ public class JoinNode extends TwoChildProcessNode {
           return LEFT;
         default:
       }
-      throw new IllegalArgumentException("Unsupported join type: " + this);
+      throw new IllegalArgumentException(String.format(QueryMessages.UNSUPPORTED_JOIN_TYPE, this));
     }
   }
 }
