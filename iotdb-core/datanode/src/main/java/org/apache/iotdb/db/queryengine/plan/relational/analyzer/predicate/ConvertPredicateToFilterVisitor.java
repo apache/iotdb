@@ -48,6 +48,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.DoubleMath;
@@ -377,7 +378,7 @@ public class ConvertPredicateToFilterVisitor
 
   @Override
   public Filter visitIsNullPredicate(IsNullPredicate node, Context context) {
-    throw new IllegalArgumentException("IS NULL cannot be pushed down");
+    throw new IllegalArgumentException(DataNodeQueryMessages.IS_NULL_CANNOT_BE_PUSHED_DOWN);
   }
 
   @Override
@@ -471,22 +472,26 @@ public class ConvertPredicateToFilterVisitor
 
   @Override
   public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN);
   }
 
   @Override
   public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_CASE_WHEN);
   }
 
   @Override
   public Filter visitIfExpression(IfExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support IF");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_IF);
   }
 
   @Override
   public Filter visitNullIfExpression(NullIfExpression node, Context context) {
-    throw new UnsupportedOperationException("Filter push down does not support NULLIF");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.FILTER_PUSH_DOWN_DOES_NOT_SUPPORT_NULLIF);
   }
 
   @Override
@@ -584,7 +589,8 @@ public class ConvertPredicateToFilterVisitor
     } else if (expression instanceof FloatLiteral) {
       return ((FloatLiteral) expression).getValue();
     } else {
-      throw new IllegalArgumentException("expression should be numeric, actual is " + expression);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXPRESSION_SHOULD_BE_NUMERIC_ACTUAL_IS + expression);
     }
   }
 

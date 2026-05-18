@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -163,7 +164,8 @@ public class StatementConstructionHandler {
           columns[columnIndex] = binaryValues;
           break;
         default:
-          throw new IllegalArgumentException("Invalid input: " + rawDataType.get(columnIndex));
+          throw new IllegalArgumentException(
+              RestMessages.INVALID_INPUT + rawDataType.get(columnIndex));
       }
     }
 

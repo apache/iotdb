@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.agent.plugin.service;
 
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -53,7 +54,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
         return readTextFromFileUnderTemporaryRoot(md5FilePath).equals(pipePluginMeta.getJarMD5());
       } catch (IOException e) {
         // If meet error when reading md5 from txt, we need to compute it again
-        LOGGER.error("Failed to read md5 from txt file for pipe plugin {}", pluginName, e);
+        LOGGER.error(PipeMessages.FAILED_TO_READ_MD5_FOR_PIPE_PLUGIN, pluginName, e);
       }
     }
 
@@ -67,10 +68,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       return md5.equals(pipePluginMeta.getJarMD5());
     } catch (IOException e) {
       String errorMessage =
-          String.format(
-              "Failed to registered function %s, because "
-                  + "error occurred when trying to compute md5 of jar file for function %s ",
-              pluginName, pluginName);
+          String.format(PipeMessages.FAILED_TO_COMPUTE_MD5, pluginName, pluginName);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -98,7 +99,8 @@ public class Analyzer {
       } else if (session.getDatabaseName().isPresent()) {
         analysis.setDatabaseName(session.getDatabaseName().get());
       } else {
-        throw new SemanticException("database is not specified for insert:" + statement);
+        throw new SemanticException(
+            DataNodeQueryMessages.DATABASE_IS_NOT_SPECIFIED_FOR_INSERT + statement);
       }
     } else if (session.getDatabaseName().isPresent()) {
       analysis.setDatabaseName(session.getDatabaseName().get());

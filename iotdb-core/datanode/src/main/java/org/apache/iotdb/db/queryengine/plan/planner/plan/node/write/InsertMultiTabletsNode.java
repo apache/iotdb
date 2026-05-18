@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -103,7 +104,8 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
-    throw new UnsupportedOperationException("InsertMultiTabletsNode not support merge");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.INSERTMULTITABLETSNODE_NOT_SUPPORT_MERGE);
   }
 
   public InsertMultiTabletsNode(
@@ -187,7 +189,7 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override

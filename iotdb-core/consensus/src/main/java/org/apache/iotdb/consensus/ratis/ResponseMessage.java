@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.protocol.Message;
@@ -59,7 +60,7 @@ class ResponseMessage implements Message {
           try {
             serializedData.set(ByteString.copyFrom(Utils.serializeTSStatus(status)));
           } catch (TException e) {
-            logger.warn("serialize TSStatus failed {}", status);
+            logger.warn(RatisMessages.SERIALIZE_TSSTATUS_FAILED, status);
           }
         }
       }

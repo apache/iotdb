@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -121,7 +122,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("Get Exception when save user {}'s roles", user.getName(), e);
+      LOGGER.warn(AuthMessages.SAVE_USER_ROLES_ERROR, user.getName(), e);
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
@@ -231,7 +232,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     }
     if ((uRoleProfile.exists() && !uRoleProfile.delete())
         || (backProfile.exists() && !backProfile.delete())) {
-      throw new IOException(String.format("Catch error when delete %s 's role", username));
+      throw new IOException(String.format(AuthMessages.CATCH_ERROR_DELETE_USER_ROLE, username));
     }
     return true;
   }
@@ -261,7 +262,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     try {
       org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
       if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
-        LOGGER.error("Failed to load user folder snapshot and rollback.");
+        LOGGER.error(AuthMessages.FAILED_TO_LOAD_USER_SNAPSHOT);
         // rollback if failed to copy
         FileUtils.deleteFileOrDirectory(userFolder);
         org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);

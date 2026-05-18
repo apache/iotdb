@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
@@ -267,7 +268,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         return Optional.of(false);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Error while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_WHILE_SCANNING_THE_FILE, e);
     }
   }
 
@@ -383,7 +384,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 
@@ -448,7 +450,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 

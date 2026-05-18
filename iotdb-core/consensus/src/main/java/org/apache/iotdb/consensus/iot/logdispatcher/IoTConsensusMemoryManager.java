@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +50,7 @@ public class IoTConsensusMemoryManager {
       if (reserved) {
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Reserving {} bytes for request {} succeeds, current total usage {}",
+              IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_SUCCEEDS,
               request.getMemorySize(),
               request.getSearchIndex(),
               memoryBlock.getUsedMemoryInBytes());
@@ -58,7 +59,7 @@ public class IoTConsensusMemoryManager {
         request.decRef();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Reserving {} bytes for request {} fails, current total usage {}",
+              IoTConsensusMessages.RESERVING_BYTES_FOR_REQUEST_FAILS,
               request.getMemorySize(),
               request.getSearchIndex(),
               memoryBlock.getUsedMemoryInBytes());
@@ -66,9 +67,7 @@ public class IoTConsensusMemoryManager {
       }
       return reserved;
     } else if (logger.isDebugEnabled()) {
-      logger.debug(
-          "Skip memory reservation for {} because its ref count is not 0",
-          request.getSearchIndex());
+      logger.debug(IoTConsensusMessages.SKIP_MEMORY_RESERVATION, request.getSearchIndex());
     }
     return true;
   }
@@ -77,14 +76,14 @@ public class IoTConsensusMemoryManager {
     boolean reserved = reserve(batch.getMemorySize(), false);
     if (reserved && logger.isDebugEnabled()) {
       logger.debug(
-          "Reserving {} bytes for batch {}-{} succeeds, current total usage {}",
+          IoTConsensusMessages.RESERVING_BYTES_FOR_BATCH_SUCCEEDS,
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),
           memoryBlock.getUsedMemoryInBytes());
     } else if (logger.isDebugEnabled()) {
       logger.debug(
-          "Reserving {} bytes for batch {}-{} fails, current total usage {}",
+          IoTConsensusMessages.RESERVING_BYTES_FOR_BATCH_FAILS,
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),
@@ -114,7 +113,7 @@ public class IoTConsensusMemoryManager {
       free(request.getMemorySize(), true);
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "Freed {} bytes for request {}, current total usage {}",
+            IoTConsensusMessages.FREED_BYTES_FOR_REQUEST,
             request.getMemorySize(),
             request.getSearchIndex(),
             memoryBlock.getUsedMemoryInBytes());
@@ -126,7 +125,7 @@ public class IoTConsensusMemoryManager {
     free(batch.getMemorySize(), false);
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Freed {} bytes for batch {}-{}, current total usage {}",
+          IoTConsensusMessages.FREED_BYTES_FOR_BATCH,
           batch.getMemorySize(),
           batch.getStartIndex(),
           batch.getEndIndex(),
@@ -142,7 +141,7 @@ public class IoTConsensusMemoryManager {
       syncMemorySizeInByte.addAndGet(-size);
     }
     logger.debug(
-        "{} free {} bytes, total memory size: {} bytes.",
+        IoTConsensusMessages.FREE_MEMORY,
         Thread.currentThread().getName(),
         size,
         currentUsedMemory);

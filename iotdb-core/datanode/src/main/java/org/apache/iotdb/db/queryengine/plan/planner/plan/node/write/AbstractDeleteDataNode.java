@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import java.nio.ByteBuffer;
@@ -66,7 +67,7 @@ public abstract class AbstractDeleteDataNode extends SearchNode implements WALEn
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("Not supported.");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.NOT_SUPPORTED);
   }
 
   @Override

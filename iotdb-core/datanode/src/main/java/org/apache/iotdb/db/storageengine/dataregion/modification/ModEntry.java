@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -161,7 +162,7 @@ public abstract class ModEntry
           entry = new TableDeletionEntry();
           break;
         default:
-          throw new IllegalArgumentException("Unsupported mod type: " + this);
+          throw new IllegalArgumentException(StorageEngineMessages.UNSUPPORTED_MOD_TYPE + this);
       }
       return entry;
     }
@@ -174,7 +175,7 @@ public abstract class ModEntry
         case 0x01:
           return TREE_DELETION;
         default:
-          throw new IllegalArgumentException("Unknown ModType: " + typeNum);
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_MOD_TYPE + typeNum);
       }
     }
 
@@ -192,7 +193,7 @@ public abstract class ModEntry
         case 0x01:
           return TREE_DELETION;
         default:
-          throw new IllegalArgumentException("Unknown ModType: " + typeNum);
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_MOD_TYPE + typeNum);
       }
     }
   }

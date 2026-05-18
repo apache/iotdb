@@ -16,6 +16,8 @@
  */
 package org.apache.iotdb.commons.external.collections4.map;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -58,7 +60,7 @@ public abstract class AbstractMapDecorator<K, V> extends AbstractIterableMap<K, 
    */
   protected AbstractMapDecorator(final Map<K, V> map) {
     if (map == null) {
-      throw new NullPointerException("Map must not be null.");
+      throw new NullPointerException(CommonMessages.MAP_MUST_NOT_BE_NULL);
     }
     this.map = map;
   }

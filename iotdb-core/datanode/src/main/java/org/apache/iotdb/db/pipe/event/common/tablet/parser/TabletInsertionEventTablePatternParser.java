@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -103,7 +104,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
   @Override
   public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn("TablePatternParser does not support row by row processing");
+      LOGGER.warn(DataNodePipeMessages.TABLEPATTERNPARSER_DOES_NOT_SUPPORT_ROW_BY_ROW);
     }
     return Collections.emptyList();
   }
@@ -111,7 +112,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
   @Override
   public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn("TablePatternParser does not support tablet processing");
+      LOGGER.warn(DataNodePipeMessages.TABLEPATTERNPARSER_DOES_NOT_SUPPORT_TABLET_PROCESSING);
     }
     return Collections.emptyList();
   }
@@ -120,7 +121,7 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
   public List<TabletInsertionEvent> processTabletWithCollect(
       BiConsumer<Tablet, TabletCollector> consumer) {
     if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn("TablePatternParser does not support tablet processing with collect");
+      LOGGER.warn(DataNodePipeMessages.TABLEPATTERNPARSER_DOES_NOT_SUPPORT_TABLET_PROCESSING_WITH);
     }
     return Collections.emptyList();
   }

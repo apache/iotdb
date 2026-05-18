@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
@@ -59,7 +60,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
   }
 
   protected String getNoSuchEntityError() {
-    return "No such role %s";
+    return AuthMessages.NO_SUCH_ROLE_FMT;
   }
 
   protected BasicRoleManager() {
@@ -146,7 +147,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
           }
           break;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
+          LOGGER.warn(AuthMessages.NOT_SUPPORT_MODEL_TYPE, privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entityName);
@@ -209,7 +210,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
           role.revokeSysPrivilege(privilegeType);
           return;
         default:
-          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
+          LOGGER.warn(AuthMessages.NOT_SUPPORT_MODEL_TYPE, privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entityName);
@@ -223,7 +224,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
       try {
         entityMap.put(entityName, accessor.loadEntity(entityName));
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load role {}", entityName);
+        LOGGER.warn(AuthMessages.LOAD_ROLE_EXCEPTION, entityName);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }

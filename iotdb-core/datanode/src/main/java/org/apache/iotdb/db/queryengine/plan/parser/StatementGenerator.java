@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -699,7 +700,7 @@ public class StatementGenerator {
       }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
-        throw new MetadataException("Align designation incorrect at: " + prefix);
+        throw new MetadataException(DataNodeQueryMessages.ALIGN_DESIGNATION_INCORRECT_AT + prefix);
       }
 
       if (isAlign && !alignedPrefix.containsKey(prefix)) {

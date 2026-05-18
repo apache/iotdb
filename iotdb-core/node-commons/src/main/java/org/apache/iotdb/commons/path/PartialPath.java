@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.PathMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -899,11 +901,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly
   public String getMeasurementAlias() {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public void setMeasurementAlias(String measurementAlias) {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public boolean isMeasurementAliasExists() {
@@ -912,15 +914,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   public String getFullPathWithAlias() {
-    throw new RuntimeException("Only MeasurementPath support alias");
+    throw new RuntimeException(PathMessages.ONLY_MEASUREMENT_PATH_SUPPORT_ALIAS);
   }
 
   public IMeasurementSchema getMeasurementSchema() throws MetadataException {
-    throw new MetadataException("This path doesn't represent a measurement");
+    throw new MetadataException(CommonMessages.PATH_NOT_MEASUREMENT);
   }
 
   public TSDataType getSeriesType() throws UnsupportedOperationException {
-    throw new UnsupportedOperationException("This path doesn't represent a measurement");
+    throw new UnsupportedOperationException(CommonMessages.PATH_NOT_MEASUREMENT);
   }
 
   @Override
@@ -993,7 +995,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       try {
         ret.add(new PartialPath(s));
       } catch (IllegalPathException e) {
-        logger.warn("Encountered an illegal path {}", s);
+        logger.warn(PathMessages.ENCOUNTERED_ILLEGAL_PATH, s);
       }
     }
     return ret;

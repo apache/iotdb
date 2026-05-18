@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
@@ -74,7 +75,7 @@ public class PipeHeartbeatScheduler {
               HEARTBEAT_INTERVAL_SECONDS,
               HEARTBEAT_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("PipeHeartbeat is started successfully.");
+      LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -85,7 +86,7 @@ public class PipeHeartbeatScheduler {
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
       LOGGER.warn(
-          "PipeTaskCoordinatorLock is held by another thread, skip this round of heartbeat to avoid procedure and rpc accumulation as much as possible");
+          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
       return;
     }
 
@@ -93,7 +94,7 @@ public class PipeHeartbeatScheduler {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
-    LOGGER.debug("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
+    LOGGER.debug(ManagerMessages.COLLECTING_PIPE_HEARTBEAT_FROM_DATA_NODES, request.heartbeatId);
 
     final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
         new DataNodeAsyncRequestContext<>(
@@ -129,7 +130,7 @@ public class PipeHeartbeatScheduler {
               configNodeResp.getPipeRemainingEventCountList(),
               configNodeResp.getPipeRemainingTimeList()));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK, e);
     }
   }
 
@@ -137,7 +138,7 @@ public class PipeHeartbeatScheduler {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
-      LOGGER.info("PipeHeartbeat is stopped successfully.");
+      LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STOPPED_SUCCESSFULLY);
     }
   }
 

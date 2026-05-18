@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -121,7 +122,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
           break;
         default:
           throw new UnsupportedOperationException(
-              "Unsupported column type: " + schema.getColumnCategory());
+              DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
         builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));

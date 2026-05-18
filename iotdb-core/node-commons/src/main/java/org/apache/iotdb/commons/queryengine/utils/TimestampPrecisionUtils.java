@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.queryengine.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import java.util.concurrent.TimeUnit;
 
@@ -52,7 +53,7 @@ public class TimestampPrecisionUtils {
       // this case will never reach
       default:
         throw new UnsupportedOperationException(
-            "not supported time_precision: " + TIMESTAMP_PRECISION);
+            String.format(QueryMessages.UNSUPPORTED_TIME_PRECISION, TIMESTAMP_PRECISION));
     }
   }
 
@@ -72,23 +73,13 @@ public class TimestampPrecisionUtils {
       case "ms":
         if (time > 10_000_000_000_000L || time < -10_000_000_000_000L) {
           throw new SemanticException(
-              String.format(
-                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
-                      + "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct."
-                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
-                  TIMESTAMP_PRECISION, time));
+              String.format(QueryMessages.TIMESTAMP_UNEXPECTEDLY_LARGE, TIMESTAMP_PRECISION, time));
         }
         break;
       case "us":
         if (time > 10_000_000_000_000_000L || time < -10_000_000_000_000L) {
           throw new SemanticException(
-              String.format(
-                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
-                      + "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct."
-                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
-                  TIMESTAMP_PRECISION, time));
+              String.format(QueryMessages.TIMESTAMP_UNEXPECTEDLY_LARGE, TIMESTAMP_PRECISION, time));
         }
         break;
       // Long.MaxValue is 19 digits, therefore no problem when the precision is ns.

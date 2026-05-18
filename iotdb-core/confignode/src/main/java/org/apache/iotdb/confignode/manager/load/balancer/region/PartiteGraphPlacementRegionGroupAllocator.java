@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator.DataNodeEntry;
 
 import org.apache.tsfile.utils.Pair;
@@ -124,7 +125,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     // TODO: Implement this method
     throw new UnsupportedOperationException(
-        "The removeNodeReplicaSelect method of PartiteGraphPlacementRegionGroupAllocator is yet to be implemented.");
+        ManagerMessages
+            .THE_REMOVENODEREPLICASELECT_METHOD_OF_PARTITEGRAPHPLACEMENTREGIONGROUPALLOCATOR);
   }
 
   private void prepare(

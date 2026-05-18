@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 
@@ -81,9 +82,7 @@ public class PagePool {
             cacheFull.await();
           }
         } catch (InterruptedException e) {
-          logger.warn(
-              "Interrupted during page cache eviction. Consider increasing cache size, "
-                  + "reducing concurrency, or extending timeout");
+          logger.warn(DataNodeSchemaMessages.PAGE_CACHE_EVICTION_INTERRUPTED);
         }
       }
     } finally {

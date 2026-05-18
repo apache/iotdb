@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropE
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -71,7 +72,7 @@ public class ExternalServiceManager {
                       ServiceInfo.ServiceType.USER_DEFINED)));
     } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while creating Service {} on DataNode {}: ",
+          ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_CREATING_SERVICE_ON_DATANODE,
           req.getServiceName(),
           req.getDataNodeId(),
           e);
@@ -89,7 +90,7 @@ public class ExternalServiceManager {
           .write(new StartExternalServicePlan(dataNodeId, serviceName));
     } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while starting Service {} on DataNode {}: ",
+          ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_STARTING_SERVICE_ON_DATANODE,
           serviceName,
           dataNodeId,
           e);
@@ -107,7 +108,7 @@ public class ExternalServiceManager {
           .write(new StopExternalServicePlan(dataNodeId, serviceName));
     } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while stopping Service {} on DataNode {}: ",
+          ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_STOPPING_SERVICE_ON_DATANODE,
           serviceName,
           dataNodeId,
           e);
@@ -125,7 +126,7 @@ public class ExternalServiceManager {
           .write(new DropExternalServicePlan(dataNodeId, serviceName));
     } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while dropping Service {} on DataNode {}: ",
+          ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_DROPPING_SERVICE_ON_DATANODE,
           serviceName,
           dataNodeId,
           e);
@@ -180,7 +181,7 @@ public class ExternalServiceManager {
                   response.getServiceInfoEntryList().addAll(builtInResp.getExternalServiceInfos()));
       return response.convertToRpcShowExternalServiceResp();
     } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while showing Service: ", e);
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_SHOWING_SERVICE, e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -199,7 +200,7 @@ public class ExternalServiceManager {
                   .read(new ShowExternalServicePlan(Collections.singleton(dataNodeId)));
       return response.getServiceInfoEntryList();
     } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while getting user-defined Service: ", e);
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_GETTING_USER_DEFINED_SERVICE, e);
       return Collections.emptyList();
     }
   }

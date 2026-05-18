@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
@@ -66,21 +67,21 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
 
     register(this::scanSafely);
-    LOGGER.info("Active load dir scanner periodical job registered");
+    LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_DIR_SCANNER_REGISTERED);
   }
 
   private void scanSafely() {
     try {
       scan();
     } catch (final Exception e) {
-      LOGGER.warn("Error occurred during active load dir scanning.", e);
+      LOGGER.warn(StorageEngineMessages.ERROR_ACTIVE_LOAD_DIR_SCANNING, e);
     }
   }
 
   private void scan() throws IOException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       if (!isReadOnlyLogPrinted.get()) {
-        LOGGER.warn("Current system is read-only mode. Skip active load dir scanning.");
+        LOGGER.warn(StorageEngineMessages.SYSTEM_READ_ONLY_SKIP_ACTIVE_SCAN);
         isReadOnlyLogPrinted.set(true);
       }
       return;
@@ -132,9 +133,9 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                         isGeneratedByPipe);
                   });
         } catch (UncheckedIOException e) {
-          LOGGER.debug("The file has been deleted. Ignore this exception.");
+          LOGGER.debug(StorageEngineMessages.FILE_DELETED_IGNORE_EXCEPTION);
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
+          LOGGER.warn(StorageEngineMessages.EXCEPTION_SCANNING_DIR, listeningDir, e);
         }
       }
     }
@@ -225,7 +226,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     try {
       FileUtils.forceMkdir(new File(dirPath));
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during creating directory {} for active load.", dirPath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_CREATING_DIR_FOR_ACTIVE_LOAD, dirPath, e);
     }
   }
 
@@ -248,7 +249,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                 try {
                   fileSizeInDir[0] += file.toFile().length();
                 } catch (Exception e) {
-                  LOGGER.debug("Failed to count active listening dirs file number.", e);
+                  LOGGER.debug(StorageEngineMessages.FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER, e);
                 }
                 return FileVisitResult.CONTINUE;
               }
@@ -267,7 +268,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           .updateTotalPendingFileCounter(totalFileCount);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalPendingFileCounter(totalFileSize);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count active listening dirs file number.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_ACTIVE_DIRS_FILE_NUMBER, e);
     }
 
     return totalFileCount;
