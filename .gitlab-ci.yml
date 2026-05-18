@@ -72,13 +72,23 @@ before_script:
   # - 'rm -rf /root/.m2/repository/org/apache/ratis || true'
   - 'grep -rlZ "\u0000" ~/.m2 | xargs -0 -I {} rm -fv {} || true'
 
-unit-test:
+ut-datanode:
   stage: test
   tags:
     - timechodb
-
   script:
-    - 'mvn clean install -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean test -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=16 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+
+ut-others:
+  stage: test
+  tags:
+    - timechodb
+  script:
+    - 'mvn install -DskipTests -pl iotdb-core/datanode -am -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+    - 'mvn test -pl "!iotdb-core/datanode" -DforkCount=16 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
   interruptible: true
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
@@ -120,12 +130,25 @@ integration-test-1c3d:
   stage: test
   tags:
     - timechodb
+  parallel: 2
   script:
-    - 'mvn verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 -pl integration-test -am -PClusterIT -s $MAVEN_SETTINGS_XML'
+    # Step 1: 按 CI_NODE_INDEX / CI_NODE_TOTAL 把 ClusterIT 类切成本 shard 的列表
+    - |
+      set -e
+      echo "=== sharding ClusterIT for shard $CI_NODE_INDEX/$CI_NODE_TOTAL ==="
+      grep -rlE '@Category[^/]*\bClusterIT\.class' integration-test/src/test --include='*.java' \
+        | sed 's|.*/||;s|\.java$||' \
+        | sort \
+        | awk -v n="$CI_NODE_TOTAL" -v i="$CI_NODE_INDEX" 'NR % n == (i - 1) % n' \
+        | paste -sd ',' - > shard_classes.txt
+      echo "本 shard 类数: $(tr ',' '\n' < shard_classes.txt | wc -l)"
+      echo "前 3 个类: $(tr ',' '\n' < shard_classes.txt | head -3)"
+    # Step 2: 跑该 shard 的 IT
+    - 'mvn verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 -pl integration-test -am -PClusterIT -Dit.test="$(cat shard_classes.txt)" -DfailIfNoTests=false -Dfailsafe.failIfNoSpecifiedTests=false -s $MAVEN_SETTINGS_XML'
   interruptible: true
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
-    
+
   artifacts:
     when: on_failure
     name: 1c3d-log
@@ -245,7 +268,7 @@ pipe-single:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT1 -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT1 -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -267,7 +290,7 @@ pipe-dual-tree-auto-basic:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeAutoBasic -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeAutoBasic -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -289,7 +312,7 @@ pipe-dual-tree-auto-enhanced:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeAutoEnhanced -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeAutoEnhanced -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -311,7 +334,7 @@ pipe-dual-tree-manual:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeManual -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTreeManual -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -333,7 +356,7 @@ pipe-dual-table-manual-basic:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTableManualBasic -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTableManualBasic -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -355,7 +378,7 @@ pipe-dual-table-manual-enhanced:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTableManualEnhanced -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2DualTableManualEnhanced -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
@@ -377,7 +400,7 @@ pipe-subscription:
   tags:
     - timechodb
   script:
-    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2SubscriptionTreeArchVerification -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=5 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 -DClusterConfigurations=$CLUSTER1,$CLUSTER2 -pl integration-test -am -PMultiClusterIT2SubscriptionTreeArchVerification -s $MAVEN_SETTINGS_XML'
   parallel:
     matrix:
       - CLUSTER1: [HighPerformanceMode]
