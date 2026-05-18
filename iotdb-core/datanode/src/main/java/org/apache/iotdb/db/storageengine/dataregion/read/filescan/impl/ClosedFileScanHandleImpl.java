@@ -87,10 +87,18 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         curFileModEntries != null
             ? curFileModEntries
             : queryContext.loadAllModificationsFromDisk(tsFileResource);
-    List<ModEntry> modifications = queryContext.getPathModifications(curFileModEntries, deviceID);
     List<TimeRange> timeRangeList =
-        modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
-    return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
+        getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
+    return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
+  }
+
+  private static List<TimeRange> getMergedTimeRanges(List<ModEntry> modifications) {
+    List<TimeRange> timeRangeList = new ArrayList<>(modifications.size());
+    for (ModEntry modification : modifications) {
+      timeRangeList.add(modification.getTimeRange());
+    }
+    TimeRange.sortAndMerge(timeRangeList);
+    return timeRangeList;
   }
 
   @Override
@@ -107,9 +115,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
     List<ModEntry> modifications =
         queryContext.getPathModifications(curFileModEntries, deviceID, timeSeriesName);
-    List<TimeRange> timeRangeList =
-        modifications.stream().map(ModEntry::getTimeRange).collect(Collectors.toList());
-    TimeRange.sortAndMerge(timeRangeList);
+    List<TimeRange> timeRangeList = getMergedTimeRanges(modifications);
     deviceToModifications
         .computeIfAbsent(deviceID, k -> new HashMap<>())
         .put(timeSeriesName, timeRangeList);

@@ -1116,12 +1116,14 @@ public class StorageEngine implements IService {
 
   public void getDiskSizeByDataRegion(
       Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
-    dataRegionMap.forEach(
-        (dataRegionId, dataRegion) -> {
-          if (dataRegionIds.contains(dataRegionId.getId())) {
-            dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
-          }
-        });
+    final java.util.Collection<Integer> targetDataRegionIds =
+        dataRegionIds.size() > 1 ? new java.util.HashSet<>(dataRegionIds) : dataRegionIds;
+    for (Integer dataRegionId : targetDataRegionIds) {
+      final DataRegion dataRegion = dataRegionMap.get(new DataRegionId(dataRegionId));
+      if (dataRegion != null) {
+        dataRegionDisk.put(dataRegionId, dataRegion.countRegionDiskSize());
+      }
+    }
   }
 
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {

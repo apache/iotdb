@@ -32,15 +32,14 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,9 +64,9 @@ public class QueryDataSetUtils {
     // indicate whether it is a null
     int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    PublicBAOS[] byteArrayOutputStreams = new PublicBAOS[columnNumWithTime];
     for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      byteArrayOutputStreams[i] = new PublicBAOS();
       dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
 
@@ -117,9 +116,9 @@ public class QueryDataSetUtils {
     int columnNum = 1;
     int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
-    ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
+    PublicBAOS[] byteArrayOutputStreams = new PublicBAOS[columnNumWithTime];
     for (int i = 0; i < columnNumWithTime; i++) {
-      byteArrayOutputStreams[i] = new ByteArrayOutputStream();
+      byteArrayOutputStreams[i] = new PublicBAOS();
       dataOutputStreams[i] = new DataOutputStream(byteArrayOutputStreams[i]);
     }
 
@@ -277,27 +276,14 @@ public class QueryDataSetUtils {
     }
 
     // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
+    tsQueryDataSet.setTime(wrapBuffer(byteArrayOutputStreams[0]));
 
     // calculate the bitmap buffer size
-    int bitmapOccupation = (rowCount + 7) / 8;
-
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
+    List<ByteBuffer> bitmapList = new ArrayList<>(columnNum);
+    List<ByteBuffer> valueList = new ArrayList<>(columnNum);
     for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
-      valueBuffer.flip();
-      valueList.add(valueBuffer);
-
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
-      bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
+      valueList.add(wrapBuffer(byteArrayOutputStreams[i]));
+      bitmapList.add(wrapBuffer(byteArrayOutputStreams[i + 1]));
     }
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
@@ -572,38 +558,28 @@ public class QueryDataSetUtils {
   }
 
   private static void fillTimeColumn(
-      int rowCount, ByteArrayOutputStream[] byteArrayOutputStreams, TSQueryDataSet tsQueryDataSet) {
-    // calculate the time buffer size
-    int timeOccupation = rowCount * 8;
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeOccupation);
-    timeBuffer.put(byteArrayOutputStreams[0].toByteArray());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
+      int rowCount, PublicBAOS[] byteArrayOutputStreams, TSQueryDataSet tsQueryDataSet) {
+    tsQueryDataSet.setTime(wrapBuffer(byteArrayOutputStreams[0]));
   }
 
   private static void fillValueColumnsAndBitMaps(
       int rowCount,
-      ByteArrayOutputStream[] byteArrayOutputStreams,
+      PublicBAOS[] byteArrayOutputStreams,
       int[] valueOccupation,
       TSQueryDataSet tsQueryDataSet) {
-    // calculate the bitmap buffer size
-    int bitmapOccupation = (rowCount + 7) / 8;
-
-    List<ByteBuffer> bitmapList = new LinkedList<>();
-    List<ByteBuffer> valueList = new LinkedList<>();
+    int columnNum = valueOccupation.length;
+    List<ByteBuffer> bitmapList = new ArrayList<>(columnNum);
+    List<ByteBuffer> valueList = new ArrayList<>(columnNum);
     for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {
-      ByteBuffer valueBuffer = ByteBuffer.allocate(valueOccupation[(i - 1) / 2]);
-      valueBuffer.put(byteArrayOutputStreams[i].toByteArray());
-      valueBuffer.flip();
-      valueList.add(valueBuffer);
-
-      ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapOccupation);
-      bitmapBuffer.put(byteArrayOutputStreams[i + 1].toByteArray());
-      bitmapBuffer.flip();
-      bitmapList.add(bitmapBuffer);
+      valueList.add(wrapBuffer(byteArrayOutputStreams[i]));
+      bitmapList.add(wrapBuffer(byteArrayOutputStreams[i + 1]));
     }
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
+  }
+
+  private static ByteBuffer wrapBuffer(PublicBAOS outputStream) {
+    return ByteBuffer.wrap(outputStream.getBuf(), 0, outputStream.size());
   }
 
   /**
@@ -668,9 +644,7 @@ public class QueryDataSetUtils {
       boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
       if (hasBitMap) {
         byte[] bytes = new byte[BitMap.getSizeOfBytes(size)];
-        for (int j = 0; j < bytes.length; j++) {
-          bytes[j] = buffer.get();
-        }
+        buffer.get(bytes);
         bitMaps[i] = new BitMap(size, bytes);
       }
     }
@@ -687,9 +661,7 @@ public class QueryDataSetUtils {
       boolean hasBitMap = BytesUtils.byteToBool(stream.readByte());
       if (hasBitMap) {
         byte[] bytes = new byte[BitMap.getSizeOfBytes(size)];
-        for (int j = 0; j < bytes.length; j++) {
-          bytes[j] = stream.readByte();
-        }
+        stream.readFully(bytes);
         bitMaps[i] = new BitMap(size, bytes);
       }
     }
@@ -865,11 +837,7 @@ public class QueryDataSetUtils {
     for (int index = 0; index < size; index++) {
       int binarySize = stream.readInt();
       byte[] binaryValue = new byte[binarySize];
-      int actualReadSize = stream.read(binaryValue);
-      if (actualReadSize != binarySize) {
-        throw new IllegalStateException(
-            "Expect to read " + binarySize + " bytes, actually read " + actualReadSize + "bytes.");
-      }
+      stream.readFully(binaryValue);
       binaryValues[index] = new Binary(binaryValue);
     }
     values[columnIndex] = binaryValues;
