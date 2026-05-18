@@ -19,8 +19,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.ainode.it.AINodeCallInferenceIT.callInferenceTest;
-import static org.apache.iotdb.ainode.it.AINodeForecastIT.forecastTableFunctionTest;
+import static org.apache.iotdb.ainode.it.AINodeSharedClusterIT.callInferenceTest;
+import static org.apache.iotdb.ainode.it.AINodeSharedClusterIT.forecastTableFunctionTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;

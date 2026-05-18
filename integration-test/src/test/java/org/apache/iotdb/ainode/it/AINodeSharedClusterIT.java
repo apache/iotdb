@@ -492,7 +492,7 @@ public class AINodeSharedClusterIT {
 
   // ========== Helper methods (from ModelManageIT) ==========
 
-  private static void registerUserDefinedModel(
+  public static void registerUserDefinedModel(
       Statement statement, AINodeTestUtils.FakeModelInfo modelInfo, String uri)
       throws SQLException, InterruptedException {
     String modelId = modelInfo.getModelId();
