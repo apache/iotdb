@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.common;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -55,7 +57,7 @@ public enum SqlDialect {
       case 1:
         return TABLE;
       default:
-        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", b));
+        throw new IllegalArgumentException(String.format(QueryMessages.UNKNOWN_SQL_DIALECT, b));
     }
   }
 }

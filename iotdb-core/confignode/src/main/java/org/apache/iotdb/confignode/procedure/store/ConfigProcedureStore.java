@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
@@ -54,7 +55,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     try {
       checkProcWalDir(procedureWalDir);
     } catch (IOException e) {
-      LOG.error("ConfigProcedureStore start failed ", e);
+      LOG.error(ConfigNodeMessages.CONFIGPROCEDURESTORE_START_FAILED, e);
     }
   }
 
@@ -169,11 +170,11 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     File dir = new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder());
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOG.info("Make procedure wal dir: {}", dir);
+        LOG.info(ConfigNodeMessages.MAKE_PROCEDURE_WAL_DIR, dir);
       } else {
         throw new IOException(
             String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                ConfigNodeMessages.START_CONFIGNODE_FAILED_BECAUSE_COULDN_T_MAKE_SYSTEM_DIRS,
                 dir.getAbsolutePath()));
       }
     }

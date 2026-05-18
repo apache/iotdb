@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbe
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
@@ -102,7 +103,7 @@ public class HeartbeatService {
                 0,
                 HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("Heartbeat service is started successfully.");
+        LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -113,7 +114,7 @@ public class HeartbeatService {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
-        LOGGER.info("Heartbeat service is stopped successfully.");
+        LOGGER.info(ManagerMessages.HEARTBEAT_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
     }
   }

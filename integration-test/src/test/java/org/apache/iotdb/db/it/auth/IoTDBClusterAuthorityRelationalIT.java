@@ -42,8 +42,8 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,15 +58,15 @@ import static org.junit.Assert.assertTrue;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class, TableClusterIT.class})
 public class IoTDBClusterAuthorityRelationalIT {
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     // Init 1C1D environment
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

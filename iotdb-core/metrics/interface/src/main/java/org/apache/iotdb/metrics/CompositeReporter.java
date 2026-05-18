@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -36,7 +37,7 @@ public class CompositeReporter {
   public void startAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.start()) {
-        LOGGER.warn("Failed to start {} reporter.", reporter.getReporterType());
+        LOGGER.warn(MetricsMessages.REPORTER_START_FAILED, reporter.getReporterType());
       }
     }
   }
@@ -48,7 +49,7 @@ public class CompositeReporter {
         return reporter.start();
       }
     }
-    LOGGER.error("Failed to start {} reporter because not find.", reporterType);
+    LOGGER.error(MetricsMessages.REPORTER_START_NOT_FOUND, reporterType);
     return false;
   }
 
@@ -56,7 +57,7 @@ public class CompositeReporter {
   public void stopAll() {
     for (Reporter reporter : reporters) {
       if (!reporter.stop()) {
-        LOGGER.warn("Failed to stop {} reporter.", reporter.getReporterType());
+        LOGGER.warn(MetricsMessages.REPORTER_STOP_FAILED, reporter.getReporterType());
       }
     }
   }
@@ -68,7 +69,7 @@ public class CompositeReporter {
         return reporter.stop();
       }
     }
-    LOGGER.error("Failed to stop {} reporter because not find.", reporterType.name());
+    LOGGER.error(MetricsMessages.REPORTER_STOP_NOT_FOUND, reporterType.name());
     return false;
   }
 

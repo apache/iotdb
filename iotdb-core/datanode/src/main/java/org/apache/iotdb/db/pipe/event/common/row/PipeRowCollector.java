@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -57,7 +58,7 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
   @Override
   public void collectRow(Row row) {
     if (!(row instanceof PipeRow)) {
-      throw new PipeException("Row can not be customized");
+      throw new PipeException(DataNodePipeMessages.ROW_CAN_NOT_BE_CUSTOMIZED);
     }
 
     final PipeRow pipeRow = (PipeRow) row;

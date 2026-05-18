@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
@@ -513,7 +514,7 @@ public class MTreeBelowSGCachedImpl {
           if (cachedMNode != null) {
             unPinMNode(cachedMNode);
             throw new MetadataException(
-                "The alias is duplicated with the name or alias of other measurement, alias: "
+                DataNodeSchemaMessages.ALIAS_DUPLICATED
                     + alias
                     + ", fullPath: "
                     + fullPath
@@ -1162,7 +1163,7 @@ public class MTreeBelowSGCachedImpl {
     IMeasurementMNode<ICachedMNode> leafMNode = getMeasurementMNode(path);
     try {
       if (!leafMNode.isLogicalView()) {
-        throw new MetadataException(String.format("[%s] is no view.", path));
+        throw new MetadataException(String.format(DataNodeSchemaMessages.IS_NO_VIEW, path));
       }
       store.updateMNode(
           leafMNode.getAsMNode(),

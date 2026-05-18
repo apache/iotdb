@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -219,9 +220,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
     try {
       ioTDBRpcDataSet.close();
     } catch (StatementExecutionException e) {
-      throw new SQLException("Error occurs for close operation in server side because ", e);
+      throw new SQLException(JdbcMessages.CLOSE_SERVER_SIDE_ERROR, e);
     } catch (TException e) {
-      throw new SQLException("Error occurs when connecting to server for close operation ", e);
+      throw new SQLException(JdbcMessages.CLOSE_CONNECTING_ERROR, e);
     }
   }
 
@@ -578,7 +579,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
       }
     } catch (SQLException throwables) {
-      LOGGER.error("get meta data error: {}", throwables.getMessage());
+      LOGGER.error(JdbcMessages.GET_METADATA_ERROR, throwables.getMessage());
     }
     return new IoTDBResultMetadata(
         nonAlign,

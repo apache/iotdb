@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.security.encrypt;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ public class MessageDigestEncrypt implements AsymmetricEncrypt {
       messageDigest.update(originPassword.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-      logger.error("meet error while encrypting password.", e);
+      logger.error(CommonMessages.ENCRYPT_PASSWORD_ERROR, e);
       return originPassword;
     }
   }

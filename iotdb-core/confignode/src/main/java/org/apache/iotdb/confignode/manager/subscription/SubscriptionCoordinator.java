@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubsc
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
@@ -140,7 +141,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createTopic(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to create topic {} with attributes {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS,
           req.getTopicName(),
           req.getTopicAttributes(),
           status);
@@ -169,7 +170,7 @@ public class SubscriptionCoordinator {
           .filter(req.topicName, req.isTableModel)
           .convertToTShowTopicResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to show topic info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SHOW_TOPIC_INFO, e);
       return new TopicTableResp(
               new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
@@ -183,7 +184,7 @@ public class SubscriptionCoordinator {
       return ((TopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
           .convertToTGetAllTopicInfoResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to get all topic info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_TOPIC_INFO, e);
       return new TGetAllTopicInfoResp(
           new TSStatus(TSStatusCode.SHOW_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());
@@ -194,7 +195,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createConsumer(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to create consumer {} in consumer group {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           status);
@@ -206,7 +207,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().dropConsumer(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to close consumer {} in consumer group {}. Result status: {}.",
+          ManagerMessages.FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           status);
@@ -218,7 +219,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().createSubscription(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Consumer {} in consumer group {} failed to subscribe topics {}. Result status: {}.",
+          ManagerMessages.CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_SUBSCRIBE_TOPICS_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           req.getTopicNames(),
@@ -231,7 +232,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().dropSubscription(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Consumer {} in consumer group {} failed to unsubscribe topics {}. Result status: {}.",
+          ManagerMessages.CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_UNSUBSCRIBE_TOPICS_RESULT_STATUS,
           req.getConsumerId(),
           req.getConsumerGroupId(),
           req.getTopicNames(),
@@ -272,7 +273,7 @@ public class SubscriptionCoordinator {
           .filter(req.getTopicName(), req.isTableModel)
           .convertToTShowSubscriptionResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to show subscription info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SHOW_SUBSCRIPTION_INFO, e);
       return new SubscriptionTableResp(
               new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
@@ -288,7 +289,7 @@ public class SubscriptionCoordinator {
               configManager.getConsensusManager().read(new ShowSubscriptionPlan()))
           .convertToTGetAllSubscriptionInfoResp();
     } catch (Exception e) {
-      LOGGER.warn("Failed to get all subscription info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_SUBSCRIPTION_INFO, e);
       return new TGetAllSubscriptionInfoResp(
           new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
               .setMessage(e.getMessage()),

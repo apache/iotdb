@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecog
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
@@ -260,7 +261,8 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   if (element != null) {
                     return elementIndent + formatColumnDefinition(element);
                   }
-                  throw new UnsupportedOperationException("unknown table element: " + element);
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.UNKNOWN_TABLE_ELEMENT + element);
                 })
             .collect(joining(",\n"));
     builder.append(columnList);
@@ -294,7 +296,8 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
                   if (element != null) {
                     return elementIndent + formatColumnDefinition(element);
                   }
-                  throw new UnsupportedOperationException("unknown table element: " + element);
+                  throw new UnsupportedOperationException(
+                      DataNodeQueryMessages.UNKNOWN_TABLE_ELEMENT + element);
                 })
             .collect(joining(",\n"));
     builder.append(columnList);
@@ -348,7 +351,7 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     builder.append("ALTER ");
     switch (type) {
       case TABLE:
-        builder.append("TABLE ");
+        builder.append(DataNodeQueryMessages.TABLE_2);
       case MATERIALIZED_VIEW:
         builder.append("MATERIALIZED VIEW ");
       case TREE_VIEW:

@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2BatchTransferResp;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -286,7 +287,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Successfully transferred deletion event {}.",
+          DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_DELETION_EVENT,
           pipeDeleteDataNodeEvent.getDeletionResource());
     }
   }
@@ -424,7 +425,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           tsFile.getName());
     }
 
-    LOGGER.info("Successfully transferred file {}.", tsFile);
+    LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
   }
 
   protected void transferFilePieces(
@@ -484,7 +485,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
             == TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
+          LOGGER.info(DataNodePipeMessages.REDIRECT_FILE_POSITION_TO, position);
           continue;
         }
 

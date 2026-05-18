@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -103,7 +104,9 @@ public class DeleteDatabaseProcedure
           if (env.invalidateCache(deleteDatabaseSchema.getName())) {
             setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
           } else {
-            setFailure(new ProcedureException("[DeleteDatabaseProcedure] Invalidate cache failed"));
+            setFailure(
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_FAILED));
           }
           break;
         case DELETE_DATABASE_SCHEMA:
@@ -213,14 +216,15 @@ public class DeleteDatabaseProcedure
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(
-                new ProcedureException("[DeleteDatabaseProcedure] Delete DatabaseSchema failed"));
+                new ProcedureException(
+                    ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_FAILED));
           }
       }
     } catch (final ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
             new ProcedureException(
-                "[DeleteDatabaseProcedure] Delete database "
+                ProcedureMessages.DELETEDATABASEPROCEDURE_DELETE_DATABASE
                     + deleteDatabaseSchema.getName()
                     + " failed "
                     + state));
@@ -231,7 +235,9 @@ public class DeleteDatabaseProcedure
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("[DeleteDatabaseProcedure] State stuck at " + state));
+          setFailure(
+              new ProcedureException(
+                  ProcedureMessages.DELETEDATABASEPROCEDURE_STATE_STUCK_AT + state));
         }
       }
     }
@@ -300,7 +306,7 @@ public class DeleteDatabaseProcedure
     try {
       deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
     } catch (final ThriftSerDeException e) {
-      LOG.error("Error in deserialize DeleteDatabaseProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_DELETEDATABASEPROCEDURE, e);
     }
   }
 

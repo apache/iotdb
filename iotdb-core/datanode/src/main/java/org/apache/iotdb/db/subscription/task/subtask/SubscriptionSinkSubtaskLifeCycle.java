@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskLifeCycle;
@@ -44,7 +45,7 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
   @Override
   public synchronized void register() {
     if (registeredTaskCount < 0) {
-      throw new IllegalStateException("registeredTaskCount < 0");
+      throw new IllegalStateException(DataNodeMiscMessages.REGISTERED_TASK_COUNT_LT_ZERO);
     }
 
     if (registeredTaskCount == 0) {
@@ -66,7 +67,7 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
   public synchronized boolean deregister(
       final String pipeNameToDeregister, final long creationTimeToDeregister, final int regionId) {
     if (registeredTaskCount <= 0) {
-      throw new IllegalStateException("registeredTaskCount <= 0");
+      throw new IllegalStateException(DataNodeMiscMessages.REGISTERED_TASK_COUNT_LE_ZERO);
     }
 
     // no need to discard events of pipe

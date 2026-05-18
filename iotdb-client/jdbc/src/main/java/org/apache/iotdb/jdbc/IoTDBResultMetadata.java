@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -192,13 +194,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   private void checkColumnIndex(int column) throws SQLException {
     if (columnInfoList == null || columnInfoList.isEmpty()) {
-      throw new SQLException("No column exists");
+      throw new SQLException(JdbcMessages.NO_COLUMN_EXISTS);
     }
     if (column > columnInfoList.size()) {
-      throw new SQLException(String.format("column %d does not exist", column));
+      throw new SQLException(String.format(JdbcMessages.COLUMN_DOES_NOT_EXIST, column));
     }
     if (column <= 0) {
-      throw new SQLException("column index should start from 1");
+      throw new SQLException(JdbcMessages.COLUMN_INDEX_START_FROM_1);
     }
   }
 

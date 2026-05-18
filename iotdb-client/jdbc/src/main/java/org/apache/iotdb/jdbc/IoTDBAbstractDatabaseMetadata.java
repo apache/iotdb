@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
@@ -51,7 +52,7 @@ import java.util.Map;
 public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAbstractDatabaseMetadata.class);
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   protected static final String CONVERT_ERROR_MSG = "Convert tsBlock error: {}";
 
   protected IoTDBConnection connection;
@@ -420,7 +421,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
             tsBlockBuilder.getColumnBuilder(j).writeBoolean((boolean) valuesInRow.get(j));
             break;
           default:
-            LOGGER.error("No data type was matched: {}", columnType);
+            LOGGER.error(JdbcMessages.NO_DATA_TYPE_MATCHED, columnType);
             break;
         }
       }
@@ -552,9 +553,9 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       return client.getProperties().isReadOnly;
     } catch (TException e) {
-      LOGGER.error("Get is readOnly error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_READ_ONLY_ERROR, e.getMessage());
     }
-    throw new SQLException("Can not get the read-only mode");
+    throw new SQLException(JdbcMessages.CANNOT_GET_READ_ONLY_MODE);
   }
 
   @Override
@@ -695,7 +696,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         result = result.substring(0, result.length() - 1);
       }
     } catch (Exception ex) {
-      LOGGER.error("Get system functions error: {}", ex.getMessage());
+      LOGGER.error(JdbcMessages.GET_SYSTEM_FUNCTIONS_ERROR, ex.getMessage());
     } finally {
       close(resultSet, statement);
     }
@@ -1040,7 +1041,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       maxcount = client.getProperties().getMaxConcurrentClientNum();
     } catch (TException e) {
-      LOGGER.error("Get max concurrentClientNUm error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_MAX_CONCURRENT_CLIENT_ERROR, e.getMessage());
     }
     return maxcount;
   }
@@ -1085,7 +1086,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     try {
       return client.getProperties().getThriftMaxFrameSize();
     } catch (TException e) {
-      LOGGER.error("Get max statement length error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_MAX_STATEMENT_LENGTH_ERROR, e.getMessage());
     }
     return 0;
   }
@@ -1166,7 +1167,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get procedures error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PROCEDURES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1225,7 +1226,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get procedure columns error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PROCEDURE_COLUMNS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1610,7 +1611,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get best row identifier error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_BEST_ROW_IDENTIFIER_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1655,7 +1656,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get version columns error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_VERSION_COLUMNS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1709,7 +1710,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get import keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_IMPORT_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1760,7 +1761,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get exported keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_EXPORTED_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -1817,7 +1818,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get cross reference error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_CROSS_REFERENCE_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2154,7 +2155,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get index info error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_INDEX_INFO_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2259,7 +2260,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get UDTS error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_UDTS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2327,7 +2328,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get super types error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_SUPER_TYPES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2368,7 +2369,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get super tables error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_SUPER_TABLES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2427,7 +2428,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         columnNameIndex.put(fields[i].getName(), i);
       }
     } catch (Exception e) {
-      LOGGER.error("Get attributes error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_ATTRIBUTES_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -2469,7 +2470,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         majorVersion = Integer.parseInt(versions[0]);
       }
     } catch (TException e) {
-      LOGGER.error("Get database major version error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_DB_MAJOR_VERSION_ERROR, e.getMessage());
     }
     return majorVersion;
   }
@@ -2484,7 +2485,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
         minorVersion = Integer.parseInt(versions[1]);
       }
     } catch (TException e) {
-      LOGGER.error("Get database minor version error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_DB_MINOR_VERSION_ERROR, e.getMessage());
     }
     return minorVersion;
   }

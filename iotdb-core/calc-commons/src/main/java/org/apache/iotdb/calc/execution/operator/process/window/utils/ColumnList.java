@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.window.utils;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnEncoding;
 import org.apache.tsfile.enums.TSDataType;
@@ -78,7 +80,7 @@ public class ColumnList {
       return new ColumnListIndex(columnIndex, rowIndex);
     } else {
       // Unlikely
-      throw new IndexOutOfBoundsException("Index out of Partition's bounds!");
+      throw new IndexOutOfBoundsException(CalcMessages.INDEX_OUT_OF_PARTITION_BOUNDS);
     }
   }
 

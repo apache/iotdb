@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   public synchronized void addMemoryUsage(long memoryInBytes) {
     // May temporarily exceed the max size
     if (memoryUsageInBytes.addAndGet(memoryInBytes) > limitedMemorySizeInBytes.get()) {
-      LOGGER.debug("{} has exceed total memory size", this);
+      LOGGER.debug(StorageEngineMessages.EXCEED_TOTAL_MEMORY_SIZE, this);
     }
   }
 

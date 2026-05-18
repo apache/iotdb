@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
@@ -143,7 +144,7 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage("Account is blocked due to consecutive failed logins.")
+          .setMessage(DataNodeMiscMessages.ACCOUNT_BLOCKED_DUE_TO_CONSECUTIVE_FAILED_LOGINS)
           .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
@@ -156,7 +157,9 @@ public class SessionManager implements SessionManagerMBean {
         openSessionResp
             .sessionId(-1)
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+            .setMessage(
+                DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO
+                    + IoTDBConstant.VERSION);
       } else {
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
@@ -182,7 +185,7 @@ public class SessionManager implements SessionManagerMBean {
                     userId,
                     session));
         LOGGER.info(
-            "{}: Login status: {}. User : {}, opens Session-{}",
+            DataNodeMiscMessages.LOGIN_STATUS,
             IoTDBConstant.GLOBAL_DB_NAME,
             openSessionResp.getMessage(),
             username,
@@ -231,11 +234,10 @@ public class SessionManager implements SessionManagerMBean {
     if (mustCurrent && session1 != null && session != session1) {
       LOGGER.info(
           String.format(
-              "The client-%s is trying to close another session %s, pls check if it's a bug",
-              session1, session));
+              DataNodeMiscMessages.CLIENT_TRYING_CLOSE_ANOTHER_SESSION, session1, session));
       return false;
     } else {
-      LOGGER.info(String.format("Session-%s is closing", session));
+      LOGGER.info(String.format(DataNodeMiscMessages.SESSION_CLOSING, session));
       return true;
     }
   }
@@ -259,10 +261,7 @@ public class SessionManager implements SessionManagerMBean {
       PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to release PreparedStatement resources for session {}: {}",
-          session,
-          e.getMessage(),
-          e);
+          DataNodeMiscMessages.FAILED_RELEASE_PREPARED_STATEMENT, session, e.getMessage(), e);
     }
   }
 
@@ -307,7 +306,7 @@ public class SessionManager implements SessionManagerMBean {
     boolean isLoggedIn = session != null && session.isLogin();
 
     if (!isLoggedIn) {
-      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
+      LOGGER.info(DataNodeMiscMessages.NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
     }
 
     return isLoggedIn;
@@ -341,7 +340,7 @@ public class SessionManager implements SessionManagerMBean {
         }
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to release PreparedStatement '{}' resources when closing statement {} for session {}: {}",
+            DataNodeMiscMessages.FAILED_RELEASE_PREPARED_STATEMENT_CLOSE,
             preparedStatementName,
             statementId,
             session,
@@ -432,7 +431,7 @@ public class SessionManager implements SessionManagerMBean {
    */
   public boolean registerSession(IClientSession session) {
     if (this.currSession.get() != null) {
-      LOGGER.error("the client session is registered repeatedly, pls check whether this is a bug.");
+      LOGGER.error(DataNodeMiscMessages.CLIENT_SESSION_REGISTERED_REPEATEDLY);
       return false;
     }
     this.currSession.set(session);

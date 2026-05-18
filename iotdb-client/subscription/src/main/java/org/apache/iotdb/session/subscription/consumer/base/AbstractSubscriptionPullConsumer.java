@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -252,14 +253,14 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
-                  LOGGER.info("SubscriptionPullConsumer {} cancel auto commit worker", this);
+                  LOGGER.info(SubscriptionMessages.PULL_CONSUMER_CANCEL_AUTO_COMMIT, this);
                 }
                 return;
               }
               new AutoCommitWorker().run();
             },
             autoCommitIntervalMs);
-    LOGGER.info("SubscriptionPullConsumer {} submit auto commit worker", this);
+    LOGGER.info(SubscriptionMessages.PULL_CONSUMER_SUBMIT_AUTO_COMMIT, this);
   }
 
   private class AutoCommitWorker implements Runnable {
@@ -281,7 +282,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           ackCommitContexts(entry.getValue());
           uncommittedCommitContexts.remove(entry.getKey());
         } catch (final Exception e) {
-          LOGGER.warn("something unexpected happened when auto commit messages...", e);
+          LOGGER.warn(SubscriptionMessages.AUTO_COMMIT_UNEXPECTED, e);
         }
       }
     }
@@ -294,7 +295,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
         ackCommitContexts(entry.getValue());
         uncommittedCommitContexts.remove(entry.getKey());
       } catch (final Exception e) {
-        LOGGER.warn("something unexpected happened when commit messages during close", e);
+        LOGGER.warn(SubscriptionMessages.COMMIT_DURING_CLOSE_UNEXPECTED, e);
       }
     }
   }

@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantif
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -125,7 +126,7 @@ public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
         type = IrAnchor.Type.PARTITION_END;
         break;
       default:
-        throw new IllegalArgumentException("Unexpected value: " + node.getType());
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + node.getType());
     }
 
     return new IrAnchor(type);

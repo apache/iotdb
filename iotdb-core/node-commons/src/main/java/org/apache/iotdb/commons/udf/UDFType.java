@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.udf;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -73,7 +74,7 @@ public enum UDFType {
         case TABLE:
           return available ? TABLE_AVAILABLE_TABLE : TABLE_UNAVAILABLE_TABLE;
         default:
-          throw new IllegalArgumentException("Unknown FunctionType: " + type);
+          throw new IllegalArgumentException(CommonMessages.UNKNOWN_FUNCTION_TYPE + type);
       }
     }
   }
@@ -139,7 +140,7 @@ public enum UDFType {
         case TABLE:
           return available ? TABLE_AVAILABLE_TABLE : TABLE_UNAVAILABLE_TABLE;
         default:
-          throw new IllegalArgumentException("Unknown FunctionType: " + type);
+          throw new IllegalArgumentException(CommonMessages.UNKNOWN_FUNCTION_TYPE + type);
       }
     }
   }

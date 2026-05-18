@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
@@ -223,7 +224,8 @@ public class Scope {
     }
 
     if (scopeForTableReference.isPresent() && scopeForFieldReference.isPresent()) {
-      throw new SemanticException(String.format("Reference '%s' is ambiguous", identifierChain));
+      throw new SemanticException(
+          String.format(DataNodeQueryMessages.REFERENCE_IS_AMBIGUOUS, identifierChain));
     }
 
     if (scopeForTableReference.isPresent()) {
@@ -274,7 +276,7 @@ public class Scope {
   private Optional<ResolvedField> resolveField(Expression node, QualifiedName name, boolean local) {
     List<Field> matches = relation.resolveFields(name);
     if (matches.size() > 1) {
-      throw new SemanticException(String.format("Column '%s' is ambiguous", name));
+      throw new SemanticException(String.format(DataNodeQueryMessages.COLUMN_IS_AMBIGUOUS, name));
     }
     if (matches.size() == 1) {
       int parentFieldCount = getLocalParent().map(Scope::getLocalScopeFieldCount).orElse(0);

@@ -22,6 +22,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,7 +195,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           version);
       return true;
     } catch (Exception e) {
-      LOGGER.warn("Failed to create connection with {}.", endPoint);
+      LOGGER.warn(SessionMessages.FAILED_TO_CREATE_CONNECTION, endPoint);
       destroyCurrentClient();
       return false;
     }
@@ -227,7 +228,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
         client.executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
       updateAvailableNodes(sessionDataSet);
     } catch (Exception e1) {
-      LOGGER.warn("Failed to fetch data node list from {}.", client.endPoint);
+      LOGGER.warn(SessionMessages.FAILED_TO_FETCH_DATA_NODE_LIST, client.endPoint);
       return false;
     }
     return true;

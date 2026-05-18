@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.metric;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitter;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -78,7 +79,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
       deregister(committerKey);
     }
     if (!eventCommitterMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe event commit metrics, event committer map not empty");
+      LOGGER.warn(PipeMessages.FAILED_TO_UNBIND_COMMIT_METRICS);
     }
   }
 
@@ -112,9 +113,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
 
   public void deregister(final String committerKey) {
     if (!eventCommitterMap.containsKey(committerKey)) {
-      LOGGER.warn(
-          "Failed to deregister pipe event commit metrics, PipeEventCommitter({}) does not exist",
-          committerKey);
+      LOGGER.warn(PipeMessages.FAILED_TO_DEREGISTER_COMMIT_METRICS, committerKey);
       return;
     }
     if (Objects.nonNull(metricService) && Objects.nonNull(committerKey)) {

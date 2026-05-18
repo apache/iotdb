@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar.factory;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.inteface.CodecStrategy;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util.HexUtils;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util.SpookyHashV2Utils;
@@ -54,7 +55,7 @@ public final class CodecStrategiesFactory {
         } catch (IllegalArgumentException e) {
           // wrap the specific exception in dependency into a general one for uniform handling in
           // upper layer
-          throw new SemanticException("decode base64 error");
+          throw new SemanticException(CalcMessages.DECODE_BASE64_ERROR);
         }
       };
 
@@ -65,7 +66,7 @@ public final class CodecStrategiesFactory {
         try {
           return Base64.getUrlDecoder().decode(input);
         } catch (IllegalArgumentException e) {
-          throw new SemanticException("decode base64url error");
+          throw new SemanticException(CalcMessages.DECODE_BASE64URL_ERROR);
         }
       };
 
@@ -78,7 +79,7 @@ public final class CodecStrategiesFactory {
           return GUAVA_BASE32_ENCODING.decode(
               new String(input, TSFileConfig.STRING_CHARSET).toUpperCase());
         } catch (IllegalArgumentException e) {
-          throw new SemanticException("decode base32 error");
+          throw new SemanticException(CalcMessages.DECODE_BASE32_ERROR);
         }
       };
 
@@ -103,7 +104,7 @@ public final class CodecStrategiesFactory {
         try {
           return HexUtils.fromHex(input);
         } catch (IllegalArgumentException e) {
-          throw new SemanticException("decode hex error");
+          throw new SemanticException(CalcMessages.DECODE_HEX_ERROR);
         }
       };
 

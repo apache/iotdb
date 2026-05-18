@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
@@ -77,7 +78,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
       return new InsertTabletStatement(tablet, isAligned, dataBaseName);
     } catch (final MetadataException e) {
-      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
+      LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);
       return null;
     }
   }
