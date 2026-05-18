@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTConsensusV2TransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
@@ -290,13 +291,22 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
-    LOGGER.warn(
-        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY,
+    PipeLogger.log(
+        ignored ->
+            LOGGER.warn(
+                DataNodePipeMessages
+                    .IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY,
+                consensusPipeName,
+                tsFile,
+                event.getCommitterKey(),
+                event.getReplicateIndexForIoTV2(),
+                exception),
+        exception,
+        "IoTConsensusV2-%s: Failed to transfer TsFileInsertionEvent %s (committer key %s, replicate index %s).",
         consensusPipeName,
         tsFile,
         event.getCommitterKey(),
-        event.getReplicateIndexForIoTV2(),
-        exception);
+        event.getReplicateIndexForIoTV2());
 
     if (RetryUtils.needRetryWithIncreasingInterval(exception)) {
       // just in case for overflow

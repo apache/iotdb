@@ -415,7 +415,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               DataNodePipeMessages.REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE, position, file);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           final String errorMsg =
-              String.format("Network failed to receive tsFile %s, status: %s", file, status);
+              String.format(
+                  DataNodePipeMessages.NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS, file, status);
           LOGGER.warn(errorMsg);
           throw new PipeConnectionException(errorMsg);
         }
