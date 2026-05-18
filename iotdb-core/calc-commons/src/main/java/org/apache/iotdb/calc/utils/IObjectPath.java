@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 
 public interface IObjectPath {
 
@@ -43,11 +44,22 @@ public interface IObjectPath {
 
   int getSerializeSizeToObjectValue();
 
+  long getTime();
+
+  IDeviceID getDeviceID();
+
+  String getMeasurement();
+
+  Path getPath();
+
   interface Factory {
 
     IObjectPath create(int regionId, long time, IDeviceID iDeviceID, String measurement);
 
-    Factory FACTORY = null;
+    Factory FACTORY =
+        CONFIG.isRestrictObjectLimit()
+            ? PlainObjectPath.getFACTORY()
+            : Base32ObjectPath.getFACTORY();
   }
 
   interface Deserializer {
@@ -60,6 +72,8 @@ public interface IObjectPath {
   }
 
   static Deserializer getDeserializer() {
-    return null;
+    return CONFIG.isRestrictObjectLimit()
+        ? PlainObjectPath.getDESERIALIZER()
+        : Base32ObjectPath.getDESERIALIZER();
   }
 }

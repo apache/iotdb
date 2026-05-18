@@ -488,6 +488,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
         }
         tablet.getBitMaps()[i].mark(rowIndex);
@@ -518,6 +519,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary binary = primitiveType.getBinary();
           tablet.addValue(
               rowIndex,

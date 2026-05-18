@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -404,6 +405,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         // Avoid using system arraycopy when there is no need to split
         setRange(entry.getValue());
         setDataRegionReplicaSet(entry.getKey());
+        for (int i = 0; i < columns.length; i++) {
+          if (dataTypes[i] == TSDataType.OBJECT) {
+            handleObjectValue(i, 0, times.length, entry, result);
+          }
+        }
         result.add(this);
         return result;
       }
@@ -440,9 +446,19 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       System.arraycopy(times, start, subNode.times, destLoc, length);
       for (int i = 0; i < subNode.columns.length; i++) {
         if (dataTypes[i] != null) {
-          System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
+          if (dataTypes[i] == TSDataType.OBJECT) {
+            handleObjectValue(i, start, end, entry, result);
+          } else {
+            System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
+          }
         }
-        if (subNode.bitMaps != null && this.bitMaps[i] != null) {
+        if (this.bitMaps != null && this.bitMaps[i] != null) {
+          if (subNode.bitMaps == null) {
+            subNode.bitMaps = new BitMap[subNode.columns.length];
+          }
+          if (subNode.bitMaps[i] == null) {
+            subNode.bitMaps[i] = new BitMap(count);
+          }
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }
@@ -453,6 +469,41 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.setDataRegionReplicaSet(entry.getKey());
     result.add(subNode);
     return result;
+  }
+
+  private void handleObjectValue(
+      int column,
+      int startRow,
+      int endRow,
+      Map.Entry<TRegionReplicaSet, List<Integer>> entry,
+      List<WritePlanNode> result) {
+    for (int row = startRow; row < endRow; row++) {
+      if (((Binary[]) columns[column])[row] == null) {
+        continue;
+      }
+      final byte[] binary = ((Binary[]) columns[column])[row].getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
+      final ByteBuffer buffer = ByteBuffer.wrap(binary);
+      final boolean isEOF = buffer.get() == 1;
+      final long offset = buffer.getLong();
+      final byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+      final IObjectPath relativePath =
+          IObjectPath.Factory.FACTORY.create(
+              entry.getKey().getRegionId().getId(), times[row], getDeviceID(row), measurements[column]);
+      final ObjectNode objectNode = new ObjectNode(isEOF, offset, content, relativePath);
+      objectNode.setDataRegionReplicaSet(entry.getKey());
+      result.add(objectNode);
+      ((Binary[]) columns[column])[row] = null;
+      if (bitMaps == null) {
+        bitMaps = new BitMap[columns.length];
+      }
+      if (bitMaps[column] == null) {
+        bitMaps[column] = new BitMap(rowCount);
+      }
+      bitMaps[column].mark(row);
+    }
   }
 
   @Override

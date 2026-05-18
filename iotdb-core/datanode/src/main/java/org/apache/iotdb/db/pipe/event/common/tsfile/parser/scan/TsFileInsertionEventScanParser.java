@@ -412,6 +412,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
           }
           tablet.getBitMaps()[i].mark(rowIndex);
@@ -442,6 +443,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
             break;
           default:
@@ -479,6 +481,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           tablet.addValue(rowIndex, 0, data.getBinary().getValues());
           break;
         default:

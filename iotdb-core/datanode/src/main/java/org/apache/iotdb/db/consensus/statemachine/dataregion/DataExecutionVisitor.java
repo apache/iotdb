@@ -297,6 +297,13 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitWriteObjectFile(ObjectNode node, DataRegion dataRegion) {
-    throw new UnsupportedOperationException();
+    try {
+      dataRegion.writeObject(node);
+      dataRegion.insertSeparatorToWAL();
+      return StatusUtils.OK;
+    } catch (final Exception e) {
+      LOGGER.error(DataNodeMiscMessages.ERROR_EXECUTING_PLAN_NODE, node, e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
   }
 }

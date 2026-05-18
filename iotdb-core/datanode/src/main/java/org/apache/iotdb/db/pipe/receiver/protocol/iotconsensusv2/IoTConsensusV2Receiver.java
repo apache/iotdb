@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTCons
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2TransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTConsensusV2TransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2ReceiverMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPointCounter;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
@@ -58,6 +60,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoT
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -183,8 +186,17 @@ public class IoTConsensusV2Receiver {
         case TRANSFER_TS_FILE_PIECE_WITH_MOD:
           // Just take a place in requestExecutor's buffer, the further seal request will remove
           // its place from buffer.
-          requestExecutor.onRequest(req, true, false);
-          resp = loadEvent(req);
+          resp = requestExecutor.onRequest(req, true, false);
+          if (resp == null) {
+            resp = loadEvent(req);
+          }
+          break;
+        case TRANSFER_OBJECT_FILE_PIECE:
+          // Object file pieces share a commit id with the following insert request. The pieces are
+          // applied in commit order, while the final insert request removes the placeholder and
+          // advances the commit index. Keeping the piece writes ordered is important because object
+          // paths are data-point based and can be reused by later overwrites.
+          resp = requestExecutor.onRequest(req, false, false, false, true);
           break;
         case TRANSFER_TS_FILE_SEAL:
         case TRANSFER_TS_FILE_SEAL_WITH_MOD:
@@ -263,6 +275,9 @@ public class IoTConsensusV2Receiver {
           case TRANSFER_TABLET_BINARY:
             return handleTransferTabletBinary(
                 IoTConsensusV2TabletBinaryReq.fromTIoTConsensusV2TransferReq(req));
+          case TRANSFER_OBJECT_FILE_PIECE:
+            return handleTransferObjectFilePiece(
+                IoTConsensusV2ObjectFilePieceReq.fromTIoTConsensusV2TransferReq(req));
           case TRANSFER_DELETION:
             return handleTransferDeletion(
                 IoTConsensusV2DeleteNodeReq.fromTIoTConsensusV2TransferReq(req));
@@ -319,11 +334,34 @@ public class IoTConsensusV2Receiver {
     IoTConsensusV2ServerImpl impl =
         Optional.ofNullable(iotConsensusV2.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
-    final InsertNode insertNode = req.convertToInsertNode();
-    insertNode.markAsGeneratedByRemoteConsensusLeader();
-    insertNode.setProgressIndex(
-        ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-    return new TIoTConsensusV2TransferResp(impl.writeOnFollowerReplica(insertNode));
+    final PlanNode planNode = req.convertToPlanNode();
+    if (planNode instanceof InsertNode) {
+      final InsertNode insertNode = (InsertNode) planNode;
+      insertNode.markAsGeneratedByRemoteConsensusLeader();
+      insertNode.setProgressIndex(
+          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+      return new TIoTConsensusV2TransferResp(impl.writeOnFollowerReplica(insertNode));
+    }
+    if (planNode instanceof ObjectNode) {
+      final ObjectNode objectNode = (ObjectNode) planNode;
+      objectNode.markAsGeneratedByRemoteConsensusLeader();
+      return new TIoTConsensusV2TransferResp(impl.writeOnFollowerReplica(objectNode));
+    }
+
+    return new TIoTConsensusV2TransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.IOT_CONSENSUS_V2_TYPE_ERROR,
+            String.format("Unsupported tablet binary plan node %s.", planNode)));
+  }
+
+  private TIoTConsensusV2TransferResp handleTransferObjectFilePiece(
+      final IoTConsensusV2ObjectFilePieceReq req) throws ConsensusGroupNotExistException {
+    IoTConsensusV2ServerImpl impl =
+        Optional.ofNullable(iotConsensusV2.getImpl(consensusGroupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
+    final ObjectNode objectNode = req.getObjectNode();
+    objectNode.markAsGeneratedByRemoteConsensusLeader();
+    return new TIoTConsensusV2TransferResp(impl.writeOnFollowerReplica(objectNode));
   }
 
   private TIoTConsensusV2TransferResp handleTransferDeletion(final IoTConsensusV2DeleteNodeReq req)
@@ -1452,6 +1490,16 @@ public class IoTConsensusV2Receiver {
         final TIoTConsensusV2TransferReq req,
         final boolean isTransferTsFilePiece,
         final boolean isTransferTsFileSeal) {
+      return onRequest(
+          req, isTransferTsFilePiece, isTransferTsFileSeal, isTransferTsFilePiece, false);
+    }
+
+    private TIoTConsensusV2TransferResp onRequest(
+        final TIoTConsensusV2TransferReq req,
+        final boolean isTransferTsFilePiece,
+        final boolean isTransferTsFileSeal,
+        final boolean shouldRecordTsFileEvent,
+        final boolean shouldKeepRequestMetaAfterSuccess) {
       long startAcquireLockNanos = System.nanoTime();
       lock.lock();
       try {
@@ -1483,11 +1531,13 @@ public class IoTConsensusV2Receiver {
           resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes());
         }
         // update metric
-        if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
+        if (shouldRecordTsFileEvent && !reqExecutionOrderBuffer.contains(requestMeta)) {
           // only update tsFileEventCount when tsFileEvent is first enqueue.
           tsFileEventCount.incrementAndGet();
         }
-        if (!isTransferTsFileSeal && !isTransferTsFilePiece) {
+        if (!isTransferTsFileSeal
+            && !isTransferTsFilePiece
+            && !shouldKeepRequestMetaAfterSuccess) {
           WALEventCount.incrementAndGet();
         }
         reqExecutionOrderBuffer.add(requestMeta);
@@ -1521,13 +1571,15 @@ public class IoTConsensusV2Receiver {
             // DataRegionStateMachine.
             TIoTConsensusV2TransferResp resp = loadEvent(req);
 
-            // Only when event apply is successful and what is transmitted is not TsFilePiece, req
-            // will be removed from the buffer and onSyncedCommitIndex will be updated. Because pipe
-            // will transfer multi reqs with same commitId in a single TsFileInsertionEvent, only
-            // when the last seal req is applied, we can discard this event.
+            // Only when event apply is successful and this request is not a placeholder, req will
+            // be removed from the buffer and onSyncedCommitIndex will be updated. Because pipe
+            // will transfer multi reqs with same commitId in a single TsFileInsertionEvent/Object
+            // event, only when the last seal/insert req is applied, we can discard this event.
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              onSuccess(tCommitId, isTransferTsFileSeal);
+              if (!shouldKeepRequestMetaAfterSuccess) {
+                onSuccess(tCommitId, isTransferTsFileSeal);
+              }
             }
             return resp;
           }
@@ -1548,7 +1600,9 @@ public class IoTConsensusV2Receiver {
 
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              onSuccess(tCommitId, isTransferTsFileSeal);
+              if (!shouldKeepRequestMetaAfterSuccess) {
+                onSuccess(tCommitId, isTransferTsFileSeal);
+              }
             }
             return resp;
           } else {
@@ -1593,7 +1647,9 @@ public class IoTConsensusV2Receiver {
                   if (resp != null
                       && resp.getStatus().getCode()
                           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                    onSuccess(tCommitId, isTransferTsFileSeal);
+                    if (!shouldKeepRequestMetaAfterSuccess) {
+                      onSuccess(tCommitId, isTransferTsFileSeal);
+                    }
                   }
                   return resp;
                 }

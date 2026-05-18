@@ -22,15 +22,17 @@ package org.apache.iotdb.commons.schema.table;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.WindowsOSUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -45,6 +47,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -421,7 +424,43 @@ public class TsTable {
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
-    throw new MetadataException(CommonMessages.OBJECT_TYPE_COLUMN_NOT_SUPPORTED);
+    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
+      return;
+    }
+    if (isInvalid4ObjectType(tableName)) {
+      throw new MetadataException(
+          getObjectStringError("tableName", tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
+    for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
+      if (schema.getDataType().equals(TSDataType.OBJECT)
+          && isInvalid4ObjectType(schema.getColumnName())) {
+        throw new MetadataException(
+            getObjectStringError("objectName", schema.getColumnName()),
+            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+      }
+    }
+  }
+
+  public static boolean isInvalid4ObjectType(final String path) {
+    return path.equals(".")
+        || path.equals("..")
+        || path.contains("/")
+        || path.contains("\\")
+        || !WindowsOSUtils.isLegalPathSegment4Windows(path);
+  }
+
+  public static String getObjectStringError(final String columnType, final String columnName) {
+    return String.format(
+        isWindows()
+            ? OBJECT_STRING_ERROR + " " + WindowsOSUtils.OS_SEGMENT_ERROR
+            : OBJECT_STRING_ERROR,
+        columnType,
+        columnName);
+  }
+
+  private static boolean isWindows() {
+    return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
   }
 
   @Override

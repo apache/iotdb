@@ -32,6 +32,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.ServiceLoader;
 
@@ -109,7 +111,23 @@ public class ObjectTypeUtils {
         ObjectTypeUtils.parseObjectBinaryToSizeIObjectPathPair(originValue);
     IObjectPath objectPath = pair.getRight();
     try {
-      IObjectPath newObjectPath = null;
+      final Path path = objectPath.getPath();
+      final int regionId = Integer.parseInt(path.getName(0).toString());
+      if (regionId == newRegionId) {
+        return originValue;
+      }
+
+      final IObjectPath newObjectPath;
+      if (objectPath instanceof PlainObjectPath) {
+        newObjectPath =
+            new PlainObjectPath(objectPath.toString().replaceFirst(regionId + "", newRegionId + ""));
+      } else {
+        final String[] subPath = new String[path.getNameCount() - 1];
+        for (int i = 1; i < path.getNameCount(); i++) {
+          subPath[i - 1] = path.getName(i).toString();
+        }
+        newObjectPath = new Base32ObjectPath(Paths.get(newRegionId + "", subPath));
+      }
       return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
     } catch (NumberFormatException e) {
       throw new IoTDBRuntimeException(

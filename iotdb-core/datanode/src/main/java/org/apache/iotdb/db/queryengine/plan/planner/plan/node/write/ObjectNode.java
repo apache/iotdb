@@ -22,12 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -38,8 +41,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +56,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
+
+import static org.apache.iotdb.calc.utils.ObjectTypeUtils.generateObjectBinary;
 
 public class ObjectNode extends SearchNode implements WALEntryValue {
 
@@ -69,6 +76,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private TRegionReplicaSet dataRegionReplicaSet;
 
   private boolean isGeneratedByRemoteConsensusLeader;
+
+  private ProgressIndex progressIndex;
 
   public ObjectNode(boolean isEOF, long offset, byte[] content, IObjectPath filePath) {
     super(new PlanNodeId(""));
@@ -101,6 +110,10 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   public void setFilePath(IObjectPath filePath) {
     this.filePath = filePath;
+  }
+
+  public IObjectPath getFilePath() {
+    return filePath;
   }
 
   public String getFilePathString() {
@@ -186,11 +199,13 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return null;
+    return progressIndex;
   }
 
   @Override
-  public void setProgressIndex(ProgressIndex progressIndex) {}
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
@@ -306,6 +321,23 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
       raf.seek(offset);
       raf.read(contents);
     }
+  }
+
+  public RelationalInsertRowNode genValueInsertRowNode() throws IllegalPathException {
+    final RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(this.getPlanNodeId());
+    insertRowNode.setAligned(true);
+    insertRowNode.setDeviceID(filePath.getDeviceID());
+    insertRowNode.setTargetPath(new PartialPath(filePath.getDeviceID().getTableName()));
+    insertRowNode.setTime(filePath.getTime());
+    insertRowNode.setMeasurements(new String[] {filePath.getMeasurement()});
+    insertRowNode.setDataTypes(new TSDataType[] {TSDataType.OBJECT});
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema(filePath.getMeasurement(), TSDataType.OBJECT)
+        });
+    insertRowNode.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+    insertRowNode.setValues(new Object[] {generateObjectBinary(offset + content.length, filePath)});
+    return insertRowNode;
   }
 
   @Override

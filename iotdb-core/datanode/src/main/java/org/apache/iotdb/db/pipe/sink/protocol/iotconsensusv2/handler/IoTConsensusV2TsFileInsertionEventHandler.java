@@ -31,10 +31,13 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFileUtils.ObjectFileDescriptor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFileSealReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFileSealWithModReq;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -47,6 +50,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -64,6 +68,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final int thisDataNodeId;
   private final File tsFile;
   private final File modFile;
+  private final List<ObjectFileDescriptor> objectFileDescriptors;
   private File currentFile;
 
   private final boolean transferMod;
@@ -71,6 +76,9 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
+  private int currentObjectFileIndex;
+  private long currentObjectFileOffset;
+  private boolean transferringObjectFile;
 
   private RandomAccessFile reader;
 
@@ -91,6 +99,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
       final TConsensusGroupId consensusGroupId,
       final String consensusPipeName,
       final int thisDataNodeId,
+      final List<ObjectFileDescriptor> objectFileDescriptors,
       final IoTConsensusV2SinkMetrics metric)
       throws FileNotFoundException {
     this.event = event;
@@ -102,6 +111,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
+    this.objectFileDescriptors = objectFileDescriptors;
     transferMod = event.isWithMod();
     currentFile = transferMod ? modFile : tsFile;
 
@@ -126,6 +136,17 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
     this.client = client;
     client.setShouldReturnSelf(false);
+
+    if (currentObjectFileIndex < objectFileDescriptors.size()) {
+      transferringObjectFile = true;
+      final ObjectFileDescriptor descriptor = objectFileDescriptors.get(currentObjectFileIndex);
+      client.iotConsensusV2Transfer(
+          IoTConsensusV2ObjectFilePieceReq.toTIoTConsensusV2TransferReq(
+              nextObjectNode(descriptor), commitId, consensusGroupId, thisDataNodeId),
+          this);
+      return;
+    }
+    transferringObjectFile = false;
 
     final int readLength = reader.read(readBuffer);
     if (readLength == -1) {
@@ -194,8 +215,43 @@ public class IoTConsensusV2TsFileInsertionEventHandler
     position += readLength;
   }
 
+  private ObjectNode nextObjectNode(final ObjectFileDescriptor descriptor) {
+    final long objectSize = descriptor.getObjectSize();
+    final int pieceLength =
+        objectSize == 0
+            ? 0
+            : (int) Math.min(readFileBufferSize, objectSize - currentObjectFileOffset);
+    final boolean isEOF =
+        objectSize == 0 || currentObjectFileOffset + pieceLength >= objectSize;
+    final ObjectNode objectNode =
+        new ObjectNode(isEOF, currentObjectFileOffset, pieceLength, descriptor.getObjectPath());
+
+    if (isEOF) {
+      currentObjectFileIndex++;
+      currentObjectFileOffset = 0;
+    } else {
+      currentObjectFileOffset += pieceLength;
+    }
+
+    return objectNode;
+  }
+
   @Override
   public void onComplete(final TIoTConsensusV2TransferResp response) {
+    if (transferringObjectFile) {
+      try {
+        final TSStatus status = response.getStatus();
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector.statusHandler().handle(status, status.getMessage(), tsFile.getName());
+        }
+        transfer(client);
+      } catch (final Exception e) {
+        onError(e);
+      }
+      return;
+    }
+
     if (isSealSignalSent.get()) {
       try {
         final TSStatus status = response.getStatus();
