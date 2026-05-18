@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
+import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
@@ -104,7 +105,7 @@ public class SubscriptionBrokerAgent {
     long remainingBytes = maxBytes;
 
     // Poll from pipe-based broker
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
+    final ISubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
     if (Objects.nonNull(pipeBroker)) {
       final List<SubscriptionEvent> pipeEvents =
           pipeBroker.poll(consumerId, topicNames, remainingBytes);
@@ -175,25 +176,8 @@ public class SubscriptionBrokerAgent {
       final int offset) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
-    final String topicName = commitContext.getTopicName();
-
-    // Try consensus-based broker first
-    final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      return consensusBroker.pollTablets(consumerId, commitContext, offset);
-    }
-
-    // Fall back to pipe-based broker
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    if (Objects.isNull(pipeBroker)) {
-      final String errorMessage =
-          String.format(
-              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
-      LOGGER.warn(errorMessage);
-      throw new SubscriptionException(errorMessage);
-    }
-    return pipeBroker.pollTablets(consumerId, commitContext, offset);
+    return getBrokerForTopicOrThrow(consumerGroupId, commitContext.getTopicName())
+        .pollTablets(consumerId, commitContext, offset);
   }
 
   /**
@@ -207,8 +191,8 @@ public class SubscriptionBrokerAgent {
     final String consumerId = consumerConfig.getConsumerId();
     final List<SubscriptionCommitContext> allSuccessful = new ArrayList<>();
 
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    final ConsensusSubscriptionBroker consensusBroker =
+    final ISubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
+    final ISubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
 
     if (Objects.isNull(pipeBroker) && Objects.isNull(consensusBroker)) {
@@ -251,8 +235,8 @@ public class SubscriptionBrokerAgent {
 
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    final ConsensusSubscriptionBroker consensusBroker =
+    final ISubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
+    final ISubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
 
     final List<SubscriptionCommitContext> pipeContexts = new ArrayList<>();
@@ -489,22 +473,32 @@ public class SubscriptionBrokerAgent {
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
-    final String consumerGroupId = commitContext.getConsumerGroupId();
-    final String topicName = commitContext.getTopicName();
+    final ISubscriptionBroker broker =
+        getBrokerForTopic(commitContext.getConsumerGroupId(), commitContext.getTopicName());
+    return Objects.isNull(broker) || broker.isCommitContextOutdated(commitContext);
+  }
 
-    // Try consensus broker first
+  private ISubscriptionBroker getBrokerForTopic(
+      final String consumerGroupId, final String topicName) {
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      return consensusBroker.isCommitContextOutdated(commitContext);
+      return consensusBroker;
     }
+    return consumerGroupIdToPipeBroker.get(consumerGroupId);
+  }
 
-    // Fall back to pipe broker
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    if (Objects.isNull(pipeBroker)) {
-      return true;
+  private ISubscriptionBroker getBrokerForTopicOrThrow(
+      final String consumerGroupId, final String topicName) {
+    final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
+    if (Objects.nonNull(broker)) {
+      return broker;
     }
-    return pipeBroker.isCommitContextOutdated(commitContext);
+    final String errorMessage =
+        String.format(
+            "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
   }
 
   public List<String> fetchTopicNamesToUnsubscribe(
@@ -763,22 +757,13 @@ public class SubscriptionBrokerAgent {
   }
 
   public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
-    // Try consensus broker
-    final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      consensusBroker.removeQueue(topicName);
-      prefetchingQueueCount.invalidate();
-      return;
-    }
-    // Fall back to pipe broker
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    if (Objects.isNull(pipeBroker)) {
+    final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
+    if (Objects.isNull(broker)) {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    pipeBroker.removePrefetchingQueue(topicName);
+    broker.removeQueue(topicName);
     prefetchingQueueCount.invalidate();
   }
 
@@ -803,20 +788,13 @@ public class SubscriptionBrokerAgent {
   }
 
   public int getPipeEventCount(final String consumerGroupId, final String topicName) {
-    // Try consensus broker first
-    final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      return consensusBroker.getEventCount(topicName);
-    }
-    // Fall back to pipe broker
-    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
-    if (Objects.isNull(pipeBroker)) {
+    final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
+    if (Objects.isNull(broker)) {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return 0;
     }
-    return pipeBroker.getPipeEventCount(topicName);
+    return broker.getEventCount(topicName);
   }
 
   public int getPrefetchingQueueCount() {
@@ -836,14 +814,13 @@ public class SubscriptionBrokerAgent {
   }
 
   private int getPrefetchingQueueCountInternal() {
-    int count =
-        consumerGroupIdToPipeBroker.values().stream()
-            .map(SubscriptionBroker::getPrefetchingQueueCount)
-            .reduce(0, Integer::sum);
-    count +=
-        consumerGroupIdToConsensusBroker.values().stream()
-            .map(ConsensusSubscriptionBroker::getQueueCount)
-            .reduce(0, Integer::sum);
+    int count = 0;
+    for (final ISubscriptionBroker broker : consumerGroupIdToPipeBroker.values()) {
+      count += broker.getQueueCount();
+    }
+    for (final ISubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      count += broker.getQueueCount();
+    }
     return count;
   }
 
