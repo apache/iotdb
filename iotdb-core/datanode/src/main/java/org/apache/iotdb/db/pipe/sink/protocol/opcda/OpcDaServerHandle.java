@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
