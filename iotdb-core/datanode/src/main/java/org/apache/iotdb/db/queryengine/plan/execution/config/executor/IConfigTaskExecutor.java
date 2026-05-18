@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Mig
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -332,6 +333,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showDatabases(
       final ShowDB showDB, final Predicate<String> canSeenDB);
+
+  SettableFuture<ConfigTaskResult> countDatabases(
+      final CountDB countDB, final Predicate<String> canSeenDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 

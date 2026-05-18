@@ -826,6 +826,29 @@ public class IoTDBDatabaseIT {
   }
 
   @Test
+  public void testCountDatabases() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database db1");
+      statement.execute("create database db2");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count databases"),
+          "count,",
+          Collections.singleton("3,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count database"),
+          "count,",
+          Collections.singleton("3,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select count(*) from information_schema.databases"),
+          "_col0,",
+          Collections.singleton("3,"));
+    }
+  }
+
+  @Test
   public void testDBAuth() throws SQLException {
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
@@ -838,6 +861,14 @@ public class IoTDBDatabaseIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("count databases"),
+          "count,",
+          Collections.singleton("1,"));
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("count database"),
+          "count,",
+          Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
@@ -869,6 +900,10 @@ public class IoTDBDatabaseIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("count databases"),
+          "count,",
+          Collections.singleton("2,"));
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());

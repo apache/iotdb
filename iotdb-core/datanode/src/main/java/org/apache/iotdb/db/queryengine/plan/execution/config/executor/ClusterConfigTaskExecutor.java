@@ -229,6 +229,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Ext
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CountDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -255,6 +256,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -4134,6 +4136,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
+    } catch (final IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> countDatabases(
+      final CountDB countDB, final Predicate<String> canSeenDB) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
+              .setIsTableModel(true);
+      final TShowDatabaseResp resp = client.showDatabase(req);
+      CountDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, canSeenDB);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
