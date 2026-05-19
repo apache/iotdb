@@ -87,7 +87,7 @@ public class RemoveDataNodeHandler {
       case GREEDY:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
         break;
-      case PGR:
+      case PGP:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
         break;
       case GCR:

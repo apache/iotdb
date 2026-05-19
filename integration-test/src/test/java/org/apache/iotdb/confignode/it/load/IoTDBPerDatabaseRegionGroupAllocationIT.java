@@ -91,9 +91,9 @@ public class IoTDBPerDatabaseRegionGroupAllocationIT {
   }
 
   @Test
-  public void testPgrPolicyPerDbReplicaBalance() throws Exception {
-    initCluster("PGR");
-    runPerDbBalanceCheck("PGR");
+  public void testPgpPolicyPerDbReplicaBalance() throws Exception {
+    initCluster("PGP");
+    runPerDbBalanceCheck("PGP");
   }
 
   @Test
