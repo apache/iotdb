@@ -81,13 +81,21 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
     try:
         return pd.Timestamp(time, unit=precision, tz=timezone)
     except OutOfBoundsDatetime:
-        return pd.Timestamp(time, unit=precision).tz_localize(timezone)
+        try:
+            return pd.Timestamp(time, unit=precision).tz_localize(timezone)
+        except NotImplementedError:
+            return pd.Timestamp(time, unit=precision)
     except ValueError:
         logger.warning(
             f"Timezone string '{timezone}' cannot be recognized by pandas. "
             f"Falling back to local timezone: '{get_localzone_name()}'."
         )
         return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
+    except NotImplementedError:
+        # Timestamp falls outside Python's stdlib datetime range (year < 1 or
+        # > 9999). pandas >= 3.0 cannot attach a timezone to such Timestamps
+        # because tz conversion relies on toordinal(). Return naive instead.
+        return pd.Timestamp(time, unit=precision)
 
 
 unit_map = {
@@ -108,3 +116,34 @@ def isoformat(ts: pd.Timestamp, unit: str):
             f"Falling back to use auto timespec'."
         )
         return ts.isoformat()
+    except NotImplementedError:
+        # Timestamp falls outside Python's stdlib datetime range. pandas >= 3.0
+        # routes isoformat through datetime.isoformat, which calls toordinal()
+        # and fails. Build the ISO 8601 string from individual components.
+        return _isoformat_from_components(ts, unit)
+
+
+def _isoformat_from_components(ts: pd.Timestamp, unit: str) -> str:
+    base = (
+        f"{ts.year:04d}-{ts.month:02d}-{ts.day:02d}"
+        f"T{ts.hour:02d}:{ts.minute:02d}:{ts.second:02d}"
+    )
+    if unit == "ms":
+        base += f".{ts.microsecond // 1000:03d}"
+    elif unit == "us":
+        base += f".{ts.microsecond:06d}"
+    elif unit == "ns":
+        base += f".{ts.microsecond:06d}{ts.nanosecond:03d}"
+    if ts.tzinfo is not None:
+        try:
+            offset = ts.utcoffset()
+        except NotImplementedError:
+            # utcoffset() needs toordinal() for zones like Etc/UTC. Omit offset.
+            offset = None
+        if offset is not None:
+            total_seconds = int(offset.total_seconds())
+            sign = "+" if total_seconds >= 0 else "-"
+            total_seconds = abs(total_seconds)
+            hh, mm = divmod(total_seconds // 60, 60)
+            base += f"{sign}{hh:02d}:{mm:02d}"
+    return base
