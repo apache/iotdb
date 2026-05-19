@@ -72,6 +72,8 @@ public interface CommonConfig {
 
   CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
 
+  CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy);
+
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);

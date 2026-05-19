@@ -814,8 +814,11 @@ default_data_region_group_num_per_database=2
 # Datatype: Integer
 data_region_per_data_node=0
 
-# The policy of RegionGroup allocate for each Database.
-# Available values: GREEDY, GCR, PGP
+# The policy of allocating new RegionGroup replicas to DataNodes.
+# These policies are currently supported:
+# 1. GREEDY (Each replica is placed on the DataNode that currently holds the fewest regions; database-aware tie-break)
+# 2. GCR (Greedy + CopySet; balances cluster regions, per-database regions, and 2-region scatter)
+# 3. PGP (Partite-Graph Placement; based on the PGP paper, with database-aware balance)
 # effectiveMode: restart
 # Datatype: String
 region_group_allocate_policy=PGP
