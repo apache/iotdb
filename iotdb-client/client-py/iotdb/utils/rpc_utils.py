@@ -79,10 +79,10 @@ def verify_success_with_redirection_for_multi_devices(status: TSStatus, devices:
 
 def convert_to_timestamp(time: int, precision: str, timezone: str):
     try:
-        return pd.Timestamp(time, unit=precision, tz=timezone)
+        ts = pd.Timestamp(time, unit=precision, tz=timezone)
     except OutOfBoundsDatetime:
         try:
-            return pd.Timestamp(time, unit=precision).tz_localize(timezone)
+            ts = pd.Timestamp(time, unit=precision).tz_localize(timezone)
         except NotImplementedError:
             return pd.Timestamp(time, unit=precision)
     except ValueError:
@@ -90,12 +90,23 @@ def convert_to_timestamp(time: int, precision: str, timezone: str):
             f"Timezone string '{timezone}' cannot be recognized by pandas. "
             f"Falling back to local timezone: '{get_localzone_name()}'."
         )
-        return pd.Timestamp(time, unit=precision, tz=get_localzone_name())
+        ts = pd.Timestamp(time, unit=precision, tz=get_localzone_name())
     except NotImplementedError:
         # Timestamp falls outside Python's stdlib datetime range (year < 1 or
         # > 9999). pandas >= 3.0 cannot attach a timezone to such Timestamps
         # because tz conversion relies on toordinal(). Return naive instead.
         return pd.Timestamp(time, unit=precision)
+    # Construction succeeded but utcoffset() may still fail downstream (e.g.
+    # in pd.DataFrame's tz alignment) when the Timestamp's year is outside
+    # 1..9999 and tz is not the canonical UTC. Probe early and fall back to
+    # naive so callers like result_set_to_pandas() don't blow up. NaT does
+    # not need this check (and does not support utcoffset()).
+    if ts is not pd.NaT:
+        try:
+            ts.utcoffset()
+        except NotImplementedError:
+            return pd.Timestamp(time, unit=precision)
+    return ts
 
 
 unit_map = {
