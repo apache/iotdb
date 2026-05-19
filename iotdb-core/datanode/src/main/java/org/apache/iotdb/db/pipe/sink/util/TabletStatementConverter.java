@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.util;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -219,16 +220,22 @@ public class TabletStatementConverter {
       final String databaseName = ReadWriteIOUtils.readString(byteBuffer);
       if (databaseName != null) {
         statement.setDatabaseName(databaseName);
-        statement.setWriteToTable(true);
-        // For table model, insertTargetName is table name, convert to lowercase
-        statement.setDevicePath(new PartialPath(insertTargetName.toLowerCase(), false));
         // Calculate memory for databaseName
         memorySize += org.apache.tsfile.utils.RamUsageEstimator.sizeOf(databaseName);
 
-        statement.setColumnCategories(columnCategories);
+        if (PathUtils.isTableModelDatabase(databaseName)) {
+          statement.setWriteToTable(true);
+          // For table model, insertTargetName is table name, convert to lowercase
+          statement.setDevicePath(new PartialPath(insertTargetName.toLowerCase(), false));
+          statement.setColumnCategories(columnCategories);
 
-        memorySize += columnCategoriesMemorySize;
-        memorySize += tagColumnIndicesSize;
+          memorySize += columnCategoriesMemorySize;
+          memorySize += tagColumnIndicesSize;
+        } else {
+          statement.setDevicePath(
+              DataNodeDevicePathCache.getInstance().getPartialPath(insertTargetName));
+          statement.setColumnCategories(null);
+        }
       } else {
         // For tree model, use DataNodeDevicePathCache
         statement.setDevicePath(

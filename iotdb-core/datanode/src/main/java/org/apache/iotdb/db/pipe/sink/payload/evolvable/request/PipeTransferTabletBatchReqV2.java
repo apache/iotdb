@@ -38,7 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,14 +55,12 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public List<InsertBaseStatement> constructStatements() {
     final List<InsertBaseStatement> statements = new ArrayList<>();
 
-    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    final InsertMultiTabletsStatement insertMultiTabletsStatement =
-        new InsertMultiTabletsStatement();
-
-    final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
-    final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
-        new HashMap<>();
+        new LinkedHashMap<>();
+    final Map<String, List<InsertRowStatement>> treeModelDatabaseInsertRowStatementMap =
+        new LinkedHashMap<>();
+    final Map<String, List<InsertTabletStatement>> treeModelDatabaseInsertTabletStatementMap =
+        new LinkedHashMap<>();
 
     for (final PipeTransferTabletInsertNodeReqV2 insertNodeReq : insertNodeReqs) {
       final InsertBaseStatement statement = insertNodeReq.constructStatement();
@@ -77,9 +75,12 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         } else if (statement instanceof InsertTabletStatement) {
           statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {
-          tableModelDatabaseInsertRowStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
+          for (final InsertRowStatement insertRowStatement :
+              ((InsertRowsStatement) statement).getInsertRowStatementList()) {
+            tableModelDatabaseInsertRowStatementMap
+                .computeIfAbsent(insertRowStatement.getDatabaseName().get(), k -> new ArrayList<>())
+                .add(insertRowStatement);
+          }
         } else {
           throw new UnsupportedOperationException(
               String.format(
@@ -89,12 +90,21 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) statement);
+        treeModelDatabaseInsertRowStatementMap
+            .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+            .add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
-        insertTabletStatementList.add((InsertTabletStatement) statement);
+        treeModelDatabaseInsertTabletStatementMap
+            .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+            .add((InsertTabletStatement) statement);
       } else if (statement instanceof InsertRowsStatement) {
-        insertRowStatementList.addAll(
-            ((InsertRowsStatement) statement).getInsertRowStatementList());
+        for (final InsertRowStatement insertRowStatement :
+            ((InsertRowsStatement) statement).getInsertRowStatementList()) {
+          treeModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(
+                  insertRowStatement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+              .add(insertRowStatement);
+        }
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -112,17 +122,13 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         statements.add(statement);
         continue;
       }
-      insertTabletStatementList.add(statement);
+      treeModelDatabaseInsertTabletStatementMap
+          .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+          .add(statement);
     }
 
-    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    if (!insertRowsStatement.isEmpty()) {
-      statements.add(insertRowsStatement);
-    }
-    if (!insertMultiTabletsStatement.isEmpty()) {
-      statements.add(insertMultiTabletsStatement);
-    }
+    addTreeModelInsertRowsStatements(statements, treeModelDatabaseInsertRowStatementMap);
+    addTreeModelInsertTabletsStatements(statements, treeModelDatabaseInsertTabletStatementMap);
 
     for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
         tableModelDatabaseInsertRowStatementMap.entrySet()) {
@@ -134,6 +140,34 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     }
 
     return statements;
+  }
+
+  private void addTreeModelInsertRowsStatements(
+      final List<InsertBaseStatement> statements,
+      final Map<String, List<InsertRowStatement>> databaseInsertRowStatementMap) {
+    for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
+        databaseInsertRowStatementMap.entrySet()) {
+      final InsertRowsStatement statement = new InsertRowsStatement();
+      statement.setInsertRowStatementList(insertRows.getValue());
+      if (insertRows.getKey() != null) {
+        statement.setDatabaseName(insertRows.getKey());
+      }
+      statements.add(statement);
+    }
+  }
+
+  private void addTreeModelInsertTabletsStatements(
+      final List<InsertBaseStatement> statements,
+      final Map<String, List<InsertTabletStatement>> databaseInsertTabletStatementMap) {
+    for (final Map.Entry<String, List<InsertTabletStatement>> insertTablets :
+        databaseInsertTabletStatementMap.entrySet()) {
+      final InsertMultiTabletsStatement statement = new InsertMultiTabletsStatement();
+      statement.setInsertTabletStatementList(insertTablets.getValue());
+      if (insertTablets.getKey() != null) {
+        statement.setDatabaseName(insertTablets.getKey());
+      }
+      statements.add(statement);
+    }
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

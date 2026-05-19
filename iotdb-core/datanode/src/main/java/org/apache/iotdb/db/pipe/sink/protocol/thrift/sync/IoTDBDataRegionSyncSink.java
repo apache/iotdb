@@ -387,7 +387,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                   insertNode,
                   pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
                       ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                      : null));
+                      : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName()));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),
@@ -452,7 +452,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                   pipeRawTabletInsertionEvent.isAligned(),
                   pipeRawTabletInsertionEvent.isTableModelEvent()
                       ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                      : null));
+                      : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()));
       rateLimitIfNeeded(
           pipeRawTabletInsertionEvent.getPipeName(),
           pipeRawTabletInsertionEvent.getCreationTime(),

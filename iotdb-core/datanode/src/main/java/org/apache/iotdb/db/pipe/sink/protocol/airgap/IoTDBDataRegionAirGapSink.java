@@ -243,7 +243,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             insertNode,
             pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
                 ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                : null);
+                : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName());
 
     if (!send(
         pipeInsertNodeTabletInsertionEvent.getPipeName(),
@@ -290,7 +290,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
             pipeRawTabletInsertionEvent.isAligned(),
             pipeRawTabletInsertionEvent.isTableModelEvent()
                 ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                : null))) {
+                : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()))) {
       final String errorMessage =
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
