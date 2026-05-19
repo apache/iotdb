@@ -93,6 +93,12 @@ public class DataNodeInternalRPCServiceImplTest {
   private static final File storageDir = new File("target" + java.io.File.separator + "impl");
   private static DataRegion dataRegion;
 
+  // Each parallel surefire fork binds its own consensus port. Reuses
+  // EnvironmentUtils.FORK_PORT_OFFSET so this binding and examinePorts() are
+  // guaranteed to look at the same port — fork-local leaks still fail, sibling
+  // forks no longer cause cross-fork false positives.
+  private static final int CONSENSUS_PORT = 6667 + EnvironmentUtils.FORK_PORT_OFFSET;
+
   @BeforeClass
   public static void setUpBeforeClass() throws IOException, MetadataException, ConsensusException {
     // In standalone mode, we need to set dataNodeId to 0 for RaftPeerId in RatisConsensus
@@ -109,7 +115,7 @@ public class DataNodeInternalRPCServiceImplTest {
                 ConsensusFactory.IOT_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
-                    .setThisNode(new TEndPoint("0.0.0.0", 6667))
+                    .setThisNode(new TEndPoint("0.0.0.0", CONSENSUS_PORT))
                     .setStorageDir(storageDir.getAbsolutePath())
                     .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
@@ -124,7 +130,8 @@ public class DataNodeInternalRPCServiceImplTest {
         ((IoTConsensus) DataRegionConsensusImpl.getInstance()).getImpl(new DataRegionId(1)))) {
       DataRegionConsensusImpl.getInstance()
           .createLocalPeer(
-              id, Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", 6667))));
+              id,
+              Collections.singletonList(new Peer(id, 1, new TEndPoint("0.0.0.0", CONSENSUS_PORT))));
     }
     DataRegionConsensusImpl.getInstance().start();
     SchemaRegionConsensusImpl.getInstance().start();
