@@ -217,7 +217,7 @@ public class QueryContext {
     this.queryStatistics = queryStatistics;
   }
 
-  public void addTVListToSet(Map<TVList, Integer> tvListMap) {
-    tvListSet.addAll(tvListMap.keySet());
+  public void addTVListToSet(Set<TVList> set) {
+    tvListSet.addAll(set);
   }
 }

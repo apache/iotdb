@@ -158,10 +158,46 @@ public abstract class ResourceByPathUtils {
       }
 
       if (!isWorkMemTable) {
+        /*
+         * 1. Q1 queries this TVList while it is still in the working memtable and records a smaller
+         *    visible row count.
+         * 2. Later writes append out-of-order rows to the same TVList, then FLUSH moves the
+         *    memtable to the flushing list.
+         * 3. Q2 queries the flushing memtable. If Q2 directly reuses the original mutable TVList,
+         *    Q2's query-side sort may reorder the indices in place.
+         * 4. Q1 continues to read with its old row count and the reordered indices. The converted
+         *    value index can exceed Q1's bitmap range and cause out-of-bound access.
+         *
+         * Therefore, this flushing branch can reuse the original list only when it is already
+         * sorted or no active query is using it. Otherwise, Q2 should read from
+         * workingListForFlush.
+         */
+        boolean canUseListDirectly = list.isSorted() || list.getQueryContextSet().isEmpty();
         LOGGER.debug(
             "Flushing MemTable - add current query context to mutable TVList's query list");
-        list.getQueryContextSet().add(context);
-        tvListQueryMap.put(list, list.rowCount());
+        if (canUseListDirectly) {
+          list.getQueryContextSet().add(context);
+          tvListQueryMap.put(list, list.rowCount());
+        } else {
+          TVList workingListForFlushSort = memChunk.initWorkingListForFlushIfNecessary(list, true);
+          /*
+           * The query will read from workingListForFlushSort, but cloneForFlushSort() only clones
+           * times and indices. The value arrays and bitmaps are still shared with the original
+           * list.
+           *
+           * Therefore, this query must also hold the original list until it finishes. Adding
+           * context to list.getQueryContextSet() lets flush/query cleanup see that the original
+           * list is still in use. Adding list to context.tvListSet makes
+           * releaseTVListOwnedByQuery() remove this context from the original list later.
+           *
+           * Do not put the original list into tvListQueryMap here. The actual read path must use
+           * workingListForFlushSort to avoid sorting the original list in place.
+           */
+          list.getQueryContextSet().add(context);
+          context.addTVListToSet(Collections.singleton(list));
+          workingListForFlushSort.getQueryContextSet().add(context);
+          tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
+        }
       } else {
         if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
