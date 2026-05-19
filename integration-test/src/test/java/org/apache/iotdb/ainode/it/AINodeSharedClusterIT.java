@@ -29,9 +29,11 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,10 +64,16 @@ import static org.junit.Assert.fail;
 
 /**
  * Consolidates AINodeDeviceManageIT, AINodeModelManageIT, AINodeCallInferenceIT, AINodeForecastIT,
- * AINodeInstanceManagementIT, and AINodeConcurrentForecastIT into a single class that shares one
- * 1C1D1A cluster, avoiding 6 redundant cluster startups.
+ * AINodeInstanceManagementIT, AINodeConcurrentForecastIT, and AINodeClusterConfigIT into a single
+ * class that shares one 1C1D1A cluster, avoiding 7 redundant cluster startups.
+ *
+ * <p>Test methods run in alphabetical order via {@link FixMethodOrder} so that {@link
+ * #zzAiNodeRegisterAndRemoveMustRunLast()} (which calls {@code REMOVE AINODE} and tears the AINode
+ * out of the cluster) executes after every other test. Do <strong>not</strong> add new
+ * {@code @Test} methods whose names sort after {@code zz}.
  */
 @RunWith(IoTDBTestRunner.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category({AIClusterIT.class})
 public class AINodeSharedClusterIT {
 
@@ -560,6 +568,86 @@ public class AINodeSharedClusterIT {
         statement,
         "UNLOAD MODEL sundial FROM DEVICES '0,0'",
         "1510: Device ID list contains duplicate entries.");
+  }
+
+  // ========== AINode lifecycle (must run last) ==========
+
+  /**
+   * REMOVE AINODE permanently tears the AINode out of the cluster, so this test must run after
+   * every other {@code @Test} in the class. The {@code zz} prefix combined with {@link
+   * FixMethodOrder} on the class keeps it last under alphabetical sorting; do not add new test
+   * methods whose names sort after this one.
+   */
+  @Test
+  public void zzAiNodeRegisterAndRemoveMustRunLast() throws SQLException {
+    final String showSql = "SHOW AINODES";
+    final String title = "NodeID,Status,InternalAddress,InternalPort";
+
+    // Verify AINode exists via both dialects before removal
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, showSql, title);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, showSql, title);
+    }
+
+    // Remove AINode
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("REMOVE AINODE");
+      waitForAINodeRemoval(statement, showSql, title);
+    }
+
+    // Verify removal is visible via table dialect as well
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        checkHeader(resultSet.getMetaData(), title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(0, count);
+      }
+    }
+  }
+
+  private static void verifyAINodeExists(Statement statement, String showSql, String title)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(showSql)) {
+      checkHeader(resultSet.getMetaData(), title);
+      int count = 0;
+      while (resultSet.next()) {
+        assertEquals("2", resultSet.getString(1));
+        assertEquals("Running", resultSet.getString(2));
+        count++;
+      }
+      assertEquals(1, count);
+    }
+  }
+
+  private static void waitForAINodeRemoval(Statement statement, String showSql, String title)
+      throws SQLException {
+    for (int retry = 0; retry < 500; retry++) {
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        checkHeader(resultSet.getMetaData(), title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        if (count == 0) {
+          return;
+        }
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    Assert.fail("The target AINode is not removed successfully after all retries.");
   }
 
   // ========== Helper methods (from ModelManageIT) ==========
