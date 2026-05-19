@@ -457,7 +457,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             },
             transferTsFileClientManager.getExecutor());
 
-    if (PipeConfig.getInstance().isTransferTsFileSync() || !isRealtimeFirst) {
+    if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {
         completableFuture.get();
       } catch (final Exception e) {
