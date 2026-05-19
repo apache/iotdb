@@ -15,6 +15,7 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -36,8 +37,14 @@ public class PercentileAccumulator implements TableAccumulator {
   private Percentile percentile = new Percentile();
   private double percentage;
 
-  public PercentileAccumulator(TSDataType seriesDataType) {
+  private final MemoryReservationManager memoryReservationManager;
+  private long previousPercentileSize;
+
+  public PercentileAccumulator(
+      TSDataType seriesDataType, MemoryReservationManager memoryReservationManager) {
     this.seriesDataType = seriesDataType;
+    this.memoryReservationManager = memoryReservationManager;
+    updateMemoryReservation();
   }
 
   @Override
@@ -47,7 +54,7 @@ public class PercentileAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new PercentileAccumulator(seriesDataType);
+    return new PercentileAccumulator(seriesDataType, memoryReservationManager);
   }
 
   @Override
@@ -60,21 +67,22 @@ public class PercentileAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
         addIntInput(arguments[0], mask);
-        return;
+        break;
       case INT64:
       case TIMESTAMP:
         addLongInput(arguments[0], mask);
-        return;
+        break;
       case FLOAT:
         addFloatInput(arguments[0], mask);
-        return;
+        break;
       case DOUBLE:
         addDoubleInput(arguments[0], mask);
-        return;
+        break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Percentile Aggregation: %s", seriesDataType));
     }
+    updateMemoryReservation();
   }
 
   @Override
@@ -87,6 +95,7 @@ public class PercentileAccumulator implements TableAccumulator {
         percentile.merge(Percentile.deserialize(buffer));
       }
     }
+    updateMemoryReservation();
   }
 
   @Override
@@ -137,7 +146,19 @@ public class PercentileAccumulator implements TableAccumulator {
 
   @Override
   public void reset() {
-    percentile.clear();
+    percentile = new Percentile();
+    updateMemoryReservation();
+  }
+
+  private void updateMemoryReservation() {
+    long currentSize = percentile.getEstimatedSize();
+    long delta = currentSize - previousPercentileSize;
+    if (delta > 0) {
+      memoryReservationManager.reserveMemoryCumulatively(delta);
+    } else if (delta < 0) {
+      memoryReservationManager.releaseMemoryCumulatively(-delta);
+    }
+    previousPercentileSize = currentSize;
   }
 
   private void addIntInput(Column column, AggregationMask mask) {

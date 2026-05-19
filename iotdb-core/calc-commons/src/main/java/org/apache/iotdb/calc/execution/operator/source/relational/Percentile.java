@@ -45,7 +45,9 @@ public class Percentile {
   }
 
   public void addValues(double... vals) {
-    if (vals == null || vals.length == 0) return;
+    if (vals == null || vals.length == 0) {
+      return;
+    }
 
     int newSize = size + vals.length;
     if (newSize > capacity) {

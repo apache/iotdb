@@ -17,6 +17,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.Percentile;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.PercentileBigArray;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
@@ -34,10 +35,15 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
       RamUsageEstimator.shallowSizeOfInstance(GroupedPercentileAccumulator.class);
   private final TSDataType seriesDataType;
   private double percentage;
+  private final MemoryReservationManager memoryReservationManager;
+  private long previousArraySize;
   private final PercentileBigArray array = new PercentileBigArray();
 
-  public GroupedPercentileAccumulator(TSDataType seriesDataType) {
+  public GroupedPercentileAccumulator(
+      TSDataType seriesDataType, MemoryReservationManager memoryReservationManager) {
     this.seriesDataType = seriesDataType;
+    this.memoryReservationManager = memoryReservationManager;
+    updateMemoryReservation();
   }
 
   @Override
@@ -76,6 +82,7 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in PERCENTILE Aggregation: %s", seriesDataType));
     }
+    updateMemoryReservation();
   }
 
   @Override
@@ -90,6 +97,7 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
         array.get(groupId).merge(other);
       }
     }
+    updateMemoryReservation();
   }
 
   @Override
@@ -136,6 +144,18 @@ public class GroupedPercentileAccumulator implements GroupedAccumulator {
   @Override
   public void reset() {
     array.reset();
+    updateMemoryReservation();
+  }
+
+  private void updateMemoryReservation() {
+    long currentSize = array.sizeOf();
+    long delta = currentSize - previousArraySize;
+    if (delta > 0) {
+      memoryReservationManager.reserveMemoryCumulatively(delta);
+    } else if (delta < 0) {
+      memoryReservationManager.releaseMemoryCumulatively(-delta);
+    }
+    previousArraySize = currentSize;
   }
 
   public void addIntInput(int[] groupIds, Column[] arguments, AggregationMask mask) {

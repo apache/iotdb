@@ -95,6 +95,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -1327,6 +1328,8 @@ public abstract class TableOperatorGenerator<
                         true,
                         false,
                         null,
+                        Collections.emptySet(),
+                        operatorContext.getMemoryReservationContext())));
                         Collections.emptySet())));
     return createAggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
@@ -1341,7 +1344,8 @@ public abstract class TableOperatorGenerator<
       boolean scanAscending,
       boolean isAggTableScan,
       String timeColumnName,
-      Set<String> measurementColumnNames) {
+      Set<String> measurementColumnNames,
+      MemoryReservationManager memoryReservationManager) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1364,7 +1368,8 @@ public abstract class TableOperatorGenerator<
             isAggTableScan,
             timeColumnName,
             measurementColumnNames,
-            aggregation.isDistinct());
+            aggregation.isDistinct(),
+            memoryReservationManager);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1406,7 +1411,8 @@ public abstract class TableOperatorGenerator<
                             true,
                             false,
                             null,
-                            Collections.emptySet())));
+                            Collections.emptySet(),
+                            context.getMemoryReservationManager())));
 
         CommonOperatorContext operatorContext =
             addOperatorContext(
@@ -1428,7 +1434,13 @@ public abstract class TableOperatorGenerator<
           .forEach(
               (k, v) ->
                   aggregatorBuilder.add(
-                      buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+                      buildGroupByAggregator(
+                          childLayout,
+                          k,
+                          v,
+                          node.getStep(),
+                          typeProvider,
+                          context.getMemoryReservationManager())));
 
       Set<Symbol> preGroupedKeys = ImmutableSet.copyOf(node.getPreGroupedSymbols());
       List<Symbol> groupingKeys = node.getGroupingKeys();
@@ -1479,7 +1491,13 @@ public abstract class TableOperatorGenerator<
         .forEach(
             (k, v) ->
                 aggregatorBuilder.add(
-                    buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
+                    buildGroupByAggregator(
+                        childLayout,
+                        k,
+                        v,
+                        node.getStep(),
+                        typeProvider,
+                        context.getMemoryReservationManager())));
     CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), HashAggregationOperator.class.getSimpleName());
@@ -1603,7 +1621,8 @@ public abstract class TableOperatorGenerator<
       Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
-      ITableTypeProvider typeProvider) {
+      ITableTypeProvider typeProvider,
+      MemoryReservationManager memoryReservationManager) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1623,7 +1642,8 @@ public abstract class TableOperatorGenerator<
             Collections.emptyList(),
             Collections.emptyMap(),
             true,
-            aggregation.isDistinct());
+            aggregation.isDistinct(),
+            memoryReservationManager);
 
     OptionalInt maskChannel = OptionalInt.empty();
     if (aggregation.hasMask()) {
@@ -1718,7 +1738,8 @@ public abstract class TableOperatorGenerator<
       ResolvedFunction resolvedFunction,
       List<Map.Entry<Expression, Type>> arguments,
       List<Integer> argumentChannels,
-      PatternAggregationTracker patternAggregationTracker) {
+      PatternAggregationTracker patternAggregationTracker,
+      MemoryReservationManager memoryReservationManager) {
     String functionName = resolvedFunction.getSignature().getName();
     List<TSDataType> originalArgumentTypes =
         resolvedFunction.getSignature().getArgumentTypes().stream()
@@ -1726,7 +1747,10 @@ public abstract class TableOperatorGenerator<
             .collect(Collectors.toList());
 
     TableAccumulator accumulator =
-        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            memoryReservationManager);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -1887,7 +1911,11 @@ public abstract class TableOperatorGenerator<
 
           PatternAggregator variableRecognizerAggregator =
               buildPatternAggregator(
-                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+                  resolvedFunction,
+                  arguments,
+                  valueChannels,
+                  patternAggregationTracker,
+                  context.getMemoryReservationManager());
 
           variableRecognizerAggregatorBuilder.add(variableRecognizerAggregator);
 
@@ -1978,7 +2006,11 @@ public abstract class TableOperatorGenerator<
 
           PatternAggregator measurePatternAggregator =
               buildPatternAggregator(
-                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+                  resolvedFunction,
+                  arguments,
+                  valueChannels,
+                  patternAggregationTracker,
+                  context.getMemoryReservationManager());
 
           measurePatternAggregatorBuilder.add(measurePatternAggregator);
 
@@ -2216,7 +2248,12 @@ public abstract class TableOperatorGenerator<
       FunctionKind functionKind = resolvedFunction.getFunctionKind();
       if (functionKind == FunctionKind.AGGREGATE) {
         WindowAggregator tableWindowAggregator =
-            buildWindowAggregator(symbol, function, typeProvider, argumentChannels);
+            buildWindowAggregator(
+                symbol,
+                function,
+                typeProvider,
+                argumentChannels,
+                context.getMemoryReservationManager());
         windowFunction = new AggregationWindowFunction(tableWindowAggregator);
       } else if (functionKind == FunctionKind.WINDOW) {
         String functionName = function.getResolvedFunction().getSignature().getName();
@@ -2261,7 +2298,8 @@ public abstract class TableOperatorGenerator<
       Symbol symbol,
       WindowNode.Function function,
       ITableTypeProvider typeProvider,
-      List<Integer> argumentChannels) {
+      List<Integer> argumentChannels,
+      MemoryReservationManager memoryReservationManager) {
     // Create accumulator first
     String functionName = function.getResolvedFunction().getSignature().getName();
     List<TSDataType> originalArgumentTypes =
@@ -2269,7 +2307,10 @@ public abstract class TableOperatorGenerator<
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
     TableAccumulator accumulator =
-        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+        createBuiltinAccumulator(
+            getAggregationTypeByFuncName(functionName),
+            originalArgumentTypes,
+            memoryReservationManager);
 
     // Create aggregator by accumulator
     return new WindowAggregator(
