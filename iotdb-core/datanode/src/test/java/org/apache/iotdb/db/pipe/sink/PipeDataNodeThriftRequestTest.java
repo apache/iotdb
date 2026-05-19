@@ -44,6 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -66,7 +68,9 @@ import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PipeDataNodeThriftRequestTest {
 
@@ -199,6 +203,33 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertTrue(statement.isWriteToTable());
     Assert.assertTrue(statement.getDatabaseName().isPresent());
     Assert.assertEquals(statement.getDatabaseName().get(), "test");
+  }
+
+  @Test
+  public void testPipeTransferInsertNodeReqV2WithTreeModelDatabase() {
+    final PipeTransferTabletInsertNodeReqV2 req =
+        PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
+            new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "test", "d"}),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                1,
+                new Object[] {1},
+                false),
+            "root.test");
+    final PipeTransferTabletInsertNodeReqV2 deserializeReq =
+        PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req);
+
+    final InsertBaseStatement statement = deserializeReq.constructStatement();
+    final List<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath(new String[] {"root", "test", "d", "s"}));
+
+    Assert.assertEquals(statement.getPaths(), paths);
+    Assert.assertFalse(statement.isWriteToTable());
+    Assert.assertTrue(statement.getDatabaseName().isPresent());
+    Assert.assertEquals("root.test", statement.getDatabaseName().get());
   }
 
   @Test
@@ -366,6 +397,39 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletReqV2WithTreeModelDatabase() {
+    try {
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.TEXT));
+      final Tablet tablet = new Tablet("root.test.d", schemaList, 8);
+      tablet.addTimestamp(0, 2);
+      tablet.addTimestamp(1, 1);
+      tablet.addValue("s1", 0, 2);
+      tablet.addValue("s2", 0, "2");
+      tablet.addValue("s1", 1, 1);
+      tablet.addValue("s2", 1, "1");
+
+      final PipeTransferTabletRawReqV2 req =
+          PipeTransferTabletRawReqV2.toTPipeTransferReq(tablet, false, "root.test");
+      final PipeTransferTabletRawReqV2 deserializeReq =
+          PipeTransferTabletRawReqV2.fromTPipeTransferReq(req);
+
+      final InsertBaseStatement statement = deserializeReq.constructStatement();
+      final List<PartialPath> paths = new ArrayList<>();
+      paths.add(new PartialPath(new String[] {"root", "test", "d", "s1"}));
+      paths.add(new PartialPath(new String[] {"root", "test", "d", "s2"}));
+
+      Assert.assertEquals(paths, statement.getPaths());
+      Assert.assertFalse(statement.isWriteToTable());
+      Assert.assertTrue(statement.getDatabaseName().isPresent());
+      Assert.assertEquals("root.test", statement.getDatabaseName().get());
+    } catch (final IOException e) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReq() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
@@ -501,6 +565,94 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals("test", deserializedReq.getTabletReqs().get(0).getDataBaseName());
     Assert.assertEquals("test", deserializedReq.getInsertNodeReqs().get(0).getDataBaseName());
+  }
+
+  @Test
+  public void testPipeTransferTabletBatchReqV2WithMultipleTreeModelDatabases() throws IOException {
+    final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    final List<String> insertDataBase = new ArrayList<>();
+    final List<String> tabletDataBase = new ArrayList<>();
+
+    insertNodeBuffers.add(
+        new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "db1", "d"}),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                1,
+                new Object[] {1},
+                false)
+            .serializeToByteBuffer());
+    insertDataBase.add("root.db1");
+
+    insertNodeBuffers.add(
+        new InsertRowNode(
+                new PlanNodeId(""),
+                new PartialPath(new String[] {"root", "db2", "d"}),
+                false,
+                new String[] {"s"},
+                new TSDataType[] {TSDataType.INT32},
+                2,
+                new Object[] {2},
+                false)
+            .serializeToByteBuffer());
+    insertDataBase.add("root.db2");
+
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+
+    final Tablet db1Tablet = new Tablet("root.db1.d", schemaList, 8);
+    db1Tablet.addTimestamp(0, 1);
+    db1Tablet.addValue("s1", 0, 1);
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      db1Tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(false, outputStream);
+      tabletBuffers.add(
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      tabletDataBase.add("root.db1");
+    }
+
+    final Tablet db2Tablet = new Tablet("root.db2.d", schemaList, 8);
+    db2Tablet.addTimestamp(0, 2);
+    db2Tablet.addValue("s1", 0, 2);
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      db2Tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(false, outputStream);
+      tabletBuffers.add(
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+      tabletDataBase.add("root.db2");
+    }
+
+    final PipeTransferTabletBatchReqV2 req =
+        PipeTransferTabletBatchReqV2.toTPipeTransferReq(
+            insertNodeBuffers, tabletBuffers, insertDataBase, tabletDataBase);
+    final PipeTransferTabletBatchReqV2 deserializedReq =
+        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req);
+
+    final List<InsertBaseStatement> statements = deserializedReq.constructStatements();
+    final Set<String> insertRowsDatabases = new HashSet<>();
+    final Set<String> insertTabletsDatabases = new HashSet<>();
+
+    for (final InsertBaseStatement statement : statements) {
+      Assert.assertFalse(statement.isWriteToTable());
+      Assert.assertTrue(statement.getDatabaseName().isPresent());
+      if (statement instanceof InsertRowsStatement) {
+        insertRowsDatabases.add(statement.getDatabaseName().get());
+      } else if (statement instanceof InsertMultiTabletsStatement) {
+        insertTabletsDatabases.add(statement.getDatabaseName().get());
+      } else {
+        Assert.fail("Unexpected statement type: " + statement.getClass().getName());
+      }
+    }
+
+    Assert.assertEquals(
+        new HashSet<>(java.util.Arrays.asList("root.db1", "root.db2")), insertRowsDatabases);
+    Assert.assertEquals(
+        new HashSet<>(java.util.Arrays.asList("root.db1", "root.db2")), insertTabletsDatabases);
   }
 
   @Test

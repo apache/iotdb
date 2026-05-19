@@ -121,8 +121,6 @@ public class WriteBackSink implements PipeConnector {
 
   private UserEntity userEntity;
 
-  private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
-
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
 
   private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
@@ -268,7 +266,7 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertBaseStatement insertBaseStatement;
     insertBaseStatement =
@@ -311,7 +309,7 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
             ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(

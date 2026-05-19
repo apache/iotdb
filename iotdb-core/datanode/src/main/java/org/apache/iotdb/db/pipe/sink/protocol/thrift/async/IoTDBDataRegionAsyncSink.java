@@ -301,7 +301,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       final String databaseName =
           pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
               ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-              : null;
+              : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
       final TPipeTransferReq pipeTransferReq =
           compressIfNeeded(
               PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(insertNode, databaseName));
@@ -328,7 +328,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   pipeRawTabletInsertionEvent.isAligned(),
                   pipeRawTabletInsertionEvent.isTableModelEvent()
                       ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                      : null));
+                      : pipeRawTabletInsertionEvent.getTreeModelDatabaseName()));
       final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
           new PipeTransferTabletRawEventHandler(
               pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
