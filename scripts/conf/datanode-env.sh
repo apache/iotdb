@@ -339,13 +339,10 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
 
-# Apply tsfile locale option populated by Maven at package time
-# (see conf/iotdb-locale.sh; empty in default build, "-Dtsfile.locale=zh" under with-zh-locale).
-if [ -f "${IOTDB_CONF}/iotdb-locale.sh" ]; then
-    . "${IOTDB_CONF}/iotdb-locale.sh"
-    if [ -n "$TSFILE_LOCALE_JVM_OPT" ]; then
-        IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS $TSFILE_LOCALE_JVM_OPT"
-    fi
+# Append tsfile locale option populated by Maven at package time
+# (see conf/iotdb-common.sh; empty in default build, "-Dtsfile.locale=zh" under with-zh-locale).
+if [ -n "$TSFILE_LOCALE_JVM_OPT" ]; then
+    IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS $TSFILE_LOCALE_JVM_OPT"
 fi
 
 # option below tries to optimize safepoint stw time for large counted loop.

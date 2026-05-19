@@ -49,7 +49,6 @@
             <directory>${project.basedir}/../../scripts/conf</directory>
             <outputDirectory>conf</outputDirectory>
             <includes>
-                <include>iotdb-locale.sh</include>
                 <include>windows/iotdb-locale.bat</include>
             </includes>
             <filtered>true</filtered>
@@ -80,10 +79,11 @@
             <source>${project.basedir}/../node-commons/src/assembly/resources/conf/iotdb-system.properties</source>
             <destName>conf/iotdb-system.properties</destName>
         </file>
-        <!-- copy iotdb-common.sh to different script folders-->
+        <!-- copy iotdb-common.sh to different script folders (filtered for tsfile.locale.opt) -->
         <file>
             <source>${project.basedir}/../../scripts/conf/iotdb-common.sh</source>
             <destName>conf/iotdb-common.sh</destName>
+            <filtered>true</filtered>
         </file>
     </files>
 </assembly>

@@ -50,7 +50,7 @@
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../scripts/conf</directory>
             <excludes>
-                <exclude>iotdb-locale.*</exclude>
+                <exclude>iotdb-common.sh</exclude>
                 <exclude>**/iotdb-locale.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
@@ -59,7 +59,7 @@
             <outputDirectory>conf</outputDirectory>
             <directory>${project.basedir}/../scripts/conf</directory>
             <includes>
-                <include>iotdb-locale.sh</include>
+                <include>iotdb-common.sh</include>
                 <include>windows/iotdb-locale.bat</include>
             </includes>
             <filtered>true</filtered>

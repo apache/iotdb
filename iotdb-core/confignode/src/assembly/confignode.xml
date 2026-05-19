@@ -49,7 +49,6 @@
             <directory>${project.basedir}/../../scripts/conf</directory>
             <outputDirectory>conf</outputDirectory>
             <includes>
-                <include>iotdb-locale.sh</include>
                 <include>windows/iotdb-locale.bat</include>
             </includes>
             <filtered>true</filtered>
@@ -82,6 +81,7 @@
         <file>
             <source>${project.basedir}/../../scripts/conf/iotdb-common.sh</source>
             <destName>conf/iotdb-common.sh</destName>
+            <filtered>true</filtered>
         </file>
     </files>
 </assembly>
