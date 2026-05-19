@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
@@ -54,29 +55,45 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   @Override
   public InsertTabletStatement constructStatement() {
+    final boolean isTableModel =
+        Objects.nonNull(dataBaseName) && PathUtils.isTableModelDatabase(dataBaseName);
+
     if (statement != null) {
-      if (Objects.isNull(dataBaseName)) {
-        new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
-      } else {
+      if (isTableModel) {
         new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+        statement.setWriteToTable(true);
+      } else {
+        new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+      }
+      if (Objects.nonNull(dataBaseName)) {
+        statement.setDatabaseName(dataBaseName);
       }
 
       return statement;
     }
 
-    if (Objects.isNull(dataBaseName)) {
-      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-    } else {
+    if (isTableModel) {
       new PipeTableModelTabletEventSorter(tablet).sortByTimestampIfNecessary();
+    } else {
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     }
 
     try {
       if (isTabletEmpty(tablet)) {
         // Empty statement, will be filtered after construction
-        return new InsertTabletStatement();
+        statement = new InsertTabletStatement();
+        return statement;
       }
 
-      return new InsertTabletStatement(tablet, isAligned, dataBaseName);
+      if (isTableModel) {
+        statement = new InsertTabletStatement(tablet, isAligned, dataBaseName);
+      } else {
+        statement = new InsertTabletStatement(tablet, isAligned, null);
+        if (Objects.nonNull(dataBaseName)) {
+          statement.setDatabaseName(dataBaseName);
+        }
+      }
+      return statement;
     } catch (final MetadataException e) {
       LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);
       return null;
