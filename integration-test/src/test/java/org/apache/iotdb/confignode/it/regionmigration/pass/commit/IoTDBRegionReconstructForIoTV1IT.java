@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +110,9 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       Assert.assertTrue(dataRegionMap.containsKey(selectedRegion));
       Pair<Integer, Set<Integer>> leaderAndNodeIds = dataRegionMap.get(selectedRegion);
       Assert.assertEquals(2, leaderAndNodeIds.right.size());
-      // reconstruct from the leader to ensure no data is lost
+      // Stop the current leader; reconstruct will later target the surviving follower (whose
+      // tsfiles get deleted below). When the original leader is restarted, the follower's
+      // missing data is replicated back from it, so no committed data is lost.
       final int dataNodeToBeClosed = leaderAndNodeIds.left;
       final int dataNodeToBeReconstructed =
           leaderAndNodeIds.right.stream().filter(x -> x != dataNodeToBeClosed).findAny().get();
@@ -173,19 +176,25 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getAbstractEnv().checkNodeInStatus(dataNodeToBeClosed, NodeStatus.Running);
       session.executeNonQueryStatement(
           String.format(RECONSTRUCT_FORMAT, selectedRegion, dataNodeToBeReconstructed));
+      // Confirm reconstruct succeeded: the selected region must contain both the reconstructed
+      // peer and the (formerly closed) peer, with both rows reporting Running.
       try {
         Awaitility.await()
             .pollInterval(1, TimeUnit.SECONDS)
             .atMost(10, TimeUnit.MINUTES)
             .until(
-                () ->
-                    getRegionStatusWithoutRunning(session).isEmpty()
-                        && dataDirToBeReconstructed.getAbsoluteFile().exists());
+                () -> {
+                  Map<Integer, String> peerStatus =
+                      getRegionStatusMap(session)
+                          .getOrDefault(selectedRegion, Collections.emptyMap());
+                  return "Running".equals(peerStatus.get(dataNodeToBeReconstructed))
+                      && "Running".equals(peerStatus.get(dataNodeToBeClosed));
+                });
       } catch (Exception e) {
         LOGGER.error(
-            "Two factor: {} && {}",
-            getRegionStatusWithoutRunning(session),
-            dataDirToBeReconstructed.getAbsoluteFile().exists());
+            "Reconstruct did not finish in time. region {} status map: {}",
+            selectedRegion,
+            getRegionStatusMap(session).get(selectedRegion));
         fail();
       }
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();

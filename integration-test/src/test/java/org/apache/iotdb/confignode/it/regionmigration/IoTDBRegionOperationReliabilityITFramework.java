@@ -736,4 +736,23 @@ public class IoTDBRegionOperationReliabilityITFramework {
     }
     return result;
   }
+
+  /** Returns regionId -> dataNodeId -> status as reported by {@code show regions}. */
+  protected static Map<Integer, Map<Integer, String>> getRegionStatusMap(Session session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("show regions");
+    final int regionIdIndex = dataSet.getColumnNames().indexOf("RegionId");
+    final int dataNodeIdIndex = dataSet.getColumnNames().indexOf("DataNodeId");
+    final int regionStatusIndex = dataSet.getColumnNames().indexOf("Status");
+    dataSet.setFetchSize(1024);
+    Map<Integer, Map<Integer, String>> result = new TreeMap<>();
+    while (dataSet.hasNext()) {
+      List<Field> fields = dataSet.next().getFields();
+      final int regionId = fields.get(regionIdIndex).getIntV();
+      final int dataNodeId = fields.get(dataNodeIdIndex).getIntV();
+      final String regionStatus = fields.get(regionStatusIndex).toString();
+      result.computeIfAbsent(regionId, k -> new TreeMap<>()).put(dataNodeId, regionStatus);
+    }
+    return result;
+  }
 }

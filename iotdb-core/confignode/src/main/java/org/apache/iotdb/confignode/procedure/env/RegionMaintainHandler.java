@@ -176,9 +176,14 @@ public class RegionMaintainHandler {
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && (IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())
             || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
-      // parameter of createPeer for MultiLeader should be all peers
+      // parameter of createPeer for MultiLeader should be all peers; callers (e.g.
+      // AddRegionPeerProcedure) may have already inserted destDataNode into the partition
+      // table before reaching here, so append only when not already present to avoid
+      // sending a peer list with duplicates.
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
-      currentPeerNodes.add(destDataNode);
+      if (!currentPeerNodes.contains(destDataNode)) {
+        currentPeerNodes.add(destDataNode);
+      }
     } else {
       // parameter of createPeer for Ratis can be empty
       currentPeerNodes = Collections.emptyList();
