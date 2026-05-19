@@ -44,7 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -145,13 +145,13 @@ public class FragmentInstanceExecutionTest {
       FragmentInstanceExecution execution1 =
           createFragmentInstanceExecution(1, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext1 = execution1.getFragmentInstanceContext();
-      fragmentInstanceContext1.addTVListToSet(ImmutableMap.of(tvList, 0));
+      fragmentInstanceContext1.addTVListToSet(ImmutableSet.of(tvList));
       tvList.getQueryContextSet().add(fragmentInstanceContext1);
 
       FragmentInstanceExecution execution2 =
           createFragmentInstanceExecution(2, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext2 = execution2.getFragmentInstanceContext();
-      fragmentInstanceContext2.addTVListToSet(ImmutableMap.of(tvList, 0));
+      fragmentInstanceContext2.addTVListToSet(ImmutableSet.of(tvList));
       tvList.getQueryContextSet().add(fragmentInstanceContext2);
 
       // mock flush's behavior

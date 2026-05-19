@@ -267,8 +267,8 @@ public class QueryContext {
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
-  public void addTVListToSet(Map<TVList, Integer> tvListMap) {
-    tvListSet.addAll(tvListMap.keySet());
+  public void addTVListToSet(Set<TVList> set) {
+    tvListSet.addAll(set);
   }
 
   public void addRowLevelFilteredCount(long count) {
