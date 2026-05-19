@@ -536,48 +536,38 @@ cd-deploy:
     - ssh-keyscan -H "$DEPLOY_HOST_2" >> ~/.ssh/known_hosts
   script:
     - cd "$CI_PROJECT_DIR"
-    # 先打英文包
+    # ===== 阶段 1：打英文包 =====
     - mvn clean package -pl distribution -DskipTests -am -s $MAVEN_SETTINGS_XML
-    # 再打中文包（with-zh-locale），输出文件名带 -zh 后缀
-    - mvn clean package -pl distribution -DskipTests -am -P with-zh-locale -s $MAVEN_SETTINGS_XML
+    # ===== 阶段 2：处理并上传英文包（在下一次 clean 清空 target 之前完成） =====
     - |
-      set -e  # 只保留 -e，移除 -u 和 -o pipefail 进行调试
+      set -e
 
-      echo "=== 开始文件处理 ==="
+      echo "=== 处理英文包 ==="
 
-      # 英文 bin 包：timechodb-VERSION-bin.zip ；中文 bin 包：timechodb-VERSION-zh-bin.zip
       EN_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-bin.zip' ! -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
-      ZH_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
-
       if [ -z "$EN_ZIP" ]; then
         echo "错误: 在 distribution/target 中未找到英文 timechodb-*-bin.zip 文件"
         ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
         exit 1
       fi
-      if [ -z "$ZH_ZIP" ]; then
-        echo "错误: 在 distribution/target 中未找到中文 timechodb-*-zh-bin.zip 文件"
-        ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
-        exit 1
-      fi
       echo "找到英文ZIP文件: $EN_ZIP"
-      echo "找到中文ZIP文件: $ZH_ZIP"
 
+      # 时间戳写入临时文件，跨 script 步骤共享，保证中英文包"批次后缀"一致
+      # （SHORT_SHA 在 job 全程不变，无需共享）
       TIMESTAMP=$(date +%Y%m%d%H%M%S)
       SHORT_SHA=${CI_COMMIT_SHORT_SHA:-$(git rev-parse --short HEAD)}
-      RENAMED_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}.zip"
-      RENAMED_ZH_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}-zh.zip"
+      echo "$TIMESTAMP" > /tmp/cd_deploy_timestamp
 
+      RENAMED_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}.zip"
       echo "复制文件: $EN_ZIP -> $RENAMED_ZIP"
       cp "$EN_ZIP" "$RENAMED_ZIP"
-      echo "复制文件: $ZH_ZIP -> $RENAMED_ZH_ZIP"
-      cp "$ZH_ZIP" "$RENAMED_ZH_ZIP"
-      
-      # 生成元数据文件
+
+      # 生成元数据文件（commit 信息一次生成，与英文包同批上传）
       METADATA_FILE="distribution/target/deploy-info-${TIMESTAMP}-${SHORT_SHA}.csv"
       echo "生成元数据文件: $METADATA_FILE"
-      
+
       echo "commit_id,author,author_email,message" > "$METADATA_FILE"
-      
+
       COMMITS_RANGE="$CURRENT_SHA"
       if [ -n "${CI_COMMIT_BEFORE_SHA:-}" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
         COMMITS_RANGE="${CI_COMMIT_BEFORE_SHA}..${CI_COMMIT_SHA}"
@@ -594,57 +584,64 @@ cd-deploy:
         SAFE_MESSAGE=$(printf '%s' "$COMMIT_MESSAGE" | sed 's/"/""/g' | tr -d '\n\r')
         printf '"%s","%s","%s","%s"\n' "$COMMIT_ID" "$SAFE_AUTHOR_NAME" "$SAFE_AUTHOR_EMAIL" "$SAFE_MESSAGE" >> "$METADATA_FILE"
       done <<< "$log_output"
-      
+
       echo "元数据文件预览:"
       head -3 "$METADATA_FILE"
-      
-      # 部署前检查
+
+      # 部署前检查（只做一次）
       echo "=== 部署前检查 ==="
       if [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_TARGET_DIR" ]; then
         echo "错误: 部署变量未设置"
         exit 1
       fi
-      # if [ -z "$DEPLOY_HOST_2_USER" ] || [ -z "$DEPLOY_HOST_2" ] || [ -z "$DEPLOY_HOST_2_TARGET_DIR" ]; then
-        # echo "错误: 部署变量未设置"
-        # exit 1
-      # fi
-      
-      # 测试SSH连接
+
       echo "测试SSH连接到 $DEPLOY_USER@$DEPLOY_HOST..."
       if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "echo 'SSH连接成功'"; then
         echo "错误: SSH连接失败"
         exit 1
       fi
-      # echo "测试SSH连接到 $DEPLOY_HOST_2_USER@$DEPLOY_HOST_2..."
-      # if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2" "echo 'SSH连接成功'"; then
-      #   echo "错误: SSH连接失败"
-      #   exit 1
-      # fi
-      
-      # 创建目标目录
+
       echo "在目标服务器创建目录: $DEPLOY_TARGET_DIR"
       ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $DEPLOY_TARGET_DIR"
-      # echo "在目标服务器创建目录: $DEPLOY_HOST_2_TARGET_DIR"
-      # ssh "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2" "mkdir -p $DEPLOY_HOST_2_TARGET_DIR"
-      
-      # 部署文件
-      echo "开始部署文件..."
+
+      # 上传英文包与元数据
       echo "传输英文ZIP文件..."
       scp -o ConnectTimeout=30 "$RENAMED_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
-      # scp -o ConnectTimeout=30 "$RENAMED_ZIP" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
-
-      echo "传输中文ZIP文件..."
-      scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
-      # scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
 
       echo "传输元数据文件..."
       scp -o ConnectTimeout=30 "$METADATA_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
-      # scp -o ConnectTimeout=30 "$METADATA_FILE" "$DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
-      
+
+      echo "英文包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZIP")"
+    # ===== 阶段 3：打中文包（with-zh-locale），输出文件名带 -zh 后缀 =====
+    # 此处的 clean 会清空 distribution/target，但英文包已在阶段 2 上传完成，不受影响
+    - mvn clean package -pl distribution -DskipTests -am -P with-zh-locale -s $MAVEN_SETTINGS_XML
+    # ===== 阶段 4：处理并上传中文包 =====
+    - |
+      set -e
+
+      echo "=== 处理中文包 ==="
+
+      ZH_ZIP=$(find distribution/target -maxdepth 1 -name 'timechodb-*-zh-bin.zip' -type f | head -n 1)
+      if [ -z "$ZH_ZIP" ]; then
+        echo "错误: 在 distribution/target 中未找到中文 timechodb-*-zh-bin.zip 文件"
+        ls -la distribution/target/ 2>/dev/null || echo "distribution/target 目录不存在"
+        exit 1
+      fi
+      echo "找到中文ZIP文件: $ZH_ZIP"
+
+      # 复用阶段 2 的时间戳，保持中英文包命名一致
+      TIMESTAMP=$(cat /tmp/cd_deploy_timestamp)
+      SHORT_SHA=${CI_COMMIT_SHORT_SHA:-$(git rev-parse --short HEAD)}
+      RENAMED_ZH_ZIP="distribution/target/timechodb-${TIMESTAMP}-${SHORT_SHA}-zh.zip"
+
+      echo "复制文件: $ZH_ZIP -> $RENAMED_ZH_ZIP"
+      cp "$ZH_ZIP" "$RENAMED_ZH_ZIP"
+
+      echo "传输中文ZIP文件..."
+      scp -o ConnectTimeout=30 "$RENAMED_ZH_ZIP" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/"
+
       echo "=== 部署完成 ==="
-      echo "英文文件已部署到: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZIP")"
-      echo "中文文件已部署到: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZH_ZIP")"
-      # echo "文件已部署到: $DEPLOY_HOST_2_USER@$DEPLOY_HOST_2:$DEPLOY_HOST_2_TARGET_DIR/"
+      echo "中文包部署完成: $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_DIR/$(basename "$RENAMED_ZH_ZIP")"
 
   environment:
     name: atmos
