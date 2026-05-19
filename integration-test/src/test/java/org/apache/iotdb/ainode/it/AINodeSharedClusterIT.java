@@ -32,6 +32,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -49,6 +51,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
@@ -59,12 +62,14 @@ import static org.junit.Assert.fail;
 
 /**
  * Consolidates AINodeDeviceManageIT, AINodeModelManageIT, AINodeCallInferenceIT, AINodeForecastIT,
- * and AINodeInstanceManagementIT into a single class that shares one 1C1D1A cluster, avoiding 5
- * redundant cluster startups (~20 min saved).
+ * AINodeInstanceManagementIT, and AINodeConcurrentForecastIT into a single class that shares one
+ * 1C1D1A cluster, avoiding 6 redundant cluster startups.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
 public class AINodeSharedClusterIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AINodeSharedClusterIT.class);
 
   private static final String TARGET_DEVICES_STR = "0,1";
   private static final Set<String> TARGET_DEVICES =
@@ -87,11 +92,19 @@ public class AINodeSharedClusterIT {
           + "timecol=>'%s'"
           + ")";
 
+  private static final List<FakeModelInfo> CONCURRENT_FORECAST_MODELS =
+      Arrays.asList(
+          new FakeModelInfo("sundial", "sundial", "builtin", "active"),
+          new FakeModelInfo("timer_xl", "timer", "builtin", "active"));
+  private static final String CONCURRENT_FORECAST_SQL_TEMPLATE =
+      "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time,s FROM concurrent_db.AI) ORDER BY time, output_length=>%d)";
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareDataInTree();
     prepareDataInTable();
+    prepareDataForConcurrentForecast();
   }
 
   @AfterClass
@@ -408,6 +421,63 @@ public class AINodeSharedClusterIT {
             "s0");
     errorTest(
         statement, invalidTimecolSQL2, "701: The type of the column [s0] is not as expected.");
+  }
+
+  // ========== Concurrent forecast tests ==========
+
+  @Test
+  public void concurrentForecastTest() throws SQLException, InterruptedException {
+    for (FakeModelInfo modelInfo : CONCURRENT_FORECAST_MODELS) {
+      concurrentGPUForecastTest(modelInfo, "0,1");
+      // TODO: Enable cpu test after optimize memory consumption
+      // concurrentGPUForecastTest(modelInfo, "cpu");
+    }
+  }
+
+  private void concurrentGPUForecastTest(FakeModelInfo modelInfo, String devices)
+      throws SQLException, InterruptedException {
+    final int forecastLength = 512;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      final String forecastSQL =
+          String.format(CONCURRENT_FORECAST_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
+      final int threadCnt = 10;
+      // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
+      // appear.
+      final int loop = 10;
+      statement.execute(
+          String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
+      checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+      long startTime = System.currentTimeMillis();
+      concurrentInference(statement, forecastSQL, threadCnt, loop, forecastLength);
+      long endTime = System.currentTimeMillis();
+      LOGGER.info(
+          String.format(
+              "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
+              modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
+      statement.execute(
+          String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelInfo.getModelId(), devices));
+      checkModelNotOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+    }
+  }
+
+  private static void prepareDataForConcurrentForecast() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE concurrent_db");
+      statement.execute("CREATE TABLE concurrent_db.AI (s DOUBLE FIELD)");
+      for (int i = 0; i < 2880; i++) {
+        statement.addBatch(
+            String.format(
+                "INSERT INTO concurrent_db.AI(time, s) VALUES(%d, %f)",
+                i, Math.sin(i * Math.PI / 1440)));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
+      }
+      statement.executeBatch();
+    }
   }
 
   // ========== InstanceManagement tests ==========
