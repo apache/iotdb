@@ -21,7 +21,7 @@ package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.AINodeIT;
+import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
@@ -40,7 +40,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({AINodeIT.class})
+@Category({AIClusterIT.class})
 public class AINodeClusterConfigIT {
 
   @BeforeClass
