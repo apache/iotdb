@@ -54,7 +54,6 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -166,59 +165,6 @@ public class AINodeSharedClusterIT {
       registerUserDefinedModel(statement, modelInfo, "file:///data/mantis");
       dropUserDefinedModel(statement, modelInfo.getModelId());
     }
-  }
-
-  @Test
-  public void dropBuiltInModelErrorTestInTree() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
-    }
-  }
-
-  @Test
-  public void dropBuiltInModelErrorTestInTable() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
-    }
-  }
-
-  @Test
-  public void showBuiltInModelTestInTree() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      showBuiltInModelTest(statement);
-    }
-  }
-
-  @Test
-  public void showBuiltInModelTestInTable() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      showBuiltInModelTest(statement);
-    }
-  }
-
-  private void showBuiltInModelTest(Statement statement) throws SQLException {
-    int built_in_model_count = 0;
-    final String showSql = "SHOW MODELS";
-    try (ResultSet resultSet = statement.executeQuery(showSql)) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
-      while (resultSet.next()) {
-        built_in_model_count++;
-        FakeModelInfo modelInfo =
-            new FakeModelInfo(
-                resultSet.getString(1),
-                resultSet.getString(2),
-                resultSet.getString(3),
-                resultSet.getString(4));
-        assertTrue(BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
-        assertEquals(BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
-      }
-    }
-    assertEquals(BUILTIN_MODEL_MAP.size(), built_in_model_count);
   }
 
   // ========== CallInference tests ==========

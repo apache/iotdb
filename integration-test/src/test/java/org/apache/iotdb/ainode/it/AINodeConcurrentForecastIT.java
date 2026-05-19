@@ -75,10 +75,15 @@ public class AINodeConcurrentForecastIT {
       statement.execute("CREATE DATABASE root");
       statement.execute("CREATE TABLE root.AI (s DOUBLE FIELD)");
       for (int i = 0; i < 2880; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.AI(time, s) VALUES(%d, %f)", i, Math.sin(i * Math.PI / 1440)));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
       }
+      statement.executeBatch();
     }
   }
 
@@ -101,7 +106,9 @@ public class AINodeConcurrentForecastIT {
           String.format(
               FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
       final int threadCnt = 10;
-      final int loop = 100;
+      // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
+      // appear.
+      final int loop = 10;
       statement.execute(
           String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
       checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);

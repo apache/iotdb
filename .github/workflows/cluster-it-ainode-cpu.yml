@@ -1,0 +1,70 @@
+name: AINode IT - CPU
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+      - 'rc/*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - 'rc/*'
+      - 'force_ci/**'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  AINode-CPU:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Adjust Linux kernel somaxconn
+        shell: bash
+        run: sudo sysctl -w net.core.somaxconn=65535
+      - name: IT Test
+        shell: bash
+        run: |
+          mvn clean verify \
+          -P with-integration-tests,with-ainode \
+          -DskipUTs \
+          -DintegrationTest.forkCount=1 \
+          -pl integration-test,iotdb-core/ainode \
+          -am \
+          -PAINodeIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ainode-cpu-logs
+          path: integration-test/target/*-logs
+          retention-days: 30

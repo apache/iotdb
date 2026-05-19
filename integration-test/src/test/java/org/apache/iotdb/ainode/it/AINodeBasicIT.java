@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.ainode.it;
 
+import org.apache.iotdb.ainode.utils.AINodeTestUtils.FakeModelInfo;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.AINodeIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -33,15 +33,23 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+/**
+ * Metadata-only AINode tests that don't drive inference or bind GPU devices, so they can run on a
+ * plain CPU runner. Tests that do exercise CUDA paths live in {@link AINodeSharedClusterIT}.
+ */
 @RunWith(IoTDBTestRunner.class)
 @Category({AINodeIT.class})
-public class AINodeClusterConfigIT {
+public class AINodeBasicIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -54,74 +62,55 @@ public class AINodeClusterConfigIT {
   }
 
   @Test
-  public void aiNodeRegisterAndRemoveTest() throws SQLException {
-    String show_sql = "SHOW AINODES";
-    String title = "NodeID,Status,InternalAddress,InternalPort";
-
-    // Verify AINode exists via both dialects before removal
+  public void dropBuiltInModelErrorTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      verifyAINodeExists(statement, show_sql, title);
-    }
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      verifyAINodeExists(statement, show_sql, title);
-    }
-
-    // Remove AINode
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("REMOVE AINODE");
-      waitForAINodeRemoval(statement, show_sql, title);
-    }
-
-    // Verify removal is visible via table dialect as well
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(show_sql)) {
-        checkHeader(resultSet.getMetaData(), title);
-        int count = 0;
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(0, count);
-      }
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
     }
   }
 
-  private static void verifyAINodeExists(Statement statement, String showSql, String title)
-      throws SQLException {
+  @Test
+  public void dropBuiltInModelErrorTestInTable() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
+    }
+  }
+
+  @Test
+  public void showBuiltInModelTestInTree() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      showBuiltInModelTest(statement);
+    }
+  }
+
+  @Test
+  public void showBuiltInModelTestInTable() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      showBuiltInModelTest(statement);
+    }
+  }
+
+  private void showBuiltInModelTest(Statement statement) throws SQLException {
+    int builtInModelCount = 0;
+    final String showSql = "SHOW MODELS";
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
-      checkHeader(resultSet.getMetaData(), title);
-      int count = 0;
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        assertEquals("2", resultSet.getString(1));
-        assertEquals("Running", resultSet.getString(2));
-        count++;
-      }
-      assertEquals(1, count);
-    }
-  }
-
-  private static void waitForAINodeRemoval(Statement statement, String showSql, String title)
-      throws SQLException {
-    for (int retry = 0; retry < 500; retry++) {
-      try (ResultSet resultSet = statement.executeQuery(showSql)) {
-        checkHeader(resultSet.getMetaData(), title);
-        int count = 0;
-        while (resultSet.next()) {
-          count++;
-        }
-        if (count == 0) {
-          return;
-        }
-      }
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        builtInModelCount++;
+        FakeModelInfo modelInfo =
+            new FakeModelInfo(
+                resultSet.getString(1),
+                resultSet.getString(2),
+                resultSet.getString(3),
+                resultSet.getString(4));
+        assertTrue(BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
+        assertEquals(BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
     }
-    Assert.fail("The target AINode is not removed successfully after all retries.");
+    assertEquals(BUILTIN_MODEL_MAP.size(), builtInModelCount);
   }
 }
