@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.i18n;
 
-import org.slf4j.helpers.MessageFormatter;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.helpers.MessageFormatter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -47,9 +47,7 @@ public class DataNodeSchemaMessagesZhFormatTest {
     Assert.assertEquals(
         "恢复 root.sg.d.s 的 tagIndex 失败，schemaRegion 为 SchemaRegionId{1}。",
         formatSlf4j(
-            readZhMessage("FAILED_TO_RECOVER_TAG_INDEX"),
-            "root.sg.d.s",
-            "SchemaRegionId{1}"));
+            readZhMessage("FAILED_TO_RECOVER_TAG_INDEX"), "root.sg.d.s", "SchemaRegionId{1}"));
     Assert.assertEquals(
         "MTree 刷写耗时 321ms，SchemaRegion 为 SchemaRegionId{1}",
         formatSlf4j(readZhMessage("MTREE_FLUSH_COST"), 321, "SchemaRegionId{1}"));
