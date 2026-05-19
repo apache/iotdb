@@ -77,7 +77,7 @@ ut-datanode:
   tags:
     - timechodb
   script:
-    - 'mvn clean test -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=16 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+    - 'mvn clean test -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=8 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
   interruptible: true
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
@@ -88,7 +88,7 @@ ut-others:
     - timechodb
   script:
     - 'mvn install -DskipTests -pl iotdb-core/datanode -am -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
-    - 'mvn test -pl "!iotdb-core/datanode" -DforkCount=16 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
+    - 'mvn test -pl "!iotdb-core/datanode" -DforkCount=8 -Dtest.port.closed=true -Djarsigner.skip=true -s $MAVEN_SETTINGS_XML'
   interruptible: true
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
