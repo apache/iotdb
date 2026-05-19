@@ -52,6 +52,16 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>iotdb-locale.sh</include>
+                <include>windows/iotdb-locale.bat</include>
+            </includes>
+            <filtered>true</filtered>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
             <directory>${project.basedir}/../scripts/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
             <includes>
