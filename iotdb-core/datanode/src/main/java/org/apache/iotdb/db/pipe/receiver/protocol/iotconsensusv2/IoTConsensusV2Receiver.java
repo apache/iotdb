@@ -1535,9 +1535,7 @@ public class IoTConsensusV2Receiver {
           // only update tsFileEventCount when tsFileEvent is first enqueue.
           tsFileEventCount.incrementAndGet();
         }
-        if (!isTransferTsFileSeal
-            && !isTransferTsFilePiece
-            && !shouldKeepRequestMetaAfterSuccess) {
+        if (!isTransferTsFileSeal && !isTransferTsFilePiece && !shouldKeepRequestMetaAfterSuccess) {
           WALEventCount.incrementAndGet();
         }
         reqExecutionOrderBuffer.add(requestMeta);

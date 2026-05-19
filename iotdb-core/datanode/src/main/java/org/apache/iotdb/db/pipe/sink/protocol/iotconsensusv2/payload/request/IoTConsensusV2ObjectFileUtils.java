@@ -338,14 +338,11 @@ public final class IoTConsensusV2ObjectFileUtils {
       return;
     }
 
-    if (!TierManager.getInstance()
-        .getAbsoluteObjectFilePath(objectPathString, true)
-        .isPresent()) {
+    if (!TierManager.getInstance().getAbsoluteObjectFilePath(objectPathString, true).isPresent()) {
       throw new ObjectFileNotExist(objectPathString);
     }
 
-    objectFileDescriptors.put(
-        objectPathString, new ObjectFileDescriptor(objectSize, objectPath));
+    objectFileDescriptors.put(objectPathString, new ObjectFileDescriptor(objectSize, objectPath));
   }
 
   public static final class ObjectFileDescriptor {

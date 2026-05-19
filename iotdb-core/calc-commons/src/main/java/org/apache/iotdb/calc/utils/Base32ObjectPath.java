@@ -92,8 +92,7 @@ public class Base32ObjectPath implements IObjectPath {
         deviceIdSegments[i] = "";
       } else {
         deviceIdSegments[i] =
-            new String(
-                BaseEncoding.base32().omitPadding().decode(segment), StandardCharsets.UTF_8);
+            new String(BaseEncoding.base32().omitPadding().decode(segment), StandardCharsets.UTF_8);
       }
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdSegments);

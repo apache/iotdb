@@ -221,8 +221,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         objectSize == 0
             ? 0
             : (int) Math.min(readFileBufferSize, objectSize - currentObjectFileOffset);
-    final boolean isEOF =
-        objectSize == 0 || currentObjectFileOffset + pieceLength >= objectSize;
+    final boolean isEOF = objectSize == 0 || currentObjectFileOffset + pieceLength >= objectSize;
     final ObjectNode objectNode =
         new ObjectNode(isEOF, currentObjectFileOffset, pieceLength, descriptor.getObjectPath());
 

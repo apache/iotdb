@@ -120,7 +120,8 @@ public class ObjectTypeUtils {
       final IObjectPath newObjectPath;
       if (objectPath instanceof PlainObjectPath) {
         newObjectPath =
-            new PlainObjectPath(objectPath.toString().replaceFirst(regionId + "", newRegionId + ""));
+            new PlainObjectPath(
+                objectPath.toString().replaceFirst(regionId + "", newRegionId + ""));
       } else {
         final String[] subPath = new String[path.getNameCount() - 1];
         for (int i = 1; i < path.getNameCount(); i++) {

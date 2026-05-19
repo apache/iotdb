@@ -491,7 +491,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       final byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
       final IObjectPath relativePath =
           IObjectPath.Factory.FACTORY.create(
-              entry.getKey().getRegionId().getId(), times[row], getDeviceID(row), measurements[column]);
+              entry.getKey().getRegionId().getId(),
+              times[row],
+              getDeviceID(row),
+              measurements[column]);
       final ObjectNode objectNode = new ObjectNode(isEOF, offset, content, relativePath);
       objectNode.setDataRegionReplicaSet(entry.getKey());
       result.add(objectNode);

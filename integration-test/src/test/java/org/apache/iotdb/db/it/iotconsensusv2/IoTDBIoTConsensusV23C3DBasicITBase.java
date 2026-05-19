@@ -21,8 +21,8 @@ package org.apache.iotdb.db.it.iotconsensusv2;
 
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -41,10 +41,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -424,7 +424,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
               .orElseThrow(() -> new AssertionError("Follower DataNode not found"));
 
       LOGGER.info(
-          "Stopping object-region leader DataNode {} (region {})", leaderDataNodeId, targetRegionId);
+          "Stopping object-region leader DataNode {} (region {})",
+          leaderDataNodeId,
+          targetRegionId);
       leaderNode.stopForcibly();
       Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
 
@@ -449,7 +451,8 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     }
   }
 
-  private Map<Integer, Pair<Integer, Set<Integer>>> waitForDataRegionMap(final Statement statement) {
+  private Map<Integer, Pair<Integer, Set<Integer>>> waitForDataRegionMap(
+      final Statement statement) {
     final AtomicReference<Map<Integer, Pair<Integer, Set<Integer>>>> dataRegionMapReference =
         new AtomicReference<>(Collections.emptyMap());
     Awaitility.await()
@@ -593,8 +596,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                 final DataNodeWrapper wrapper =
                     EnvFactory.getEnv()
                         .dataNodeIdToWrapper(dataNodeId)
-                        .orElseThrow(
-                            () -> new AssertionError("DataNode not found: " + dataNodeId));
+                        .orElseThrow(() -> new AssertionError("DataNode not found: " + dataNodeId));
                 Assert.assertTrue(
                     "Expected object file on DataNode "
                         + dataNodeId
@@ -612,8 +614,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
   private boolean containsObjectFile(
       final DataNodeWrapper wrapper, final int regionId, final byte[] expectedContent)
       throws IOException {
-    final File objectRegionDir =
-        new File(wrapper.getDataNodeObjectDir(), String.valueOf(regionId));
+    final File objectRegionDir = new File(wrapper.getDataNodeObjectDir(), String.valueOf(regionId));
     return containsObjectFile(objectRegionDir, expectedContent);
   }
 
