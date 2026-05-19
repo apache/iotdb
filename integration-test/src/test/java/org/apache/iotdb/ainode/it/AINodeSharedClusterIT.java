@@ -29,9 +29,13 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -49,6 +53,7 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
@@ -59,12 +64,20 @@ import static org.junit.Assert.fail;
 
 /**
  * Consolidates AINodeDeviceManageIT, AINodeModelManageIT, AINodeCallInferenceIT, AINodeForecastIT,
- * and AINodeInstanceManagementIT into a single class that shares one 1C1D1A cluster, avoiding 5
- * redundant cluster startups (~20 min saved).
+ * AINodeInstanceManagementIT, AINodeConcurrentForecastIT, and AINodeClusterConfigIT into a single
+ * class that shares one 1C1D1A cluster, avoiding 7 redundant cluster startups.
+ *
+ * <p>Test methods run in alphabetical order via {@link FixMethodOrder} so that {@link
+ * #zzAiNodeRegisterAndRemoveMustRunLast()} (which calls {@code REMOVE AINODE} and tears the AINode
+ * out of the cluster) executes after every other test. Do <strong>not</strong> add new
+ * {@code @Test} methods whose names sort after {@code zz}.
  */
 @RunWith(IoTDBTestRunner.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category({AIClusterIT.class})
 public class AINodeSharedClusterIT {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AINodeSharedClusterIT.class);
 
   private static final String TARGET_DEVICES_STR = "0,1";
   private static final Set<String> TARGET_DEVICES =
@@ -87,11 +100,19 @@ public class AINodeSharedClusterIT {
           + "timecol=>'%s'"
           + ")";
 
+  private static final List<FakeModelInfo> CONCURRENT_FORECAST_MODELS =
+      Arrays.asList(
+          new FakeModelInfo("sundial", "sundial", "builtin", "active"),
+          new FakeModelInfo("timer_xl", "timer", "builtin", "active"));
+  private static final String CONCURRENT_FORECAST_SQL_TEMPLATE =
+      "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time,s FROM concurrent_db.AI) ORDER BY time, output_length=>%d)";
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareDataInTree();
     prepareDataInTable();
+    prepareDataForConcurrentForecast();
   }
 
   @AfterClass
@@ -167,6 +188,8 @@ public class AINodeSharedClusterIT {
       dropUserDefinedModel(statement, modelInfo.getModelId());
     }
   }
+
+  // ========== BuiltinModel tests ==========
 
   @Test
   public void dropBuiltInModelErrorTestInTree() throws SQLException {
@@ -408,6 +431,63 @@ public class AINodeSharedClusterIT {
         statement, invalidTimecolSQL2, "701: The type of the column [s0] is not as expected.");
   }
 
+  // ========== Concurrent forecast tests ==========
+
+  @Test
+  public void concurrentForecastTest() throws SQLException, InterruptedException {
+    for (FakeModelInfo modelInfo : CONCURRENT_FORECAST_MODELS) {
+      concurrentGPUForecastTest(modelInfo, "0,1");
+      // TODO: Enable cpu test after optimize memory consumption
+      // concurrentGPUForecastTest(modelInfo, "cpu");
+    }
+  }
+
+  private void concurrentGPUForecastTest(FakeModelInfo modelInfo, String devices)
+      throws SQLException, InterruptedException {
+    final int forecastLength = 512;
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      final String forecastSQL =
+          String.format(CONCURRENT_FORECAST_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
+      final int threadCnt = 10;
+      // PR CI keeps a concurrency smoke check; nightly/daily can dial this up if regressions
+      // appear.
+      final int loop = 10;
+      statement.execute(
+          String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
+      checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+      long startTime = System.currentTimeMillis();
+      concurrentInference(statement, forecastSQL, threadCnt, loop, forecastLength);
+      long endTime = System.currentTimeMillis();
+      LOGGER.info(
+          String.format(
+              "Model %s concurrent inference %d reqs (%d threads, %d loops) in GPU takes time: %dms",
+              modelInfo.getModelId(), threadCnt * loop, threadCnt, loop, endTime - startTime));
+      statement.execute(
+          String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelInfo.getModelId(), devices));
+      checkModelNotOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);
+    }
+  }
+
+  private static void prepareDataForConcurrentForecast() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE concurrent_db");
+      statement.execute("CREATE TABLE concurrent_db.AI (s DOUBLE FIELD)");
+      for (int i = 0; i < 2880; i++) {
+        statement.addBatch(
+            String.format(
+                "INSERT INTO concurrent_db.AI(time, s) VALUES(%d, %f)",
+                i, Math.sin(i * Math.PI / 1440)));
+        if ((i + 1) % 500 == 0) {
+          statement.executeBatch();
+          statement.clearBatch();
+        }
+      }
+      statement.executeBatch();
+    }
+  }
+
   // ========== InstanceManagement tests ==========
 
   @Test
@@ -488,6 +568,86 @@ public class AINodeSharedClusterIT {
         statement,
         "UNLOAD MODEL sundial FROM DEVICES '0,0'",
         "1510: Device ID list contains duplicate entries.");
+  }
+
+  // ========== AINode lifecycle (must run last) ==========
+
+  /**
+   * REMOVE AINODE permanently tears the AINode out of the cluster, so this test must run after
+   * every other {@code @Test} in the class. The {@code zz} prefix combined with {@link
+   * FixMethodOrder} on the class keeps it last under alphabetical sorting; do not add new test
+   * methods whose names sort after this one.
+   */
+  @Test
+  public void zzAiNodeRegisterAndRemoveMustRunLast() throws SQLException {
+    final String showSql = "SHOW AINODES";
+    final String title = "NodeID,Status,InternalAddress,InternalPort";
+
+    // Verify AINode exists via both dialects before removal
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, showSql, title);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      verifyAINodeExists(statement, showSql, title);
+    }
+
+    // Remove AINode
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("REMOVE AINODE");
+      waitForAINodeRemoval(statement, showSql, title);
+    }
+
+    // Verify removal is visible via table dialect as well
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        checkHeader(resultSet.getMetaData(), title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(0, count);
+      }
+    }
+  }
+
+  private static void verifyAINodeExists(Statement statement, String showSql, String title)
+      throws SQLException {
+    try (ResultSet resultSet = statement.executeQuery(showSql)) {
+      checkHeader(resultSet.getMetaData(), title);
+      int count = 0;
+      while (resultSet.next()) {
+        assertEquals("2", resultSet.getString(1));
+        assertEquals("Running", resultSet.getString(2));
+        count++;
+      }
+      assertEquals(1, count);
+    }
+  }
+
+  private static void waitForAINodeRemoval(Statement statement, String showSql, String title)
+      throws SQLException {
+    for (int retry = 0; retry < 500; retry++) {
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        checkHeader(resultSet.getMetaData(), title);
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        if (count == 0) {
+          return;
+        }
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    Assert.fail("The target AINode is not removed successfully after all retries.");
   }
 
   // ========== Helper methods (from ModelManageIT) ==========
