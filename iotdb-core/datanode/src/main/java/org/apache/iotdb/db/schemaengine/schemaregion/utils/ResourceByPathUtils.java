@@ -180,11 +180,22 @@ public abstract class ResourceByPathUtils {
           tvListQueryMap.put(list, list.rowCount());
         } else {
           TVList workingListForFlushSort = memChunk.initWorkingListForFlushIfNecessary(list, true);
-          // The flush list shares value arrays with the original list, so keep the original list
-          // referenced by this query until the query finishes.
+          /*
+           * The query will read from workingListForFlushSort, but cloneForFlushSort() only clones
+           * times and indices. The value arrays and bitmaps are still shared with the original
+           * list.
+           *
+           * Therefore, this query must also hold the original list until it finishes. Adding
+           * context to list.getQueryContextSet() lets flush/query cleanup see that the original
+           * list is still in use. Adding list to context.tvListSet makes
+           * releaseTVListOwnedByQuery() remove this context from the original list later.
+           *
+           * Do not put the original list into tvListQueryMap here. The actual read path must use
+           * workingListForFlushSort to avoid sorting the original list in place.
+           */
           list.getQueryContextSet().add(context);
+          context.addTVListToSet(Collections.singleton(list));
           workingListForFlushSort.getQueryContextSet().add(context);
-          context.addTVListToSet(Collections.singletonMap(list, 0));
           tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
         }
       } else {
