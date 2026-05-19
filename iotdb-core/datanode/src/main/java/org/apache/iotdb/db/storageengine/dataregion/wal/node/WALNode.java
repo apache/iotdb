@@ -61,6 +61,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractR
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -944,13 +945,18 @@ public class WALNode implements IWALNode {
 
   @Override
   public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    return getDeletionBoundToFreeAtLeast(bytesToFree).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundToFreeAtLeast(long bytesToFree) {
     if (bytesToFree <= 0) {
-      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
     }
     File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (walFiles == null || walFiles.length <= 1) {
       // No files or only the current-writing file — cannot free anything
-      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
     }
     WALFileUtils.ascSortByVersionId(walFiles);
     // Exclude the last file (currently being written)
@@ -960,71 +966,49 @@ public class WALNode implements IWALNode {
       if (accumulated >= bytesToFree) {
         // The next file's startSearchIndex is the boundary: everything before it can be deleted
         if (i + 1 < walFiles.length) {
-          return WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName());
+          return new Pair<>(
+              WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName()),
+              WALFileUtils.parseVersionId(walFiles[i + 1].getName()));
         }
         break;
       }
     }
     // Could not free enough even by deleting all non-current files — allow deleting all
-    return Long.MAX_VALUE;
+    return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
   }
 
   @Override
   public long getVersionIdToFreeAtLeast(long bytesToFree) {
-    if (bytesToFree <= 0) {
-      return 0;
-    }
-    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
-    if (walFiles == null || walFiles.length <= 1) {
-      return 0;
-    }
-    WALFileUtils.ascSortByVersionId(walFiles);
-    long accumulated = 0;
-    for (int i = 0; i < walFiles.length - 1; i++) {
-      accumulated += walFiles[i].length();
-      if (accumulated >= bytesToFree) {
-        // Return the versionId of the next file — files before it can be freed
-        if (i + 1 < walFiles.length) {
-          return WALFileUtils.parseVersionId(walFiles[i + 1].getName());
-        }
-        break;
-      }
-    }
-    return Long.MAX_VALUE;
+    return getDeletionBoundToFreeAtLeast(bytesToFree).right;
   }
 
   @Override
   public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundBeforeTimestamp(long cutoffTimeMs) {
     File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (walFiles == null || walFiles.length <= 1) {
-      return Long.MIN_VALUE + 1;
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
     }
     WALFileUtils.ascSortByVersionId(walFiles);
     int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
     if (expiredPrefixLength == 0) {
-      return Long.MIN_VALUE + 1;
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
     }
     if (expiredPrefixLength >= walFiles.length - 1) {
-      return Long.MAX_VALUE;
+      return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
     }
-    return WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName());
+    return new Pair<>(
+        WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName()),
+        WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName()));
   }
 
   @Override
   public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
-    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
-    if (walFiles == null || walFiles.length <= 1) {
-      return 0;
-    }
-    WALFileUtils.ascSortByVersionId(walFiles);
-    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
-    if (expiredPrefixLength == 0) {
-      return 0;
-    }
-    if (expiredPrefixLength >= walFiles.length - 1) {
-      return Long.MAX_VALUE;
-    }
-    return WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName());
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).right;
   }
 
   private int countExpiredRolledWalFiles(File[] walFiles, long cutoffTimeMs) {

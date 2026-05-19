@@ -35,6 +35,7 @@ import java.util.List;
  */
 public class WALByteBufReader implements Closeable {
   private WALMetaData metaData;
+  private WALInputStream walInputStream;
   private DataInputStream logStream;
   private Iterator<Integer> sizeIterator;
   // V3: track current entry index to provide per-entry progress metadata
@@ -43,6 +44,7 @@ public class WALByteBufReader implements Closeable {
   public WALByteBufReader(File logFile) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
     try {
+      this.walInputStream = walInputStream;
       this.logStream = new DataInputStream(walInputStream);
       this.metaData = walInputStream.getWALMetaData();
       this.sizeIterator = metaData.getBuffersSize().iterator();
@@ -55,6 +57,7 @@ public class WALByteBufReader implements Closeable {
   public WALByteBufReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
     try {
+      this.walInputStream = walInputStream;
       this.logStream = new DataInputStream(walInputStream);
       this.metaData = metaDataSnapshot == null ? new WALMetaData() : metaDataSnapshot;
       this.sizeIterator = this.metaData.getBuffersSize().iterator();
@@ -86,6 +89,22 @@ public class WALByteBufReader implements Closeable {
     */
     logStream.readFully(buffer.array(), 0, size);
     return buffer;
+  }
+
+  public boolean skipToEntryIndex(int entryIndex) throws IOException {
+    if (entryIndex < 0 || entryIndex > metaData.getBuffersSize().size()) {
+      return false;
+    }
+    long logicalPosition = 0L;
+    for (int i = 0; i < entryIndex; i++) {
+      logicalPosition += metaData.getBuffersSize().get(i);
+    }
+    if (entryIndex < metaData.getBuffersSize().size()) {
+      walInputStream.skipToGivenLogicalPosition(logicalPosition);
+    }
+    sizeIterator = metaData.getBuffersSize().listIterator(entryIndex);
+    currentEntryIndex = entryIndex - 1;
+    return true;
   }
 
   public WALMetaData getMetaData() {

@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -51,7 +52,7 @@ import java.util.Set;
  * <p>This iterator reads writer-local ordering metadata from WAL footer arrays instead of relying
  * on the entry body to carry complete subscription ordering information.
  */
-public class ProgressWALIterator implements Closeable {
+public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensusRequest> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProgressWALIterator.class);
 
@@ -412,15 +413,7 @@ public class ProgressWALIterator implements Closeable {
 
   private boolean skipEntries(final ProgressWALReader reader, final int skipEntries)
       throws IOException {
-    int skipped = 0;
-    while (skipped < skipEntries) {
-      if (!reader.hasNext()) {
-        return false;
-      }
-      reader.next();
-      skipped++;
-    }
-    return true;
+    return reader.skipToEntryIndex(skipEntries);
   }
 
   private int findFileIndexByVersion(final long versionId) {

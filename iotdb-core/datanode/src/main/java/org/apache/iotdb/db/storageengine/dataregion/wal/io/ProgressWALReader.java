@@ -50,6 +50,10 @@ public class ProgressWALReader implements Closeable {
     return delegate.next();
   }
 
+  public boolean skipToEntryIndex(final int entryIndex) throws IOException {
+    return delegate.skipToEntryIndex(entryIndex);
+  }
+
   public WALMetaData getMetaData() {
     return delegate.getMetaData();
   }

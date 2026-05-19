@@ -70,6 +70,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -822,7 +823,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   protected ReplayLocateDecision scanReplayStartForRequests(
-      final Iterable<IndexedConsensusRequest> requests,
+      final Iterator<IndexedConsensusRequest> requests,
       final RegionProgress regionProgress,
       final boolean seekAfter) {
     final Map<WriterId, WriterProgress> requestedWriterProgress = new LinkedHashMap<>();
@@ -842,7 +843,8 @@ public class ConsensusPrefetchingQueue {
     Long firstUncoveredReplayableSearchIndex = null;
     boolean sawBlockingNonReplayableUncovered = false;
 
-    for (final IndexedConsensusRequest request : requests) {
+    while (requests.hasNext()) {
+      final IndexedConsensusRequest request = requests.next();
       if (!hasComparableWriterProgress(request)) {
         continue;
       }
@@ -905,17 +907,15 @@ public class ConsensusPrefetchingQueue {
     }
 
     final WALNode walNode = (WALNode) consensusReqReader;
-    final List<IndexedConsensusRequest> replayRequests = new ArrayList<>();
     try (final ProgressWALIterator iterator = new ProgressWALIterator(walNode, Long.MIN_VALUE)) {
-      while (iterator.hasNext()) {
-        replayRequests.add(iterator.next());
-      }
+      final ReplayLocateDecision decision =
+          scanReplayStartForRequests(iterator, regionProgress, seekAfter);
       if (iterator.hasIncompleteScan()) {
         return ReplayLocateDecision.locateMiss(
             regionProgress,
             "replay lookup did not complete: " + iterator.getIncompleteScanDetail());
       }
-      return scanReplayStartForRequests(replayRequests, regionProgress, seekAfter);
+      return decision;
     } catch (final IOException e) {
       return ReplayLocateDecision.locateMiss(
           regionProgress, "failed to close replay lookup iterator: " + e.getMessage());

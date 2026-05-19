@@ -21,6 +21,8 @@ package org.apache.iotdb.consensus.iot.log;
 
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -108,8 +110,18 @@ public interface ConsensusReqReader {
    *     #DEFAULT_SAFELY_DELETED_SEARCH_INDEX} if no files need to be freed
    */
   default long getSearchIndexToFreeAtLeast(long bytesToFree) {
-    // Default implementation: if any freeing is needed, allow deleting everything.
-    return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+    return getDeletionBoundToFreeAtLeast(bytesToFree).left;
+  }
+
+  /**
+   * Calculate both deletion boundaries for size-based WAL retention in one pass.
+   *
+   * @return left is safelyDeletedSearchIndex, right is retainedMinVersionId
+   */
+  default Pair<Long, Long> getDeletionBoundToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0
+        ? new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE)
+        : new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
   }
 
   /**
@@ -132,7 +144,7 @@ public interface ConsensusReqReader {
    * @return the versionId boundary; files with versionId < this can be freed
    */
   default long getVersionIdToFreeAtLeast(long bytesToFree) {
-    return bytesToFree > 0 ? Long.MAX_VALUE : 0;
+    return getDeletionBoundToFreeAtLeast(bytesToFree).right;
   }
 
   /**
@@ -145,7 +157,16 @@ public interface ConsensusReqReader {
    *     rolled WAL files are old enough to be freed
    */
   default long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
-    return Long.MIN_VALUE + 1;
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).left;
+  }
+
+  /**
+   * Calculate both deletion boundaries for time-based WAL retention in one pass.
+   *
+   * @return left is safelyDeletedSearchIndex, right is retainedMinVersionId
+   */
+  default Pair<Long, Long> getDeletionBoundBeforeTimestamp(long cutoffTimeMs) {
+    return new Pair<>(Long.MIN_VALUE + 1, 0L);
   }
 
   /**
@@ -157,6 +178,6 @@ public interface ConsensusReqReader {
    *     old enough to be freed
    */
   default long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
-    return 0;
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).right;
   }
 }

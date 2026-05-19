@@ -330,6 +330,8 @@ public class WALFileUtils {
         if (WALFileVersion.getVersion(channel) != WALFileVersion.V3) {
           continue;
         }
+        // V3 WAL stores writer progress in the footer, so these lookups do not deserialize entry
+        // bodies.
         final WALMetaData metadata = WALMetaData.readFromWALFile(walFile, channel);
         final List<Long> physicalTimes = metadata.getPhysicalTimes();
         final List<Short> nodeIds = metadata.getNodeIds();

@@ -22,6 +22,8 @@ package org.apache.iotdb.consensus.iot.subscription;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.util.Collection;
 
 public class SubscriptionWalRetentionCalculator {
@@ -107,9 +109,8 @@ public class SubscriptionWalRetentionCalculator {
     }
 
     final long excess = regionWalSize - retentionSizeLimit;
-    return SubscriptionRetentionBound.of(
-        consensusReqReader.getSearchIndexToFreeAtLeast(excess),
-        consensusReqReader.getVersionIdToFreeAtLeast(excess));
+    final Pair<Long, Long> deletionBound = consensusReqReader.getDeletionBoundToFreeAtLeast(excess);
+    return SubscriptionRetentionBound.of(deletionBound.left, deletionBound.right);
   }
 
   private SubscriptionRetentionBound buildTimeRetentionBound(final long retentionMs) {
@@ -118,8 +119,8 @@ public class SubscriptionWalRetentionCalculator {
     }
 
     final long cutoffTimeMs = System.currentTimeMillis() - retentionMs;
-    return SubscriptionRetentionBound.of(
-        consensusReqReader.getSearchIndexToFreeBeforeTimestamp(cutoffTimeMs),
-        consensusReqReader.getVersionIdToFreeBeforeTimestamp(cutoffTimeMs));
+    final Pair<Long, Long> deletionBound =
+        consensusReqReader.getDeletionBoundBeforeTimestamp(cutoffTimeMs);
+    return SubscriptionRetentionBound.of(deletionBound.left, deletionBound.right);
   }
 }
