@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.slf4j.helpers.MessageFormatter;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,10 +66,7 @@ public class DataNodeSchemaMessagesZhFormatTest {
   }
 
   private static String readZhMessage(String constantName) throws IOException {
-    Path basePath = Paths.get(ZH_MESSAGES_RELATIVE_PATH);
-    if (!Files.exists(basePath)) {
-      basePath = Paths.get("iotdb-core", "datanode", ZH_MESSAGES_RELATIVE_PATH);
-    }
+    Path basePath = resolveZhMessagesPath();
     Assert.assertTrue("Missing zh messages file: " + basePath, Files.exists(basePath));
 
     String content = new String(Files.readAllBytes(basePath), StandardCharsets.UTF_8);
@@ -81,5 +79,21 @@ public class DataNodeSchemaMessagesZhFormatTest {
             .matcher(content);
     Assert.assertTrue("Missing zh message constant: " + constantName, matcher.find());
     return matcher.group(1);
+  }
+
+  private static Path resolveZhMessagesPath() throws IOException {
+    try {
+      Path testClassesDir =
+          Paths.get(
+              DataNodeSchemaMessagesZhFormatTest.class
+                  .getProtectionDomain()
+                  .getCodeSource()
+                  .getLocation()
+                  .toURI());
+      Path moduleBaseDir = testClassesDir.getParent().getParent();
+      return moduleBaseDir.resolve(ZH_MESSAGES_RELATIVE_PATH);
+    } catch (URISyntaxException e) {
+      throw new IOException("Failed to resolve zh messages path", e);
+    }
   }
 }
