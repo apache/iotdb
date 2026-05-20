@@ -979,24 +979,22 @@ class RatisConsensus implements IConsensus {
     if (group == null || !group.getPeers().contains(myself)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    boolean changed = false;
+    // Mechanical merge: every peer in nodeIdToPriority gets the requested priority, every other
+    // peer keeps its current one. Deciding *whether* a priority change is worth pushing is the
+    // caller's job (see ConfigRegionPriorityBalancer); this method just applies what it is told.
     List<RaftPeer> newPeers = new ArrayList<>(group.getPeers().size());
     for (RaftPeer p : group.getPeers()) {
       Integer desired = nodeIdToPriority.get(Utils.fromRaftPeerIdToNodeId(p.getId()));
-      if (desired == null || desired == p.getPriority()) {
+      if (desired == null) {
         newPeers.add(p);
-        continue;
+      } else {
+        newPeers.add(
+            RaftPeer.newBuilder()
+                .setId(p.getId())
+                .setAddress(p.getAddress())
+                .setPriority(desired)
+                .build());
       }
-      newPeers.add(
-          RaftPeer.newBuilder()
-              .setId(p.getId())
-              .setAddress(p.getAddress())
-              .setPriority(desired)
-              .build());
-      changed = true;
-    }
-    if (!changed) {
-      return;
     }
     sendReconfiguration(RaftGroup.valueOf(raftGroupId, newPeers));
   }

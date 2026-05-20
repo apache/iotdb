@@ -518,6 +518,9 @@ struct TConfigNodeHeartbeatReq {
     1: required i64 timestamp
     2: optional common.TLicense licence
     3: optional TActivationControl activationControl
+    // Mirrors TDataNodeHeartbeatReq.needSamplingLoad — the leader sets this flag once every
+    // sampling interval so the receiver runs its disk-health check at the same cadence.
+    4: optional bool needSamplingLoad
 }
 
 struct TConfigNodeHeartbeatResp {

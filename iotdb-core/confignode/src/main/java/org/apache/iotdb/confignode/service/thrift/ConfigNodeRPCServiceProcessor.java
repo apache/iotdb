@@ -87,7 +87,6 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -247,7 +246,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -258,9 +256,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   protected final ConfigNodeConfig configNodeConfig;
   protected final ConfigNode configNode;
   protected final ConfigManager configManager;
-
-  /** Counts heartbeats received from the leader to drive disk-health sampling cadence. */
-  private final AtomicLong heartbeatReceivedCounter = new AtomicLong(0);
 
   public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
     this.commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -1091,9 +1086,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
     resp.setTimestamp(heartbeatReq.getTimestamp());
-    // Sample free-space on the same cadence DataNode samples its load. DiskCrash is observed
-    // passively from the Ratis write-path on this node, not polled here.
-    if (heartbeatReceivedCounter.getAndIncrement() % HeartbeatService.LOAD_SAMPLING_INTERVAL == 0) {
+    // Sample free-space only when the leader flags this heartbeat for load sampling — the same
+    // gate DataNode/AINode follow. DiskCrash is observed passively from the Ratis write-path
+    // on this node, not polled here.
+    if (heartbeatReq.isSetNeedSamplingLoad() && heartbeatReq.isNeedSamplingLoad()) {
       DiskChecker.checkFreeRatioAndApply(
           configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
     }
