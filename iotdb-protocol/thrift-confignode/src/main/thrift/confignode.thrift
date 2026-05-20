@@ -2167,6 +2167,8 @@ service IConfigNodeRPCService {
 
   TGetAllActivationStatusResp getAllActivationStatus()
 
+  string getLocalSystemInfo()
+
   // ======================================================
   // Quota
   // ======================================================

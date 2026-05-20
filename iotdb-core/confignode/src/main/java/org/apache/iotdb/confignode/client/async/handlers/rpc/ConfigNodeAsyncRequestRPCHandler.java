@@ -74,6 +74,14 @@ public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
             nodeLocationMap,
             (Map<Integer, TTestConnectionResp>) responseMap,
             countDownLatch);
+      case GET_SYSTEM_INFO:
+        return new GetSystemInfoRPCHandler(
+            requestType,
+            requestId,
+            targetConfigNode,
+            nodeLocationMap,
+            (Map<Integer, String>) responseMap,
+            countDownLatch);
       case TEST_CONNECTION:
       default:
         return new ConfigNodeTSStatusRPCHandler(

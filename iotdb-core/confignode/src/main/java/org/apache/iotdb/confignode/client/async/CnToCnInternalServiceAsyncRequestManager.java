@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.request.TestConnectionUtils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetSystemInfoRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
@@ -56,6 +57,9 @@ public class CnToCnInternalServiceAsyncRequestManager
         CnToCnNodeRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((ConfigNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToCnNodeRequestType.GET_SYSTEM_INFO,
+        (req, client, handler) -> client.getSystemInfo((GetSystemInfoRPCHandler) handler));
   }
 
   @Override

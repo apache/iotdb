@@ -180,4 +180,9 @@ public class TimechoConfigNodeRPCServiceProcessor extends ConfigNodeRPCServicePr
   public TCheckMaxClientNumResp checkMaxClientNumValid(int maxConcurrentClientNum) {
     return configManager.checkMaxClientNumValid(maxConcurrentClientNum);
   }
+
+  @Override
+  public String getLocalSystemInfo() {
+    return configManager.getLocalSystemInfo();
+  }
 }

@@ -28,6 +28,7 @@ import com.timecho.iotdb.commons.commission.obligation.ObligationStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -64,6 +65,10 @@ public class Lottery {
   // AINode fields
   public static final String AINODE_NUM_LIMIT_NAME = "ML1";
 
+  // Release fields
+  public static final String RELEASE_TYPE_NAME = "TYP";
+  public static final String RELEASE_TYPE_TRIAL = "trial";
+
   // activate info
   protected final Obligation<Long> licenseIssueTimestamp = new Obligation<>(0L, Long::parseLong);
   protected final Obligation<Long> licenseExpireTimestamp = new Obligation<>(0L, Long::parseLong);
@@ -98,7 +103,16 @@ public class Lottery {
 
   private ObligationStatus oldActivateStatus = ObligationStatus.UNKNOWN;
 
+  public static final List<Integer> CAPACITY_CONFIG = new ArrayList<>();
+
   // endregion
+
+  static {
+    CAPACITY_CONFIG.add(1);
+    CAPACITY_CONFIG.add(4);
+    CAPACITY_CONFIG.add(8);
+    CAPACITY_CONFIG.add(1);
+  }
 
   public Lottery(Runnable onLicenseChange) {
     this.onLicenseChange = onLicenseChange;
@@ -177,7 +191,9 @@ public class Lottery {
     // activate info
     try {
       // To add a new license field, set a default value for compatible with older license version
-      newLottery.licenseIssueTimestamp.parse(properties.getProperty(LICENSE_ISSUE_TIMESTAMP_NAME));
+      newLottery.licenseIssueTimestamp.parse(
+          properties.getProperty(
+              LICENSE_ISSUE_TIMESTAMP_NAME, String.valueOf(System.currentTimeMillis())));
       newLottery.licenseExpireTimestamp.parse(
           properties.getProperty(LICENSE_EXPIRE_TIMESTAMP_NAME));
       newLottery.skipHardwareSystemInfoCheck.parse(

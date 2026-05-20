@@ -19,6 +19,7 @@
 
 package com.timecho.iotdb.manager.regulate;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TLicense;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -29,6 +30,9 @@ import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.structure.SortedProperties;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
+import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterActivationStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -64,6 +68,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -445,10 +450,14 @@ public class RegulateManager {
 
   protected Properties loadLicenseFromEveryVersion(String encryptedLicenseContent)
       throws LicenseException, IOException {
-    return RegulateManager.loadLicenseFromEveryVersionStatic(encryptedLicenseContent);
+    List<TConfigNodeLocation> locations =
+        this.configManager.getNodeManager().getRegisteredConfigNodes();
+    locations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
+    return RegulateManager.loadLicenseFromEveryVersionStatic(encryptedLicenseContent, locations);
   }
 
-  protected static Properties loadLicenseFromEveryVersionStatic(String encryptedLicenseContent)
+  protected static Properties loadLicenseFromEveryVersionStatic(
+      String encryptedLicenseContent, List<TConfigNodeLocation> locations)
       throws LicenseException, IOException {
     logger.info("Loading license: \n{}", encryptedLicenseContent);
     String licenseVersion = checkLicenseVersion(encryptedLicenseContent);
@@ -457,6 +466,42 @@ public class RegulateManager {
       deprecatedLicenseContent = decryptV00(encryptedLicenseContent);
     } else if ("01".equals(licenseVersion)) {
       deprecatedLicenseContent = decryptV01(encryptedLicenseContent);
+    } else if ("02".equals(licenseVersion)) {
+      List<String> systemInfoList = new ArrayList<>();
+      Map<Integer, TConfigNodeLocation> configNodeLocationMap =
+          locations.stream()
+              .collect(
+                  Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+
+      ConfigNodeAsyncRequestContext<Integer, String> configNodeAsyncRequestContext =
+          new ConfigNodeAsyncRequestContext<>(
+              CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
+
+      for (TConfigNodeLocation location : locations) {
+        configNodeAsyncRequestContext.putRequest(
+            location.getConfigNodeId(), location.getConfigNodeId());
+      }
+
+      CnToCnInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+
+      Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
+      for (TConfigNodeLocation location : locations) {
+        String systemInfoResp = systemInfoRespMap.get(location.getConfigNodeId());
+        if (systemInfoResp != null) {
+          systemInfoList.add(systemInfoResp);
+        }
+      }
+      if (systemInfoList.isEmpty() || (systemInfoList.size() < locations.size())) {
+        throw new IOException(
+            "systemInfo fetch exception, only get " + systemInfoList.size() + " items");
+      }
+      logger.info("Getting systemInfoList: {}", systemInfoList);
+      // Full version activation code, need
+      deprecatedLicenseContent = decryptV02(encryptedLicenseContent, systemInfoList);
+    } else if ("03".equals(licenseVersion)) {
+      // Trial activation code
+      deprecatedLicenseContent = decryptV03(encryptedLicenseContent);
     } else {
       throw new LicenseException("license version " + licenseVersion + " is not supported");
     }
@@ -743,6 +788,9 @@ public class RegulateManager {
   // region verify system info
 
   public boolean verifyAllSystemInfo(Properties licenseProperties) throws LicenseException {
+    if (licenseProperties.containsKey(Lottery.RELEASE_TYPE_NAME)) {
+      return true;
+    }
     return verifyAllSystemInfoOfEveryVersion(
         licenseProperties,
         OSUtils.hardwareSystemInfoNameToItsGetter,
@@ -932,6 +980,21 @@ public class RegulateManager {
     // remove version
     String base32Raw = src.substring(3).replaceAll("-", "");
     return Bandit.publicDecryptV01(base32Raw);
+  }
+
+  protected static String decryptV03(String src) throws LicenseException {
+    // remove version
+    String base32Raw = src.substring(3).replaceAll("-", "");
+
+    return Bandit.publicDecryptV03(base32Raw);
+  }
+
+  protected static String decryptV02(String src, List<String> systemInfoList)
+      throws LicenseException {
+    // remove version
+    String base32Raw = src.substring(3).replaceAll("-", "");
+
+    return Bandit.publicDecryptV02(base32Raw, systemInfoList);
   }
 
   private void checkSystemTimeAndIssueTime() {

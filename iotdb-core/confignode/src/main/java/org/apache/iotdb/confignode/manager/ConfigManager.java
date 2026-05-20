@@ -115,6 +115,7 @@ import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
+import org.apache.iotdb.confignode.manager.fileloader.LocalFileLoader;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
@@ -3256,6 +3257,15 @@ public class ConfigManager implements IManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage(
             "Successfully submit migrate regions task! IoTDB will migrate regions automatically.");
+  }
+
+  public String getLocalSystemInfo() {
+    try {
+      return LocalFileLoader.getInstance().loadSystemInfo();
+    } catch (IOException e) {
+      LOGGER.error("Get local system info failed", e);
+    }
+    return null;
   }
 
   /**

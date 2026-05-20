@@ -101,6 +101,8 @@ public class SyncConfigNodeClientPool {
             return client.testConnectionEmptyRPC();
           case SHOW_APPLIED_CONFIGURATIONS:
             return client.showAppliedConfigurations((int) req);
+          case GET_SYSTEM_INFO:
+            return client.getLocalSystemInfo();
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

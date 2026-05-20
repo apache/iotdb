@@ -1599,6 +1599,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public String getLocalSystemInfo() {
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+  }
+
+  @Override
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp)
       throws TException {
     return executeRemoteCallWithRetry(

@@ -1593,4 +1593,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus loadBalance(TLoadBalanceReq req) {
     return configManager.loadBalance(req);
   }
+
+  @Override
+  public String getLocalSystemInfo() {
+    throw new UnsupportedOperationException();
+  }
 }
