@@ -590,12 +590,16 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         "count(root.vehicle.plane.pressure),",
         Collections.singleton("1,"));
 
+    // After restart, the pipe keeps retrying with the stale password and may trigger login lock.
+    statement.execute("alter user thulab account unlock");
+
     try {
       statement.execute("alter pipe a2b modify source ('password'='fake')");
     } catch (final SQLException e) {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword')");
 
     // Test empty alter
@@ -620,6 +624,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     statement = connection.createStatement();
     TestUtils.executeNonQuery(
         senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter user thulab set password 'newST@ongPassword'");
     statement.execute("alter pipe a2b");
 
