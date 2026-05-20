@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,9 +44,19 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
+
+  /**
+   * Registry of every live {@link FolderManager} instance so the DataNode heartbeat path can ask
+   * "is any folder anywhere on this node currently ABNORMAL?" without each subsystem having to push
+   * state into a central reporter. Weak references avoid keeping short-lived managers alive (e.g.
+   * those created per snapshot/load).
+   */
+  private static final List<WeakReference<FolderManager>> ALL_INSTANCES =
+      new CopyOnWriteArrayList<>();
 
   /** Represents the operational states of a data folder. */
   public enum FolderState {
@@ -69,6 +80,7 @@ public class FolderManager {
       throws DiskSpaceInsufficientException {
     this.folders = folders;
     folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
+    ALL_INSTANCES.add(new WeakReference<>(this));
     switch (type) {
       case SEQUENCE_STRATEGY:
         this.selectStrategy = new SequenceStrategy();
@@ -94,7 +106,7 @@ public class FolderManager {
     }
   }
 
-  public void updateFolderState(String folder, FolderState state) {
+  public synchronized void updateFolderState(String folder, FolderState state) {
     foldersStates.replace(folder, state);
     selectStrategy.updateFolderState(folder, state);
   }
@@ -188,5 +200,30 @@ public class FolderManager {
       logger.warn(UtilMessages.FAILED_TO_READ_FILE_STORE_PATH, pathStr, e);
     }
     return null;
+  }
+
+  /**
+   * Walks every live FolderManager instance and reports whether any folder is currently {@link
+   * FolderState#ABNORMAL}. Used by the DataNode heartbeat path to derive a {@code
+   * NodeStatus.ReadOnly(DiskCrash)} signal from already-observed write failures.
+   *
+   * <p>Stale (GC'd) weak references are pruned as a side effect.
+   */
+  public static boolean hasAnyAbnormalFolder() {
+    for (WeakReference<FolderManager> reference : ALL_INSTANCES) {
+      FolderManager folderManager = reference.get();
+      if (folderManager == null) {
+        continue;
+      }
+      synchronized (folderManager) {
+        for (FolderState state : folderManager.foldersStates.values()) {
+          if (state == FolderState.ABNORMAL) {
+            return true;
+          }
+        }
+      }
+    }
+    ALL_INSTANCES.removeIf(ref -> ref.get() == null);
+    return false;
   }
 }
