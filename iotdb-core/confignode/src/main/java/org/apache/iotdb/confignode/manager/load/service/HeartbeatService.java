@@ -83,6 +83,15 @@ public class HeartbeatService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
+
+  /**
+   * Sampling cadence for cluster-wide load and disk-health probes: one in every {@code N}
+   * heartbeats triggers the probe path on DataNodes, AINodes, the ConfigNode leader (itself), and
+   * ConfigNode followers (on receive). Keeping every probe site on the same cadence is what makes
+   * the cluster-wide view temporally consistent.
+   */
+  public static final int LOAD_SAMPLING_INTERVAL = 10;
+
   private static final int configNodeListPeriodicallySyncInterval = 100;
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -128,12 +137,9 @@ public class HeartbeatService {
         .ifPresent(
             consensusManager -> {
               if (getConsensusManager().isLeader()) {
-                // Leader self-checks its own disk health before fanning out heartbeats.
-                // Followers run the same check when receiving each heartbeat request
-                // (see ConfigNodeRPCServiceProcessor#getConfigNodeHeartBeat).
-                DiskChecker.checkAndApply(
-                    ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
-                    CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+                // Snapshot the counter before genHeartbeatReq increments it so the leader's
+                // own sampling fires on the same iterations DataNode load sampling does.
+                long iterationIndex = heartbeatCounter.get();
                 // Send heartbeat requests to all the registered ConfigNodes
                 pingRegisteredConfigNodes(
                     genConfigNodeHeartbeatReq(), getNodeManager().getRegisteredConfigNodes());
@@ -142,6 +148,14 @@ public class HeartbeatService {
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
                 pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
+                // Self-check disk health on the same cadence DataNode samples its load.
+                // Runs after the async heartbeat dispatches so the (blocking) probe IO
+                // does not delay fanout. Followers run the same check on receive.
+                if (iterationIndex % LOAD_SAMPLING_INTERVAL == 0) {
+                  DiskChecker.checkAndApply(
+                      ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
+                      CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+                }
               }
             });
   }
@@ -157,8 +171,7 @@ public class HeartbeatService {
             .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID));
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
-    // We sample DataNode's load in every 10 heartbeat loop
-    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
     Pair<Long, Long> schemaQuotaRemain =
         configManager.getClusterSchemaManager().getSchemaQuotaRemain();
     heartbeatReq.setTimeSeriesQuotaRemain(schemaQuotaRemain.left);
@@ -218,9 +231,7 @@ public class HeartbeatService {
     /* Generate heartbeat request */
     TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
-
-    // We sample AINode's load in every 10 heartbeat loop
-    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
 
     return heartbeatReq;
   }

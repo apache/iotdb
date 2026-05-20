@@ -74,8 +74,6 @@ public class NodeHeartbeatSample extends AbstractHeartbeatSample {
   /** Constructor for ConfigNode sample. */
   public NodeHeartbeatSample(TConfigNodeHeartbeatResp heartbeatResp) {
     super(heartbeatResp.getTimestamp());
-    // Old ConfigNodes don't populate status/statusReason — fall back to Running/null
-    // so a rolling upgrade leaves the leader's view of legacy peers unchanged.
     this.status =
         heartbeatResp.isSetStatus()
             ? NodeStatus.parse(heartbeatResp.getStatus())

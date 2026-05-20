@@ -173,9 +173,8 @@ public class DiskCheckerTest {
     assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
     assertEquals("ManualMaintenance", config.getStatusReason());
 
+    // A non-disk ReadOnly reason is not guarded, so DISK_FULL takes it over.
     DiskChecker.apply(DiskChecker.DiskStatus.DISK_FULL);
-    // DISK_FULL only fires when not already DiskFull/DiskCrash — it does take over here,
-    // mirroring the existing behavior for the legacy sampleDiskLoad path.
     assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
     assertEquals(NodeStatus.DISK_FULL, config.getStatusReason());
   }

@@ -87,6 +87,7 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -246,6 +247,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -256,6 +258,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   protected final ConfigNodeConfig configNodeConfig;
   protected final ConfigNode configNode;
   protected final ConfigManager configManager;
+
+  /** Counts heartbeats received from the leader to drive disk-health sampling cadence. */
+  private final AtomicLong heartbeatReceivedCounter = new AtomicLong(0);
 
   public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
     this.commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -1086,10 +1091,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
     resp.setTimestamp(heartbeatReq.getTimestamp());
-    // Follower self-check: probe critical dirs each time the leader pings us.
-    // The leader runs the same check in its HeartbeatService loop.
-    DiskChecker.checkAndApply(
-        configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    // Sample disk health on the same cadence DataNode samples its load. The leader runs the
+    // equivalent self-check in its HeartbeatService loop.
+    if (heartbeatReceivedCounter.getAndIncrement() % HeartbeatService.LOAD_SAMPLING_INTERVAL == 0) {
+      DiskChecker.checkAndApply(
+          configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    }
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());
