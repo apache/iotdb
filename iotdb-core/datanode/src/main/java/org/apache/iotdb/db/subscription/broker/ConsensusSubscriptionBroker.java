@@ -31,7 +31,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -327,10 +327,10 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
       switch (seekType) {
-        case PipeSubscribeSeekReq.SEEK_TO_BEGINNING:
+        case SubscriptionSeekReq.SEEK_TO_BEGINNING:
           queue.seekToBeginning();
           break;
-        case PipeSubscribeSeekReq.SEEK_TO_END:
+        case SubscriptionSeekReq.SEEK_TO_END:
           queue.seekToEnd();
           break;
         default:

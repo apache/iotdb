@@ -43,9 +43,9 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
@@ -364,9 +364,9 @@ public abstract class AbstractSubscriptionProvider {
 
   void seek(final String topicName, final short seekType, final long timestamp)
       throws SubscriptionException {
-    final PipeSubscribeSeekReq req;
+    final SubscriptionSeekReq req;
     try {
-      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, seekType, timestamp);
+      req = SubscriptionSeekReq.toThriftReq(topicName, seekType, timestamp);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize seek request for topic {}",
@@ -392,9 +392,9 @@ public abstract class AbstractSubscriptionProvider {
 
   void seekToTopicProgress(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    final PipeSubscribeSeekReq req;
+    final SubscriptionSeekReq req;
     try {
-      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, topicProgress);
+      req = SubscriptionSeekReq.toTopicProgressReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize seek(topicProgress) for topic {}",
@@ -420,9 +420,9 @@ public abstract class AbstractSubscriptionProvider {
 
   void seekAfterTopicProgress(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    final PipeSubscribeSeekReq req;
+    final SubscriptionSeekReq req;
     try {
-      req = PipeSubscribeSeekReq.toTPipeSubscribeSeekAfterReq(topicName, topicProgress);
+      req = SubscriptionSeekReq.toSeekAfterTopicProgressReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize seekAfter(topicProgress) for topic {}",

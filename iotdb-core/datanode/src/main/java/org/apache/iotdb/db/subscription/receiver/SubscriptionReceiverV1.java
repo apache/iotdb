@@ -66,9 +66,9 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -155,7 +155,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           case CLOSE:
             return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
           case SEEK:
-            return handlePipeSubscribeSeek(PipeSubscribeSeekReq.fromTPipeSubscribeReq(req));
+            return handleSubscriptionSeek(SubscriptionSeekReq.fromThriftReq(req));
           default:
             break;
         }
@@ -861,9 +861,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeSeek(final PipeSubscribeSeekReq req) {
+  private TPipeSubscribeResp handleSubscriptionSeek(final SubscriptionSeekReq req) {
     try {
-      return handlePipeSubscribeSeekInternal(req);
+      return handleSubscriptionSeekInternal(req);
     } catch (final Exception e) {
       LOGGER.warn("Exception occurred when seeking with request {}", req, e);
       final String exceptionMessage =
@@ -875,19 +875,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeSeekInternal(final PipeSubscribeSeekReq req) {
+  private TPipeSubscribeResp handleSubscriptionSeekInternal(final SubscriptionSeekReq req) {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
-          "Subscription: missing consumer config when handling PipeSubscribeSeekReq: {}", req);
+          "Subscription: missing consumer config when handling subscription seek request: {}", req);
       return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
 
-    if (seekType == PipeSubscribeSeekReq.SEEK_TO_TOPIC_PROGRESS) {
+    if (seekType == SubscriptionSeekReq.SEEK_TO_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()
           .seekToTopicProgress(consumerConfig, topicName, req.getTopicProgress());
       LOGGER.info(
@@ -895,7 +895,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig,
           topicName,
           req.getTopicProgress().getRegionProgress().size());
-    } else if (seekType == PipeSubscribeSeekReq.SEEK_AFTER_TOPIC_PROGRESS) {
+    } else if (seekType == SubscriptionSeekReq.SEEK_AFTER_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()
           .seekAfterTopicProgress(consumerConfig, topicName, req.getTopicProgress());
       LOGGER.info(
@@ -903,8 +903,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig,
           topicName,
           req.getTopicProgress().getRegionProgress().size());
-    } else if (seekType == PipeSubscribeSeekReq.SEEK_TO_BEGINNING
-        || seekType == PipeSubscribeSeekReq.SEEK_TO_END) {
+    } else if (seekType == SubscriptionSeekReq.SEEK_TO_BEGINNING
+        || seekType == SubscriptionSeekReq.SEEK_TO_END) {
       SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType);
       LOGGER.info(
           "Subscription: consumer {} seek topic {} with seekType={}",

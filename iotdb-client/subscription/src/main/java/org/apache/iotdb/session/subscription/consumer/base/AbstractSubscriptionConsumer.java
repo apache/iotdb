@@ -45,7 +45,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
@@ -422,7 +422,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
    */
   public void seekToBeginning(final String topicName) throws SubscriptionException {
     checkIfOpened();
-    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_BEGINNING, 0);
+    seekInternal(topicName, SubscriptionSeekReq.SEEK_TO_BEGINNING, 0);
     clearCurrentPositions(topicName);
     clearCommittedPositions(topicName);
     clearPendingRedirectAcks(topicName);
@@ -431,7 +431,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   /** Seeks to the current WAL tail. Only newly written data will be consumed after this. */
   public void seekToEnd(final String topicName) throws SubscriptionException {
     checkIfOpened();
-    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_END, 0);
+    seekInternal(topicName, SubscriptionSeekReq.SEEK_TO_END, 0);
     clearCurrentPositions(topicName);
     clearCommittedPositions(topicName);
     clearPendingRedirectAcks(topicName);
@@ -487,7 +487,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     providers.acquireReadLock();
     try {
-      seekWithRedirection(topicName, seekType, timestamp);
+      seekOnAllProviders(topicName, seekType, timestamp);
     } finally {
       providers.releaseReadLock();
     }
@@ -497,7 +497,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     providers.acquireReadLock();
     try {
-      seekWithRedirectionTopicProgress(topicName, topicProgress);
+      seekToTopicProgressOnAllProviders(topicName, topicProgress);
     } finally {
       providers.releaseReadLock();
     }
@@ -507,7 +507,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
     providers.acquireReadLock();
     try {
-      seekAfterWithRedirectionTopicProgress(topicName, topicProgress);
+      seekAfterTopicProgressOnAllProviders(topicName, topicProgress);
     } finally {
       providers.releaseReadLock();
     }
@@ -1668,7 +1668,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
    * considered successful if every available provider acknowledges it because data regions for the
    * topic may be distributed across different nodes.
    */
-  private void seekWithRedirection(
+  private void seekOnAllProviders(
       final String topicName, final short seekType, final long timestamp)
       throws SubscriptionException {
     final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
@@ -1706,8 +1706,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
-  private void seekWithRedirectionTopicProgress(
+  /** Same all-provider success requirement as {@link #seekOnAllProviders(String, short, long)}. */
+  private void seekToTopicProgressOnAllProviders(
       final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
     final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
@@ -1745,8 +1745,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
-  private void seekAfterWithRedirectionTopicProgress(
+  /** Same all-provider success requirement as {@link #seekOnAllProviders(String, short, long)}. */
+  private void seekAfterTopicProgressOnAllProviders(
       final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
     final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
