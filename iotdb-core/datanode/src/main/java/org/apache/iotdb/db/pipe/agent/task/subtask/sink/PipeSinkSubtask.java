@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBDataRegionAirGapSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -299,6 +300,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
     if (outputPipeSink instanceof IoTDBDataRegionSyncSink) {
       return ((IoTDBDataRegionSyncSink) outputPipeSink).getBatchSize();
+    }
+    if (outputPipeSink instanceof IoTDBDataRegionAirGapSink) {
+      return ((IoTDBDataRegionAirGapSink) outputPipeSink).getBatchSize();
     }
     return 0;
   }

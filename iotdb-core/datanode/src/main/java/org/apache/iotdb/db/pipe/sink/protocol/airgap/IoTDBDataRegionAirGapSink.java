@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -31,6 +32,10 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatch;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
@@ -39,6 +44,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -49,13 +55,26 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT;
@@ -68,6 +87,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionAirGapSink.class);
 
+  private PipeTransferBatchReqBuilder tabletBatchBuilder;
   private boolean enableSendTsFileLimit;
 
   @Override
@@ -75,6 +95,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
+    if (isTabletBatchModeEnabled) {
+      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
+    }
 
     enableSendTsFileLimit =
         parameters.getBooleanOrDefault(
@@ -102,7 +126,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       // When receiver encountered packet loss, the transfer will time out
       // We need to restore the transfer quickly by retry under this circumstance
       socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapSinkTabletTimeoutMs());
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      if (isTabletBatchModeEnabled) {
+        tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        doTransferWrapper(socket);
+      } else if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransferWrapper(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
         doTransferWrapper(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
@@ -142,6 +169,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
+      if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+        doTransferWrapper(socket);
+      }
       doTransferWrapper(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -157,13 +187,33 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
 
   @Override
   public void transfer(final Event event) throws Exception {
+    if (event instanceof PipeDeleteDataNodeEvent) {
+      final int socketIndex = nextSocketIndex();
+      final AirGapSocket socket = sockets.get(socketIndex);
+
+      try {
+        doTransferWrapper(socket, (PipeDeleteDataNodeEvent) event);
+      } catch (final IOException e) {
+        isSocketAlive.set(socketIndex, false);
+
+        throw new PipeConnectionException(
+            String.format(
+                "Network error when transfer tsfile event %s, because %s.",
+                ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
+            e);
+      }
+      return;
+    }
+
     final int socketIndex = nextSocketIndex();
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
-      if (event instanceof PipeDeleteDataNodeEvent) {
-        doTransferWrapper(socket, (PipeDeleteDataNodeEvent) event);
-      } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
+      if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+        doTransferWrapper(socket);
+      }
+
+      if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
             DataNodePipeMessages
                 .IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
@@ -177,6 +227,64 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               "Network error when transfer tsfile event %s, because %s.",
               ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(final AirGapSocket socket)
+      throws IOException, WriteProcessException {
+    for (final Pair<?, PipeTabletEventBatch> nonEmptyAndShouldEmitBatch :
+        tabletBatchBuilder.getAllNonEmptyAndShouldEmitBatches()) {
+      final PipeTabletEventBatch batch = nonEmptyAndShouldEmitBatch.getRight();
+      if (batch instanceof PipeTabletEventPlainBatch) {
+        doTransfer(socket, (PipeTabletEventPlainBatch) batch);
+      } else if (batch instanceof PipeTabletEventTsFileBatch) {
+        doTransfer(socket, (PipeTabletEventTsFileBatch) batch);
+      } else {
+        LOGGER.warn("Unsupported batch type {}.", batch.getClass());
+      }
+      batch.decreaseEventsReferenceCount(IoTDBDataRegionAirGapSink.class.getName(), true);
+      batch.onSuccess();
+    }
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket, final PipeTabletEventPlainBatch batchToTransfer)
+      throws IOException {
+    if (!sendBatch(
+        socket,
+        toTPipeTransferBytes(batchToTransfer.toTPipeTransferReq()),
+        batchToTransfer.getPipe2BytesAccumulated())) {
+      final String errorMessage =
+          String.format("Transfer PipeTransferTabletBatchReq error. Socket: %s.", socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          batchToTransfer.deepCopyEvents().toString());
+    }
+  }
+
+  private void doTransfer(
+      final AirGapSocket socket, final PipeTabletEventTsFileBatch batchToTransfer)
+      throws IOException, WriteProcessException {
+    final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
+    final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
+
+    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+      doTransfer(
+          pipe2WeightMap, socket, dbTsFile.right, null, dbTsFile.left, dbTsFile.right.getName());
+      try {
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(dbTsFile.right);
+              return null;
+            });
+      } catch (final NoSuchFileException e) {
+        LOGGER.info("The file {} is not found, may already be deleted.", dbTsFile);
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to delete batch file {}, this file should be deleted manually later", dbTsFile);
+      }
     }
   }
 
@@ -322,58 +430,154 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void doTransfer(
       final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
-    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
-    final long creationTime = pipeTsFileInsertionEvent.getCreationTime();
-    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    doTransfer(
+        Collections.singletonMap(
+            new Pair<>(
+                pipeTsFileInsertionEvent.getPipeName(), pipeTsFileInsertionEvent.getCreationTime()),
+            1.0),
+        socket,
+        pipeTsFileInsertionEvent.getTsFile(),
+        pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver
+            ? pipeTsFileInsertionEvent.getModFile()
+            : null,
+        pipeTsFileInsertionEvent.isTableModelEvent()
+            ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+            : null,
+        pipeTsFileInsertionEvent.toString());
+  }
+
+  private void doTransfer(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final AirGapSocket socket,
+      final File tsFile,
+      final File modFile,
+      final String dataBaseName,
+      final String receiverStatusContext)
+      throws PipeException, IOException {
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
-    // 1. Transfer file piece by piece, and mod if needed
-    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-      final File modFile = pipeTsFileInsertionEvent.getModFile();
-      transferFilePieces(pipeName, creationTime, modFile, socket, true);
-      transferFilePieces(pipeName, creationTime, tsFile, socket, true);
-      // 2. Transfer file seal signal with mod, which means the file is transferred completely
-      if (!send(
-          pipeName,
-          creationTime,
+    if (Objects.nonNull(modFile)) {
+      transferFilePieces(pipe2WeightMap, modFile, socket, true);
+      transferFilePieces(pipe2WeightMap, tsFile, socket, true);
+      if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(),
-              modFile.length(),
-              tsFile.getName(),
-              tsFile.length(),
-              pipeTsFileInsertionEvent.isTableModelEvent()
-                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
+              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length(), dataBaseName),
+          pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
             errorMessage,
-            pipeTsFileInsertionEvent.toString());
+            receiverStatusContext);
       } else {
         LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
       }
     } else {
-      transferFilePieces(pipeName, creationTime, tsFile, socket, false);
-      // 2. Transfer file seal signal without mod, which means the file is transferred completely
-      if (!send(
-          pipeName,
-          creationTime,
+      transferFilePieces(pipe2WeightMap, tsFile, socket, false);
+      if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              tsFile.getName(),
-              tsFile.length(),
-              pipeTsFileInsertionEvent.isTableModelEvent()
-                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
+              tsFile.getName(), tsFile.length(), dataBaseName),
+          pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
             errorMessage,
-            pipeTsFileInsertionEvent.toString());
+            receiverStatusContext);
       } else {
         LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
       }
+    }
+  }
+
+  private void transferFilePieces(
+      final Map<Pair<String, Long>, Double> pipe2WeightMap,
+      final File file,
+      final AirGapSocket socket,
+      final boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PIPE_CONFIG.getPipeSinkReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      while (true) {
+        mayLimitRateAndRecordIO(readFileBufferSize);
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payload =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        if (!sendWeighted(
+            socket,
+            isMultiFile
+                ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload),
+            pipe2WeightMap)) {
+          final String errorMessage =
+              String.format("Transfer file %s error. Socket %s.", file, socket);
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              file.toString());
+        } else {
+          position += readLength;
+        }
+      }
+    }
+  }
+
+  private boolean sendBatch(
+      final AirGapSocket socket,
+      byte[] bytes,
+      final Map<Pair<String, Long>, Long> pipe2BytesAccumulated)
+      throws IOException {
+    final long uncompressedSize = bytes.length;
+    bytes = compressIfNeeded(bytes);
+
+    final double compressionRatio =
+        uncompressedSize == 0 ? 1 : (double) bytes.length / uncompressedSize;
+    for (final Map.Entry<Pair<String, Long>, Long> entry : pipe2BytesAccumulated.entrySet()) {
+      rateLimitIfNeeded(
+          entry.getKey().getLeft(),
+          entry.getKey().getRight(),
+          socket.getEndPoint(),
+          (long) (entry.getValue() * compressionRatio));
+    }
+    return sendBytes(socket, bytes);
+  }
+
+  private boolean sendWeighted(
+      final AirGapSocket socket, byte[] bytes, final Map<Pair<String, Long>, Double> pipe2WeightMap)
+      throws IOException {
+    bytes = compressIfNeeded(bytes);
+
+    for (final Map.Entry<Pair<String, Long>, Double> entry : pipe2WeightMap.entrySet()) {
+      rateLimitIfNeeded(
+          entry.getKey().getLeft(),
+          entry.getKey().getRight(),
+          socket.getEndPoint(),
+          (long) (bytes.length * entry.getValue()));
+    }
+    return sendBytes(socket, bytes);
+  }
+
+  private byte[] toTPipeTransferBytes(final TPipeTransferReq req) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(req.version, outputStream);
+      ReadWriteIOUtils.write(req.type, outputStream);
+
+      final ByteBuffer bodyBuffer = req.body.duplicate();
+      final byte[] body = new byte[bodyBuffer.remaining()];
+      bodyBuffer.get(body);
+      outputStream.write(body);
+
+      return byteArrayOutputStream.toByteArray();
     }
   }
 
@@ -404,5 +608,61 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
           PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(attributeSortedString);
     }
     return super.compressIfNeeded(reqInBytes);
+  }
+
+  @Override
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    if (Objects.nonNull(tabletBatchBuilder)) {
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    }
+  }
+
+  public int getBatchSize() {
+    return Objects.nonNull(tabletBatchBuilder) ? tabletBatchBuilder.size() : 0;
+  }
+
+  @Override
+  public void close() {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.close();
+    }
+
+    super.close();
+  }
+
+  @Override
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    }
+  }
+
+  @Override
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    }
+  }
+
+  @Override
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  @Override
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+    }
+  }
+
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
+    if (tabletBatchBuilder != null) {
+      tabletBatchBuilder.setEventSizeHistogram(eventSizeHistogram);
+    }
   }
 }
