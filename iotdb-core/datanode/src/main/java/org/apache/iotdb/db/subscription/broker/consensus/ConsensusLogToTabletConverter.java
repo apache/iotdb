@@ -234,25 +234,105 @@ public class ConsensusLogToTabletConverter {
 
   private List<Tablet> convertInsertRowsNode(final InsertRowsNode node) {
     final List<Tablet> tablets = new ArrayList<>();
+    final List<InsertRowNode> pendingTreeRows = new ArrayList<>();
     for (final InsertRowNode rowNode : node.getInsertRowNodeList()) {
       // Handle merge bug: RelationalInsertRowNode.mergeInsertNode() is not overridden,
       // so merged relational nodes arrive as InsertRowsNode (tree) with RelationalInsertRowNode
       // children. Dispatch correctly by checking the actual child type.
       if (rowNode instanceof RelationalInsertRowNode) {
+        tablets.addAll(convertTreeInsertRowNodes(pendingTreeRows));
+        pendingTreeRows.clear();
         tablets.addAll(convertRelationalInsertRowNode((RelationalInsertRowNode) rowNode));
       } else {
-        tablets.addAll(convertInsertRowNode(rowNode));
+        pendingTreeRows.add(rowNode);
       }
     }
+    tablets.addAll(convertTreeInsertRowNodes(pendingTreeRows));
     return tablets;
   }
 
   private List<Tablet> convertInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
+    return convertTreeInsertRowNodes(node.getInsertRowNodeList());
+  }
+
+  private List<Tablet> convertTreeInsertRowNodes(final List<InsertRowNode> rowNodes) {
+    if (rowNodes.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     final List<Tablet> tablets = new ArrayList<>();
-    for (final InsertRowNode rowNode : node.getInsertRowNodeList()) {
-      tablets.addAll(convertInsertRowNode(rowNode));
+    final List<MatchedTreeRow> pendingRows = new ArrayList<>();
+    TreeRowGroupKey pendingKey = null;
+
+    for (final InsertRowNode rowNode : rowNodes) {
+      final MatchedTreeRow matchedRow = matchTreeInsertRowNode(rowNode);
+      if (matchedRow == null) {
+        continue;
+      }
+
+      if (pendingKey != null && !pendingKey.equals(matchedRow.groupKey)) {
+        tablets.add(buildTreeRowsTablet(pendingKey, pendingRows));
+        pendingRows.clear();
+      }
+      // Batch only adjacent rows with the same emitted schema, preserving cross-device row order.
+      pendingKey = matchedRow.groupKey;
+      pendingRows.add(matchedRow);
+    }
+
+    if (!pendingRows.isEmpty()) {
+      tablets.add(buildTreeRowsTablet(pendingKey, pendingRows));
     }
     return tablets;
+  }
+
+  private MatchedTreeRow matchTreeInsertRowNode(final InsertRowNode node) {
+    final IDeviceID deviceId = node.getDeviceID();
+    if (treePattern != null && !treePattern.mayOverlapWithDevice(deviceId)) {
+      return null;
+    }
+
+    final String[] measurements = node.getMeasurements();
+    final TSDataType[] dataTypes = node.getDataTypes();
+    final List<Integer> matchedColumnIndices = getMatchedTreeColumnIndices(deviceId, measurements);
+    return matchedColumnIndices.isEmpty()
+        ? null
+        : new MatchedTreeRow(
+            node,
+            new TreeRowGroupKey(deviceId, measurements, dataTypes, matchedColumnIndices),
+            matchedColumnIndices);
+  }
+
+  private Tablet buildTreeRowsTablet(
+      final TreeRowGroupKey groupKey, final List<MatchedTreeRow> rows) {
+    final int columnCount = groupKey.measurements.length;
+    final List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
+    for (int colIdx = 0; colIdx < columnCount; colIdx++) {
+      schemas.add(new MeasurementSchema(groupKey.measurements[colIdx], groupKey.dataTypes[colIdx]));
+    }
+
+    final Tablet tablet = new Tablet(groupKey.deviceId, schemas, rows.size());
+    for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+      final MatchedTreeRow matchedRow = rows.get(rowIndex);
+      final InsertRowNode rowNode = matchedRow.rowNode;
+      final Object[] values = rowNode.getValues();
+      final TSDataType[] dataTypes = rowNode.getDataTypes();
+      tablet.addTimestamp(rowIndex, rowNode.getTime());
+
+      for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        final int originalColIdx = matchedRow.matchedColumnIndices.get(columnIndex);
+        final Object value = values[originalColIdx];
+        if (value == null) {
+          if (tablet.getBitMaps() == null) {
+            tablet.initBitMaps();
+          }
+          tablet.getBitMaps()[columnIndex].mark(rowIndex);
+        } else {
+          addValueToTablet(tablet, rowIndex, columnIndex, dataTypes[originalColIdx], value);
+        }
+      }
+    }
+    tablet.setRowSize(rows.size());
+    return tablet;
   }
 
   private List<Tablet> convertInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
@@ -629,6 +709,66 @@ public class ConsensusLogToTabletConverter {
     final BitMap[] bitMaps = tablet.getBitMaps();
     if (bitMaps != null && bitMaps[targetColumnIndex] != null) {
       bitMaps[targetColumnIndex].unmark(targetRowIndex);
+    }
+  }
+
+  private static final class MatchedTreeRow {
+
+    private final InsertRowNode rowNode;
+    private final TreeRowGroupKey groupKey;
+    private final List<Integer> matchedColumnIndices;
+
+    private MatchedTreeRow(
+        final InsertRowNode rowNode,
+        final TreeRowGroupKey groupKey,
+        final List<Integer> matchedColumnIndices) {
+      this.rowNode = rowNode;
+      this.groupKey = groupKey;
+      this.matchedColumnIndices = matchedColumnIndices;
+    }
+  }
+
+  private static final class TreeRowGroupKey {
+
+    private final String deviceId;
+    private final String[] measurements;
+    private final TSDataType[] dataTypes;
+
+    private TreeRowGroupKey(
+        final IDeviceID deviceId,
+        final String[] measurements,
+        final TSDataType[] dataTypes,
+        final List<Integer> matchedColumnIndices) {
+      this.deviceId = deviceId.toString();
+      this.measurements = new String[matchedColumnIndices.size()];
+      this.dataTypes = new TSDataType[matchedColumnIndices.size()];
+      for (int i = 0; i < matchedColumnIndices.size(); i++) {
+        final int originalColIdx = matchedColumnIndices.get(i);
+        this.measurements[i] = measurements[originalColIdx];
+        this.dataTypes[i] = dataTypes[originalColIdx];
+      }
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof TreeRowGroupKey)) {
+        return false;
+      }
+      final TreeRowGroupKey that = (TreeRowGroupKey) o;
+      return Objects.equals(deviceId, that.deviceId)
+          && Arrays.equals(measurements, that.measurements)
+          && Arrays.equals(dataTypes, that.dataTypes);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = Objects.hash(deviceId);
+      result = 31 * result + Arrays.hashCode(measurements);
+      result = 31 * result + Arrays.hashCode(dataTypes);
+      return result;
     }
   }
 }

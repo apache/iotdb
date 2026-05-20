@@ -113,6 +113,9 @@ public class IoTConsensusServerImpl {
 
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
   private static final String WRITER_META_FILE_NAME = "writer.meta";
+  // writer.meta only protects writer physical-time monotonicity after restart, so avoid fsync per
+  // write.
+  private static final long WRITER_META_PERSIST_MIN_INTERVAL_MS = 1_000L;
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -156,6 +159,11 @@ public class IoTConsensusServerImpl {
       new WriterSafeFrontierTracker();
 
   private final Path writerMetaPath;
+  private final Object writerMetaPersistLock = new Object();
+  private volatile WriterMeta latestWriterMeta;
+  private long lastPersistedWriterLocalSeq = -1;
+  private long lastPersistedWriterPhysicalTime = -1;
+  private long lastWriterMetaPersistAttemptTimeMs = 0;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -201,6 +209,7 @@ public class IoTConsensusServerImpl {
 
   public void stop() {
     logDispatcher.stop();
+    persistLatestWriterMeta(true);
     stateMachine.stop();
     MetricService.getInstance().removeMetricSet(this.ioTConsensusServerMetrics);
   }
@@ -292,7 +301,7 @@ public class IoTConsensusServerImpl {
           }
           searchIndex.incrementAndGet();
         }
-        persistWriterMetaOnSuccess(indexedConsensusRequest);
+        updateWriterMetaOnSuccess(indexedConsensusRequest);
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
@@ -886,6 +895,9 @@ public class IoTConsensusServerImpl {
             writerMeta.getLastAllocatedLocalSeq());
         lastAssignedPhysicalTime.set(
             Math.max(writerMeta.getLastAssignedPhysicalTimeMs(), System.currentTimeMillis()));
+        latestWriterMeta = writerMeta;
+        lastPersistedWriterLocalSeq = writerMeta.getLastAllocatedLocalSeq();
+        lastPersistedWriterPhysicalTime = writerMeta.getLastAssignedPhysicalTimeMs();
         return;
       }
     } catch (IOException e) {
@@ -902,18 +914,52 @@ public class IoTConsensusServerImpl {
         recoveredSearchIndex);
   }
 
-  private void persistWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
-    try {
-      new WriterMeta(
-              indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime())
-          .persist(writerMetaPath);
-    } catch (IOException e) {
-      logger.warn(
-          "Failed to persist writer meta for group {} at localSeq={}, pt={}",
-          consensusGroupId,
-          indexedConsensusRequest.getLocalSeq(),
-          indexedConsensusRequest.getPhysicalTime(),
-          e);
+  private void updateWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
+    latestWriterMeta =
+        new WriterMeta(
+            indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
+    persistLatestWriterMeta(false);
+  }
+
+  private void persistLatestWriterMeta(final boolean force) {
+    final WriterMeta writerMeta = latestWriterMeta;
+    if (writerMeta == null) {
+      return;
+    }
+    final long currentTimeMs = System.currentTimeMillis();
+    if (!force
+        && currentTimeMs - lastWriterMetaPersistAttemptTimeMs
+            < WRITER_META_PERSIST_MIN_INTERVAL_MS) {
+      return;
+    }
+
+    synchronized (writerMetaPersistLock) {
+      final WriterMeta latestMeta = latestWriterMeta;
+      if (latestMeta == null
+          || (latestMeta.getLastAllocatedLocalSeq() == lastPersistedWriterLocalSeq
+              && latestMeta.getLastAssignedPhysicalTimeMs() == lastPersistedWriterPhysicalTime)) {
+        return;
+      }
+
+      final long nowMs = System.currentTimeMillis();
+      if (!force
+          && nowMs - lastWriterMetaPersistAttemptTimeMs < WRITER_META_PERSIST_MIN_INTERVAL_MS) {
+        return;
+      }
+
+      lastWriterMetaPersistAttemptTimeMs = nowMs;
+      try {
+        latestMeta.persist(writerMetaPath);
+        lastPersistedWriterLocalSeq = latestMeta.getLastAllocatedLocalSeq();
+        lastPersistedWriterPhysicalTime = latestMeta.getLastAssignedPhysicalTimeMs();
+      } catch (IOException e) {
+        logger.warn(
+            "Failed to persist writer meta for group {} at localSeq={}, pt={}",
+            consensusGroupId,
+            latestMeta.getLastAllocatedLocalSeq(),
+            latestMeta.getLastAssignedPhysicalTimeMs(),
+            e);
+      }
     }
   }
 

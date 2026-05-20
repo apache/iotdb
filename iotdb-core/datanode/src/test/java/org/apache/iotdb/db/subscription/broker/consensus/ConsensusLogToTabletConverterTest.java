@@ -19,16 +19,25 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -115,12 +124,77 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertTrue(converter.convert(StatementTestUtils.genInsertTabletNode(2, 0)).isEmpty());
   }
 
+  @Test
+  public void testConvertInsertRowsOfOneDeviceNodeGroupsRowsWithSameSchema()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createTreeConverter();
+    final InsertRowsOfOneDeviceNode node = new InsertRowsOfOneDeviceNode(new PlanNodeId("plan"));
+    final List<InsertRowNode> rows = new ArrayList<>();
+    final List<Integer> rowIndexes = new ArrayList<>();
+    rows.add(createTreeRow("root.sg.d1", 1L, new Object[] {1, 1.0}));
+    rows.add(createTreeRow("root.sg.d1", 2L, new Object[] {2, null}));
+    rowIndexes.add(0);
+    rowIndexes.add(1);
+    node.setInsertRowNodeList(rows);
+    node.setInsertRowNodeIndexList(rowIndexes);
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals("root.sg.d1", tablet.getDeviceId());
+    Assert.assertEquals(2, tablet.getRowSize());
+    Assert.assertArrayEquals(new long[] {1L, 2L}, tablet.getTimestamps());
+    Assert.assertArrayEquals(new int[] {1, 2}, (int[]) tablet.getValues()[0]);
+    Assert.assertEquals(1.0, ((double[]) tablet.getValues()[1])[0], 0.0);
+    Assert.assertTrue(tablet.getBitMaps()[1].isMarked(1));
+  }
+
+  @Test
+  public void testConvertInsertRowsNodeKeepsOrderWhenGroupingTreeRows()
+      throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createTreeConverter();
+    final InsertRowsNode node = new InsertRowsNode(new PlanNodeId("plan"));
+    node.addOneInsertRowNode(createTreeRow("root.sg.d1", 1L, new Object[] {1, 1.0}), 0);
+    node.addOneInsertRowNode(createTreeRow("root.sg.d1", 2L, new Object[] {2, 2.0}), 1);
+    node.addOneInsertRowNode(createTreeRow("root.sg.d2", 3L, new Object[] {3, 3.0}), 2);
+    node.addOneInsertRowNode(createTreeRow("root.sg.d1", 4L, new Object[] {4, 4.0}), 3);
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(3, tablets.size());
+    Assert.assertEquals("root.sg.d1", tablets.get(0).getDeviceId());
+    Assert.assertEquals(2, tablets.get(0).getRowSize());
+    Assert.assertArrayEquals(new long[] {1L, 2L}, tablets.get(0).getTimestamps());
+    Assert.assertEquals("root.sg.d2", tablets.get(1).getDeviceId());
+    Assert.assertEquals(1, tablets.get(1).getRowSize());
+    Assert.assertEquals("root.sg.d1", tablets.get(2).getDeviceId());
+    Assert.assertEquals(1, tablets.get(2).getRowSize());
+  }
+
   private static ConsensusLogToTabletConverter createConverter(final String columnPattern) {
     return new ConsensusLogToTabletConverter(
         null,
         new TablePattern(true, DATABASE_NAME, StatementTestUtils.tableName()),
         Pattern.compile(columnPattern),
         DATABASE_NAME);
+  }
+
+  private static ConsensusLogToTabletConverter createTreeConverter() {
+    return new ConsensusLogToTabletConverter(new IoTDBTreePattern("root.sg.**"), null, null, null);
+  }
+
+  private static InsertRowNode createTreeRow(
+      final String devicePath, final long time, final Object[] values) throws IllegalPathException {
+    return new InsertRowNode(
+        new PlanNodeId("row"),
+        new PartialPath(devicePath),
+        false,
+        new String[] {"s1", "s2"},
+        new TSDataType[] {TSDataType.INT32, TSDataType.DOUBLE},
+        time,
+        values,
+        false);
   }
 
   private static String toUtf8(final Binary value) {
