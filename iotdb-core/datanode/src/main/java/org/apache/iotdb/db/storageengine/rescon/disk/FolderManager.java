@@ -33,12 +33,24 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FolderManager {
   private static final Logger logger = LoggerFactory.getLogger(FolderManager.class);
+
+  /**
+   * Registry of every live {@link FolderManager} instance so the DataNode heartbeat path can ask
+   * "is any folder anywhere on this node currently ABNORMAL?" without each subsystem having to push
+   * state into a central reporter. Weak references avoid keeping short-lived managers alive (e.g.
+   * those created per snapshot/load).
+   */
+  private static final List<WeakReference<FolderManager>> ALL_INSTANCES =
+      new CopyOnWriteArrayList<>();
 
   /** Represents the operational states of a data folder. */
   public enum FolderState {
@@ -62,6 +74,7 @@ public class FolderManager {
       throws DiskSpaceInsufficientException {
     this.folders = folders;
     folders.forEach(dir -> foldersStates.put(dir, FolderState.HEALTHY));
+    ALL_INSTANCES.add(new WeakReference<>(this));
     switch (type) {
       case SEQUENCE_STRATEGY:
         this.selectStrategy = new SequenceStrategy();
@@ -146,5 +159,35 @@ public class FolderManager {
 
   public List<String> getFolders() {
     return folders;
+  }
+
+  /**
+   * Walks every live FolderManager instance and reports whether any folder is currently {@link
+   * FolderState#ABNORMAL}. Used by the DataNode heartbeat path to derive a {@code
+   * NodeStatus.ReadOnly(DiskCrash)} signal from already-observed write failures.
+   *
+   * <p>Stale (GC'd) weak references are pruned as a side effect.
+   */
+  public static boolean hasAnyAbnormalFolder() {
+    boolean anyAbnormal = false;
+    Iterator<WeakReference<FolderManager>> it = ALL_INSTANCES.iterator();
+    while (it.hasNext()) {
+      FolderManager fm = it.next().get();
+      if (fm == null) {
+        continue;
+      }
+      for (FolderState state : fm.foldersStates.values()) {
+        if (state == FolderState.ABNORMAL) {
+          anyAbnormal = true;
+          break;
+        }
+      }
+      if (anyAbnormal) {
+        break;
+      }
+    }
+    // Prune dead entries. CopyOnWriteArrayList tolerates concurrent removeIf safely.
+    ALL_INSTANCES.removeIf(ref -> ref.get() == null);
+    return anyAbnormal;
   }
 }

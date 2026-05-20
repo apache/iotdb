@@ -24,9 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncAINodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -126,6 +128,12 @@ public class HeartbeatService {
         .ifPresent(
             consensusManager -> {
               if (getConsensusManager().isLeader()) {
+                // Leader self-checks its own disk health before fanning out heartbeats.
+                // Followers run the same check when receiving each heartbeat request
+                // (see ConfigNodeRPCServiceProcessor#getConfigNodeHeartBeat).
+                DiskChecker.checkAndApply(
+                    ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
+                    CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
                 // Send heartbeat requests to all the registered ConfigNodes
                 pingRegisteredConfigNodes(
                     genConfigNodeHeartbeatReq(), getNodeManager().getRegisteredConfigNodes());

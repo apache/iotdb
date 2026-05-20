@@ -40,6 +40,7 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -1085,6 +1086,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
     resp.setTimestamp(heartbeatReq.getTimestamp());
+    // Follower self-check: probe critical dirs each time the leader pings us.
+    // The leader runs the same check in its HeartbeatService loop.
+    DiskChecker.checkAndApply(
+        configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    resp.setStatus(commonConfig.getNodeStatus().getStatus());
+    if (commonConfig.getStatusReason() != null) {
+      resp.setStatusReason(commonConfig.getStatusReason());
+    }
     return resp;
   }
 

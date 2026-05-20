@@ -37,6 +37,16 @@ public final class CommonMessages {
   public static final String NODE_STATUS_NOT_EXIST = "NodeStatus %s doesn't exist.";
   public static final String UNKNOWN_NODE_STATUS = "Unknown NodeStatus %s.";
 
+  // --- disk health ---
+  public static final String DISK_FULL_SET_READ_ONLY =
+      "Free disk space ratio is below the configured threshold; set node status to ReadOnly(DiskFull).";
+  public static final String DISK_CRASH_SET_READ_ONLY =
+      "Detected unwritable disk directory; set node status to ReadOnly(DiskCrash).";
+  public static final String DISK_CRASH_PROBE_FAILED =
+      "Disk health probe write failed for directory {}.";
+  public static final String DISK_RECOVERED_SET_RUNNING =
+      "Disk health recovered (previous reason: {}); set node status to Running.";
+
   // --- consensus ---
   public static final String UNRECOGNIZED_CONSENSUS_GROUP_ID =
       "Unrecognized ConsensusGroupId: %s";

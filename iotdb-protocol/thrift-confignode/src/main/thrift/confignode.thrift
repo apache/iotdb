@@ -524,6 +524,13 @@ struct TConfigNodeHeartbeatResp {
     1: required i64 timestamp
     2: optional string activateStatus
     3: optional common.TLicense license
+    // Reported ConfigNode status (e.g. Running, ReadOnly). Optional for forward
+    // compatibility — old ConfigNodes do not populate this field, in which case
+    // the leader falls back to assuming Running.
+    4: optional string status
+    // Optional human/machine readable reason accompanying ReadOnly status,
+    // e.g. NodeStatus.DISK_FULL or NodeStatus.DISK_CRASH.
+    5: optional string statusReason
 }
 
 struct TAddConsensusGroupReq {
