@@ -184,9 +184,9 @@ IF "%JAVA_VERSION%" == "8" (
 )
 
 @REM Apply tsfile locale option populated by Maven at package time
-@REM (see conf\windows\iotdb-locale.bat; empty in default build, -Dtsfile.locale=zh under with-zh-locale).
-IF EXIST "%IOTDB_CONF%\windows\iotdb-locale.bat" (
-    CALL "%IOTDB_CONF%\windows\iotdb-locale.bat"
+@REM (see conf\windows\iotdb-common.bat; empty in default build, -Dtsfile.locale=zh under with-zh-locale).
+IF EXIST "%IOTDB_CONF%\windows\iotdb-common.bat" (
+    CALL "%IOTDB_CONF%\windows\iotdb-common.bat"
     IF NOT "%TSFILE_LOCALE_JVM_OPT%"=="" (
         set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% %TSFILE_LOCALE_JVM_OPT%
     )

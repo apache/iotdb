@@ -65,7 +65,7 @@
                 <exclude>ainode-env.*</exclude>
                 <exclude>**/ainode-env.*</exclude>
                 <exclude>iotdb-common.sh</exclude>
-                <exclude>**/iotdb-locale.*</exclude>
+                <exclude>**/iotdb-common.bat</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -74,7 +74,7 @@
             <directory>${project.basedir}/../scripts/conf</directory>
             <includes>
                 <include>iotdb-common.sh</include>
-                <include>windows/iotdb-locale.bat</include>
+                <include>windows/iotdb-common.bat</include>
             </includes>
             <filtered>true</filtered>
             <fileMode>0755</fileMode>

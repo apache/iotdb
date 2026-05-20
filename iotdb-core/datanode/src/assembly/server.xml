@@ -49,7 +49,7 @@
             <directory>${project.basedir}/../../scripts/conf</directory>
             <outputDirectory>conf</outputDirectory>
             <includes>
-                <include>windows/iotdb-locale.bat</include>
+                <include>windows/iotdb-common.bat</include>
             </includes>
             <filtered>true</filtered>
             <fileMode>0755</fileMode>

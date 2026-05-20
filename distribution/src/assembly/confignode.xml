@@ -59,7 +59,7 @@
             <outputDirectory>conf</outputDirectory>
             <includes>
                 <include>iotdb-common.sh</include>
-                <include>windows/iotdb-locale.bat</include>
+                <include>windows/iotdb-common.bat</include>
             </includes>
             <filtered>true</filtered>
             <fileMode>0755</fileMode>
