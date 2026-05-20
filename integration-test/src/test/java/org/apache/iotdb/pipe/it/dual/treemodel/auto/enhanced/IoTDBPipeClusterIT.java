@@ -88,6 +88,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     receiverEnv
@@ -101,6 +105,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
