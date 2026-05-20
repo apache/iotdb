@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.cluster.DiskChecker;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 
@@ -51,7 +53,9 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -148,16 +152,55 @@ public class HeartbeatService {
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
                 pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
-                // Self-check disk health on the same cadence DataNode samples its load.
-                // Runs after the async heartbeat dispatches so the (blocking) probe IO
-                // does not delay fanout. Followers run the same check on receive.
+                // Sample free-space on the same cadence DataNode samples its load. Runs after
+                // the async heartbeat dispatches so the OS call does not delay fanout. DiskCrash
+                // is observed passively by the Ratis write-path, not polled here.
                 if (iterationIndex % LOAD_SAMPLING_INTERVAL == 0) {
-                  DiskChecker.checkAndApply(
+                  DiskChecker.checkFreeRatioAndApply(
                       ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
                       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+                  reconcileConfigNodePeerPriorities();
                 }
               }
             });
+  }
+
+  /**
+   * Push Ratis peer priorities to reflect each ConfigNode's current {@link NodeStatus} (see {@link
+   * NodeStatus#priorityForStatus}). Only fires on the leader; only acts when at least one peer's
+   * desired priority differs from the live group configuration. {@code Unknown}/{@code Removing}
+   * peers and non-disk {@code ReadOnly} reasons are left untouched so transient blips and
+   * operator-driven states cannot churn the group config.
+   */
+  private void reconcileConfigNodePeerPriorities() {
+    Map<Integer, Integer> desired = new HashMap<>();
+    for (TConfigNodeLocation peer : getNodeManager().getRegisteredConfigNodes()) {
+      int nodeId = peer.getConfigNodeId();
+      NodeStatus status;
+      String reason;
+      if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
+        // The leader's own cache entry mirrors CommonConfig; reading from CommonConfig directly
+        // sidesteps any ordering between the local disk-check and the next cache refresh.
+        status = CommonDescriptor.getInstance().getConfig().getNodeStatus();
+        reason = CommonDescriptor.getInstance().getConfig().getStatusReason();
+      } else {
+        status = loadCache.getNodeStatus(nodeId);
+        reason = loadCache.getNodeStatusReason(nodeId);
+      }
+      NodeStatus.priorityForStatus(status, reason)
+          .ifPresent(priority -> desired.put(nodeId, priority));
+    }
+    if (desired.isEmpty()) {
+      return;
+    }
+    try {
+      configManager
+          .getConsensusManager()
+          .getConsensusImpl()
+          .reconfigurePeerPriorities(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID, desired);
+    } catch (ConsensusException e) {
+      LOGGER.warn(ManagerMessages.RECONFIGURE_PEER_PRIORITIES_FAILED, desired, e);
+    }
   }
 
   protected TDataNodeHeartbeatReq genHeartbeatReq() {

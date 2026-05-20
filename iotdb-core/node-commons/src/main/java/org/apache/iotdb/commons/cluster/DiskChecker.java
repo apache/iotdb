@@ -27,15 +27,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 /**
- * Shared utility used by both ConfigNode and DataNode to evaluate the health of a set of critical
- * directories and, optionally, drive the global {@link NodeStatus} on {@link CommonConfig}.
+ * Shared utility that drives the global {@link NodeStatus} on {@link CommonConfig} based on disk
+ * health signals.
+ *
+ * <p>Two sources feed it:
+ *
+ * <ul>
+ *   <li>{@link #checkFreeRatioAndApply} polls usable / total space across critical directories and
+ *       sets {@code ReadOnly(DISK_FULL)} when the ratio drops below a threshold.
+ *   <li>{@link #apply}{@code (DISK_CRASH)} is called from passive failure observers — Ratis
+ *       write-path catch blocks on ConfigNode and {@code FolderManager.ABNORMAL} aggregation on
+ *       DataNode — when a real write IO error has already occurred.
+ * </ul>
  *
  * <p>Only transitions between {@link NodeStatus#Running} and {@link NodeStatus#ReadOnly} with
  * reason {@link NodeStatus#DISK_FULL}/{@link NodeStatus#DISK_CRASH} are managed here. Other
@@ -44,10 +50,6 @@ import java.util.List;
 public class DiskChecker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DiskChecker.class);
-
-  private static final byte[] PROBE_PAYLOAD = new byte[] {0x01};
-  private static final String PROBE_PREFIX = "iotdb-disk-probe-";
-  private static final String PROBE_SUFFIX = ".tmp";
 
   public enum DiskStatus {
     NORMAL,
@@ -58,53 +60,39 @@ public class DiskChecker {
   private DiskChecker() {}
 
   /**
-   * Evaluate the supplied directories. A single unwritable directory yields {@link
-   * DiskStatus#DISK_CRASH}; any directory whose usable/total ratio is below the threshold yields
-   * {@link DiskStatus#DISK_FULL} (when no crash is detected); otherwise {@link DiskStatus#NORMAL}.
+   * Evaluate the usable/total space ratio of each directory. Any directory whose ratio is below
+   * {@code freeRatioThreshold} yields {@link DiskStatus#DISK_FULL}; otherwise {@link
+   * DiskStatus#NORMAL}. This method never returns {@link DiskStatus#DISK_CRASH} — crash detection
+   * is driven by the Ratis write-path observer on ConfigNode and by {@code FolderManager} on
+   * DataNode, both of which call {@link #apply} directly.
    */
-  public static DiskStatus check(List<String> dirs, double freeRatioThreshold) {
+  public static DiskStatus checkFreeRatio(List<String> dirs, double freeRatioThreshold) {
     if (dirs == null || dirs.isEmpty()) {
       return DiskStatus.NORMAL;
     }
-    boolean anyFull = false;
     for (String dir : dirs) {
       if (dir == null || dir.isEmpty()) {
         continue;
       }
       File f = new File(dir);
-      if (!f.isDirectory()) {
-        LOGGER.warn(CommonMessages.DISK_CRASH_PROBE_FAILED, dir);
-        return DiskStatus.DISK_CRASH;
-      }
-      try {
-        Path probe = Files.createTempFile(Paths.get(dir), PROBE_PREFIX, PROBE_SUFFIX);
-        try {
-          Files.write(probe, PROBE_PAYLOAD);
-        } finally {
-          Files.deleteIfExists(probe);
-        }
-      } catch (IOException e) {
-        LOGGER.warn(CommonMessages.DISK_CRASH_PROBE_FAILED, dir, e);
-        return DiskStatus.DISK_CRASH;
-      }
       long total = f.getTotalSpace();
       long usable = f.getUsableSpace();
       if (total > 0 && (double) usable / total < freeRatioThreshold) {
-        anyFull = true;
+        return DiskStatus.DISK_FULL;
       }
     }
-    return anyFull ? DiskStatus.DISK_FULL : DiskStatus.NORMAL;
+    return DiskStatus.NORMAL;
+  }
+
+  /** Convenience: run {@link #checkFreeRatio} and apply the result to {@link CommonConfig}. */
+  public static void checkFreeRatioAndApply(List<String> dirs, double freeRatioThreshold) {
+    apply(checkFreeRatio(dirs, freeRatioThreshold));
   }
 
   /**
-   * Run {@link #check} and apply the result to {@link CommonConfig}. See class javadoc for
-   * transition rules.
+   * Apply a precomputed status to {@link CommonConfig}. Priority is {@code DiskCrash > DiskFull >
+   * Normal}; recovery to {@code Running} only fires when the active reason was disk-related.
    */
-  public static void checkAndApply(List<String> dirs, double freeRatioThreshold) {
-    apply(check(dirs, freeRatioThreshold));
-  }
-
-  /** Visible for tests; package-public callers should prefer {@link #checkAndApply}. */
   public static void apply(DiskStatus result) {
     CommonConfig config = CommonDescriptor.getInstance().getConfig();
     NodeStatus currentStatus = config.getNodeStatus();
@@ -135,7 +123,9 @@ public class DiskChecker {
         break;
       case NORMAL:
       default:
-        if (currentlyFull || currentlyCrash) {
+        // DiskCrash is sticky — only a restart clears it. The free-ratio probe can recover
+        // DiskFull alone because free-space reappearing is the literal inverse of running low.
+        if (currentlyFull) {
           LOGGER.info(CommonMessages.DISK_RECOVERED_SET_RUNNING, currentReason);
           config.setNodeStatus(NodeStatus.Running);
           config.setStatusReason(null);

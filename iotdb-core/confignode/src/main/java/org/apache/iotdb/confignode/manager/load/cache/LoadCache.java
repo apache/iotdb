@@ -521,6 +521,16 @@ public class LoadCache {
   }
 
   /**
+   * @return The raw {@code statusReason} string for {@code nodeId}, or {@code null} when no cache
+   *     entry exists yet or no reason has been reported.
+   */
+  public String getNodeStatusReason(int nodeId) {
+    return Optional.ofNullable(nodeCacheMap.get(nodeId))
+        .map(BaseNodeCache::getStatusReason)
+        .orElse(null);
+  }
+
+  /**
    * Get all Node's current status with reason.
    *
    * @return Map<NodeId, NodeStatus with reason>

@@ -167,6 +167,24 @@ public interface IConsensus {
    */
   void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers) throws ConsensusException;
 
+  /**
+   * Adjust the leader-election priority of one or more peers in {@code groupId}.
+   *
+   * <p>Implementations that have no concept of per-peer priority (e.g. Simple, IoT consensus)
+   * should leave the default no-op. The Ratis implementation rewrites the group configuration so a
+   * peer with a lower priority is less likely to win subsequent elections — this is the lever the
+   * cluster uses to demote a {@code ReadOnly} ConfigNode.
+   *
+   * @param groupId the consensus group whose peer priorities should be updated
+   * @param nodeIdToPriority desired priorities keyed by node id; peers not in the map keep their
+   *     current priority
+   * @throws ConsensusException if the underlying reconfiguration fails
+   */
+  default void reconfigurePeerPriorities(
+      ConsensusGroupId groupId, Map<Integer, Integer> nodeIdToPriority) throws ConsensusException {
+    // no-op default
+  }
+
   // management API
 
   /**

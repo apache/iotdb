@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -234,7 +235,8 @@ class RatisConsensus implements IConsensus {
                                 registry.apply(
                                     Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                                 raftGroupId,
-                                this::onLeaderChanged))
+                                this::onLeaderChanged,
+                                this::onDiskFailure))
                     .build());
   }
 
@@ -329,9 +331,9 @@ class RatisConsensus implements IConsensus {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    // current Peer is group leader and in ReadOnly State
-    // We only judge dataRegions here, because schema write when readOnly is handled at
-    // RegionWriteExecutor
+    // Current peer is group leader and in ReadOnly state. SchemaRegion writes are gated at
+    // RegionWriteExecutor; here we step down DataRegion and ConfigRegion leaders so that a
+    // healthy peer can take over and continue serving writes.
     if (isLeader(groupId) && Utils.rejectWrite(consensusGroupType)) {
       try {
         forceStepDownLeader(raftGroup);
@@ -369,6 +371,7 @@ class RatisConsensus implements IConsensus {
       } catch (GroupMismatchException e) {
         throw new ConsensusGroupNotExistException(groupId);
       } catch (Exception e) {
+        maybeReportDiskFailure(raftGroupId, e);
         throw new RatisRequestFailedException(e);
       }
     }
@@ -386,6 +389,7 @@ class RatisConsensus implements IConsensus {
     } catch (GroupMismatchException e) {
       throw new ConsensusGroupNotExistException(groupId);
     } catch (Exception e) {
+      maybeReportDiskFailure(raftGroupId, e);
       throw new RatisRequestFailedException(e);
     }
 
@@ -964,6 +968,39 @@ class RatisConsensus implements IConsensus {
     }
   }
 
+  @Override
+  public void reconfigurePeerPriorities(
+      ConsensusGroupId groupId, Map<Integer, Integer> nodeIdToPriority) throws ConsensusException {
+    if (nodeIdToPriority == null || nodeIdToPriority.isEmpty()) {
+      return;
+    }
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup group = getGroupInfo(raftGroupId);
+    if (group == null || !group.getPeers().contains(myself)) {
+      throw new ConsensusGroupNotExistException(groupId);
+    }
+    boolean changed = false;
+    List<RaftPeer> newPeers = new ArrayList<>(group.getPeers().size());
+    for (RaftPeer p : group.getPeers()) {
+      Integer desired = nodeIdToPriority.get(Utils.fromRaftPeerIdToNodeId(p.getId()));
+      if (desired == null || desired == p.getPriority()) {
+        newPeers.add(p);
+        continue;
+      }
+      newPeers.add(
+          RaftPeer.newBuilder()
+              .setId(p.getId())
+              .setAddress(p.getAddress())
+              .setPriority(desired)
+              .build());
+      changed = true;
+    }
+    if (!changed) {
+      return;
+    }
+    sendReconfiguration(RaftGroup.valueOf(raftGroupId, newPeers));
+  }
+
   private RatisClient getConfigurationRaftClient(RaftGroup group) throws ClientManagerException {
     try {
       return reconfigurationClientManager.borrowClient(group);
@@ -988,6 +1025,26 @@ class RatisConsensus implements IConsensus {
       throw new RatisRequestFailedException(e);
     }
     return reply;
+  }
+
+  /**
+   * Called from the state machine apply path and from the write-path catch blocks when a Ratis
+   * operation surfaces a disk-level error (see {@link Utils#isDiskFailure(Throwable)}). Drives the
+   * node to {@code ReadOnly(DiskCrash)} via {@link DiskChecker#apply}, which encapsulates the
+   * priority rules (DiskCrash wins over DiskFull, etc.).
+   */
+  private void onDiskFailure(RaftGroupId groupId, Throwable cause) {
+    logger.error(
+        "Disk failure observed in Ratis group {}; marking node ReadOnly(DiskCrash).",
+        groupId,
+        cause);
+    DiskChecker.apply(DiskChecker.DiskStatus.DISK_CRASH);
+  }
+
+  private void maybeReportDiskFailure(RaftGroupId groupId, Throwable cause) {
+    if (Utils.isDiskFailure(cause)) {
+      onDiskFailure(groupId, cause);
+    }
   }
 
   private void onLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId leaderId) {

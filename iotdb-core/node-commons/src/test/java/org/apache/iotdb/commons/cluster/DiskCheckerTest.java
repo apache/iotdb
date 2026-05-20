@@ -29,11 +29,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class DiskCheckerTest {
 
@@ -58,57 +58,41 @@ public class DiskCheckerTest {
     config.setStatusReason(savedReason);
   }
 
+  // -- checkFreeRatio ------------------------------------------------------------------------
+
   @Test
-  public void checkReturnsNormalForWritableDirectoryWithSpace() throws Exception {
+  public void checkFreeRatioReturnsNormalWhenRatioMeetsThreshold() throws Exception {
     File dir = tmp.newFolder();
-    // threshold 0.0 → any positive usable space passes
     assertEquals(
         DiskChecker.DiskStatus.NORMAL,
-        DiskChecker.check(Collections.singletonList(dir.getAbsolutePath()), 0.0));
+        DiskChecker.checkFreeRatio(Collections.singletonList(dir.getAbsolutePath()), 0.0));
   }
 
   @Test
-  public void checkReturnsDiskFullWhenBelowThreshold() throws Exception {
+  public void checkFreeRatioReturnsDiskFullWhenAnyDirBelowThreshold() throws Exception {
     File dir = tmp.newFolder();
-    // threshold > 1 forces every directory to be reported as full
+    // threshold above 1.0 forces any directory with positive total space to register as full
     assertEquals(
         DiskChecker.DiskStatus.DISK_FULL,
-        DiskChecker.check(Collections.singletonList(dir.getAbsolutePath()), 2.0));
+        DiskChecker.checkFreeRatio(Collections.singletonList(dir.getAbsolutePath()), 2.0));
   }
 
   @Test
-  public void checkReturnsDiskCrashWhenDirectoryMissing() {
-    String missing = new File(tmp.getRoot(), "does-not-exist").getAbsolutePath();
-    assertEquals(
-        DiskChecker.DiskStatus.DISK_CRASH,
-        DiskChecker.check(Collections.singletonList(missing), 0.0));
-  }
-
-  @Test
-  public void checkReturnsDiskCrashWhenPathIsAFile() throws Exception {
-    File file = tmp.newFile();
-    assertEquals(
-        DiskChecker.DiskStatus.DISK_CRASH,
-        DiskChecker.check(Collections.singletonList(file.getAbsolutePath()), 0.0));
-  }
-
-  @Test
-  public void checkPrioritizesCrashOverFull() throws Exception {
-    File healthy = tmp.newFolder();
-    String missing = new File(tmp.getRoot(), "missing").getAbsolutePath();
-    // Even with a "full" threshold the missing dir trumps it.
-    assertEquals(
-        DiskChecker.DiskStatus.DISK_CRASH,
-        DiskChecker.check(java.util.Arrays.asList(healthy.getAbsolutePath(), missing), 2.0));
-  }
-
-  @Test
-  public void checkSkipsNullAndEmptyEntries() throws Exception {
+  public void checkFreeRatioSkipsNullAndEmptyEntries() throws Exception {
     File dir = tmp.newFolder();
     assertEquals(
         DiskChecker.DiskStatus.NORMAL,
-        DiskChecker.check(java.util.Arrays.asList(null, "", dir.getAbsolutePath()), 0.0));
+        DiskChecker.checkFreeRatio(Arrays.asList(null, "", dir.getAbsolutePath()), 0.0));
   }
+
+  @Test
+  public void emptyDirListIsNormal() {
+    assertEquals(
+        DiskChecker.DiskStatus.NORMAL, DiskChecker.checkFreeRatio(Collections.emptyList(), 1.0));
+    assertEquals(DiskChecker.DiskStatus.NORMAL, DiskChecker.checkFreeRatio(null, 1.0));
+  }
+
+  // -- apply() state machine -----------------------------------------------------------------
 
   @Test
   public void applyDiskFullSetsReadOnlyFromRunning() {
@@ -155,12 +139,14 @@ public class DiskCheckerTest {
   }
 
   @Test
-  public void applyNormalRecoversFromDiskCrash() {
+  public void applyNormalDoesNotRecoverFromDiskCrash() {
     DiskChecker.apply(DiskChecker.DiskStatus.DISK_CRASH);
     DiskChecker.apply(DiskChecker.DiskStatus.NORMAL);
     CommonConfig config = CommonDescriptor.getInstance().getConfig();
-    assertEquals(NodeStatus.Running, config.getNodeStatus());
-    assertNull(config.getStatusReason());
+    // DiskCrash is sticky: a free-ratio probe (the only source of NORMAL) cannot prove writes
+    // work again, so the node stays ReadOnly(DiskCrash) until restart.
+    assertEquals(NodeStatus.ReadOnly, config.getNodeStatus());
+    assertEquals(NodeStatus.DISK_CRASH, config.getStatusReason());
   }
 
   @Test
@@ -189,35 +175,32 @@ public class DiskCheckerTest {
     assertEquals(reasonBefore, CommonDescriptor.getInstance().getConfig().getStatusReason());
   }
 
-  @Test
-  public void checkAndApplyDrivesStatusEndToEnd() throws Exception {
-    File healthy = tmp.newFolder();
-    DiskChecker.checkAndApply(Collections.singletonList(healthy.getAbsolutePath()), 0.0);
-    assertEquals(NodeStatus.Running, CommonDescriptor.getInstance().getConfig().getNodeStatus());
+  // -- checkFreeRatioAndApply ----------------------------------------------------------------
 
-    String missing = new File(tmp.getRoot(), "still-missing").getAbsolutePath();
-    DiskChecker.checkAndApply(Collections.singletonList(missing), 0.0);
+  @Test
+  public void checkFreeRatioAndApplyDrivesStatusEndToEnd() throws Exception {
+    File dir = tmp.newFolder();
+    // Threshold above 1.0 -> always "DiskFull"
+    DiskChecker.checkFreeRatioAndApply(Collections.singletonList(dir.getAbsolutePath()), 2.0);
     assertEquals(NodeStatus.ReadOnly, CommonDescriptor.getInstance().getConfig().getNodeStatus());
     assertEquals(
-        NodeStatus.DISK_CRASH, CommonDescriptor.getInstance().getConfig().getStatusReason());
+        NodeStatus.DISK_FULL, CommonDescriptor.getInstance().getConfig().getStatusReason());
 
-    DiskChecker.checkAndApply(Collections.singletonList(healthy.getAbsolutePath()), 0.0);
+    // Threshold 0.0 -> always "Normal" -> recovery
+    DiskChecker.checkFreeRatioAndApply(Collections.singletonList(dir.getAbsolutePath()), 0.0);
     assertEquals(NodeStatus.Running, CommonDescriptor.getInstance().getConfig().getNodeStatus());
     assertNull(CommonDescriptor.getInstance().getConfig().getStatusReason());
   }
 
   @Test
-  public void emptyDirListIsNormal() {
-    assertEquals(DiskChecker.DiskStatus.NORMAL, DiskChecker.check(Collections.emptyList(), 1.0));
-    assertEquals(DiskChecker.DiskStatus.NORMAL, DiskChecker.check(null, 1.0));
-  }
-
-  @Test
-  public void smokeProbeFileIsDeleted() throws Exception {
+  public void checkFreeRatioAndApplyDoesNotClearDiskCrash() throws Exception {
     File dir = tmp.newFolder();
-    DiskChecker.check(Collections.singletonList(dir.getAbsolutePath()), 0.0);
-    File[] leftovers = dir.listFiles();
-    assertTrue(
-        "Disk probe should clean up its temp file", leftovers == null || leftovers.length == 0);
+    // Simulate a Ratis-passive DiskCrash signal.
+    DiskChecker.apply(DiskChecker.DiskStatus.DISK_CRASH);
+    // Subsequent healthy free-ratio polling must keep the node in ReadOnly(DiskCrash).
+    DiskChecker.checkFreeRatioAndApply(Collections.singletonList(dir.getAbsolutePath()), 0.0);
+    assertEquals(NodeStatus.ReadOnly, CommonDescriptor.getInstance().getConfig().getNodeStatus());
+    assertEquals(
+        NodeStatus.DISK_CRASH, CommonDescriptor.getInstance().getConfig().getStatusReason());
   }
 }

@@ -41,8 +41,6 @@ public final class CommonMessages {
       "磁盘剩余空间比例低于配置阈值，将节点状态设为 ReadOnly(DiskFull)。";
   public static final String DISK_CRASH_SET_READ_ONLY =
       "检测到不可写的磁盘目录，将节点状态设为 ReadOnly(DiskCrash)。";
-  public static final String DISK_CRASH_PROBE_FAILED =
-      "对目录 {} 进行磁盘健康探测时写入失败。";
   public static final String DISK_RECOVERED_SET_RUNNING =
       "磁盘健康已恢复（先前原因：{}），将节点状态设为 Running。";
 
