@@ -206,7 +206,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getDatabaseNodeByDatabasePath(partialPathName)
           .getAsMNode()
           .setDatabaseSchema(databaseSchema);
-      TimePartitionUtils.updateDatabaseTimePartitionConfig(databaseSchema.getName(), databaseSchema);
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(
+          databaseSchema.getName(), databaseSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {

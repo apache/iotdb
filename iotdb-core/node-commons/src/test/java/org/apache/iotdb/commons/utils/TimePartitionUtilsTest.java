@@ -152,6 +152,23 @@ public class TimePartitionUtilsTest {
   }
 
   @Test
+  public void testHasDatabaseTimePartitionConfig() {
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L);
+    schema.setTimePartitionOrigin(2000L);
+
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig(null));
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+    Assert.assertTrue(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+
+    TimePartitionUtils.removeDatabaseTimePartitionConfig("test.db");
+    Assert.assertFalse(TimePartitionUtils.hasDatabaseTimePartitionConfig("test.db"));
+  }
+
+  @Test
   public void testRemoveDatabaseTimePartitionConfig() {
     // Create and update database configuration
     TDatabaseSchema schema = new TDatabaseSchema();

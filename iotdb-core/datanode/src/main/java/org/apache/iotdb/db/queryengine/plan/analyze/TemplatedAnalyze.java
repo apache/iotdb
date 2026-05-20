@@ -392,26 +392,37 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher) {
     long startTime = System.nanoTime();
     try {
-      String database = context.getDatabaseName().orElse(null);
-      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(context.getGlobalTimeFilter(), context, database);
-      // there is no satisfied time range
-      if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
-        return new DataPartition(
-            Collections.emptyMap(),
-            CONFIG.getSeriesPartitionExecutorClass(),
-            CONFIG.getSeriesPartitionSlotNum());
-      }
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      Map<String, List<IDeviceID>> databaseToDevices = new HashMap<>();
       for (IDeviceID deviceID : deviceSet) {
-        DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
+        databaseToDevices
             .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
-            .add(queryParam);
+            .add(deviceID);
+      }
+      partitionFetcher.ensureDatabaseTimePartitionConfig(databaseToDevices.keySet());
+
+      boolean hasUnclosedTimeRange = false;
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (Map.Entry<String, List<IDeviceID>> entry : databaseToDevices.entrySet()) {
+        String database = entry.getKey();
+        Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+            getTimePartitionSlotList(context.getGlobalTimeFilter(), context, database);
+        // there is no satisfied time range
+        if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
+          return new DataPartition(
+              Collections.emptyMap(),
+              CONFIG.getSeriesPartitionExecutorClass(),
+              CONFIG.getSeriesPartitionSlotNum());
+        }
+        hasUnclosedTimeRange |= res.right.left || res.right.right;
+        for (IDeviceID deviceID : entry.getValue()) {
+          sgNameToQueryParamsMap
+              .computeIfAbsent(database, key -> new ArrayList<>())
+              .add(
+                  new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right));
+        }
       }
 
-      if (res.right.left || res.right.right) {
+      if (hasUnclosedTimeRange) {
         return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
       } else {
         return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);

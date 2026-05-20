@@ -43,9 +43,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -590,8 +590,8 @@ public class PartitionCache {
     }
   }
 
-  private void fetchDatabaseAndUpdateCache(final ConfigNodeClient client, final boolean isTableModel)
-      throws TException {
+  private void fetchDatabaseAndUpdateCache(
+      final ConfigNodeClient client, final boolean isTableModel) throws TException {
     final TGetDatabaseReq req =
         new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
             .setIsTableModel(isTableModel)

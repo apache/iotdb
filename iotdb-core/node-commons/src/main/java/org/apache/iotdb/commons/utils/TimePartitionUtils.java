@@ -191,6 +191,10 @@ public class TimePartitionUtils {
     databaseConfigCache.clear();
   }
 
+  public static boolean hasDatabaseTimePartitionConfig(String database) {
+    return database != null && databaseConfigCache.containsKey(database);
+  }
+
   // Get database-specific configuration, fallback to global if not found
   private static DatabaseTimePartitionConfig getDatabaseConfig(String database) {
     if (database == null) {

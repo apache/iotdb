@@ -2129,26 +2129,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<IDeviceID> deviceSet, ISchemaTree schemaTree, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(
-              context.getGlobalTimeFilter(), context, context.getDatabaseName().orElse(null));
-      // there is no satisfied time range
-      if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
-        return new DataPartition(
-            Collections.emptyMap(),
-            CONFIG.getSeriesPartitionExecutorClass(),
-            CONFIG.getSeriesPartitionSlotNum());
-      }
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      Map<String, List<IDeviceID>> databaseToDevices = new HashMap<>();
       for (IDeviceID deviceID : deviceSet) {
-        DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
-        sgNameToQueryParamsMap
+        databaseToDevices
             .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
-            .add(queryParam);
+            .add(deviceID);
+      }
+      partitionFetcher.ensureDatabaseTimePartitionConfig(databaseToDevices.keySet());
+
+      boolean hasUnclosedTimeRange = false;
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      for (Map.Entry<String, List<IDeviceID>> entry : databaseToDevices.entrySet()) {
+        String database = entry.getKey();
+        Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+            getTimePartitionSlotList(context.getGlobalTimeFilter(), context, database);
+        // there is no satisfied time range
+        if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
+          return new DataPartition(
+              Collections.emptyMap(),
+              CONFIG.getSeriesPartitionExecutorClass(),
+              CONFIG.getSeriesPartitionSlotNum());
+        }
+        hasUnclosedTimeRange |= res.right.left || res.right.right;
+        for (IDeviceID deviceID : entry.getValue()) {
+          sgNameToQueryParamsMap
+              .computeIfAbsent(database, key -> new ArrayList<>())
+              .add(
+                  new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right));
+        }
       }
 
-      if (res.right.left || res.right.right) {
+      if (hasUnclosedTimeRange) {
         return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
       } else {
         return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
@@ -2774,17 +2785,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {
-      InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(
-          realInsertRowStatement.getDevicePath().getIDeviceIDAsFullDevice());
-      dataPartitionQueryParam.setTimePartitionSlotList(
-          Collections.singletonList(
-              realInsertRowStatement.getTimePartitionSlot(context.getDatabaseName().orElse(null))));
-
       AnalyzeUtils.analyzeDataPartition(
           analysis,
-          Collections.singletonList(dataPartitionQueryParam),
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     } else {
@@ -2865,15 +2868,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowsOfOneDeviceStatement) {
-      InsertRowsOfOneDeviceStatement realStatement =
-          (InsertRowsOfOneDeviceStatement) realInsertStatement;
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceIDAsFullDevice());
-      dataPartitionQueryParam.setTimePartitionSlotList(realStatement.getTimePartitionSlots());
-
       AnalyzeUtils.analyzeDataPartition(
           analysis,
-          Collections.singletonList(dataPartitionQueryParam),
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement, context),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     } else {
