@@ -111,16 +111,17 @@ public class PatternMatchTableFunction implements TableFunction {
     Double widthValue = (Double) ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue();
     Double heightValue = (Double) ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue();
     if (smoothValue < 0) {
-      throw new UDFException(QueryMessages.SMOOTH_MUST_BE_NON_NEGATIVE + smoothValue);
+      throw new UDFException(String.format(QueryMessages.SMOOTH_MUST_BE_NON_NEGATIVE, smoothValue));
     }
     if (thresholdValue < 0) {
-      throw new UDFException(QueryMessages.THRESHOLD_MUST_BE_NON_NEGATIVE + thresholdValue);
+      throw new UDFException(
+          String.format(QueryMessages.THRESHOLD_MUST_BE_NON_NEGATIVE, thresholdValue));
     }
     if (widthValue < 0) {
-      throw new UDFException(QueryMessages.WIDTH_MUST_BE_NON_NEGATIVE + widthValue);
+      throw new UDFException(String.format(QueryMessages.WIDTH_MUST_BE_NON_NEGATIVE, widthValue));
     }
     if (heightValue < 0) {
-      throw new UDFException(QueryMessages.HEIGHT_MUST_BE_NON_NEGATIVE + heightValue);
+      throw new UDFException(String.format(QueryMessages.HEIGHT_MUST_BE_NON_NEGATIVE, heightValue));
     }
 
     // outputColumnSchema description
