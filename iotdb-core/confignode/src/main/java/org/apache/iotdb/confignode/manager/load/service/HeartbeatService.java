@@ -137,36 +137,26 @@ public class HeartbeatService {
         .ifPresent(
             consensusManager -> {
               if (getConsensusManager().isLeader()) {
-                // The counter is bumped exactly once per loop iteration so every gen* call in
-                // this body observes the same value, and the leader's own sampling fires on the
-                // same iterations DataNode/AINode load sampling does.
-                long iterationIndex = heartbeatCounter.getAndIncrement();
                 // Send heartbeat requests to all the registered ConfigNodes
                 pingRegisteredConfigNodes(
-                    genConfigNodeHeartbeatReq(iterationIndex),
-                    getNodeManager().getRegisteredConfigNodes());
+                    genConfigNodeHeartbeatReq(), getNodeManager().getRegisteredConfigNodes());
                 // Send heartbeat requests to all the registered DataNodes
                 pingRegisteredDataNodes(
-                    genHeartbeatReq(iterationIndex),
-                    getNodeManager().getRegisteredDataNodes(),
-                    iterationIndex);
+                    genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
-                pingRegisteredAINodes(
-                    genAIHeartbeatReq(iterationIndex), getNodeManager().getRegisteredAINodes());
-                // Sample free-space on the same cadence DataNode samples its load. Runs after
-                // the async heartbeat dispatches so the OS call does not delay fanout. DiskCrash
-                // is observed passively by the Ratis write-path, not polled here. Cross-peer
-                // priority reconciliation is event-driven (see ConfigRegionPriorityBalancer).
-                if (iterationIndex % LOAD_SAMPLING_INTERVAL == 0) {
+                pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
+                // Self-check free-space after the async fanout so the OS call doesn't delay it.
+                if (heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0) {
                   DiskChecker.checkFreeRatioAndApply(
                       ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
                       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
                 }
+                heartbeatCounter.getAndIncrement();
               }
             });
   }
 
-  protected TDataNodeHeartbeatReq genHeartbeatReq(long iterationIndex) {
+  protected TDataNodeHeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
@@ -177,7 +167,7 @@ public class HeartbeatService {
             .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID));
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
-    heartbeatReq.setNeedSamplingLoad(iterationIndex % LOAD_SAMPLING_INTERVAL == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
     Pair<Long, Long> schemaQuotaRemain =
         configManager.getClusterSchemaManager().getSchemaQuotaRemain();
     heartbeatReq.setTimeSeriesQuotaRemain(schemaQuotaRemain.left);
@@ -185,7 +175,7 @@ public class HeartbeatService {
     // We collect pipe meta in every 100 heartbeat loop
     heartbeatReq.setNeedPipeMetaList(
         !PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled()
-            && iterationIndex
+            && heartbeatCounter.get()
                     % PipeConfig.getInstance()
                         .getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
                 == 0);
@@ -196,7 +186,7 @@ public class HeartbeatService {
     }
 
     // We broadcast region operations list every 100 heartbeat loops
-    if (iterationIndex % 100 == 0) {
+    if (heartbeatCounter.get() % 100 == 0) {
       heartbeatReq.setCurrentRegionOperations(
           configManager.getProcedureManager().getRegionOperationConsensusIds());
     }
@@ -204,8 +194,7 @@ public class HeartbeatService {
     return heartbeatReq;
   }
 
-  private void addConfigNodeLocationsToReq(
-      int dataNodeId, TDataNodeHeartbeatReq req, long iterationIndex) {
+  private void addConfigNodeLocationsToReq(int dataNodeId, TDataNodeHeartbeatReq req) {
     Set<TEndPoint> confirmedConfigNodes = loadCache.getConfirmedConfigNodeEndPoints(dataNodeId);
     Set<TEndPoint> actualConfigNodes =
         getNodeManager().getRegisteredConfigNodes().stream()
@@ -220,23 +209,23 @@ public class HeartbeatService {
       4. At this point, because actualConfigNodes and confirmedConfigNodes are identical, the ConfigNode list is not re-sent to the DataNode.
     */
     if (!actualConfigNodes.equals(confirmedConfigNodes)
-        || iterationIndex % configNodeListPeriodicallySyncInterval == 0) {
+        || heartbeatCounter.get() % configNodeListPeriodicallySyncInterval == 0) {
       req.setConfigNodeEndPoints(actualConfigNodes);
     }
   }
 
-  protected TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq(long iterationIndex) {
+  protected TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
     req.setTimestamp(System.nanoTime());
-    req.setNeedSamplingLoad(iterationIndex % LOAD_SAMPLING_INTERVAL == 0);
+    req.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
     return req;
   }
 
-  private TAIHeartbeatReq genAIHeartbeatReq(long iterationIndex) {
+  private TAIHeartbeatReq genAIHeartbeatReq() {
     /* Generate heartbeat request */
     TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
-    heartbeatReq.setNeedSamplingLoad(iterationIndex % LOAD_SAMPLING_INTERVAL == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
 
     return heartbeatReq;
   }
@@ -273,9 +262,7 @@ public class HeartbeatService {
    * @param registeredDataNodes DataNodes that registered in cluster
    */
   private void pingRegisteredDataNodes(
-      TDataNodeHeartbeatReq heartbeatReq,
-      List<TDataNodeConfiguration> registeredDataNodes,
-      long iterationIndex) {
+      TDataNodeHeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
@@ -294,7 +281,7 @@ public class HeartbeatService {
               configManager.getClusterSchemaManager()::updateDeviceUsage,
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
-      addConfigNodeLocationsToReq(dataNodeId, heartbeatReq, iterationIndex);
+      addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

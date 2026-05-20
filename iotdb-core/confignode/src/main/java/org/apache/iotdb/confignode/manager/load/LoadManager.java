@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.balancer.ConfigRegionPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
@@ -87,11 +86,10 @@ public class LoadManager {
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
-    this.eventService = new EventService(loadCache);
+    this.eventService = new EventService(configManager, loadCache);
     this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);
-    this.eventService.register(new ConfigRegionPriorityBalancer(configManager));
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
