@@ -9,6 +9,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
   pull_request:
     branches:
       - master
@@ -17,6 +19,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
   # allow manually run the action:
   workflow_dispatch:
 

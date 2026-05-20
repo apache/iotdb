@@ -40,7 +40,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.txt
 !iotdb-client/client-py/requirements.txt
 !iotdb-client/client-py/requirements_dev.txt
-!iotdb-client/client-cpp/src/main/CMakeLists.txt
+!iotdb-client/client-cpp/CMakeLists.txt
 !iotdb-client/client-cpp/src/test/CMakeLists.txt
 !example/rest-client-c-example/CMakeLists.txt
 !example/client-cpp-example/src/CMakeLists.txt
@@ -88,6 +88,10 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.tsfile
 tsfile/src/test/resources/*.ts
 
+### clion project
+**/cmake-build-debug/
+**/cmake-build-release/
+
 ### Apache release ###
 local-snapshots-dir/
 venv/
@@ -107,6 +111,7 @@ classes/
 
 ### Cmake files ###
 *.cmake
+!iotdb-client/client-cpp/cmake/*.cmake
 Makefile
 **/CMakeFiles/
 

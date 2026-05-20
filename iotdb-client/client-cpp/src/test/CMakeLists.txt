@@ -15,138 +15,65 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+# =============================================================================
+# C++ client integration tests (driven by ctest).
+# The parent CMakeLists.txt include()s this folder when BUILD_TESTING=ON;
+# it relies on the iotdb_session target (and iotdb_thrift_static) already
+# being defined at the parent scope.
+# =============================================================================
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
-INCLUDE( CTest )
-SET(CMAKE_CXX_STANDARD 11)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(TARGET_NAME session_tests)
-SET(TARGET_NAME_RELATIONAL session_relational_tests)
-IF(NOT MSVC)
-    # Keep GCC/Clang style flags off on MSVC to avoid invalid-option build errors.
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
-ENDIF()
-ENABLE_TESTING()
+include(CTest)
 
-# =========================
-# SSL option (default OFF)
-# =========================
-option(WITH_SSL "Build with SSL support" OFF)
+set(_test_targets
+        session_tests
+        session_relational_tests
+        session_c_tests
+        session_c_relational_tests)
 
-IF(WITH_SSL)
-    FIND_PACKAGE(OpenSSL REQUIRED)
-    IF(OpenSSL_FOUND)
-        MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
-        INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
-        ADD_DEFINITIONS(-DWITH_SSL=1)
-    ELSE()
-        MESSAGE(FATAL_ERROR "OpenSSL not found, but WITH_SSL is enabled")
-    ENDIF()
-ELSE()
-    MESSAGE(STATUS "Building without SSL support")
-    ADD_DEFINITIONS(-DWITH_SSL=0)
-ENDIF()
+add_executable(session_tests              main.cpp              cpp/sessionIT.cpp)
+add_executable(session_relational_tests   main_Relational.cpp   cpp/sessionRelationalIT.cpp)
+add_executable(session_c_tests            main_c.cpp            cpp/sessionCIT.cpp)
+add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
 
-# Add Boost include path for MacOS
-INCLUDE_DIRECTORIES(/usr/local/include)
-# Add Session related include files
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
-# Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
+foreach(_t IN LISTS _test_targets)
+    target_include_directories(${_t} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/catch2")
+    target_link_libraries(${_t} PRIVATE iotdb_session)
+    if(WITH_SSL)
+        target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+    endif()
+endforeach()
 
-# Add Boost library headers for MaxOS
-FIND_PACKAGE(Boost REQUIRED)
-IF (DEFINED BOOST_INCLUDEDIR)
-    include_directories("${Boost_INCLUDE_DIR}")
-ENDIF()
-
-# Link directories are different for Windows and Linux/Mac
-IF(MSVC)
-    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
-    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/Release/thriftmd.lib")
-ELSE()
-    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
-    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
-ENDIF()
-
-IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address)
-ENDIF()
-
-SET(TARGET_NAME_C session_c_tests)
-SET(TARGET_NAME_C_RELATIONAL session_c_relational_tests)
-
-ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
-ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelationalIT.cpp)
-ADD_EXECUTABLE(${TARGET_NAME_C} main_c.cpp cpp/sessionCIT.cpp)
-ADD_EXECUTABLE(${TARGET_NAME_C_RELATIONAL} main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
-
-# Link with shared library iotdb_session and pthread
-SET(ALL_TEST_TARGETS ${TARGET_NAME} ${TARGET_NAME_RELATIONAL} ${TARGET_NAME_C} ${TARGET_NAME_C_RELATIONAL})
-
-IF(MSVC)
-    IF(WITH_SSL)
-        FOREACH(T ${ALL_TEST_TARGETS})
-            TARGET_LINK_LIBRARIES(${T}
-                iotdb_session
-                ${THRIFT_STATIC_LIB}
-                OpenSSL::SSL
-                OpenSSL::Crypto
-            )
-        ENDFOREACH()
-    ELSE()
-        FOREACH(T ${ALL_TEST_TARGETS})
-            TARGET_LINK_LIBRARIES(${T}
-                iotdb_session
-                ${THRIFT_STATIC_LIB}
-            )
-        ENDFOREACH()
-    ENDIF()
-ELSE()
-    IF(WITH_SSL)
-        FOREACH(T ${ALL_TEST_TARGETS})
-            TARGET_LINK_LIBRARIES(${T}
-                iotdb_session
-                pthread
-                OpenSSL::SSL
-                OpenSSL::Crypto
-            )
-        ENDFOREACH()
-    ELSE()
-        FOREACH(T ${ALL_TEST_TARGETS})
-            TARGET_LINK_LIBRARIES(${T}
-                iotdb_session
-                pthread
-            )
-        ENDFOREACH()
-    ENDIF()
-ENDIF()
-
-# Add Catch2 include directory
-FOREACH(T ${ALL_TEST_TARGETS})
-    TARGET_INCLUDE_DIRECTORIES(${T} PUBLIC ./catch2/)
-ENDFOREACH()
-
-# Add tests to ctest
-IF(MSVC)
-    ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
-    ADD_TEST(NAME sessionRelationalIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_RELATIONAL})
-    ADD_TEST(NAME sessionCIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_C})
-    ADD_TEST(NAME sessionCRelationalIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_C_RELATIONAL})
-ELSE()
-    ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
-    ADD_TEST(NAME sessionRelationalIT COMMAND ${TARGET_NAME_RELATIONAL})
-    ADD_TEST(NAME sessionCIT COMMAND ${TARGET_NAME_C})
-    ADD_TEST(NAME sessionCRelationalIT COMMAND ${TARGET_NAME_C_RELATIONAL})
-ENDIF()
-
-# One process at a time: parallel ctest overloads a single local IoTDB on 127.0.0.1:6667.
-SET_TESTS_PROPERTIES(sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT PROPERTIES RUN_SERIAL TRUE)
-
-if(UNIX AND NOT APPLE)
-  target_link_options(session_tests PRIVATE -Wl,--no-as-needed)
-  target_link_options(session_relational_tests PRIVATE -Wl,--no-as-needed)
-  target_link_options(session_c_tests PRIVATE -Wl,--no-as-needed)
-  target_link_options(session_c_relational_tests PRIVATE -Wl,--no-as-needed)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+    foreach(_t IN LISTS _test_targets)
+        target_compile_options(${_t} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options(${_t} PRIVATE -fsanitize=address)
+    endforeach()
 endif()
+
+# Linux: keep iotdb_session in the executable's needed-list even when there
+# is no direct symbol reference from main.cpp (the IT helpers pull it in
+# transitively); without this, ld may drop the lib at link time.
+if(UNIX AND NOT APPLE)
+    foreach(_t IN LISTS _test_targets)
+        target_link_options(${_t} PRIVATE -Wl,--no-as-needed)
+    endforeach()
+endif()
+
+# Register ctest cases (multi-config on MSVC).
+if(MSVC)
+    add_test(NAME sessionIT              CONFIGURATIONS Release COMMAND session_tests)
+    add_test(NAME sessionRelationalIT    CONFIGURATIONS Release COMMAND session_relational_tests)
+    add_test(NAME sessionCIT             CONFIGURATIONS Release COMMAND session_c_tests)
+    add_test(NAME sessionCRelationalIT   CONFIGURATIONS Release COMMAND session_c_relational_tests)
+else()
+    add_test(NAME sessionIT              COMMAND session_tests)
+    add_test(NAME sessionRelationalIT    COMMAND session_relational_tests)
+    add_test(NAME sessionCIT             COMMAND session_c_tests)
+    add_test(NAME sessionCRelationalIT   COMMAND session_c_relational_tests)
+endif()
+
+# Run sequentially: parallel ctest overloads the single local IoTDB instance.
+set_tests_properties(
+        sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT
+        PROPERTIES RUN_SERIAL TRUE)

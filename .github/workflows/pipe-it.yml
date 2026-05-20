@@ -9,6 +9,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
       - "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/**" #queryengine
   pull_request:
     branches:
@@ -19,6 +21,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - "example/client-cpp-example/**"
       - "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/**" #queryengine
   # allow manually run the action:
   workflow_dispatch:

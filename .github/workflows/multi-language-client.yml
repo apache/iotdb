@@ -40,7 +40,49 @@ env:
   MAVEN_ARGS: --batch-mode --no-transfer-progress
 
 jobs:
+  # Per-language path filters: a client-cpp-only PR runs cpp, not go/python.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      cpp: ${{ steps.filter.outputs.cpp }}
+      python: ${{ steps.filter.outputs.python }}
+      go: ${{ steps.filter.outputs.go }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cpp:
+              - 'pom.xml'
+              - 'iotdb-client/pom.xml'
+              - 'iotdb-client/client-cpp/**'
+              - 'example/client-cpp-example/**'
+              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+              - '.github/workflows/multi-language-client.yml'
+            python:
+              - 'pom.xml'
+              - 'iotdb-client/pom.xml'
+              - 'iotdb-client/client-py/**'
+              - 'docker/src/main/Dockerfile-1c1d'
+              - '.github/workflows/multi-language-client.yml'
+            go:
+              - 'pom.xml'
+              - 'iotdb-core/**'
+              - 'iotdb-api/**'
+              - 'iotdb-protocol/**'
+              - 'distribution/**'
+              - 'integration-test/**'
+              - 'iotdb-client/session/**'
+              - 'iotdb-client/jdbc/**'
+              - 'iotdb-client/cli/**'
+              - 'iotdb-client/service-rpc/**'
+              - '.github/workflows/multi-language-client.yml'
+
   cpp:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.cpp == 'true'
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -134,6 +176,8 @@ jobs:
           retention-days: 1
 
   go:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -158,6 +202,8 @@ jobs:
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.python == 'true'
     strategy:
       fail-fast: false
       max-parallel: 15
