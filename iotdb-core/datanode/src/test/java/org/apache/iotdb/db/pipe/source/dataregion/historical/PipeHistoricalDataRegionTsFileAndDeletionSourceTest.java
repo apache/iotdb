@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.historical;
 
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.junit.Assert;
@@ -35,11 +43,39 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
+
+  @Test
+  public void testDeletionOnlyCustomizeInitializesSourceContext() throws Exception {
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    final PipeParameters parameters =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete");
+              }
+            });
+
+    source.validate(new PipeParameterValidator(parameters));
+    source.customize(
+        parameters,
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskSourceRuntimeEnvironment(
+                "pipe", 1, 123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1))));
+
+    Assert.assertEquals("pipe", getPrivateField(source, "pipeName"));
+    Assert.assertEquals(123, getPrivateField(source, "dataRegionId"));
+    Assert.assertEquals(false, getPrivateField(source, "shouldExtractInsertion"));
+    Assert.assertEquals(true, getPrivateField(source, "shouldExtractDeletion"));
+    Assert.assertNotNull(getPrivateField(source, "treePattern"));
+    Assert.assertNotNull(getPrivateField(source, "tablePattern"));
+  }
 
   @Test
   public void testSupplyReturnsProgressReportEventAfterSkippingDuplicateHistoricalTsFile()
@@ -100,6 +136,65 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     }
   }
 
+  @Test
+  public void testSupplyRetriesSameTsFileAfterEventCreationFailure() throws Exception {
+    final TestablePipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new TestablePipeHistoricalDataRegionTsFileAndDeletionSource();
+    final Event expectedEvent = new Event() {};
+    final RuntimeException expectedException = new RuntimeException("mock supply failure");
+    final File tempDir = Files.createTempDirectory("pipeHistoricalRetry").toFile();
+
+    try {
+      final TsFileResource firstResource = createTsFileResource(tempDir, "first.tsfile");
+      final TsFileResource secondResource = createTsFileResource(tempDir, "second.tsfile");
+
+      source.setSuppliedEvent(expectedEvent);
+      source.setFailureBeforeSuccess(expectedException, 1);
+      setPrivateField(source, "hasBeenStarted", true);
+      setPrivateField(
+          source,
+          "pendingQueue",
+          new ArrayDeque<PersistentResource>(Arrays.asList(firstResource, secondResource)));
+
+      final RuntimeException actualException =
+          Assert.assertThrows(RuntimeException.class, source::supply);
+      Assert.assertSame(expectedException, actualException);
+      Assert.assertEquals(
+          Arrays.asList(firstResource.getTsFilePath()), source.getSuppliedTsFiles());
+      Assert.assertEquals(2, source.getPendingQueueSize());
+
+      Assert.assertSame(expectedEvent, source.supply());
+      Assert.assertEquals(
+          Arrays.asList(firstResource.getTsFilePath(), firstResource.getTsFilePath()),
+          source.getSuppliedTsFiles());
+      Assert.assertEquals(1, source.getPendingQueueSize());
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  @Test
+  public void testReplicateIndexShouldBeStableBeforeResourceConsumed() throws Exception {
+    final TestablePipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new TestablePipeHistoricalDataRegionTsFileAndDeletionSource();
+    final File tempDir = Files.createTempDirectory("pipeHistoricalReplicateIndex").toFile();
+
+    try {
+      final TsFileResource resource = createTsFileResource(tempDir, "stable.tsfile");
+      final String pipeName = "consensus_pipe_retry_test_" + System.nanoTime();
+      setPrivateField(source, "pipeName", pipeName);
+      ReplicateProgressDataNodeManager.resetReplicateIndexForIoTV2(pipeName);
+
+      Assert.assertEquals(1L, source.assignReplicateIndexForResource(resource));
+      Assert.assertEquals(1L, source.assignReplicateIndexForResource(resource));
+
+      source.clearReplicateIndexForResource(resource);
+      Assert.assertEquals(2L, source.assignReplicateIndexForResource(resource));
+    } finally {
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
   private static TsFileResource createTsFileResource(final File tempDir, final String fileName)
       throws IOException {
     final File file = new File(tempDir, fileName);
@@ -118,6 +213,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     field.set(source, value);
   }
 
+  private static Object getPrivateField(
+      final PipeHistoricalDataRegionTsFileAndDeletionSource source, final String fieldName)
+      throws ReflectiveOperationException {
+    final Field field =
+        PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(source);
+  }
+
   private static class TestablePipeHistoricalDataRegionTsFileAndDeletionSource
       extends PipeHistoricalDataRegionTsFileAndDeletionSource {
 
@@ -125,6 +229,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     private final List<String> consumedSkippedTsFilePaths = new ArrayList<>();
     private final List<String> suppliedTsFiles = new ArrayList<>();
     private Event suppliedEvent;
+    private RuntimeException exceptionToThrow;
+    private int remainingFailureCount;
 
     private void setSkippedTsFilePaths(final String... skippedTsFilePaths) {
       this.skippedTsFilePaths.clear();
@@ -155,6 +261,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       this.suppliedEvent = suppliedEvent;
     }
 
+    private void setFailureBeforeSuccess(
+        final RuntimeException exceptionToThrow, final int remainingFailureCount) {
+      this.exceptionToThrow = exceptionToThrow;
+      this.remainingFailureCount = remainingFailureCount;
+    }
+
     @Override
     protected boolean consumeSkippedHistoricalTsFileEventIfNecessary(
         final TsFileResource resource) {
@@ -168,6 +280,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     @Override
     protected Event supplyTsFileEvent(final TsFileResource resource) {
       suppliedTsFiles.add(resource.getTsFilePath());
+      if (remainingFailureCount > 0) {
+        remainingFailureCount--;
+        throw exceptionToThrow;
+      }
       return suppliedEvent;
     }
   }

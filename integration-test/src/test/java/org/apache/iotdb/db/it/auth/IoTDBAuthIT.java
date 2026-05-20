@@ -1627,4 +1627,17 @@ public class IoTDBAuthIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testUserNameMustNotStartWithDoubleUnderscore() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("CREATE USER __badx 'password123456'"));
+      adminStmt.execute("CREATE USER gooduser 'password123456'");
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("ALTER USER gooduser RENAME TO __badx"));
+      adminStmt.execute("DROP USER gooduser");
+    }
+  }
 }

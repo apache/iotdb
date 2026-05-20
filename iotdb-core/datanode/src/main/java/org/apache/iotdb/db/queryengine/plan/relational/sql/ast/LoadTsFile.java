@@ -72,6 +72,19 @@ public class LoadTsFile extends Statement {
   private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    this(location, filePath, loadAttributes, true);
+  }
+
+  public static LoadTsFile createUnchecked(
+      NodeLocation location, String filePath, Map<String, String> loadAttributes) {
+    return new LoadTsFile(location, filePath, loadAttributes, false);
+  }
+
+  private LoadTsFile(
+      NodeLocation location,
+      String filePath,
+      Map<String, String> loadAttributes,
+      boolean validateSourcePath) {
     super(location);
     this.filePath = requireNonNull(filePath, "filePath is null");
 
@@ -89,7 +102,7 @@ public class LoadTsFile extends Statement {
     try {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
-              new File(filePath));
+              new File(filePath), validateSourcePath);
       this.resources = new ArrayList<>();
       this.writePointCountList = new ArrayList<>();
       this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
@@ -283,7 +296,7 @@ public class LoadTsFile extends Statement {
       final Map<String, String> properties = this.loadAttributes;
 
       final LoadTsFile subStatement =
-          new LoadTsFile(getLocation().orElse(null), filePath, properties);
+          LoadTsFile.createUnchecked(getLocation().orElse(null), filePath, properties);
 
       // Copy all configuration properties
       subStatement.databaseLevel = this.databaseLevel;

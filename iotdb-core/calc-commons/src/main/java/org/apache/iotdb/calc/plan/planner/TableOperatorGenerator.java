@@ -92,6 +92,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -246,7 +247,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitPlan(PlanNode node, C context) {
-    throw new UnsupportedOperationException("should call the concrete visitXX() method");
+    throw new UnsupportedOperationException(CalcMessages.SHOULD_CALL_THE_CONCRETE_VISIT_XX_METHOD);
   }
 
   public static Map<Symbol, List<InputLocation>> makeLayout(final List<PlanNode> children) {
@@ -331,7 +332,8 @@ public abstract class TableOperatorGenerator<
                           ImmutableList.of(),
                           0,
                           context.getTableTypeProvider(),
-                          metadata);
+                          metadata,
+                          context.getMemoryReservationManager());
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -358,7 +360,8 @@ public abstract class TableOperatorGenerator<
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTableTypeProvider(),
-            metadata);
+            metadata,
+            context.getMemoryReservationManager());
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -973,7 +976,8 @@ public abstract class TableOperatorGenerator<
     for (int i = 0; i < equiSize; i++) {
       Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(i).getLeft());
       if (leftJoinKeyPosition == null) {
-        throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
+        throw new IllegalStateException(
+            CalcMessages.LEFT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_LEFT_JOIN_KEY);
       }
       leftJoinKeyPositions[i] = leftJoinKeyPosition;
     }
@@ -983,7 +987,8 @@ public abstract class TableOperatorGenerator<
     for (int i = 0; i < equiSize; i++) {
       Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(i).getRight());
       if (rightJoinKeyPosition == null) {
-        throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
+        throw new IllegalStateException(
+            CalcMessages.RIGHT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_RIGHT_JOIN_KEY);
       }
       rightJoinKeyPositions[i] = rightJoinKeyPosition;
 
@@ -1010,11 +1015,11 @@ public abstract class TableOperatorGenerator<
       rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
 
       if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
-        throw new IllegalStateException("Type of left ASOF Join key is not TIMESTAMP");
+        throw new IllegalStateException(CalcMessages.TYPE_OF_LEFT_ASOF_JOIN_KEY_IS_NOT_TIMESTAMP);
       }
       if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getRight())
           != TIMESTAMP) {
-        throw new IllegalStateException("Type of right ASOF Join key is not TIMESTAMP");
+        throw new IllegalStateException(CalcMessages.TYPE_OF_RIGHT_ASOF_JOIN_KEY_IS_NOT_TIMESTAMP);
       }
 
       ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
@@ -1058,7 +1063,8 @@ public abstract class TableOperatorGenerator<
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
       } else {
-        throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
+        throw new IllegalStateException(
+            CalcMessages.UNSUPPORTED_ASOF_JOIN_TYPE + node.getJoinType());
       }
     }
 
@@ -1107,7 +1113,7 @@ public abstract class TableOperatorGenerator<
           dataTypes);
     }
 
-    throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+    throw new IllegalStateException(CalcMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
   }
 
   protected void semanticCheckForJoin(JoinNode node) {
@@ -1155,7 +1161,7 @@ public abstract class TableOperatorGenerator<
         return (inputColumn, rowIndex) ->
             new BinaryColumn(1, Optional.empty(), new Binary[] {inputColumn.getBinary(rowIndex)});
       default:
-        throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
+        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + joinKeyType);
     }
   }
 
@@ -2088,7 +2094,8 @@ public abstract class TableOperatorGenerator<
             WindowFunctionFactory.createBuiltinWindowFunction(
                 functionName, argumentChannels, function.isIgnoreNulls());
       } else {
-        throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_FUNCTION_KIND + functionKind);
       }
 
       windowFunctions.add(windowFunction);

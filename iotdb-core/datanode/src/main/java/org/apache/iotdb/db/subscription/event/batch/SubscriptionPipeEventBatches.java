@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
@@ -75,7 +76,7 @@ public class SubscriptionPipeEventBatches {
             hasNew.set(true);
           }
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
+          LOGGER.warn(DataNodeMiscMessages.EXCEPTION_SEALING_EVENTS, batch, e);
         }
         if (hasNew.get()) {
           regionIdToBatch.remove(regionId);
@@ -115,7 +116,7 @@ public class SubscriptionPipeEventBatches {
                       maxDelayInMs,
                       maxBatchSizeInBytes);
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when construct new batch", e);
+          LOGGER.warn(DataNodeMiscMessages.EXCEPTION_CONSTRUCT_NEW_BATCH, e);
           throw e; // rethrow exception for retry
         }
       }
@@ -125,7 +126,7 @@ public class SubscriptionPipeEventBatches {
           hasNew.set(true);
         }
       } catch (final Exception e) {
-        LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
+        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_SEALING_EVENTS, batch, e);
       }
 
       if (hasNew.get()) {

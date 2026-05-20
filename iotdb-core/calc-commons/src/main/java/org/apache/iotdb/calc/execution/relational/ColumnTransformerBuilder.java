@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.relational;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer;
@@ -215,6 +217,8 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
+import javax.annotation.Nullable;
+
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -337,7 +341,7 @@ public class ColumnTransformerBuilder
         }
         return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
       default:
-        throw new UnsupportedOperationException("Unknown sign: " + node.getSign());
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_SIGN + node.getSign());
     }
   }
 
@@ -374,7 +378,7 @@ public class ColumnTransformerBuilder
         try {
           type = context.metadata.getType(toTypeSignature(node.getType()));
         } catch (TypeNotFoundException e) {
-          throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+          throw new SemanticException(CalcMessages.UNKNOWN_TYPE + node.getType());
         }
         context.cache.put(
             node,
@@ -560,7 +564,8 @@ public class ColumnTransformerBuilder
           INT64,
           new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
     } else {
-      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
+      throw new SemanticException(
+          CalcMessages.UNSUPPORTED_TYPE_IN_GENERIC_LITERAL + literal.getType());
     }
   }
 
@@ -1627,7 +1632,8 @@ public class ColumnTransformerBuilder
         }
         return new InBinaryMultiColumnTransformer(binarySet, valueColumnTransformerList);
       default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
     }
   }
 
@@ -1944,6 +1950,10 @@ public class ColumnTransformerBuilder
 
     private final ITypeMetadata metadata;
 
+    // used in other branch
+    @SuppressWarnings("unused")
+    private final Optional<MemoryReservationManager> memoryReservationManager;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1954,7 +1964,8 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         ITableTypeProvider typeProvider,
-        ITypeMetadata metadata) {
+        ITypeMetadata metadata,
+        @Nullable MemoryReservationManager memoryReservationManager) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1965,6 +1976,7 @@ public class ColumnTransformerBuilder
       this.originSize = originSize;
       this.typeProvider = typeProvider;
       this.metadata = metadata;
+      this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
     }
 
     public Type getType(SymbolReference symbolReference) {

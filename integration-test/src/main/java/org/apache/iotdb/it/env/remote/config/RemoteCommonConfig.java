@@ -146,6 +146,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     return this;
   }
@@ -485,6 +490,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
     return this;
   }
 }

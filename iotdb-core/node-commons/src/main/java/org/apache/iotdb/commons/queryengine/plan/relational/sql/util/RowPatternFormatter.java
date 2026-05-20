@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.EmptyPattern;
@@ -54,8 +56,9 @@ public final class RowPatternFormatter {
     public String visitRowPattern(RowPattern node, Void context) {
       throw new UnsupportedOperationException(
           String.format(
-              "not yet implemented: %s.visit%s",
-              getClass().getName(), node.getClass().getSimpleName()));
+              QueryMessages.NOT_YET_IMPLEMENTED_VISIT,
+              getClass().getName(),
+              node.getClass().getSimpleName()));
     }
 
     @Override
@@ -105,7 +108,7 @@ public final class RowPatternFormatter {
         case PARTITION_END:
           return "$";
         default:
-          throw new IllegalArgumentException("Invalid input: " + node.getType());
+          throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + node.getType());
       }
     }
 

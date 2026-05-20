@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -60,7 +61,7 @@ public class CapacityTableFunction implements TableFunction {
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     long size = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
     if (size <= 0) {
-      throw new UDFException("Size must be greater than 0");
+      throw new UDFException(CommonMessages.SIZE_MUST_BE_POSITIVE);
     }
     MapTableFunctionHandle handle =
         new MapTableFunctionHandle.Builder().addProperty(SIZE_PARAMETER_NAME, size).build();

@@ -27,9 +27,9 @@ import org.apache.iotdb.itbase.constant.BuiltinAggregationFunctionEnum;
 import org.apache.iotdb.itbase.constant.BuiltinScalarFunctionEnum;
 import org.apache.iotdb.itbase.constant.BuiltinTimeSeriesGeneratingFunctionEnum;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,32 +62,43 @@ public class IoTDBUDAFManagementIT {
 
   private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void dropFunctionQuietly(Statement statement, String name) {
+    try {
+      statement.execute("DROP FUNCTION " + name);
+    } catch (SQLException ignored) {
+      // function may not exist; ignore
+    }
   }
 
   @Test
   public void createReflectShowDropUDAFTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-      statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
+      try {
+        statement.execute(
+            "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+        statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        int count = 0;
-        while (resultSet.next()) {
-          ++count;
+        try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+          int count = 0;
+          while (resultSet.next()) {
+            ++count;
+          }
+          Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
         }
-        Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        statement.execute("DROP FUNCTION udaf");
+      } finally {
+        dropFunctionQuietly(statement, "udaf");
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -98,32 +109,35 @@ public class IoTDBUDAFManagementIT {
   public void createAndDropUDAFSeveralTimesTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-      statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
-
-      try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        int count = 0;
-        while (resultSet.next()) {
-          ++count;
-        }
-        Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        statement.execute("DROP FUNCTION udaf");
-
+      try {
         statement.execute(
             "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
         statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
-      }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        int count = 0;
-        while (resultSet.next()) {
-          ++count;
+        try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
+          int count = 0;
+          while (resultSet.next()) {
+            ++count;
+          }
+          Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+          statement.execute("DROP FUNCTION udaf");
+
+          statement.execute(
+              "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+          statement.executeQuery("SELECT udaf(*) FROM root.vehicle");
         }
-        Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        statement.execute("DROP FUNCTION udaf");
+
+        try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
+          int count = 0;
+          while (resultSet.next()) {
+            ++count;
+          }
+          Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+        }
+      } finally {
+        dropFunctionQuietly(statement, "udaf");
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -172,15 +186,19 @@ public class IoTDBUDAFManagementIT {
   public void createFunctionTwiceTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-
       try {
         statement.execute(
             "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-        fail();
-      } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("Failed to create"));
+
+        try {
+          statement.execute(
+              "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+          fail();
+        } catch (SQLException throwable) {
+          assertTrue(throwable.getMessage().contains("Failed to create"));
+        }
+      } finally {
+        dropFunctionQuietly(statement, "udaf");
       }
     }
   }
@@ -189,15 +207,19 @@ public class IoTDBUDAFManagementIT {
   public void createFunctionTwiceTest2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-
       try {
         statement.execute(
             "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
-        fail();
-      } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
+
+        try {
+          statement.execute(
+              "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+          fail();
+        } catch (SQLException throwable) {
+          assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
+        }
+      } finally {
+        dropFunctionQuietly(statement, "udaf");
       }
     }
   }
@@ -206,27 +228,30 @@ public class IoTDBUDAFManagementIT {
   public void createFunctionWithURITest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          String.format(
-              "CREATE FUNCTION udaf1 AS 'org.apache.iotdb.db.query.udf.example.UDAFCount' USING URI '%s'",
-              UDF_JAR_PREFIX + "udf-example.jar"));
+      try {
+        statement.execute(
+            String.format(
+                "CREATE FUNCTION udaf1 AS 'org.apache.iotdb.db.query.udf.example.UDAFCount' USING URI '%s'",
+                UDF_JAR_PREFIX + "udf-example.jar"));
 
-      statement.execute(
-          String.format(
-              "CREATE FUNCTION udaf2 AS 'org.apache.iotdb.db.query.udf.example.UDAFCount' USING URI '%s'",
-              UDF_JAR_PREFIX + "udf-example.jar"));
+        statement.execute(
+            String.format(
+                "CREATE FUNCTION udaf2 AS 'org.apache.iotdb.db.query.udf.example.UDAFCount' USING URI '%s'",
+                UDF_JAR_PREFIX + "udf-example.jar"));
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        int count = 0;
-        while (resultSet.next()) {
-          ++count;
+        try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
+          int count = 0;
+          while (resultSet.next()) {
+            ++count;
+          }
+          Assert.assertEquals(2 + FUNCTIONS_COUNT, count);
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+        } catch (Exception e) {
+          fail();
         }
-        Assert.assertEquals(2 + FUNCTIONS_COUNT, count);
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        statement.execute("DROP FUNCTION udaf1");
-        statement.execute("DROP FUNCTION udaf2");
-      } catch (Exception e) {
-        fail();
+      } finally {
+        dropFunctionQuietly(statement, "udaf1");
+        dropFunctionQuietly(statement, "udaf2");
       }
     }
   }
@@ -305,29 +330,32 @@ public class IoTDBUDAFManagementIT {
   public void testShowBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
+      try {
+        statement.execute(
+            "CREATE FUNCTION udaf AS 'org.apache.iotdb.db.query.udf.example.UDAFCount'");
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
-        assertEquals(4, resultSet.getMetaData().getColumnCount());
-        int count = 0;
-        while (resultSet.next()) {
-          StringBuilder stringBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
-            stringBuilder.append(resultSet.getString(i)).append(",");
+        try (ResultSet resultSet = statement.executeQuery("SHOW FUNCTIONS")) {
+          assertEquals(4, resultSet.getMetaData().getColumnCount());
+          int count = 0;
+          while (resultSet.next()) {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+              stringBuilder.append(resultSet.getString(i)).append(",");
+            }
+            String result = stringBuilder.toString();
+            if (result.contains(FUNCTION_TYPE_EXTERNAL_UDAF)) {
+              Assert.assertEquals(
+                  String.format(
+                      "UDAF,%s,org.apache.iotdb.db.query.udf.example.UDAFCount,AVAILABLE,",
+                      FUNCTION_TYPE_EXTERNAL_UDAF),
+                  result);
+            }
+            ++count;
           }
-          String result = stringBuilder.toString();
-          if (result.contains(FUNCTION_TYPE_EXTERNAL_UDAF)) {
-            Assert.assertEquals(
-                String.format(
-                    "UDAF,%s,org.apache.iotdb.db.query.udf.example.UDAFCount,AVAILABLE,",
-                    FUNCTION_TYPE_EXTERNAL_UDAF),
-                result);
-          }
-          ++count;
+          Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
         }
-        Assert.assertEquals(1 + FUNCTIONS_COUNT, count);
-        statement.execute("DROP FUNCTION udaf");
+      } finally {
+        dropFunctionQuietly(statement, "udaf");
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

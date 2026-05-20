@@ -21,6 +21,7 @@ package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +39,7 @@ public class InternalNode extends TemplateNode {
   @Override
   public void addChild(TemplateNode node) throws StatementExecutionException {
     if (children.containsKey(node.getName())) {
-      throw new StatementExecutionException("Duplicated child of node in template.");
+      throw new StatementExecutionException(SessionMessages.DUPLICATED_CHILD_IN_TEMPLATE);
     }
     this.children.put(node.getName(), node);
   }

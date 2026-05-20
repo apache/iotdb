@@ -59,6 +59,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -395,7 +396,8 @@ public class IrTypeAnalyzer {
       } else if (INT64.getTypeEnum().name().equals(node.getType())) {
         type = INT64;
       } else {
-        throw new SemanticException("Unsupported type in GenericLiteral: " + node.getType());
+        throw new SemanticException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE_IN_GENERICLITERAL + node.getType());
       }
       return setExpressionType(node, type);
     }
@@ -530,7 +532,8 @@ public class IrTypeAnalyzer {
         if (TypeCoercionUtils.canCoerceTo(superType, current)) {
           superType = current;
         }
-        throw new SemanticException(String.format(description + ": %s vs %s", superType, current));
+        throw new SemanticException(
+            String.format(description + DataNodeQueryMessages.COLON_S_VS_S, superType, current));
       }
       for (Type type : types) {
         Set<NodeRef<Expression>> nodeRefs = typeExpressions.get(type);
@@ -538,7 +541,8 @@ public class IrTypeAnalyzer {
           continue;
         }
         if (!TypeCoercionUtils.canCoerceTo(type, superType)) {
-          throw new SemanticException("Cannot coerce type " + type + " to " + superType);
+          throw new SemanticException(
+              DataNodeQueryMessages.CANNOT_COERCE_TYPE + type + " to " + superType);
         }
         addOrReplaceExpressionType(nodeRefs, superType);
       }

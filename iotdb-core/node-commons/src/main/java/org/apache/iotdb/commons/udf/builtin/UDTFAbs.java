@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -153,7 +154,7 @@ public class UDTFAbs extends UDTFMath {
 
   @Override
   protected void setTransformer() {
-    throw new UnsupportedOperationException("UDTFAbs#setTransformer()");
+    throw new UnsupportedOperationException(CommonMessages.UDTF_ABS_SET_TRANSFORMER);
   }
 
   protected void transformInt(Column[] columns, ColumnBuilder builder) {

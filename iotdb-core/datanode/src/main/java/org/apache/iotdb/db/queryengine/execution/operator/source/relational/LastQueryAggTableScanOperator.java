@@ -25,12 +25,13 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.La
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -305,7 +306,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           }
           break;
         default:
-          throw new IllegalStateException("Unsupported category: " + category);
+          throw new IllegalStateException(DataNodeQueryMessages.UNSUPPORTED_CATEGORY + category);
       }
 
       channel += aggregator.getChannelCount();
@@ -524,7 +525,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           }
           break;
         default:
-          throw new IllegalStateException("Unsupported category: " + category);
+          throw new IllegalStateException(DataNodeQueryMessages.UNSUPPORTED_CATEGORY + category);
       }
 
       channel += aggregator.getChannelCount();
@@ -752,7 +753,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
         return new TsPrimitiveType.TsVector(originalValue.getVector());
       default:
         throw new UnSupportedDataTypeException(
-            "Unsupported data type:" + originalValue.getDataType());
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + originalValue.getDataType());
     }
   }
 

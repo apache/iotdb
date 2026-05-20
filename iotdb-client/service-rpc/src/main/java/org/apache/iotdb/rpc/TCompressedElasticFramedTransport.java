@@ -44,7 +44,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-    checkFrameSize(size);
+    validateFrame(size);
     readBuffer.fill(underlying, size);
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
@@ -69,6 +69,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
+      checkWriteFrameSize(compressedLength);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);

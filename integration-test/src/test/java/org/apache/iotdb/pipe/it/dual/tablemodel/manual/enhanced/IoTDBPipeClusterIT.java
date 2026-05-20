@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -36,6 +38,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,18 +52,25 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
+
+  private static final double SYNC_LAG_DELTA = 0.001;
 
   @Override
   @Before
@@ -296,41 +306,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
           TableModelUtils.insertData("test1", "test1", 100, 200, senderEnv);
 
-          final AtomicInteger leaderPort = new AtomicInteger(-1);
-          final TShowRegionResp showRegionResp =
-              client.showRegion(new TShowRegionReq().setIsTableModel(true));
-          showRegionResp
-              .getRegionInfoList()
-              .forEach(
-                  regionInfo -> {
-                    if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                      leaderPort.set(regionInfo.getClientRpcPort());
-                    }
-                  });
-
-          int leaderIndex = -1;
-          for (int i = 0; i < 3; ++i) {
-            if (senderEnv.getDataNodeWrapper(i).getPort() == leaderPort.get()) {
-              leaderIndex = i;
-              try {
-                senderEnv.shutdownDataNode(i);
-              } catch (final Throwable e) {
-                e.printStackTrace();
-                return;
-              }
-              try {
-                TimeUnit.SECONDS.sleep(1);
-              } catch (final InterruptedException ignored) {
-              }
-              try {
-                senderEnv.startDataNode(i);
-                ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
-              } catch (final Throwable e) {
-                e.printStackTrace();
-                return;
-              }
-            }
-          }
+          final int leaderIndex = restartTableDataRegionLeader(client, "test1");
           if (leaderIndex == -1) { // ensure the leader is stopped
             fail();
           }
@@ -340,6 +316,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
           TableModelUtils.insertData("test1", "test1", 200, 300, senderEnv);
 
           TableModelUtils.assertData("test", "test", 0, 300, receiverEnv, handleFailure);
+          waitForTableDataRegionReplicationComplete(Arrays.asList("test", "test1"));
         }
 
         try {
@@ -393,6 +370,140 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         }
       }
     }
+  }
+
+  private int restartTableDataRegionLeader(
+      final SyncConfigNodeIServiceClient client, final String database) throws TException {
+    final List<TRegionInfo> leaderRegionInfoList =
+        showTableDataRegionLeaders(Collections.singletonList(database), client);
+    if (leaderRegionInfoList.isEmpty()) {
+      return -1;
+    }
+
+    final TRegionInfo targetRegionInfo =
+        leaderRegionInfoList.stream()
+            .min(Comparator.comparingInt(regionInfo -> regionInfo.getConsensusGroupId().getId()))
+            .orElse(null);
+    if (targetRegionInfo == null) {
+      return -1;
+    }
+
+    final int leaderPort = targetRegionInfo.getClientRpcPort();
+    for (int i = 0; i < senderEnv.getDataNodeWrapperList().size(); ++i) {
+      if (senderEnv.getDataNodeWrapper(i).getPort() != leaderPort) {
+        continue;
+      }
+
+      try {
+        senderEnv.shutdownDataNode(i);
+      } catch (final Throwable e) {
+        e.printStackTrace();
+        return -1;
+      }
+
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (final InterruptedException ignored) {
+        Thread.currentThread().interrupt();
+        return -1;
+      }
+
+      try {
+        senderEnv.startDataNode(i);
+        ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+      } catch (final Throwable e) {
+        e.printStackTrace();
+        return -1;
+      }
+      return i;
+    }
+    return -1;
+  }
+
+  private void waitForTableDataRegionReplicationComplete(final List<String> databases) {
+    await()
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try (final SyncConfigNodeIServiceClient client =
+                  (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                final List<TRegionInfo> leaderRegionInfoList =
+                    showTableDataRegionLeaders(databases, client);
+                Assert.assertFalse(
+                    "No table DataRegion leader found for databases " + databases,
+                    leaderRegionInfoList.isEmpty());
+
+                for (final TRegionInfo regionInfo : leaderRegionInfoList) {
+                  final DataNodeWrapper leaderNode =
+                      findDataNodeWrapperByPort(regionInfo.getClientRpcPort());
+                  final String metricsUrl =
+                      "http://"
+                          + leaderNode.getIp()
+                          + ":"
+                          + leaderNode.getMetricPort()
+                          + "/metrics";
+                  final String metricsContent = senderEnv.getUrlContent(metricsUrl, null);
+                  Assert.assertNotNull(
+                      "Failed to fetch metrics from leader DataNode at " + metricsUrl,
+                      metricsContent);
+                  assertSyncLagIsZero(metricsContent, buildDataRegionTag(regionInfo), metricsUrl);
+                }
+              }
+            });
+  }
+
+  private List<TRegionInfo> showTableDataRegionLeaders(
+      final List<String> databases, final SyncConfigNodeIServiceClient client) throws TException {
+    final TShowRegionResp showRegionResp =
+        client.showRegion(
+            new TShowRegionReq()
+                .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                .setDatabases(databases)
+                .setIsTableModel(true));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+    final List<TRegionInfo> result = new ArrayList<>();
+    for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+      if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+        result.add(regionInfo);
+      }
+    }
+    return result;
+  }
+
+  private DataNodeWrapper findDataNodeWrapperByPort(final int port) {
+    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+      if (dataNodeWrapper.getPort() == port) {
+        return dataNodeWrapper;
+      }
+    }
+    fail("Failed to find DataNodeWrapper for client rpc port " + port);
+    return null;
+  }
+
+  private String buildDataRegionTag(final TRegionInfo regionInfo) {
+    return "DataRegion[" + regionInfo.getConsensusGroupId().getId() + "]";
+  }
+
+  private void assertSyncLagIsZero(
+      final String metricsContent, final String dataRegionTag, final String metricsUrl) {
+    for (final String line : metricsContent.split("\\R")) {
+      if (!line.startsWith("iot_consensus{")
+          || !line.contains("type=\"syncLag\"")
+          || !line.contains("region=\"" + dataRegionTag + "\"")) {
+        continue;
+      }
+      final int lastSpaceIndex = line.lastIndexOf(' ');
+      Assert.assertTrue("Malformed syncLag metric line: " + line, lastSpaceIndex > 0);
+      Assert.assertEquals(
+          "Expected syncLag of " + dataRegionTag + " to be 0 at " + metricsUrl + " but got " + line,
+          0.0,
+          Double.parseDouble(line.substring(lastSpaceIndex + 1)),
+          SYNC_LAG_DELTA);
+      return;
+    }
+    fail("No syncLag metric found for " + dataRegionTag + " at " + metricsUrl);
   }
 
   @Test
@@ -1000,5 +1111,35 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertData("test", "test", -200, 100, receiverEnv, handleFailure);
     }
+  }
+
+  @Test
+  public void testHistoryDataWithEmptyField() {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "CREATE DATABASE iot_table_stream_attr",
+            "USE iot_table_stream_attr",
+            "CREATE TABLE table1 (region STRING TAG, device_id STRING TAG, model_id STRING ATTRIBUTE, maintenance STRING ATTRIBUTE COMMENT 'maintenance', temperature FLOAT FIELD COMMENT 'temperature', humidity STRING ATTRIBUTE COMMENT 'humidity', plant_id STRING TAG) COMMENT 'table1'",
+            String.format(
+                "create pipe test with source ('inclusion'='all') with sink('node-urls'='%s')",
+                receiverEnv.getDataNodeWrapper(0).getIpAndPortString()),
+            "select * from table1 order by time",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('north', null, 'd101', 'red', null, '2025-11-26 13:38:00', 91.0, null), (null, '1003', null, null, 'maint-a', '2025-11-26 13:39:00', null, '36.2'), (null, null, null, 'green', 'maint-b', '2025-11-26 13:40:00', 88.8, '34.9')",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('south', '1005', 'd105', null, null, '2025-11-26 13:41:00', 87.5, null)",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('west', '1006', 'd106', 'blue', 'maint-c', '2025-11-26 13:42:00', null, '36.8')"),
+        BaseEnv.TABLE_SQL_DIALECT);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from iot_table_stream_attr.table1 order by time",
+        "time,region,device_id,model_id,maintenance,temperature,humidity,plant_id,",
+        new HashSet<>(
+            Arrays.asList(
+                "2025-11-26T13:38:00.000Z,north,d101,red,null,91.0,null,null,",
+                "2025-11-26T13:39:00.000Z,null,null,null,maint-a,null,36.2,1003,",
+                "2025-11-26T13:40:00.000Z,null,null,green,maint-b,88.8,34.9,null,",
+                "2025-11-26T13:41:00.000Z,south,d105,null,null,87.5,null,1005,",
+                "2025-11-26T13:42:00.000Z,west,d106,blue,maint-c,null,36.8,1006,")),
+        (String) null);
   }
 }

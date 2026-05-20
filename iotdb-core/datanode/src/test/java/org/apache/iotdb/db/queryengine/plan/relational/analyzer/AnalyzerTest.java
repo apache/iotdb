@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
@@ -63,8 +64,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
@@ -108,6 +109,15 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScanWithoutEntryOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -852,6 +862,46 @@ public class AnalyzerTest {
     assertEquals(
         "((DIFF(\"s2\") > 0) AND (\"time\" > 5) AND (\"tag1\" = 'A') AND (\"s1\" = 1))",
         filterNode.getPredicate().toString());
+  }
+
+  @Test
+  public void diffWithSubqueryOrderByTest() {
+    PlanTester planTester = new PlanTester();
+    String sqlWithOuterWhere =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") WHERE diff(s1) IS NOT NULL ORDER by time DESC";
+    planTester.createPlan(sqlWithOuterWhere);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(sort(filter(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    String sqlWithOuterHaving =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") GROUP BY time, tag1, s1 HAVING diff(s1) IS NOT NULL ORDER by time DESC";
+    planTester.createPlan(sqlWithOuterHaving);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(sort(filter(aggregation(mergeSort(exchange(), exchange(), exchange()))))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    String sqlWithOuterOrderBy =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") ORDER by coalesce(diff(s1), -1000.0) DESC, time DESC";
+    planTester.createPlan(sqlWithOuterOrderBy);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(sort(project(mergeSort(exchange(), exchange(), exchange()))))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
   }
 
   @Test

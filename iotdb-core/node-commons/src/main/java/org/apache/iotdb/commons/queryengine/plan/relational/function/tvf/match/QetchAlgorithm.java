@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.MatchState;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.PatternSegment;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.Point;
@@ -95,7 +96,7 @@ public class QetchAlgorithm {
             j++;
           } else {
             throw new IllegalArgumentException(
-                "Invalid pattern: " + pattern + ", missing repeat sign after '}'");
+                String.format(QueryMessages.INVALID_PATTERN_MISSING_REPEAT_SIGN, pattern));
           }
         } else if (Character.isDigit(c) || c == '.' || c == '-') {
           // scan the number, and push it to the list
@@ -241,6 +242,19 @@ public class QetchAlgorithm {
   public void parsePattern2Automaton(String pattern) {
     // divided the pattern to multi DataSegment with the regex information
     List<PatternSegment> patternSegments = parsePattern2DataSegment(pattern);
+
+    // Validate that pattern contains at least one data segment with >= 2 points
+    boolean hasDataSegment = false;
+    for (PatternSegment segment : patternSegments) {
+      if (!segment.isConstantChar()) {
+        hasDataSegment = true;
+        break;
+      }
+    }
+    if (!hasDataSegment) {
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.INVALID_PATTERN_MUST_CONTAIN_DATA_POINTS, pattern));
+    }
 
     // trans multi dataSegment to automaton
     transDataSegment2Automation(patternSegments);

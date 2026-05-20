@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -83,17 +84,19 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitIsNullPredicate(IsNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL);
   }
 
   @Override
   public Filter visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NOT NULL");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NOT_NULL);
   }
 
   @Override
   public Filter visitLikePredicate(LikePredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE);
   }
 
   @Override
@@ -109,7 +112,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       case AND:
         return FilterFactory.and(filterList);
       default:
-        throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
     }
   }
 
@@ -137,7 +141,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.gtEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof SymbolReference) {
       value = getLongValue(node.getRight());
@@ -155,7 +160,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.ltEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getRight() instanceof Extract) {
       Extract extract = (Extract) node.getRight();
@@ -176,7 +182,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeGtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof Extract) {
       Extract extract = (Extract) node.getLeft();
@@ -197,7 +204,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeLtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else {
       throw new IllegalStateException(
@@ -207,22 +215,22 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
   public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
   public Filter visitIfExpression(IfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not IF");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_IF);
   }
 
   @Override
   public Filter visitNullIfExpression(NullIfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not NULLIF");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_NULLIF);
   }
 
   @Override

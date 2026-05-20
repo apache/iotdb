@@ -480,6 +480,8 @@ public interface IManager {
   TDataPartitionTableResp getOrCreateDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
+  TSStatus dataPartitionTableIntegrityCheck();
+
   /**
    * Get AuditLogger.
    *

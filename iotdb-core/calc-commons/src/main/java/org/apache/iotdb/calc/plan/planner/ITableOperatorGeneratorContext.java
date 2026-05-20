@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.calc.plan.planner;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 
 import java.time.ZoneId;
 
 public interface ITableOperatorGeneratorContext {
   ITableTypeProvider getTableTypeProvider();
+
+  MemoryReservationManager getMemoryReservationManager();
 
   ZoneId getZoneId();
 }

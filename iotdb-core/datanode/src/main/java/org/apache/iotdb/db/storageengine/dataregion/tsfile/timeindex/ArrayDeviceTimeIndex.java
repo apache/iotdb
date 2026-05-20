@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -426,8 +427,9 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     } else if (timeIndex instanceof FileTimeIndex) {
       return -1;
     } else {
-      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
-      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+      logger.error(StorageEngineMessages.WRONG_TIME_INDEX_TYPE_LOG, timeIndex.getClass().getName());
+      throw new RuntimeException(
+          StorageEngineMessages.WRONG_TIME_INDEX_TYPE + timeIndex.getClass().getName());
     }
   }
 

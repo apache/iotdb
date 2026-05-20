@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
@@ -53,6 +54,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
@@ -109,7 +111,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Conver
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
@@ -1088,7 +1089,8 @@ public class DataNodeTableOperatorGenerator
               context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
-    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.VALID_TREEDEVICEVIEWSCANNODE_IS_NOT_EXPECTED_HERE);
   }
 
   @Override
@@ -1240,7 +1242,8 @@ public class DataNodeTableOperatorGenerator
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
+                                metadata,
+                                context.getMemoryReservationManager())),
                     columnSchemaList,
                     database,
                     table)
@@ -1931,7 +1934,8 @@ public class DataNodeTableOperatorGenerator
         if (timeColumnOfTargetTable == null) {
           timeColumnOfTargetTable = inputColumns.get(i);
         } else {
-          throw new SemanticException("Multiple columns with TIME category found");
+          throw new SemanticException(
+              DataNodeQueryMessages.MULTIPLE_COLUMNS_WITH_TIME_CATEGORY_FOUND);
         }
         continue;
       }
@@ -1942,7 +1946,7 @@ public class DataNodeTableOperatorGenerator
       inputColumnCategories.add(columnCategory);
     }
     if (timeColumnOfTargetTable == null) {
-      throw new SemanticException("Missing TIME category column");
+      throw new SemanticException(DataNodeQueryMessages.MISSING_TIME_CATEGORY_COLUMN);
     }
 
     long statementSizePerLine =

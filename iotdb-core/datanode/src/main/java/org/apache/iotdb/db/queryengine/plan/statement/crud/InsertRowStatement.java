@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
@@ -170,7 +171,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+          throw new QueryProcessException(
+              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }

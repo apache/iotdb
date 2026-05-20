@@ -47,6 +47,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.protocol.thrift.OperationType.DISPATCH_FRAGMENT_INSTANCE;
 
 public class ErrorHandlingUtils {
 
@@ -61,10 +62,11 @@ public class ErrorHandlingUtils {
       "The read statement is not allowed in batch: ";
 
   private static final String ERROR_OPERATION_LOG = "Status code: {}, operation: {} failed";
+  private static final String EXCEPTION_PATTERN = "[%s] Exception occurred: %s failed. ";
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
+    String message = String.format(EXCEPTION_PATTERN, statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
     } else {
@@ -86,6 +88,16 @@ public class ErrorHandlingUtils {
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, OperationType operation, TSStatusCode statusCode) {
     return onNpeOrUnexpectedException(e, operation.getName(), statusCode);
+  }
+
+  public static TSStatus onThriftFrameOversizeException(Throwable t) {
+    TSStatus status =
+        new TSStatus(TSStatusCode.THRIFT_FRAME_OVERSIZE.getStatusCode()).setNeedRetry(false);
+    String message =
+        String.format(EXCEPTION_PATTERN, status, DISPATCH_FRAGMENT_INSTANCE)
+            + ErrorHandlingCommonUtils.getRootCause(t).getMessage();
+    LOGGER.warn(message);
+    return status.setMessage(message);
   }
 
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {

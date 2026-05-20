@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -48,7 +50,8 @@ public class LogicalExpression extends Expression {
       } else if (this == OR) {
         return AND;
       } else {
-        throw new IllegalArgumentException("Unsupported logical expression type: " + this);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.UNSUPPORTED_LOGICAL_EXPRESSION_TYPE, this));
       }
     }
   }

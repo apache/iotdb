@@ -70,17 +70,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-
 public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext> {
 
   private final Analysis analysis;
+  private boolean containsInnerTimeJoinInCurrentSubtree = false;
 
   public ExchangeNodeAdder(Analysis analysis) {
     this.analysis = analysis;
@@ -93,10 +93,7 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
       return node;
     }
     // Visit all the children of current node
-    List<PlanNode> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(toImmutableList());
+    List<PlanNode> children = visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
 
     // Calculate the node distribution info according to its children
 
@@ -216,7 +213,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
+    List<PlanNode> visitedChildren =
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
+    // Force Exchange for multi-child DeviceView if any child subtree contains InnerTimeJoin.
+    if (node.getChildren().size() > 1 && containsInnerTimeJoinInCurrentSubtree) {
+      return processMultiChildNodeWithForcedExchange(node, context, visitedChildren);
+    }
+    return processMultiChildNode(node, context, visitedChildren);
   }
 
   @Override
@@ -237,7 +240,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
-    return processMultiChildNode(node, context);
+    List<PlanNode> visitedChildren =
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
+    // Force Exchange if any child subtree contains InnerTimeJoin.
+    if (containsInnerTimeJoinInCurrentSubtree) {
+      return processMultiChildNodeWithForcedExchange(node, context, visitedChildren);
+    }
+    return processMultiChildNode(node, context, visitedChildren);
   }
 
   @Override
@@ -438,11 +447,14 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
       return processMultiChildNodeByLocation(node, context);
     }
 
-    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
     List<PlanNode> visitedChildren =
-        node.getChildren().stream()
-            .map(child -> visit(child, context))
-            .collect(Collectors.toList());
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
+    return processMultiChildNode(node, context, visitedChildren);
+  }
+
+  private PlanNode processMultiChildNode(
+      MultiChildProcessNode node, NodeGroupContext context, List<PlanNode> visitedChildren) {
+    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
 
     // DataRegion in which node locates
     TRegionReplicaSet dataRegion;
@@ -556,11 +568,45 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   }
 
   private ExchangeNode genExchangeNode(NodeGroupContext context, PlanNode child) {
+    return genExchangeNode(context, child, false);
+  }
+
+  private ExchangeNode genExchangeNode(
+      NodeGroupContext context, PlanNode child, boolean forcedExchange) {
     ExchangeNode exchangeNode = new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
     exchangeNode.setChild(child);
     exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+    exchangeNode.setForcedExchange(forcedExchange);
     context.hasExchangeNode = true;
     return exchangeNode;
+  }
+
+  private PlanNode processMultiChildNodeWithForcedExchange(
+      MultiChildProcessNode node, NodeGroupContext context, List<PlanNode> visitedChildren) {
+    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
+    for (PlanNode child : visitedChildren) {
+      newNode.addChild(genExchangeNode(context, child, true));
+    }
+    context.putNodeDistribution(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_SOME_CHILD, context.getMostlyUsedDataRegion()));
+    return newNode;
+  }
+
+  private List<PlanNode> visitChildrenAndRecordInnerTimeJoin(
+      List<PlanNode> children, NodeGroupContext context) {
+    List<PlanNode> result = new ArrayList<>(children.size());
+    boolean originalTimeJoin = containsInnerTimeJoinInCurrentSubtree;
+    boolean hasInnerTimeJoinInChildren = false;
+    for (PlanNode child : children) {
+      containsInnerTimeJoinInCurrentSubtree = false;
+      PlanNode visitedChild = visit(child, context);
+      hasInnerTimeJoinInChildren |= containsInnerTimeJoinInCurrentSubtree;
+      result.add(visitedChild);
+    }
+    containsInnerTimeJoinInCurrentSubtree = originalTimeJoin || hasInnerTimeJoinInChildren;
+    return result;
   }
 
   @Override
@@ -596,9 +642,9 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
                       if (region == null
                           && context.getNodeDistribution(child.getPlanNodeId()).getType()
                               == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
-                        return calculateSchemaRegionByChildren(child.getChildren(), context);
+                        region = calculateSchemaRegionByChildren(child.getChildren(), context);
                       }
-                      return region;
+                      return region == null ? DataPartition.NOT_ASSIGNED : region;
                     },
                     Collectors.counting()));
 
@@ -656,6 +702,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   }
 
   public PlanNode visit(PlanNode node, NodeGroupContext context) {
-    return node.accept(this, context);
+    boolean originalTimeJoin = containsInnerTimeJoinInCurrentSubtree;
+    containsInnerTimeJoinInCurrentSubtree = false;
+    PlanNode visitedNode = node.accept(this, context);
+    containsInnerTimeJoinInCurrentSubtree =
+        originalTimeJoin
+            || containsInnerTimeJoinInCurrentSubtree
+            || node instanceof InnerTimeJoinNode;
+    return visitedNode;
   }
 }

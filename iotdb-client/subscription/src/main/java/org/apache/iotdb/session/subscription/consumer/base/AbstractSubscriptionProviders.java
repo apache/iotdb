@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 
 import org.slf4j.Logger;
@@ -141,7 +142,7 @@ final class AbstractSubscriptionProviders {
       try {
         provider.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close subscription provider {} because of {}", provider, e, e);
+        LOGGER.warn(SubscriptionMessages.PROVIDER_CLOSE_FAILED, provider, e, e);
       }
     }
     subscriptionProviders.clear();
@@ -150,7 +151,7 @@ final class AbstractSubscriptionProviders {
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
     // the subscription provider is opened
-    LOGGER.info("add new subscription provider {}", provider);
+    LOGGER.info(SubscriptionMessages.ADD_NEW_PROVIDER, provider);
     subscriptionProviders.put(dataNodeId, provider);
   }
 
@@ -164,7 +165,7 @@ final class AbstractSubscriptionProviders {
     try {
       provider.close();
     } finally {
-      LOGGER.info("close and remove stale subscription provider {}", provider);
+      LOGGER.info(SubscriptionMessages.CLOSE_STALE_PROVIDER, provider);
       subscriptionProviders.remove(dataNodeId);
     }
   }
@@ -289,7 +290,7 @@ final class AbstractSubscriptionProviders {
       try {
         openProviders(consumer);
       } catch (final Exception e) {
-        LOGGER.warn("Failed to open providers for consumer {} because of {}", consumer, e, e);
+        LOGGER.warn(SubscriptionMessages.OPEN_PROVIDERS_FAILED, consumer, e, e);
         return;
       }
     }
@@ -298,7 +299,7 @@ final class AbstractSubscriptionProviders {
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
     } catch (final Exception e) {
-      LOGGER.warn("Failed to fetch all endpoints for consumer {} because of {}", consumer, e, e);
+      LOGGER.warn(SubscriptionMessages.FETCH_ENDPOINTS_FAILED, consumer, e, e);
       return;
     }
 

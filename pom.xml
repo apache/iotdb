@@ -164,7 +164,9 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.1-260519-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
+        <tsfile.locale.opt/>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -947,6 +949,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-i18n-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/main/i18n/${i18n.locale}</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.felix</groupId>
@@ -1282,48 +1298,6 @@
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Separates the unit tests from the integration tests. -->
-            <!-- TODO: Integration-Tests should be executed by the failsafe plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unit-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include unit tests within integration-test phase. -->
-                                <include>src/test/**/*Test.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude integration tests within (unit) test phase. -->
-                                <exclude>src/test/**/*IT.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>integration-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include integration tests within integration-test phase. -->
-                                <include>src/test/**/*IT.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude unit tests within (unit) test phase. -->
-                                <exclude>src/test/**/*Test.java</exclude>
-                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -2005,6 +1979,13 @@
             <id>enforce</id>
             <properties>
                 <enforcer.skip>false</enforcer.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
+                <tsfile.locale.opt>-Dtsfile.locale=zh</tsfile.locale.opt>
             </properties>
         </profile>
     </profiles>

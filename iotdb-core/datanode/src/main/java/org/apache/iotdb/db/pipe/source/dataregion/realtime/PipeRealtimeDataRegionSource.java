@@ -33,12 +33,17 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
@@ -313,7 +318,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
+          DataNodePipeMessages.PIPE_REALTIME_DATA_REGION_SOURCE_IS_INITIALIZED,
           pipeName,
           dataRegionId,
           parameters);
@@ -449,8 +454,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       }
       pendingQueue.pollLast();
     }
-    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
-      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+    final Event last = pendingQueue.peekLast();
+    if (last instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) last).getEvent() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent =
+          (ProgressReportEvent) ((PipeRealtimeEvent) last).getEvent();
       oldEvent.bindProgressIndex(
           oldEvent
               .getProgressIndex()
@@ -465,6 +473,36 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         || event.getEvent() instanceof PipeInsertNodeTabletInsertionEvent) {
       maySkipProgressIndexForRealtimeEvent(event);
     }
+  }
+
+  protected Event assignReplicateIndexIfNeeded(
+      final PipeRealtimeEvent realtimeEvent, final Event suppliedEvent) {
+    if (!(suppliedEvent instanceof EnrichedEvent) || !shouldAssignReplicateIndex(suppliedEvent)) {
+      return suppliedEvent;
+    }
+
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) suppliedEvent;
+    if (enrichedEvent.getReplicateIndexForIoTV2() != EnrichedEvent.NO_COMMIT_ID) {
+      return suppliedEvent;
+    }
+
+    enrichedEvent.setReplicateIndexForIoTV2(assignReplicateIndexForRealtimeEvent());
+    LOGGER.debug(
+        DataNodePipeMessages.SET_FOR_REALTIME_EVENT,
+        pipeName,
+        enrichedEvent.getReplicateIndexForIoTV2(),
+        realtimeEvent.coreReportMessage());
+    return suppliedEvent;
+  }
+
+  protected boolean shouldAssignReplicateIndex(final Event suppliedEvent) {
+    return !(suppliedEvent instanceof ProgressReportEvent)
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate((EnrichedEvent) suppliedEvent);
+  }
+
+  protected long assignReplicateIndexForRealtimeEvent() {
+    return ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName);
   }
 
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
@@ -562,7 +600,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
+        DataNodePipeMessages
+            .PIPEREALTIMEDATAREGIONEXTRACTOR_OBSERVED_DATA_REGION_TIME_PARTITION_GROWT,
         taskID,
         dataRegionId,
         timePartitionIdBound);
@@ -597,7 +636,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       event.skipReportOnCommit();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Pipe {} on data region {} skip commit of event {} because it was flushed prematurely.",
+            DataNodePipeMessages.PIPE_ON_DATA_REGION_SKIP_COMMIT_OF,
             pipeName,
             dataRegionId,
             event.coreReportMessage());

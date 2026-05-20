@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -80,7 +81,7 @@ public class SnapshotTaker {
     }
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
-      throw new IOException(String.format("Failed to create directory %s", snapshotDir));
+      throw new IOException(String.format(StorageEngineMessages.FAILED_TO_CREATE_DIR, snapshotDir));
     }
 
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
@@ -108,14 +109,14 @@ public class SnapshotTaker {
 
       if (!success) {
         LOGGER.warn(
-            "Failed to take snapshot for {}-{}, clean up",
+            StorageEngineMessages.FAILED_TO_TAKE_SNAPSHOT_CLEAN_UP,
             dataRegion.getDatabaseName(),
             dataRegion.getDataRegionIdString());
         cleanUpWhenFail(finalSnapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
-            "Successfully take snapshot for {}-{}, snapshot directory is {}",
+            StorageEngineMessages.SUCCESSFULLY_TAKE_SNAPSHOT,
             dataRegion.getDatabaseName(),
             dataRegion.getDataRegionIdString(),
             snapshotDir.getParentFile().getAbsolutePath() + File.separator + finalSnapshotId);
@@ -124,7 +125,7 @@ public class SnapshotTaker {
       return success;
     } catch (Exception e) {
       LOGGER.error(
-          "Exception occurs when taking snapshot for {}-{}",
+          StorageEngineMessages.EXCEPTION_TAKING_SNAPSHOT,
           dataRegion.getDatabaseName(),
           dataRegion.getDataRegionIdString(),
           e);
@@ -133,7 +134,7 @@ public class SnapshotTaker {
       try {
         snapshotLogger.close();
       } catch (Exception e) {
-        LOGGER.error("Failed to close snapshot logger", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_CLOSE_SNAPSHOT_LOGGER, e);
       }
     }
   }
@@ -142,19 +143,22 @@ public class SnapshotTaker {
     File compressionRatioFile =
         CompressionRatio.getInstance().getCompressionRatioFile(dataRegion.getDataRegionIdString());
     if (compressionRatioFile != null) {
-      LOGGER.info("Snapshotting compression ratio {}.", compressionRatioFile.getName());
+      LOGGER.info(
+          StorageEngineMessages.SNAPSHOTTING_COMPRESSION_RATIO, compressionRatioFile.getName());
       try {
         File snapshotFile = new File(snapshotDir, compressionRatioFile.getName());
         if (snapshotFile.createNewFile()) {
           // write one byte so that it will not be skipped
           Files.write(snapshotFile.toPath(), new byte[1]);
           LOGGER.info(
-              "Snapshot compression ratio {} in {}.", compressionRatioFile.getName(), snapshotDir);
+              StorageEngineMessages.SNAPSHOT_COMPRESSION_RATIO_IN_DIR,
+              compressionRatioFile.getName(),
+              snapshotDir);
           return true;
         }
       } catch (IOException ignored) {
         LOGGER.warn(
-            "Cannot snapshot compression ratio {} in {}.",
+            StorageEngineMessages.CANNOT_SNAPSHOT_COMPRESSION_RATIO,
             compressionRatioFile.getName(),
             snapshotDir);
       }
@@ -184,10 +188,7 @@ public class SnapshotTaker {
         }
       } catch (IOException e) {
         allSuccess = false;
-        LOGGER.warn(
-            "Clear snapshot dir fail, you should manually delete this dir before do region migration again: {}",
-            pathBuilder,
-            e);
+        LOGGER.warn(StorageEngineMessages.CLEAR_SNAPSHOT_DIR_FAIL, pathBuilder, e);
       }
     }
     return allSuccess;
@@ -263,16 +264,16 @@ public class SnapshotTaker {
       }
       return true;
     } catch (IOException e) {
-      LOGGER.error("Catch IOException when creating snapshot", e);
+      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
       return false;
     }
   }
 
   private void createHardLink(File target, File source) throws IOException {
     if (!target.getParentFile().exists()) {
-      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+      LOGGER.error(StorageEngineMessages.HARD_LINK_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
-    if (!checkHardLinkSourceFile(source)) {
+    if (!checkHardLinkSourceFile(source, 10)) {
       return;
     }
     Files.deleteIfExists(target.toPath());
@@ -281,11 +282,9 @@ public class SnapshotTaker {
   }
 
   /** For "source file not exists" problem (jira787) debugging */
-  private boolean checkHardLinkSourceFile(File source) {
-    int retry = 10;
+  private boolean checkHardLinkSourceFile(File source, int retry) {
     while (!source.exists() && retry > 0) {
-      LOGGER.warn(
-          "Hard link source file {} doesn't exist, will retry for {} times...", source, retry);
+      LOGGER.warn(StorageEngineMessages.HARD_LINK_SOURCE_FILE_RETRY, source, retry);
       try {
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
       } catch (InterruptedException ignore) {
@@ -295,10 +294,10 @@ public class SnapshotTaker {
     }
     if (!source.exists()) {
       File parent = source.getParentFile();
-      LOGGER.error("Hard link source file {} doesn't exist, this file will be ignored.", source);
-      String tryMsg = "Try to show all files in parent dir...";
+      LOGGER.error(StorageEngineMessages.HARD_LINK_SOURCE_FILE_NOT_EXIST, source);
+      String tryMsg = StorageEngineMessages.TRY_SHOW_FILES_IN_PARENT_DIR;
       if (parent == null) {
-        tryMsg += "Cannot show files because parent dir is null";
+        tryMsg += StorageEngineMessages.CANNOT_SHOW_FILES_PARENT_DIR_NULL;
       } else {
         tryMsg += Arrays.toString(parent.listFiles());
       }
@@ -310,10 +309,10 @@ public class SnapshotTaker {
 
   private void copyFile(File target, File source) throws IOException {
     if (!target.getParentFile().exists()) {
-      LOGGER.error("Copy target dir {} doesn't exist", target.getParentFile());
+      LOGGER.error(StorageEngineMessages.COPY_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
     if (!source.exists()) {
-      LOGGER.error("Copy source file {} doesn't exist", source);
+      LOGGER.error(StorageEngineMessages.COPY_SOURCE_FILE_NOT_EXIST, source);
     }
     Files.deleteIfExists(target.toPath());
     Files.copy(source.toPath(), target.toPath());
@@ -361,13 +360,13 @@ public class SnapshotTaker {
     }
     File dir = new File(stringBuilder.toString());
     if (!dir.exists() && !dir.mkdirs()) {
-      throw new IOException("Cannot create directory " + dir.getAbsolutePath());
+      throw new IOException(StorageEngineMessages.CANNOT_CREATE_DIRECTORY + dir.getAbsolutePath());
     }
     return new File(dir, tsFile.getName());
   }
 
   private void cleanUpWhenFail(String snapshotId) {
-    LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
+    LOGGER.info(StorageEngineMessages.CLEANING_UP_SNAPSHOT_DIR, snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()) {
       File dataDirForThisSnapshot =
           new File(
@@ -381,7 +380,7 @@ public class SnapshotTaker {
           FileUtils.recursivelyDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());
         } catch (IOException e) {
           LOGGER.error(
-              "Failed to delete folder {} when cleaning up",
+              StorageEngineMessages.FAILED_DELETE_FOLDER_CLEANING_UP,
               dataDirForThisSnapshot.getAbsolutePath());
         }
       }

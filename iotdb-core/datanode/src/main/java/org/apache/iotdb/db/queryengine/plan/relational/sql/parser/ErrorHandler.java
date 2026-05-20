@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -338,7 +339,8 @@ public class ErrorHandler extends BaseErrorListener {
           } else if (transition.isEpsilon()) {
             activeStates.push(new ParsingState(transition.target, tokenIndex, suppressed, parser));
           } else if (transition instanceof WildcardTransition) {
-            throw new UnsupportedOperationException("not yet implemented: wildcard transition");
+            throw new UnsupportedOperationException(
+                DataNodeQueryMessages.NOT_YET_IMPLEMENTED_WILDCARD_TRANSITION);
           } else {
             IntervalSet labels = transition.label();
 

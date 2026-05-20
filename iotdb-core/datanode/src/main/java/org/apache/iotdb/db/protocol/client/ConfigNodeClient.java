@@ -188,6 +188,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -266,6 +267,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
+    // Close existing transport before reassigning to prevent connection leaks.
+    if (transport != null) {
+      transport.close();
+    }
     transport =
         commonConfig.isEnableInternalSSL()
             ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -314,7 +319,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         connect(configLeader, timeoutMs);
         return;
       } catch (TException e) {
-        logger.warn("The current node leader may have been down {}, try next node", configLeader);
+        logger.warn(DataNodeMiscMessages.NODE_LEADER_MAY_DOWN_TRY_NEXT, configLeader);
         configLeader = null;
         exception = e;
       }
@@ -324,12 +329,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         Thread.sleep(RETRY_INTERVAL_MS);
       } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
+        logger.warn(DataNodeMiscMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE);
       }
-    }
-
-    if (transport != null) {
-      transport.close();
     }
 
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
@@ -340,7 +341,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         connect(tryEndpoint, timeoutMs);
         return;
       } catch (TException e) {
-        logger.warn("The current node may have been down {},try next node", tryEndpoint);
+        logger.warn(DataNodeMiscMessages.NODE_MAY_DOWN_TRY_NEXT, tryEndpoint);
         exception = e;
       }
     }
@@ -449,8 +450,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
         } catch (InterruptedException ignore) {
           Thread.currentThread().interrupt();
-          logger.warn(
-              "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.");
+          logger.warn(DataNodeMiscMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK);
           break;
         }
       }
@@ -710,6 +710,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dataPartitionTableIntegrityCheck(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
@@ -765,17 +771,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REGISTER_CN);
   }
 
   @Override
   public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_ADD_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus notifyRegisterSuccess() throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_NOTIFY_REGISTER);
   }
 
   @Override
@@ -786,18 +792,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REMOVE_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REPORT_SHUTDOWN);
   }
 
   @Override
   public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support stopAndClearConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_STOP_AND_CLEAR);
   }
 
   @Override
@@ -869,7 +875,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_SET_STATUS);
   }
 
   @Override
@@ -962,7 +968,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_GET_HEARTBEAT);
   }
 
   @Override

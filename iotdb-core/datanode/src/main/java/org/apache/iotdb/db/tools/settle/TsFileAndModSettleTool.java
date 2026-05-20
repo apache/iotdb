@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools.settle;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleLog;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -102,7 +103,7 @@ public class TsFileAndModSettleTool {
         if (arg.endsWith(TSFILE_SUFFIX)) { // it's a file
           File f = new File(arg);
           if (!f.exists()) {
-            logger.warn("Cannot find TsFile : {}", arg);
+            logger.warn(DataNodeMiscMessages.CANNOT_FIND_TSFILE, arg);
             continue;
           }
           files.add(f);
@@ -118,11 +119,11 @@ public class TsFileAndModSettleTool {
   private static List<File> getAllFilesInOneDirBySuffix(String dirPath, String suffix) {
     File dir = new File(dirPath);
     if (!dir.isDirectory()) {
-      logger.warn("It's not a directory path : {}", dirPath);
+      logger.warn(DataNodeMiscMessages.NOT_DIRECTORY_PATH, dirPath);
       return Collections.emptyList();
     }
     if (!dir.exists()) {
-      logger.warn("Cannot find Directory : {}", dirPath);
+      logger.warn(DataNodeMiscMessages.CANNOT_FIND_DIRECTORY, dirPath);
       return Collections.emptyList();
     }
     List<File> tsFiles =
@@ -153,7 +154,8 @@ public class TsFileAndModSettleTool {
       List<TsFileResource> settledTsFileResources = new ArrayList<>();
       try {
         TsFileAndModSettleTool tsFileAndModSettleTool = TsFileAndModSettleTool.getInstance();
-        logger.info("Start settling for tsFile : {}", resourceToBeSettled.getTsFilePath());
+        logger.info(
+            DataNodeMiscMessages.START_SETTLING_TSFILE, resourceToBeSettled.getTsFilePath());
         if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
           settledTsFileResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
           newTsFileResources.put(resourceToBeSettled.getTsFile().getName(), settledTsFileResources);
@@ -188,7 +190,7 @@ public class TsFileAndModSettleTool {
     }
     if (resourcesToBeSettled.size() == successCount) {
       SettleLog.closeLogWriter();
-      logger.info("Finish settling all tsfiles Successfully!");
+      logger.info(DataNodeMiscMessages.FINISH_SETTLING_ALL);
     } else {
       logger.info(
           "Finish Settling, {} tsfiles meet errors.", (resourcesToBeSettled.size() - successCount));
@@ -245,7 +247,7 @@ public class TsFileAndModSettleTool {
             Files.delete(f.toPath());
           }
         } catch (IOException e) {
-          logger.error("failed to delete settle log, log path:{}", SettleLog.getSettleLogPath());
+          logger.error(DataNodeMiscMessages.FAILED_DELETE_SETTLE_LOG, SettleLog.getSettleLogPath());
         }
       }
     }
@@ -352,7 +354,7 @@ public class TsFileAndModSettleTool {
         try {
           newTsFileResource.serialize();
         } catch (IOException e) {
-          logger.error("fail to serialize new tsfile resource.", e);
+          logger.error(DataNodeMiscMessages.FAIL_SERIALIZE_TSFILE_RESOURCE, e);
         }
         File tmpResourceFile =
             fsFactory.getFile(

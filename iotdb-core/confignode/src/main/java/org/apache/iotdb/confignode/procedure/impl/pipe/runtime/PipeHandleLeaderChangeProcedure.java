@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -68,7 +70,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATETASK);
 
     // Nothing needs to be checked
     return true;
@@ -76,14 +78,14 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromCalculateInfoForTask");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
 
     // Nothing needs to be calculated
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnConfigNodes");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONCONFIGNODES);
 
     final Map<TConsensusGroupId, Integer> newConsensusGroupIdToLeaderConsensusIdMap =
         new HashMap<>();
@@ -98,7 +100,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     try {
       response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -109,35 +111,35 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
 
     pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromValidateTask");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATETASK);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCalculateInfoForTask");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromHandleOnConfigNodes");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMHANDLEONCONFIGNODES);
 
     // Nothing to do
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
+    LOGGER.info(ProcedureMessages.PIPEHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMCREATEONDATANODES);
 
     // Nothing to do
   }
@@ -164,7 +166,11 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       final int oldDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       final int newDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       regionGroupToOldAndNewLeaderPairMap.put(
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, dataRegionGroupId),
+          new TConsensusGroupId(
+              dataRegionGroupId == Integer.MIN_VALUE
+                  ? TConsensusGroupType.ConfigRegion
+                  : TConsensusGroupType.DataRegion,
+              dataRegionGroupId),
           new Pair<>(oldDataRegionLeaderId, newDataRegionLeaderId));
     }
   }

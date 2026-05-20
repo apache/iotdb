@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.rpc.ConfigurableTByteBuffer;
@@ -81,7 +82,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       endPoint.write(generateWriteProtocol(stream));
     } catch (final TException e) {
-      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_ENDPOINT_FAILED, e);
     }
   }
 
@@ -89,7 +90,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       endPoint.write(generateWriteProtocol(buffer));
     } catch (final TException e) {
-      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_ENDPOINT_FAILED, e);
     }
   }
 
@@ -98,7 +99,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       endPoint.read(generateReadProtocol(stream));
     } catch (final TException e) {
-      throw new ThriftSerDeException("Read TEndPoint failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_ENDPOINT_FAILED, e);
     }
     return endPoint;
   }
@@ -108,7 +109,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       endPoint.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TEndPoint failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_ENDPOINT_FAILED, e);
     }
     return endPoint;
   }
@@ -118,7 +119,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeConfiguration.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_DATA_NODE_CONFIGURATION_FAILED, e);
     }
   }
 
@@ -127,7 +128,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeConfiguration.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDataNodeConfiguration failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_DATA_NODE_CONFIGURATION_FAILED, e);
     }
     return dataNodeConfiguration;
   }
@@ -137,7 +138,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeLocation.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_DATA_NODE_LOCATION_FAILED, e);
     }
   }
 
@@ -146,7 +147,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeLocation.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDataNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_DATA_NODE_LOCATION_FAILED, e);
     }
     return dataNodeLocation;
   }
@@ -155,7 +156,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       createCQReq.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TCreateCQReq failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_CREATE_CQ_REQ_FAILED, e);
     }
   }
 
@@ -164,7 +165,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       createCQReq.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TCreateCQReq failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_CREATE_CQ_REQ_FAILED, e);
     }
     return createCQReq;
   }
@@ -174,7 +175,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_DATA_NODE_INFO_FAILED, e);
     }
   }
 
@@ -183,7 +184,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       dataNodeInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDataNodeInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_DATA_NODE_INFO_FAILED, e);
     }
     return dataNodeInfo;
   }
@@ -193,7 +194,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       seriesPartitionSlot.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TSeriesPartitionSlot failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_SERIES_PARTITION_SLOT_FAILED, e);
     }
   }
 
@@ -202,7 +203,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       seriesPartitionSlot.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TSeriesPartitionSlot failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_SERIES_PARTITION_SLOT_FAILED, e);
     }
     return seriesPartitionSlot;
   }
@@ -212,7 +213,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       timePartitionSlotList.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TTimeSlotList failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_TIME_SLOT_LIST_FAILED, e);
     }
   }
 
@@ -221,7 +222,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       timePartitionSlotList.read(generateWriteProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TTimeSlotList failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_TIME_SLOT_LIST_FAILED, e);
     }
     return timePartitionSlotList;
   }
@@ -231,7 +232,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       timePartitionSlot.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TTimePartitionSlot failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_TIME_PARTITION_SLOT_FAILED, e);
     }
   }
 
@@ -240,7 +241,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       timePartitionSlot.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TTimePartitionSlot failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_TIME_PARTITION_SLOT_FAILED, e);
     }
     return timePartitionSlot;
   }
@@ -250,7 +251,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       consensusGroupId.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TConsensusGroupId failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_CONSENSUS_GROUP_ID_FAILED, e);
     }
   }
 
@@ -259,7 +260,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       consensusGroupId.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TConsensusGroupId failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_CONSENSUS_GROUP_ID_FAILED, e);
     }
     return consensusGroupId;
   }
@@ -269,7 +270,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       regionReplicaSet.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TRegionReplicaSet failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_REGION_REPLICA_SET_FAILED, e);
     }
   }
 
@@ -278,7 +279,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       regionReplicaSet.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TRegionReplicaSet failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_REGION_REPLICA_SET_FAILED, e);
     }
     return regionReplicaSet;
   }
@@ -287,7 +288,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       schemaNode.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TSchemaNode failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_SCHEMA_NODE_FAILED, e);
     }
   }
 
@@ -295,7 +296,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       schemaNode.write(generateWriteProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TSchemaNode failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_SCHEMA_NODE_FAILED, e);
     }
   }
 
@@ -304,7 +305,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       schemaNode.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TSchemaNode failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_SCHEMA_NODE_FAILED, e);
     }
     return schemaNode;
   }
@@ -319,7 +320,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeInfo.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TAINodeInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_AI_NODE_INFO_FAILED, e);
     }
   }
 
@@ -328,7 +329,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeInfo.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TAINodeInfo failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_AI_NODE_INFO_FAILED, e);
     }
     return aiNodeInfo;
   }
@@ -338,7 +339,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeConfiguration.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_DATA_NODE_CONFIGURATION_FAILED, e);
     }
   }
 
@@ -347,7 +348,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeConfiguration.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TAINodeConfiguration failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_AI_NODE_CONFIGURATION_FAILED, e);
     }
     return aiNodeConfiguration;
   }
@@ -357,7 +358,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeLocation.write(generateWriteProtocol(stream));
     } catch (TException e) {
-      throw new ThriftSerDeException("Write TAINodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.WRITE_T_AI_NODE_LOCATION_FAILED, e);
     }
   }
 
@@ -366,7 +367,7 @@ public class ThriftCommonsSerDeUtils {
     try {
       aiNodeLocation.read(generateReadProtocol(buffer));
     } catch (TException e) {
-      throw new ThriftSerDeException("Read TDataNodeLocation failed: ", e);
+      throw new ThriftSerDeException(UtilMessages.READ_T_DATA_NODE_LOCATION_FAILED, e);
     }
     return aiNodeLocation;
   }

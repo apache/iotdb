@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -142,6 +143,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -191,7 +193,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       final ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
-        throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
+        throw new IOException(
+            ConfigNodeMessages.UNRECOGNIZED_LOG_CONFIGPHYSICALPLANTYPE + planType);
       }
 
       final ConfigPhysicalPlan plan;
@@ -508,6 +511,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetPipeStatusV2:
           plan = new SetPipeStatusPlanV2();
           break;
+        case SetPipeStatusWithStoppedByRuntimeExceptionV2:
+          plan = new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2();
+          break;
         case DropPipeV2:
           plan = new DropPipePlanV2();
           break;
@@ -617,7 +623,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new DropExternalServicePlan();
           break;
         default:
-          throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);
+          throw new IOException(
+              ConfigNodeMessages.UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE + planType);
       }
       plan.deserializeImpl(buffer);
       return plan;

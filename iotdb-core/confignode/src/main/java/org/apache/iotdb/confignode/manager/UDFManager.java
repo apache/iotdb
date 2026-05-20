@@ -40,6 +40,8 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeMode
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -105,7 +107,7 @@ public class UDFManager {
 
       final boolean needToSaveJar = isUsingURI && udfInfo.needToSaveJar(jarName);
 
-      LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
+      LOGGER.info(ManagerMessages.START_TO_ADD_UDF_IN_UDF_TABLE_ON_CONFIG_NODES, udfName);
       CreateFunctionPlan createFunctionPlan =
           new CreateFunctionPlan(udfInformation, needToSaveJar ? new Binary(jarFile) : null);
       if (needToSaveJar && createFunctionPlan.getSerializedSize() > planSizeLimit) {
@@ -128,7 +130,7 @@ public class UDFManager {
               jarName,
               jarMD5);
       LOGGER.info(
-          "Start to create UDF [{}] on Data Nodes, needToSaveJar[{}]", udfName, needToSaveJar);
+          ManagerMessages.START_TO_CREATE_UDF_ON_DATA_NODES_NEEDTOSAVEJAR, udfName, needToSaveJar);
       final TSStatus dataNodesStatus =
           RpcUtils.squashResponseStatusList(
               createFunctionOnDataNodes(udfInformation, needToSaveJar ? jarFile : null));
@@ -136,7 +138,7 @@ public class UDFManager {
         return dataNodesStatus;
       }
 
-      LOGGER.info("Start to activate UDF [{}] in UDF_Table on Config Nodes", udfName);
+      LOGGER.info(ManagerMessages.START_TO_ACTIVATE_UDF_IN_UDF_TABLE_ON_CONFIG_NODES, udfName);
       return configManager.getConsensusManager().write(new UpdateFunctionPlan(udfInformation));
     } catch (IoTDBRuntimeException e) {
       return new TSStatus(e.getErrorCode()).setMessage(e.getMessage());
@@ -218,7 +220,7 @@ public class UDFManager {
               configManager.getConsensusManager().read(new GetFunctionTablePlan(model)))
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
-      LOGGER.error("Fail to get UDFTable", e);
+      LOGGER.error(ManagerMessages.FAIL_TO_GET_UDFTABLE, e);
       return new TGetUDFTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -232,7 +234,7 @@ public class UDFManager {
               configManager.getConsensusManager().read(new GetAllFunctionTablePlan()))
           .convertToThriftResponse();
     } catch (IOException | ConsensusException e) {
-      LOGGER.error("Fail to get AllUDFTable", e);
+      LOGGER.error(ManagerMessages.FAIL_TO_GET_ALLUDFTABLE, e);
       return new TGetUDFTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -246,7 +248,7 @@ public class UDFManager {
               configManager.getConsensusManager().read(new GetUDFJarPlan(req.getJarNameList())))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new JarResp(res, Collections.emptyList()).convertToThriftResponse();

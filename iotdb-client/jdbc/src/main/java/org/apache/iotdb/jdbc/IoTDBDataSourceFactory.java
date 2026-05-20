@@ -17,6 +17,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import org.ops4j.pax.jdbc.common.BeanConfig;
 import org.osgi.service.jdbc.DataSourceFactory;
 import org.slf4j.Logger;
@@ -53,7 +55,7 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
     String password = (String) properties.remove(DataSourceFactory.JDBC_PASSWORD);
     ds.setPassword(password);
 
-    logger.info("Remaining properties {}", properties.size());
+    logger.info(JdbcMessages.REMAINING_PROPERTIES, properties.size());
 
     if (!properties.isEmpty()) {
       BeanConfig.configure(ds, properties);

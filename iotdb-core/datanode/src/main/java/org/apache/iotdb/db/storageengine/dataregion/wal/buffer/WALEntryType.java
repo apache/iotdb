@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 /** Type of {@link WALEntry}, including info type and signal type. */
 public enum WALEntryType {
   // region info entry type
@@ -82,6 +84,6 @@ public enum WALEntryType {
         return type;
       }
     }
-    throw new IllegalArgumentException("Invalid WALEntryType code: " + code);
+    throw new IllegalArgumentException(StorageEngineMessages.INVALID_WAL_ENTRY_TYPE_CODE + code);
   }
 }

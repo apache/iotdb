@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -72,14 +73,18 @@ public class PipeTransferTabletBinaryReqV2 extends PipeTransferTabletBinaryReq {
       return statement;
     }
 
-    // Table model
-    statement.setWriteToTable(true);
+    final boolean isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
+    if (isTableModel) {
+      statement.setWriteToTable(true);
+    }
     if (statement instanceof InsertRowsStatement) {
       List<InsertRowStatement> rowStatements =
           ((InsertRowsStatement) statement).getInsertRowStatementList();
       if (rowStatements != null && !rowStatements.isEmpty()) {
         for (InsertRowStatement insertRowStatement : rowStatements) {
-          insertRowStatement.setWriteToTable(true);
+          if (isTableModel) {
+            insertRowStatement.setWriteToTable(true);
+          }
           insertRowStatement.setDatabaseName(dataBaseName);
         }
       }
