@@ -27,8 +27,12 @@ import static org.junit.Assert.fail;
 @Category({AIClusterIT.class})
 public class AINodeFineTuneIT {
 
-  private static final int LINE_COUNT = 6666;
-  private static final int WAITING_COUNT_SECOND = 888;
+  // Smoke params: just verify the fine-tune pipeline produces an active model and can serve
+  // inference/forecast. Quality is covered by nightly runs, not per-MR CI.
+  private static final int LINE_COUNT = 1024;
+  private static final int WAITING_COUNT_SECOND = 300;
+  private static final String SMOKE_HYPERPARAMETERS =
+      "num_train_epochs=1, warmup_steps=10, iter_per_epoch=100, learning_rate=0.00001";
   private static final String[] SCHEMA_SQL_IN_TREE =
       new String[] {
         "CREATE DATABASE root.AI", "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -75,7 +79,9 @@ public class AINodeFineTuneIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE MODEL sundial_tree WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (PATH root.AI.s0)");
+          "CREATE MODEL sundial_tree WITH HYPERPARAMETERS ("
+              + SMOKE_HYPERPARAMETERS
+              + ") FROM MODEL sundial ON DATASET (PATH root.AI.s0)");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
         boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_tree")) {
@@ -138,7 +144,9 @@ public class AINodeFineTuneIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE MODEL sundial_table WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (\'SELECT time, s0 FROM root.AI\')");
+          "CREATE MODEL sundial_table WITH HYPERPARAMETERS ("
+              + SMOKE_HYPERPARAMETERS
+              + ") FROM MODEL sundial ON DATASET (\'SELECT time, s0 FROM root.AI\')");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
         boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_table")) {

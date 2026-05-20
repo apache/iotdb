@@ -266,11 +266,13 @@ public class AINodeTestUtils {
     }
   }
 
-  /** Prepare db.AI2(s0 FLOAT,...) with 2880 rows of data in table. */
+  /**
+   * Prepare db.AI2(s0 FLOAT,...) with 2880 rows of data in table. Assumes database {@code db} has
+   * already been created (e.g., by a prior call to {@link #prepareDataInTable()}).
+   */
   public static void prepareDataInTable2() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE db");
       statement.execute(
           "CREATE TABLE db.AI2 (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 INT32 FIELD, s7 INT64 FIELD, s8 FLOAT FIELD, s9 DOUBLE FIELD)");
       for (int i = 0; i < 2880; i++) {
