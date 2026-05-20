@@ -535,7 +535,7 @@ public class SubscriptionBrokerAgent {
         || consumerGroupIdToConsensusBroker.containsKey(consumerGroupId);
   }
 
-  public void createBrokerIfNotExist(final String consumerGroupId) {
+  public void createPipeBrokerIfNotExist(final String consumerGroupId) {
     consumerGroupIdToPipeBroker.computeIfAbsent(consumerGroupId, SubscriptionBroker::new);
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CREATE_BROKER, consumerGroupId);
   }
@@ -592,16 +592,13 @@ public class SubscriptionBrokerAgent {
   public void bindPrefetchingQueue(final SubscriptionSinkSubtask subtask) {
     final String consumerGroupId = subtask.getConsumerGroupId();
     consumerGroupIdToPipeBroker
-        .compute(
+        .computeIfAbsent(
             consumerGroupId,
-            (id, broker) -> {
-              if (Objects.isNull(broker)) {
-                LOGGER.info(
-                    "Subscription: pipe broker bound to consumer group [{}] does not exist, create new for binding prefetching queue",
-                    consumerGroupId);
-                return new SubscriptionBroker(consumerGroupId);
-              }
-              return broker;
+            id -> {
+              LOGGER.info(
+                  "Subscription: pipe broker bound to consumer group [{}] does not exist, create new for binding prefetching queue",
+                  consumerGroupId);
+              return new SubscriptionBroker(consumerGroupId);
             })
         .bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
     prefetchingQueueCount.invalidate();
@@ -621,16 +618,13 @@ public class SubscriptionBrokerAgent {
       final long initialRuntimeVersion,
       final boolean initialActive) {
     consumerGroupIdToConsensusBroker
-        .compute(
+        .computeIfAbsent(
             consumerGroupId,
-            (id, broker) -> {
-              if (Objects.isNull(broker)) {
-                LOGGER.info(
-                    "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue",
-                    consumerGroupId);
-                return new ConsensusSubscriptionBroker(consumerGroupId);
-              }
-              return broker;
+            id -> {
+              LOGGER.info(
+                  "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue",
+                  consumerGroupId);
+              return new ConsensusSubscriptionBroker(consumerGroupId);
             })
         .bindConsensusPrefetchingQueue(
             topicName,

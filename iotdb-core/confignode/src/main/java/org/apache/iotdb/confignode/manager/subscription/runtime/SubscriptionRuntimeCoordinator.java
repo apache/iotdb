@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SubscriptionRuntimeCoordinator {
 
   private final ConfigManager configManager;
+  // Pair<oldLeaderDataNodeId, newLeaderDataNodeId> observed for each DataRegion. It lets the
+  // coordinator publish only runtime changes that are still relevant after batching events.
   private final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToRuntimeLeaderPairMap =
       new HashMap<>();
   private final AtomicLong runtimeVersionGenerator = new AtomicLong(System.currentTimeMillis());

@@ -44,16 +44,16 @@ public class SubscriptionConsensusProgress {
 
   private volatile RegionProgress committedRegionProgress;
 
-  private final AtomicLong commitIndex;
+  private final AtomicLong persistenceThrottleCounter;
 
   public SubscriptionConsensusProgress() {
     this(new RegionProgress(Collections.emptyMap()), 0L);
   }
 
   public SubscriptionConsensusProgress(
-      final RegionProgress committedRegionProgress, final long commitIndex) {
+      final RegionProgress committedRegionProgress, final long persistenceThrottleCounter) {
     this.committedRegionProgress = normalize(committedRegionProgress);
-    this.commitIndex = new AtomicLong(commitIndex);
+    this.persistenceThrottleCounter = new AtomicLong(persistenceThrottleCounter);
   }
 
   public RegionProgress getCommittedRegionProgress() {
@@ -72,23 +72,23 @@ public class SubscriptionConsensusProgress {
     return getDerivedCommittedWriterState().writerProgress;
   }
 
-  public long getCommitIndex() {
-    return commitIndex.get();
+  public long getPersistenceThrottleCounter() {
+    return persistenceThrottleCounter.get();
   }
 
-  public void incrementCommitIndex() {
-    commitIndex.incrementAndGet();
+  public void incrementPersistenceThrottleCounter() {
+    persistenceThrottleCounter.incrementAndGet();
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     committedRegionProgress.serialize(stream);
-    ReadWriteIOUtils.write(commitIndex.get(), stream);
+    ReadWriteIOUtils.write(persistenceThrottleCounter.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
     final RegionProgress committedRegionProgress = RegionProgress.deserialize(buffer);
-    final long commitIndex = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(committedRegionProgress, commitIndex);
+    final long persistenceThrottleCounter = ReadWriteIOUtils.readLong(buffer);
+    return new SubscriptionConsensusProgress(committedRegionProgress, persistenceThrottleCounter);
   }
 
   @Override
@@ -100,13 +100,13 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    return commitIndex.get() == that.commitIndex.get()
+    return persistenceThrottleCounter.get() == that.persistenceThrottleCounter.get()
         && Objects.equals(committedRegionProgress, that.committedRegionProgress);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(committedRegionProgress, commitIndex.get());
+    return Objects.hash(committedRegionProgress, persistenceThrottleCounter.get());
   }
 
   @Override
@@ -114,8 +114,8 @@ public class SubscriptionConsensusProgress {
     return "SubscriptionConsensusProgress{"
         + "committedRegionProgress="
         + committedRegionProgress
-        + ", commitIndex="
-        + commitIndex.get()
+        + ", persistenceThrottleCounter="
+        + persistenceThrottleCounter.get()
         + '}';
   }
 
@@ -135,21 +135,21 @@ public class SubscriptionConsensusProgress {
   }
 
   private DerivedCommittedWriterState getDerivedCommittedWriterState() {
-    WriterId bestWriterId = null;
-    WriterProgress bestWriterProgress = null;
+    WriterId latestWriterId = null;
+    WriterProgress latestWriterProgress = null;
     for (final Map.Entry<WriterId, WriterProgress> entry :
         committedRegionProgress.getWriterPositions().entrySet()) {
-      if (Objects.isNull(bestWriterProgress)
+      if (Objects.isNull(latestWriterProgress)
           || compareWriterPosition(
-                  entry.getKey(), entry.getValue(), bestWriterId, bestWriterProgress)
+                  entry.getKey(), entry.getValue(), latestWriterId, latestWriterProgress)
               > 0) {
-        bestWriterId = entry.getKey();
-        bestWriterProgress = entry.getValue();
+        latestWriterId = entry.getKey();
+        latestWriterProgress = entry.getValue();
       }
     }
     return new DerivedCommittedWriterState(
-        bestWriterId,
-        Objects.nonNull(bestWriterProgress) ? bestWriterProgress : new WriterProgress(0L, -1L));
+        latestWriterId,
+        Objects.nonNull(latestWriterProgress) ? latestWriterProgress : new WriterProgress(0L, -1L));
   }
 
   private static int compareWriterPosition(

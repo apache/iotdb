@@ -201,7 +201,9 @@ public class WALFileUtils {
    * the given writer-local frontier. This is currently used by single-writer recovery paths, so it
    * matches only entries from the supplied nodeId.
    *
-   * @return [targetSearchIndex, exactMatchFlag], or null if no matching/later entry exists
+   * @return a two-element array: element 0 is the located searchIndex; element 1 is {@code 1} for
+   *     an exact writer-progress match and {@code 0} for the first later writer progress. Returns
+   *     {@code null} if no matching/later entry exists.
    */
   public static long[] locateByWriterProgress(
       final File logDir, final int nodeId, final long physicalTime, final long localSeq) {
@@ -356,21 +358,6 @@ public class WALFileUtils {
         logger.warn("Failed to scan WAL file {} for searchable request metadata", walFile, e);
       }
     }
-  }
-
-  private static int compareCompatibleProgress(
-      final long leftPhysicalTime,
-      final int leftNodeId,
-      final long leftLocalSeq,
-      final long rightPhysicalTime,
-      final long rightLocalSeq) {
-    if (leftPhysicalTime != rightPhysicalTime) {
-      return Long.compare(leftPhysicalTime, rightPhysicalTime);
-    }
-    if (leftLocalSeq != rightLocalSeq) {
-      return Long.compare(leftLocalSeq, rightLocalSeq);
-    }
-    return 0;
   }
 
   private static int compareWriterProgress(

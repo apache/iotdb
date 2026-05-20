@@ -281,16 +281,14 @@ public class IoTConsensusServerImpl {
           final int sqCount = subscriptionQueueRegistry.size();
           if (sqCount > 0) {
             subscriptionQueueRegistry.offer(indexedConsensusRequest);
-          } else {
+          } else if (logger.isDebugEnabled()
+              && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
             // Log periodically when no subscription queues are registered
-            if (indexedConsensusRequest.getSearchIndex() % 50 == 0) {
-              logger.debug(
-                  "write() no subscription queues registered, "
-                      + "group={}, searchIndex={}, this={}",
-                  consensusGroupId,
-                  indexedConsensusRequest.getSearchIndex(),
-                  System.identityHashCode(this));
-            }
+            logger.debug(
+                "write() no subscription queues registered, " + "group={}, searchIndex={}, this={}",
+                consensusGroupId,
+                indexedConsensusRequest.getSearchIndex(),
+                System.identityHashCode(this));
           }
           searchIndex.incrementAndGet();
         }
@@ -298,7 +296,7 @@ public class IoTConsensusServerImpl {
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
-      } else {
+      } else if (logger.isDebugEnabled()) {
         logger.debug(
             IoTConsensusMessages.WRITE_OPERATION_FAILED + ", subscriptionQueues: {}, this: {}",
             thisNode.getGroupId(),

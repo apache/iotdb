@@ -78,22 +78,26 @@ public class SubscriptionQueueRegistry {
       return;
     }
 
-    LOGGER.debug(
-        "write() offering to {} subscription queue(s), group={}, searchIndex={}, requestType={}",
-        queueCount,
-        consensusGroupId,
-        indexedConsensusRequest.getSearchIndex(),
-        indexedConsensusRequest.getRequests().isEmpty()
-            ? "EMPTY"
-            : indexedConsensusRequest.getRequests().get(0).getClass().getSimpleName());
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "write() offering to {} subscription queue(s), group={}, searchIndex={}, requestType={}",
+          queueCount,
+          consensusGroupId,
+          indexedConsensusRequest.getSearchIndex(),
+          indexedConsensusRequest.getRequests().isEmpty()
+              ? "EMPTY"
+              : indexedConsensusRequest.getRequests().get(0).getClass().getSimpleName());
+    }
 
     for (final BlockingQueue<IndexedConsensusRequest> queue : queues.keySet()) {
       final boolean offered = queue.offer(indexedConsensusRequest);
-      LOGGER.debug(
-          "offer result={}, queueSize={}, queueRemaining={}",
-          offered,
-          queue.size(),
-          queue.remainingCapacity());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "offer result={}, queueSize={}, queueRemaining={}",
+            offered,
+            queue.size(),
+            queue.remainingCapacity());
+      }
       if (!offered) {
         final long droppedCount = droppedEntries.incrementAndGet();
         final long now = System.currentTimeMillis();
@@ -108,7 +112,7 @@ public class SubscriptionQueueRegistry {
               indexedConsensusRequest.getSearchIndex(),
               queue.size(),
               queue.remainingCapacity());
-        } else {
+        } else if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
               "Subscription queue full, dropped entry searchIndex={}, droppedCount={}",
               indexedConsensusRequest.getSearchIndex(),

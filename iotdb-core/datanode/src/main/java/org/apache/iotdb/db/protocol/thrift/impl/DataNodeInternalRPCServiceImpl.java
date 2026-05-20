@@ -1620,7 +1620,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (Exception e) {
       LOGGER.warn("Error occurred when pulling commit progress", e);
       return new TPullCommitProgressResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
   }
 
@@ -1638,7 +1638,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       LOGGER.warn("Error occurred when receiving subscription progress broadcast", e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
 
@@ -1657,7 +1657,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       LOGGER.warn("Error occurred when pushing subscription runtime state", e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
 

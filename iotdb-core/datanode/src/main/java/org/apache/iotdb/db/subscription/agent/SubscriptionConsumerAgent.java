@@ -100,7 +100,7 @@ public class SubscriptionConsumerAgent {
     // if consumer group meta does not exist on local agent
     if (Objects.isNull(metaInAgent)) {
       consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
-      SubscriptionAgent.broker().createBrokerIfNotExist(consumerGroupId);
+      SubscriptionAgent.broker().createPipeBrokerIfNotExist(consumerGroupId);
       return;
     }
 

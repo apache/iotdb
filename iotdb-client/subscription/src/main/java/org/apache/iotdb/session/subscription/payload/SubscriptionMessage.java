@@ -84,9 +84,15 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
    * Returns the watermark timestamp carried by this message. Only valid when {@code
    * getMessageType() == SubscriptionMessageType.WATERMARK.getType()}.
    *
-   * @return the watermark timestamp, or {@code Long.MIN_VALUE} if not a watermark message
+   * @return the watermark timestamp
+   * @throws IllegalStateException if this is not a watermark message
    */
   public long getWatermarkTimestamp() {
+    if (messageType != SubscriptionMessageType.WATERMARK.getType()) {
+      throw new IllegalStateException(
+          "Watermark timestamp is only available for watermark messages, actual message type: "
+              + messageType);
+    }
     return watermarkTimestamp;
   }
 

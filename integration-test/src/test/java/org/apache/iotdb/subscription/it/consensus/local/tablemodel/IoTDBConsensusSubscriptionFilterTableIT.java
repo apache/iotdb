@@ -20,6 +20,7 @@
 package org.apache.iotdb.subscription.it.consensus.local.tablemodel;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
@@ -161,8 +162,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
 
     try {
       ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
-      try (final ITableSession session =
-          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
         session.executeNonQueryStatement("use " + database);
         session.executeNonQueryStatement(
             "insert into "
@@ -179,8 +179,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
               ids.getConsumerId(), ids.getConsumerGroupId());
       consumer.subscribe(ids.getTopic());
 
-      try (final ITableSession session =
-          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
         session.executeNonQueryStatement("use " + database);
         for (int i = 1; i <= 10; i++) {
           final long timestamp = 100L + i;
@@ -227,8 +226,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
 
     try {
       ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
-      try (final ITableSession session =
-          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
         session.executeNonQueryStatement("use " + database);
         session.executeNonQueryStatement(
             "insert into " + table + "(tag1, s1, s2, time) values ('bootstrap', 0, 0.0, 0)");
@@ -243,8 +241,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
               ids.getConsumerId(), ids.getConsumerGroupId());
       consumer.subscribe(ids.getTopic());
 
-      try (final ITableSession session =
-          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+      try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
         session.executeNonQueryStatement("use " + database);
         for (int i = 1; i <= 5; i++) {
           session.executeNonQueryStatement(

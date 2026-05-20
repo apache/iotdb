@@ -187,7 +187,22 @@ public class WatermarkProcessorTest {
   }
 
   @Test
-  public void testOverflowFlushRetainsAlreadyEmittedMessages() {
+  public void testMessageBelowCurrentWatermarkIsReturnedImmediately() {
+    final SubscriptionMessage messageBelowWatermark = tabletMsg(REGION_R1, 1, 1L, 900L, 1);
+    final WatermarkProcessor proc = new WatermarkProcessor(0, 60_000);
+
+    proc.process(Collections.singletonList(watermarkMsg(REGION_R1, 1, 1000)));
+
+    final List<SubscriptionMessage> result =
+        proc.process(Collections.singletonList(messageBelowWatermark));
+
+    Assert.assertEquals(1, result.size());
+    Assert.assertSame(messageBelowWatermark, result.get(0));
+    Assert.assertEquals(0, proc.getBufferedCount());
+  }
+
+  @Test
+  public void testOverflowFlushRetainsAlreadyProcessedMessages() {
     final SubscriptionMessage smallMessage = tabletMsg(REGION_R1, 1, 1L, 1000L, 1);
     final SubscriptionMessage largeMessage = tabletMsg(REGION_R1, 1, 2L, 2000L, 64);
     final long maxBufferBytes = smallMessage.estimateSize();

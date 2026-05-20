@@ -395,6 +395,9 @@ public class WALMetaData implements SerializedSize {
     int maxMagicLen =
         Math.max(
             WALFileVersion.V3.getVersionBytes().length, WALFileVersion.V2.getVersionBytes().length);
+    if (channel.size() < maxMagicLen) {
+      return false;
+    }
     ByteBuffer magicStringBytes = ByteBuffer.allocate(maxMagicLen);
     channel.read(magicStringBytes, channel.size() - maxMagicLen);
     magicStringBytes.flip();

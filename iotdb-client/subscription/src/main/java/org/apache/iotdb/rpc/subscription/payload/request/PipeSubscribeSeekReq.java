@@ -38,8 +38,8 @@ public class PipeSubscribeSeekReq extends TPipeSubscribeReq {
 
   public static final short SEEK_TO_END = 2;
   public static final short SEEK_TO_TIMESTAMP = 3;
-  public static final short SEEK_TO_TOPIC_PROGRESS = 6;
-  public static final short SEEK_AFTER_TOPIC_PROGRESS = 7;
+  public static final short SEEK_TO_TOPIC_PROGRESS = 4;
+  public static final short SEEK_AFTER_TOPIC_PROGRESS = 5;
 
   private transient String topicName;
   private transient short seekType;

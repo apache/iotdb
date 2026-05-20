@@ -1953,6 +1953,15 @@ pipe_air_gap_receiver_port=9780
 pipe_all_sinks_rate_limit_bytes_per_second=-1
 
 ####################
+### Subscription Consensus Configuration
+####################
+
+# The interval at which an idle consensus-subscription queue advances its safe HLC by watermark.
+# effectiveMode: restart
+# Datatype: long(duration)
+subscription_consensus_idle_safe_hlc_interval_ms=10000
+
+####################
 ### RatisConsensus Configuration
 ####################
 

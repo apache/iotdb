@@ -159,6 +159,7 @@ public enum ThreadName {
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL("Subscription-Consensus-Prefetch-Executor-Pool"),
   SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER("Subscription-Consensus-Prefetch-Scheduler"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER("Subscription-Consensus-Progress-Broadcaster"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -323,6 +324,7 @@ public enum ThreadName {
               SUBSCRIPTION_EXECUTOR_POOL,
               SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL,
               SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER,
+              SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));

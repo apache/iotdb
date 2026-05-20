@@ -44,8 +44,14 @@ public class ConsensusSubscriptionWalFileAnalyzer {
   private static final String V2_MAGIC = "V2-WAL";
   private static final String V3_MAGIC = "V3-WAL";
 
+  // Segment header layout:
+  // [compression type: 1 byte][payload size on disk: 4 bytes], plus an extra 4-byte
+  // uncompressed-size field for compressed segments.
   private static final int SEGMENT_HEADER_BASE_BYTES = Byte.BYTES + Integer.BYTES;
   private static final int COMPRESSED_SEGMENT_EXTRA_HEADER_BYTES = Integer.BYTES;
+
+  // Footer layout suffix:
+  // [WAL file info end marker: 1 byte][metadata size: 4 bytes][tail magic string].
   private static final int WAL_FILE_INFO_END_MARKER_BYTES = Byte.BYTES;
   private static final int METADATA_SIZE_FIELD_BYTES = Integer.BYTES;
   private static final int V3_EMPTY_METADATA_REMAINING_WITHOUT_MEMTABLE_COUNT =

@@ -37,14 +37,15 @@ import java.util.PriorityQueue;
  * A buffering processor that reorders messages based on watermark semantics. Messages are buffered
  * internally and emitted only when the watermark advances past their maximum timestamp.
  *
- * <p>Watermark = (minimum of latest timestamp per <b>active</b> source) - maxOutOfOrdernessMs
+ * <p>Watermark = (minimum of latest timestamp per <b>active</b> region) - maxOutOfOrdernessMs
  *
- * <p>A source is considered "stale" if its latest timestamp has not increased for {@code
- * staleSourceTimeoutMs}. Stale sources are excluded from the watermark calculation, preventing a
- * single slow or idle source from anchoring the global watermark indefinitely.
+ * <p>A region is identified by topic, DataNode ID and region ID from the subscription commit
+ * context. A region is considered "stale" if its latest timestamp has not increased for {@code
+ * staleRegionTimeoutMs}. Stale regions are excluded from the watermark calculation, preventing a
+ * single slow or idle region from anchoring the global watermark indefinitely.
  *
  * <p>Server-side WATERMARK events (carrying per-region timestamp progress) serve as heartbeats,
- * confirming source liveness. They advance the per-source timestamp only when their timestamp is
+ * confirming region liveness. They advance the per-region timestamp only when their timestamp is
  * higher than the previously observed value.
  *
  * <p>A timeout mechanism ensures that buffered messages are eventually flushed even if no new data
@@ -61,16 +62,16 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
 
   private final long maxOutOfOrdernessMs;
   private final long timeoutMs;
-  private final long staleSourceTimeoutMs;
+  private final long staleRegionTimeoutMs;
   private final long maxBufferBytes;
 
   // Buffer ordered by message max timestamp
   private final PriorityQueue<TimestampedMessage> buffer =
       new PriorityQueue<>((a, b) -> Long.compare(a.maxTimestamp, b.maxTimestamp));
 
-  // topicName -> sourceKey -> latest timestamp
-  private final Map<String, Map<String, Long>> latestPerSourceByTopic = new HashMap<>();
-  // topicName -> sourceKey -> wall-clock time when the source timestamp last increased
+  // topicName -> regionKey -> latest timestamp
+  private final Map<String, Map<String, Long>> latestPerRegionByTopic = new HashMap<>();
+  // topicName -> regionKey -> wall-clock time when the region timestamp last increased
   private final Map<String, Map<String, Long>> lastAdvancedTimeMsByTopic = new HashMap<>();
   private long lastEmitTimeMs = System.currentTimeMillis();
   private long bufferedBytes = 0;
@@ -79,7 +80,7 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   private long watermark = Long.MIN_VALUE;
 
   /**
-   * Creates a WatermarkProcessor with default stale source timeout (30 seconds).
+   * Creates a WatermarkProcessor with default stale region timeout (30 seconds).
    *
    * @param maxOutOfOrdernessMs maximum expected out-of-orderness in milliseconds
    * @param timeoutMs if no data arrives within this duration, force-flush all buffered messages
@@ -93,7 +94,7 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
    *
    * @param maxOutOfOrdernessMs maximum expected out-of-orderness in milliseconds
    * @param timeoutMs if no data arrives within this duration, force-flush all buffered messages
-   * @param staleSourceTimeoutMs if a source's timestamp has not increased for this duration, it is
+   * @param staleRegionTimeoutMs if a region's timestamp has not increased for this duration, it is
    *     excluded from watermark calculation. Use {@link Long#MAX_VALUE} to disable.
    * @param maxBufferBytes maximum total estimated bytes of buffered messages. When exceeded, all
    *     buffered messages are force-flushed regardless of watermark. Defaults to 64 MB.
@@ -101,11 +102,11 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   public WatermarkProcessor(
       final long maxOutOfOrdernessMs,
       final long timeoutMs,
-      final long staleSourceTimeoutMs,
+      final long staleRegionTimeoutMs,
       final long maxBufferBytes) {
     this.maxOutOfOrdernessMs = maxOutOfOrdernessMs;
     this.timeoutMs = timeoutMs;
-    this.staleSourceTimeoutMs = staleSourceTimeoutMs;
+    this.staleRegionTimeoutMs = staleRegionTimeoutMs;
     this.maxBufferBytes = maxBufferBytes;
   }
 
@@ -113,16 +114,16 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   public List<SubscriptionMessage> process(final List<SubscriptionMessage> messages) {
     final long now = System.currentTimeMillis();
 
-    // Buffer incoming messages and update per-source timestamps
+    // Buffer incoming messages and update per-region timestamps
     for (final SubscriptionMessage message : messages) {
       // WATERMARK events carry server-side timestamp progress per region.
-      // They serve as heartbeats and advance per-source tracking only when the timestamp
+      // They serve as heartbeats and advance per-region tracking only when the timestamp
       // actually increases.
       if (message.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
         final SubscriptionCommitContext commitContext = message.getCommitContext();
-        advanceSourceTimestamp(
+        advanceRegionTimestamp(
             commitContext.getTopicName(),
-            getSourceKey(commitContext),
+            getRegionKey(commitContext),
             message.getWatermarkTimestamp(),
             now);
         continue; // Do not buffer system events
@@ -132,12 +133,12 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
       final long estimatedSize = message.estimateSize();
       buffer.add(new TimestampedMessage(message, maxTs, estimatedSize));
       bufferedBytes += estimatedSize;
-      updateSourceTimestamp(message, maxTs, now);
+      updateRegionTimestamp(message, maxTs, now);
     }
 
-    // Compute watermark = min(latest per active source) - maxOutOfOrderness
-    // Sources whose timestamp has not increased for staleSourceTimeoutMs are excluded.
-    updateWatermarkIfAnyActiveSource(now);
+    // Compute watermark = min(latest per active region) - maxOutOfOrderness
+    // Regions whose timestamp has not increased for staleRegionTimeoutMs are excluded.
+    updateWatermarkIfAnyActiveRegion(now);
 
     // Emit messages whose maxTimestamp <= watermark
     final List<SubscriptionMessage> emitted = emit(watermark);
@@ -184,7 +185,7 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   @Override
   public void reset() {
     buffer.clear();
-    latestPerSourceByTopic.clear();
+    latestPerRegionByTopic.clear();
     lastAdvancedTimeMsByTopic.clear();
     lastEmitTimeMs = System.currentTimeMillis();
     bufferedBytes = 0;
@@ -208,7 +209,7 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
         iterator.remove();
       }
     }
-    latestPerSourceByTopic.remove(topicName);
+    latestPerRegionByTopic.remove(topicName);
     lastAdvancedTimeMsByTopic.remove(topicName);
     recomputeWatermark(System.currentTimeMillis());
   }
@@ -258,64 +259,64 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
     return maxTs;
   }
 
-  private void updateSourceTimestamp(
+  private void updateRegionTimestamp(
       final SubscriptionMessage message, final long maxTs, final long nowMs) {
     // Use region-based key so data events and WATERMARK events share the same key namespace.
     final SubscriptionCommitContext commitContext = message.getCommitContext();
-    advanceSourceTimestamp(commitContext.getTopicName(), getSourceKey(commitContext), maxTs, nowMs);
+    advanceRegionTimestamp(commitContext.getTopicName(), getRegionKey(commitContext), maxTs, nowMs);
   }
 
   /**
-   * Updates the per-source timestamp tracking. Only records a new "last advanced" wall-clock time
-   * when the timestamp actually increases, so that stale sources (whose timestamps don't advance)
+   * Updates the per-region timestamp tracking. Only records a new "last advanced" wall-clock time
+   * when the timestamp actually increases, so that stale regions (whose timestamps don't advance)
    * are eventually excluded from watermark calculation.
    */
-  private void advanceSourceTimestamp(
+  private void advanceRegionTimestamp(
       final String topicName, final String key, final long newTs, final long nowMs) {
-    final Map<String, Long> latestPerSource =
-        latestPerSourceByTopic.computeIfAbsent(topicName, ignored -> new HashMap<>());
+    final Map<String, Long> latestPerRegion =
+        latestPerRegionByTopic.computeIfAbsent(topicName, ignored -> new HashMap<>());
     final Map<String, Long> lastAdvancedTimeMs =
         lastAdvancedTimeMsByTopic.computeIfAbsent(topicName, ignored -> new HashMap<>());
-    final Long oldTs = latestPerSource.get(key);
+    final Long oldTs = latestPerRegion.get(key);
     if (oldTs == null || newTs > oldTs) {
-      latestPerSource.put(key, newTs);
+      latestPerRegion.put(key, newTs);
       lastAdvancedTimeMs.put(key, nowMs);
     }
   }
 
-  private void updateWatermarkIfAnyActiveSource(final long nowMs) {
-    final long minLatest = getMinLatestActiveSourceTimestamp(nowMs);
+  private void updateWatermarkIfAnyActiveRegion(final long nowMs) {
+    final long minLatest = getMinLatestActiveRegionTimestamp(nowMs);
     if (minLatest != Long.MAX_VALUE) {
       watermark = minLatest - maxOutOfOrdernessMs;
     }
-    // If all sources are stale, watermark stays unchanged and timeout will handle it.
+    // If all regions are stale, watermark stays unchanged and timeout will handle it.
   }
 
   private void recomputeWatermark(final long nowMs) {
     watermark = Long.MIN_VALUE;
-    updateWatermarkIfAnyActiveSource(nowMs);
+    updateWatermarkIfAnyActiveRegion(nowMs);
   }
 
-  private long getMinLatestActiveSourceTimestamp(final long nowMs) {
+  private long getMinLatestActiveRegionTimestamp(final long nowMs) {
     long minLatest = Long.MAX_VALUE;
     for (final Map.Entry<String, Map<String, Long>> topicEntry :
-        latestPerSourceByTopic.entrySet()) {
+        latestPerRegionByTopic.entrySet()) {
       final Map<String, Long> lastAdvancedTimeMs =
           lastAdvancedTimeMsByTopic.get(topicEntry.getKey());
       if (Objects.isNull(lastAdvancedTimeMs)) {
         continue;
       }
-      for (final Map.Entry<String, Long> sourceEntry : topicEntry.getValue().entrySet()) {
-        final Long lastAdv = lastAdvancedTimeMs.get(sourceEntry.getKey());
-        if (lastAdv != null && (nowMs - lastAdv) <= staleSourceTimeoutMs) {
-          minLatest = Math.min(minLatest, sourceEntry.getValue());
+      for (final Map.Entry<String, Long> regionEntry : topicEntry.getValue().entrySet()) {
+        final Long lastAdv = lastAdvancedTimeMs.get(regionEntry.getKey());
+        if (lastAdv != null && (nowMs - lastAdv) <= staleRegionTimeoutMs) {
+          minLatest = Math.min(minLatest, regionEntry.getValue());
         }
       }
     }
     return minLatest;
   }
 
-  private static String getSourceKey(final SubscriptionCommitContext commitContext) {
+  private static String getRegionKey(final SubscriptionCommitContext commitContext) {
     return "region-" + commitContext.getDataNodeId() + "-" + commitContext.getRegionId();
   }
 

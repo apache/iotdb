@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -70,7 +72,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Manages committed progress for consensus-based subscriptions.
@@ -121,12 +122,8 @@ public class ConsensusSubscriptionCommitManager {
 
   /** Single-threaded executor for fire-and-forget broadcasts. */
   private final ExecutorService broadcastExecutor =
-      Executors.newSingleThreadExecutor(
-          r -> {
-            final Thread t = new Thread(r, "SubscriptionProgressBroadcast");
-            t.setDaemon(true);
-            return t;
-          });
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+          ThreadName.SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER.getName());
 
   /** Key: "consumerGroupId##topicName##regionId" -> progress tracking state */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
@@ -800,7 +797,7 @@ public class ConsensusSubscriptionCommitManager {
       final CommitStateKey stateKey, final ConsensusSubscriptionCommitState state) {
     final int interval =
         SubscriptionConfig.getInstance().getSubscriptionConsensusCommitPersistInterval();
-    if (interval > 0 && state.getProgress().getCommitIndex() % interval == 0) {
+    if (interval > 0 && state.getProgress().getPersistenceThrottleCounter() % interval == 0) {
       persistRegionProgress(stateKey, state);
     }
   }
@@ -952,6 +949,13 @@ public class ConsensusSubscriptionCommitManager {
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
       final TGetCommitProgressResp resp = configNodeClient.getCommitProgress(req);
       if (resp.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn(
+            "ConsensusSubscriptionCommitManager: failed to query commit progress from ConfigNode "
+                + "for consumerGroupId={}, topicName={}, regionId={}, status={}",
+            consumerGroupId,
+            topicName,
+            regionId,
+            resp.status);
         return null;
       }
       if (resp.isSetCommittedRegionProgress()) {
@@ -1212,7 +1216,7 @@ public class ConsensusSubscriptionCommitManager {
                 key.physicalTime,
                 key.writerNodeId,
                 key.localSeq);
-            progress.incrementCommitIndex();
+            progress.incrementPersistenceThrottleCounter();
             return CommitOperationResult.handledWithoutAdvance();
           }
           LOGGER.warn(
@@ -1227,7 +1231,7 @@ public class ConsensusSubscriptionCommitManager {
         final WriterProgress before = getCommittedWriterProgressForWriter(effectiveWriterId);
         recentlyCommittedKeys.add(effectiveKey);
         stageCommittedAndAdvance(effectiveKey);
-        progress.incrementCommitIndex();
+        progress.incrementPersistenceThrottleCounter();
         syncPersistedProgress();
         return buildCommitOperationResult(
             effectiveWriterId, before, getCommittedWriterProgressForWriter(effectiveWriterId));
@@ -1258,7 +1262,7 @@ public class ConsensusSubscriptionCommitManager {
               incomingKey.physicalTime,
               incomingKey.writerNodeId,
               incomingKey.localSeq);
-          progress.incrementCommitIndex();
+          progress.incrementPersistenceThrottleCounter();
           return CommitOperationResult.handledWithoutAdvance();
         }
 
@@ -1278,7 +1282,7 @@ public class ConsensusSubscriptionCommitManager {
         final WriterProgress before = getCommittedWriterProgressForWriter(effectiveWriterId);
         recentlyCommittedKeys.add(effectiveKey);
         stageCommittedAndAdvance(effectiveKey);
-        progress.incrementCommitIndex();
+        progress.incrementPersistenceThrottleCounter();
         syncPersistedProgress();
         return buildCommitOperationResult(
             effectiveWriterId, before, getCommittedWriterProgressForWriter(effectiveWriterId));
@@ -1312,13 +1316,13 @@ public class ConsensusSubscriptionCommitManager {
         return;
       }
       synchronized (this) {
-        final ProgressKey incoming = new ProgressKey(writerId, writerProgress);
-        final WriterId incomingWriterId = incoming.toWriterId(regionId);
+        final ProgressKey broadcastKey = new ProgressKey(writerId, writerProgress);
+        final WriterId broadcastWriterId = broadcastKey.toWriterId(regionId);
         final WriterProgress currentWriterProgress =
-            getCommittedWriterProgressForWriter(incomingWriterId);
-        final ProgressKey current = new ProgressKey(incomingWriterId, currentWriterProgress);
-        if (incoming.compareTo(current) > 0) {
-          committedWriterPositions.put(incomingWriterId, incoming.toWriterProgress());
+            getCommittedWriterProgressForWriter(broadcastWriterId);
+        final ProgressKey current = new ProgressKey(broadcastWriterId, currentWriterProgress);
+        if (broadcastKey.compareTo(current) > 0) {
+          committedWriterPositions.put(broadcastWriterId, broadcastKey.toWriterProgress());
           syncPersistedProgress();
         }
       }

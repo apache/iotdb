@@ -2656,7 +2656,9 @@ public class ConsensusPrefetchingQueue {
       installRecoveryWriterProgress(request.committedRegionProgress);
     }
 
-    // 4. Reset WAL read position
+    // 4. Reset WAL read position. The target has been normalized by replay lookup: if the
+    // requested progress points before the first retained replayable WAL entry, it is moved to that
+    // first replayable searchIndex here.
     nextExpectedSearchIndex.set(request.targetSearchIndex);
     requestSubscriptionWalReset(request.targetSearchIndex, seekGeneration.get());
     lingerBatch.reset();
