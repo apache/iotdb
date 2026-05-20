@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.cluster;
 
 import org.apache.iotdb.commons.i18n.CommonMessages;
 
+import java.util.OptionalInt;
+
 /** Node status for showing cluster */
 public enum NodeStatus {
   /** Node running properly */
@@ -59,6 +61,35 @@ public enum NodeStatus {
   public static boolean isNormalStatus(NodeStatus status) {
     // Currently, the only normal status is Running
     return status != null && status.equals(NodeStatus.Running);
+  }
+
+  /**
+   * Map a node's {@link NodeStatus} (and optional reason) to the Ratis peer priority that should
+   * govern its candidacy in leader elections.
+   *
+   * <pre>
+   *   Running                          →   0   (full candidate)
+   *   ReadOnly + {@link #DISK_FULL}    →  -1   (out-rank healthy peers but ahead of crashed)
+   *   ReadOnly + {@link #DISK_CRASH}   →  -2   (most degraded — last choice)
+   *   anything else                    →  empty (priority must not be changed)
+   * </pre>
+   *
+   * Returning {@link OptionalInt#empty()} for Unknown/Removing/manual ReadOnly keeps transient
+   * blips and operator-driven states from rewriting peer priorities.
+   */
+  public static OptionalInt priorityForStatus(NodeStatus status, String statusReason) {
+    if (Running.equals(status)) {
+      return OptionalInt.of(0);
+    }
+    if (ReadOnly.equals(status)) {
+      if (DISK_CRASH.equals(statusReason)) {
+        return OptionalInt.of(-2);
+      }
+      if (DISK_FULL.equals(statusReason)) {
+        return OptionalInt.of(-1);
+      }
+    }
+    return OptionalInt.empty();
   }
 
   public static boolean isReadable(NodeStatus status) {

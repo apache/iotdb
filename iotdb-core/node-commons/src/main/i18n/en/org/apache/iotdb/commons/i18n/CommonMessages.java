@@ -42,8 +42,6 @@ public final class CommonMessages {
       "Free disk space ratio is below the configured threshold; set node status to ReadOnly(DiskFull).";
   public static final String DISK_CRASH_SET_READ_ONLY =
       "Detected unwritable disk directory; set node status to ReadOnly(DiskCrash).";
-  public static final String DISK_CRASH_PROBE_FAILED =
-      "Disk health probe write failed for directory {}.";
   public static final String DISK_RECOVERED_SET_RUNNING =
       "Disk health recovered (previous reason: {}); set node status to Running.";
 

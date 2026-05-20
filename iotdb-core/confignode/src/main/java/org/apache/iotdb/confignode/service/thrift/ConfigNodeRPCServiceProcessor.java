@@ -1115,10 +1115,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq heartbeatReq) {
     TConfigNodeHeartbeatResp resp = new TConfigNodeHeartbeatResp();
     resp.setTimestamp(heartbeatReq.getTimestamp());
-    // Follower self-check: probe critical dirs each time the leader pings us.
-    // The leader runs the same check in its HeartbeatService loop.
-    DiskChecker.checkAndApply(
-        configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    // Sample free-space on the same cadence DataNode samples its load. DiskCrash is observed
+    // passively from the Ratis write-path on this node, not polled here.
+    if (heartbeatReceivedCounter.getAndIncrement() % HeartbeatService.LOAD_SAMPLING_INTERVAL == 0) {
+      DiskChecker.checkFreeRatioAndApply(
+          configNodeConfig.getCriticalDirs(), commonConfig.getDiskSpaceWarningThreshold());
+    }
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());

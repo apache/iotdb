@@ -66,4 +66,11 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
         ? statistics.getStatus().getStatus()
         : statistics.getStatus().getStatus() + "(" + statistics.getStatusReason() + ")";
   }
+
+  /**
+   * @return The raw reason string (may be {@code null}) accompanying the current NodeStatus.
+   */
+  public String getStatusReason() {
+    return ((NodeStatistics) currentStatistics.get()).getStatusReason();
+  }
 }
