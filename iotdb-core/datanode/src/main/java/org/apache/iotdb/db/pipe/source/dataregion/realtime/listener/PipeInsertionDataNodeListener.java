@@ -54,6 +54,8 @@ public class PipeInsertionDataNodeListener {
 
   public synchronized void startListenAndAssign(
       final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    // Keep registration inside compute so the assigner is fully started before it becomes visible
+    // to concurrent listeners.
     dataRegionId2Assigner.compute(
         dataRegionId,
         (id, assigner) -> {

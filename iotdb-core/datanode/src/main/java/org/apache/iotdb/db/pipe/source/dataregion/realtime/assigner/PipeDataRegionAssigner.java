@@ -66,8 +66,8 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private Boolean isTableModel;
 
-  private int listenToTsFileSourceCount = 0;
-  private int listenToInsertNodeSourceCount = 0;
+  private volatile int listenToTsFileSourceCount = 0;
+  private volatile int listenToInsertNodeSourceCount = 0;
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
@@ -253,11 +253,11 @@ public class PipeDataRegionAssigner implements Closeable {
     logSourceAssignmentChange("deregistered", source);
   }
 
-  public synchronized boolean shouldListenToTsFile() {
+  public boolean shouldListenToTsFile() {
     return listenToTsFileSourceCount > 0;
   }
 
-  public synchronized boolean shouldListenToInsertNode() {
+  public boolean shouldListenToInsertNode() {
     return listenToInsertNodeSourceCount > 0;
   }
 
