@@ -65,7 +65,19 @@
             <excludes>
                 <exclude>ainode-env.*</exclude>
                 <exclude>**/ainode-env.*</exclude>
+                <exclude>iotdb-common.sh</exclude>
+                <exclude>**/iotdb-common.bat</exclude>
             </excludes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/scripts/conf</directory>
+            <includes>
+                <include>iotdb-common.sh</include>
+                <include>windows/iotdb-common.bat</include>
+            </includes>
+            <filtered>true</filtered>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

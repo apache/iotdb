@@ -205,12 +205,13 @@
         <keypass/>
         <alias/>
         <jarsigner.skip>true</jarsigner.skip>
-        <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.1-260519-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
+        <tsfile.locale.opt/>
         <!-- Module configuration properties (default values) -->
         <moduleA.enabled>true</moduleA.enabled>
         <moduleB.enabled>true</moduleB.enabled>
         <version.suffix/>
-        <i18n.locale>en</i18n.locale>
         <!-- Filename suffix for locale-specific distribution packages (empty for default en, e.g. "-zh" when with-zh-locale is active) -->
         <locale.suffix/>
     </properties>
@@ -2000,6 +2001,7 @@
             <properties>
                 <i18n.locale>zh</i18n.locale>
                 <locale.suffix>-zh</locale.suffix>
+                <tsfile.locale.opt>-Dtsfile.locale=zh</tsfile.locale.opt>
             </properties>
         </profile>
     </profiles>
