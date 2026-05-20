@@ -21,8 +21,12 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -32,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -88,6 +94,85 @@ public class ConsensusLogToTabletConverter {
     } catch (final Exception e) {
       return "N/A(" + node.getType() + ")";
     }
+  }
+
+  /**
+   * Deserializes the IConsensusRequest entries within an IndexedConsensusRequest to produce an
+   * InsertNode. WAL entries are typically stored as IoTConsensusRequest (serialized ByteBuffers),
+   * and a single logical write may be split across multiple fragments (SearchNode).
+   *
+   * <p>The deserialization follows the same pattern as {@code
+   * DataRegionStateMachine.grabPlanNode()}.
+   */
+  static InsertNode deserializeToInsertNode(final IndexedConsensusRequest indexedRequest) {
+    final List<SearchNode> searchNodes = new ArrayList<>();
+    PlanNode nonSearchNode = null;
+
+    for (final IConsensusRequest req : indexedRequest.getRequests()) {
+      PlanNode planNode;
+      try {
+        if (req instanceof IoTConsensusRequest) {
+          // WAL entries read from file are wrapped as IoTConsensusRequest (ByteBuffer).
+          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer());
+        } else if (req instanceof InsertNode) {
+          // In-memory entries that are not yet flushed to WAL file may already be PlanNode.
+          planNode = (PlanNode) req;
+        } else {
+          planNode = PlanNodeType.deserialize(req.serializeToByteBuffer());
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "ConsensusLogToTabletConverter: failed to deserialize IConsensusRequest "
+                + "(type={}) in searchIndex={}: {}",
+            req.getClass().getSimpleName(),
+            indexedRequest.getSearchIndex(),
+            e.getMessage(),
+            e);
+        continue;
+      }
+
+      if (planNode instanceof SearchNode) {
+        final SearchNode searchNode = (SearchNode) planNode;
+        searchNode.setSearchIndex(indexedRequest.getSearchIndex());
+        if (indexedRequest.getSyncIndex() >= 0) {
+          searchNode.setSyncIndex(indexedRequest.getSyncIndex());
+        }
+        if (indexedRequest.getPhysicalTime() > 0) {
+          searchNode.setPhysicalTime(indexedRequest.getPhysicalTime());
+        }
+        if (indexedRequest.getNodeId() >= 0) {
+          searchNode.setNodeId(indexedRequest.getNodeId());
+        }
+        searchNodes.add(searchNode);
+      } else {
+        nonSearchNode = planNode;
+      }
+    }
+
+    if (!searchNodes.isEmpty()) {
+      final PlanNode merged = searchNodes.get(0).merge(searchNodes);
+      if (merged instanceof InsertNode) {
+        final InsertNode mergedInsert = (InsertNode) merged;
+        LOGGER.debug(
+            "ConsensusLogToTabletConverter: deserialized merged InsertNode for searchIndex={}, "
+                + "type={}, deviceId={}, searchNodeCount={}",
+            indexedRequest.getSearchIndex(),
+            mergedInsert.getType(),
+            safeDeviceIdForLog(mergedInsert),
+            searchNodes.size());
+
+        return mergedInsert;
+      }
+    }
+
+    if (nonSearchNode != null) {
+      LOGGER.debug(
+          "ConsensusLogToTabletConverter: searchIndex={} contains non-InsertNode PlanNode: {}",
+          indexedRequest.getSearchIndex(),
+          nonSearchNode.getClass().getSimpleName());
+    }
+
+    return null;
   }
 
   public List<Tablet> convert(final InsertNode insertNode) {

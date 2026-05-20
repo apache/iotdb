@@ -20,12 +20,8 @@
 package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -38,8 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -1131,7 +1125,40 @@ public class ConsensusPrefetchingQueue {
                 "ConsensusPrefetchingQueue %s: no in-flight event for consumer %s, commit context %s",
                 this, consumerId, commitContext));
       }
-      return event;
+      if (Objects.isNull(event.getCurrentResponse())
+          || event.getCurrentResponse().getResponseType()
+              != SubscriptionPollResponseType.TABLETS.getType()
+          || !(event.getCurrentResponse().getPayload() instanceof TabletsPayload)) {
+        return generateErrorResponse(
+            String.format(
+                "ConsensusPrefetchingQueue %s: unexpected in-flight response for consumer %s, "
+                    + "commit context %s, offset %s",
+                this, consumerId, commitContext, offset));
+      }
+
+      final TabletsPayload payload = (TabletsPayload) event.getCurrentResponse().getPayload();
+      // Consensus tablet events are emitted as one TabletsPayload. A non-positive nextOffset means
+      // the client already received the complete batch, so any follow-up poll with an offset is
+      // stale or malformed rather than a valid continuation request.
+      if (payload.getNextOffset() <= 0) {
+        return generateErrorResponse(
+            String.format(
+                "ConsensusPrefetchingQueue %s: no remaining tablet chunk for consumer %s, "
+                    + "commit context %s, requested offset %s, current nextOffset %s",
+                this, consumerId, commitContext, offset, payload.getNextOffset()));
+      }
+      if (offset != payload.getNextOffset()) {
+        return generateErrorResponse(
+            String.format(
+                "ConsensusPrefetchingQueue %s: inconsistent tablet offset for consumer %s, "
+                    + "commit context %s, requested offset %s, current nextOffset %s",
+                this, consumerId, commitContext, offset, payload.getNextOffset()));
+      }
+      return generateErrorResponse(
+          String.format(
+              "ConsensusPrefetchingQueue %s: offset-based tablet continuation is not supported "
+                  + "for consensus subscription, consumer %s, commit context %s, offset %s",
+              this, consumerId, commitContext, offset));
     } finally {
       releaseReadLock();
     }
@@ -1685,93 +1712,9 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  /**
-   * Deserializes the IConsensusRequest entries within an IndexedConsensusRequest to produce an
-   * InsertNode. WAL entries are typically stored as IoTConsensusRequest (serialized ByteBuffers),
-   * and a single logical write may be split across multiple fragments (SearchNode). This method
-   * handles both cases.
-   *
-   * <p>The deserialization follows the same pattern as {@code
-   * DataRegionStateMachine.grabPlanNode()}.
-   */
-  private InsertNode deserializeToInsertNode(final IndexedConsensusRequest indexedRequest) {
-    final List<SearchNode> searchNodes = new ArrayList<>();
-    PlanNode nonSearchNode = null;
-
-    for (final IConsensusRequest req : indexedRequest.getRequests()) {
-      PlanNode planNode;
-      try {
-        if (req instanceof IoTConsensusRequest) {
-          // WAL entries read from file are wrapped as IoTConsensusRequest (ByteBuffer)
-          planNode = WALEntry.deserializeForConsensus(req.serializeToByteBuffer());
-        } else if (req instanceof InsertNode) {
-          // In-memory entries (not yet flushed to WAL file) may already be PlanNode
-          planNode = (PlanNode) req;
-        } else {
-          // ByteBufferConsensusRequest or unknown
-          planNode = PlanNodeType.deserialize(req.serializeToByteBuffer());
-        }
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "ConsensusPrefetchingQueue {}: failed to deserialize IConsensusRequest "
-                + "(type={}) in searchIndex={}: {}",
-            this,
-            req.getClass().getSimpleName(),
-            indexedRequest.getSearchIndex(),
-            e.getMessage(),
-            e);
-        continue;
-      }
-
-      if (planNode instanceof SearchNode) {
-        final SearchNode searchNode = (SearchNode) planNode;
-        searchNode.setSearchIndex(indexedRequest.getSearchIndex());
-        if (indexedRequest.getSyncIndex() >= 0) {
-          searchNode.setSyncIndex(indexedRequest.getSyncIndex());
-        }
-        if (indexedRequest.getPhysicalTime() > 0) {
-          searchNode.setPhysicalTime(indexedRequest.getPhysicalTime());
-        }
-        if (indexedRequest.getNodeId() >= 0) {
-          searchNode.setNodeId(indexedRequest.getNodeId());
-        }
-        searchNodes.add(searchNode);
-      } else {
-        nonSearchNode = planNode;
-      }
-    }
-
-    // Merge split SearchNode fragments (same pattern as DataRegionStateMachine.grabPlanNode)
-    if (!searchNodes.isEmpty()) {
-      final PlanNode merged = searchNodes.get(0).merge(searchNodes);
-      if (merged instanceof InsertNode) {
-        final InsertNode mergedInsert = (InsertNode) merged;
-        LOGGER.debug(
-            "ConsensusPrefetchingQueue {}: deserialized merged InsertNode for searchIndex={}, "
-                + "type={}, deviceId={}, searchNodeCount={}",
-            this,
-            indexedRequest.getSearchIndex(),
-            mergedInsert.getType(),
-            ConsensusLogToTabletConverter.safeDeviceIdForLog(mergedInsert),
-            searchNodes.size());
-
-        return mergedInsert;
-      }
-    }
-
-    if (nonSearchNode != null) {
-      LOGGER.debug(
-          "ConsensusPrefetchingQueue {}: searchIndex={} contains non-InsertNode PlanNode: {}",
-          this,
-          indexedRequest.getSearchIndex(),
-          nonSearchNode.getClass().getSimpleName());
-    }
-
-    return null;
-  }
-
   private PreparedEntry prepareEntry(final IndexedConsensusRequest indexedRequest) {
-    final InsertNode insertNode = deserializeToInsertNode(indexedRequest);
+    final InsertNode insertNode =
+        ConsensusLogToTabletConverter.deserializeToInsertNode(indexedRequest);
     if (Objects.isNull(insertNode)) {
       return null;
     }
