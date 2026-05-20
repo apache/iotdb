@@ -31,7 +31,6 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
-import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -241,7 +240,7 @@ public class LogDispatcher {
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
     private final CountDownLatch runFinished = new CountDownLatch(1);
-    private volatile long lastIdleSafeHlcSentTimeMs = 0L;
+    private volatile long lastIdleWriterSafeTimeBarrierSentTimeMs = 0L;
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -360,7 +359,7 @@ public class LogDispatcher {
         while (!Thread.interrupted() && !stopped) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
-            maybeSendIdleSafeHlc();
+            maybeSendIdleWriterSafeTimeBarrier();
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
                 pendingEntries.poll(calculateIdlePollTimeoutInMs(), TimeUnit.MILLISECONDS);
@@ -372,7 +371,7 @@ public class LogDispatcher {
                 Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
             } else {
-              maybeSendIdleSafeHlc();
+              maybeSendIdleWriterSafeTimeBarrier();
             }
             // Immediately check for interrupts after poll and sleep
             if (Thread.interrupted() || stopped) {
@@ -524,27 +523,22 @@ public class LogDispatcher {
       return batches;
     }
 
-    private void maybeSendIdleSafeHlc() {
-      if (!shouldSendIdleSafeHlc()) {
+    private void maybeSendIdleWriterSafeTimeBarrier() {
+      if (!shouldSendIdleWriterSafeTimeBarrier()) {
         return;
       }
       final long now = System.currentTimeMillis();
-      if (now - lastIdleSafeHlcSentTimeMs
-          < SubscriptionConfig.getInstance().getSubscriptionConsensusIdleSafeHlcIntervalMs()) {
+      if (now - lastIdleWriterSafeTimeBarrierSentTimeMs
+          < SubscriptionConfig.getInstance()
+              .getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()) {
         return;
       }
-      final WriterSafeFrontierTracker.SafeHlc safeHlc = impl.createIdleSafeHlcForCurrentWriter();
-      final TSStatus status =
-          impl.syncSafeHlcToPeer(
-              peer,
-              safeHlc.getSafePhysicalTime(),
-              impl.getThisNode().getNodeId(),
-              safeHlc.getBarrierLocalSeq());
+      final TSStatus status = impl.syncIdleWriterSafeTimeBarrierToPeer(peer);
       if (status.getCode() == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        lastIdleSafeHlcSentTimeMs = now;
+        lastIdleWriterSafeTimeBarrierSentTimeMs = now;
       } else {
         logger.debug(
-            "{}: Failed to send idle safeHLC to {}. status={}",
+            "{}: Failed to send idle writer safe-time barrier to {}. status={}",
             impl.getThisNode().getGroupId(),
             peer,
             status);
@@ -552,20 +546,21 @@ public class LogDispatcher {
     }
 
     private long calculateIdlePollTimeoutInMs() {
-      if (!shouldSendIdleSafeHlc()) {
+      if (!shouldSendIdleWriterSafeTimeBarrier()) {
         return PENDING_REQUEST_TAKING_TIME_OUT_IN_MS;
       }
-      final long elapsedSinceLastIdleSafeHlcMs =
-          System.currentTimeMillis() - lastIdleSafeHlcSentTimeMs;
-      final long untilNextIdleSafeHlcMs =
+      final long elapsedSinceLastIdleWriterSafeTimeBarrierMs =
+          System.currentTimeMillis() - lastIdleWriterSafeTimeBarrierSentTimeMs;
+      final long untilNextIdleWriterSafeTimeBarrierMs =
           Math.max(
               1L,
-              SubscriptionConfig.getInstance().getSubscriptionConsensusIdleSafeHlcIntervalMs()
-                  - elapsedSinceLastIdleSafeHlcMs);
-      return Math.min(PENDING_REQUEST_TAKING_TIME_OUT_IN_MS, untilNextIdleSafeHlcMs);
+              SubscriptionConfig.getInstance()
+                      .getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()
+                  - elapsedSinceLastIdleWriterSafeTimeBarrierMs);
+      return Math.min(PENDING_REQUEST_TAKING_TIME_OUT_IN_MS, untilNextIdleWriterSafeTimeBarrierMs);
     }
 
-    private boolean shouldSendIdleSafeHlc() {
+    private boolean shouldSendIdleWriterSafeTimeBarrier() {
       return impl.hasSubscriptionConsumers()
           && pendingEntries.isEmpty()
           && bufferedEntries.isEmpty()

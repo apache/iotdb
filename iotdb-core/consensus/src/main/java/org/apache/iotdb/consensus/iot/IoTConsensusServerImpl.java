@@ -63,8 +63,8 @@ import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelReq;
 import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelRes;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
-import org.apache.iotdb.consensus.iot.thrift.TSyncSafeHlcReq;
-import org.apache.iotdb.consensus.iot.thrift.TSyncSafeHlcRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
@@ -708,16 +708,16 @@ public class IoTConsensusServerImpl {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  public TSStatus syncSafeHlcToPeer(
+  private TSStatus syncWriterSafeTimeBarrierToPeer(
       final Peer targetPeer,
       final long safePhysicalTime,
       final int writerNodeId,
       final long barrierLocalSeq) {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
-      final TSyncSafeHlcRes res =
-          client.syncSafeHlc(
-              new TSyncSafeHlcReq()
+      final TSyncWriterSafeTimeBarrierRes res =
+          client.syncWriterSafeTimeBarrier(
+              new TSyncWriterSafeTimeBarrierReq()
                   .setConsensusGroupId(thisNode.getGroupId().convertToTConsensusGroupId())
                   .setSafePhysicalTime(safePhysicalTime)
                   .setWriterNodeId(writerNodeId)
@@ -725,7 +725,8 @@ public class IoTConsensusServerImpl {
       return res.getStatus();
     } catch (Exception e) {
       logger.debug(
-          "Failed to sync safeHLC to peer {} for group {}, safePt={}, writerNodeId={}, barrier={}",
+          "Failed to sync writer safe-time barrier to peer {} for group {}, "
+              + "safePt={}, writerNodeId={}, barrier={}",
           targetPeer,
           consensusGroupId,
           safePhysicalTime,
@@ -814,18 +815,19 @@ public class IoTConsensusServerImpl {
     return req;
   }
 
-  public WriterSafeFrontierTracker.SafeHlc createIdleSafeHlcForCurrentWriter() {
+  public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {
     final long safePhysicalTime = assignPhysicalTimeInMs();
-    final long barrierLocalSeq = searchIndex.get();
+    final long safeLocalSeq = searchIndex.get();
     writerSafeFrontierTracker.recordAppliedProgress(
-        safePhysicalTime, thisNode.getNodeId(), barrierLocalSeq);
-    return new WriterSafeFrontierTracker.SafeHlc(safePhysicalTime, barrierLocalSeq);
+        safePhysicalTime, thisNode.getNodeId(), safeLocalSeq);
+    return syncWriterSafeTimeBarrierToPeer(
+        targetPeer, safePhysicalTime, thisNode.getNodeId(), safeLocalSeq);
   }
 
-  public void observeRemoteSafeHlc(
+  public void observeRemoteWriterSafeTimeBarrier(
       final long safePhysicalTime, final int writerNodeId, final long barrierLocalSeq) {
     observePhysicalTimeLowerBound(safePhysicalTime);
-    writerSafeFrontierTracker.observePendingSafeHlc(
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(
         safePhysicalTime, writerNodeId, barrierLocalSeq);
   }
 

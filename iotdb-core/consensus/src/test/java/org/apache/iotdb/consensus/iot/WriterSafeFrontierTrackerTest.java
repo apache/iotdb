@@ -22,41 +22,35 @@ package org.apache.iotdb.consensus.iot;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 public class WriterSafeFrontierTrackerTest {
 
   @Test
-  public void testPendingSafeHlcPromotesWhenBarrierIsApplied() {
+  public void testPendingWriterSafeTimeBarrierPromotesWhenBarrierIsApplied() {
     final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
 
     tracker.recordAppliedProgress(100L, 7, 10L);
     assertEquals(100L, tracker.getEffectiveSafePt(7));
 
-    tracker.observePendingSafeHlc(130L, 7, 20L);
+    tracker.observePendingWriterSafeTimeBarrier(130L, 7, 20L);
     assertEquals(100L, tracker.getEffectiveSafePt(7));
-    assertEquals(130L, tracker.getPendingSafeHlc(7).getSafePhysicalTime());
 
     tracker.recordAppliedProgress(125L, 7, 19L);
     assertEquals(125L, tracker.getEffectiveSafePt(7));
 
     tracker.recordAppliedProgress(126L, 7, 20L);
     assertEquals(130L, tracker.getEffectiveSafePt(7));
-    assertNull(tracker.getPendingSafeHlc(7));
   }
 
   @Test
-  public void testSameWriterKeepsOnlyNewestPendingSafeHlc() {
+  public void testSameWriterKeepsOnlyNewestPendingWriterSafeTimeBarrier() {
     final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
 
-    tracker.observePendingSafeHlc(200L, 9, 30L);
-    tracker.observePendingSafeHlc(220L, 9, 35L);
+    tracker.observePendingWriterSafeTimeBarrier(200L, 9, 30L);
+    tracker.observePendingWriterSafeTimeBarrier(220L, 9, 35L);
+    tracker.observePendingWriterSafeTimeBarrier(210L, 9, 32L);
 
-    assertEquals(220L, tracker.getPendingSafeHlc(9).getSafePhysicalTime());
-    assertEquals(35L, tracker.getPendingSafeHlc(9).getBarrierLocalSeq());
-
-    tracker.observePendingSafeHlc(210L, 9, 32L);
-    assertEquals(220L, tracker.getPendingSafeHlc(9).getSafePhysicalTime());
-    assertEquals(35L, tracker.getPendingSafeHlc(9).getBarrierLocalSeq());
+    tracker.recordAppliedProgress(0L, 9, 35L);
+    assertEquals(220L, tracker.getEffectiveSafePt(9));
   }
 }

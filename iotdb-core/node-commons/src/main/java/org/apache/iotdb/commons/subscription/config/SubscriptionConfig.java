@@ -186,8 +186,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
   }
 
-  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
-    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeHlcIntervalMs();
+  public long getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -292,8 +292,8 @@ public class SubscriptionConfig {
         "SubscriptionConsensusBatchMaxWalEntries: {}",
         getSubscriptionConsensusBatchMaxWalEntries());
     LOGGER.info(
-        "SubscriptionConsensusIdleSafeHlcIntervalMs: {}",
-        getSubscriptionConsensusIdleSafeHlcIntervalMs());
+        "SubscriptionConsensusIdleSafeTimeBarrierIntervalMs: {}",
+        getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

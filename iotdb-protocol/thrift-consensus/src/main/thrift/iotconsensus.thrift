@@ -43,14 +43,14 @@ struct TSyncLogEntriesRes {
   2: optional i64 receiverMemSize
 }
 
-struct TSyncSafeHlcReq {
+struct TSyncWriterSafeTimeBarrierReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required i64 safePhysicalTime
   3: required i32 writerNodeId
   4: required i64 barrierLocalSeq
 }
 
-struct TSyncSafeHlcRes {
+struct TSyncWriterSafeTimeBarrierRes {
   1: required common.TSStatus status
 }
 
@@ -142,7 +142,7 @@ struct TCleanupTransferredSnapshotRes {
 
 service IoTConsensusIService {
   TSyncLogEntriesRes syncLogEntries(TSyncLogEntriesReq req)
-  TSyncSafeHlcRes syncSafeHlc(TSyncSafeHlcReq req)
+  TSyncWriterSafeTimeBarrierRes syncWriterSafeTimeBarrier(TSyncWriterSafeTimeBarrierReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
   TActivatePeerRes activatePeer(TActivatePeerReq req)
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)

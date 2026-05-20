@@ -420,7 +420,7 @@ public class CommonConfig {
 
   private long subscriptionConsensusWatermarkIntervalMs = 1000;
 
-  private long subscriptionConsensusIdleSafeHlcIntervalMs = 1_000;
+  private long subscriptionConsensusIdleSafeTimeBarrierIntervalMs = 1_000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -2711,13 +2711,14 @@ public class CommonConfig {
     this.subscriptionConsensusWatermarkIntervalMs = subscriptionConsensusWatermarkIntervalMs;
   }
 
-  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
-    return subscriptionConsensusIdleSafeHlcIntervalMs;
+  public long getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs() {
+    return subscriptionConsensusIdleSafeTimeBarrierIntervalMs;
   }
 
-  public void setSubscriptionConsensusIdleSafeHlcIntervalMs(
-      final long subscriptionConsensusIdleSafeHlcIntervalMs) {
-    this.subscriptionConsensusIdleSafeHlcIntervalMs = subscriptionConsensusIdleSafeHlcIntervalMs;
+  public void setSubscriptionConsensusIdleSafeTimeBarrierIntervalMs(
+      final long subscriptionConsensusIdleSafeTimeBarrierIntervalMs) {
+    this.subscriptionConsensusIdleSafeTimeBarrierIntervalMs =
+        subscriptionConsensusIdleSafeTimeBarrierIntervalMs;
   }
 
   public void setSubscriptionConsensusBatchMaxTabletCount(

@@ -520,11 +520,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_watermark_interval_ms",
                 String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
-    config.setSubscriptionConsensusIdleSafeHlcIntervalMs(
+    config.setSubscriptionConsensusIdleSafeTimeBarrierIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "subscription_consensus_idle_safe_hlc_interval_ms",
-                String.valueOf(config.getSubscriptionConsensusIdleSafeHlcIntervalMs()))));
+                "subscription_consensus_idle_safe_time_barrier_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusIdleSafeTimeBarrierIntervalMs()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {
