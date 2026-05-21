@@ -159,7 +159,7 @@ public abstract class ResourceByPathUtils {
     // calculateRamSize (synchronized method on TVList) was previously called before
     // lockQueryList to avoid deadlock concerns. For partial clone of AlignedTVList, however
     // calculateRamSize must now be called inside the lockQueryList section because it depends on
-    // queries accessing the AlignedTVList.
+    // accessing columns on the AlignedTVList.
     // This is safe because the lock ordering — queryListLock must always be acquired before the
     // TVList intrinsic lock (via synchronized methods like calculateRamSize, clone). So no AB-BA
     // deadlock is possible.
@@ -212,16 +212,17 @@ public abstract class ResourceByPathUtils {
           tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
         }
       } else {
-        // columnIndexList is to track column-level access for AlignedTVList.
-        // For TVList (primitive time series), it remains null and column tracking is not needed.
-        if (columnIndexList != null && context instanceof FragmentInstanceContext) {
-          ((FragmentInstanceContext) context).putAccessedColumns(list, columnIndexList);
-        }
         if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
               "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
           list.getQueryContextSet().add(context);
           tvListQueryMap.put(list, list.rowCount());
+
+          // columnIndexList is to track column-level access for AlignedTVList.
+          // For TVList (primitive time series), it remains null and column tracking is not needed.
+          if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+            ((FragmentInstanceContext) context).putAccessedColumns(list, columnIndexList);
+          }
         } else {
           /*
            * +----------------------+
@@ -273,6 +274,9 @@ public abstract class ResourceByPathUtils {
 
             cloneList.getQueryContextSet().add(context);
             tvListQueryMap.put(cloneList, cloneList.rowCount());
+            if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+              ((FragmentInstanceContext) context).putAccessedColumns(cloneList, columnIndexList);
+            }
 
             memChunk.setWorkingTVList(cloneList);
           }

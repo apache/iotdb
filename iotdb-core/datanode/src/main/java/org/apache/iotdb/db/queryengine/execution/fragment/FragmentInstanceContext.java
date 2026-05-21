@@ -996,6 +996,7 @@ public class FragmentInstanceContext extends QueryContext {
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();
+    alignedTVListColumnAccessMap.clear();
 
     fileModCache = null;
     nonExistentModFiles = null;
