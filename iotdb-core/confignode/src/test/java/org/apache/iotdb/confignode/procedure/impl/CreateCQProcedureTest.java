@@ -36,9 +36,35 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.fail;
 
 public class CreateCQProcedureTest {
+
+  @Test
+  public void tokenShouldBeUniqueForSameCQId() {
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    try {
+      TCreateCQReq req =
+          new TCreateCQReq(
+              "testCq1",
+              1000,
+              0,
+              1000,
+              0,
+              (byte) 0,
+              "select s1 into root.backup.d1(s1) from root.sg.d1",
+              "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.sg.d1 END",
+              "Asia",
+              "root");
+      CreateCQProcedure createCQProcedure1 = new CreateCQProcedure(req, executor);
+      CreateCQProcedure createCQProcedure2 = new CreateCQProcedure(req, executor);
+
+      assertNotEquals(createCQProcedure1.getMd5(), createCQProcedure2.getMd5());
+    } finally {
+      executor.shutdown();
+    }
+  }
 
   @Test
   public void serializeDeserializeTest() {

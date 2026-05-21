@@ -19,8 +19,11 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -98,5 +101,39 @@ public class CQInfoTest {
     actualCQInfo.processLoadSnapshot(snapshotDir);
 
     Assert.assertEquals(cqInfo, actualCQInfo);
+  }
+
+  @Test
+  public void testOldCallbackCannotTouchRecreatedCQ() throws Exception {
+    long executionTime = System.currentTimeMillis();
+    TCreateCQReq req =
+        new TCreateCQReq(
+            "testCq3",
+            1000,
+            0,
+            1000,
+            0,
+            (byte) 0,
+            "select s1 into root.backup.d3.s1 from root.sg.d3",
+            "create cq testCq3 BEGIN select s1 into root.backup.d3.s1 from root.sg.d3 END",
+            "Asia",
+            "root");
+
+    cqInfo.addCQ(new AddCQPlan(req, "oldMd5", executionTime));
+    cqInfo.dropCQ(new DropCQPlan("testCq3"));
+    cqInfo.addCQ(new AddCQPlan(req, "newMd5", executionTime));
+
+    Assert.assertEquals(
+        TSStatusCode.NO_SUCH_CQ.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "oldMd5"))
+            .code);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        cqInfo
+            .updateCQLastExecutionTime(
+                new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "newMd5"))
+            .code);
   }
 }

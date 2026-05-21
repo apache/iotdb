@@ -22,11 +22,15 @@ package org.apache.iotdb.confignode.procedure.impl.cq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
+import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -45,6 +49,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.apache.iotdb.confignode.procedure.state.cq.CreateCQState.INACTIVE;
@@ -75,7 +81,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   public CreateCQProcedure(TCreateCQReq req, ScheduledExecutorService executor) {
     super();
     this.req = req;
-    this.md5 = DigestUtils.md2Hex(req.cqId);
+    this.md5 = generateCQToken(req.cqId);
     this.executor = executor;
     this.firstExecutionTime =
         CQScheduleTask.getFirstExecutionTime(req.boundaryTime, req.everyInterval);
@@ -91,12 +97,15 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           addCQ(env);
           return Flow.HAS_MORE_STATE;
         case INACTIVE:
-          CQScheduleTask cqScheduleTask =
-              new CQScheduleTask(req, firstExecutionTime, md5, executor, env.getConfigManager());
-          cqScheduleTask.submitSelf();
+          submitScheduleTask(
+              env,
+              new CQScheduleTask(req, firstExecutionTime, md5, executor, env.getConfigManager()));
           setNextState(SCHEDULED);
           break;
         case SCHEDULED:
+          if (isStateDeserialized()) {
+            recoverScheduledTask(env);
+          }
           activeCQ(env);
           return Flow.NO_MORE_STATE;
         default:
@@ -165,6 +174,43 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           ProcedureMessages.FAILED_TO_ACTIVE_CQ_SUCCESSFULLY_BECAUSE_OF_UNKNOWN_REASONS,
           req.cqId,
           res);
+    }
+  }
+
+  void recoverScheduledTask(ConfigNodeProcedureEnv env) throws ConsensusException {
+    Optional<CQInfo.CQEntry> cqEntry = getCurrentCQEntry(env);
+    if (!cqEntry.isPresent()) {
+      LOGGER.info(
+          "Skip recovering the schedule task of CQ {} because its metadata is unavailable.",
+          req.cqId);
+      return;
+    }
+    submitScheduleTask(env, new CQScheduleTask(cqEntry.get(), executor, env.getConfigManager()));
+  }
+
+  Optional<CQInfo.CQEntry> getCurrentCQEntry(ConfigNodeProcedureEnv env)
+      throws ConsensusException {
+    ShowCQResp response =
+        (ShowCQResp) env.getConfigManager().getConsensusManager().read(new ShowCQPlan());
+    return response.getCqList().stream()
+        .filter(entry -> req.cqId.equals(entry.getCqId()) && md5.equals(entry.getMd5()))
+        .findFirst();
+  }
+
+  private static String generateCQToken(String cqId) {
+    return DigestUtils.md2Hex(cqId + "-" + UUID.randomUUID());
+  }
+
+  private void submitScheduleTask(ConfigNodeProcedureEnv env, CQScheduleTask cqScheduleTask) {
+    CQManager cqManager = env.getConfigManager().getCQManager();
+    if (!cqManager.markCQLocallyScheduled(req.cqId, md5)) {
+      return;
+    }
+    try {
+      cqScheduleTask.submitSelf();
+    } catch (RuntimeException e) {
+      cqManager.unmarkCQLocallyScheduled(req.cqId, md5);
+      throw e;
     }
   }
 
@@ -271,5 +317,13 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         req,
         md5,
         firstExecutionTime);
+  }
+
+  public String getCqId() {
+    return req == null ? null : req.getCqId();
+  }
+
+  public String getMd5() {
+    return md5;
   }
 }

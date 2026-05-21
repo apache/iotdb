@@ -43,7 +43,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -57,11 +60,14 @@ public class CQManager {
 
   private final ReadWriteLock lock;
 
+  private final ConcurrentMap<String, String> locallyScheduledCQs;
+
   private ScheduledExecutorService executor;
 
   public CQManager(ConfigManager configManager) {
     this.configManager = configManager;
     this.lock = new ReentrantReadWriteLock();
+    this.locallyScheduledCQs = new ConcurrentHashMap<>();
     this.executor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
             CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
@@ -79,7 +85,11 @@ public class CQManager {
 
   public TSStatus dropCQ(TDropCQReq req) {
     try {
-      return configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
+      TSStatus status = configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        locallyScheduledCQs.remove(req.cqId);
+      }
+      return status;
     } catch (ConsensusException e) {
       LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_DROPPING_CQ, req.cqId, e);
       // consensus layer related errors
@@ -132,6 +142,7 @@ public class CQManager {
       executor =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
+      locallyScheduledCQs.clear();
 
       // 3. get all CQs
       List<CQInfo.CQEntry> allCQs = null;
@@ -155,8 +166,16 @@ public class CQManager {
       if (allCQs != null) {
         for (CQInfo.CQEntry entry : allCQs) {
           if (entry.getState() == CQState.ACTIVE) {
+            if (!markCQLocallyScheduled(entry.getCqId(), entry.getMd5())) {
+              continue;
+            }
             CQScheduleTask cqScheduleTask = new CQScheduleTask(entry, executor, configManager);
-            cqScheduleTask.submitSelf();
+            try {
+              cqScheduleTask.submitSelf();
+            } catch (RuntimeException e) {
+              unmarkCQLocallyScheduled(entry.getCqId(), entry.getMd5());
+              throw e;
+            }
           }
         }
       }
@@ -176,11 +195,30 @@ public class CQManager {
     try {
       previous = executor;
       executor = null;
+      locallyScheduledCQs.clear();
     } finally {
       lock.writeLock().unlock();
     }
     if (previous != null) {
       previous.shutdown();
     }
+  }
+
+  public boolean markCQLocallyScheduled(String cqId, String md5) {
+    AtomicBoolean shouldSchedule = new AtomicBoolean(false);
+    locallyScheduledCQs.compute(
+        cqId,
+        (ignored, previousMd5) -> {
+          if (!md5.equals(previousMd5)) {
+            shouldSchedule.set(true);
+            return md5;
+          }
+          return previousMd5;
+        });
+    return shouldSchedule.get();
+  }
+
+  public void unmarkCQLocallyScheduled(String cqId, String md5) {
+    locallyScheduledCQs.remove(cqId, md5);
   }
 }
