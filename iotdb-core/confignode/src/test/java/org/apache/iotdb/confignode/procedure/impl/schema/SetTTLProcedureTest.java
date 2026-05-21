@@ -19,19 +19,36 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class SetTTLProcedureTest {
 
@@ -64,5 +81,187 @@ public class SetTTLProcedureTest {
     Assert.assertTrue(proc.equals(proc2));
     buffer.clear();
     byteArrayOutputStream.reset();
+  }
+
+  @Test
+  public void serializeDeserializeTestWithCapturedRollbackState() throws Exception {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    final SetTTLPlan setTTLPlan =
+        new SetTTLPlan(Arrays.asList(new PartialPath("root.db").getNodes()), 2000L);
+    setTTLPlan.setDataBase(true);
+    final TestingSetTTLProcedure procedure = new TestingSetTTLProcedure(setTTLPlan);
+
+    final Map<String, Long> ttlMap = new HashMap<>();
+    ttlMap.put("root.**", Long.MAX_VALUE);
+    ttlMap.put("root.db", 500L);
+    ttlMap.put("root.db.**", 600L);
+
+    procedure.executeFromState(mockProcedureEnv(ttlMap), SetTTLState.SET_CONFIGNODE_TTL);
+
+    procedure.serialize(outputStream);
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    final SetTTLProcedure deserializedProcedure =
+        (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
+    Assert.assertTrue(procedure.equals(deserializedProcedure));
+  }
+
+  @Test
+  public void rollbackStateShouldUnsetNewTTLWhenPreviousStateDidNotExist() throws Exception {
+    final SetTTLPlan setTTLPlan =
+        new SetTTLPlan(Arrays.asList(new PartialPath("root.test.sg1.**").getNodes()), 1000L);
+    final TestingSetTTLProcedure procedure = new TestingSetTTLProcedure(setTTLPlan);
+    procedure.failFirstDataNodeUpdateForTest();
+
+    final ConfigNodeProcedureEnv env =
+        mockProcedureEnv(Collections.singletonMap("root.**", Long.MAX_VALUE));
+
+    procedure.executeFromState(env, SetTTLState.SET_CONFIGNODE_TTL);
+    procedure.executeFromState(env, SetTTLState.UPDATE_DATANODE_CACHE);
+    Assert.assertTrue(procedure.isFailed());
+
+    procedure.rollbackState(env, SetTTLState.UPDATE_DATANODE_CACHE);
+
+    Assert.assertEquals(2, procedure.getWrittenPlans().size());
+    assertPlan(procedure.getWrittenPlans().get(0), "root.test.sg1.**", 1000L, false);
+    assertPlan(procedure.getWrittenPlans().get(1), "root.test.sg1.**", -1L, false);
+
+    Assert.assertEquals(2, procedure.getRequests().size());
+    assertRequest(procedure.getRequests().get(0), "root.test.sg1.**", 1000L, false);
+    assertRequest(procedure.getRequests().get(1), "root.test.sg1.**", -1L, false);
+  }
+
+  @Test
+  public void rollbackStateShouldRestoreDatabaseWildcardTTLSeparately() throws Exception {
+    final SetTTLPlan setTTLPlan =
+        new SetTTLPlan(Arrays.asList(new PartialPath("root.db").getNodes()), 2000L);
+    setTTLPlan.setDataBase(true);
+    final TestingSetTTLProcedure procedure = new TestingSetTTLProcedure(setTTLPlan);
+    procedure.failFirstDataNodeUpdateForTest();
+
+    final Map<String, Long> ttlMap = new HashMap<>();
+    ttlMap.put("root.**", Long.MAX_VALUE);
+    ttlMap.put("root.db", 500L);
+    ttlMap.put("root.db.**", 600L);
+    final ConfigNodeProcedureEnv env = mockProcedureEnv(ttlMap);
+
+    procedure.executeFromState(env, SetTTLState.SET_CONFIGNODE_TTL);
+    procedure.executeFromState(env, SetTTLState.UPDATE_DATANODE_CACHE);
+    Assert.assertTrue(procedure.isFailed());
+
+    procedure.rollbackState(env, SetTTLState.UPDATE_DATANODE_CACHE);
+
+    Assert.assertEquals(3, procedure.getWrittenPlans().size());
+    assertPlan(procedure.getWrittenPlans().get(0), "root.db", 2000L, true);
+    assertPlan(procedure.getWrittenPlans().get(1), "root.db", 500L, false);
+    assertPlan(procedure.getWrittenPlans().get(2), "root.db.**", 600L, false);
+
+    Assert.assertEquals(3, procedure.getRequests().size());
+    assertRequest(procedure.getRequests().get(0), "root.db", 2000L, true);
+    assertRequest(procedure.getRequests().get(1), "root.db", 500L, false);
+    assertRequest(procedure.getRequests().get(2), "root.db.**", 600L, false);
+  }
+
+  private ConfigNodeProcedureEnv mockProcedureEnv(final Map<String, Long> ttlMap) {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final TTLManager ttlManager = Mockito.mock(TTLManager.class);
+    final NodeManager nodeManager = Mockito.mock(NodeManager.class);
+
+    final TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(1);
+
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getTTLManager()).thenReturn(ttlManager);
+    Mockito.when(ttlManager.getAllTTL()).thenReturn(ttlMap);
+    Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
+    Mockito.when(nodeManager.getRegisteredDataNodeLocations())
+        .thenReturn(Collections.singletonMap(1, dataNodeLocation));
+    return env;
+  }
+
+  private void assertPlan(
+      final SetTTLPlan plan, final String path, final long ttl, final boolean isDataBase) {
+    Assert.assertEquals(path, String.join(".", plan.getPathPattern()));
+    Assert.assertEquals(ttl, plan.getTTL());
+    Assert.assertEquals(isDataBase, plan.isDataBase());
+  }
+
+  private void assertRequest(
+      final TSetTTLReq req, final String path, final long ttl, final boolean isDataBase) {
+    Assert.assertEquals(Collections.singletonList(path), req.getPathPattern());
+    Assert.assertEquals(ttl, req.getTTL());
+    Assert.assertEquals(isDataBase, req.isDataBase);
+  }
+
+  private static class TestingSetTTLProcedure extends SetTTLProcedure {
+
+    private final List<TSetTTLReq> requests = new ArrayList<>();
+    private final List<SetTTLPlan> writtenPlans = new ArrayList<>();
+    private boolean failFirstDataNodeUpdate = false;
+    private int requestCount = 0;
+
+    private TestingSetTTLProcedure(final SetTTLPlan plan) {
+      super(plan, false);
+    }
+
+    private void failFirstDataNodeUpdateForTest() {
+      failFirstDataNodeUpdate = true;
+    }
+
+    private List<TSetTTLReq> getRequests() {
+      return requests;
+    }
+
+    private List<SetTTLPlan> getWrittenPlans() {
+      return writtenPlans;
+    }
+
+    @Override
+    protected TSStatus writeConfigNodePlan(
+        final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
+      writtenPlans.add(copyPlan(setTTLPlan));
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    @Override
+    protected DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
+        final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
+      requests.add(copyRequest(req));
+
+      final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+          new DataNodeAsyncRequestContext<>(
+              CnToDnAsyncRequestType.SET_TTL, copyRequest(req), dataNodeLocationMap);
+      final List<Integer> requestIds = new ArrayList<>(clientHandler.getNodeLocationMap().keySet());
+      final boolean shouldFail = failFirstDataNodeUpdate && requestCount++ == 0;
+
+      for (Integer requestId : requestIds) {
+        clientHandler
+            .getResponseMap()
+            .put(
+                requestId,
+                new TSStatus(
+                    shouldFail
+                        ? TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+                        : TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        if (!shouldFail) {
+          clientHandler.getNodeLocationMap().remove(requestId);
+        }
+      }
+      return clientHandler;
+    }
+
+    private SetTTLPlan copyPlan(final SetTTLPlan plan) {
+      final SetTTLPlan copiedPlan =
+          new SetTTLPlan(Arrays.asList(plan.getPathPattern()), plan.getTTL());
+      copiedPlan.setDataBase(plan.isDataBase());
+      return copiedPlan;
+    }
+
+    private TSetTTLReq copyRequest(final TSetTTLReq req) {
+      return new TSetTTLReq(new ArrayList<>(req.getPathPattern()), req.getTTL(), req.isDataBase);
+    }
   }
 }

@@ -22,8 +22,10 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -47,14 +49,19 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
 public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTTLState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
+  private static final long TTL_NOT_EXIST = Long.MIN_VALUE;
 
   private SetTTLPlan plan;
+  private long previousTTL = TTL_NOT_EXIST;
+  private long previousDatabaseWildcardTTL = TTL_NOT_EXIST;
+  private boolean previousTTLStateCaptured = false;
 
   public SetTTLProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -86,18 +93,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
-  private void setConfigNodeTTL(ConfigNodeProcedureEnv env) {
-    TSStatus res;
-    try {
-      res =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
-      res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(e.getMessage());
-    }
+  protected void setConfigNodeTTL(final ConfigNodeProcedureEnv env) {
+    capturePreviousTTLState(env);
+    final TSStatus res = writeConfigNodePlan(env, plan);
     if (res.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
@@ -106,35 +104,171 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
-  private void updateDataNodeTTL(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+  protected void updateDataNodeTTL(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.SET_TTL,
-            new TSetTTLReq(
-                Collections.singletonList(String.join(".", plan.getPathPattern())),
-                plan.getTTL(),
-                plan.isDataBase()),
-            dataNodeLocationMap);
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(plan.getPathPattern(), plan.getTTL(), plan.isDataBase()));
+    if (hasFailedDataNode(clientHandler)) {
+      LOGGER.error("Failed to update ttl cache of dataNode.");
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
+    }
+  }
+
+  private void capturePreviousTTLState(final ConfigNodeProcedureEnv env) {
+    if (previousTTLStateCaptured) {
+      return;
+    }
+    final Map<String, Long> ttlMap = env.getConfigManager().getTTLManager().getAllTTL();
+    previousTTL = getTTLOrDefault(ttlMap, plan.getPathPattern());
+    if (plan.isDataBase()) {
+      previousDatabaseWildcardTTL =
+          getTTLOrDefault(ttlMap, getDatabaseWildcardPathPattern(plan.getPathPattern()));
+    }
+    previousTTLStateCaptured = true;
+  }
+
+  protected TSStatus writeConfigNodePlan(
+      final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
+    try {
+      return env.getConfigManager()
+          .getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  protected DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
+      final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_TTL, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schemaengine cache
+    return clientHandler;
+  }
+
+  private TSetTTLReq buildSetTTLReq(
+      final String[] pathPattern, final long ttl, final boolean isDataBase) {
+    return new TSetTTLReq(
+        Collections.singletonList(String.join(".", pathPattern)), ttl, isDataBase);
+  }
+
+  private boolean hasFailedDataNode(
+      final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler) {
+    if (!clientHandler.getRequestIndices().isEmpty()) {
+      return true;
+    }
+    for (TSStatus status : clientHandler.getResponseMap().values()) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(ProcedureMessages.FAILED_TO_UPDATE_TTL_CACHE_OF_DATANODE);
-        setFailure(
-            new ProcedureException(
-                new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
-        return;
+        return true;
       }
+    }
+    return false;
+  }
+
+  private long getTTLOrDefault(final Map<String, Long> ttlMap, final String[] pathPattern) {
+    return ttlMap.getOrDefault(String.join(".", pathPattern), TTL_NOT_EXIST);
+  }
+
+  private String[] getDatabaseWildcardPathPattern(final String[] pathPattern) {
+    final String[] pathNodes = Arrays.copyOf(pathPattern, pathPattern.length + 1);
+    pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+    return pathNodes;
+  }
+
+  private void rollbackConfigNodeTTL(final ConfigNodeProcedureEnv env) throws ProcedureException {
+    restoreTTLOnConfigNode(env, plan.getPathPattern(), previousTTL);
+    if (plan.isDataBase()) {
+      restoreTTLOnConfigNode(
+          env, getDatabaseWildcardPathPattern(plan.getPathPattern()), previousDatabaseWildcardTTL);
+    }
+  }
+
+  private void restoreTTLOnConfigNode(
+      final ConfigNodeProcedureEnv env, final String[] pathPattern, final long ttl)
+      throws ProcedureException {
+    final SetTTLPlan rollbackPlan =
+        new SetTTLPlan(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl);
+    rollbackPlan.setDataBase(false);
+    final TSStatus status = writeConfigNodePlan(env, rollbackPlan);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(
+          new MetadataException(
+              "Rollback ConfigNode ttl failed for "
+                  + String.join(".", pathPattern)
+                  + ": "
+                  + status.getMessage()));
+    }
+  }
+
+  private void rollbackDataNodeTTL(final ConfigNodeProcedureEnv env) throws ProcedureException {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    restoreTTLOnDataNodes(dataNodeLocationMap, plan.getPathPattern(), previousTTL);
+    if (plan.isDataBase()) {
+      restoreTTLOnDataNodes(
+          dataNodeLocationMap,
+          getDatabaseWildcardPathPattern(plan.getPathPattern()),
+          previousDatabaseWildcardTTL);
+    }
+  }
+
+  private void restoreTTLOnDataNodes(
+      final Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      final String[] pathPattern,
+      final long ttl)
+      throws ProcedureException {
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        sendTTLRequest(
+            dataNodeLocationMap,
+            buildSetTTLReq(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl, false));
+    if (hasFailedDataNode(clientHandler)) {
+      throw new ProcedureException(
+          new MetadataException(
+              "Rollback dataNode ttl cache failed for " + String.join(".", pathPattern)));
     }
   }
 
   @Override
-  protected void rollbackState(
-      ConfigNodeProcedureEnv configNodeProcedureEnv, SetTTLState setTTLState)
-      throws IOException, InterruptedException, ProcedureException {}
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final SetTTLState setTTLState)
+      throws IOException, InterruptedException, ProcedureException {
+    if (setTTLState != SetTTLState.UPDATE_DATANODE_CACHE || !previousTTLStateCaptured) {
+      return;
+    }
+    ProcedureException rollbackFailure = null;
+    try {
+      rollbackConfigNodeTTL(env);
+    } catch (ProcedureException e) {
+      LOGGER.error("Failed to rollback ConfigNode ttl state.", e);
+      rollbackFailure = e;
+    }
+    try {
+      rollbackDataNodeTTL(env);
+    } catch (ProcedureException e) {
+      LOGGER.error("Failed to rollback DataNode ttl cache.", e);
+      if (rollbackFailure == null) {
+        rollbackFailure = e;
+      }
+    }
+    if (rollbackFailure != null) {
+      throw rollbackFailure;
+    }
+  }
+
+  @Override
+  protected boolean isRollbackSupported(final SetTTLState state) {
+    return state == SetTTLState.UPDATE_DATANODE_CACHE;
+  }
 
   @Override
   protected SetTTLState getState(int stateId) {
@@ -159,6 +293,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
             : ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
+    stream.writeBoolean(previousTTLStateCaptured);
+    stream.writeLong(previousTTL);
+    stream.writeLong(previousDatabaseWildcardTTL);
   }
 
   @Override
@@ -167,6 +304,11 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     try {
       ReadWriteIOUtils.readInt(byteBuffer);
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      if (byteBuffer.remaining() >= 17) {
+        this.previousTTLStateCaptured = byteBuffer.get() != 0;
+        this.previousTTL = byteBuffer.getLong();
+        this.previousDatabaseWildcardTTL = byteBuffer.getLong();
+      }
     } catch (IOException e) {
       LOGGER.error(ProcedureMessages.IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN, e);
     }
@@ -180,12 +322,21 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return this.plan.equals(((SetTTLProcedure) o).plan)
-        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe);
+    final SetTTLProcedure that = (SetTTLProcedure) o;
+    return this.isGeneratedByPipe == that.isGeneratedByPipe
+        && this.previousTTL == that.previousTTL
+        && this.previousDatabaseWildcardTTL == that.previousDatabaseWildcardTTL
+        && this.previousTTLStateCaptured == that.previousTTLStateCaptured
+        && this.plan.equals(that.plan);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, isGeneratedByPipe);
+    return Objects.hash(
+        plan,
+        isGeneratedByPipe,
+        previousTTL,
+        previousDatabaseWildcardTTL,
+        previousTTLStateCaptured);
   }
 }

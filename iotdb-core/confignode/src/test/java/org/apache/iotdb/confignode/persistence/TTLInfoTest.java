@@ -50,6 +50,7 @@ public class TTLInfoTest {
   private final File snapshotDir = new File(BASE_OUTPUT_PATH, "ttlInfo-snapshot");
   private final long ttl = 123435565323L;
   private long[] originTTLArr;
+  private int originTTlRuleCapacity;
 
   @Before
   public void setup() throws IOException {
@@ -57,6 +58,7 @@ public class TTLInfoTest {
       snapshotDir.mkdirs();
     }
     originTTLArr = CommonDescriptor.getInstance().getConfig().getTierTTLInMs();
+    originTTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
     long[] ttlArr = new long[2];
     ttlArr[0] = 10000000L;
     ttlArr[1] = ttl;
@@ -70,6 +72,7 @@ public class TTLInfoTest {
       FileUtils.deleteDirectory(snapshotDir);
     }
     CommonDescriptor.getInstance().getConfig().setTierTTLInMs(originTTLArr);
+    CommonDescriptor.getInstance().getConfig().setTTlRuleCapacity(originTTlRuleCapacity);
   }
 
   @Test
@@ -243,6 +246,56 @@ public class TTLInfoTest {
     assertEquals(
         "The number of TTL rules has reached the limit (1000). Please delete some existing rules first.",
         status.message);
+  }
+
+  @Test
+  public void testUpdateExistingTTLWhenCapacityIsReached() {
+    CommonDescriptor.getInstance().getConfig().setTTlRuleCapacity(2);
+
+    SetTTLPlan setTTLPlan =
+        new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d1.**"), 1000);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
+    assertEquals(2, ttlInfo.getTTLCount());
+
+    setTTLPlan = new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d1.**"), 2000);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
+    assertEquals(2, ttlInfo.getTTLCount());
+    assertEquals(
+        Long.valueOf(2000),
+        ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap().get("root.sg1.d1.**"));
+  }
+
+  @Test
+  public void testUpdateExistingTTLWhenCurrentStateIsAlreadyOversize() {
+    SetTTLPlan setTTLPlan =
+        new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d1.**"), 1000);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
+    assertEquals(2, ttlInfo.getTTLCount());
+
+    CommonDescriptor.getInstance().getConfig().setTTlRuleCapacity(1);
+
+    setTTLPlan = new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1.d1.**"), 2000);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), ttlInfo.setTTL(setTTLPlan).code);
+    assertEquals(2, ttlInfo.getTTLCount());
+    assertEquals(
+        Long.valueOf(2000),
+        ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap().get("root.sg1.d1.**"));
+  }
+
+  @Test
+  public void testDatabaseTTLShouldReserveTwoSlots() {
+    CommonDescriptor.getInstance().getConfig().setTTlRuleCapacity(2);
+
+    SetTTLPlan setTTLPlan = new SetTTLPlan(PathNodesGenerator.splitPathToNodes("root.sg1"), 1000);
+    setTTLPlan.setDataBase(true);
+
+    final TSStatus status = ttlInfo.setTTL(setTTLPlan);
+    assertEquals(TSStatusCode.OVERSIZE_TTL.getStatusCode(), status.code);
+    assertEquals(1, ttlInfo.getTTLCount());
+    assertEquals(1, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap().size());
+    assertEquals(
+        Long.valueOf(Long.MAX_VALUE),
+        ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap().get("root.**"));
   }
 
   @Test

@@ -70,7 +70,8 @@ public class TTLInfo implements SnapshotProcessor {
     try {
       // check ttl rule capacity
       final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
-      if (getTTLCount() >= tTlRuleCapacity) {
+      final int newTTLRuleCount = calculateNewTTLRuleCount(plan);
+      if (newTTLRuleCount > 0 && ttlCache.getTtlCount() + newTTLRuleCount > tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
             String.format(
@@ -90,6 +91,20 @@ public class TTLInfo implements SnapshotProcessor {
       lock.writeLock().unlock();
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private int calculateNewTTLRuleCount(SetTTLPlan plan) {
+    int newTTLRuleCount = getNewTTLRuleCount(plan.getPathPattern());
+    if (plan.isDataBase()) {
+      String[] pathNodes = Arrays.copyOf(plan.getPathPattern(), plan.getPathPattern().length + 1);
+      pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+      newTTLRuleCount += getNewTTLRuleCount(pathNodes);
+    }
+    return newTTLRuleCount;
+  }
+
+  private int getNewTTLRuleCount(String[] pathNodes) {
+    return ttlCache.getLastNodeTTL(pathNodes) == TTLCache.NULL_TTL ? 1 : 0;
   }
 
   /** Only used for upgrading from database level ttl to device level ttl. */
