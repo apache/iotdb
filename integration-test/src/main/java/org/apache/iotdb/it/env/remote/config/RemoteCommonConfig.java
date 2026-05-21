@@ -265,6 +265,16 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     return this;
   }

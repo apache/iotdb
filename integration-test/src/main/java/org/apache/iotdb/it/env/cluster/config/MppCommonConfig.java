@@ -376,6 +376,19 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    setProperty("check_period_when_insert_blocked", String.valueOf(checkPeriodWhenInsertBlocked));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    setProperty(
+        "max_waiting_time_when_insert_blocked", String.valueOf(maxWaitingTimeWhenInsertBlocked));
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     setProperty("degree_of_query_parallelism", String.valueOf(degreeOfParallelism));
     return this;

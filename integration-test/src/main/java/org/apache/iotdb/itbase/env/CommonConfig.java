@@ -120,6 +120,10 @@ public interface CommonConfig {
 
   CommonConfig setWalBufferSize(int walBufferSize);
 
+  CommonConfig setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked);
+
+  CommonConfig setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked);
+
   CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);

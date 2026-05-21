@@ -52,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
@@ -69,6 +70,9 @@ public class WALManager implements IService {
   private final AtomicLong totalDiskUsage = new AtomicLong();
   // total number of wal files
   private final AtomicLong totalFileNum = new AtomicLong();
+  private final AtomicLong walThrottleStartTimeInMs = new AtomicLong(-1);
+  private final AtomicLong walBufferQueueBlockedStartTimeInMs = new AtomicLong(-1);
+  private final AtomicInteger walBufferQueueBlockedWriterCount = new AtomicInteger(0);
 
   private WALManager() {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
@@ -235,6 +239,49 @@ public class WALManager implements IService {
     return getTotalDiskUsage() >= getThrottleThreshold();
   }
 
+  public boolean isLongTermWriteBlocked() {
+    return isLongTermWalThrottle() || isLongTermWalBufferQueueBlocked();
+  }
+
+  private boolean isLongTermWalThrottle() {
+    if (!shouldThrottle()) {
+      walThrottleStartTimeInMs.set(-1);
+      return false;
+    }
+    return isLongTermBlocked(walThrottleStartTimeInMs);
+  }
+
+  private boolean isLongTermWalBufferQueueBlocked() {
+    if (walBufferQueueBlockedWriterCount.get() <= 0) {
+      walBufferQueueBlockedStartTimeInMs.set(-1);
+      return false;
+    }
+    return isLongTermBlocked(walBufferQueueBlockedStartTimeInMs);
+  }
+
+  private boolean isLongTermBlocked(AtomicLong blockStartTimeInMs) {
+    long currentTimeInMs = System.currentTimeMillis();
+    long blockStartTime = blockStartTimeInMs.get();
+    if (blockStartTime < 0) {
+      blockStartTimeInMs.compareAndSet(-1, currentTimeInMs);
+      blockStartTime = blockStartTimeInMs.get();
+    }
+    return currentTimeInMs - blockStartTime >= config.getMaxWaitingTimeWhenInsertBlocked();
+  }
+
+  public void markWalBufferQueueBlocked() {
+    if (walBufferQueueBlockedWriterCount.getAndIncrement() == 0) {
+      walBufferQueueBlockedStartTimeInMs.compareAndSet(-1, System.currentTimeMillis());
+    }
+  }
+
+  public void markWalBufferQueueAvailable() {
+    if (walBufferQueueBlockedWriterCount.decrementAndGet() <= 0) {
+      walBufferQueueBlockedWriterCount.set(0);
+      walBufferQueueBlockedStartTimeInMs.set(-1);
+    }
+  }
+
   public long getThrottleThreshold() {
     return (long) (config.getThrottleThreshold() * 0.8);
   }
@@ -321,6 +368,9 @@ public class WALManager implements IService {
 
   public void clear() {
     totalDiskUsage.set(0);
+    walThrottleStartTimeInMs.set(-1);
+    walBufferQueueBlockedStartTimeInMs.set(-1);
+    walBufferQueueBlockedWriterCount.set(0);
     walNodesManager.clear();
   }
 
