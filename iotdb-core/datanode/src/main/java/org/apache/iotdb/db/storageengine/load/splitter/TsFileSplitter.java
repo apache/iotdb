@@ -93,6 +93,11 @@ public class TsFileSplitter {
     this.consumer = consumer;
   }
 
+  public void splitTsFileByDataPartition()
+      throws IOException, LoadFileException, IllegalStateException {
+    splitTsFileByDataPartition(null);
+  }
+
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition(String database)
       throws IOException, LoadFileException, IllegalStateException {

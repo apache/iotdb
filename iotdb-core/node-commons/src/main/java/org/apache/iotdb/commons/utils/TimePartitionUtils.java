@@ -214,20 +214,40 @@ public class TimePartitionUtils {
     return timePartitionSlot;
   }
 
+  public static TTimePartitionSlot getTimePartitionSlot(long time) {
+    return getTimePartitionSlot(time, null);
+  }
+
   public static long getTimePartitionInterval(String database) {
     return getDatabaseConfig(database).getTimePartitionInterval();
+  }
+
+  public static long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 
   public static long getTimePartitionOrigin(String database) {
     return getDatabaseConfig(database).getTimePartitionOrigin();
   }
 
+  public static long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
   public static long getTimePartitionLowerBound(long time, String database) {
     return getTimePartitionLowerBoundInternal(time, getDatabaseConfig(database));
   }
 
+  public static long getTimePartitionLowerBound(long time) {
+    return getTimePartitionLowerBound(time, null);
+  }
+
   public static long getTimePartitionUpperBound(long time, String database) {
     return getTimePartitionUpperBoundInternal(time, getDatabaseConfig(database));
+  }
+
+  public static long getTimePartitionUpperBound(long time) {
+    return getTimePartitionUpperBound(time, null);
   }
 
   public static long getTimePartitionId(long time, String database) {
@@ -238,9 +258,20 @@ public class TimePartitionUtils {
         : time / config.getTimePartitionInterval() - 1;
   }
 
+  public static long getTimePartitionId(long time) {
+    time -= timePartitionOrigin;
+    return time > 0 || time % timePartitionInterval == 0
+        ? time / timePartitionInterval
+        : time / timePartitionInterval - 1;
+  }
+
   public static long getStartTimeByPartitionId(long partitionId, String database) {
     DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     return (partitionId * config.getTimePartitionInterval()) + config.getTimePartitionOrigin();
+  }
+
+  public static long getStartTimeByPartitionId(long partitionId) {
+    return (partitionId * timePartitionInterval) + timePartitionOrigin;
   }
 
   public static boolean satisfyPartitionId(
@@ -261,6 +292,20 @@ public class TimePartitionUtils {
     return startPartition <= partitionId && endPartition >= partitionId;
   }
 
+  public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
+    long startPartition =
+        originMayCauseOverflow
+            ? getTimePartitionIdWithoutOverflow(
+                startTime, timePartitionOrigin, timePartitionInterval)
+            : getTimePartitionId(startTime);
+    long endPartition =
+        originMayCauseOverflow
+            ? getTimePartitionIdWithoutOverflow(
+                endTime, timePartitionOrigin, timePartitionInterval)
+            : getTimePartitionId(endTime);
+    return startPartition <= partitionId && endPartition >= partitionId;
+  }
+
   public static boolean satisfyPartitionStartTime(
       Filter timeFilter, long partitionStartTime, String database) {
     if (timeFilter == null) {
@@ -271,6 +316,17 @@ public class TimePartitionUtils {
         partitionStartTime >= config.getTimePartitionLowerBoundWithoutOverflow()
             ? Long.MAX_VALUE
             : (partitionStartTime + config.getTimePartitionInterval() - 1);
+    return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
+  }
+
+  public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
+    if (timeFilter == null) {
+      return true;
+    }
+    long partitionEndTime =
+        partitionStartTime >= timePartitionLowerBoundWithoutOverflow
+            ? Long.MAX_VALUE
+            : (partitionStartTime + timePartitionInterval - 1);
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 
@@ -290,6 +346,20 @@ public class TimePartitionUtils {
     return satisfyPartitionStartTime(timeFilter, partitionStartTime, database);
   }
 
+  public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
+    long partitionStartTime;
+    if (originMayCauseOverflow) {
+      partitionStartTime =
+          BigInteger.valueOf(partitionId)
+              .multiply(bigTimePartitionInterval)
+              .add(bigTimePartitionOrigin)
+              .longValue();
+    } else {
+      partitionStartTime = partitionId * timePartitionInterval + timePartitionOrigin;
+    }
+    return satisfyPartitionStartTime(timeFilter, partitionStartTime);
+  }
+
   public static long getEstimateTimePartitionSize(long startTime, long endTime, String database) {
     DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     if (endTime > 0 && startTime < 0) {
@@ -300,6 +370,17 @@ public class TimePartitionUtils {
           + 1;
     }
     return (endTime - startTime) / config.getTimePartitionInterval() + 1;
+  }
+
+  public static long getEstimateTimePartitionSize(long startTime, long endTime) {
+    if (endTime > 0 && startTime < 0) {
+      return BigInteger.valueOf(endTime)
+              .subtract(BigInteger.valueOf(startTime))
+              .divide(bigTimePartitionInterval)
+              .longValue()
+          + 1;
+    }
+    return (endTime - startTime) / timePartitionInterval + 1;
   }
 
   // Helper methods for database-specific calculations
