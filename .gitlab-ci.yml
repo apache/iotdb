@@ -71,6 +71,9 @@ before_script:
   # - 'rm -rf /root/.m2/repository/org/apache/tsfile || true'
   # - 'rm -rf /root/.m2/repository/org/apache/ratis || true'
   - 'grep -rlZ "\u0000" ~/.m2 | xargs -0 -I {} rm -fv {} || true'
+  # Drop any stale Develocity build-cache lock baked into the CI image.
+  # (PID is reused in containers, fooling Gradle's stale-lock detection.)
+  - 'rm -f /root/.m2/.develocity/build-cache/*/*.lock || true'
 
 ut-datanode:
   stage: test
