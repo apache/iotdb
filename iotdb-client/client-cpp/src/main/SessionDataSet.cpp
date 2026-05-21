@@ -249,8 +249,7 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
   const int32_t valueColumnStartIndex = iotdbRpcDataSet_->getValueColumnStartIndex();
   const int32_t columnSize = iotdbRpcDataSet_->getColumnSize();
   outFields.reserve(columnSize - valueColumnStartIndex);
-  for (int32_t columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize;
-       ++columnIndex) {
+  for (int32_t columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize; ++columnIndex) {
     Field field;
     if (!iotdbRpcDataSet_->isNullByIndex(columnIndex)) {
       TSDataType::TSDataType dataType = iotdbRpcDataSet_->getDataTypeByIndex(columnIndex);
