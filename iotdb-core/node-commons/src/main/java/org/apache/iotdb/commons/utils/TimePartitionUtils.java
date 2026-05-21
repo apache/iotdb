@@ -300,8 +300,7 @@ public class TimePartitionUtils {
             : getTimePartitionId(startTime);
     long endPartition =
         originMayCauseOverflow
-            ? getTimePartitionIdWithoutOverflow(
-                endTime, timePartitionOrigin, timePartitionInterval)
+            ? getTimePartitionIdWithoutOverflow(endTime, timePartitionOrigin, timePartitionInterval)
             : getTimePartitionId(endTime);
     return startPartition <= partitionId && endPartition >= partitionId;
   }
