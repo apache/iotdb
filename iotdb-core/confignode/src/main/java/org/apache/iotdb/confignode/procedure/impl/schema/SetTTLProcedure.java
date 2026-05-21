@@ -112,7 +112,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
             dataNodeLocationMap,
             buildSetTTLReq(plan.getPathPattern(), plan.getTTL(), plan.isDataBase()));
     if (hasFailedDataNode(clientHandler)) {
-      LOGGER.error("Failed to update ttl cache of dataNode.");
+      LOGGER.error(ProcedureMessages.FAILED_TO_UPDATE_TTL_CACHE_OF_DATANODE);
       setFailure(
           new ProcedureException(
               new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
