@@ -302,8 +302,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      ReadWriteIOUtils.readInt(byteBuffer);
+      final int length = ReadWriteIOUtils.readInt(byteBuffer);
+      final int position = byteBuffer.position();
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      byteBuffer.position(position + length);
       if (byteBuffer.remaining() >= 17) {
         this.previousTTLStateCaptured = byteBuffer.get() != 0;
         this.previousTTL = byteBuffer.getLong();

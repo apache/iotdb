@@ -42,6 +42,7 @@ import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -105,7 +106,8 @@ public class SetTTLProcedureTest {
         ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     final SetTTLProcedure deserializedProcedure =
         (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
-    Assert.assertTrue(procedure.equals(deserializedProcedure));
+    assertSerializedProcedure(
+        deserializedProcedure, "root.db", 2000L, true, true, 500L, 600L, false);
   }
 
   @Test
@@ -194,6 +196,53 @@ public class SetTTLProcedureTest {
     Assert.assertEquals(Collections.singletonList(path), req.getPathPattern());
     Assert.assertEquals(ttl, req.getTTL());
     Assert.assertEquals(isDataBase, req.isDataBase);
+  }
+
+  private void assertSerializedProcedure(
+      final SetTTLProcedure procedure,
+      final String path,
+      final long ttl,
+      final boolean isDataBase,
+      final boolean previousTTLStateCaptured,
+      final long previousTTL,
+      final long previousDatabaseWildcardTTL,
+      final boolean isGeneratedByPipe)
+      throws Exception {
+    final Field planField = findField(SetTTLProcedure.class, "plan");
+    planField.setAccessible(true);
+    assertPlan((SetTTLPlan) planField.get(procedure), path, ttl, isDataBase);
+
+    final Field previousTTLStateCapturedField =
+        findField(SetTTLProcedure.class, "previousTTLStateCaptured");
+    previousTTLStateCapturedField.setAccessible(true);
+    Assert.assertEquals(previousTTLStateCaptured, previousTTLStateCapturedField.get(procedure));
+
+    final Field previousTTLField = findField(SetTTLProcedure.class, "previousTTL");
+    previousTTLField.setAccessible(true);
+    Assert.assertEquals(previousTTL, previousTTLField.get(procedure));
+
+    final Field previousDatabaseWildcardTTLField =
+        findField(SetTTLProcedure.class, "previousDatabaseWildcardTTL");
+    previousDatabaseWildcardTTLField.setAccessible(true);
+    Assert.assertEquals(
+        previousDatabaseWildcardTTL, previousDatabaseWildcardTTLField.get(procedure));
+
+    final Field isGeneratedByPipeField = findField(SetTTLProcedure.class, "isGeneratedByPipe");
+    isGeneratedByPipeField.setAccessible(true);
+    Assert.assertEquals(isGeneratedByPipe, isGeneratedByPipeField.get(procedure));
+  }
+
+  private Field findField(final Class<?> clazz, final String fieldName)
+      throws NoSuchFieldException {
+    Class<?> current = clazz;
+    while (current != null) {
+      try {
+        return current.getDeclaredField(fieldName);
+      } catch (NoSuchFieldException e) {
+        current = current.getSuperclass();
+      }
+    }
+    throw new NoSuchFieldException(fieldName);
   }
 
   private static class TestingSetTTLProcedure extends SetTTLProcedure {
