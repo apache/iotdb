@@ -44,6 +44,7 @@ import org.junit.Test;
 import java.io.File;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -58,11 +59,13 @@ public class WALManagerTest {
       };
   private String[] prevWalDirs;
   private String prevConsensus;
+  private int prevMaxWaitingTimeWhenInsertBlocked;
 
   @Before
   public void setUp() throws Exception {
     prevConsensus = config.getDataRegionConsensusProtocolClass();
     prevWalDirs = commonConfig.getWalDirs();
+    prevMaxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
     config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     commonConfig.setWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
@@ -76,6 +79,7 @@ public class WALManagerTest {
     }
     config.setDataRegionConsensusProtocolClass(prevConsensus);
     commonConfig.setWalDirs(prevWalDirs);
+    config.setMaxWaitingTimeWhenInsertBlocked(prevMaxWaitingTimeWhenInsertBlocked);
   }
 
   @Test
@@ -116,6 +120,34 @@ public class WALManagerTest {
         assertEquals(1, WALFileUtils.listAllWALFiles(nodeDir).length);
       }
     }
+  }
+
+  @Test
+  public void testLongTermWriteBlockedByWalThrottle() {
+    WALManager walManager = WALManager.getInstance();
+    walManager.addTotalDiskUsage(walManager.getThrottleThreshold());
+
+    assertFalse(walManager.isLongTermWriteBlocked());
+
+    config.setMaxWaitingTimeWhenInsertBlocked(0);
+    assertTrue(walManager.isLongTermWriteBlocked());
+
+    walManager.clear();
+    assertFalse(walManager.isLongTermWriteBlocked());
+  }
+
+  @Test
+  public void testLongTermWriteBlockedByWalBufferQueue() {
+    WALManager walManager = WALManager.getInstance();
+    walManager.markWalBufferQueueBlocked();
+
+    assertFalse(walManager.isLongTermWriteBlocked());
+
+    config.setMaxWaitingTimeWhenInsertBlocked(0);
+    assertTrue(walManager.isLongTermWriteBlocked());
+
+    walManager.markWalBufferQueueAvailable();
+    assertFalse(walManager.isLongTermWriteBlocked());
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {

@@ -221,6 +221,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALWriteBlockStatus;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -2372,6 +2374,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .forEach((key, value) -> regionRawDataSize.put(Integer.parseInt(key), value.getLeft()));
       resp.setDataRegionRawDataSize(regionRawDataSize);
     }
+    AuthorityChecker.getAuthorityFetcher().refreshToken();
+    updateWALBlockedStatus();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
     // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
@@ -2435,6 +2439,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     return resp;
+  }
+
+  private void updateWALBlockedStatus() {
+    WALWriteBlockStatus.updateStatus(
+        commonConfig, WALManager.getInstance().isLongTermWriteBlocked());
   }
 
   @Override

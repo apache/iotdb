@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -51,24 +52,35 @@ public class MemoryControlledWALEntryQueue {
 
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
-    synchronized (nonFullCondition) {
-      while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
-        if (elementSize
-            > SystemInfo.getInstance().getWalBufferQueueMemoryBlock().getTotalMemorySizeInBytes()) {
-          throw new IoTDBRuntimeException(
-              String.format(
-                  StorageEngineMessages
-                      .STORAGE_EXCEPTION_THE_ELEMENT_SIZE_OF_WALENTRY_S_IS_LARGER_THAN_THE_TOTAL_E494520D,
-                  elementSize,
-                  SystemInfo.getInstance()
-                      .getWalBufferQueueMemoryBlock()
-                      .getTotalMemorySizeInBytes()),
-              WAL_ENTRY_TOO_LARGE.getStatusCode());
+    boolean blocked = false;
+    try {
+      synchronized (nonFullCondition) {
+        while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
+          if (elementSize
+              > SystemInfo.getInstance().getWalBufferQueueMemoryBlock().getTotalMemorySizeInBytes()) {
+            throw new IoTDBRuntimeException(
+                String.format(
+                    StorageEngineMessages
+                        .STORAGE_EXCEPTION_THE_ELEMENT_SIZE_OF_WALENTRY_S_IS_LARGER_THAN_THE_TOTAL_E494520D,
+                    elementSize,
+                    SystemInfo.getInstance()
+                        .getWalBufferQueueMemoryBlock()
+                        .getTotalMemorySizeInBytes()),
+                WAL_ENTRY_TOO_LARGE.getStatusCode());
+          }
+          if (!blocked) {
+            blocked = true;
+            WALManager.getInstance().markWalBufferQueueBlocked();
+          }
+          nonFullCondition.wait();
         }
-        nonFullCondition.wait();
+      }
+      queue.put(e);
+    } finally {
+      if (blocked) {
+        WALManager.getInstance().markWalBufferQueueAvailable();
       }
     }
-    queue.put(e);
   }
 
   public WALEntry take() throws InterruptedException {
