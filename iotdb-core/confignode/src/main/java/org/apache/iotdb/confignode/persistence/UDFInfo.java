@@ -68,6 +68,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   private final UDFTable udfTable;
   private final Map<String, String> existedJarToMD5;
+  private final Map<String, Integer> existedJarToReferenceCount;
 
   private final UDFExecutableManager udfExecutableManager;
 
@@ -78,6 +79,7 @@ public class UDFInfo implements SnapshotProcessor {
   public UDFInfo() throws IOException {
     udfTable = new UDFTable();
     existedJarToMD5 = new HashMap<>();
+    existedJarToReferenceCount = new HashMap<>();
     udfExecutableManager =
         UDFExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getUdfTemporaryLibDir(), CONFIG_NODE_CONF.getUdfDir());
@@ -135,7 +137,7 @@ public class UDFInfo implements SnapshotProcessor {
       final UDFInformation udfInformation = physicalPlan.getUdfInformation();
       udfTable.addUDFInformation(udfInformation.getFunctionName(), udfInformation);
       if (udfInformation.isUsingURI()) {
-        existedJarToMD5.put(udfInformation.getJarName(), udfInformation.getJarMD5());
+        addJarReference(udfInformation.getJarName(), udfInformation.getJarMD5());
         if (physicalPlan.getJarFile() != null) {
           udfExecutableManager.saveToInstallDir(
               ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), udfInformation.getJarName());
@@ -185,7 +187,10 @@ public class UDFInfo implements SnapshotProcessor {
 
   public TSStatus dropFunction(Model model, String functionName) {
     if (udfTable.containsUDF(model, functionName)) {
-      existedJarToMD5.remove(udfTable.getUDFInformation(model, functionName).getJarName());
+      final UDFInformation udfInformation = udfTable.getUDFInformation(model, functionName);
+      if (udfInformation.isUsingURI()) {
+        removeJarReference(udfInformation.getJarName());
+      }
       udfTable.removeUDFInformation(model, functionName);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -248,6 +253,7 @@ public class UDFInfo implements SnapshotProcessor {
       deserializeExistedJarToMD5(fileInputStream);
 
       udfTable.deserializeUDFTable(fileInputStream);
+      rebuildJarMetadataFromUDFTable();
     } finally {
       releaseUDFTableLock();
     }
@@ -272,6 +278,32 @@ public class UDFInfo implements SnapshotProcessor {
 
   public void clear() {
     existedJarToMD5.clear();
+    existedJarToReferenceCount.clear();
     udfTable.clear();
+  }
+
+  private void addJarReference(String jarName, String jarMD5) {
+    existedJarToMD5.putIfAbsent(jarName, jarMD5);
+    existedJarToReferenceCount.merge(jarName, 1, Integer::sum);
+  }
+
+  private void removeJarReference(String jarName) {
+    final Integer referenceCount = existedJarToReferenceCount.get(jarName);
+    if (referenceCount == null || referenceCount <= 1) {
+      existedJarToReferenceCount.remove(jarName);
+      existedJarToMD5.remove(jarName);
+      return;
+    }
+    existedJarToReferenceCount.put(jarName, referenceCount - 1);
+  }
+
+  private void rebuildJarMetadataFromUDFTable() {
+    existedJarToMD5.clear();
+    existedJarToReferenceCount.clear();
+    for (UDFInformation udfInformation : udfTable.getAllInformationList()) {
+      if (udfInformation.isUsingURI()) {
+        addJarReference(udfInformation.getJarName(), udfInformation.getJarMD5());
+      }
+    }
   }
 }
