@@ -1291,8 +1291,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE =
       "Failed to deregister pipe schema region source metrics, IoTDBSchemaRegionSource({}) "
           + "does not exist";
-  public static final String FAILED_TO_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
-      "Failed to deregister pipe tsfile to tablets metrics, pipeID({}) does not exist";
+  public static final String SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
+      "Skip deregistering pipe tsfile to tablets metrics because pipeID({}) is not registered";
   public static final String FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS =
       "Failed to deregister schema region listener metrics, SchemaRegionListeningQueue({}) "
           + "does not exist";
