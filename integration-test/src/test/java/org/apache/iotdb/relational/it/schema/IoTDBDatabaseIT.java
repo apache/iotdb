@@ -25,6 +25,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -41,12 +43,14 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -138,6 +142,7 @@ public class IoTDBDatabaseIT {
       }
 
       final int[] schemaRegionGroupNum = new int[] {0};
+      // Default min region group numbers come from ConfigNodeConfig (schema = 1, data = 2).
       final int[] minSchemaRegionGroupNum = new int[] {1};
       final int[] dataRegionGroupNum = new int[] {0};
       final int[] minDataRegionGroupNum = new int[] {2};
@@ -160,9 +165,9 @@ public class IoTDBDatabaseIT {
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
-          assertEquals(minSchemaRegionGroupNum[cnt], resultSet.getInt(7));
-          assertTrue(resultSet.getInt(8) >= minSchemaRegionGroupNum[cnt]);
-          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(9));
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
+          assertEquals(minSchemaRegionGroupNum[cnt], resultSet.getInt(8));
+          assertTrue(resultSet.getInt(9) >= minSchemaRegionGroupNum[cnt]);
           assertEquals(minDataRegionGroupNum[cnt], resultSet.getInt(10));
           assertTrue(resultSet.getInt(11) >= minDataRegionGroupNum[cnt]);
           cnt++;
@@ -648,17 +653,21 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("select * from databases")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
-        assertEquals(11, metaData.getColumnCount());
-        assertEquals("min_schema_region_group_num", metaData.getColumnName(7));
-        assertEquals("max_schema_region_group_num", metaData.getColumnName(8));
-        assertEquals("min_data_region_group_num", metaData.getColumnName(10));
-        assertEquals("max_data_region_group_num", metaData.getColumnName(11));
+        final List<TsTableColumnSchema> expectedColumnSchemas =
+            InformationSchema.getSchemaTables()
+                .get(InformationSchema.DATABASES)
+                .getColumnList();
+        assertEquals(expectedColumnSchemas.size(), metaData.getColumnCount());
+        for (int i = 0; i < expectedColumnSchemas.size(); i++) {
+          assertEquals(
+              expectedColumnSchemas.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
 
         int cnt = 0;
         while (resultSet.next()) {
           if ("information_schema".equals(resultSet.getString(1))) {
             for (int columnIndex = 3; columnIndex <= 11; columnIndex++) {
-              Assert.assertNull(resultSet.getObject(columnIndex));
+              assertNull(resultSet.getObject(columnIndex));
             }
           } else {
             assertEquals("test", resultSet.getString(1));
@@ -667,9 +676,9 @@ public class IoTDBDatabaseIT {
             assertEquals(1, resultSet.getInt(4));
             assertEquals(604800000, resultSet.getLong(5));
             assertEquals(0, resultSet.getInt(6));
-            assertEquals(1, resultSet.getInt(7));
-            assertTrue(resultSet.getInt(8) >= resultSet.getInt(7));
-            assertEquals(0, resultSet.getInt(9));
+            assertEquals(0, resultSet.getInt(7));
+            assertEquals(1, resultSet.getInt(8));
+            assertTrue(resultSet.getInt(9) >= resultSet.getInt(8));
             assertEquals(2, resultSet.getInt(10));
             assertTrue(resultSet.getInt(11) >= resultSet.getInt(10));
           }
@@ -878,7 +887,7 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,min_schema_region_group_num,max_schema_region_group_num,data_region_group_num,min_data_region_group_num,max_data_region_group_num,",
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,min_schema_region_group_num,max_schema_region_group_num,min_data_region_group_num,max_data_region_group_num,",
           Collections.singleton(
               "information_schema,INF,null,null,null,null,null,null,null,null,null,"));
     }
