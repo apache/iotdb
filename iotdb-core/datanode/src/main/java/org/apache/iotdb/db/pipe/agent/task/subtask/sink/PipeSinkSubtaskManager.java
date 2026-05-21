@@ -91,6 +91,7 @@ public class PipeSinkSubtaskManager {
     final int sinkNum;
     boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    final String attributeDisplayString = generateAttributeDisplayString(pipeSinkParameters);
     if (isDataRegionSink) {
       sinkNum =
           pipeSinkParameters.getIntOrDefault(
@@ -119,7 +120,9 @@ public class PipeSinkSubtaskManager {
       sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
-    environment.setAttributeSortedString(attributeSortedString);
+    final String attributeDisplayStringWithPrefix =
+        isDataRegionSink ? "data_" + attributeDisplayString : "schema_" + attributeDisplayString;
+    environment.setAttributeSortedString(attributeDisplayStringWithPrefix);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
@@ -168,9 +171,10 @@ public class PipeSinkSubtaskManager {
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
                 String.format(
-                    "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex),
+                    "%s_%s_%s",
+                    attributeDisplayStringWithPrefix, environment.getCreationTime(), sinkIndex),
                 environment.getCreationTime(),
-                attributeSortedString,
+                attributeDisplayStringWithPrefix,
                 sinkIndex,
                 pendingQueue,
                 pipeSink);
@@ -181,7 +185,7 @@ public class PipeSinkSubtaskManager {
 
       LOGGER.info(
           DataNodePipeMessages.PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED,
-          attributeSortedString,
+          attributeDisplayStringWithPrefix,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());
       attributeSortedString2SubtaskLifeCycleMap.put(
@@ -264,11 +268,21 @@ public class PipeSinkSubtaskManager {
         .getPendingQueue();
   }
 
-  private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
+  private static String generateAttributeSortedString(
+      final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
     return sortedStringSourceMap.toString();
+  }
+
+  /** Masked attribute string for logs, metrics and exception messages. */
+  private static String generateAttributeDisplayString(
+      final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> filteredAttributes =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    filteredAttributes.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
+    return new PipeParameters(filteredAttributes).toString();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
