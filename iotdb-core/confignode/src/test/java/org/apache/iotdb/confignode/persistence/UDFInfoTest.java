@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
@@ -87,8 +87,7 @@ public class UDFInfoTest {
       Assert.fail("Expected shared jar conflict after dropping only one referenced UDF.");
     } catch (IoTDBRuntimeException e) {
       Assert.assertEquals(
-          org.apache.iotdb.rpc.TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode(),
-          e.getErrorCode());
+          org.apache.iotdb.rpc.TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode(), e.getErrorCode());
     }
   }
 
