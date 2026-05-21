@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
@@ -226,6 +227,13 @@ public abstract class InsertNode extends SearchNode {
       deviceID = deviceIDFactory.getDeviceID(targetPath);
     }
     return deviceID;
+  }
+
+  protected String getDatabaseName(final IAnalysis analysis, final IDeviceID deviceID) {
+    final String databaseName = analysis.getDatabaseName();
+    return databaseName != null
+        ? databaseName
+        : analysis.getDataPartitionInfo().getDatabaseNameByDevice(deviceID);
   }
 
   public void setDeviceID(IDeviceID deviceID) {

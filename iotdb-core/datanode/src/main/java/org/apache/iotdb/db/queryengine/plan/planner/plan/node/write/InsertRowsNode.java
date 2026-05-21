@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -273,15 +274,16 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // Data region for insert row node
-      // each row may belong to different database, pass null for auto-detection
+      // Each row may belong to different database.
+      final IDeviceID deviceID = insertRowNode.targetPath.getIDeviceIDAsFullDevice();
+      final String databaseName = getDatabaseName(analysis, deviceID);
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.targetPath.getIDeviceIDAsFullDevice(),
-                  TimePartitionUtils.getTimePartitionSlot(
-                      insertRowNode.getTime(), analysis.getDatabaseName()),
-                  null);
+                  deviceID,
+                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime(), databaseName),
+                  databaseName);
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);

@@ -201,7 +201,9 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
-      final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, final IAnalysis analysis) {
+      final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap,
+      final IAnalysis analysis,
+      final String databaseName) {
     final Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     final Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
 
@@ -212,7 +214,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
+                  deviceID, splitInfo.timePartitionSlots, databaseName);
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       endPointMap.put(

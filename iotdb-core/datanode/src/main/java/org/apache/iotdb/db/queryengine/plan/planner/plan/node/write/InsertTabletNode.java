@@ -237,10 +237,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
 
+    final String databaseName = getDatabaseName(analysis, getDeviceID(0));
     final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap =
-        collectSplitRanges(analysis.getDatabaseName());
+        collectSplitRanges(databaseName);
     final Map<TRegionReplicaSet, List<Integer>> splitMap =
-        splitByReplicaSet(deviceIDSplitInfoMap, analysis);
+        splitByReplicaSet(deviceIDSplitInfoMap, analysis, databaseName);
     return doSplit(splitMap);
   }
 
@@ -284,7 +285,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
-      Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
+      Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap,
+      IAnalysis analysis,
+      String databaseName) {
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
 
     for (Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
@@ -294,7 +297,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
+                  deviceID, splitInfo.timePartitionSlots, databaseName);
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       analysis.addEndPointToRedirectNodeList(

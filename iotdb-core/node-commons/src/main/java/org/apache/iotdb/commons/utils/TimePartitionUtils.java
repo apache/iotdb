@@ -161,12 +161,17 @@ public class TimePartitionUtils {
 
   // Update or add database-specific time partition configuration
   public static void updateDatabaseTimePartitionConfig(String database, TDatabaseSchema schema) {
+    String timestampPrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     long interval =
         schema.isSetTimePartitionInterval()
-            ? schema.getTimePartitionInterval()
-            : timePartitionInterval;
+            ? CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                schema.getTimePartitionInterval(), timestampPrecision)
+            : CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
     long origin =
-        schema.isSetTimePartitionOrigin() ? schema.getTimePartitionOrigin() : timePartitionOrigin;
+        schema.isSetTimePartitionOrigin()
+            ? CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                schema.getTimePartitionOrigin(), timestampPrecision)
+            : CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
     databaseConfigCache.put(database, new DatabaseTimePartitionConfig(origin, interval));
   }
 

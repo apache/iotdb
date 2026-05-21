@@ -36,6 +36,7 @@ public class TimePartitionUtilsTest {
 
   @Before
   public void setUp() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
     CommonDescriptor.getInstance().getConfig().setTimePartitionOrigin(TEST_TIME_PARTITION_ORIGIN);
     CommonDescriptor.getInstance()
         .getConfig()
@@ -137,6 +138,23 @@ public class TimePartitionUtilsTest {
     expectedSlot.setStartTime(2000L + 7200000L);
     actualSlot = TimePartitionUtils.getTimePartitionSlot(testTime, "test.db");
     assertEquals(expectedSlot.getStartTime(), actualSlot.getStartTime());
+  }
+
+  @Test
+  public void testDatabaseLevelTimePartitionUsesTimestampPrecision() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+    schema.setTimePartitionInterval(7200000L);
+    schema.setTimePartitionOrigin(2000L);
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    assertEquals(7200000_000_000L, TimePartitionUtils.getTimePartitionInterval("test.db"));
+    assertEquals(2000_000_000L, TimePartitionUtils.getTimePartitionOrigin("test.db"));
+    assertEquals(
+        2000_000_000L,
+        TimePartitionUtils.getTimePartitionSlot(2000_000_000L + 1, "test.db").getStartTime());
   }
 
   @Test
