@@ -651,23 +651,22 @@ public abstract class AlignedTVList extends TVList {
 
   /**
    * Ensure the bitMaps list is initialized. This method is NOT thread-safe and relies on the caller
-   * to provide synchronization:
+   * to provide synchronization: 1. Called from synchronized clone methods, which is invoked by
+   * query/flush operations. 2. Called from getBitMap, which is invoked by write/delete operations
+   * (putAlignedValue, putAlignedValues, extendColumn, deleteColumn). DataRegion write lock is held
+   * at this moment.
    *
-   * <ul>
-   *   - Called from synchronized clone methods, which is invoked by query/flush operations.
-   * </ul>
-   *
-   * <ul>
-   *   - Called from getBitMap, which is invoked by write/delete operations (putAlignedValue,
-   *   putAlignedValues, extendColumn, deleteColumn). DataRegion write lock is held at this moment.
-   * </ul>
+   * <p>A query thread reads bitMaps, while a write thread may concurrently initialize it. The query
+   * will either see null or a fully populated bitMaps list. Since IoTDB does not support
+   * transactions, the query may observe some data marked as null by the write thread.
    */
   private void ensureBitMapsInitialized() {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(dataTypes.size());
+      List<List<BitMap>> localBitMaps = new ArrayList<>(dataTypes.size());
       for (int i = 0; i < dataTypes.size(); i++) {
-        bitMaps.add(null);
+        localBitMaps.add(null);
       }
+      bitMaps = localBitMaps;
     }
   }
 
