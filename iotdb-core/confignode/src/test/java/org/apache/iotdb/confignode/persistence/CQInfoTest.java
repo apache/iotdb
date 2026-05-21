@@ -125,14 +125,12 @@ public class CQInfoTest {
 
     Assert.assertEquals(
         TSStatusCode.NO_SUCH_CQ.getStatusCode(),
-        cqInfo
-            .updateCQLastExecutionTime(
+        cqInfo.updateCQLastExecutionTime(
                 new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "oldMd5"))
             .code);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        cqInfo
-            .updateCQLastExecutionTime(
+        cqInfo.updateCQLastExecutionTime(
                 new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "newMd5"))
             .code);
   }

@@ -188,8 +188,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     submitScheduleTask(env, new CQScheduleTask(cqEntry.get(), executor, env.getConfigManager()));
   }
 
-  Optional<CQInfo.CQEntry> getCurrentCQEntry(ConfigNodeProcedureEnv env)
-      throws ConsensusException {
+  Optional<CQInfo.CQEntry> getCurrentCQEntry(ConfigNodeProcedureEnv env) throws ConsensusException {
     ShowCQResp response =
         (ShowCQResp) env.getConfigManager().getConsensusManager().read(new ShowCQPlan());
     return response.getCqList().stream()
