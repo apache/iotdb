@@ -156,6 +156,11 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
           if (metrics.reachMaxRetryCount()) {
             // if reach max retry count, we think that the DN is down, and FI in that node won't
             // exist
+            logger.warn(
+                "Failed to fetch state for FragmentInstance {} after {} retries, mark it as no such instance",
+                instance.getId(),
+                InstanceStateMetrics.MAX_STATE_FETCH_RETRY_COUNT,
+                e);
             FragmentInstanceInfo instanceInfo = new FragmentInstanceInfo(NO_SUCH_INSTANCE);
             instanceInfo.setMessage(
                 String.format(
@@ -165,7 +170,12 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
           } else {
             // if not reaching max retry count, add retry count, and wait for next fetching schedule
             metrics.addRetryCount();
-            logger.warn(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_FETCHING_QUERY_STATE, e);
+            logger.debug(
+                "Failed to fetch state for FragmentInstance {}, retry {}/{}",
+                instance.getId(),
+                metrics.retryCount,
+                InstanceStateMetrics.MAX_STATE_FETCH_RETRY_COUNT,
+                e);
           }
         }
       }
