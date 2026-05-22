@@ -40,14 +40,11 @@ public class LoadTsFileNodeTest {
   public void testLoadSingleTsFileNode() {
     TsFileResource resource = new TsFileResource(new File("1"));
     String database = "root.db";
-    int databaseLevel = 1;
     LoadSingleTsFileNode node =
-        new LoadSingleTsFileNode(
-            new PlanNodeId(""), resource, false, database, databaseLevel, true, 0L, false);
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, false, database, true, 0L, false);
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertEquals(database, node.getDatabase());
-    Assert.assertEquals(databaseLevel, node.getDatabaseLevel());
     Assert.assertNull(node.getLocalRegionReplicaSet());
     Assert.assertNull(node.getRegionReplicaSet());
     Assert.assertEquals(Collections.emptyList(), node.getChildren());
