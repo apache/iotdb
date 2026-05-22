@@ -205,7 +205,7 @@
         <keypass/>
         <alias/>
         <jarsigner.skip>true</jarsigner.skip>
-        <tsfile.version>2.3.1-260519-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.1-260520-SNAPSHOT</tsfile.version>
         <i18n.locale>en</i18n.locale>
         <tsfile.locale.opt/>
         <!-- Module configuration properties (default values) -->
