@@ -200,7 +200,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
@@ -1626,6 +1627,9 @@ public class DataNodeTableOperatorGenerator
           for (int j = 0; j < lastByResult.get().getRight().length; j++) {
             TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
             if (tsPrimitiveType == null
+                // Known-null at the aligned row time can still hit cache. Only miss or stale target
+                // values need to fall back to scan for correctness.
+                || tsPrimitiveType == PLACEHOLDER_STALE_VALUE
                 || (updateTimeFilter != null
                     && !LastQueryUtil.satisfyFilter(
                         updateTimeFilter,
@@ -1725,7 +1729,7 @@ public class DataNodeTableOperatorGenerator
                     parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
               if (isFilterGtOrGe(updateTimeFilter)) {
                 // it means there is no data meets Filter
-                timeValuePair.setValue(EMPTY_PRIMITIVE_TYPE);
+                timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
               } else {
                 allHitCache = false;
                 break;
