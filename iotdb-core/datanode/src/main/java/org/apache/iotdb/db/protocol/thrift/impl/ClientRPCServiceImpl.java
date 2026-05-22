@@ -1399,7 +1399,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (timeValuePair == null) {
               allCached = false;
               break;
-            } else if (timeValuePair.getValue() == null) {
+            } else if (timeValuePair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || timeValuePair.getValue() == null) {
               // there is no data for this sensor
               if (!canUseNullEntry) {
                 allCached = false;
