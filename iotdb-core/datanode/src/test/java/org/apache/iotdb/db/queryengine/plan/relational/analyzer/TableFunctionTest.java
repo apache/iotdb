@@ -388,9 +388,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -401,7 +400,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -409,7 +408,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test
@@ -451,9 +450,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -464,7 +462,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -472,7 +470,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test
