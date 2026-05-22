@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import com.google.common.collect.Sets;
@@ -35,6 +34,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -62,17 +62,27 @@ class OpcUaKeyStoreLoader {
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
     LOGGER.info(DataNodePipeMessages.LOADING_KEYSTORE_AT, serverKeyStore);
+    boolean needRewrite = false;
 
     if (serverKeyStore.exists()) {
       try (InputStream is = Files.newInputStream(serverKeyStore.toPath())) {
         keyStore.load(is, password);
       } catch (final IOException e) {
-        LOGGER.warn(DataNodePipeMessages.LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY);
-        FileUtils.deleteFileOrDirectory(serverKeyStore);
+        LOGGER.warn(
+            "Load keyStore {} failed, the existing keyStore may be stale, re-constructing.",
+            serverKeyStore,
+            e);
+        if (!serverKeyStore.delete()) {
+          LOGGER.warn(
+              "Delete stale keyStore {} failed. The file will be overwritten if possible.",
+              serverKeyStore);
+          needRewrite = true;
+        }
       }
     }
 
-    if (!serverKeyStore.exists()) {
+    if (!serverKeyStore.exists() || needRewrite) {
+      LOGGER.info("Generating new server keyStore at {}", serverKeyStore);
       keyStore.load(null, password);
 
       final KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
@@ -108,7 +118,12 @@ class OpcUaKeyStoreLoader {
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
-      try (final OutputStream os = Files.newOutputStream(serverKeyStore.toPath())) {
+      try (final OutputStream os =
+          Files.newOutputStream(
+              serverKeyStore.toPath(),
+              StandardOpenOption.CREATE,
+              StandardOpenOption.WRITE,
+              StandardOpenOption.TRUNCATE_EXISTING)) {
         keyStore.store(os, password);
       }
     }
@@ -119,6 +134,7 @@ class OpcUaKeyStoreLoader {
 
       final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
+      LOGGER.info("Loaded server certificate from keyStore alias {}.", SERVER_ALIAS);
     } else {
       throw new Exception(
           "Invalid keyStore, the serverPrivateKey is "

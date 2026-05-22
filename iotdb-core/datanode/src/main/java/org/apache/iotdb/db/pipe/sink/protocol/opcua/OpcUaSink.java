@@ -335,10 +335,18 @@ public class OpcUaSink implements PipeConnector {
                                 .setEnableAnonymousAccess(enableAnonymousAccess)
                                 .setSecurityPolicies(securityPolicies)
                                 .setDebounceTimeMs(debounceTimeMs);
+                        LOGGER.info(
+                            "Starting Apache IoTDB OPC UA server: tcpPort={}, httpsPort={}.",
+                            tcpBindPort,
+                            httpsBindPort);
                         final OpcUaServer newServer = builder.build();
                         nameSpace = new OpcUaNameSpace(newServer, builder);
                         nameSpace.startup();
                         newServer.startup().get();
+                        LOGGER.info(
+                            "Apache IoTDB OPC UA server started: tcpPort={}, httpsPort={}.",
+                            tcpBindPort,
+                            httpsBindPort);
                         return new Pair<>(new AtomicInteger(0), nameSpace);
                       } else {
                         oldValue
@@ -567,7 +575,9 @@ public class OpcUaSink implements PipeConnector {
 
         if (pair.getLeft().decrementAndGet() <= 0) {
           try {
+            LOGGER.info("Shutting down Apache IoTDB OPC UA server: serverKey={}.", serverKey);
             pair.getRight().shutdown();
+            LOGGER.info("Apache IoTDB OPC UA server stopped: serverKey={}.", serverKey);
           } finally {
             SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
           }

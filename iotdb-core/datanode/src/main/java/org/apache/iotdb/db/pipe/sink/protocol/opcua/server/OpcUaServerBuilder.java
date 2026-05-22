@@ -142,10 +142,8 @@ public class OpcUaServerBuilder implements Closeable {
 
     final File pkiDir = securityDir.resolve("pki").toFile();
 
-    LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security dir: {}", securityDir.toAbsolutePath());
-    LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security pki dir: {}", pkiDir.getAbsolutePath());
+    LOGGER.info("Security dir: {}", securityDir.toAbsolutePath());
+    LOGGER.info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
     final OpcUaKeyStoreLoader loader =
         new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
@@ -197,8 +195,17 @@ public class OpcUaServerBuilder implements Closeable {
                         StatusCodes.Bad_ConfigurationError,
                         "Certificate is missing the application URI"));
 
+    final Set<SecurityPolicy> configuredSecurityPolicies = new LinkedHashSet<>(securityPolicies);
     final Set<EndpointConfiguration> endpointConfigurations =
         createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+    LOGGER.info(
+        "Built OPC UA server endpoints: tcpPort={}, httpsPort={}, anonymousAccess={}, securityPolicies={}, endpointCount={}, debounceTimeMs={}.",
+        tcpBindPort,
+        httpsBindPort,
+        enableAnonymousAccess,
+        configuredSecurityPolicies,
+        endpointConfigurations.size(),
+        debounceTimeMs);
 
     serverConfig =
         OpcUaServerConfig.builder()
