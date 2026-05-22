@@ -65,8 +65,21 @@ public class TsFileManager {
     this.dataRegionId = dataRegionId;
   }
 
+  public List<TsFileResource> getTsFileList(boolean sequence) {
+    return getTsFileList(sequence, storageGroupName);
+  }
+
   public List<TsFileResource> getTsFileList(boolean sequence, String database) {
     return getTsFileList(sequence, null, null, database);
+  }
+
+  /**
+   * @param sequence {@code true} for sequence, {@code false} for unsequence
+   * @param timePartitions {@code null} for all time partitions, empty for zero time partitions
+   */
+  public List<TsFileResource> getTsFileList(
+      boolean sequence, List<Long> timePartitions, Filter timeFilter) {
+    return getTsFileList(sequence, timePartitions, timeFilter, storageGroupName);
   }
 
   /**
@@ -99,6 +112,16 @@ public class TsFileManager {
     } finally {
       readUnlock();
     }
+  }
+
+  /**
+   * don't need to acquire lock again, caller should guarantee the lock has been acquired
+   *
+   * @return left is seq resource list, right is unSeq resource list
+   */
+  public Pair<List<TsFileResource>, List<TsFileResource>> getAllTsFileListForQuery(
+      List<Long> timePartitions, Filter timeFilter) {
+    return getAllTsFileListForQuery(timePartitions, timeFilter, storageGroupName);
   }
 
   /**
@@ -158,6 +181,10 @@ public class TsFileManager {
     }
   }
 
+  public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
+    return getTsFileList(sequence, startTime, endTime, storageGroupName);
+  }
+
   public List<TsFileResource> getTsFileList(
       boolean sequence, long startTime, long endTime, String database) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
@@ -193,6 +220,10 @@ public class TsFileManager {
     } finally {
       writeUnlock();
     }
+  }
+
+  public Iterator<TsFileResource> getIterator(boolean sequence) {
+    return getIterator(sequence, storageGroupName);
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence, String database) {
