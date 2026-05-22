@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -332,7 +333,7 @@ public class FastCompactionPerformer
         } else if (cause instanceof ChunkTypeInconsistentException) {
           throw (ChunkTypeInconsistentException) cause;
         }
-        throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
+        throw new IOException(StorageEngineMessages.SUB_COMPACTION_TASK_MEET_ERRORS, e);
       } catch (InterruptedException e) {
         abortAllSubTasks(futures);
         throw e;

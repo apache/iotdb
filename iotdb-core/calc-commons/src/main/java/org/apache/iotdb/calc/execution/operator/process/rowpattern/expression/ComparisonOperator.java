@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.apache.tsfile.utils.Binary;
@@ -141,7 +142,7 @@ public enum ComparisonOperator implements BinaryOperator {
         case BINARY:
           return ((Binary) value).compareTo((Binary) other.value);
         default:
-          throw new SemanticException("Unknown type: " + type);
+          throw new SemanticException(CalcMessages.UNKNOWN_TYPE + type);
       }
     }
   }
@@ -161,7 +162,7 @@ public enum ComparisonOperator implements BinaryOperator {
     } else if (obj instanceof byte[]) {
       return new NormalizedValue(NormalizedValue.Type.BINARY, new Binary((byte[]) obj));
     } else {
-      throw new SemanticException("Unsupported type: " + obj.getClass());
+      throw new SemanticException(CalcMessages.UNSUPPORTED_TYPE + obj.getClass());
     }
   }
 }

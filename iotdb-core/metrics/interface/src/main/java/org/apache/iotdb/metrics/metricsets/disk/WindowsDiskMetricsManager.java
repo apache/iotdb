@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.disk;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -339,7 +340,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
     String[] processMetricArray = processInfo.split("\t");
     if (processMetricArray.length < 4) {
-      LOGGER.warn("Unexpected windows process io info format: {}", processInfo);
+      LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT, processInfo);
       return;
     }
 
@@ -370,7 +371,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       }
       String[] values = line.split("\t");
       if (values.length < 9) {
-        LOGGER.warn("Unexpected windows disk io info format: {}", line);
+        LOGGER.warn(MetricsMessages.UNEXPECTED_WINDOWS_DISK_IO_FORMAT, line);
         continue;
       }
       String diskId = values[0].trim();
@@ -427,7 +428,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Math.round(Double.parseDouble(value.trim()));
     } catch (NumberFormatException e) {
-      LOGGER.warn("Failed to parse long value from windows disk metrics: {}", value, e);
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_LONG_WINDOWS_DISK, value, e);
       return 0L;
     }
   }
@@ -436,7 +437,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
     try {
       return Double.parseDouble(value.trim());
     } catch (NumberFormatException e) {
-      LOGGER.warn("Failed to parse double value from windows disk metrics: {}", value, e);
+      LOGGER.warn(MetricsMessages.FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK, value, e);
       return 0.0;
     }
   }
@@ -468,7 +469,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       int exitCode = process.waitFor();
       if (exitCode != 0) {
         LOGGER.warn(
-            "Failed to collect windows disk metrics, powershell exit code: {}, command {}, output {}",
+            MetricsMessages.FAILED_TO_COLLECT_WINDOWS_DISK_METRICS,
             exitCode,
             command,
             String.join(" | ", rawOutput));
@@ -476,10 +477,10 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
         result.addAll(rawOutput);
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to execute powershell for windows disk metrics", e);
+      LOGGER.warn(MetricsMessages.FAILED_TO_EXECUTE_POWERSHELL, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted while collecting windows disk metrics", e);
+      LOGGER.warn(MetricsMessages.INTERRUPTED_COLLECTING_WINDOWS_DISK, e);
     } finally {
       if (process != null) {
         process.destroy();

@@ -204,6 +204,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    setProperty("region_group_allocate_policy", regionGroupAllocatePolicy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     setProperty("schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
     return this;
@@ -661,6 +667,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
     setProperty("max_rows_in_cte_buffer", String.valueOf(maxRows));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    setProperty("enable_topology_probing", String.valueOf(enableTopologyProbing));
     return this;
   }
 

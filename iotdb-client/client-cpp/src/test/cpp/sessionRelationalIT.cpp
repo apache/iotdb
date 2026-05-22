@@ -17,9 +17,9 @@
  * under the License.
  */
 
-#include "catch.hpp"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
+#include "catch.hpp"
 #include <math.h>
 
 using namespace std;
@@ -138,6 +138,27 @@ TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
     cnt++;
   }
   REQUIRE(cnt == 15);
+}
+
+TEST_CASE("Query non-existent table returns detailed error", "[queryMissingTableError]") {
+  CaseReporter cr("queryMissingTableError");
+  session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+  session->executeNonQueryStatement("USE db1");
+  session->executeNonQueryStatement("DROP TABLE IF EXISTS table_not_exists_for_query");
+
+  bool caught = false;
+  try {
+    session->executeQueryStatement("SELECT * FROM table_not_exists_for_query");
+  } catch (const std::exception& e) {
+    caught = true;
+    const std::string errorMessage = e.what();
+    INFO("caught error message: " << errorMessage);
+    const bool hasDetailedErrorMessage =
+        errorMessage.size() > 20 && errorMessage.find("std::exception") == std::string::npos;
+    REQUIRE(errorMessage != "std::exception");
+    REQUIRE(hasDetailedErrorMessage);
+  }
+  REQUIRE(caught);
 }
 
 TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]") {

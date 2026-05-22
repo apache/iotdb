@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 
 import org.slf4j.Logger;
@@ -60,7 +61,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      LOGGER.error("Disk space is insufficient, change system mode to read-only");
+      LOGGER.error(StorageEngineMessages.DISK_SPACE_INSUFFICIENT_READ_ONLY);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw new DiskSpaceInsufficientException(folders);
     }

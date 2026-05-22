@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -97,7 +98,8 @@ public class PipeEventCollector implements EventCollector {
     } catch (final PipeException e) {
       throw e;
     } catch (final Exception e) {
-      throw new PipeException("Error occurred when collecting events from processor.", e);
+      throw new PipeException(
+          DataNodePipeMessages.ERROR_OCCURRED_WHEN_COLLECTING_EVENTS_FROM_PROCESSOR, e);
     }
   }
 
@@ -129,7 +131,7 @@ public class PipeEventCollector implements EventCollector {
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
     if (!sourceEvent.waitForTsFileClose()) {
       LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           sourceEvent.getTsFile());
       return;
     }
@@ -220,26 +222,35 @@ public class PipeEventCollector implements EventCollector {
 
   private void collectEvent(final Event event) {
     if (event instanceof EnrichedEvent) {
-      if (!((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName())) {
-        LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
+        LOGGER.warn(
+            DataNodePipeMessages.PIPEEVENTCOLLECTOR_THE_EVENT_IS_ALREADY_RELEASED_SKIPPING, event);
         isFailedToIncreaseReferenceCount = true;
         return;
       }
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+          .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);
 
       // Assign a rebootTime for iotConsensusV2
-      ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
+      enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
+
+      if (enrichedEvent.getPipeName() != null
+          && pendingQueue.isPipeDropped(enrichedEvent.getPipeName(), creationTime, regionId)) {
+        enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
+        return;
+      }
     }
 
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
 
-    pendingQueue.offer(event);
-    collectInvocationCount.incrementAndGet();
+    if (pendingQueue.offer(event)) {
+      collectInvocationCount.incrementAndGet();
+    }
   }
 
   public void resetFlags() {

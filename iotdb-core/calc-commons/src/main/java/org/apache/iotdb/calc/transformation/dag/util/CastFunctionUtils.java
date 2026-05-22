@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
@@ -110,7 +111,8 @@ public class CastFunctionUtils {
     } else if (lowerCase.equals("false")) {
       return false;
     } else {
-      throw new SemanticException(String.format("Invalid text input for boolean type: %s", value));
+      throw new SemanticException(
+          String.format(CalcMessages.INVALID_TEXT_INPUT_FOR_BOOLEAN, value));
     }
   }
 

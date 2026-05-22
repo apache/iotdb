@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,9 +52,9 @@ public class DataNodeStartupCheck extends StartupChecks {
     portSet.add(config.getDataRegionConsensusPort());
     portSet.add(config.getSchemaRegionConsensusPort());
     if (portSet.size() != DATANODE_PORTS) {
-      throw new StartupException("ports used in datanode have repeat.");
+      throw new StartupException(DataNodeMiscMessages.PORTS_HAVE_REPEAT);
     } else {
-      LOGGER.info("DataNode port check successful.");
+      LOGGER.info(DataNodeMiscMessages.DATANODE_PORT_CHECK_SUCCESSFUL);
     }
   }
 

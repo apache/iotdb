@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
@@ -56,7 +58,7 @@ class IoTDBKeyStoreLoaderClient {
 
     final Path serverKeyStore = baseDir.resolve("iotdb-client.pfx");
 
-    logger.info("Loading KeyStore at {}.", serverKeyStore);
+    logger.info(DataNodePipeMessages.LOADING_KEYSTORE_AT_1, serverKeyStore);
 
     if (!Files.exists(serverKeyStore)) {
       keyStore.load(null, password);

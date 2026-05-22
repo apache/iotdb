@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
@@ -221,7 +222,7 @@ public class ModificationUtils {
   public static boolean isPointDeleted(
       long timestamp, List<TimeRange> deletionList, int[] deleteCursor, Ordering ordering) {
     if (deleteCursor.length != 1) {
-      throw new IllegalArgumentException("deleteCursor should be an array whose size is 1");
+      throw new IllegalArgumentException(DataNodeMiscMessages.DELETE_CURSOR_SIZE_ERROR);
     }
     if (ordering.isAscending()) {
       while (deletionList != null && deleteCursor[0] < deletionList.size()) {

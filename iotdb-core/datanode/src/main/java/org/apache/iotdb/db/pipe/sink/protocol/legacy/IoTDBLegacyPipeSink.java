@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -280,12 +281,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
+          DataNodePipeMessages.IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT);
     }
 
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
       return;
     }
@@ -305,7 +306,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   public void transfer(final Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn(
-          "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
+          DataNodePipeMessages.IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
+          event);
     }
   }
 
@@ -409,7 +411,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
         } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
           randomAccessFile.seek(position);
-          LOGGER.info("Redirect to position {} in transferring tsFile {}.", position, file);
+          LOGGER.info(
+              DataNodePipeMessages.REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE, position, file);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           final String errorMsg =
               String.format("Network failed to receive tsFile %s, status: %s", file, status);

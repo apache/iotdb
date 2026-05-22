@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -74,7 +76,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMVALIDATETASK, pipeName);
 
     pipeTaskInfo.get().checkBeforeDropPipe(pipeName);
 
@@ -83,19 +85,20 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS, pipeName);
 
     TSStatus response;
     try {
       response = env.getConfigManager().getConsensusManager().write(new DropPipePlanV2(pipeName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -106,13 +109,13 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, dropSinglePipeOnDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to drop pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_DROP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           pipeName,
           exceptionMessage);
     }
@@ -120,25 +123,26 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMVALIDATETASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
+    LOGGER.info(
+        ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS, pipeName);
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("DropPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.DROPPIPEPROCEDUREV2_ROLLBACKFROMOPERATEONDATANODES, pipeName);
     // Do nothing
   }
 

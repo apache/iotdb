@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -219,7 +220,8 @@ public class ActiveLoadTsFileLoader {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
       throws FileNotFoundException {
     final File tsFile = new File(entry.getFile());
-    final LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
     final List<File> files = statement.getTsFiles();
 
     statement.setDeleteAfterLoad(true);
@@ -319,7 +321,7 @@ public class ActiveLoadTsFileLoader {
             return null;
           });
     } catch (final IOException e) {
-      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+      LOGGER.warn(StorageEngineMessages.ERROR_MOVING_FILE_TO_FAIL_DIR, filePath, e);
     }
   }
 
@@ -343,7 +345,7 @@ public class ActiveLoadTsFileLoader {
               try {
                 fileSize[0] += file.toFile().length();
               } catch (Exception e) {
-                LOGGER.debug("Failed to count failed files in fail directory.", e);
+                LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
               }
               return FileVisitResult.CONTINUE;
             }
@@ -352,7 +354,7 @@ public class ActiveLoadTsFileLoader {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.debug("Failed to count failed files in fail directory.", e);
+      LOGGER.debug(StorageEngineMessages.FAILED_COUNT_FILES_IN_FAIL_DIR, e);
     }
 
     return fileCount[0];

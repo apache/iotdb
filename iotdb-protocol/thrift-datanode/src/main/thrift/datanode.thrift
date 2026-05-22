@@ -332,6 +332,11 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateClusterTopologyReq {
+  1: required map<i32, common.TDataNodeLocation> dataNodes
+  2: required map<i32, set<i32>> topology
+}
+
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
@@ -1303,6 +1308,12 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /**
+   * Push cluster topology to this DataNode.
+   * Each DataNode receives only its own reachable set.
+   */
+  common.TSStatus updateClusterTopology(1:TUpdateClusterTopologyReq req)
 
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);

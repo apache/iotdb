@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 
 public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, Void> {
@@ -41,7 +42,7 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   @Override
   public String visitExpression(final Expression expression, final Void context) {
     // TODO: implement schema function filter and parse some function call and arithmetic filters
-    // into id determined filter
+    // into a tag-determined filter
     return null;
   }
 
@@ -67,12 +68,14 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
 
   @Override
   public String visitLogicalExpression(final LogicalExpression node, final Void context) {
-    throw new UnsupportedOperationException("The logical expression has no bounded column");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.THE_LOGICAL_EXPRESSION_HAS_NO_BOUNDED_COLUMN);
   }
 
   @Override
   public String visitNotExpression(final NotExpression node, final Void context) {
-    throw new UnsupportedOperationException("The not expression has no bounded column");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.THE_NOT_EXPRESSION_HAS_NO_BOUNDED_COLUMN);
   }
 
   @Override

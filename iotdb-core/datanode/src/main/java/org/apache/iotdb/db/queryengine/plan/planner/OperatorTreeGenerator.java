@@ -55,6 +55,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.TwoCh
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -326,7 +327,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
-    throw new UnsupportedOperationException("should call the concrete visitXX() method");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.SHOULD_CALL_THE_CONCRETE_VISITXX_METHOD);
   }
 
   @Override
@@ -1085,7 +1087,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             ? getOutputColumnTypes(node, context.getTypeProvider())
             : context.getCachedDataTypes();
     if (outputColumnTypes == null || outputColumnTypes.isEmpty()) {
-      throw new IllegalStateException("OutputColumTypes should not be null/empty");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.OUTPUTCOLUMTYPES_SHOULD_NOT_BE_NULL_EMPTY);
     }
     return new SingleDeviceViewOperator(
         operatorContext, node.getDevice().toString(), child, deviceColumnIndex, outputColumnTypes);
@@ -1331,7 +1334,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             CommonOperatorUtils.getLinearFill(inputColumns, inputDataTypes),
             child);
       default:
-        throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_FILL_POLICY + fillPolicy);
     }
   }
 
@@ -1537,7 +1540,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
     // check whether predicate contains Non-Mappable UDF
     if (!predicate.isMappable(expressionTypes)) {
-      throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.FILTER_CAN_NOT_CONTAIN_NON_MAPPABLE_UDF);
     }
 
     final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
@@ -1960,7 +1964,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         case VARIATION_WINDOW:
           Expression groupByVariationExpression = node.getGroupByExpression();
           if (groupByVariationExpression == null) {
-            throw new IllegalArgumentException("groupByVariationExpression can't be null");
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.GROUPBYVARIATIONEXPRESSION_CAN_T_BE_NULL);
           }
           String controlColumn = groupByVariationExpression.getExpressionString();
           TSDataType controlColumnType = context.getTypeProvider().getTreeModelType(controlColumn);
@@ -1975,7 +1980,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         case CONDITION_WINDOW:
           Expression groupByConditionExpression = node.getGroupByExpression();
           if (groupByConditionExpression == null) {
-            throw new IllegalArgumentException("groupByConditionExpression can't be null");
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.GROUPBYCONDITIONEXPRESSION_CAN_T_BE_NULL);
           }
           windowParameter =
               new ConditionWindowParameter(
@@ -1996,7 +2002,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         case COUNT_WINDOW:
           Expression groupByCountExpression = node.getGroupByExpression();
           if (groupByCountExpression == null) {
-            throw new IllegalArgumentException("groupByCountExpression can't be null");
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.GROUPBYCOUNTEXPRESSION_CAN_T_BE_NULL);
           }
           windowParameter =
               new CountWindowParameter(
@@ -2009,7 +2016,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
                   ((GroupByCountParameter) groupByParameter).isIgnoreNull());
           break;
         default:
-          throw new IllegalArgumentException("Unsupported window type");
+          throw new IllegalArgumentException(DataNodeQueryMessages.UNSUPPORTED_WINDOW_TYPE);
       }
       return new RawDataAggregationOperator(
           operatorContext,
@@ -2923,7 +2930,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (timeValuePair.getValue() == TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
+      } else if (timeValuePair.getValue() == TableDeviceLastCache.PLACEHOLDER_NO_VALUE) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
         // cached last value is not satisfied
@@ -3363,7 +3370,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
           ((TwoChildProcessNode) node).setLeftChild(afterwardsNodes.get(0));
           ((TwoChildProcessNode) node).setRightChild(afterwardsNodes.get(1));
         } else {
-          throw new IllegalArgumentException("Unknown node type: " + node.getClass().getName());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNKNOWN_NODE_TYPE + node.getClass().getName());
         }
       }
       context.setExchangeSumNum(finalExchangeNum);
@@ -3593,7 +3601,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
               false,
               zoneId));
     } else {
-      throw new UnsupportedOperationException("Unsupported column generator type: " + type);
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.UNSUPPORTED_COLUMN_GENERATOR_TYPE + type);
     }
   }
 

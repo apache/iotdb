@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -162,7 +163,7 @@ public class CteMaterializer {
         try {
           tsBlock = execution.getBatchResult();
         } catch (final IoTDBException e) {
-          LOGGER.warn("Fail to materialize CTE because {}", e.getMessage());
+          LOGGER.warn(DataNodeQueryMessages.FAIL_TO_MATERIALIZE_CTE_BECAUSE, e.getMessage());
           return null;
         }
         if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {

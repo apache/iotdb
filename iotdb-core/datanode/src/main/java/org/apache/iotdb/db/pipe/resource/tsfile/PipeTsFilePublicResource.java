@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -120,7 +121,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "Failed to cacheDeviceIsAlignedMapIfAbsent for tsfile {}, because memory usage is high",
+          DataNodePipeMessages.FAILED_TO_CACHEDEVICEISALIGNEDMAPIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
           tsFile.getPath());
       return false;
     }
@@ -147,13 +148,15 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "PipeTsFileResource: Failed to cache objects for tsfile {} in cache, because memory usage is high",
+          DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
           tsFile.getPath());
       deviceIsAlignedMap = null;
       return false;
     }
 
-    LOGGER.info("PipeTsFileResource: Cached deviceIsAlignedMap for tsfile {}.", tsFile.getPath());
+    LOGGER.info(
+        DataNodePipeMessages.PIPETSFILERESOURCE_CACHED_DEVICEISALIGNEDMAP_FOR_TSFILE,
+        tsFile.getPath());
     return true;
   }
 
@@ -178,7 +181,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
                 MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "Failed to cacheObjectsIfAbsent for tsfile {}, because memory usage is high",
+          DataNodePipeMessages.FAILED_TO_CACHEOBJECTSIFABSENT_FOR_TSFILE_BECAUSE_MEMORY,
           tsFile.getPath());
       return false;
     }
@@ -214,7 +217,7 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
             .forceAllocateIfSufficient(memoryRequiredInBytes, MEMORY_SUFFICIENT_THRESHOLD);
     if (allocatedMemoryBlock == null) {
       LOGGER.info(
-          "PipeTsFileResource: Failed to cache objects for tsfile {} in cache, because memory usage is high",
+          DataNodePipeMessages.PIPETSFILERESOURCE_FAILED_TO_CACHE_OBJECTS_FOR_TSFILE,
           tsFile.getPath());
       deviceIsAlignedMap = null;
       deviceMeasurementsMap = null;
@@ -222,7 +225,8 @@ public class PipeTsFilePublicResource extends PipeTsFileResource {
       return false;
     }
 
-    LOGGER.info("PipeTsFileResource: Cached objects for tsfile {}.", tsFile.getPath());
+    LOGGER.info(
+        DataNodePipeMessages.PIPETSFILERESOURCE_CACHED_OBJECTS_FOR_TSFILE, tsFile.getPath());
     return true;
   }
 }

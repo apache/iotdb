@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -110,7 +111,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
 
       // relocated but still not enough
       if (tarSeg.insertRecord(key, buffer) < 0) {
-        throw new MetadataException("failed to insert buffer into relocated segment");
+        throw new MetadataException(DataNodeSchemaMessages.FAILED_TO_INSERT_RELOCATED_SEGMENT);
       }
 
       return spare >= spareSize ? 0L : spareSize - spare;
@@ -143,7 +144,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
       }
 
       if (seg.updateRecord(key, buffer) < 0) {
-        throw new MetadataException("failed to update buffer upon relocated segment");
+        throw new MetadataException(DataNodeSchemaMessages.FAILED_TO_UPDATE_RELOCATED_SEGMENT);
       }
       return spare >= spareSize ? 0 : spareSize - spare;
     }
@@ -332,8 +333,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
         || segOffsetLst.get(0) != SchemaFileConfig.PAGE_HEADER_SIZE
         || spareSize != 0
         || spareOffset != this.pageBuffer.capacity() - SchemaFileConfig.SEG_OFF_DIG) {
-      throw new MetadataException(
-          "SegmentedPage can share entire buffer slice only when it contains one MAX SIZE segment.");
+      throw new MetadataException(DataNodeSchemaMessages.SEGMENTED_PAGE_SHARE_BUFFER);
     }
     // buffer may be modified, segment instance shall be abolished
     segCacheMap.clear();
@@ -589,7 +589,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     short thisIndex = (short) segOffsetLst.size();
     if (segCacheMap.containsKey(thisIndex)) {
       throw new MetadataException(
-          String.format("Segment cache map inconsistent with segment list in page %d.", pageIndex));
+          String.format(DataNodeSchemaMessages.SEGMENT_CACHE_MAP_INCONSISTENT, pageIndex));
     }
 
     segCacheMap.put(thisIndex, seg);

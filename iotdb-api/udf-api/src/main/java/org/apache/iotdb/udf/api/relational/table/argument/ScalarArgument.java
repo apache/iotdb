@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.utils.Binary;
@@ -81,7 +82,7 @@ public class ScalarArgument implements Argument {
         buffer.put(blobBytes);
         break;
       default:
-        throw new IllegalArgumentException("Unknown type: " + type);
+        throw new IllegalArgumentException(UdfApiMessages.UNKNOWN_SCALAR_ARG_TYPE + type);
     }
   }
 
@@ -121,7 +122,7 @@ public class ScalarArgument implements Argument {
         buffer.write(blobBytes);
         break;
       default:
-        throw new IllegalArgumentException("Unknown type: " + type);
+        throw new IllegalArgumentException(UdfApiMessages.UNKNOWN_SCALAR_ARG_TYPE + type);
     }
   }
 
@@ -151,7 +152,7 @@ public class ScalarArgument implements Argument {
         buffer.get(bytes);
         return new ScalarArgument(type, new String(bytes));
       default:
-        throw new IllegalArgumentException("Unknown type: " + type);
+        throw new IllegalArgumentException(UdfApiMessages.UNKNOWN_SCALAR_ARG_TYPE + type);
     }
   }
 }

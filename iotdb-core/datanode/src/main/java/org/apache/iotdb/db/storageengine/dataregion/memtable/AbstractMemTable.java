@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -242,7 +243,8 @@ public abstract class AbstractMemTable implements IMemTable {
           || values[i] == null
           || insertRowNode.getColumnCategories() != null
               && insertRowNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD) {
-        if (values[i] == null) {
+        if (measurements[i] != null && values[i] == null) {
+          // do not include failed measurement to avoid a negative pointsInserted
           nullPointsNumber++;
         }
         schemaList.add(null);
@@ -321,6 +323,11 @@ public abstract class AbstractMemTable implements IMemTable {
     int nullPointsNumber = 0;
     if (values != null) {
       for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
+        if (insertTabletNode.isMeasurementFailed(i)) {
+          // do not include failed measurement to avoid a negative pointsInserted
+          continue;
+        }
+
         BitMap bitMap = (BitMap) values[i];
         if (bitMap != null && !bitMap.isAllUnmarked()) {
           for (int j = start; j < end; j++) {
@@ -999,7 +1006,8 @@ public abstract class AbstractMemTable implements IMemTable {
             DataNodeDevicePathCache.getInstance()
                 .getPartialPath(ReadWriteIOUtils.readString(stream));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize OldMemTableSnapshot", e);
+        throw new IllegalArgumentException(
+            StorageEngineMessages.CANNOT_DESERIALIZE_OLD_MEMTABLE_SNAPSHOT, e);
       }
       IDeviceID deviceID = deviceIDFactory.getDeviceID(devicePath);
       boolean isAligned = ReadWriteIOUtils.readBool(stream);

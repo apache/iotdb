@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -41,7 +43,7 @@ import java.util.Arrays;
 import java.util.Optional;
 
 @TreeModel
-public class WebSocketSink implements PipeConnector {
+public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketSink.class);
 
@@ -123,7 +125,7 @@ public class WebSocketSink implements PipeConnector {
     if (!((EnrichedEvent) tabletInsertionEvent)
         .increaseReferenceCount(WebSocketSink.class.getName())) {
       LOGGER.warn(
-          "WebsocketConnector failed to increase the reference count of the event. Ignore it. Current event: {}.",
+          DataNodePipeMessages.WEBSOCKETCONNECTOR_FAILED_TO_INCREASE_THE_REFERENCE_COUNT,
           tabletInsertionEvent);
       return;
     }
@@ -135,7 +137,8 @@ public class WebSocketSink implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          DataNodePipeMessages
+              .WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT,
           tsFileInsertionEvent);
       return;
     }
@@ -163,6 +166,14 @@ public class WebSocketSink implements PipeConnector {
   public void close() throws Exception {
     if (server != null) {
       server.unregister(this);
+    }
+  }
+
+  @Override
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    if (server != null) {
+      server.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     }
   }
 

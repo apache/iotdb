@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningQueue;
@@ -73,7 +74,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     }
 
     isShutdown.set(false);
-    LOGGER.info("PipeRuntimeConfigNodeAgent started");
+    LOGGER.info(ManagerMessages.PIPERUNTIMECONFIGNODEAGENT_STARTED);
   }
 
   @Override
@@ -88,7 +89,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
     PipeConfigNodeAgent.task().dropAllPipeTasks();
 
-    LOGGER.info("PipeRuntimeConfigNodeAgent stopped");
+    LOGGER.info(ManagerMessages.PIPERUNTIMECONFIGNODEAGENT_STOPPED);
   }
 
   public boolean isShutdown() {
@@ -141,14 +142,16 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     if (event.getPipeTaskMeta() != null) {
       report(event.getPipeTaskMeta(), pipeRuntimeException);
     } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
+      LOGGER.warn(
+          ManagerMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA,
+          pipeRuntimeException);
     }
   }
 
   private void report(
       final PipeTaskMeta pipeTaskMeta, final PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
-        "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
+        ManagerMessages.REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE,
         pipeTaskMeta,
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);

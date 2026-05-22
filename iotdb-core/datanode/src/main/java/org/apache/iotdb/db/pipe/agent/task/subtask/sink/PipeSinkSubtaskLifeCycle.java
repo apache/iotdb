@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -60,7 +61,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
   public synchronized void register() {
     if (registeredTaskCount < 0) {
-      throw new IllegalStateException("registeredTaskCount < 0");
+      throw new IllegalStateException(DataNodePipeMessages.REGISTEREDTASKCOUNT_0);
     }
 
     if (registeredTaskCount == 0) {
@@ -72,7 +73,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
     registeredTaskCount++;
     LOGGER.info(
-        "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        DataNodePipeMessages.REGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
         subtask,
         runningTaskCount,
         registeredTaskCount);
@@ -92,12 +93,13 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
    *     {@link PipeSinkSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  public synchronized boolean deregister(final String pipeNameToDeregister, int regionId) {
+  public synchronized boolean deregister(
+      final String pipeNameToDeregister, final long creationTimeToDeregister, final int regionId) {
     if (registeredTaskCount <= 0) {
-      throw new IllegalStateException("registeredTaskCount <= 0");
+      throw new IllegalStateException(DataNodePipeMessages.REGISTEREDTASKCOUNT_0_1);
     }
 
-    subtask.discardEventsOfPipe(pipeNameToDeregister, regionId);
+    subtask.discardEventsOfPipe(pipeNameToDeregister, creationTimeToDeregister, regionId);
 
     try {
       if (registeredTaskCount > 1) {
@@ -110,7 +112,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
     } finally {
       registeredTaskCount--;
       LOGGER.info(
-          "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+          DataNodePipeMessages.DEREGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
           subtask,
           runningTaskCount,
           registeredTaskCount);
@@ -119,7 +121,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
   public synchronized void start() {
     if (runningTaskCount < 0) {
-      throw new IllegalStateException("runningTaskCount < 0");
+      throw new IllegalStateException(DataNodePipeMessages.RUNNINGTASKCOUNT_0);
     }
 
     if (runningTaskCount == 0) {
@@ -133,7 +135,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount++;
     LOGGER.info(
-        "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        DataNodePipeMessages.START_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
         subtask,
         runningTaskCount,
         registeredTaskCount);
@@ -141,7 +143,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
   public synchronized void stop() {
     if (runningTaskCount <= 0) {
-      throw new IllegalStateException("runningTaskCount <= 0");
+      throw new IllegalStateException(DataNodePipeMessages.RUNNINGTASKCOUNT_0_1);
     }
 
     if (runningTaskCount == 1) {
@@ -150,7 +152,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
 
     runningTaskCount--;
     LOGGER.info(
-        "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        DataNodePipeMessages.STOP_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT,
         subtask,
         runningTaskCount,
         registeredTaskCount);

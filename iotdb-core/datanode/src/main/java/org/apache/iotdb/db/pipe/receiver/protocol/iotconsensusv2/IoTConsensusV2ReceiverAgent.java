@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -101,9 +102,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
                 TSStatusCode.IOT_CONSENSUS_V2_CLOSE_ERROR,
                 "IoTConsensusV2 receiver received a request after it was closed."));
     LOGGER.info(
-        "IoTConsensusV2-{}: receive on-the-fly no.{} event after data region was deleted, discard it",
-        consensusInfo,
-        tCommitId);
+        DataNodePipeMessages.IOTCONSENSUSV2_RECEIVE_ON_THE_FLY_NO_EVENT, consensusInfo, tCommitId);
     return new TIoTConsensusV2TransferResp(status);
   }
 
@@ -126,7 +125,8 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
               TSStatusCode.IOT_CONSENSUS_V2_VERSION_ERROR,
               String.format("Unknown IoTConsensusV2RequestVersion %s.", reqVersion));
       LOGGER.warn(
-          "IoTConsensusV2: Unknown IoTConsensusV2RequestVersion, response status = {}.", status);
+          DataNodePipeMessages.IOTCONSENSUSV2_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_RESPONSE_STATUS,
+          status);
       return new TIoTConsensusV2TransferResp(status);
     }
   }
@@ -196,7 +196,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
             RECEIVER_CONSTRUCTORS
                 .get(reqVersion)
                 .apply(iotConsensusV2, consensusGroupId, consensusPipeName));
-        LOGGER.info("Receiver-{} is ready", consensusPipeName);
+        LOGGER.info(DataNodePipeMessages.RECEIVER_IS_READY, consensusPipeName);
       } else {
         throw new UnsupportedOperationException(
             String.format("Unsupported iotConsensusV2 request version %d", reqVersion));
@@ -216,8 +216,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
-          "IoTConsensusV2Receiver thread is interrupted when waiting for receiver get initiated, may because system exit.",
-          e);
+          DataNodePipeMessages.IOTCONSENSUSV2RECEIVER_THREAD_IS_INTERRUPTED_WHEN_WAITING_FOR, e);
     }
   }
 
@@ -252,7 +251,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
       this.replicaReceiverMap.remove(dataRegionId);
       // 4. GC receiver map
       consensusPipe2ReciverMap.clear();
-      LOGGER.info("All Receivers related to {} are released.", dataRegionId);
+      LOGGER.info(DataNodePipeMessages.ALL_RECEIVERS_RELATED_TO_ARE_RELEASED, dataRegionId);
     } finally {
       receiverLifeCircleLock.writeLock().unlock();
     }
@@ -265,7 +264,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
               (consensusPipeName, receiverReference) -> {
                 if (receiverReference != null) {
                   receiverReference.get().closeExecutor();
-                  LOGGER.info("Receivers-{}' executor is closed.", consensusPipeName);
+                  LOGGER.info(DataNodePipeMessages.RECEIVERS_EXECUTOR_IS_CLOSED, consensusPipeName);
                 }
               });
         });

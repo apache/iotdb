@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.schema.table;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -230,16 +232,31 @@ public class TsTable {
   }
 
   public void renameColumnSchema(final String oldName, final String newName) {
-    executeWrite(
-        () -> {
-          // Ensures idempotency
-          if (columnSchemaMap.containsKey(oldName)) {
-            final TsTableColumnSchema schema = columnSchemaMap.get(oldName);
-            final Map<String, String> oldProps = schema.getProps();
-            oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
-            schema.setColumnName(newName);
-          }
-        });
+    executeWrite(() -> renameColumnSchemaInternal(oldName, newName));
+  }
+
+  protected void renameColumnSchemaInternal(final String oldName, final String newName) {
+    if (Objects.equals(oldName, newName)
+        || !columnSchemaMap.containsKey(oldName) && columnSchemaMap.containsKey(newName)) {
+      return;
+    }
+
+    final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+    if (Objects.isNull(schema)) {
+      return;
+    }
+
+    final Map<String, String> oldProps = schema.getProps();
+    oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+    schema.setColumnName(newName);
+    columnSchemaMap.put(newName, schema);
+
+    if (TsTableColumnCategory.TAG.equals(schema.getColumnCategory())) {
+      final Integer ordinal = tagColumnIndexMap.remove(oldName);
+      if (Objects.nonNull(ordinal)) {
+        tagColumnIndexMap.put(newName, ordinal);
+      }
+    }
   }
 
   public void removeColumnSchema(final String columnName) {
@@ -248,7 +265,8 @@ public class TsTable {
           final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
           if (columnSchema != null
               && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-            throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
+            throw new SchemaExecutionException(
+                SchemaMessages.CANNOT_REMOVE_TAG_COLUMN + columnName);
           } else if (columnSchema != null) {
             columnSchemaMap.remove(columnName);
             if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
@@ -403,7 +421,7 @@ public class TsTable {
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
-    throw new MetadataException("The object type column is not supported.");
+    throw new MetadataException(CommonMessages.OBJECT_TYPE_COLUMN_NOT_SUPPORTED);
   }
 
   @Override

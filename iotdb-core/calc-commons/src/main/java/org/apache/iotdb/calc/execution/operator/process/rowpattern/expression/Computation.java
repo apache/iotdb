@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers.Assignment;
@@ -182,7 +183,7 @@ public abstract class Computation {
         case MODULUS:
           return ArithmeticOperator.MODULUS;
         default:
-          throw new SemanticException("Unsupported arithmetic operator: " + operator);
+          throw new SemanticException(CalcMessages.UNSUPPORTED_ARITHMETIC_OPERATOR + operator);
       }
     }
 
@@ -204,7 +205,7 @@ public abstract class Computation {
         case IS_DISTINCT_FROM:
           return ComparisonOperator.IS_DISTINCT_FROM;
         default:
-          throw new SemanticException("Unsupported comparison operator: " + operator);
+          throw new SemanticException(CalcMessages.UNSUPPORTED_COMPARISON_OPERATOR + operator);
       }
     }
 
@@ -215,7 +216,7 @@ public abstract class Computation {
         case OR:
           return LogicalOperator.OR;
         default:
-          throw new SemanticException("Unsupported logical operator: " + operator);
+          throw new SemanticException(CalcMessages.UNSUPPORTED_LOGICAL_OPERATOR + operator);
       }
     }
   }

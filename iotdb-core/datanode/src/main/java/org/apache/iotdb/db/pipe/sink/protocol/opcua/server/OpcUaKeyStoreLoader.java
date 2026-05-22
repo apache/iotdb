@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import com.google.common.collect.Sets;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
@@ -60,13 +61,13 @@ class OpcUaKeyStoreLoader {
 
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
-    LOGGER.info("Loading KeyStore at {}", serverKeyStore);
+    LOGGER.info(DataNodePipeMessages.LOADING_KEYSTORE_AT, serverKeyStore);
 
     if (serverKeyStore.exists()) {
       try (InputStream is = Files.newInputStream(serverKeyStore.toPath())) {
         keyStore.load(is, password);
       } catch (final IOException e) {
-        LOGGER.warn("Load keyStore failed, the existing keyStore may be stale, re-constructing...");
+        LOGGER.warn(DataNodePipeMessages.LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY);
         FileUtils.deleteFileOrDirectory(serverKeyStore);
       }
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.core.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
+import org.apache.iotdb.metrics.core.i18n.MetricsCoreMessages;
 import org.apache.iotdb.metrics.core.utils.IoTDBMetricObjNameFactory;
 import org.apache.iotdb.metrics.core.utils.ObjectNameFactory;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
@@ -96,7 +97,7 @@ public class IoTDBJmxReporter implements JmxReporter {
       metric.setObjectName(objectName);
       registerMBean(metric, objectName);
     } catch (Exception e) {
-      LOGGER.warn("IoTDB Metric: Unable to register " + metricName, e);
+      LOGGER.warn(MetricsCoreMessages.JMX_REGISTER_FAILED + metricName, e);
     }
   }
 
@@ -107,9 +108,9 @@ public class IoTDBJmxReporter implements JmxReporter {
       final ObjectName objectName = createName(metricName, metricInfo);
       unregisterMBean(objectName);
     } catch (InstanceNotFoundException e) {
-      LOGGER.debug("IoTDB Metric: Unable to unregister: ", e);
+      LOGGER.debug(MetricsCoreMessages.JMX_UNREGISTER_FAILED, e);
     } catch (MBeanRegistrationException e) {
-      LOGGER.warn("IoTDB Metric: Unable to unregister: ", e);
+      LOGGER.warn(MetricsCoreMessages.JMX_UNREGISTER_FAILED, e);
     }
   }
 
@@ -140,16 +141,16 @@ public class IoTDBJmxReporter implements JmxReporter {
   public boolean start() {
     try {
       if (!registered.isEmpty()) {
-        LOGGER.warn("IoTDB Metric: JmxReporter already start!");
+        LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_ALREADY_START);
         return false;
       }
       // register all existed metrics into JmxReporter
       metricManager.getAllMetrics().forEach((key, value) -> registerMetric(value, key));
     } catch (Exception e) {
-      LOGGER.warn("IoTDB Metric: JmxReporter failed to start, because ", e);
+      LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_START_FAILED, e);
       return false;
     }
-    LOGGER.info("IoTDB Metric: JmxReporter start!");
+    LOGGER.info(MetricsCoreMessages.JMX_REPORTER_START);
     return true;
   }
 
@@ -158,10 +159,10 @@ public class IoTDBJmxReporter implements JmxReporter {
     try {
       unregisterAll();
     } catch (Exception e) {
-      LOGGER.warn("IoTDB Metric: JmxReporter failed to stop, because ", e);
+      LOGGER.warn(MetricsCoreMessages.JMX_REPORTER_STOP_FAILED, e);
       return false;
     }
-    LOGGER.info("IoTDB Metric: JmxReporter stop!");
+    LOGGER.info(MetricsCoreMessages.JMX_REPORTER_STOP);
     return true;
   }
 

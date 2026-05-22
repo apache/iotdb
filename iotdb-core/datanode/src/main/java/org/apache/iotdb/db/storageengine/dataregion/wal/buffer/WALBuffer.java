@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -90,6 +91,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
+  private final Condition rollLogWriterCondition = buffersLock.newCondition();
   // last writer position when fsync is called, help record each entry's position
   private long lastFsyncPosition;
 
@@ -156,7 +158,7 @@ public class WALBuffer extends AbstractWALBuffer {
       compressedByteBuffer =
           ByteBuffer.allocateDirect(getCompressedByteBufferSize(ONE_THIRD_WAL_BUFFER_SIZE));
     } catch (OutOfMemoryError e) {
-      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      logger.error(StorageEngineMessages.FAIL_TO_ALLOCATE_WAL_BUFFER_OOM, identifier, e);
       close();
       throw e;
     }
@@ -170,6 +172,13 @@ public class WALBuffer extends AbstractWALBuffer {
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
     File file = super.rollLogWriter(searchIndex, fileStatus);
     currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
+    buffersLock.lock();
+    try {
+      // notify WALReader that new file is generated, and it can read new file
+      rollLogWriterCondition.signalAll();
+    } finally {
+      buffersLock.unlock();
+    }
     return file;
   }
 
@@ -188,7 +197,7 @@ public class WALBuffer extends AbstractWALBuffer {
       compressedByteBuffer = ByteBuffer.allocateDirect(getCompressedByteBufferSize(capacity));
       currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
-      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      logger.error(StorageEngineMessages.FAIL_TO_ALLOCATE_WAL_BUFFER_OOM, identifier, e);
       close();
       throw e;
     } finally {
@@ -209,7 +218,7 @@ public class WALBuffer extends AbstractWALBuffer {
     try {
       walEntries.put(walEntry);
     } catch (InterruptedException e) {
-      logger.warn("Interrupted when waiting for adding WALEntry to buffer.");
+      logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_ADD_WAL_ENTRY);
       Thread.currentThread().interrupt();
     }
   }
@@ -361,7 +370,7 @@ public class WALBuffer extends AbstractWALBuffer {
       switch (walSignalEntry.getType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
           if (logger.isDebugEnabled()) {
-            logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
+            logger.debug(StorageEngineMessages.HANDLE_ROLL_LOG_WRITER_SIGNAL, identifier);
           }
           info.rollWALFileWriterListener = walSignalEntry.getWalFlushListener();
           fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
@@ -504,7 +513,7 @@ public class WALBuffer extends AbstractWALBuffer {
       workingBuffer.clear();
       idleBuffer = null;
     } catch (InterruptedException e) {
-      logger.warn("Interrupted When waiting for available working buffer.");
+      logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_WORKING_BUFFER);
       Thread.currentThread().interrupt();
     } finally {
       buffersLock.unlock();
@@ -656,7 +665,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public void waitForFlush() throws InterruptedException {
+  public void waitForRollFile() throws InterruptedException {
     buffersLock.lock();
     try {
       idleBufferReadyCondition.await();
@@ -666,11 +675,11 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public void waitForFlush(Predicate<WALBuffer> waitPredicate) throws InterruptedException {
+  public void waitForRollFile(Predicate<WALBuffer> waitPredicate) throws InterruptedException {
     buffersLock.lock();
     try {
       if (waitPredicate.test(this)) {
-        idleBufferReadyCondition.await();
+        rollLogWriterCondition.await();
       }
     } finally {
       buffersLock.unlock();
@@ -678,10 +687,10 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException {
+  public boolean waitForRollFile(long time, TimeUnit unit) throws InterruptedException {
     buffersLock.lock();
     try {
-      return idleBufferReadyCondition.await(time, unit);
+      return rollLogWriterCondition.await(time, unit);
     } finally {
       buffersLock.unlock();
     }
@@ -698,7 +707,7 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         walEntries.put(new WALSignalEntry(WALEntryType.CLOSE_SIGNAL));
       } catch (InterruptedException e) {
-        logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
+        logger.error(StorageEngineMessages.FAIL_TO_PUT_CLOSE_SIGNAL, e);
         Thread.currentThread().interrupt();
       }
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
@@ -711,7 +720,7 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         currentWALFileWriter.close();
       } catch (IOException e) {
-        logger.error("Fail to close wal node-{}'s log writer.", identifier, e);
+        logger.error(StorageEngineMessages.FAIL_TO_CLOSE_WAL_LOG_WRITER, identifier, e);
       }
     }
     checkpointManager.close();
@@ -730,10 +739,10 @@ public class WALBuffer extends AbstractWALBuffer {
     thread.shutdown();
     try {
       if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
-        logger.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
+        logger.warn(StorageEngineMessages.WAITING_THREAD_TERMINATED_TIMEOUT, threadName.getName());
       }
     } catch (InterruptedException e) {
-      logger.warn("Thread {} still doesn't exit after 30s", threadName.getName());
+      logger.warn(StorageEngineMessages.THREAD_NOT_EXIT_AFTER_30S, threadName.getName());
       Thread.currentThread().interrupt();
     }
   }
