@@ -346,7 +346,8 @@ public class WritePlanNodeSplitTest {
       dataPartitionQueryParam.setDeviceID(
           insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
-          insertTabletNode.getTimePartitionSlots(getDatabaseName(insertTabletNode.getTargetPath())));
+          insertTabletNode.getTimePartitionSlots(
+              getDatabaseName(insertTabletNode.getTargetPath())));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 

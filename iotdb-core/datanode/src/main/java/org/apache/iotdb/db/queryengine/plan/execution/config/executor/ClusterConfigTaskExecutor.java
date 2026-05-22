@@ -489,7 +489,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(
                   Arrays.asList(ROOT, MULTI_LEVEL_PATH_WILDCARD), ALL_MATCH_SCOPE.serialize())
-              .setIsTableModel(databaseSchema.isSetIsTableModel() && databaseSchema.isIsTableModel())
+              .setIsTableModel(
+                  databaseSchema.isSetIsTableModel() && databaseSchema.isIsTableModel())
               .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp resp = configNodeClient.getMatchedDatabaseSchemas(req);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
