@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -56,6 +57,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
@@ -65,8 +67,13 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -80,6 +87,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
@@ -2011,6 +2019,44 @@ public class DataRegionTest {
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceSeq.anyModFileExists());
     Assert.assertFalse(tsFileResourceUnSeq.anyModFileExists());
+  }
+
+  @Test
+  public void testTableDeletionFallsBackToModsForCompactingFile() throws Exception {
+    RelationalInsertTabletNode insertTabletNode = genInsertTabletNode(10, 0);
+    dataRegion.insertTablet(insertTabletNode);
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+
+    TsFileResource sourceTsFile = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    assertTrue(sourceTsFile.transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+    assertTrue(sourceTsFile.transformStatus(TsFileResourceStatus.COMPACTING));
+
+    TsFileResource targetTsFile =
+        new TsFileResource(new File(sourceTsFile.getTsFile().getParent(), "target.tsfile"));
+    CompactionUtils.prepareCompactionModFiles(
+        Collections.singletonList(targetTsFile), Collections.singletonList(sourceTsFile));
+    Assert.assertFalse(targetTsFile.anyModFileExists());
+
+    TableDeletionEntry deletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate(StatementTestUtils.tableName(), new NOP()),
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    dataRegion.deleteByTable(
+        new RelationalDeleteDataNode(
+            new PlanNodeId("table-delete"), deletionEntry, dataRegion.getDatabaseName()));
+
+    assertTrue(sourceTsFile.getTsFile().exists());
+    assertTrue(sourceTsFile.isCompacting());
+    assertTrue(sourceTsFile.anyModFileExists());
+    assertTrue(targetTsFile.anyModFileExists());
+    try {
+      targetTsFile.getModFileForWrite().close();
+      Assert.assertEquals(
+          Collections.singletonList(deletionEntry),
+          ModificationFile.readAllModifications(targetTsFile.getTsFile(), false));
+    } finally {
+      targetTsFile.removeModFile();
+    }
   }
 
   @Test

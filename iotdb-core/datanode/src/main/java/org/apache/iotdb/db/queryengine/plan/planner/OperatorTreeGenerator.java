@@ -2930,7 +2930,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (timeValuePair.getValue() == TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
+      } else if (timeValuePair.getValue() == TableDeviceLastCache.PLACEHOLDER_NO_VALUE) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
         // cached last value is not satisfied

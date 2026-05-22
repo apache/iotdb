@@ -3484,7 +3484,11 @@ public class DataRegion implements IDataRegionForQuery {
             }
           }
           if (matchSize == devicesInFile.size()) {
-            deletedByFiles.add(sealedTsFile);
+            if (sealedTsFile.setStatus(TsFileResourceStatus.DELETED)) {
+              deletedByFiles.add(sealedTsFile);
+            } else {
+              deletedByMods.add(sealedTsFile);
+            }
           }
 
           if (logger.isDebugEnabled()) {
