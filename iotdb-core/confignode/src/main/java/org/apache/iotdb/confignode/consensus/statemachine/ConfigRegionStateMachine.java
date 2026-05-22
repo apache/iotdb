@@ -54,8 +54,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
@@ -122,8 +124,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
+    SimpleConsensusPersistResult persistResult = null;
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      final TSStatus persistStatus = persistPlanForSimpleConsensus(plan);
+      persistResult = persistPlanForSimpleConsensus(plan);
+      final TSStatus persistStatus = persistResult.status;
       if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return persistStatus;
       }
@@ -132,9 +136,20 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException e) {
+    } catch (UnknownPhysicalPlanTypeException | RuntimeException e) {
       LOGGER.error(ConfigNodeMessages.EXECUTE_NON_QUERY_PLAN_FAILED, e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+
+    if (persistResult != null
+        && result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !rollbackFailedPlanForSimpleConsensus(persistResult)) {
+      final String rollbackFailureMessage =
+          ConfigNodeMessages.FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG;
+      result.setMessage(
+          Optional.ofNullable(result.getMessage())
+              .map(message -> message + " " + rollbackFailureMessage)
+              .orElse(rollbackFailureMessage));
     }
 
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -367,7 +382,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  private TSStatus persistPlanForSimpleConsensus(ConfigPhysicalPlan plan) {
+  private SimpleConsensusPersistResult persistPlanForSimpleConsensus(ConfigPhysicalPlan plan) {
+    File persistedLogFile = null;
+    long logFileSizeBeforeWrite = 0;
+    int endIndexBeforeWrite = endIndex;
     try {
       if (simpleLogWriter == null || simpleLogFile == null) {
         throw new IOException(ConfigNodeMessages.SIMPLECONSENSUS_LOG_WRITER_IS_NOT_INITIALIZED);
@@ -376,6 +394,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
         rollSimpleConsensusLogFile();
       }
+
+      persistedLogFile = simpleLogFile;
+      logFileSizeBeforeWrite = persistedLogFile.length();
+      endIndexBeforeWrite = endIndex;
 
       ByteBuffer buffer = plan.serializeToByteBuffer();
       buffer.position(buffer.limit());
@@ -388,12 +410,33 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           ConfigNodeMessages
               .PERSIST_CURRENT_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
           e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(
-              ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED
-                  + String.valueOf(e.getMessage()));
+      return SimpleConsensusPersistResult.failure(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(
+                  ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED
+                      + String.valueOf(e.getMessage())));
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return SimpleConsensusPersistResult.success(
+        persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
+  }
+
+  private boolean rollbackFailedPlanForSimpleConsensus(SimpleConsensusPersistResult persistResult) {
+    closeSimpleLogWriter();
+    try (FileOutputStream outputStream = new FileOutputStream(persistResult.logFile, true);
+        FileChannel channel = outputStream.getChannel()) {
+      channel.truncate(persistResult.logFileSizeBeforeWrite);
+      channel.force(true);
+      simpleLogFile = persistResult.logFile;
+      simpleLogWriter = new LogWriter(simpleLogFile, false);
+      endIndex = persistResult.endIndexBeforeWrite;
+      return true;
+    } catch (IOException e) {
+      LOGGER.error(
+          ConfigNodeMessages
+              .ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
+          e);
+      return false;
+    }
   }
 
   private void rollSimpleConsensusLogFile() throws IOException {
@@ -568,5 +611,34 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       }
     }
     return 0;
+  }
+
+  private static class SimpleConsensusPersistResult {
+
+    private final TSStatus status;
+    private final File logFile;
+    private final long logFileSizeBeforeWrite;
+    private final int endIndexBeforeWrite;
+
+    private SimpleConsensusPersistResult(
+        TSStatus status, File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      this.status = status;
+      this.logFile = logFile;
+      this.logFileSizeBeforeWrite = logFileSizeBeforeWrite;
+      this.endIndexBeforeWrite = endIndexBeforeWrite;
+    }
+
+    private static SimpleConsensusPersistResult success(
+        File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      return new SimpleConsensusPersistResult(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          logFile,
+          logFileSizeBeforeWrite,
+          endIndexBeforeWrite);
+    }
+
+    private static SimpleConsensusPersistResult failure(TSStatus status) {
+      return new SimpleConsensusPersistResult(status, null, 0, 0);
+    }
   }
 }
