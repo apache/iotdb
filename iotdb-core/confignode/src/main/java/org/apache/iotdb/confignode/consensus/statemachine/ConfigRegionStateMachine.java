@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -64,7 +63,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -414,7 +412,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(
                   ConfigNodeMessages.PERSIST_CONFIGNODE_SIMPLECONSENSUS_LOG_FAILED
-                      + String.valueOf(e.getMessage())));
+                      + e.getMessage()));
     }
     return SimpleConsensusPersistResult.success(
         persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
@@ -497,27 +495,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
     startIndex = endIndex + 1;
     createLogFile(startIndex);
-
-    ScheduledExecutorService simpleConsensusThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH.getName());
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        simpleConsensusThread,
-        this::flushWALForSimpleConsensus,
-        0,
-        CONF.getForceWalPeriodForConfigNodeSimpleInMs(),
-        TimeUnit.MILLISECONDS);
-  }
-
-  private void flushWALForSimpleConsensus() {
-    if (simpleLogWriter != null) {
-      try {
-        simpleLogWriter.force();
-      } catch (IOException e) {
-        LOGGER.error(
-            ConfigNodeMessages.CAN_T_FORCE_LOGWRITER_FOR_CONFIGNODE_FLUSHWALFORSIMPLECONSENSUS, e);
-      }
-    }
   }
 
   private void createLogFile(int startIndex) {
