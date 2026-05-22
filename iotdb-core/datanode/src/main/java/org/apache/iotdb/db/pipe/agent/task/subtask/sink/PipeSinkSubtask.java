@@ -257,8 +257,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     return committerKey.getPipeName().equals(event.getPipeName())
         && committerKey.getCreationTime() == event.getCreationTime()
         && committerKey.getRegionId() == event.getRegionId()
-        && (committerKey.getRestartTimes() < 0
-            || committerKey.equals(event.getCommitterKey()));
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

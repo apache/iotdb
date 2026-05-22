@@ -529,8 +529,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     return committerKey.getPipeName().equals(event.getPipeName())
         && committerKey.getCreationTime() == event.getCreationTime()
         && committerKey.getRegionId() == event.getRegionId()
-        && (committerKey.getRestartTimes() < 0
-            || committerKey.equals(event.getCommitterKey()));
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   private boolean isQueueAvailable(

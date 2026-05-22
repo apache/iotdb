@@ -144,7 +144,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
     droppedPipeTaskKeys.add(committerKey);
     pendingQueue.removeIf(
         event -> {
-          if (event instanceof EnrichedEvent && isEventFromPipe((EnrichedEvent) event, committerKey)) {
+          if (event instanceof EnrichedEvent
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
             if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
             }
@@ -197,8 +198,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return committerKey.getPipeName().equals(event.getPipeName())
         && committerKey.getCreationTime() == event.getCreationTime()
         && committerKey.getRegionId() == event.getRegionId()
-        && (committerKey.getRestartTimes() < 0
-            || committerKey.equals(event.getCommitterKey()));
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   protected boolean isEventFromDroppedPipe(final E event) {

@@ -364,7 +364,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     super.discardEventsOfPipe(committerKey);
     tsfileInsertEventDeque.removeIf(
         event -> {
-          if (event instanceof EnrichedEvent && isEventFromPipe((EnrichedEvent) event, committerKey)) {
+          if (event instanceof EnrichedEvent
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
             if (((EnrichedEvent) event)
                 .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
