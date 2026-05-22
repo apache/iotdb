@@ -56,6 +56,7 @@ import java.util.Objects;
 
 public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTTLState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
+  // Distinguishes no previous TTL from TTLCache.NULL_TTL, the explicit unset marker for rollback.
   private static final long TTL_NOT_EXIST = Long.MIN_VALUE;
 
   private SetTTLPlan plan;

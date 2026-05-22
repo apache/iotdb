@@ -244,7 +244,8 @@ public class TTLInfoTest {
     final TSStatus status = ttlInfo.setTTL(setTTLPlan);
     assertEquals(TSStatusCode.OVERSIZE_TTL.getStatusCode(), status.code);
     assertEquals(
-        "The number of TTL rules has reached the limit (1000). Please delete some existing rules first.",
+        "The number of TTL rules has reached the limit "
+            + "(capacity: 1000, requested total: 1001). Please delete some existing rules first.",
         status.message);
   }
 

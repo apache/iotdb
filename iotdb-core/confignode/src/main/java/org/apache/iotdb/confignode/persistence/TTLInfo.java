@@ -71,13 +71,14 @@ public class TTLInfo implements SnapshotProcessor {
       // check ttl rule capacity
       final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
       final int newTTLRuleCount = calculateNewTTLRuleCount(plan);
-      if (newTTLRuleCount > 0 && ttlCache.getTtlCount() + newTTLRuleCount > tTlRuleCapacity) {
+      final int requestedTTLRuleCount = ttlCache.getTtlCount() + newTTLRuleCount;
+      if (newTTLRuleCount > 0 && requestedTTLRuleCount > tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
             String.format(
-                "The number of TTL rules has reached the limit (%d). Please delete "
-                    + "some existing rules first.",
-                tTlRuleCapacity));
+                "The number of TTL rules has reached the limit "
+                    + "(capacity: %d, requested total: %d). Please delete some existing rules first.",
+                tTlRuleCapacity, requestedTTLRuleCount));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
@@ -94,17 +95,17 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   private int calculateNewTTLRuleCount(SetTTLPlan plan) {
-    int newTTLRuleCount = getNewTTLRuleCount(plan.getPathPattern());
+    int newTTLRuleCount = isNewTTLRule(plan.getPathPattern()) ? 1 : 0;
     if (plan.isDataBase()) {
       String[] pathNodes = Arrays.copyOf(plan.getPathPattern(), plan.getPathPattern().length + 1);
       pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-      newTTLRuleCount += getNewTTLRuleCount(pathNodes);
+      newTTLRuleCount += isNewTTLRule(pathNodes) ? 1 : 0;
     }
     return newTTLRuleCount;
   }
 
-  private int getNewTTLRuleCount(String[] pathNodes) {
-    return ttlCache.getLastNodeTTL(pathNodes) == TTLCache.NULL_TTL ? 1 : 0;
+  private boolean isNewTTLRule(String[] pathNodes) {
+    return ttlCache.getLastNodeTTL(pathNodes) == TTLCache.NULL_TTL;
   }
 
   /** Only used for upgrading from database level ttl to device level ttl. */
