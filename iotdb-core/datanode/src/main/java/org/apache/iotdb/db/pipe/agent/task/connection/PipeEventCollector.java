@@ -238,7 +238,7 @@ public class PipeEventCollector implements EventCollector {
       enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
 
       if (enrichedEvent.getPipeName() != null
-          && pendingQueue.isPipeDropped(enrichedEvent.getPipeName(), creationTime, regionId)) {
+          && pendingQueue.isEventFromDroppedPipe(enrichedEvent)) {
         enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
         return;
       }

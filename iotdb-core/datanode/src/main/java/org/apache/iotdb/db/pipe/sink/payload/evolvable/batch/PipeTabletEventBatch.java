@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -157,16 +158,27 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    */
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
     events.removeIf(
         event -> {
-          if (pipeNameToDrop.equals(event.getPipeName())
-              && creationTimeToDrop == event.getCreationTime()
-              && regionId == event.getRegionId()) {
+          if (isEventFromPipe(event, committerKey)) {
             event.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             return true;
           }
           return false;
         });
+  }
+
+  private static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0
+            || committerKey.equals(event.getCommitterKey()));
   }
 
   public synchronized void decreaseEventsReferenceCount(
