@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -99,7 +100,7 @@ public class SetTTLProcedureTest {
     ttlMap.put("root.db", 500L);
     ttlMap.put("root.db.**", 600L);
 
-    procedure.executeFromState(mockProcedureEnv(ttlMap), SetTTLState.SET_CONFIGNODE_TTL);
+    procedure.executeFromState(mockProcedureEnv(ttlMap), SetTTLState.CAPTURE_PREVIOUS_TTL);
 
     procedure.serialize(outputStream);
     final ByteBuffer buffer =
@@ -108,6 +109,29 @@ public class SetTTLProcedureTest {
         (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
     assertSerializedProcedure(
         deserializedProcedure, "root.db", 2000L, true, true, 500L, 600L, false);
+  }
+
+  @Test
+  public void setConfigNodeTTLShouldNotWriteBeforePreviousStateIsCaptured() throws Exception {
+    final SetTTLPlan setTTLPlan =
+        new SetTTLPlan(Arrays.asList(new PartialPath("root.db").getNodes()), 2000L);
+    setTTLPlan.setDataBase(true);
+    final TestingSetTTLProcedure procedure = new TestingSetTTLProcedure(setTTLPlan);
+
+    final Map<String, Long> ttlMap = new HashMap<>();
+    ttlMap.put("root.**", Long.MAX_VALUE);
+    ttlMap.put("root.db", 500L);
+    ttlMap.put("root.db.**", 600L);
+
+    procedure.executeFromState(mockProcedureEnv(ttlMap), SetTTLState.SET_CONFIGNODE_TTL);
+
+    Assert.assertTrue(procedure.getWrittenPlans().isEmpty());
+    assertSerializedProcedure(procedure, "root.db", 2000L, true, true, 500L, 600L, false);
+
+    procedure.executeFromState(mockProcedureEnv(ttlMap), SetTTLState.SET_CONFIGNODE_TTL);
+
+    Assert.assertEquals(1, procedure.getWrittenPlans().size());
+    assertPlan(procedure.getWrittenPlans().get(0), "root.db", 2000L, true);
   }
 
   @Test
@@ -120,6 +144,7 @@ public class SetTTLProcedureTest {
     final ConfigNodeProcedureEnv env =
         mockProcedureEnv(Collections.singletonMap("root.**", Long.MAX_VALUE));
 
+    procedure.executeFromState(env, SetTTLState.CAPTURE_PREVIOUS_TTL);
     procedure.executeFromState(env, SetTTLState.SET_CONFIGNODE_TTL);
     procedure.executeFromState(env, SetTTLState.UPDATE_DATANODE_CACHE);
     Assert.assertTrue(procedure.isFailed());
@@ -149,6 +174,7 @@ public class SetTTLProcedureTest {
     ttlMap.put("root.db.**", 600L);
     final ConfigNodeProcedureEnv env = mockProcedureEnv(ttlMap);
 
+    procedure.executeFromState(env, SetTTLState.CAPTURE_PREVIOUS_TTL);
     procedure.executeFromState(env, SetTTLState.SET_CONFIGNODE_TTL);
     procedure.executeFromState(env, SetTTLState.UPDATE_DATANODE_CACHE);
     Assert.assertTrue(procedure.isFailed());
@@ -177,7 +203,12 @@ public class SetTTLProcedureTest {
 
     Mockito.when(env.getConfigManager()).thenReturn(configManager);
     Mockito.when(configManager.getTTLManager()).thenReturn(ttlManager);
-    Mockito.when(ttlManager.getAllTTL()).thenReturn(ttlMap);
+    Mockito.when(ttlManager.getTTL(Mockito.any(String[].class)))
+        .thenAnswer(
+            invocation -> {
+              final String[] pathPattern = invocation.getArgument(0);
+              return ttlMap.getOrDefault(String.join(".", pathPattern), TTLCache.NULL_TTL);
+            });
     Mockito.when(configManager.getNodeManager()).thenReturn(nodeManager);
     Mockito.when(nodeManager.getRegisteredDataNodeLocations())
         .thenReturn(Collections.singletonMap(1, dataNodeLocation));
@@ -269,14 +300,13 @@ public class SetTTLProcedureTest {
     }
 
     @Override
-    protected TSStatus writeConfigNodePlan(
-        final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
+    TSStatus writeConfigNodePlan(final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
       writtenPlans.add(copyPlan(setTTLPlan));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
 
     @Override
-    protected DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
+    DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
         final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
       requests.add(copyRequest(req));
 

@@ -79,6 +79,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
+        case CAPTURE_PREVIOUS_TTL:
+          capturePreviousTTLState(env);
+          setNextState(SetTTLState.SET_CONFIGNODE_TTL);
+          return Flow.HAS_MORE_STATE;
         case SET_CONFIGNODE_TTL:
           setConfigNodeTTL(env);
           return Flow.HAS_MORE_STATE;
@@ -94,8 +98,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
-  protected void setConfigNodeTTL(final ConfigNodeProcedureEnv env) {
-    capturePreviousTTLState(env);
+  void setConfigNodeTTL(final ConfigNodeProcedureEnv env) {
+    if (!previousTTLStateCaptured) {
+      capturePreviousTTLState(env);
+      setNextState(SetTTLState.SET_CONFIGNODE_TTL);
+      return;
+    }
     final TSStatus res = writeConfigNodePlan(env, plan);
     if (res.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
@@ -105,7 +113,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
-  protected void updateDataNodeTTL(final ConfigNodeProcedureEnv env) {
+  void updateDataNodeTTL(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
@@ -124,17 +132,15 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (previousTTLStateCaptured) {
       return;
     }
-    final Map<String, Long> ttlMap = env.getConfigManager().getTTLManager().getAllTTL();
-    previousTTL = getTTLOrDefault(ttlMap, plan.getPathPattern());
+    previousTTL = getTTLOrDefault(env, plan.getPathPattern());
     if (plan.isDataBase()) {
       previousDatabaseWildcardTTL =
-          getTTLOrDefault(ttlMap, getDatabaseWildcardPathPattern(plan.getPathPattern()));
+          getTTLOrDefault(env, getDatabaseWildcardPathPattern(plan.getPathPattern()));
     }
     previousTTLStateCaptured = true;
   }
 
-  protected TSStatus writeConfigNodePlan(
-      final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
+  TSStatus writeConfigNodePlan(final ConfigNodeProcedureEnv env, final SetTTLPlan setTTLPlan) {
     try {
       return env.getConfigManager()
           .getConsensusManager()
@@ -147,7 +153,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
-  protected DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
+  DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> sendTTLRequest(
       final Map<Integer, TDataNodeLocation> dataNodeLocationMap, final TSetTTLReq req) {
     final DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SET_TTL, req, dataNodeLocationMap);
@@ -174,8 +180,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     return false;
   }
 
-  private long getTTLOrDefault(final Map<String, Long> ttlMap, final String[] pathPattern) {
-    return ttlMap.getOrDefault(String.join(".", pathPattern), TTL_NOT_EXIST);
+  private long getTTLOrDefault(final ConfigNodeProcedureEnv env, final String[] pathPattern) {
+    final long ttl = env.getConfigManager().getTTLManager().getTTL(pathPattern);
+    return ttl == TTLCache.NULL_TTL ? TTL_NOT_EXIST : ttl;
   }
 
   private String[] getDatabaseWildcardPathPattern(final String[] pathPattern) {
@@ -283,7 +290,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   protected SetTTLState getInitialState() {
-    return SetTTLState.SET_CONFIGNODE_TTL;
+    return SetTTLState.CAPTURE_PREVIOUS_TTL;
   }
 
   @Override

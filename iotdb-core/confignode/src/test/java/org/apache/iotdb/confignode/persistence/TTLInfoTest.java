@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
@@ -209,6 +210,17 @@ public class TTLInfoTest {
     resultMap.remove(path.getFullPath());
     Assert.assertEquals(resultMap, ttlInfo.showTTL(new ShowTTLPlan()).getPathTTLMap());
     Assert.assertEquals(4, ttlInfo.getTTLCount());
+  }
+
+  @Test
+  public void testGetTTLReturnsExactPathTTL() throws IllegalPathException {
+    PartialPath path = new PartialPath("root.test.db1.**");
+    ttlInfo.setTTL(new SetTTLPlan(Arrays.asList(path.getNodes()), 121322323L));
+
+    Assert.assertEquals(121322323L, ttlInfo.getTTL(path.getNodes()));
+    Assert.assertEquals(
+        TTLCache.NULL_TTL, ttlInfo.getTTL(new PartialPath("root.test.db1").getNodes()));
+    Assert.assertEquals(Long.MAX_VALUE, ttlInfo.getTTL(new PartialPath("root.**").getNodes()));
   }
 
   @Test

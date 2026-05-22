@@ -175,6 +175,15 @@ public class TTLInfo implements SnapshotProcessor {
     }
   }
 
+  public long getTTL(final String[] pathPattern) {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getLastNodeTTL(pathPattern);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   /**
    * Get the maximum ttl of the corresponding database level.
    *
