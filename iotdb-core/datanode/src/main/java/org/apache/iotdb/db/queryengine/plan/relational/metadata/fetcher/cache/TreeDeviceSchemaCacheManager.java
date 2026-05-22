@@ -431,7 +431,8 @@ public class TreeDeviceSchemaCacheManager {
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
    * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
-   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}. This method is not supposed to update time
+   * column.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}
