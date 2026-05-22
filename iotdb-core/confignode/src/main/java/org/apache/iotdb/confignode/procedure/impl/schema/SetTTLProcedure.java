@@ -58,6 +58,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
   // Distinguishes no previous TTL from TTLCache.NULL_TTL, the explicit unset marker for rollback.
   private static final long TTL_NOT_EXIST = Long.MIN_VALUE;
+  private static final int ROLLBACK_STATE_BYTES = Byte.BYTES + Long.BYTES * 2;
 
   private SetTTLPlan plan;
   private long previousTTL = TTL_NOT_EXIST;
@@ -202,8 +203,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   private void restoreTTLOnConfigNode(
       final ConfigNodeProcedureEnv env, final String[] pathPattern, final long ttl)
       throws ProcedureException {
+    // TTL_NOT_EXIST means the original ttl was absent; NULL_TTL asks the executor to unset it.
     final SetTTLPlan rollbackPlan =
         new SetTTLPlan(pathPattern, ttl == TTL_NOT_EXIST ? TTLCache.NULL_TTL : ttl);
+    // Database rollback restores the database path and db.** separately, so avoid auto-expansion.
     rollbackPlan.setDataBase(false);
     final TSStatus status = writeConfigNodePlan(env, rollbackPlan);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -247,6 +250,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     }
   }
 
+  /**
+   * Best-effort rollback: restore both sides, throw the earliest failure, and suppress later ones.
+   */
   @Override
   protected void rollbackState(final ConfigNodeProcedureEnv env, final SetTTLState setTTLState)
       throws IOException, InterruptedException, ProcedureException {
@@ -266,6 +272,8 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       LOGGER.error("Failed to rollback DataNode ttl cache.", e);
       if (rollbackFailure == null) {
         rollbackFailure = e;
+      } else {
+        rollbackFailure.addSuppressed(e);
       }
     }
     if (rollbackFailure != null) {
@@ -313,8 +321,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       final int length = ReadWriteIOUtils.readInt(byteBuffer);
       final int position = byteBuffer.position();
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      // The serialized plan buffer may include padding; skip to the actual payload end.
       byteBuffer.position(position + length);
-      if (byteBuffer.remaining() >= 17) {
+      if (byteBuffer.remaining() >= ROLLBACK_STATE_BYTES) {
         this.previousTTLStateCaptured = byteBuffer.get() != 0;
         this.previousTTL = byteBuffer.getLong();
         this.previousDatabaseWildcardTTL = byteBuffer.getLong();

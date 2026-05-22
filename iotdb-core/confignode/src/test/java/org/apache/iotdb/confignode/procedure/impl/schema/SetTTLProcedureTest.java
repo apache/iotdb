@@ -31,12 +31,16 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTTLState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -109,6 +113,25 @@ public class SetTTLProcedureTest {
         (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
     assertSerializedProcedure(
         deserializedProcedure, "root.db", 2000L, true, true, 500L, 600L, false);
+  }
+
+  @Test
+  public void deserializeOldFormatWithoutRollbackStateTest() throws Exception {
+    final SetTTLPlan setTTLPlan =
+        new SetTTLPlan(Arrays.asList(new PartialPath("root.db").getNodes()), 2000L);
+    setTTLPlan.setDataBase(true);
+
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    writeOldFormatProcedure(outputStream, setTTLPlan);
+
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    final SetTTLProcedure deserializedProcedure =
+        (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
+
+    assertSerializedProcedure(
+        deserializedProcedure, "root.db", 2000L, true, false, Long.MIN_VALUE, Long.MIN_VALUE, false);
   }
 
   @Test
@@ -227,6 +250,25 @@ public class SetTTLProcedureTest {
     Assert.assertEquals(Collections.singletonList(path), req.getPathPattern());
     Assert.assertEquals(ttl, req.getTTL());
     Assert.assertEquals(isDataBase, req.isDataBase);
+  }
+
+  private void writeOldFormatProcedure(final DataOutputStream stream, final SetTTLPlan plan)
+      throws IOException {
+    stream.writeShort(ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
+    // Procedure fields.
+    stream.writeLong(Procedure.NO_PROC_ID);
+    stream.writeInt(ProcedureState.INITIALIZING.ordinal());
+    stream.writeLong(0L);
+    stream.writeLong(0L);
+    stream.writeLong(Procedure.NO_PROC_ID);
+    stream.writeLong(Procedure.NO_TIMEOUT);
+    stream.writeInt(-1); // no stack indexes
+    stream.write((byte) 0); // no exception
+    stream.writeInt(-1); // no result
+    stream.write((byte) 0); // no lock
+    // StateMachineProcedure fields.
+    stream.writeInt(0); // no states
+    ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
   }
 
   private void assertSerializedProcedure(
