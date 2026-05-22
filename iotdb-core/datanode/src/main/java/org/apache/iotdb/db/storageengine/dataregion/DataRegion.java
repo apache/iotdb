@@ -3777,7 +3777,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (skipCurrentTTLAndModificationCheck()) {
         return 0;
       }
-      logger.info(
+      logger.debug(
           "[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionIdString);
       CompactionScheduleContext context =
           new CompactionScheduleContext(
@@ -3800,12 +3800,19 @@ public class DataRegion implements IDataRegionForQuery {
       if (context.hasSubmitTask()) {
         CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
-      logger.info(
-          "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
-          databaseName,
-          dataRegionIdString,
-          context.getFullyDirtyFileNum(),
-          context.getPartiallyDirtyFileNum());
+      if (context.hasSubmitTask()) {
+        logger.info(
+            "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
+            databaseName,
+            dataRegionIdString,
+            context.getFullyDirtyFileNum(),
+            context.getPartiallyDirtyFileNum());
+      } else {
+        logger.debug(
+            "[TTL] {}-{} No all-outdated or partial-outdated files are selected.",
+            databaseName,
+            dataRegionIdString);
+      }
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {

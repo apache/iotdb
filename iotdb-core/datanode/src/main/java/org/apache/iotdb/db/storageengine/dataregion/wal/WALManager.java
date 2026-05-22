@@ -60,6 +60,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long WAL_DISK_USAGE_OVER_THROTTLE_LOG_INTERVAL_MS =
+      TimeUnit.MINUTES.toMillis(1);
 
   // manage all wal nodes and decide how to allocate them
   private final NodeAllocationStrategy walNodesManager;
@@ -69,6 +71,8 @@ public class WALManager implements IService {
   private final AtomicLong totalDiskUsage = new AtomicLong();
   // total number of wal files
   private final AtomicLong totalFileNum = new AtomicLong();
+  private final AtomicLong lastWalDiskUsageOverThrottleLogTime = new AtomicLong(0);
+  private final AtomicLong suppressedWalDiskUsageOverThrottleLogCount = new AtomicLong(0);
 
   private WALManager() {
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
@@ -184,16 +188,31 @@ public class WALManager implements IService {
     while ((firstLoop || shouldThrottle())) {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
-        logger.warn(
-            "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
-            getTotalDiskUsage(),
-            getThrottleThreshold());
+        logWalDiskUsageOverThrottle();
       }
       firstLoop = false;
       if (Thread.interrupted()) {
         logger.info(StorageEngineMessages.TIMED_WAL_DELETE_THREAD_INTERRUPTED);
         return;
       }
+    }
+  }
+
+  private void logWalDiskUsageOverThrottle() {
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastWalDiskUsageOverThrottleLogTime.get();
+    if (now - lastLogTime >= WAL_DISK_USAGE_OVER_THROTTLE_LOG_INTERVAL_MS
+        && lastWalDiskUsageOverThrottleLogTime.compareAndSet(lastLogTime, now)) {
+      long suppressedCount = suppressedWalDiskUsageOverThrottleLogCount.getAndSet(0);
+      logger.warn(
+          "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, "
+              + "please check your write load, iot consensus and the pipe module. "
+              + "It's better to allocate more disk for WAL. suppressedSimilarLogs={}",
+          getTotalDiskUsage(),
+          getThrottleThreshold(),
+          suppressedCount);
+    } else {
+      suppressedWalDiskUsageOverThrottleLogCount.incrementAndGet();
     }
   }
 

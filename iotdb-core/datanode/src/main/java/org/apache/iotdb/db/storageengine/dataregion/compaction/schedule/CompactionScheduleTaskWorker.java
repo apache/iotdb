@@ -74,13 +74,16 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
       } catch (InterruptedException ignored) {
         boolean isStoppedByUser =
             CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
+        if (isStoppedByUser) {
+          logger.debug(
+              "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted by stop signal",
+              workerId);
+          return null;
+        }
         logger.info(
             "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted, isStopByUser: {}",
             workerId,
-            isStoppedByUser);
-        if (isStoppedByUser) {
-          return null;
-        }
+            false);
       } catch (Exception e) {
         logger.error(
             "[CompactionScheduleTaskWorker-{}] Failed to execute compaction schedule task",

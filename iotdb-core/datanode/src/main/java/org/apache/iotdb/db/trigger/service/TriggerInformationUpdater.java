@@ -40,11 +40,13 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class TriggerInformationUpdater {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerInformationUpdater.class);
+  private static final long UPDATE_FAILURE_LOG_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -54,6 +56,8 @@ public class TriggerInformationUpdater {
           ThreadName.STATEFUL_TRIGGER_INFORMATION_UPDATER.getName());
 
   private Future<?> updateFuture;
+  private final AtomicLong lastUpdateFailureLogTime = new AtomicLong(0);
+  private final AtomicLong suppressedUpdateFailureLogCount = new AtomicLong(0);
 
   private static final long UPDATE_INTERVAL = 1000L * 60;
 
@@ -98,7 +102,22 @@ public class TriggerInformationUpdater {
                 triggerInformation.getTriggerName(), triggerInformation.getDataNodeLocation());
       }
     } catch (Exception e) {
-      LOGGER.warn(DataNodeMiscMessages.ERROR_UPDATING_TRIGGER_INFO, e);
+      logUpdateFailure(e);
+    }
+  }
+
+  private void logUpdateFailure(Exception e) {
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastUpdateFailureLogTime.get();
+    if (now - lastLogTime >= UPDATE_FAILURE_LOG_INTERVAL_MS
+        && lastUpdateFailureLogTime.compareAndSet(lastLogTime, now)) {
+      long suppressedCount = suppressedUpdateFailureLogCount.getAndSet(0);
+      LOGGER.warn(
+          DataNodeMiscMessages.ERROR_UPDATING_TRIGGER_INFO + " suppressedSimilarLogs={}",
+          suppressedCount,
+          e);
+    } else {
+      suppressedUpdateFailureLogCount.incrementAndGet();
     }
   }
 }
