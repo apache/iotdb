@@ -131,7 +131,14 @@ public class SetTTLProcedureTest {
         (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
 
     assertSerializedProcedure(
-        deserializedProcedure, "root.db", 2000L, true, false, Long.MIN_VALUE, Long.MIN_VALUE, false);
+        deserializedProcedure,
+        "root.db",
+        2000L,
+        true,
+        false,
+        Long.MIN_VALUE,
+        Long.MIN_VALUE,
+        false);
   }
 
   @Test
