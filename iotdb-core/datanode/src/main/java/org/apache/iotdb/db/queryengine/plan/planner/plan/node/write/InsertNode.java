@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -231,9 +232,12 @@ public abstract class InsertNode extends SearchNode {
 
   protected String getDatabaseName(final IAnalysis analysis, final IDeviceID deviceID) {
     final String databaseName = analysis.getDatabaseName();
-    return databaseName != null
-        ? databaseName
-        : analysis.getDataPartitionInfo().getDatabaseNameByDevice(deviceID);
+    final DataPartition dataPartitionInfo = analysis.getDataPartitionInfo();
+    final String databaseNameInPartition =
+        dataPartitionInfo == null || dataPartitionInfo.isEmpty()
+            ? null
+            : dataPartitionInfo.getDatabaseNameByDevice(deviceID);
+    return databaseNameInPartition != null ? databaseNameInPartition : databaseName;
   }
 
   public void setDeviceID(IDeviceID deviceID) {

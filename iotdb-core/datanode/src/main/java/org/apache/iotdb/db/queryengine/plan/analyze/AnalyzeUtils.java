@@ -133,43 +133,43 @@ public class AnalyzeUtils {
     String database = getDatabaseName(statement, context);
     if (statement instanceof InsertTabletStatement) {
       final InsertTabletStatement insertTabletStatement = (InsertTabletStatement) statement;
-      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      final Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
       for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-        timePartitionSlotMap
-            .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new HashSet<>())
-            .add(insertTabletStatement.getTimePartitionSlot(i, database));
+        dataPartitionQueryParamMap
+            .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new ArrayList<>())
+            .add(insertTabletStatement.getTimes()[i]);
       }
-      return computeDataPartitionParams(timePartitionSlotMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     } else if (statement instanceof InsertMultiTabletsStatement) {
       final InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
-      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      final Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
       for (final InsertTabletStatement insertTabletStatement :
           insertMultiTabletsStatement.getInsertTabletStatementList()) {
         for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-          timePartitionSlotMap
-              .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new HashSet<>())
-              .add(insertTabletStatement.getTimePartitionSlot(i, database));
+          dataPartitionQueryParamMap
+              .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new ArrayList<>())
+              .add(insertTabletStatement.getTimes()[i]);
         }
       }
-      return computeDataPartitionParams(timePartitionSlotMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     } else if (statement instanceof InsertRowStatement) {
       final InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
-      return computeDataPartitionParams(
+      return computeDataPartitionParamsByTime(
           Collections.singletonMap(
               insertRowStatement.getTableDeviceID(),
-              Collections.singleton(insertRowStatement.getTimePartitionSlot(database))),
+              Collections.singletonList(insertRowStatement.getTime())),
           database);
     } else if (statement instanceof InsertRowsStatement) {
       final InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
-      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      final Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
       for (final InsertRowStatement insertRowStatement :
           insertRowsStatement.getInsertRowStatementList()) {
-        timePartitionSlotMap
-            .computeIfAbsent(insertRowStatement.getTableDeviceID(), id -> new HashSet<>())
-            .add(insertRowStatement.getTimePartitionSlot(database));
+        dataPartitionQueryParamMap
+            .computeIfAbsent(insertRowStatement.getTableDeviceID(), id -> new ArrayList<>())
+            .add(insertRowStatement.getTime());
       }
-      return computeDataPartitionParams(timePartitionSlotMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     }
     throw new UnsupportedOperationException(
         DataNodeQueryMessages.COMPUTEDATAPARTITIONPARAMS_FOR + statement);
@@ -184,95 +184,51 @@ public class AnalyzeUtils {
       return Collections.singletonList(dataPartitionQueryParam);
     } else if (statement instanceof InsertRowStatement) {
       InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
-      if (database == null) {
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDeviceID(
-            insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice());
-        dataPartitionQueryParam.setTimeList(
-            Collections.singletonList(insertRowStatement.getTime()));
-        return Collections.singletonList(dataPartitionQueryParam);
-      }
-      return computeDataPartitionParams(
+      return computeDataPartitionParamsByTime(
           Collections.singletonMap(
               insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-              Collections.singleton(insertRowStatement.getTimePartitionSlot(database))),
+              Collections.singletonList(insertRowStatement.getTime())),
           database);
     } else if (statement instanceof InsertMultiTabletsStatement) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
-      if (database == null) {
-        Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
-        for (InsertTabletStatement insertTabletStatement :
-            insertMultiTabletsStatement.getInsertTabletStatementList()) {
-          List<Long> timeList =
-              dataPartitionQueryParamMap.computeIfAbsent(
-                  insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-                  k -> new ArrayList<>());
-          for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-            timeList.add(insertTabletStatement.getTimes()[i]);
-          }
-        }
-        return computeDataPartitionParamsByTime(dataPartitionQueryParamMap);
-      }
-      Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
+      Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
       for (InsertTabletStatement insertTabletStatement :
           insertMultiTabletsStatement.getInsertTabletStatementList()) {
-        Set<TTimePartitionSlot> timePartitionSlotSet =
+        List<Long> timeList =
             dataPartitionQueryParamMap.computeIfAbsent(
                 insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-                k -> new HashSet<>());
-        timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots(database));
+                k -> new ArrayList<>());
+        for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+          timeList.add(insertTabletStatement.getTimes()[i]);
+        }
       }
-      return computeDataPartitionParams(dataPartitionQueryParamMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     } else if (statement instanceof InsertRowsOfOneDeviceStatement) {
       final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement =
           (InsertRowsOfOneDeviceStatement) statement;
-      if (database == null) {
-        Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
-        List<Long> timeList =
-            dataPartitionQueryParamMap.computeIfAbsent(
-                insertRowsOfOneDeviceStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-                k -> new ArrayList<>());
-        for (InsertRowStatement insertRowStatement :
-            insertRowsOfOneDeviceStatement.getInsertRowStatementList()) {
-          timeList.add(insertRowStatement.getTime());
-        }
-        return computeDataPartitionParamsByTime(dataPartitionQueryParamMap);
-      }
-      Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-      Set<TTimePartitionSlot> timePartitionSlotSet =
+      Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
+      List<Long> timeList =
           dataPartitionQueryParamMap.computeIfAbsent(
               insertRowsOfOneDeviceStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-              k -> new HashSet<>());
+              k -> new ArrayList<>());
       for (InsertRowStatement insertRowStatement :
           insertRowsOfOneDeviceStatement.getInsertRowStatementList()) {
-        timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot(database));
+        timeList.add(insertRowStatement.getTime());
       }
-      return computeDataPartitionParams(dataPartitionQueryParamMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     } else if (statement instanceof InsertRowsStatement) {
       final InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
-      if (database == null) {
-        Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
-        for (InsertRowStatement insertRowStatement :
-            insertRowsStatement.getInsertRowStatementList()) {
-          dataPartitionQueryParamMap
-              .computeIfAbsent(
-                  insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-                  k -> new ArrayList<>())
-              .add(insertRowStatement.getTime());
-        }
-        return computeDataPartitionParamsByTime(dataPartitionQueryParamMap);
-      }
-      Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
+      Map<IDeviceID, List<Long>> dataPartitionQueryParamMap = new HashMap<>();
       for (InsertRowStatement insertRowStatement :
           insertRowsStatement.getInsertRowStatementList()) {
-        Set<TTimePartitionSlot> timePartitionSlotSet =
-            dataPartitionQueryParamMap.computeIfAbsent(
+        dataPartitionQueryParamMap
+            .computeIfAbsent(
                 insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(),
-                k -> new HashSet<>());
-        timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot(database));
+                k -> new ArrayList<>())
+            .add(insertRowStatement.getTime());
       }
-      return computeDataPartitionParams(dataPartitionQueryParamMap, database);
+      return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, database);
     }
     throw new UnsupportedOperationException(
         DataNodeQueryMessages.COMPUTEDATAPARTITIONPARAMS_FOR + statement);
@@ -282,14 +238,12 @@ public class AnalyzeUtils {
       InsertTabletStatement statement, String database) {
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(statement.getDevicePath().getIDeviceIDAsFullDevice());
-    if (database == null) {
-      List<Long> timeList = new ArrayList<>();
-      for (int i = 0; i < statement.getRowCount(); i++) {
-        timeList.add(statement.getTimes()[i]);
-      }
-      dataPartitionQueryParam.setTimeList(timeList);
-    } else {
-      dataPartitionQueryParam.setTimePartitionSlotList(statement.getTimePartitionSlots(database));
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 0; i < statement.getRowCount(); i++) {
+      timeList.add(statement.getTimes()[i]);
+    }
+    dataPartitionQueryParam.setTimeList(timeList);
+    if (database != null) {
       dataPartitionQueryParam.setDatabaseName(database);
     }
     return dataPartitionQueryParam;
@@ -316,11 +270,19 @@ public class AnalyzeUtils {
 
   private static List<DataPartitionQueryParam> computeDataPartitionParamsByTime(
       Map<IDeviceID, List<Long>> dataPartitionQueryParamMap) {
+    return computeDataPartitionParamsByTime(dataPartitionQueryParamMap, null);
+  }
+
+  private static List<DataPartitionQueryParam> computeDataPartitionParamsByTime(
+      Map<IDeviceID, List<Long>> dataPartitionQueryParamMap, String databaseName) {
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
     for (Map.Entry<IDeviceID, List<Long>> entry : dataPartitionQueryParamMap.entrySet()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceID(entry.getKey());
       dataPartitionQueryParam.setTimeList(entry.getValue());
+      if (databaseName != null) {
+        dataPartitionQueryParam.setDatabaseName(databaseName);
+      }
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
     return dataPartitionQueryParams;

@@ -163,6 +163,11 @@ public class WritePlanNodeSplitTest {
     return (int) (4 - ((startTime - 1) / interval));
   }
 
+  private String getDatabaseName(PartialPath devicePath) {
+    String fullPath = devicePath.getFullPath();
+    return fullPath.substring(0, fullPath.indexOf(".", fullPath.indexOf(".") + 1));
+  }
+
   protected DataPartition getDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParamList) {
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -340,10 +345,8 @@ public class WritePlanNodeSplitTest {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceID(
           insertTabletNode.getTargetPath().getIDeviceIDAsFullDevice());
-      String fullPath = insertTabletNode.getTargetPath().getFullPath();
       dataPartitionQueryParam.setTimePartitionSlotList(
-          insertTabletNode.getTimePartitionSlots(
-              fullPath.substring(0, fullPath.indexOf(".", fullPath.indexOf(".") + 1))));
+          insertTabletNode.getTimePartitionSlots(getDatabaseName(insertTabletNode.getTargetPath())));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
@@ -358,6 +361,10 @@ public class WritePlanNodeSplitTest {
 
   @Test
   public void testInsertRowsNode() throws IllegalPathException {
+    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    databaseSchema.setTimePartitionInterval(150);
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("root.sg2", databaseSchema);
+    initDataPartitionMap();
 
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 3"));
 
@@ -379,7 +386,7 @@ public class WritePlanNodeSplitTest {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDeviceID(insertRowNode.getTargetPath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
-          insertRowNode.getTimePartitionSlots("root.sg2"));
+          insertRowNode.getTimePartitionSlots(getDatabaseName(insertRowNode.getTargetPath())));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 

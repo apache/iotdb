@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -335,20 +336,33 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     if (missingDatabases.isEmpty()) {
       return;
     }
+    final boolean needFetchTableModelDatabase =
+        missingDatabases.stream().anyMatch(PathUtils::isTableModelDatabase);
+    final boolean needFetchTreeModelDatabase =
+        missingDatabases.stream().anyMatch(database -> !PathUtils.isTableModelDatabase(database));
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TDatabaseSchemaResp databaseSchemaResp =
-          client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(
-                      Arrays.asList("root", "**"), SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-                  .setIsTableModel(false)
-                  .setCanSeeAuditDB(true));
-      if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        partitionCache.updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
+      if (needFetchTreeModelDatabase) {
+        updateDatabaseCache(client, false);
+      }
+      if (needFetchTableModelDatabase) {
+        updateDatabaseCache(client, true);
       }
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when fetching database time partition config:" + e.getMessage());
+    }
+  }
+
+  private void updateDatabaseCache(final ConfigNodeClient client, final boolean isTableModel)
+      throws TException {
+    final TDatabaseSchemaResp databaseSchemaResp =
+        client.getMatchedDatabaseSchemas(
+            new TGetDatabaseReq(Arrays.asList("root", "**"), SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+                .setIsTableModel(isTableModel)
+                .setCanSeeAuditDB(true));
+    if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      partitionCache.updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
     }
   }
 
@@ -436,6 +450,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         database = dataPartitionQueryParam.getDatabaseName();
       }
       if (database != null) {
+        if (PathUtils.isTableModelDatabase(database)) {
+          partitionCache.checkAndAutoCreateDatabase(database, isAutoCreate, userName);
+        }
+        ensureDatabaseTimePartitionConfig(Collections.singleton(database));
         final String finalDatabase = database;
         if (dataPartitionQueryParam.hasTimeList()) {
           dataPartitionQueryParam.setTimePartitionSlotList(

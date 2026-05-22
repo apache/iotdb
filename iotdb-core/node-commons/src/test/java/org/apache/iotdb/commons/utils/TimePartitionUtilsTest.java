@@ -158,6 +158,25 @@ public class TimePartitionUtilsTest {
   }
 
   @Test
+  public void testDatabaseLevelTimePartitionDefaultUsesTimestampPrecision() {
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("us");
+    TDatabaseSchema schema = new TDatabaseSchema();
+    schema.setName("test.db");
+
+    TimePartitionUtils.updateDatabaseTimePartitionConfig("test.db", schema);
+
+    assertEquals(
+        TEST_TIME_PARTITION_INTERVAL * 1000L,
+        TimePartitionUtils.getTimePartitionInterval("test.db"));
+    assertEquals(
+        TEST_TIME_PARTITION_ORIGIN * 1000L, TimePartitionUtils.getTimePartitionOrigin("test.db"));
+    assertEquals(
+        TEST_TIME_PARTITION_ORIGIN * 1000L,
+        TimePartitionUtils.getTimePartitionSlot(TEST_TIME_PARTITION_ORIGIN * 1000L + 1, "test.db")
+            .getStartTime());
+  }
+
+  @Test
   public void testDatabaseLevelTimePartitionFallbackToGlobal() {
     // Test with database that doesn't have custom settings
     long testTime = TEST_TIME_PARTITION_ORIGIN;

@@ -366,8 +366,9 @@ public class PartitionCache {
             throw new IoTDBRuntimeException(tsStatus.message, tsStatus.code);
           }
         }
-        // Try to update database cache when all databases have already been created
-        if (needRefreshCacheFromConfigNode) {
+        // Fetch the completed schema from ConfigNode after auto-creation. The locally constructed
+        // schema may miss default time partition settings that ConfigNode fills in.
+        if (needRefreshCacheFromConfigNode || !successFullyCreatedDatabase.isEmpty()) {
           fetchDatabaseAndUpdateCache(client, false);
         } else {
           updateDatabaseCache(successFullyCreatedDatabaseSchema);
@@ -404,8 +405,9 @@ public class PartitionCache {
       databaseSchema.setIsTableModel(true);
       final TSStatus tsStatus = client.setDatabase(databaseSchema);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
-        // Try to update cache by databases successfully created
-        updateDatabaseCache(Collections.singletonMap(database, databaseSchema));
+        // Fetch the completed schema from ConfigNode after auto-creation. The locally constructed
+        // schema may miss default time partition settings that ConfigNode fills in.
+        fetchDatabaseAndUpdateCache(client, true);
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         fetchDatabaseAndUpdateCache(client, true);
       } else {
