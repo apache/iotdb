@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.commons.schema.table.InformationSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -165,9 +165,9 @@ public class IoTDBDatabaseIT {
           assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
-          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
-          assertEquals(minSchemaRegionGroupNum[cnt], resultSet.getInt(8));
-          assertTrue(resultSet.getInt(9) >= minSchemaRegionGroupNum[cnt]);
+          assertEquals(minSchemaRegionGroupNum[cnt], resultSet.getInt(7));
+          assertTrue(resultSet.getInt(8) >= minSchemaRegionGroupNum[cnt]);
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(9));
           assertEquals(minDataRegionGroupNum[cnt], resultSet.getInt(10));
           assertTrue(resultSet.getInt(11) >= minDataRegionGroupNum[cnt]);
           cnt++;
@@ -654,13 +654,10 @@ public class IoTDBDatabaseIT {
       try (final ResultSet resultSet = statement.executeQuery("select * from databases")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         final List<TsTableColumnSchema> expectedColumnSchemas =
-            InformationSchema.getSchemaTables()
-                .get(InformationSchema.DATABASES)
-                .getColumnList();
+            InformationSchema.getSchemaTables().get(InformationSchema.DATABASES).getColumnList();
         assertEquals(expectedColumnSchemas.size(), metaData.getColumnCount());
         for (int i = 0; i < expectedColumnSchemas.size(); i++) {
-          assertEquals(
-              expectedColumnSchemas.get(i).getColumnName(), metaData.getColumnName(i + 1));
+          assertEquals(expectedColumnSchemas.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
 
         int cnt = 0;
@@ -676,9 +673,9 @@ public class IoTDBDatabaseIT {
             assertEquals(1, resultSet.getInt(4));
             assertEquals(604800000, resultSet.getLong(5));
             assertEquals(0, resultSet.getInt(6));
-            assertEquals(0, resultSet.getInt(7));
-            assertEquals(1, resultSet.getInt(8));
-            assertTrue(resultSet.getInt(9) >= resultSet.getInt(8));
+            assertEquals(1, resultSet.getInt(7));
+            assertTrue(resultSet.getInt(8) >= resultSet.getInt(7));
+            assertEquals(0, resultSet.getInt(9));
             assertEquals(2, resultSet.getInt(10));
             assertTrue(resultSet.getInt(11) >= resultSet.getInt(10));
           }
@@ -887,7 +884,7 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,min_schema_region_group_num,max_schema_region_group_num,min_data_region_group_num,max_data_region_group_num,",
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,min_schema_region_group_num,max_schema_region_group_num,data_region_group_num,min_data_region_group_num,max_data_region_group_num,",
           Collections.singleton(
               "information_schema,INF,null,null,null,null,null,null,null,null,null,"));
     }
