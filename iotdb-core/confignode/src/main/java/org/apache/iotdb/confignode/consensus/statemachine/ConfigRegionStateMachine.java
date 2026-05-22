@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -53,15 +52,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -121,8 +121,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
   protected TSStatus write(ConfigPhysicalPlan plan) {
+    SimpleConsensusPersistResult persistResult = null;
     if (ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
-      final TSStatus persistStatus = persistPlanForSimpleConsensus(plan);
+      persistResult = persistPlanForSimpleConsensus(plan);
+      final TSStatus persistStatus = persistResult.status;
       if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return persistStatus;
       }
@@ -131,9 +133,20 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     TSStatus result;
     try {
       result = executor.executeNonQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException e) {
+    } catch (UnknownPhysicalPlanTypeException | RuntimeException e) {
       LOGGER.error("Execute non-query plan failed", e);
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    }
+
+    if (persistResult != null
+        && result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !rollbackFailedPlanForSimpleConsensus(persistResult)) {
+      final String rollbackFailureMessage =
+          "Failed to rollback persisted ConfigNode SimpleConsensus log.";
+      result.setMessage(
+          Optional.ofNullable(result.getMessage())
+              .map(message -> message + " " + rollbackFailureMessage)
+              .orElse(rollbackFailureMessage));
     }
 
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -360,7 +373,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return CommonDescriptor.getInstance().getConfig().isReadOnly();
   }
 
-  private TSStatus persistPlanForSimpleConsensus(ConfigPhysicalPlan plan) {
+  private SimpleConsensusPersistResult persistPlanForSimpleConsensus(ConfigPhysicalPlan plan) {
+    File persistedLogFile = null;
+    long logFileSizeBeforeWrite = 0;
+    int endIndexBeforeWrite = endIndex;
     try {
       if (simpleLogWriter == null || simpleLogFile == null) {
         throw new IOException("SimpleConsensus log writer is not initialized.");
@@ -369,6 +385,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       if (simpleLogFile.length() > LOG_FILE_MAX_SIZE) {
         rollSimpleConsensusLogFile();
       }
+
+      persistedLogFile = simpleLogFile;
+      logFileSizeBeforeWrite = persistedLogFile.length();
+      endIndexBeforeWrite = endIndex;
 
       ByteBuffer buffer = plan.serializeToByteBuffer();
       buffer.position(buffer.limit());
@@ -379,11 +399,30 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     } catch (Exception e) {
       LOGGER.error(
           "Persist current ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed", e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage(
-              "Persist ConfigNode SimpleConsensus log failed: " + String.valueOf(e.getMessage()));
+      return SimpleConsensusPersistResult.failure(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Persist ConfigNode SimpleConsensus log failed: " + e.getMessage()));
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return SimpleConsensusPersistResult.success(
+        persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
+  }
+
+  private boolean rollbackFailedPlanForSimpleConsensus(
+      SimpleConsensusPersistResult persistResult) {
+    closeSimpleLogWriter();
+    try (FileOutputStream outputStream = new FileOutputStream(persistResult.logFile, true);
+        FileChannel channel = outputStream.getChannel()) {
+      channel.truncate(persistResult.logFileSizeBeforeWrite);
+      channel.force(true);
+      simpleLogFile = persistResult.logFile;
+      simpleLogWriter = new LogWriter(simpleLogFile, false);
+      endIndex = persistResult.endIndexBeforeWrite;
+      return true;
+    } catch (IOException e) {
+      LOGGER.error(
+          "Rollback failed ConfigPhysicalPlan for ConfigNode SimpleConsensus mode failed", e);
+      return false;
+    }
   }
 
   private void rollSimpleConsensusLogFile() throws IOException {
@@ -443,26 +482,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
     startIndex = endIndex + 1;
     createLogFile(startIndex);
-
-    ScheduledExecutorService simpleConsensusThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH.getName());
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        simpleConsensusThread,
-        this::flushWALForSimpleConsensus,
-        0,
-        CONF.getForceWalPeriodForConfigNodeSimpleInMs(),
-        TimeUnit.MILLISECONDS);
-  }
-
-  private void flushWALForSimpleConsensus() {
-    if (simpleLogWriter != null) {
-      try {
-        simpleLogWriter.force();
-      } catch (IOException e) {
-        LOGGER.error("Can't force logWriter for ConfigNode flushWALForSimpleConsensus", e);
-      }
-    }
   }
 
   private void createLogFile(int startIndex) {
@@ -552,5 +571,34 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       }
     }
     return 0;
+  }
+
+  private static class SimpleConsensusPersistResult {
+
+    private final TSStatus status;
+    private final File logFile;
+    private final long logFileSizeBeforeWrite;
+    private final int endIndexBeforeWrite;
+
+    private SimpleConsensusPersistResult(
+        TSStatus status, File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      this.status = status;
+      this.logFile = logFile;
+      this.logFileSizeBeforeWrite = logFileSizeBeforeWrite;
+      this.endIndexBeforeWrite = endIndexBeforeWrite;
+    }
+
+    private static SimpleConsensusPersistResult success(
+        File logFile, long logFileSizeBeforeWrite, int endIndexBeforeWrite) {
+      return new SimpleConsensusPersistResult(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          logFile,
+          logFileSizeBeforeWrite,
+          endIndexBeforeWrite);
+    }
+
+    private static SimpleConsensusPersistResult failure(TSStatus status) {
+      return new SimpleConsensusPersistResult(status, null, 0, 0);
+    }
   }
 }

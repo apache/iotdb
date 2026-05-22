@@ -19,9 +19,23 @@
 
 package org.apache.iotdb.confignode.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.TestOnlyPlan;
+import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,5 +58,52 @@ public class ConfigRegionStateMachineTest {
     filenames.sort(new ConfigRegionStateMachine.FileComparator());
 
     Assert.assertEquals(Arrays.asList("log_1_10", "log_11_20", "log_inprogress_21"), filenames);
+  }
+
+  @Test
+  public void testFailedSimpleConsensusWriteRollsBackPersistedPlan() throws Exception {
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    String originalConsensusProtocol = conf.getConfigNodeConsensusProtocolClass();
+    Path tempLogFile = Files.createTempFile("confignode-simple-consensus", ".wal");
+    ConfigPlanExecutor executor = Mockito.mock(ConfigPlanExecutor.class);
+    Mockito.when(executor.executeNonQueryPlan(Mockito.any(ConfigPhysicalPlan.class)))
+        .thenReturn(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    ConfigRegionStateMachine stateMachine = new ConfigRegionStateMachine(null, executor);
+
+    try {
+      conf.setConfigNodeConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
+      setField(stateMachine, "simpleLogFile", tempLogFile.toFile());
+      setField(stateMachine, "simpleLogWriter", new LogWriter(tempLogFile.toFile(), false));
+      setField(stateMachine, "endIndex", 0);
+
+      TSStatus status = stateMachine.write(new TestOnlyPlan());
+
+      Assert.assertEquals(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), status.getCode());
+      Assert.assertEquals(0, Files.size(tempLogFile));
+      Assert.assertEquals(0, getField(stateMachine, "endIndex"));
+    } finally {
+      closeSimpleLogWriter(stateMachine);
+      Files.deleteIfExists(tempLogFile);
+      conf.setConfigNodeConsensusProtocolClass(originalConsensusProtocol);
+    }
+  }
+
+  private static void setField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
+
+  private static Object getField(Object target, String fieldName) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
+  private static void closeSimpleLogWriter(ConfigRegionStateMachine stateMachine) throws Exception {
+    LogWriter logWriter = (LogWriter) getField(stateMachine, "simpleLogWriter");
+    if (logWriter != null) {
+      logWriter.close();
+    }
   }
 }
