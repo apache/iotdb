@@ -365,7 +365,6 @@ public class TsFileSplitter {
         long[] times = pageIndex2Times.get(pageIndex);
         TsPrimitiveType[] values = decodeValuePage(reader, header, pageHeader, times, valueDecoder);
         for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
-          alignedChunkData.setNotDecode();
           alignedChunkData.writeDecodeValuePage(times, values, header.getDataType(), database);
         }
       }
