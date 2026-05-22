@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
@@ -124,7 +125,7 @@ public abstract class LogWriter implements ILogWriter {
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
-      logger.warn("Cannot write to {}", logFile, e);
+      logger.warn(StorageEngineMessages.CANNOT_WRITE_TO, logFile, e);
     }
     WritingMetrics.getInstance()
         .recordWroteWALBuffer(uncompressedSize, bufferSize, System.nanoTime() - startTime);

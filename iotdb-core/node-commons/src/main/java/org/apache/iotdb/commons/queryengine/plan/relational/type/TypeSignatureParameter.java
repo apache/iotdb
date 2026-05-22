@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
@@ -108,7 +110,7 @@ public final class TypeSignatureParameter {
   private <A> A getValue(ParameterKind expectedParameterKind, Class<A> target) {
     if (kind != expectedParameterKind) {
       throw new IllegalArgumentException(
-          format("ParameterKind is [%s] but expected [%s]", kind, expectedParameterKind));
+          format(QueryMessages.PARAMETER_KIND_MISMATCH, kind, expectedParameterKind));
     }
     return target.cast(value);
   }
@@ -151,7 +153,8 @@ public final class TypeSignatureParameter {
       case VARIABLE:
         return true;
     }
-    throw new IllegalArgumentException("Unexpected parameter kind: " + kind);
+    throw new IllegalArgumentException(
+        String.format(QueryMessages.UNEXPECTED_PARAMETER_KIND, kind));
   }
 
   @Override

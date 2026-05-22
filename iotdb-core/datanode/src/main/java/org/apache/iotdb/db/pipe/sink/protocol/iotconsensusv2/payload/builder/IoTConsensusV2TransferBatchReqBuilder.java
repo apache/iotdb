@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -103,13 +104,17 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             .setShrinkCallback(
                 (oldMemory, newMemory) ->
                     LOGGER.info(
-                        "The batch size limit has shrunk from {} to {}.", oldMemory, newMemory))
+                        DataNodePipeMessages.THE_BATCH_SIZE_LIMIT_HAS_SHRUNK_FROM,
+                        oldMemory,
+                        newMemory))
             .setExpandMethod(
                 oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestMaxBatchSizeInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) ->
                     LOGGER.info(
-                        "The batch size limit has expanded from {} to {}.", oldMemory, newMemory));
+                        DataNodePipeMessages.THE_BATCH_SIZE_LIMIT_HAS_EXPANDED_FROM,
+                        oldMemory,
+                        newMemory));
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(

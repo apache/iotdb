@@ -46,6 +46,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
@@ -189,9 +190,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           new FolderManager(
               Arrays.asList(RECEIVER_FILE_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (final DiskSpaceInsufficientException e) {
-      LOGGER.error(
-          "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
-          e);
+      LOGGER.error(DataNodePipeMessages.FAIL_TO_CREATE_PIPE_RECEIVER_FILE_FOLDERS, e);
     }
   }
 
@@ -445,7 +444,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unknown PipeRequestType %s.", rawRequestType));
       LOGGER.warn(
-          "Receiver id = {}: Unknown PipeRequestType, response status = {}.",
+          DataNodePipeMessages.RECEIVER_ID_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS,
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
@@ -578,7 +577,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             shouldMarkAsPipeRequest.get());
 
     if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
-      throw new PipeException("Load active listening pipe dir is not set.");
+      throw new PipeException(DataNodePipeMessages.LOAD_ACTIVE_LISTENING_PIPE_DIR_IS_NOT);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -761,7 +760,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         devicePaths = ((InsertMultiTabletsStatement) statement).getDevicePaths();
       } else {
         LOGGER.warn(
-            "Receiver id = {}: Unsupported statement type {} for redirection.",
+            DataNodePipeMessages.RECEIVER_ID_UNSUPPORTED_STATEMENT_TYPE_FOR_REDIRECTION,
             receiverId.get(),
             statement);
         return result;
@@ -775,7 +774,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         }
       } else {
         LOGGER.warn(
-            "Receiver id = {}: The number of device paths is not equal to sub-status in statement {}: {}.",
+            DataNodePipeMessages.RECEIVER_ID_THE_NUMBER_OF_DEVICE_PATHS,
             receiverId.get(),
             statement,
             result);
@@ -816,7 +815,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                       PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
                       PipeDataNodeResourceManager.memory().getTotalNonFloatingMemorySizeInBytes());
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Receiver id = {}: {}", receiverId.get(), message, e);
+                LOGGER.debug(DataNodePipeMessages.RECEIVER_ID, receiverId.get(), message, e);
               }
               return new TSStatus(
                       TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
@@ -1049,7 +1048,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new PipeException("Auto create database failed because: " + e.getMessage());
+      throw new PipeException(
+          DataNodePipeMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
   }
 
@@ -1123,7 +1123,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());
       } catch (final Exception e) {
-        LOGGER.warn("Failed to handle config client (id = {}) exit", configReceiverId.get(), e);
+        LOGGER.warn(
+            DataNodePipeMessages.FAILED_TO_HANDLE_CONFIG_CLIENT_ID_EXIT, configReceiverId.get(), e);
       }
     }
 

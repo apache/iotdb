@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process.function;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -78,7 +79,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.process(columnBuilders);
     } catch (Exception e) {
-      LOGGER.warn("Exception happened when executing UDTF: ", e);
+      LOGGER.warn(CalcMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }
@@ -107,7 +108,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.beforeDestroy();
     } catch (Exception e) {
-      LOGGER.warn("Exception happened when executing UDTF: ", e);
+      LOGGER.warn(CalcMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }

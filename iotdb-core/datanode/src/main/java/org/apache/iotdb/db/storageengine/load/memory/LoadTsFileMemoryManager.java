@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;
@@ -58,7 +59,7 @@ public class LoadTsFileMemoryManager {
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn(StorageEngineMessages.FORCE_ALLOCATE_INTERRUPTED, e);
       }
     }
 
@@ -107,7 +108,7 @@ public class LoadTsFileMemoryManager {
     try {
       forceAllocateFromQuery(sizeInBytes);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Load: Allocated MemoryBlock from query engine, size: {}", sizeInBytes);
+        LOGGER.debug(StorageEngineMessages.LOAD_ALLOCATED_MEMORY_BLOCK, sizeInBytes);
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
@@ -203,7 +204,7 @@ public class LoadTsFileMemoryManager {
   public synchronized void releaseDataCacheMemoryBlock() {
     dataCacheMemoryBlock.updateReferenceCount(-1);
     if (dataCacheMemoryBlock.getReferenceCount() == 0) {
-      LOGGER.info("Release Data Cache Memory Block {}", dataCacheMemoryBlock);
+      LOGGER.info(StorageEngineMessages.RELEASE_DATA_CACHE_MEMORY_BLOCK, dataCacheMemoryBlock);
       dataCacheMemoryBlock.close();
       dataCacheMemoryBlock = null;
     }

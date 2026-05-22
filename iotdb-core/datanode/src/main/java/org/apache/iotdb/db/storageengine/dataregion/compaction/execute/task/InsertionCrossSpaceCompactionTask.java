@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -262,7 +263,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         }
       }
       if (!canRecover()) {
-        throw new CompactionRecoverException("Can not recover InsertionCrossSpaceCompactionTask");
+        throw new CompactionRecoverException(
+            StorageEngineMessages.CANNOT_RECOVER_INSERTION_CROSS_TASK);
       }
       if (shouldRollback()) {
         rollback();
@@ -309,7 +311,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     // delete target file
     if (!deleteTsFileOnDisk(targetFile)) {
       throw new CompactionRecoverException(
-          String.format("failed to delete target file %s", targetFile));
+          String.format(StorageEngineMessages.FAILED_TO_DELETE_TARGET_FILE, targetFile));
     }
   }
 
@@ -318,7 +320,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       return;
     }
     if (!deleteTsFileOnDisk(unseqFileToInsert)) {
-      throw new CompactionRecoverException("source files cannot be deleted successfully");
+      throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
 
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));

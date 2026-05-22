@@ -58,7 +58,7 @@ public class RegionBalancer {
       case GREEDY:
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
-      case PGR:
+      case PGP:
         this.regionGroupAllocator = new PartiteGraphPlacementRegionGroupAllocator();
         break;
       case GCR:
@@ -160,6 +160,6 @@ public class RegionBalancer {
   public enum RegionGroupAllocatePolicy {
     GREEDY,
     GCR,
-    PGR
+    PGP
   }
 }

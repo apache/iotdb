@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -78,7 +79,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
       eventCounter.increaseEventCount(event);
       return true;
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue put is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_PUT_INTERRUPTED, e);
       Thread.currentThread().interrupt();
       return false;
     }
@@ -99,7 +100,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
               TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue poll is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_POLL_INTERRUPTED, e);
       Thread.currentThread().interrupt();
     }
     return event;

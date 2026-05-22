@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterTimeSeriesTask;
@@ -251,7 +252,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitStatement(Statement statement, MPPQueryContext context) {
-    throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CONFIGTASK_IS_NOT_IMPLEMENTED_FOR + statement);
   }
 
   @Override

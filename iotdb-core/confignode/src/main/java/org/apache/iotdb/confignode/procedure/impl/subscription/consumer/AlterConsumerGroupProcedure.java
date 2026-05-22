@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -76,7 +78,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
 
   @Override
   public boolean executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
-    LOGGER.info("AlterConsumerGroupProcedure: executeFromValidate, try to validate");
+    LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMVALIDATE_TRY_TO_VALIDATE);
 
     validateAndGetOldAndNewMeta(env);
     return true;
@@ -93,7 +95,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info(
-        "AlterConsumerGroupProcedure: executeFromOperateOnConfigNodes({})",
+        ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES,
         updatedConsumerGroupMeta.getConsumerGroupId());
 
     TSStatus response;
@@ -103,7 +105,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
               .getConsensusManager()
               .write(new AlterConsumerGroupPlan(updatedConsumerGroupMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
               .setMessage(e.getMessage());
@@ -111,8 +113,9 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to alter consumer group %s on config nodes, because %s",
-              updatedConsumerGroupMeta.getConsumerGroupId(), response));
+              ProcedureMessages.FAILED_TO_ALTER_CONSUMER_GROUP_ON_CONFIG_NODES_BECAUSE,
+              updatedConsumerGroupMeta.getConsumerGroupId(),
+              response));
     }
   }
 
@@ -120,7 +123,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
     LOGGER.info(
-        "AlterConsumerGroupProcedure: executeFromOperateOnDataNodes({})",
+        ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_EXECUTEFROMOPERATEONDATANODES,
         updatedConsumerGroupMeta.getConsumerGroupId());
 
     final List<TSStatus> statuses =
@@ -130,21 +133,23 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to alter consumer group (%s -> %s) on data nodes, because %s",
-              existingConsumerGroupMeta, updatedConsumerGroupMeta, statuses));
+              ProcedureMessages.FAILED_TO_ALTER_CONSUMER_GROUP_ON_DATA_NODES_BECAUSE,
+              existingConsumerGroupMeta,
+              updatedConsumerGroupMeta,
+              statuses));
     }
   }
 
   @Override
   public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
-    LOGGER.info("AlterConsumerGroupProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_ROLLBACKFROMVALIDATE);
   }
 
   @Override
   public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info(
-        "AlterConsumerGroupProcedure: rollbackFromOperateOnConfigNodes({})",
+        ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES,
         updatedConsumerGroupMeta.getConsumerGroupId());
 
     TSStatus response;
@@ -154,7 +159,7 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
               .getConsensusManager()
               .write(new AlterConsumerGroupPlan(existingConsumerGroupMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response =
           new TSStatus(TSStatusCode.ALTER_CONSUMER_ERROR.getStatusCode())
               .setMessage(e.getMessage());
@@ -162,15 +167,17 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback from altering consumer group (%s -> %s) on config nodes, because %s",
-              existingConsumerGroupMeta, updatedConsumerGroupMeta, response));
+              ProcedureMessages.FAILED_TO_ROLLBACK_FROM_ALTERING_CONSUMER_GROUP_ON_CONFIG_NODES,
+              existingConsumerGroupMeta,
+              updatedConsumerGroupMeta,
+              response));
     }
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("AlterConsumerGroupProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.ALTERCONSUMERGROUPPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     final List<TSStatus> statuses =
         env.pushSingleConsumerGroupOnDataNode(existingConsumerGroupMeta.serialize());
@@ -179,8 +186,10 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback from altering consumer group (%s -> %s) on data nodes, because %s",
-              existingConsumerGroupMeta, updatedConsumerGroupMeta, statuses));
+              ProcedureMessages.FAILED_TO_ROLLBACK_FROM_ALTERING_CONSUMER_GROUP_ON_DATA_NODES,
+              existingConsumerGroupMeta,
+              updatedConsumerGroupMeta,
+              statuses));
     }
   }
 

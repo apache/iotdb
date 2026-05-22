@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TEndpointTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -67,7 +69,7 @@ public class ConfigurableTByteBuffer extends TEndpointTransport {
       try {
         this.byteBuffer.get(buf, off, n);
       } catch (BufferUnderflowException e) {
-        throw new TTransportException("Unexpected end of input buffer", e);
+        throw new TTransportException(RpcMessages.UNEXPECTED_END_OF_INPUT, e);
       }
     }
 
@@ -78,7 +80,7 @@ public class ConfigurableTByteBuffer extends TEndpointTransport {
     try {
       this.byteBuffer.put(buf, off, len);
     } catch (BufferOverflowException e) {
-      throw new TTransportException("Not enough room in output buffer", e);
+      throw new TTransportException(RpcMessages.NOT_ENOUGH_ROOM_IN_OUTPUT, e);
     }
   }
 

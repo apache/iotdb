@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.columngenerator.parameter;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -78,6 +79,8 @@ public abstract class ColumnGeneratorParameter {
     byte type = ReadWriteIOUtils.readByte(byteBuffer);
     if (type == ColumnGeneratorType.SLIDING_TIME.getType()) {
       return SlidingTimeColumnGeneratorParameter.deserialize(byteBuffer);
-    } else throw new UnsupportedOperationException("Unsupported ColumnGeneratorType: " + type);
+    } else
+      throw new UnsupportedOperationException(
+          DataNodeMiscMessages.UNSUPPORTED_COLUMN_GENERATOR_TYPE + type);
   }
 }

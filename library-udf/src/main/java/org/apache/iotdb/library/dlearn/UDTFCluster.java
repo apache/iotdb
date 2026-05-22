@@ -22,6 +22,7 @@ package org.apache.iotdb.library.dlearn;
 import org.apache.iotdb.library.dlearn.util.cluster.KMeans;
 import org.apache.iotdb.library.dlearn.util.cluster.KShape;
 import org.apache.iotdb.library.dlearn.util.cluster.MedoidShape;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
@@ -177,7 +178,7 @@ public class UDTFCluster implements UDTF {
         ms.fit(windows, k, norm, maxIter);
         labels = ms.getLabels();
       } else {
-        throw new UDFException("Unsupported method: " + method);
+        throw new UDFException(LibraryUdfMessages.UNSUPPORTED_METHOD + method);
       }
       for (int w = 0; w < numWindows; w++) {
         collector.putInt(windowStartTime[w], labels[w]);
@@ -198,7 +199,7 @@ public class UDTFCluster implements UDTF {
         ms.fit(windows, k, norm, maxIter);
         centroids = ms.getCentroids();
       } else {
-        throw new UDFException("Unsupported method: " + method);
+        throw new UDFException(LibraryUdfMessages.UNSUPPORTED_METHOD + method);
       }
       emitConcatenatedCentroids(collector, centroids);
     }

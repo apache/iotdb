@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionPBTreeImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
@@ -61,7 +62,8 @@ public class SchemaRegionLoader {
       if (!isSchemaRegion) {
         logger.warn(
             String.format(
-                "Class %s is not a subclass of ISchemaRegion.", annotatedSchemaRegion.getName()));
+                DataNodeSchemaMessages.CLASS_NOT_SUBCLASS_OF_ISCHEMAREGION,
+                annotatedSchemaRegion.getName()));
         continue;
       }
       SchemaRegion annotationInfo = annotatedSchemaRegion.getAnnotation(SchemaRegion.class);
@@ -78,7 +80,7 @@ public class SchemaRegionLoader {
               }
             }
             logger.warn(
-                "Duplicated SchemaRegion implementation, {} and {}, with same mode name [{}]",
+                DataNodeSchemaMessages.DUPLICATED_SCHEMA_REGION_IMPL,
                 v.getClass().getName(),
                 annotatedSchemaRegion.getName(),
                 k);
@@ -91,7 +93,7 @@ public class SchemaRegionLoader {
     Constructor<ISchemaRegion> constructor = constructorMap.get(schemaEngineMode);
     if (constructor == null) {
       logger.warn(
-          "There's no SchemaRegion implementation with target mode {}. Use default mode {}",
+          DataNodeSchemaMessages.NO_SCHEMA_REGION_IMPL_WITH_TARGET_MODE,
           schemaEngineMode,
           SchemaConstant.DEFAULT_SCHEMA_ENGINE_MODE);
       currentMode = SchemaConstant.DEFAULT_SCHEMA_ENGINE_MODE;
@@ -102,16 +104,10 @@ public class SchemaRegionLoader {
     }
     if (currentMode.equals(SchemaConstant.DEFAULT_SCHEMA_ENGINE_MODE)) {
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
-      logger.info(
-          "[SchemaRegionLoader], schemaEngineMode:{}, currentMode:{}",
-          schemaEngineMode,
-          currentMode);
+      logger.info(DataNodeSchemaMessages.SCHEMA_REGION_LOADER_INFO, schemaEngineMode, currentMode);
     } else {
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
-      logger.info(
-          "[SchemaRegionLoader], schemaEngineMode:{}, currentMode:{}",
-          schemaEngineMode,
-          currentMode);
+      logger.info(DataNodeSchemaMessages.SCHEMA_REGION_LOADER_INFO, schemaEngineMode, currentMode);
     }
   }
 

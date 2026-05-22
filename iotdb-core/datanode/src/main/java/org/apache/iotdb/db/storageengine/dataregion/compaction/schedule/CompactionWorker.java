@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -63,7 +64,7 @@ public class CompactionWorker implements Runnable {
       try {
         task = compactionTaskQueue.take();
       } catch (InterruptedException e) {
-        LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
+        LOGGER.warn(StorageEngineMessages.COMPACTION_THREAD_TERMINATES, threadId);
         Thread.currentThread().interrupt();
         continue;
       }
@@ -89,7 +90,7 @@ public class CompactionWorker implements Runnable {
       CompactionTaskManager.getInstance().recordTask(task, future);
       taskSuccess = task.start();
     } catch (Exception e) {
-      LOGGER.warn("Exception occurred when executing compaction task. {}", task, e);
+      LOGGER.warn(StorageEngineMessages.EXCEPTION_EXECUTING_COMPACTION_TASK, task, e);
     } finally {
       if (taskSuccess) {
         task.getAllSourceTsFiles()
@@ -142,7 +143,7 @@ public class CompactionWorker implements Runnable {
       long totalSleepTime = 0L;
       while (!summary.isFinished()) {
         if (totalSleepTime >= timeout) {
-          throw new TimeoutException("Timeout when trying to get compaction task summary");
+          throw new TimeoutException(StorageEngineMessages.TIMEOUT_GET_COMPACTION_TASK_SUMMARY);
         }
         unit.sleep(perSleepTime);
         totalSleepTime += perSleepTime;

@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.i18n.UdfApiMessages;
 
 import java.time.ZoneId;
 
@@ -108,7 +109,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
       String slidingStepString,
       String displayWindowBeginString,
       String displayWindowEndString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**
@@ -127,7 +128,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    */
   @Deprecated
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**
@@ -142,7 +143,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @throws UnsupportedOperationException deprecated since v0.14
    */
   public SlidingTimeWindowAccessStrategy(String timeIntervalString) {
-    throw new UnsupportedOperationException("The method is deprecated since v0.14.");
+    throw new UnsupportedOperationException(UdfApiMessages.METHOD_DEPRECATED_SINCE_V014);
   }
 
   /**

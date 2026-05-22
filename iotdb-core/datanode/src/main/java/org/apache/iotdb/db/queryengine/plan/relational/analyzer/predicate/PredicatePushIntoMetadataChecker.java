@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import java.util.List;
@@ -207,7 +208,7 @@ public class PredicatePushIntoMetadataChecker implements AstVisitor<Boolean, Voi
     for (final Expression child : children) {
       final Boolean result = process(child, context);
       if (result == null) {
-        throw new IllegalStateException("Should never return null.");
+        throw new IllegalStateException(DataNodeQueryMessages.SHOULD_NEVER_RETURN_NULL);
       }
       if (!result) {
         return Boolean.FALSE;

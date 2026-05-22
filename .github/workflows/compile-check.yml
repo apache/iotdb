@@ -53,3 +53,7 @@ jobs:
         shell: bash
         run: |
           mvn clean package -P with-integration-tests -DskipTests -ntp
+      - name: Compiler Test (Chinese i18n)
+        shell: bash
+        run: |
+          mvn clean package -P with-integration-tests,with-zh-locale -DskipTests -ntp

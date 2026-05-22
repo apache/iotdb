@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.response.IoTCon
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferResp;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
@@ -135,7 +136,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
           reader.close();
         } catch (final IOException e) {
           LOGGER.warn(
-              "IoTConsensusV2-{}: Failed to close file reader when successfully transferred mod file.",
+              DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_2,
               consensusPipeName,
               e);
         }
@@ -224,7 +225,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         }
       } catch (final IOException e) {
         LOGGER.warn(
-            "IoTConsensusV2-{}: Failed to close file reader when successfully transferred file.",
+            DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_1,
             consensusPipeName,
             e);
       } finally {
@@ -232,7 +233,8 @@ public class IoTConsensusV2TsFileInsertionEventHandler
             IoTConsensusV2TsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
-            "IoTConsensusV2-{}: Successfully transferred file {} (committer key={}, replicate index={}).",
+            DataNodePipeMessages
+                .IOTCONSENSUSV2_SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_REPLICATE,
             consensusPipeName,
             tsFile,
             event.getCommitterKey(),
@@ -263,7 +265,9 @@ public class IoTConsensusV2TsFileInsertionEventHandler
         position = resp.getEndWritingOffset();
         reader.seek(position);
         LOGGER.info(
-            "IoTConsensusV2-{}: Redirect file position to {}.", consensusPipeName, position);
+            DataNodePipeMessages.IOTCONSENSUSV2_REDIRECT_FILE_POSITION_TO,
+            consensusPipeName,
+            position);
       } else {
         final TSStatus status = response.getStatus();
         // Only handle the failed statuses to avoid string format performance overhead
@@ -287,7 +291,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
   @Override
   public void onError(final Exception exception) {
     LOGGER.warn(
-        "IoTConsensusV2-{}: Failed to transfer TsFileInsertionEvent {} (committer key {}, replicate index {}).",
+        DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY,
         consensusPipeName,
         tsFile,
         event.getCommitterKey(),
@@ -309,7 +313,7 @@ public class IoTConsensusV2TsFileInsertionEventHandler
       }
     } catch (final IOException e) {
       LOGGER.warn(
-          "IoTConsensusV2-{}: Failed to close file reader when failed to transfer file.",
+          DataNodePipeMessages.IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN,
           consensusPipeName,
           e);
     } finally {

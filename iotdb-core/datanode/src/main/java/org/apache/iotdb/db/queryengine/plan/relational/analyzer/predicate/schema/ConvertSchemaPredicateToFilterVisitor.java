@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 
 import javax.annotation.Nullable;
@@ -206,7 +207,8 @@ public class ConvertSchemaPredicateToFilterVisitor
             ? ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL
             : ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
       default:
-        throw new UnsupportedOperationException("Unsupported operator " + operator);
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR_2 + operator);
     }
   }
 

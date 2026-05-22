@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -123,7 +124,8 @@ public class CombineRequest extends TPipeTransferReq {
     if (CountState.class.getName().equals(stateClassName)) {
       return new CountState();
     }
-    throw new IllegalArgumentException("Unexpected state class: " + stateClassName);
+    throw new IllegalArgumentException(
+        DataNodePipeMessages.UNEXPECTED_STATE_CLASS + stateClassName);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
@@ -49,7 +50,7 @@ public abstract class PredicateVisitor<R, C> extends ExpressionVisitor<R, C> {
   @Override
   public R visitExpression(Expression expression, C context) {
     throw new IllegalArgumentException(
-        "Unsupported expression type: " + expression.getExpressionType());
+        DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE + expression.getExpressionType());
   }
 
   @Override

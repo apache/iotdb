@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
@@ -92,7 +93,7 @@ public abstract class AbstractLeaderBalancer {
             .collect(Collectors.toSet());
     if (!differenceSet.isEmpty()) {
       LOGGER.warn(
-          "[LeaderBalancer] The following RegionGroups' leader cannot be selected because their corresponding caches are incomplete: {}",
+          ManagerMessages.LEADERBALANCER_THE_FOLLOWING_REGIONGROUPS_LEADER_CANNOT_BE,
           differenceSet);
       Set<TConsensusGroupId> databaseRegionGroupUnionSet =
           databaseRegionGroupMap.values().stream()
@@ -101,17 +102,19 @@ public abstract class AbstractLeaderBalancer {
       differenceSet.forEach(
           regionId -> {
             if (!databaseRegionGroupUnionSet.contains(regionId)) {
-              LOGGER.warn("[LeaderBalancer] Region: {} not in databaseRegionGroupMap", regionId);
+              LOGGER.warn(
+                  ManagerMessages.LEADERBALANCER_REGION_NOT_IN_DATABASEREGIONGROUPMAP, regionId);
             }
             if (!regionLocationMap.containsKey(regionId)) {
-              LOGGER.warn("[LeaderBalancer] Region: {} not in regionLocationMap", regionId);
+              LOGGER.warn(ManagerMessages.LEADERBALANCER_REGION_NOT_IN_REGIONLOCATIONMAP, regionId);
             }
             if (!regionLeaderMap.containsKey(regionId)) {
 
-              LOGGER.warn("[LeaderBalancer] Region: {} not in regionLeaderMap", regionId);
+              LOGGER.warn(ManagerMessages.LEADERBALANCER_REGION_NOT_IN_REGIONLEADERMAP, regionId);
             }
             if (!regionStatisticsMap.containsKey(regionId)) {
-              LOGGER.warn("[LeaderBalancer] Region: {} not in regionStatisticsMap", regionId);
+              LOGGER.warn(
+                  ManagerMessages.LEADERBALANCER_REGION_NOT_IN_REGIONSTATISTICSMAP, regionId);
             }
           });
     }

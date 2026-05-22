@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
@@ -133,8 +134,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT);
     }
   }
 
@@ -345,9 +345,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void deregister(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
-          pipeID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_REMAINING_EVENT_AND, pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -363,7 +361,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_REGION_COMMIT_REMAININGEVENTANDTIMEOPERATOR,
           pipeID);
       return;
     }
