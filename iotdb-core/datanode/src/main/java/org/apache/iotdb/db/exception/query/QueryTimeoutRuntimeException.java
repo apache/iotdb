@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.db.exception.query;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+
+import static org.apache.iotdb.rpc.TSStatusCode.QUERY_TIMEOUT;
+
 /** This class is used to throw run time exception when query is time out. */
-public class QueryTimeoutRuntimeException extends RuntimeException {
+public class QueryTimeoutRuntimeException extends IoTDBRuntimeException {
   public static final String QUERY_TIMEOUT_EXCEPTION_MESSAGE =
       "Current query is time out, query start time is %d, ddl is %d, current time is %d, please check your statement or modify timeout parameter.";
 
   public QueryTimeoutRuntimeException(long startTime, long currentTime, long timeout) {
     super(
-        String.format(
-            QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime));
+        String.format(QUERY_TIMEOUT_EXCEPTION_MESSAGE, startTime, startTime + timeout, currentTime),
+        QUERY_TIMEOUT.getStatusCode(),
+        true);
   }
 }

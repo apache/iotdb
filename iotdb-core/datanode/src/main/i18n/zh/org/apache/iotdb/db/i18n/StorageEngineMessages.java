@@ -511,4 +511,8 @@ public final class StorageEngineMessages {
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "字符串 '%s' 不是合法的修复日志";
 
   public static final String WRONG_LOAD_COMMAND_S = "错误的 load 命令 %s。";
+
+  public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败, 因为 DataRegion 没找到。";
+
+  public static final String DATA_REGION_IS_NULL = "Data region 是空";
 }
