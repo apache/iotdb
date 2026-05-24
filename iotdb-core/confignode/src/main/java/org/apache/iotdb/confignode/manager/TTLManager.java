@@ -127,6 +127,10 @@ public class TTLManager {
     return ((ShowTTLResp) showTTL(new ShowTTLPlan())).getPathTTLMap();
   }
 
+  public long getTTL(final String[] pathPattern) {
+    return ttlInfo.getTTL(pathPattern);
+  }
+
   public int getTTLCount() {
     return ttlInfo.getTTLCount();
   }
