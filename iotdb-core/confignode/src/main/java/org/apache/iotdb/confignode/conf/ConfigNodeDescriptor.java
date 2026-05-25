@@ -441,7 +441,7 @@ public class ConfigNodeDescriptor {
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.CFS_POLICY.equals(leaderDistributionPolicy)
         || AbstractLeaderBalancer.HASH_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
