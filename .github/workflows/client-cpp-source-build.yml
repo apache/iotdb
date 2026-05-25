@@ -74,19 +74,6 @@ jobs:
           sudo apt-get update
           # Compiler + CMake only; Boost/flex/bison/m4 come from CMake fetch.
           sudo apt-get install -y build-essential cmake wget
-          # Spotless (compile phase) requires clang-format 17 — same as client-cpp-package.
-          . /etc/os-release
-          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
-            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
-            chmod +x /tmp/llvm.sh
-            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
-            sudo apt-get install -y clang-format-17
-          else
-            sudo apt-get install -y clang-format-17
-          fi
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
-          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
-          clang-format --version
 
       - name: Install minimal toolchain (macOS)
         if: runner.os == 'macOS'
@@ -94,20 +81,16 @@ jobs:
         run: |
           set -euxo pipefail
           # Xcode CLT ships bison 2.3 which cannot build Thrift 0.21.0 (%code).
-          brew install bison cmake llvm@17
-          ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          brew install bison cmake
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
-          echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
           bison --version
-          clang-format --version
 
       - name: Install minimal toolchain (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           # No choco boost / winflexbison: CMake downloads into third-party/windows/.
-          choco install llvm --version=17.0.6 --force -y
-          clang-format --version
+          Write-Host "Using preinstalled VS + CMake on the runner image."
 
       - name: Cache Maven packages
         uses: actions/cache@v5
@@ -124,7 +107,7 @@ jobs:
         run: |
           set -euxo pipefail
           MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests)
-          MVN_ARGS+=("-Diotdb.offline=OFF")
+          MVN_ARGS+=("-Diotdb.offline=OFF" "-Dspotless.skip=true")
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
