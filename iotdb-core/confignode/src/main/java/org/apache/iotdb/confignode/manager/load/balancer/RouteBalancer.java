@@ -180,7 +180,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         return new GreedyLeaderBalancer();
       case AbstractLeaderBalancer.HASH_POLICY:
         return new HashLeaderBalancer();
-      case AbstractLeaderBalancer.CFD_POLICY:
+      case AbstractLeaderBalancer.CFS_POLICY:
       default:
         return new CostFlowSelectionLeaderBalancer();
     }
