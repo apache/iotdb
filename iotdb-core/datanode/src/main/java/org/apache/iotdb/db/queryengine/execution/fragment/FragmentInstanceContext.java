@@ -781,6 +781,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   public synchronized IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
+      if (dataRegion == null) {
+        // Context was released (releaseResource() already ran). Signal aborted to the driver.
+        return null;
+      }
       switch (queryDataSourceType) {
         case SERIES_SCAN:
           if (initQueryDataSource(sourcePaths)) {

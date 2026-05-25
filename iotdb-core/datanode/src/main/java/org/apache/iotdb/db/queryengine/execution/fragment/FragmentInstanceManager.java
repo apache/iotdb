@@ -151,19 +151,27 @@ public class FragmentInstanceManager {
                 DataNodeQueryContext dataNodeQueryContext =
                     getOrCreateDataNodeQueryContext(instanceId.getQueryId(), dataNodeFINum);
 
+                // Use compute() instead of computeIfAbsent() to handle the retry scenario:
+                // QueryExecution.retry() re-creates the distribution plan with PlanFragmentId
+                // counters reset to 0, generating fragment instance IDs identical to the first
+                // execution. instanceContext retains released contexts (dataRegion == null) for
+                // statistics caching. Without this check, a retried FI reuses the stale context
+                // and NPEs at dataRegion.tryReadLock().
                 FragmentInstanceContext context =
-                    instanceContext.computeIfAbsent(
+                    instanceContext.compute(
                         instanceId,
-                        fragmentInstanceId ->
-                            createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap,
-                                instance.isDebug(),
-                                instance.isVerbose()));
+                        (fiId, existingContext) ->
+                            (existingContext == null || existingContext.getDataRegion() == null)
+                                ? createFragmentInstanceContext(
+                                    fiId,
+                                    stateMachine,
+                                    instance.getSessionInfo(),
+                                    dataRegion,
+                                    instance.getGlobalTimePredicate(),
+                                    dataNodeQueryContextMap,
+                                    instance.isDebug(),
+                                    instance.isVerbose())
+                                : existingContext);
                 context.setHighestPriority(instance.isHighestPriority());
 
                 try {
