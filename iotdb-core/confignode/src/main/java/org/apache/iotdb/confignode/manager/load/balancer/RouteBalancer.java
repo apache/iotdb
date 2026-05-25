@@ -68,6 +68,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -188,31 +189,44 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   /** Balance cluster RegionGroup leader distribution through configured algorithm. */
   private DataRegionLeaderBalanceResult balanceRegionLeader() {
-    DataRegionLeaderBalanceResult result = DataRegionLeaderBalanceResult.empty();
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
-      balanceRegionLeader(TConsensusGroupType.SchemaRegion);
-    }
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
-      result = balanceRegionLeader(TConsensusGroupType.DataRegion);
-    }
-    return result;
+    return balanceRegionLeader(
+        IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION,
+        IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION);
   }
 
   private DataRegionLeaderBalanceResult balanceRegionLeader(Set<TConsensusGroupId> regionGroupIds) {
-    DataRegionLeaderBalanceResult result = DataRegionLeaderBalanceResult.empty();
-    if (regionGroupIds.stream()
-            .anyMatch(
-                regionGroupId -> TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType()))
-        && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
+    boolean shouldBalanceSchemaRegion =
+        IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION
+            && regionGroupIds.stream()
+                .anyMatch(
+                    regionGroupId ->
+                        TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType()));
+    boolean shouldBalanceDataRegion =
+        IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION
+            && regionGroupIds.stream()
+                .anyMatch(
+                    regionGroupId ->
+                        TConsensusGroupType.DataRegion.equals(regionGroupId.getType()));
+    return balanceRegionLeader(shouldBalanceSchemaRegion, shouldBalanceDataRegion);
+  }
+
+  private DataRegionLeaderBalanceResult balanceRegionLeader(
+      boolean shouldBalanceSchemaRegion, boolean shouldBalanceDataRegion) {
+    if (shouldBalanceSchemaRegion && shouldBalanceDataRegion) {
+      CompletableFuture<Void> schemaRegionLeaderBalanceFuture =
+          CompletableFuture.runAsync(() -> balanceRegionLeader(TConsensusGroupType.SchemaRegion));
+      try {
+        return balanceRegionLeader(TConsensusGroupType.DataRegion);
+      } finally {
+        schemaRegionLeaderBalanceFuture.join();
+      }
+    }
+    if (shouldBalanceSchemaRegion) {
       balanceRegionLeader(TConsensusGroupType.SchemaRegion);
     }
-    if (regionGroupIds.stream()
-            .anyMatch(
-                regionGroupId -> TConsensusGroupType.DataRegion.equals(regionGroupId.getType()))
-        && IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
-      result = balanceRegionLeader(TConsensusGroupType.DataRegion);
-    }
-    return result;
+    return shouldBalanceDataRegion
+        ? balanceRegionLeader(TConsensusGroupType.DataRegion)
+        : DataRegionLeaderBalanceResult.empty();
   }
 
   private DataRegionLeaderBalanceResult balanceRegionLeader(TConsensusGroupType regionGroupType) {
