@@ -126,7 +126,7 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.126.Final</netty.version>
+        <netty.version>4.1.134.Final</netty.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
