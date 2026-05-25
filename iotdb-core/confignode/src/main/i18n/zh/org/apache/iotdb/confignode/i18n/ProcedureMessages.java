@@ -154,11 +154,11 @@ public final class ProcedureMessages {
   public static final String COMMIT_SET_SCHEMAENGINE_TEMPLATE_ON_PATH =
       "Commit set schemaengine template {} on path {}";
   public static final String CONSENSUSPIPEGUARDIAN_CONSENSUS_PIPE_IS_STOPPED_RESTARTING_ASYNCHRONOUSLY =
-      "[ConsensusPipeGuardian] consensus pipe [{}] is stopped, restarting asynchronously";
+      "[ConsensusPipeGuardian] consensus pipe [{}] 已停止，正在异步重启";
   public static final String CONSENSUSPIPEGUARDIAN_CONSENSUS_PIPE_MISSING_CREATING_ASYNCHRONOUSLY =
-      "[ConsensusPipeGuardian] consensus pipe [{}] missing, creating asynchronously";
+      "[ConsensusPipeGuardian] consensus pipe [{}] 缺失，正在异步创建";
   public static final String CONSENSUSPIPEGUARDIAN_UNEXPECTED_CONSENSUS_PIPE_EXISTS_DROPPING_ASYNCHRONOUSLY =
-      "[ConsensusPipeGuardian] unexpected consensus pipe [{}] exists, dropping asynchronously";
+      "[ConsensusPipeGuardian] 意外存在 consensus pipe [{}]，正在异步删除";
   public static final String CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_DEVICES_IN =
       "Construct schemaEngine black list of devices in {}.{}";
   public static final String CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_TEMPLATE_SET_ON =
@@ -184,7 +184,7 @@ public final class ProcedureMessages {
   public static final String CONSUMERGROUPMETASYNCPROCEDURE_ROLLBACKFROMVALIDATE =
       "ConsumerGroupMetaSyncProcedure: rollbackFromValidate";
   public static final String CREATEDATABASE_FAIL_TWICE = "createDatabase fail twice";
-  public static final String CREATED_CONSENSUS_PIPE = "{}, Created consensus pipe {}";
+  public static final String CREATED_CONSENSUS_PIPE = "{}, 已创建 consensus pipe {}";
   public static final String CREATEPIPEPLUGINPROCEDURE_EXECUTEFROMCREATEONCONFIGNODES =
       "CreatePipePluginProcedure: executeFromCreateOnConfigNodes({})";
   public static final String CREATEPIPEPLUGINPROCEDURE_EXECUTEFROMCREATEONDATANODES =
@@ -194,7 +194,7 @@ public final class ProcedureMessages {
   public static final String CREATEPIPEPLUGINPROCEDURE_EXECUTEFROMUNLOCK =
       "CreatePipePluginProcedure: executeFromUnlock({})";
   public static final String CREATEPIPEPLUGINPROCEDURE_FAILED_IN_STATE_WILL_ROLLBACK =
-      "CreatePipePluginProcedure failed in state {}, will rollback";
+      "CreatePipePluginProcedure 在状态 {} 失败，将回滚";
   public static final String CREATEPIPEPLUGINPROCEDURE_ROLLBACKFROMCREATEONCONFIGNODES =
       "CreatePipePluginProcedure: rollbackFromCreateOnConfigNodes({})";
   public static final String CREATEPIPEPLUGINPROCEDURE_ROLLBACKFROMCREATEONDATANODES =
@@ -295,7 +295,7 @@ public final class ProcedureMessages {
   public static final String DROPPIPEPLUGINPROCEDURE_EXECUTEFROMUNLOCK =
       "DropPipePluginProcedure: executeFromUnlock({})";
   public static final String DROPPIPEPLUGINPROCEDURE_FAILED_IN_STATE_WILL_ROLLBACK =
-      "DropPipePluginProcedure failed in state {}, will rollback";
+      "DropPipePluginProcedure 在状态 {} 失败，将回滚";
   public static final String DROPPIPEPLUGINPROCEDURE_ROLLBACKFROMDROPONCONFIGNODES =
       "DropPipePluginProcedure: rollbackFromDropOnConfigNodes({})";
   public static final String DROPPIPEPLUGINPROCEDURE_ROLLBACKFROMDROPONDATANODES =
@@ -362,7 +362,7 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_ALTER_CONSUMER_GROUP_ON_DATA_NODES_BECAUSE =
       "Failed to alter consumer group (%s -> %s) on data nodes, because %s";
   public static final String FAILED_TO_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
-      "Failed to alter pipe {}, details: {}, metadata will be synchronized later.";
+      "修改 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_ALTER_TOPIC_ON_CONFIG_NODES_BECAUSE =
       "Failed to alter topic (%s -> %s) on config nodes, because %s";
   public static final String FAILED_TO_ALTER_TOPIC_ON_DATA_NODES_BECAUSE =
@@ -372,13 +372,13 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
       "Failed to commit set template {} on path {} due to {}";
   public static final String FAILED_TO_CREATE_CONSENSUS_PIPE =
-      "{}, Failed to create consensus pipe {}: {}";
+      "{}, 创建 consensus pipe {} 失败：{}";
   public static final String FAILED_TO_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST_DETAILS =
-      "Failed to create pipes %s when creating subscription with request %s, details: %s, metadata will be synchronized later.";
+      "创建 subscription 时创建 pipe %s 失败，请求：%s，详情：%s，稍后将同步元数据。";
   public static final String FAILED_TO_CREATE_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
-      "Failed to create pipe {}, details: {}, metadata will be synchronized later.";
+      "创建 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_CREATE_PIPE_PLUGIN_INSTANCE_ON_DATA_NODES =
-      "Failed to create pipe plugin instance [%s] on data nodes";
+      "在 DataNode 上创建 pipe plugin 实例 [%s] 失败";
   public static final String FAILED_TO_CREATE_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES_BECAUSE =
       "Failed to create subscription with request %s on config nodes, because %s";
   public static final String FAILED_TO_CREATE_TOPIC_ON_CONFIG_NODES_BECAUSE =
@@ -394,11 +394,11 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_DO_INACTIVE_ROLLBACK_OF_CQ_BECAUSE_OF_UNKNOWN =
       "Failed to do [INACTIVE] rollback of CQ {} because of unknown reasons {}";
   public static final String FAILED_TO_DROP_PIPES_WHEN_DROPPING_SUBSCRIPTION_WITH_REQUEST_BECAUSE =
-      "Failed to drop pipes %s when dropping subscription with request %s, because %s";
+      "删除 subscription 时删除 pipe %s 失败，请求：%s，原因：%s";
   public static final String FAILED_TO_DROP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
-      "Failed to drop pipe {}, details: {}, metadata will be synchronized later.";
+      "删除 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_DROP_PIPE_PLUGIN_ON_DATA_NODES =
-      "Failed to drop pipe plugin %s on data nodes";
+      "在 DataNode 上删除 pipe plugin %s 失败";
   public static final String FAILED_TO_DROP_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES_BECAUSE =
       "Failed to drop subscription with request %s on config nodes, because %s";
   public static final String FAILED_TO_DROP_TOPIC_ON_CONFIG_NODES_BECAUSE =
@@ -438,21 +438,21 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_PUSH_CONSUMER_GROUP_META_TO_DATANODES_DETAILS =
       "Failed to push consumer group meta to dataNodes, details: %s";
   public static final String FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL =
-      "Failed to push pipe meta list to data nodes, will retry later.";
+      "向 DataNode 推送 pipe 元数据列表失败，稍后重试。";
   public static final String FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS =
-      "Failed to push pipe meta to dataNodes, details: %s";
+      "向 DataNode 推送 pipe 元数据失败，详情：%s";
   public static final String FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS =
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
-      "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
+      "回滚修改 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
       "Failed to rollback commit set template {} on path {} due to {}";
   public static final String FAILED_TO_ROLLBACK_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST =
-      "Failed to rollback create pipes when creating subscription with request %s, because %s";
+      "创建 subscription 时回滚创建 pipe 失败，请求：%s，原因：%s";
   public static final String FAILED_TO_ROLLBACK_CREATE_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
-      "Failed to rollback create pipe {}, details: {}, metadata will be synchronized later.";
+      "回滚创建 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_ROLLBACK_CREATING_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES =
       "Failed to rollback creating subscription with request %s on config nodes, because %s";
   public static final String FAILED_TO_ROLLBACK_CREATING_TOPIC_ON_CONFIG_NODES_BECAUSE =
@@ -468,7 +468,7 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_ROLLBACK_FROM_ALTERING_TOPIC_ON_DATA_NODES_BECAUSE =
       "Failed to rollback from altering topic (%s -> %s) on data nodes, because %s";
   public static final String FAILED_TO_ROLLBACK_PIPE_PLUGIN_ON_DATA_NODES =
-      "Failed to rollback pipe plugin [%s] on data nodes";
+      "在 DataNode 上回滚 pipe plugin [%s] 失败";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE =
       "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}";
   public static final String FAILED_TO_ROLLBACK_PRE_RELEASE_TEMPLATE_INFO_OF_TEMPLATE_SET =
@@ -478,9 +478,9 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_ROLLBACK_PRE_UNSET_TEMPLATE_OPERATION_OF_TEMPLATE_SET =
       "Failed to rollback pre unset template operation of template {} set on {}";
   public static final String FAILED_TO_ROLLBACK_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
-      "Failed to rollback start pipe {}, details: {}, metadata will be synchronized later.";
+      "回滚启动 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_ROLLBACK_STOP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
-      "Failed to rollback stop pipe {}, details: {}, metadata will be synchronized later.";
+      "回滚停止 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_ROLLBACK_TABLE_CREATION =
       "Failed to rollback table creation {}.{}";
   public static final String FAILED_TO_ROLLBACK_TEMPLATE_CACHE_OF_TEMPLATE_SET_ON =
@@ -495,11 +495,11 @@ public final class ProcedureMessages {
   public static final String FAILED_TO_SET_SCHEMAENGINE_TEMPLATE_ON_PATH_BECAUSE_THERE_S =
       "Failed to set schemaengine template %s on path %s because there's failure on DataNode %s";
   public static final String FAILED_TO_START_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
-      "Failed to start pipe {}, details: {}, metadata will be synchronized later.";
+      "启动 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_STOP_AINODE_BECAUSE_BUT_THE_REMOVE_PROCESS_WILL =
       "Failed to stop AINode {} because {}, but the remove process will continue.";
   public static final String FAILED_TO_STOP_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER =
-      "Failed to stop pipe {}, details: {}, metadata will be synchronized later.";
+      "停止 pipe {} 失败，详情：{}，稍后将同步元数据。";
   public static final String FAILED_TO_SYNC_TABLE_COMMIT_CREATE_INFO_TO_DATANODE_FAILURE =
       "Failed to sync table {}.{} commit-create info to DataNode {}, failure results: ";
   public static final String FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE =
@@ -521,7 +521,7 @@ public final class ProcedureMessages {
   public static final String FAIL_TO_CONFIG_NODE_INACTIVE_ROLLBACK_OF_TRIGGER =
       "Fail to [CONFIG_NODE_INACTIVE] rollback of trigger [%s]";
   public static final String FAIL_TO_CREATE_PIPE_PLUGIN_AFTER_RETRIES =
-      "Fail to create pipe plugin [{}] after {} retries";
+      "创建 pipe plugin [{}] 失败，已重试 {} 次";
   public static final String FAIL_TO_CREATE_TRIGGERINSTANCE_ON_DATA_NODES =
       "Fail to create triggerInstance [%s] on Data Nodes";
   public static final String FAIL_TO_CREATE_TRIGGER_AT_STATE =
@@ -529,7 +529,7 @@ public final class ProcedureMessages {
   public static final String FAIL_TO_DATA_NODE_INACTIVE_ROLLBACK_OF_TRIGGER =
       "Fail to [DATA_NODE_INACTIVE] rollback of trigger [%s]";
   public static final String FAIL_TO_DROP_PIPE_PLUGIN_AFTER_RETRIES =
-      "Fail to drop pipe plugin [{}] after {} retries";
+      "删除 pipe plugin [{}] 失败，已重试 {} 次";
   public static final String FAIL_TO_DROP_TRIGGER_AT_STATE =
       "Fail to drop trigger [%s] at STATE [%s]";
   public static final String FAIL_TO_DROP_TRIGGER_ON_DATA_NODES =
@@ -687,7 +687,7 @@ public final class ProcedureMessages {
   public static final String PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMWRITECONFIGNODECONSENSUS =
       "PipeHandleMetaChangeProcedure: rollbackFromWriteConfigNodeConsensus";
   public static final String PIPEMETASYNCPROCEDURE_ACQUIRELOCK_SKIP_THE_PROCEDURE_DUE_TO_THE_LAST_EXECUTION =
-      "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}";
+      "PipeMetaSyncProcedure：acquireLock，上次执行时间为 {}，跳过本次 procedure";
   public static final String PIPEMETASYNCPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK =
       "PipeMetaSyncProcedure: executeFromCalculateInfoForTask";
   public static final String PIPEMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES =
@@ -705,13 +705,13 @@ public final class ProcedureMessages {
   public static final String PIPEMETASYNCPROCEDURE_ROLLBACKFROMWRITECONFIGNODECONSENSUS =
       "PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus";
   public static final String PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META =
-      "Pipe {} not found in PipeTaskInfo, can not push its meta.";
+      "在 PipeTaskInfo 中未找到 Pipe {}，无法推送其元数据。";
   public static final String PIPE_PLUGIN_IS_ALREADY_CREATED_AND_ISSETIFNOTEXISTSCONDITION_IS_TRUE_END =
-      "Pipe plugin {} is already created and isSetIfNotExistsCondition is true, end the CreatePipePluginProcedure({})";
+      "Pipe plugin {} 已创建且 isSetIfNotExistsCondition 为 true，结束 CreatePipePluginProcedure({})";
   public static final String PIPE_PLUGIN_IS_ALREADY_CREATED_END_THE_CREATEPIPEPLUGINPROCEDURE =
-      "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})";
+      "Pipe plugin {} 已创建，结束 CreatePipePluginProcedure({})";
   public static final String PIPE_PLUGIN_IS_NOT_EXIST_END_THE_DROPPIPEPLUGINPROCEDURE =
-      "Pipe plugin {} is not exist, end the DropPipePluginProcedure({})";
+      "Pipe plugin {} 不存在，结束 DropPipePluginProcedure({})";
   public static final String PRE_CREATE_TABLE = "Pre create table {}.{}";
   public static final String PRE_CREATE_TABLE_FAILED = "Pre create table failed";
   public static final String PRE_RELEASE = "Pre-release ";
@@ -732,7 +732,7 @@ public final class ProcedureMessages {
       "Pre set schemaengine template {} on path {}";
   public static final String PRE_SET_TEMPLATE_FAILED = "Pre set template failed";
   public static final String PROCEDUREID = "ProcedureId {}: {}";
-  public static final String PROCEDUREID_ACQUIRED_PIPE_LOCK = "ProcedureId {} acquired pipe lock.";
+  public static final String PROCEDUREID_ACQUIRED_PIPE_LOCK = "ProcedureId {} 已获取 pipe 锁。";
   public static final String PROCEDUREID_ACQUIRED_SUBSCRIPTION_LOCK =
       "ProcedureId {} acquired subscription lock.";
   public static final String PROCEDUREID_ALL_RETRIES_FAILED_WHEN_TRYING_TO_AT_STATE_WILL =
@@ -740,7 +740,7 @@ public final class ProcedureMessages {
   public static final String PROCEDUREID_ENCOUNTERED_ERROR_WHEN_TRYING_TO_AT_STATE_RETRY =
       "ProcedureId {}: Encountered error when trying to {} at state [{}], retry [{}/{}]";
   public static final String PROCEDUREID_FAILED_TO_ACQUIRE_PIPE_LOCK =
-      "ProcedureId {} failed to acquire pipe lock.";
+      "ProcedureId {} 获取 pipe 锁失败。";
   public static final String PROCEDUREID_FAILED_TO_ACQUIRE_SUBSCRIPTION_LOCK =
       "ProcedureId {} failed to acquire subscription lock.";
   public static final String PROCEDUREID_FAILED_TO_ROLLBACK_FROM_CALCULATE_INFO_FOR_TASK =
@@ -755,41 +755,41 @@ public final class ProcedureMessages {
       "ProcedureId {}: Failed to rollback from write config node consensus.";
   public static final String PROCEDUREID_FAIL_TO_BECAUSE = "ProcedureId %s: Fail to %s because %s";
   public static final String PROCEDUREID_INVALID_LOCK_STATE_PIPE_LOCK_WILL_BE_RELEASED =
-      "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.";
+      "ProcedureId {}：{}。锁状态无效，将释放 pipe 锁。";
   public static final String PROCEDUREID_INVALID_LOCK_STATE_SUBSCRIPTION_LOCK_WILL_BE_RELEASED =
       "ProcedureId {}: {}. Invalid lock state. Subscription lock will be released.";
   public static final String PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_PIPE_LOCK =
-      "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.";
+      "ProcedureId {}：{}。锁状态无效，未获取 pipe 锁。";
   public static final String PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_SUBSCRIPTION_LOCK =
       "ProcedureId {}: {}. Invalid lock state. Without acquiring subscription lock.";
   public static final String PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH =
-      "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with pipe lock.";
+      "ProcedureId {}：LOCK_ACQUIRED。后续 procedure 应在持有 pipe 锁时执行。";
   public static final String PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH_2 =
-      "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription and pipe lock.";
+      "ProcedureId {}：LOCK_ACQUIRED。后续 procedure 应在持有 subscription 和 pipe 锁时执行。";
   public static final String PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH_3 =
       "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription lock.";
   public static final String PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED =
-      "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.";
+      "ProcedureId {}：LOCK_ACQUIRED。后续 procedure 不应在未持有 pipe 锁时执行。";
   public static final String PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED_2 =
       "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without subscription lock.";
   public static final String PROCEDUREID_LOCK_EVENT_WAIT_PIPE_LOCK_WILL_BE_RELEASED =
-      "ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.";
+      "ProcedureId {}：LOCK_EVENT_WAIT。将释放 pipe 锁。";
   public static final String PROCEDUREID_LOCK_EVENT_WAIT_SUBSCRIPTION_LOCK_WILL_BE_RELEASED =
       "ProcedureId {}: LOCK_EVENT_WAIT. Subscription lock will be released.";
   public static final String PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_PIPE_LOCK =
-      "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.";
+      "ProcedureId {}：LOCK_EVENT_WAIT。未获取 pipe 锁。";
   public static final String PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_SUBSCRIPTION_LOCK =
       "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring subscription lock.";
   public static final String PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL =
-      "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.";
+      "ProcedureId {}：未获取 pipe 锁，将跳过 executeFromState 的执行。";
   public static final String PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_ROLLBACKSTATE_S_EXECUTION_WILL =
-      "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.";
+      "ProcedureId {}：未获取 pipe 锁，将跳过 rollbackState({}) 的执行。";
   public static final String PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_PIPE_LOCK =
-      "ProcedureId {} release lock. No need to release pipe lock.";
+      "ProcedureId {} 释放锁。无需释放 pipe 锁。";
   public static final String PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_SUBSCRIPTION_LOCK =
       "ProcedureId {} release lock. No need to release subscription lock.";
   public static final String PROCEDUREID_RELEASE_LOCK_PIPE_LOCK_WILL_BE_RELEASED =
-      "ProcedureId {} release lock. Pipe lock will be released.";
+      "ProcedureId {} 释放锁。将释放 pipe 锁。";
   public static final String PROCEDUREID_RELEASE_LOCK_SUBSCRIPTION_LOCK_WILL_BE_RELEASED =
       "ProcedureId {} release lock. Subscription lock will be released.";
   public static final String PROCEDUREID_SUBSCRIPTION_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL =
@@ -797,9 +797,9 @@ public final class ProcedureMessages {
   public static final String PROCEDUREID_SUBSCRIPTION_LOCK_IS_NOT_ACQUIRED_ROLLBACKSTATE_S_EXECUTION_WILL =
       "ProcedureId {}: Subscription lock is not acquired, rollbackState({})'s execution will be skipped.";
   public static final String PROCEDUREID_TRY_TO_ACQUIRE_PIPE_LOCK =
-      "ProcedureId {} try to acquire pipe lock.";
+      "ProcedureId {} 尝试获取 pipe 锁。";
   public static final String PROCEDUREID_TRY_TO_ACQUIRE_SUBSCRIPTION_AND_PIPE_LOCK =
-      "ProcedureId {} try to acquire subscription and pipe lock.";
+      "ProcedureId {} 尝试获取 subscription 和 pipe 锁。";
   public static final String PROCEDUREID_TRY_TO_ACQUIRE_SUBSCRIPTION_LOCK =
       "ProcedureId {} try to acquire subscription lock.";
   public static final String PROCEDURE_TYPE = "Procedure type ";
@@ -818,9 +818,9 @@ public final class ProcedureMessages {
   public static final String RETRIEVABLE_ERROR_TRYING_TO_CREATE_CQ_STATE =
       "Retrievable error trying to create cq [{}], state [{}]";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_CREATE_PIPE_PLUGIN_STATE =
-      "Retrievable error trying to create pipe plugin [{}], state: {}";
+      "创建 pipe plugin [{}] 时遇到可恢复错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_DROP_PIPE_PLUGIN_STATE =
-      "Retrievable error trying to drop pipe plugin [{}], state: {}";
+      "删除 pipe plugin [{}] 时遇到可恢复错误，状态：{}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE =
       "Retrievable error trying to execute plan {}, state: {}";
   public static final String RETRIEVABLE_ERROR_TRYING_TO_REMOVE_AINODE_STATE =
@@ -919,7 +919,7 @@ public final class ProcedureMessages {
       "{}, Stop Data Node meets error, error datanode: {}";
   public static final String STOP_DATA_NODE_SUCCESS = "{}, Stop Data Node {} success.";
   public static final String SUBMITTED_ASYNC_CONSENSUS_PIPE_CREATION =
-      "{}, Submitted async consensus pipe creation: {}";
+      "{}, 已提交异步 consensus pipe 创建任务：{}";
   public static final String SUBSCRIPTION_META_SYNC_PROCEDURE_FINISHED_UPDATING_LAST_SYNC_VERSION =
       "Subscription meta sync procedure finished, updating last sync version.";
   public static final String SUCCESSFULLY_OPERATE_WILL_CLEAR_CACHE_TO_THE_DATA_REGIONS_ANYWAY =
@@ -959,9 +959,9 @@ public final class ProcedureMessages {
   public static final String UNKNOWN_PROCEDURE_TYPE_2 = "Unknown Procedure type: {}";
   public static final String UNKNOWN_STATE = "Unknown state: ";
   public static final String UNKNOWN_STATE_DURING_EXECUTING_CREATEPIPEPLUGINPROCEDURE =
-      "Unknown state during executing createPipePluginProcedure, %s";
+      "执行 createPipePluginProcedure 时遇到未知状态：%s";
   public static final String UNKNOWN_STATE_DURING_EXECUTING_OPERATEPIPEPROCEDURE =
-      "Unknown state during executing operatePipeProcedure, %s";
+      "执行 operatePipeProcedure 时遇到未知状态：%s";
   public static final String UNKNOWN_STATE_DURING_EXECUTING_OPERATESUBSCRIPTIONPROCEDURE =
       "Unknown state during executing operateSubscriptionProcedure, %s";
   public static final String UNKNOWN_STATE_DURING_EXECUTING_REMOVEAINODEPROCEDURE =
