@@ -19,7 +19,8 @@
 #
 
 # You can set ConfigNode memory size, example '2G' or '2048M'
-MEMORY_SIZE=
+# If the MEMORY_SIZE environment variable is already set, its value will be used.
+MEMORY_SIZE=${MEMORY_SIZE:-}
 
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
@@ -68,6 +69,24 @@ calculate_memory_sizes()
     case "`uname`" in
         Linux)
             system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
+            # When running in a container/pod, use cgroup memory limit instead of host memory
+            if [ -f /sys/fs/cgroup/memory.max ]; then
+                # cgroup v2
+                cgroup_mem=`cat /sys/fs/cgroup/memory.max`
+                if [ "$cgroup_mem" != "max" ]; then
+                    cgroup_mem_in_mb=`expr $cgroup_mem / 1024 / 1024`
+                    if [ "$cgroup_mem_in_mb" -lt "$system_memory_in_mb" ]; then
+                        system_memory_in_mb=$cgroup_mem_in_mb
+                    fi
+                fi
+            elif [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+                # cgroup v1
+                cgroup_mem=`cat /sys/fs/cgroup/memory/memory.limit_in_bytes`
+                cgroup_mem_in_mb=`expr $cgroup_mem / 1024 / 1024`
+                if [ "$cgroup_mem_in_mb" -lt "$system_memory_in_mb" ]; then
+                    system_memory_in_mb=$cgroup_mem_in_mb
+                fi
+            fi
             system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
         ;;
         FreeBSD)
