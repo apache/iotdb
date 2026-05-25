@@ -66,7 +66,7 @@ esac
 IOTDB_ALLOW_HEAP_DUMP="true"
 
 calculate_memory_sizes()
-{expr cat /sys/fs/cgroup/memory.max / 1024 / 1024
+{
     case "`uname`" in
         Linux)
             system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
