@@ -934,8 +934,8 @@ public final class DataNodeMiscMessages {
   public static final String ERROR_CODE = "错误码：";
   public static final String NULL_RESPONSE_WHEN_SERIALIZING = "序列化时响应为空";
   public static final String OBJECT_STORAGE_NOT_SUPPORTED_YET = "暂不支持对象存储";
-  public static final String REGISTERED_TASK_COUNT_LT_ZERO = "registeredTaskCount < 0";
-  public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount <= 0";
+  public static final String REGISTERED_TASK_COUNT_LT_ZERO = "registeredTaskCount 小于 0";
+  public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount 小于等于 0";
   public static final String REQUEST_TYPE_NOT_SUPPORTED = "不支持的请求类型：";
   public static final String UNEXPECTED_REQUEST_TYPE = "意外的请求类型：%s";
 

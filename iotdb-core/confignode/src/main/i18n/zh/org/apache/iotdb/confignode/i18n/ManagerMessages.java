@@ -26,7 +26,7 @@ public final class ManagerMessages {
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS =
       "本次同步成功后，如果 PipeTaskInfo 在本次同步期间为空且之后未被修改，则后续所有同步都将被跳过";
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS =
-      "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped";
+      "本次同步成功后，如果本轮同步期间 SubscriptionInfo 为空且之后没有被修改，则后续所有同步都会被跳过";
   public static final String ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA =
       "尝试向空 PipeTaskMeta 上报 pipe 异常。";
   public static final String AUTH_RUN_AUTH_PLAN = "Auth: run auth plan: {}";
@@ -41,9 +41,9 @@ public final class ManagerMessages {
   public static final String CONSENSUSMANAGER_GETLEADERPEER_BEEN_INTERRUPTED =
       "ConsensusManager getLeaderPeer been interrupted, ";
   public static final String CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_SUBSCRIBE_TOPICS_RESULT_STATUS =
-      "Consumer {} in consumer group {} failed to subscribe topics {}. Result status: {}.";
+      "消费者 {} 在消费者组 {} 中订阅 Topic {} 失败。结果状态：{}。";
   public static final String CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_UNSUBSCRIBE_TOPICS_RESULT_STATUS =
-      "Consumer {} in consumer group {} failed to unsubscribe topics {}. Result status: {}.";
+      "消费者 {} 在消费者组 {} 中取消订阅 Topic {} 失败。结果状态：{}。";
   public static final String CREATEPEERFORCONSENSUSGROUP = "createPeerForConsensusGroup {}...";
   public static final String CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS =
       "[CreateRegionGroups] Starting to create the following RegionGroups:";
@@ -110,7 +110,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CHECK_PASSWORD_FOR_PIPE =
       "检查 pipe %s 密码失败。";
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
-      "Failed to close consumer {} in consumer group {}. Result status: {}.";
+      "关闭消费者 {}（消费者组 {}）失败。结果状态：{}。";
   public static final String FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR =
       "初始化 extractor 失败后关闭 extractor 失败。";
   public static final String FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE =
@@ -124,7 +124,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_COLLECT_USER_NAME_FOR_USER_ID =
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
-      "Failed to create consumer {} in consumer group {}. Result status: {}.";
+      "创建消费者 {}（消费者组 {}）失败。结果状态：{}。";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
@@ -132,7 +132,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME =
       "为 pipe %s 创建子任务失败，创建时间 %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
-      "Failed to create topic {} with attributes {}. Result status: {}.";
+      "创建 Topic {} 失败，属性：{}，结果状态：{}。";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "深拷贝 pipeMeta 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
       "注销 pipe config region connector 指标失败，PipeConfigNodeSubtask({}) 不存在";
@@ -145,9 +145,8 @@ public final class ManagerMessages {
   public static final String FAILED_TO_DROP_PIPE_RESULT_STATUS =
       "删除 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_GET_ALL_PIPE_INFO = "获取所有 pipe 信息失败。";
-  public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO =
-      "Failed to get all subscription info.";
-  public static final String FAILED_TO_GET_ALL_TOPIC_INFO = "Failed to get all topic info.";
+  public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO = "获取所有订阅信息失败。";
+  public static final String FAILED_TO_GET_ALL_TOPIC_INFO = "获取所有 Topic 信息失败。";
   public static final String FAILED_TO_HANDLE_PIPE_META_CHANGES = "处理 pipe 元数据变更失败";
   public static final String FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS =
       "处理 pipe 元数据变更失败。结果状态：{}。";
@@ -159,8 +158,8 @@ public final class ManagerMessages {
       "标记 pipe config region write plan 事件失败，PipeConfigNodeSubtask({}) 不存在";
   public static final String FAILED_TO_MARK_PIPE_REGION_COMMIT_REMAININGTIMEOPERATOR_DOES_NOT_EXIST =
       "标记 pipe region commit 失败，RemainingTimeOperator({}) 不存在";
-  public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "Failed to show subscription info.";
-  public static final String FAILED_TO_SHOW_TOPIC_INFO = "Failed to show topic info.";
+  public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "查询订阅信息失败。";
+  public static final String FAILED_TO_SHOW_TOPIC_INFO = "查询 Topic 信息失败。";
   public static final String FAILED_TO_START_PIPE_RESULT_STATUS =
       "启动 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_STOP_PIPE_RESULT_STATUS =
@@ -170,13 +169,13 @@ public final class ManagerMessages {
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_DROP_FOR =
       "为 {} 提交异步 consensus pipe 删除任务失败：{}";
   public static final String FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS =
-      "Failed to sync consumer group meta. Result status: {}.";
+      "同步消费者组元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
       "同步 pipe 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
-      "Failed to sync topic meta. Result status: {}.";
+      "同步 Topic 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
       "从 pipe config region connector 指标解绑失败，connector map 非空";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
@@ -424,11 +423,11 @@ public final class ManagerMessages {
   public static final String SUBMIT_REMOVEDATANODESPROCEDURE_SUCCESSFULLY =
       "Submit RemoveDataNodesProcedure successfully, {}";
   public static final String SUBSCRIPTIONCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF =
-      "SubscriptionCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible";
+      "SubscriptionCoordinatorLock 被其他线程持有，跳过本轮同步以尽量避免 Procedure 和 RPC 堆积";
   public static final String SUBSCRIPTIONMETASYNCER_IS_STARTED_SUCCESSFULLY =
-      "SubscriptionMetaSyncer is started successfully.";
+      "SubscriptionMetaSyncer 启动成功。";
   public static final String SUBSCRIPTIONMETASYNCER_IS_STOPPED_SUCCESSFULLY =
-      "SubscriptionMetaSyncer is stopped successfully.";
+      "SubscriptionMetaSyncer 停止成功。";
   public static final String SUCCESSFULLY_TRANSFERRED_CONFIG_EVENT =
       "成功传输 config 事件 {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_CONFIG_REGION_SNAPSHOT =

@@ -787,56 +787,56 @@ public final class PipeMessages {
   // ===================== SubscriptionConfig (printAllConfigs) =====================
 
   public static final String CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE =
-      "SubscriptionCacheMemoryUsagePercentage: {}";
+      "订阅缓存内存使用比例（SubscriptionCacheMemoryUsagePercentage）：{}";
   public static final String CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM =
-      "SubscriptionSubtaskExecutorMaxThreadNum: {}";
+      "订阅子任务执行器最大线程数（SubscriptionSubtaskExecutorMaxThreadNum）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_DELAY_IN_MS =
-      "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}";
+      "订阅预取 Tablet 批次最大延迟（SubscriptionPrefetchTabletBatchMaxDelayInMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_SIZE_IN_BYTES =
-      "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}";
+      "订阅预取 Tablet 批次最大大小（SubscriptionPrefetchTabletBatchMaxSizeInBytes）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_DELAY_IN_MS =
-      "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}";
+      "订阅预取 TsFile 批次最大延迟（SubscriptionPrefetchTsFileBatchMaxDelayInMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_SIZE_IN_BYTES =
-      "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}";
+      "订阅预取 TsFile 批次最大大小（SubscriptionPrefetchTsFileBatchMaxSizeInBytes）：{}";
   public static final String CONFIG_SUBSCRIPTION_POLL_MAX_BLOCKING_TIME_MS =
-      "SubscriptionPollMaxBlockingTimeMs: {}";
+      "订阅拉取最大阻塞时间（SubscriptionPollMaxBlockingTimeMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_DEFAULT_TIMEOUT_IN_MS =
-      "SubscriptionDefaultTimeoutInMs: {}";
+      "订阅默认超时时间（SubscriptionDefaultTimeoutInMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_LAUNCH_RETRY_INTERVAL_MS =
-      "SubscriptionLaunchRetryIntervalMs: {}";
+      "订阅启动重试间隔（SubscriptionLaunchRetryIntervalMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS =
-      "SubscriptionRecycleUncommittedEventIntervalMs: {}";
+      "订阅未提交事件回收间隔（SubscriptionRecycleUncommittedEventIntervalMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_READ_FILE_BUFFER_SIZE =
-      "SubscriptionReadFileBufferSize: {}";
+      "订阅读取文件缓冲区大小（SubscriptionReadFileBufferSize）：{}";
   public static final String CONFIG_SUBSCRIPTION_READ_TABLET_BUFFER_SIZE =
-      "SubscriptionReadTabletBufferSize: {}";
+      "订阅读取 Tablet 缓冲区大小（SubscriptionReadTabletBufferSize）：{}";
   public static final String CONFIG_SUBSCRIPTION_TSFILE_DEDUPLICATION_WINDOW_SECONDS =
-      "SubscriptionTsFileDeduplicationWindowSeconds: {}";
+      "订阅 TsFile 去重窗口（SubscriptionTsFileDeduplicationWindowSeconds）：{}";
   public static final String CONFIG_SUBSCRIPTION_CHECK_MEMORY_ENOUGH_INTERVAL_MS =
-      "SubscriptionCheckMemoryEnoughIntervalMs: {}";
+      "订阅内存充足检查间隔（SubscriptionCheckMemoryEnoughIntervalMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_ESTIMATED_INSERT_NODE_TABLET_INSERTION_EVENT_SIZE =
-      "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}";
+      "订阅估算 InsertNode Tablet 插入事件大小（SubscriptionEstimatedInsertNodeTabletInsertionEventSize）：{}";
   public static final String CONFIG_SUBSCRIPTION_ESTIMATED_RAW_TABLET_INSERTION_EVENT_SIZE =
-      "SubscriptionEstimatedRawTabletInsertionEventSize: {}";
+      "订阅估算 Raw Tablet 插入事件大小（SubscriptionEstimatedRawTabletInsertionEventSize）：{}";
   public static final String CONFIG_SUBSCRIPTION_MAX_ALLOWED_EVENT_COUNT_IN_TABLET_BATCH =
-      "SubscriptionMaxAllowedEventCountInTabletBatch: {}";
+      "订阅 Tablet 批次最大允许事件数（SubscriptionMaxAllowedEventCountInTabletBatch）：{}";
   public static final String CONFIG_SUBSCRIPTION_LOG_MANAGER_WINDOW_SECONDS =
-      "SubscriptionLogManagerWindowSeconds: {}";
+      "订阅日志管理器窗口（SubscriptionLogManagerWindowSeconds）：{}";
   public static final String CONFIG_SUBSCRIPTION_LOG_MANAGER_BASE_INTERVAL_MS =
-      "SubscriptionLogManagerBaseIntervalMs: {}";
+      "订阅日志管理器基础间隔（SubscriptionLogManagerBaseIntervalMs）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_ENABLED =
-      "SubscriptionPrefetchEnabled: {}";
+      "订阅预取是否启用（SubscriptionPrefetchEnabled）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_MEMORY_THRESHOLD =
-      "SubscriptionPrefetchMemoryThreshold: {}";
+      "订阅预取内存阈值（SubscriptionPrefetchMemoryThreshold）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_MISSING_RATE_THRESHOLD =
-      "SubscriptionPrefetchMissingRateThreshold: {}";
+      "订阅预取缺失率阈值（SubscriptionPrefetchMissingRateThreshold）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD =
-      "SubscriptionPrefetchEventLocalCountThreshold: {}";
+      "订阅预取本地事件数阈值（SubscriptionPrefetchEventLocalCountThreshold）：{}";
   public static final String CONFIG_SUBSCRIPTION_PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD =
-      "SubscriptionPrefetchEventGlobalCountThreshold: {}";
+      "订阅预取全局事件数阈值（SubscriptionPrefetchEventGlobalCountThreshold）：{}";
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_INITIAL_SYNC_DELAY_MINUTES =
-      "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}";
+      "订阅元数据同步器初始同步延迟（SubscriptionMetaSyncerInitialSyncDelayMinutes）：{}";
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
-      "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
+      "订阅元数据同步器同步间隔（SubscriptionMetaSyncerSyncIntervalMinutes）：{}";
 
 }

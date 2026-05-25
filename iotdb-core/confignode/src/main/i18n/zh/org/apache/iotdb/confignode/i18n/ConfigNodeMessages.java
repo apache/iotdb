@@ -55,7 +55,7 @@ public final class ConfigNodeMessages {
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
       "Change regions leader error on Date node: {}";
   public static final String CHECK_BEFORE_DROPPING_TOPIC_TOPIC_EXISTS =
-      "Check before dropping topic: {}, topic exists: {}";
+      "删除 Topic 前检查：Topic {} 是否存在：{}";
   public static final String CHECK_BEFORE_DROP_PIPE_PIPE_EXISTS =
       "删除 pipe 前检查，pipe {} 是否存在：{}。";
   public static final String CLUSTERID_HAS_BEEN_GENERATED = "已生成 clusterID：{}";
@@ -176,7 +176,7 @@ public final class ConfigNodeMessages {
       "{} failed on DataNode {}, retrying {}...";
   public static final String FAILED_TO_ALTER_PIPE = "修改 pipe 失败";
   public static final String FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE =
-      "Failed to check schema region using template on DataNode {}, {}";
+      "在 DataNode {} 上检查正在使用模板的 SchemaRegion 失败，{}";
   public static final String FAILED_TO_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE =
       "Failed to check timeseries existence on DataNode {}, {}";
   public static final String FAILED_TO_COUNT_PATHS_USING_TEMPLATE_ON_DATANODE =
@@ -242,14 +242,14 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2 =
       "Failed to load snapshot,snapshot file [{}] is not exist.";
   public static final String FAILED_TO_LOAD_SUBSCRIPTION_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST =
-      "Failed to load subscription snapshot, snapshot file {} is not exist.";
+      "加载订阅快照失败，快照文件 {} 不存在。";
   public static final String FAILED_TO_ON_CONFIGNODE_RESPONSE =
       "Failed to {} on ConfigNode: {}, response: {}";
   public static final String FAILED_TO_ON_DATANODE = "Failed to {} on DataNode {}, {}";
   public static final String FAILED_TO_ON_DATANODE_EXCEPTION =
       "Failed to {} on DataNode: {}, exception: {}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE =
-      "Failed to {} on DataNode: {}, response: {}";
+      "执行 {} 失败，目标 DataNode：{}，响应：{}";
   public static final String FAILED_TO_OPERATE_PIPE = "操作 pipe 失败";
   public static final String FAILED_TO_SET_PIPE_STATUS = "设置 pipe 状态失败";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
@@ -267,7 +267,7 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_TAKE_SNAPSHOT_OF_TTLINFO_BECAUSE_SNAPSHOT_FILE_IS =
       "Failed to take snapshot of TTLInfo, because snapshot file [{}] is already exist.";
   public static final String FAILED_TO_TAKE_SUBSCRIPTION_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY =
-      "Failed to take subscription snapshot, because snapshot file {} is already exist.";
+      "生成订阅快照失败，因为快照文件 {} 已存在。";
   public static final String FAILED_TO_UPDATE_CONFIG_FILE = "更新配置文件失败";
   public static final String FILE_NOT_EXISTS = "File {} not exists";
   public static final String FOR_RECEIVES = "{} for {} receives: {}";
@@ -280,9 +280,9 @@ public final class ConfigNodeMessages {
   public static final String GET_USER_OR_ROLE_PERMISSIONINFO_FAILED_BECAUSE =
       "get user or role permissionInfo failed because ";
   public static final String HANDLING_CONSUMER_GROUP_META_CHANGES =
-      "Handling consumer group meta changes ...";
+      "正在处理消费者组元数据变更 ...";
   public static final String HANDLING_PIPE_META_CHANGES = "正在处理 pipe 元数据变更 ...";
-  public static final String HANDLING_TOPIC_META_CHANGES = "Handling topic meta changes ...";
+  public static final String HANDLING_TOPIC_META_CHANGES = "正在处理 Topic 元数据变更 ...";
   public static final String HAS_REGISTERED_SUCCESSFULLY_WAITING_FOR_THE_LEADER_S_SCHEDULING_TO =
       "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.";
   public static final String HAS_SUCCESSFULLY_RESTARTED_AND_JOINED_THE_CLUSTER =
@@ -329,8 +329,8 @@ public final class ConfigNodeMessages {
   public static final String PORTS_USED_IN_CONFIGNODE_HAVE_REPEAT =
       "ports used in configNode have repeat.";
   public static final String REACH_EOF = "Reach eof";
-  public static final String RECORDING_CONSUMER_GROUP_META = "Recording consumer group meta: {}";
-  public static final String RECORDING_TOPIC_META = "Recording topic meta: {}";
+  public static final String RECORDING_CONSUMER_GROUP_META = "记录消费者组元数据：{}";
+  public static final String RECORDING_TOPIC_META = "记录 Topic 元数据：{}";
   public static final String RECOVERED_CONSENSUS_PIPES_AS_RUNNING_DURING_SNAPSHOT_LOAD =
       "快照加载期间已将 consensus pipe {} 恢复为 RUNNING 状态。";
   public static final String RELEASE_TRIGGERTABLELOCK = "release TriggerTableLock";
@@ -367,7 +367,7 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_APPLY_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}";
   public static final String SUCCESSFULLY_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE =
-      "Successfully check schema region using template on DataNode: {}";
+      "成功在 DataNode 上检查正在使用模板的 SchemaRegion：{}";
   public static final String SUCCESSFULLY_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE =
       "Successfully check timeseries existence on DataNode: {}";
   public static final String SUCCESSFULLY_COUNT_PATHS_USING_TEMPLATE_ON_DATANODE =
@@ -377,7 +377,7 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_INITIALIZE_CONFIGMANAGER =
       "Successfully initialize ConfigManager.";
   public static final String SUCCESSFULLY_ON_CONFIGNODE = "Successfully {} on ConfigNode: {}";
-  public static final String SUCCESSFULLY_ON_DATANODE = "Successfully {} on DataNode: {}";
+  public static final String SUCCESSFULLY_ON_DATANODE = "执行 {} 成功，目标 DataNode：{}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES =
