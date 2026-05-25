@@ -99,7 +99,7 @@ public class NonAlignedChunkData extends AbstractChunkData {
 
   @Override
   public long getDataSize() {
-    return dataSize;
+    return dataSize + getObjectMetadataSizeInBytes();
   }
 
   @Override

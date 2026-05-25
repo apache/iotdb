@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsF
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
@@ -59,6 +60,7 @@ import java.io.File;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -105,6 +107,22 @@ public class LoadTsFileSchedulerTest {
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());
+  }
+
+  @Test
+  public void testAddOrSendChunkDataAccountsMemoryByChunkDataSize() throws Exception {
+    final Object tsFileDataManager = createTsFileDataManager();
+    final LoadTsFileDataCacheMemoryBlock block = getTsFileDataManagerBlock(tsFileDataManager);
+
+    final ChunkData chunkData = mock(ChunkData.class);
+    when(chunkData.getDataSize()).thenReturn(100L);
+    when(chunkData.getTimePartitionSlot()).thenReturn(new TTimePartitionSlot(0L));
+
+    Assert.assertTrue(
+        (boolean) Whitebox.invokeMethod(tsFileDataManager, "addOrSendChunkData", chunkData));
+
+    Assert.assertEquals(100L, getBlockMemoryUsage(block));
+    Assert.assertEquals(100L, (long) Whitebox.getInternalState(tsFileDataManager, "dataSize"));
   }
 
   @Test
@@ -227,6 +245,33 @@ public class LoadTsFileSchedulerTest {
         mock(IClientManager.class),
         mock(IPartitionFetcher.class),
         false);
+  }
+
+  private Object createTsFileDataManager() throws Exception {
+    final LoadTsFileScheduler scheduler = createScheduler();
+    final LoadSingleTsFileNode singleTsFileNode = mock(LoadSingleTsFileNode.class);
+    when(singleTsFileNode.getPlanNodeId()).thenReturn(new PlanNodeId("load"));
+    when(singleTsFileNode.getTsFileResource())
+        .thenReturn(new TsFileResource(new File("clear-test.tsfile")));
+
+    final Class<?> tsFileDataManagerClass =
+        Class.forName(
+            "org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler$TsFileDataManager");
+    return Whitebox.invokeConstructor(
+        tsFileDataManagerClass,
+        scheduler,
+        singleTsFileNode,
+        LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock());
+  }
+
+  private LoadTsFileDataCacheMemoryBlock getTsFileDataManagerBlock(final Object tsFileDataManager)
+      throws Exception {
+    return Whitebox.getInternalState(tsFileDataManager, "block");
+  }
+
+  private long getBlockMemoryUsage(final LoadTsFileDataCacheMemoryBlock block) throws Exception {
+    final AtomicLong memoryUsageInBytes = Whitebox.getInternalState(block, "memoryUsageInBytes");
+    return memoryUsageInBytes.get();
   }
 
   private TRegionReplicaSet createReplicaSet() {

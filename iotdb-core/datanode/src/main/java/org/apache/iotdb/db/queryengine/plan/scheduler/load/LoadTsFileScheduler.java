@@ -873,9 +873,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
     private boolean addOrSendChunkData(ChunkData chunkData) throws LoadFileException {
       nonDirectionalChunkData.add(chunkData);
-      long size = chunkData.getDataSize() + chunkData.getObjectMetadataSizeInBytes();
-      dataSize += size;
-      block.addMemoryUsage(size);
+      dataSize += chunkData.getDataSize();
+      block.addMemoryUsage(chunkData.getDataSize());
       scheduler.computeTimePartitionSlotToProgressIndexIfAbsent(chunkData.getTimePartitionSlot());
 
       if (!isMemoryEnough()) {
@@ -913,9 +912,8 @@ public class LoadTsFileScheduler implements IScheduler {
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
 
-          long chunkDataSize = chunkData.getDataSize() + chunkData.getObjectMetadataSizeInBytes();
-          dataSize -= chunkDataSize;
-          block.reduceMemoryUsage(chunkDataSize);
+          dataSize -= chunkData.getDataSize();
+          block.reduceMemoryUsage(chunkData.getDataSize());
 
           if (!isDispatchSuccess) {
             return false;

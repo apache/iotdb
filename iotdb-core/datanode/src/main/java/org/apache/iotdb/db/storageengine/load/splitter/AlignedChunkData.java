@@ -133,7 +133,7 @@ public class AlignedChunkData extends AbstractChunkData {
 
   @Override
   public long getDataSize() {
-    return dataSize;
+    return dataSize + getObjectMetadataSizeInBytes();
   }
 
   @Override

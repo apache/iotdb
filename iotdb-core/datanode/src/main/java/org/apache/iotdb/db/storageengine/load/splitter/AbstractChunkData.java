@@ -35,8 +35,11 @@ public abstract class AbstractChunkData implements ChunkData {
    */
   private final Set<Pair<File, String>> objectFiles = new LinkedHashSet<>();
 
+  private long objectMetadataSizeInBytes = 0L;
+
   protected final void copyObjectSidecarFrom(final AbstractChunkData other) {
     objectFiles.addAll(other.objectFiles);
+    objectMetadataSizeInBytes += other.objectMetadataSizeInBytes;
   }
 
   @Override
@@ -57,22 +60,13 @@ public abstract class AbstractChunkData implements ChunkData {
               resolvedObjectFile.getAbsolutePath(), parentDir.getAbsolutePath(), relativePath));
     }
 
-    objectFiles.add(new Pair<>(parentDir, relativePath));
+    if (objectFiles.add(new Pair<>(parentDir, relativePath))) {
+      objectMetadataSizeInBytes += RamUsageEstimator.sizeOf(relativePath);
+    }
   }
 
   @Override
   public long getObjectMetadataSizeInBytes() {
-    if (objectFiles.isEmpty()) {
-      return 0L;
-    }
-
-    long size = 0L;
-    for (Pair<File, String> pair : objectFiles) {
-      if (pair.right != null) {
-        size += RamUsageEstimator.sizeOf(pair.right);
-      }
-    }
-
-    return size;
+    return objectMetadataSizeInBytes;
   }
 }
