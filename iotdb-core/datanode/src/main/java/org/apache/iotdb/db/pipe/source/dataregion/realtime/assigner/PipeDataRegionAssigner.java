@@ -68,6 +68,9 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private Boolean isTableModel;
 
+  private volatile int listenToTsFileSourceCount = 0;
+  private volatile int listenToInsertNodeSourceCount = 0;
+
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
   /** Track whether this data region has Object type write operations. */
@@ -241,12 +244,34 @@ public class PipeDataRegionAssigner implements Closeable {
             });
   }
 
-  public void startAssignTo(final PipeRealtimeDataRegionSource source) {
+  public synchronized void startAssignTo(final PipeRealtimeDataRegionSource source) {
     matcher.register(source);
+    if (source.isNeedListenToTsFile()) {
+      listenToTsFileSourceCount++;
+    }
+    if (source.isNeedListenToInsertNode()) {
+      listenToInsertNodeSourceCount++;
+    }
+    logSourceAssignmentChange("registered", source);
   }
 
-  public void stopAssignTo(final PipeRealtimeDataRegionSource source) {
+  public synchronized void stopAssignTo(final PipeRealtimeDataRegionSource source) {
     matcher.deregister(source);
+    if (source.isNeedListenToTsFile()) {
+      listenToTsFileSourceCount--;
+    }
+    if (source.isNeedListenToInsertNode()) {
+      listenToInsertNodeSourceCount--;
+    }
+    logSourceAssignmentChange("deregistered", source);
+  }
+
+  public boolean shouldListenToTsFile() {
+    return listenToTsFileSourceCount > 0;
+  }
+
+  public boolean shouldListenToInsertNode() {
+    return listenToInsertNodeSourceCount > 0;
   }
 
   public void invalidateCache() {
@@ -286,6 +311,21 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
+  }
+
+  private void logSourceAssignmentChange(
+      final String action, final PipeRealtimeDataRegionSource source) {
+    LOGGER.info(
+        "Pipe {}@{} {} realtime source on data region {} (listenToTsFile={}, listenToInsertNode={}, registeredSourceCount={}, tsFileSourceCount={}, insertNodeSourceCount={}).",
+        source.getPipeName(),
+        source.getCreationTime(),
+        action,
+        dataRegionId,
+        source.isNeedListenToTsFile(),
+        source.isNeedListenToInsertNode(),
+        matcher.getRegisterCount(),
+        listenToTsFileSourceCount,
+        listenToInsertNodeSourceCount);
   }
 
   public Boolean isTableModel() {

@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -52,9 +51,6 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  private final AtomicInteger listenToTsFileSourceCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeSourceCount = new AtomicInteger(0);
-
   // Independent tracking for Object type write operations
   // This map has independent lifecycle from assigner
   private final ConcurrentMap<Integer, AtomicBoolean> dataRegionId2HasObjectWrite =
@@ -64,25 +60,26 @@ public class PipeInsertionDataNodeListener {
 
   public synchronized void startListenAndAssign(
       final int dataRegionId, final PipeRealtimeDataRegionSource source) {
-    final PipeDataRegionAssigner assigner =
-        dataRegionId2Assigner.computeIfAbsent(
-            dataRegionId, k -> new PipeDataRegionAssigner(dataRegionId));
-    assigner.startAssignTo(source);
+    // Keep registration inside compute so the assigner is fully started before it becomes visible
+    // to concurrent listeners.
+    dataRegionId2Assigner.compute(
+        dataRegionId,
+        (id, assigner) -> {
+          final PipeDataRegionAssigner actualAssigner =
+              assigner == null ? new PipeDataRegionAssigner(dataRegionId) : assigner;
+          actualAssigner.startAssignTo(source);
 
-    // Sync Object write flag from independent tracking to assigner
-    final AtomicBoolean hasObjectWrite = dataRegionId2HasObjectWrite.get(dataRegionId);
-    // Two checks ensure that the initialization of this variable will not cause concurrency issues.
-    assigner.hasObjectData.set(hasObjectWrite != null);
-    if (dataRegionId2HasObjectWrite.get(dataRegionId) != null) {
-      assigner.hasObjectData.set(true);
-    }
+          // Sync Object write flag from independent tracking to assigner.
+          final AtomicBoolean hasObjectWrite = dataRegionId2HasObjectWrite.get(dataRegionId);
+          // Two checks ensure that the initialization of this variable will not cause concurrency
+          // issues.
+          actualAssigner.hasObjectData.set(hasObjectWrite != null);
+          if (dataRegionId2HasObjectWrite.get(dataRegionId) != null) {
+            actualAssigner.hasObjectData.set(true);
+          }
 
-    if (source.isNeedListenToTsFile()) {
-      listenToTsFileSourceCount.incrementAndGet();
-    }
-    if (source.isNeedListenToInsertNode()) {
-      listenToInsertNodeSourceCount.incrementAndGet();
-    }
+          return actualAssigner;
+        });
   }
 
   public synchronized void stopListenAndAssign(
@@ -96,13 +93,6 @@ public class PipeInsertionDataNodeListener {
       }
 
       assigner.stopAssignTo(source);
-
-      if (source.isNeedListenToTsFile()) {
-        listenToTsFileSourceCount.decrementAndGet();
-      }
-      if (source.isNeedListenToInsertNode()) {
-        listenToInsertNodeSourceCount.decrementAndGet();
-      }
 
       if (assigner.notMoreSourceNeededToBeAssigned()) {
         // The removed assigner will is the same as the one referenced by the variable `assigner`
@@ -125,14 +115,10 @@ public class PipeInsertionDataNodeListener {
       final String databaseName,
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
-    // We don't judge whether listenToTsFileSourceCount.get() == 0 here on purpose
-    // because sources may use tsfile events when some exceptions occur in the
-    // insert nodes listening process.
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with tsfile listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToTsFile()) {
       return;
     }
 
@@ -165,14 +151,10 @@ public class PipeInsertionDataNodeListener {
       final String databaseName,
       final InsertNode insertNode,
       final TsFileResource tsFileResource) {
-    if (listenToInsertNodeSourceCount.get() == 0) {
-      return;
-    }
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with insert listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToInsertNode()) {
       return;
     }
 
