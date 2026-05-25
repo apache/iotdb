@@ -18,6 +18,7 @@
  */
 
 #include "catch.hpp"
+#include "Column.h"
 #include "Session.h"
 #include "SessionBuilder.h"
 #include "TsBlock.h"
@@ -878,4 +879,17 @@ TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDe
   std::string data(18, '\0');
   data[3] = '\x10';
   REQUIRE_THROWS_AS(TsBlock::deserialize(data), IoTDBException);
+}
+
+TEST_CASE("Read float column as double for schema mismatch", "[column][inference]") {
+  std::vector<bool> valueIsNull(1, false);
+  std::vector<float> values = {120.00000762939453f};
+  auto floatColumn = std::make_shared<FloatColumn>(0, 1, valueIsNull, values);
+  auto rleColumn = std::make_shared<RunLengthEncodedColumn>(floatColumn, 20);
+
+  REQUIRE(rleColumn->getDataType() == TSDataType::FLOAT);
+  REQUIRE_THROWS_AS(rleColumn->getDouble(0), IoTDBException);
+
+  double asDouble = static_cast<double>(rleColumn->getFloat(0));
+  REQUIRE(asDouble == Approx(120.0).margin(0.01));
 }

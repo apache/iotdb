@@ -77,7 +77,7 @@ ENDIF()
 SET(TARGET_NAME_C session_c_tests)
 SET(TARGET_NAME_C_RELATIONAL session_c_relational_tests)
 
-ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp cpp/columnTypeCoercionTest.cpp)
+ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelationalIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_C} main_c.cpp cpp/sessionCIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_C_RELATIONAL} main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
