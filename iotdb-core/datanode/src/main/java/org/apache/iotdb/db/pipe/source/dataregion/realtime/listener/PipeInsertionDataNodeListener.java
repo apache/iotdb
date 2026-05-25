@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -48,23 +47,20 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  private final AtomicInteger listenToTsFileSourceCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeSourceCount = new AtomicInteger(0);
-
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
       final String dataRegionId, final PipeRealtimeDataRegionSource source) {
-    dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
-        .startAssignTo(source);
-
-    if (source.isNeedListenToTsFile()) {
-      listenToTsFileSourceCount.incrementAndGet();
-    }
-    if (source.isNeedListenToInsertNode()) {
-      listenToInsertNodeSourceCount.incrementAndGet();
-    }
+    // Keep registration inside compute so the assigner is fully started before it becomes visible
+    // to concurrent listeners.
+    dataRegionId2Assigner.compute(
+        dataRegionId,
+        (id, assigner) -> {
+          final PipeDataRegionAssigner actualAssigner =
+              assigner == null ? new PipeDataRegionAssigner(dataRegionId) : assigner;
+          actualAssigner.startAssignTo(source);
+          return actualAssigner;
+        });
   }
 
   public synchronized void stopListenAndAssign(
@@ -78,13 +74,6 @@ public class PipeInsertionDataNodeListener {
       }
 
       assigner.stopAssignTo(source);
-
-      if (source.isNeedListenToTsFile()) {
-        listenToTsFileSourceCount.decrementAndGet();
-      }
-      if (source.isNeedListenToInsertNode()) {
-        listenToInsertNodeSourceCount.decrementAndGet();
-      }
 
       if (assigner.notMoreSourceNeededToBeAssigned()) {
         // The removed assigner will is the same as the one referenced by the variable `assigner`
@@ -104,14 +93,10 @@ public class PipeInsertionDataNodeListener {
 
   public void listenToTsFile(
       final String dataRegionId, final TsFileResource tsFileResource, final boolean isLoaded) {
-    // We don't judge whether listenToTsFileSourceCount.get() == 0 here on purpose
-    // because sources may use tsfile events when some exceptions occur in the
-    // insert nodes listening process.
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with tsfile listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToTsFile()) {
       return;
     }
 
@@ -121,14 +106,10 @@ public class PipeInsertionDataNodeListener {
 
   public void listenToInsertNode(
       final String dataRegionId, final InsertNode insertNode, final TsFileResource tsFileResource) {
-    if (listenToInsertNodeSourceCount.get() == 0) {
-      return;
-    }
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with insert listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToInsertNode()) {
       return;
     }
 
