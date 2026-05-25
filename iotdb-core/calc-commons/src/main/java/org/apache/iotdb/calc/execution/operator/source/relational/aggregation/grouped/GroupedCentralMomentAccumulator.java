@@ -177,28 +177,29 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
       double m1A = means.get(groupId);
       double m2A = m2s.get(groupId);
       double m3A = m3s.get(groupId);
-      double n = nA + nB;
+      long n = nA + nB;
+      double nDouble = n;
       double delta = meanB - m1A;
       double delta2 = delta * delta;
       double delta3 = delta * delta2;
       double delta4 = delta2 * delta2;
 
-      counts.set(groupId, (long) n);
-      means.set(groupId, (nA * m1A + nB * meanB) / n);
-      m2s.set(groupId, m2A + m2B + delta2 * nA * nB / n);
+      counts.set(groupId, n);
+      means.set(groupId, (nA * m1A + nB * meanB) / nDouble);
+      m2s.set(groupId, m2A + m2B + delta2 * nA * nB / nDouble);
       m3s.set(
           groupId,
           m3A
               + m3B
-              + delta3 * nA * nB * (nA - nB) / (n * n)
-              + 3 * delta * (nA * m2B - nB * m2A) / n);
+              + delta3 * nA * nB * (nA - nB) / (nDouble * nDouble)
+              + 3 * delta * (nA * m2B - nB * m2A) / nDouble);
       m4s.set(
           groupId,
           m4s.get(groupId)
               + m4B
-              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (n * n * n)
-              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (n * n)
-              + 4 * delta * (nA * m3B - nB * m3A) / n);
+              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (nDouble * nDouble * nDouble)
+              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (nDouble * nDouble)
+              + 4 * delta * (nA * m3B - nB * m3A) / nDouble);
     }
   }
 

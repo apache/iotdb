@@ -148,25 +148,26 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
       double m1A = mean;
       double m2A = m2;
       double m3A = m3;
-      double n = nA + nB;
+      long n = nA + nB;
+      double nDouble = n;
       double delta = meanB - m1A;
       double delta2 = delta * delta;
       double delta3 = delta * delta2;
       double delta4 = delta2 * delta2;
 
-      count = (long) n;
-      mean = (nA * m1A + nB * meanB) / n;
-      m2 = m2A + m2B + delta2 * nA * nB / n;
+      count = n;
+      mean = (nA * m1A + nB * meanB) / nDouble;
+      m2 = m2A + m2B + delta2 * nA * nB / nDouble;
       m3 =
           m3A
               + m3B
-              + delta3 * nA * nB * (nA - nB) / (n * n)
-              + 3 * delta * (nA * m2B - nB * m2A) / n;
+              + delta3 * nA * nB * (nA - nB) / (nDouble * nDouble)
+              + 3 * delta * (nA * m2B - nB * m2A) / nDouble;
       m4 +=
           m4B
-              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (n * n * n)
-              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (n * n)
-              + 4 * delta * (nA * m3B - nB * m3A) / n;
+              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (nDouble * nDouble * nDouble)
+              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (nDouble * nDouble)
+              + 4 * delta * (nA * m3B - nB * m3A) / nDouble;
     }
   }
 
