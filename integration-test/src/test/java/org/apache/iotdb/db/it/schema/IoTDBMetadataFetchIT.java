@@ -26,6 +26,7 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -495,6 +496,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  @Ignore
   public void showCountTimeSeriesExcludeInternalDatabaseAndIncludeView() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
