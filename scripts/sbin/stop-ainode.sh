@@ -30,14 +30,18 @@ if [ -z "$ain_rpc_port" ]; then
     ain_rpc_port=10810
 fi
 
+force=""
+
 # fetch parameters with names
-while getopts "i:t:r" opt; do
+while getopts "i:t:rf" opt; do
   case $opt in
     i)
     ;;
     r)
     ;;
     t) p_ain_remove_target="$OPTARG"
+    ;;
+    f) force="yes"
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
     exit 1
@@ -53,7 +57,6 @@ fi
 echo "Check whether the rpc_port is used..., port is" $ain_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
-  echo $(lsof -t -i:"${ain_rpc_port}" -sTCP:LISTEN)
   PID=$(lsof -t -i:"${ain_rpc_port}" -sTCP:LISTEN)
 elif type netstat > /dev/null 2>&1 ; then
   PID=$(netstat -anp 2>/dev/null | grep ":${ain_rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
@@ -64,19 +67,38 @@ else
   exit 1
 fi
 
-PID_VERIFY=$(ps ax | grep -i 'ainode' | grep -v grep | awk '{print $1}')
-
 if [ -z "$PID" ]; then
   echo "No AINode to stop"
   if [ "$(id -u)" -ne 0 ]; then
     echo "Maybe you can try to run in sudo mode to detect the process."
   fi
-  exit 1
-elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
-  kill -s TERM -- "-$PID"
-  echo "Stop AINode, PID:" "$PID"
-else
-  echo "No AINode to stop"
-  exit 1
+  exit 0
 fi
+
+# Confirm the listener on this port is actually an AINode before killing it,
+# in case some unrelated process has taken over the port.
+if ! ps -p "$PID" -o args= 2>/dev/null | grep -q 'ainode'; then
+  echo "Process $PID on port ${ain_rpc_port} is not an AINode; not stopping."
+  exit 0
+fi
+
+if [ "$force" = "yes" ]; then
+  kill -9 "$PID"
+  echo "Force to stop AINode, PID:" "$PID"
+  exit 0
+fi
+
+kill -s TERM "$PID"
+echo "Stop AINode, PID:" "$PID"
+
+STOP_TIMEOUT=${STOP_TIMEOUT:-30}
+for ((i = 0; i < STOP_TIMEOUT; i++)); do
+  if ! kill -0 "$PID" 2>/dev/null; then
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "AINode (PID $PID) did not exit within ${STOP_TIMEOUT}s, sending SIGKILL"
+kill -9 "$PID"
 
