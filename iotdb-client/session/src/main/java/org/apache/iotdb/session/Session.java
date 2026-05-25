@@ -1777,9 +1777,11 @@ public class Session implements ISession {
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
+    } else if (nullMap != null) {
       logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
@@ -1826,9 +1828,11 @@ public class Session implements ISession {
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
+    } else if (nullMap != null) {
       logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;

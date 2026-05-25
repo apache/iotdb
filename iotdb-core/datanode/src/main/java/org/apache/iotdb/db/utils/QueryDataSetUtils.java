@@ -71,7 +71,6 @@ public class QueryDataSetUtils {
     }
 
     int rowCount = 0;
-    int[] valueOccupation = new int[columnNum];
 
     // used to record a bitmap for every 8 points
     int[] bitmaps = new int[columnNum];
@@ -84,14 +83,7 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
       if (!tsBlock.isEmpty()) {
         int currentCount = tsBlock.getPositionCount();
-        serializeTsBlock(
-            rowCount,
-            currentCount,
-            tsBlock,
-            columnNum,
-            dataOutputStreams,
-            valueOccupation,
-            bitmaps);
+        serializeTsBlock(rowCount, currentCount, tsBlock, columnNum, dataOutputStreams, bitmaps);
         rowCount += currentCount;
       }
     }
@@ -100,9 +92,9 @@ public class QueryDataSetUtils {
 
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
-    fillTimeColumn(rowCount, byteArrayOutputStreams, tsQueryDataSet);
+    fillTimeColumn(byteArrayOutputStreams, tsQueryDataSet);
 
-    fillValueColumnsAndBitMaps(rowCount, byteArrayOutputStreams, valueOccupation, tsQueryDataSet);
+    fillValueColumnsAndBitMaps(byteArrayOutputStreams, tsQueryDataSet);
 
     return new Pair<>(tsQueryDataSet, finished);
   }
@@ -123,7 +115,6 @@ public class QueryDataSetUtils {
     }
 
     int rowCount = 0;
-    int[] valueOccupation = new int[columnNum];
 
     // used to record a bitmap for every 8 points
     int[] bitmaps = new int[columnNum];
@@ -157,7 +148,6 @@ public class QueryDataSetUtils {
               } else {
                 bitmaps[k] = (bitmaps[k] << 1) | FLAG;
                 dataOutputStream.writeInt(column.getInt(i));
-                valueOccupation[k] += 4;
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -175,7 +165,6 @@ public class QueryDataSetUtils {
               } else {
                 bitmaps[k] = (bitmaps[k] << 1) | FLAG;
                 dataOutputStream.writeLong(column.getLong(i));
-                valueOccupation[k] += 8;
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -192,7 +181,6 @@ public class QueryDataSetUtils {
               } else {
                 bitmaps[k] = (bitmaps[k] << 1) | FLAG;
                 dataOutputStream.writeFloat(column.getFloat(i));
-                valueOccupation[k] += 4;
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -209,7 +197,6 @@ public class QueryDataSetUtils {
               } else {
                 bitmaps[k] = (bitmaps[k] << 1) | FLAG;
                 dataOutputStream.writeDouble(column.getDouble(i));
-                valueOccupation[k] += 8;
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -226,7 +213,6 @@ public class QueryDataSetUtils {
               } else {
                 bitmaps[k] = (bitmaps[k] << 1) | FLAG;
                 dataOutputStream.writeBoolean(column.getBoolean(i));
-                valueOccupation[k] += 1;
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -248,7 +234,6 @@ public class QueryDataSetUtils {
                 Binary binary = column.getBinary(i);
                 dataOutputStream.writeInt(binary.getLength());
                 dataOutputStream.write(binary.getValues());
-                valueOccupation[k] = valueOccupation[k] + 4 + binary.getLength();
               }
               if (rowCount != 0 && rowCount % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmaps[k]);
@@ -296,7 +281,6 @@ public class QueryDataSetUtils {
       TsBlock tsBlock,
       int columnNum,
       DataOutputStream[] dataOutputStreams,
-      int[] valueOccupation,
       int[] bitmaps)
       throws IOException {
     // serialize time column
@@ -316,68 +300,28 @@ public class QueryDataSetUtils {
       switch (type) {
         case INT32:
         case DATE:
-          doWithInt32Column(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+          doWithInt32Column(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         case INT64:
         case TIMESTAMP:
-          doWithInt64Column(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+          doWithInt64Column(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         case FLOAT:
-          doWithFloatColumn(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+          doWithFloatColumn(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         case DOUBLE:
           doWithDoubleColumn(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+              rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         case BOOLEAN:
           doWithBooleanColumn(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+              rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         case TEXT:
         case BLOB:
         case STRING:
         case OBJECT:
-          doWithTextColumn(
-              rowCount,
-              column,
-              bitmaps,
-              k,
-              dataOutputStream,
-              valueOccupation,
-              dataBitmapOutputStream);
+          doWithTextColumn(rowCount, column, bitmaps, k, dataOutputStream, dataBitmapOutputStream);
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -392,7 +336,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -402,7 +345,6 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeInt(column.getInt(i));
-        valueOccupation[columnIndex] += 4;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -418,7 +360,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -428,7 +369,6 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeLong(column.getLong(i));
-        valueOccupation[columnIndex] += 8;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -444,7 +384,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -454,7 +393,6 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeFloat(column.getFloat(i));
-        valueOccupation[columnIndex] += 4;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -470,7 +408,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -480,7 +417,6 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeDouble(column.getDouble(i));
-        valueOccupation[columnIndex] += 8;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -496,7 +432,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -506,7 +441,6 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeBoolean(column.getBoolean(i));
-        valueOccupation[columnIndex] += 1;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -522,7 +456,6 @@ public class QueryDataSetUtils {
       int[] bitmaps,
       int columnIndex,
       DataOutputStream dataOutputStream,
-      int[] valueOccupation,
       DataOutputStream dataBitmapOutputStream)
       throws IOException {
     for (int i = 0, size = column.getPositionCount(); i < size; i++) {
@@ -534,7 +467,6 @@ public class QueryDataSetUtils {
         Binary binary = column.getBinary(i);
         dataOutputStream.writeInt(binary.getLength());
         dataOutputStream.write(binary.getValues());
-        valueOccupation[columnIndex] = valueOccupation[columnIndex] + 4 + binary.getLength();
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -558,16 +490,13 @@ public class QueryDataSetUtils {
   }
 
   private static void fillTimeColumn(
-      int rowCount, PublicBAOS[] byteArrayOutputStreams, TSQueryDataSet tsQueryDataSet) {
+      PublicBAOS[] byteArrayOutputStreams, TSQueryDataSet tsQueryDataSet) {
     tsQueryDataSet.setTime(wrapBuffer(byteArrayOutputStreams[0]));
   }
 
   private static void fillValueColumnsAndBitMaps(
-      int rowCount,
-      PublicBAOS[] byteArrayOutputStreams,
-      int[] valueOccupation,
-      TSQueryDataSet tsQueryDataSet) {
-    int columnNum = valueOccupation.length;
+      PublicBAOS[] byteArrayOutputStreams, TSQueryDataSet tsQueryDataSet) {
+    int columnNum = byteArrayOutputStreams.length / 2;
     List<ByteBuffer> bitmapList = new ArrayList<>(columnNum);
     List<ByteBuffer> valueList = new ArrayList<>(columnNum);
     for (int i = 1; i < byteArrayOutputStreams.length; i += 2) {

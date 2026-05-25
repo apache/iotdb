@@ -99,7 +99,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1116,8 +1118,8 @@ public class StorageEngine implements IService {
 
   public void getDiskSizeByDataRegion(
       Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
-    final java.util.Collection<Integer> targetDataRegionIds =
-        dataRegionIds.size() > 1 ? new java.util.HashSet<>(dataRegionIds) : dataRegionIds;
+    final Collection<Integer> targetDataRegionIds =
+        dataRegionIds.size() > 1 ? new HashSet<>(dataRegionIds) : dataRegionIds;
     for (Integer dataRegionId : targetDataRegionIds) {
       final DataRegion dataRegion = dataRegionMap.get(new DataRegionId(dataRegionId));
       if (dataRegion != null) {

@@ -51,11 +51,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ClosedFileScanHandleImpl implements IFileScanHandle {
@@ -63,13 +63,16 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   private final TsFileResource tsFileResource;
   private final QueryContext queryContext;
   private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> curFileModEntries = null;
+  // Used to cache the device-level modifications
+  private final Map<IDeviceID, List<TimeRange>> deviceToDeletionRanges;
   // Used to cache the modifications of each timeseries
   private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToModifications;
 
   public ClosedFileScanHandleImpl(TsFileResource tsFileResource, QueryContext context) {
     this.tsFileResource = tsFileResource;
     this.queryContext = context;
-    this.deviceToModifications = new HashMap<>();
+    this.deviceToDeletionRanges = new ConcurrentHashMap<>();
+    this.deviceToModifications = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -87,8 +90,14 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         curFileModEntries != null
             ? curFileModEntries
             : queryContext.loadAllModificationsFromDisk(tsFileResource);
-    List<TimeRange> timeRangeList =
-        getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
+    List<TimeRange> timeRangeList = deviceToDeletionRanges.get(deviceID);
+    if (timeRangeList == null) {
+      final List<TimeRange> computedTimeRangeList =
+          getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
+      final List<TimeRange> existingTimeRangeList =
+          deviceToDeletionRanges.putIfAbsent(deviceID, computedTimeRangeList);
+      timeRangeList = existingTimeRangeList == null ? computedTimeRangeList : existingTimeRangeList;
+    }
     return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }
 
@@ -117,7 +126,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         queryContext.getPathModifications(curFileModEntries, deviceID, timeSeriesName);
     List<TimeRange> timeRangeList = getMergedTimeRanges(modifications);
     deviceToModifications
-        .computeIfAbsent(deviceID, k -> new HashMap<>())
+        .computeIfAbsent(deviceID, k -> new ConcurrentHashMap<>())
         .put(timeSeriesName, timeRangeList);
     return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }

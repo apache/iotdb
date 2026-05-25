@@ -41,10 +41,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
@@ -61,8 +61,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     this.deviceToChunkMetadataMap = deviceToChunkMetadataMap;
     this.deviceToMemChunkHandleMap = deviceToMemChunkHandleMap;
     this.tsFileResource = tsFileResource;
-    this.deviceToDeletionRanges = new HashMap<>();
-    this.deviceToTimeSeriesDeletionRanges = new HashMap<>();
+    this.deviceToDeletionRanges = new ConcurrentHashMap<>();
+    this.deviceToTimeSeriesDeletionRanges = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -75,11 +75,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timeArray) {
-    List<TimeRange> deletionRanges = deviceToDeletionRanges.get(deviceID);
-    if (deletionRanges == null) {
-      deletionRanges = collectDeviceDeletionRanges(deviceID);
-      deviceToDeletionRanges.put(deviceID, deletionRanges);
-    }
+    List<TimeRange> deletionRanges =
+        deviceToDeletionRanges.computeIfAbsent(deviceID, this::collectDeviceDeletionRanges);
     return ModificationUtils.isPointDeleted(timeArray, deletionRanges);
   }
 
@@ -122,12 +119,11 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   public boolean isTimeSeriesTimeDeleted(
       IDeviceID deviceID, String timeSeriesName, long timestamp) {
     Map<String, List<TimeRange>> timeSeriesDeletionRanges =
-        deviceToTimeSeriesDeletionRanges.computeIfAbsent(deviceID, key -> new HashMap<>());
-    List<TimeRange> deletionRanges = timeSeriesDeletionRanges.get(timeSeriesName);
-    if (deletionRanges == null) {
-      deletionRanges = collectTimeSeriesDeletionRanges(deviceID, timeSeriesName);
-      timeSeriesDeletionRanges.put(timeSeriesName, deletionRanges);
-    }
+        deviceToTimeSeriesDeletionRanges.computeIfAbsent(
+            deviceID, key -> new ConcurrentHashMap<>());
+    List<TimeRange> deletionRanges =
+        timeSeriesDeletionRanges.computeIfAbsent(
+            timeSeriesName, key -> collectTimeSeriesDeletionRanges(deviceID, key));
     return ModificationUtils.isPointDeleted(timestamp, deletionRanges);
   }
 
@@ -196,7 +192,9 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
       List<TimeRange> deletionRanges, List<IChunkMetadata> chunkMetadataList) {
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata.getDeleteIntervalList() != null) {
-        deletionRanges.addAll(chunkMetadata.getDeleteIntervalList());
+        for (TimeRange deletionRange : chunkMetadata.getDeleteIntervalList()) {
+          deletionRanges.add(new TimeRange(deletionRange.getMin(), deletionRange.getMax()));
+        }
       }
     }
   }
