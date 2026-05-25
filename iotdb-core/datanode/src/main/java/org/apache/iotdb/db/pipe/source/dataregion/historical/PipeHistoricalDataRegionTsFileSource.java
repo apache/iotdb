@@ -441,6 +441,8 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
                     ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                     : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(originalResourceList);
+        PipeTerminateEvent.initializeHistoricalTransferSummary(
+            pipeName, creationTime, dataRegionId, filteredTsFileResources.size(), 0);
 
         LOGGER.info(
             "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
@@ -537,6 +539,17 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
     final TsFileResource resource = pendingQueue.poll();
 
     if (resource == null) {
+      final PipeTerminateEvent.HistoricalTransferSummary historicalTransferSummary =
+          PipeTerminateEvent.snapshotHistoricalTransferSummary(
+              pipeName, creationTime, dataRegionId);
+      if (Objects.nonNull(historicalTransferSummary)) {
+        LOGGER.info(
+            "Pipe {}@{}: historical source has supplied all events, emitting terminate event. {}",
+            pipeName,
+            dataRegionId,
+            historicalTransferSummary.toReportMessage());
+      }
+
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(
               pipeName,
@@ -632,6 +645,9 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
 
   @Override
   public synchronized void close() {
+    if (!isTerminateSignalSent) {
+      PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    }
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
