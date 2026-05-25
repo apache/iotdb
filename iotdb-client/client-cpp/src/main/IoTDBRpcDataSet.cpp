@@ -280,12 +280,7 @@ boost::optional<double> IoTDBRpcDataSet::getDoubleByTsBlockColumnIndex(int32_t t
   }
   if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
     lastReadWasNull_ = false;
-    auto column = curTsBlock_->getColumn(tsBlockColumnIndex);
-    TSDataType::TSDataType dataType = column->getDataType();
-    if (dataType == TSDataType::FLOAT) {
-      return static_cast<double>(column->getFloat(tsBlockIndex_));
-    }
-    return column->getDouble(tsBlockIndex_);
+    return curTsBlock_->getColumn(tsBlockColumnIndex)->getDouble(tsBlockIndex_);
   } else {
     lastReadWasNull_ = true;
     return boost::none;
@@ -309,12 +304,7 @@ boost::optional<float> IoTDBRpcDataSet::getFloatByTsBlockColumnIndex(int32_t tsB
   }
   if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
     lastReadWasNull_ = false;
-    auto column = curTsBlock_->getColumn(tsBlockColumnIndex);
-    TSDataType::TSDataType dataType = column->getDataType();
-    if (dataType == TSDataType::DOUBLE) {
-      return static_cast<float>(column->getDouble(tsBlockIndex_));
-    }
-    return column->getFloat(tsBlockIndex_);
+    return curTsBlock_->getColumn(tsBlockColumnIndex)->getFloat(tsBlockIndex_);
   } else {
     lastReadWasNull_ = true;
     return boost::none;

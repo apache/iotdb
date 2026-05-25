@@ -152,6 +152,18 @@ int32_t IntColumn::getInt(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
+int64_t IntColumn::getLong(int32_t position) const {
+  return values_[position + arrayOffset_];
+}
+
+float IntColumn::getFloat(int32_t position) const {
+  return values_[position + arrayOffset_];
+}
+
+double IntColumn::getDouble(int32_t position) const {
+  return values_[position + arrayOffset_];
+}
+
 std::vector<int32_t> IntColumn::getInts() const {
   return values_;
 }
@@ -204,6 +216,10 @@ float FloatColumn::getFloat(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
+double FloatColumn::getDouble(int32_t position) const {
+  return values_[position + arrayOffset_];
+}
+
 std::vector<float> FloatColumn::getFloats() const {
   return values_;
 }
@@ -253,6 +269,10 @@ ColumnEncoding LongColumn::getEncoding() const {
 }
 
 int64_t LongColumn::getLong(int32_t position) const {
+  return values_[position + arrayOffset_];
+}
+
+double LongColumn::getDouble(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 

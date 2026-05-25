@@ -881,15 +881,21 @@ TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDe
   REQUIRE_THROWS_AS(TsBlock::deserialize(data), IoTDBException);
 }
 
-TEST_CASE("Read float column as double for schema mismatch", "[column][inference]") {
+TEST_CASE("Numeric column widening getters align with Java TsFile", "[column]") {
   std::vector<bool> valueIsNull(1, false);
-  std::vector<float> values = {120.00000762939453f};
-  auto floatColumn = std::make_shared<FloatColumn>(0, 1, valueIsNull, values);
+
+  std::vector<float> floatValues = {120.00000762939453f};
+  auto floatColumn = std::make_shared<FloatColumn>(0, 1, valueIsNull, floatValues);
   auto rleColumn = std::make_shared<RunLengthEncodedColumn>(floatColumn, 20);
+  REQUIRE(floatColumn->getDouble(0) == Approx(120.0).margin(0.01));
+  REQUIRE(rleColumn->getDouble(0) == Approx(120.0).margin(0.01));
 
-  REQUIRE(rleColumn->getDataType() == TSDataType::FLOAT);
-  REQUIRE_THROWS_AS(rleColumn->getDouble(0), IoTDBException);
+  std::vector<int32_t> intValues = {42};
+  auto intColumn = std::make_shared<IntColumn>(0, 1, valueIsNull, intValues);
+  REQUIRE(intColumn->getLong(0) == 42);
+  REQUIRE(intColumn->getDouble(0) == Approx(42.0));
 
-  double asDouble = static_cast<double>(rleColumn->getFloat(0));
-  REQUIRE(asDouble == Approx(120.0).margin(0.01));
+  std::vector<int64_t> longValues = {1000};
+  auto longColumn = std::make_shared<LongColumn>(0, 1, valueIsNull, longValues);
+  REQUIRE(longColumn->getDouble(0) == Approx(1000.0));
 }
