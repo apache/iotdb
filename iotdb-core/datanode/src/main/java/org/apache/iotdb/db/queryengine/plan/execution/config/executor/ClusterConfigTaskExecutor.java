@@ -4123,7 +4123,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showDatabases(
-      final ShowDB showDB, final Predicate<String> canSeenDB) {
+      final ShowDB showDB, final Predicate<String> canSeeDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
@@ -4135,7 +4135,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
-      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeenDB);
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, showDB.isDetails(), canSeeDB);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }
@@ -4144,7 +4144,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> countDatabases(
-      final CountDB countDB, final Predicate<String> canSeenDB) {
+      final CountDB countDB, final Predicate<String> canSeeDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
     try (final ConfigNodeClient client =
@@ -4153,7 +4153,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize())
               .setIsTableModel(true);
       final TShowDatabaseResp resp = client.showDatabase(req);
-      CountDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, canSeenDB);
+      CountDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future, canSeeDB);
     } catch (final IOException | ClientManagerException | TException e) {
       future.setException(e);
     }

@@ -332,10 +332,10 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      final ShowDB showDB, final Predicate<String> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeeDB);
 
   SettableFuture<ConfigTaskResult> countDatabases(
-      final CountDB countDB, final Predicate<String> canSeenDB);
+      final CountDB countDB, final Predicate<String> canSeeDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
@@ -359,7 +359,7 @@ public interface IConfigTaskExecutor {
       final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 

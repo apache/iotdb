@@ -42,30 +42,30 @@ import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATIO
 public class CountDBTask implements IConfigTask {
 
   private final CountDB node;
-  private final Predicate<String> canSeenDB;
+  private final Predicate<String> canSeeDB;
 
-  public CountDBTask(final CountDB node, final Predicate<String> canSeenDB) {
+  public CountDBTask(final CountDB node, final Predicate<String> canSeeDB) {
     this.node = node;
-    this.canSeenDB = canSeenDB;
+    this.canSeeDB = canSeeDB;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.countDatabases(node, canSeenDB);
+    return configTaskExecutor.countDatabases(node, canSeeDB);
   }
 
   public static void buildTSBlock(
       final Map<String, ?> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     // information_schema is synthesized in table model rather than returned from ConfigNode.
     final long databaseCount =
         databaseInfoMap.keySet().stream()
                 .filter(databaseName -> !INFORMATION_DATABASE.equals(databaseName))
-                .filter(canSeenDB::test)
+                .filter(canSeeDB::test)
                 .count()
-            + (canSeenDB.test(INFORMATION_DATABASE) ? 1 : 0);
+            + (canSeeDB.test(INFORMATION_DATABASE) ? 1 : 0);
 
     final TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     builder.getTimeColumnBuilder().writeLong(0L);
