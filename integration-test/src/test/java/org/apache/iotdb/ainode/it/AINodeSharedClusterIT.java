@@ -42,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -269,8 +270,10 @@ public class AINodeSharedClusterIT {
       try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "Time,output");
+        Assert.assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(2));
         int count = 0;
         while (resultSet.next()) {
+          resultSet.getDouble("output");
           count++;
         }
         Assert.assertEquals(DEFAULT_OUTPUT_LENGTH, count);
@@ -286,8 +289,10 @@ public class AINodeSharedClusterIT {
       try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "output");
+        Assert.assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(1));
         int count = 0;
         while (resultSet.next()) {
+          resultSet.getDouble("output");
           count++;
         }
         Assert.assertTrue(count > 0);
