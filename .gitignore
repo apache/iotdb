@@ -91,6 +91,7 @@ tsfile/src/test/resources/*.ts
 ### clion project
 **/cmake-build-debug/
 **/cmake-build-release/
+iotdb-client/client-cpp/build-*/
 
 ### Apache release ###
 local-snapshots-dir/

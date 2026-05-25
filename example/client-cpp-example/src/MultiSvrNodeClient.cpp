@@ -17,9 +17,11 @@
  * under the License.
  */
 
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "Session.h"
@@ -94,12 +96,10 @@ void RunResilienceExample() {
     for (int i = 0; i < 60; ++i) { // run ~60 seconds
       int64_t timestamp =
           std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-      std::string value = to_string(i);
-      const char* value_cstr = value.c_str();
+      std::string value = std::to_string(i);
 
       try {
-        session->insertRecord("root.resilience.d1", timestamp, {"s1"}, {TSDataType::INT64},
-                              {const_cast<char*>(value_cstr)});
+        session->insertRecord("root.resilience.d1", timestamp, {"s1"}, {value});
         std::cout << "[Insert] ts=" << timestamp << ", value=" << value << std::endl;
 
         auto dataset = session->executeQueryStatement("SELECT s1 FROM root.resilience.d1 LIMIT 1");

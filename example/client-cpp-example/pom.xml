@@ -105,26 +105,6 @@
                             <outputDirectory>${project.build.directory}/client</outputDirectory>
                         </configuration>
                     </execution>
-                    <execution>
-                        <id>unpack-thrift</id>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb.tools</groupId>
-                                    <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${iotdb-tools-thrift.version}</version>
-                                    <classifier>${os.classifier}</classifier>
-                                    <type>zip</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -141,9 +121,6 @@
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
                             <projectDirectory>${project.build.directory}</projectDirectory>
-                            <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                            </options>
                         </configuration>
                     </execution>
                     <execution>

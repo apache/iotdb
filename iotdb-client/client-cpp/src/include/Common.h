@@ -19,39 +19,19 @@
 #ifndef IOTDB_COMMON_H
 #define IOTDB_COMMON_H
 
+#include <cstdint>
+#include <exception>
+#include <map>
 #include <string>
 #include <vector>
-#include <exception>
 
-#include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/protocol/TCompactProtocol.h>
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TTransportException.h>
-#include <thrift/transport/TBufferTransports.h>
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <cstdint>
-#include <boost/optional/optional.hpp>
-
-#include "client_types.h"
-#include "common_types.h"
+#include "Date.h"
+#include "Endpoint.h"
+#include "Export.h"
+#include "Optional.h"
+#include "Status.h"
 
 using namespace std;
-
-using ::apache::thrift::TException;
-using ::apache::thrift::protocol::TBinaryProtocol;
-using ::apache::thrift::protocol::TCompactProtocol;
-using ::apache::thrift::transport::TBufferedTransport;
-using ::apache::thrift::transport::TFramedTransport;
-using ::apache::thrift::transport::TSocket;
-using ::apache::thrift::transport::TTransport;
-using ::apache::thrift::transport::TTransportException;
-
-using namespace std;
-
-constexpr int32_t EMPTY_DATE_INT = 10000101;
-
-int32_t parseDateExpressionToInt(const boost::gregorian::date& date);
-boost::gregorian::date parseIntToDate(int32_t dateInt);
 
 std::string getTimePrecision(int32_t timeFactor);
 
@@ -121,13 +101,11 @@ namespace TSStatusCode {
 enum TSStatusCode {
   SUCCESS_STATUS = 200,
 
-  // System level
   INCOMPATIBLE_VERSION = 201,
   CONFIGURATION_ERROR = 202,
   START_UP_ERROR = 203,
   SHUT_DOWN_ERROR = 204,
 
-  // General Error
   UNSUPPORTED_OPERATION = 300,
   EXECUTE_STATEMENT_ERROR = 301,
   MULTIPLE_ERROR = 302,
@@ -135,10 +113,8 @@ enum TSStatusCode {
   OVERLAP_WITH_EXISTING_TASK = 304,
   INTERNAL_SERVER_ERROR = 305,
 
-  // Client,
   REDIRECTION_RECOMMEND = 400,
 
-  // Schema Engine
   DATABASE_NOT_EXIST = 500,
   DATABASE_ALREADY_EXISTS = 501,
   SERIES_OVERFLOW = 502,
@@ -165,12 +141,10 @@ enum TSStatusCode {
   PBTREE_FILE_REDO_LOG_BROKEN = 523,
   TEMPLATE_NOT_ACTIVATED = 524,
 
-  // Storage Engine
   SYSTEM_READ_ONLY = 600,
   STORAGE_ENGINE_ERROR = 601,
   STORAGE_ENGINE_NOT_READY = 602,
 
-  // Query Engine
   PLAN_FAILED_NETWORK_PARTITION = 721
 };
 }
@@ -178,13 +152,13 @@ enum TSStatusCode {
 class Field {
 public:
   TSDataType::TSDataType dataType = TSDataType::UNKNOWN;
-  boost::optional<bool> boolV;
-  boost::optional<int> intV;
-  boost::optional<boost::gregorian::date> dateV;
-  boost::optional<int64_t> longV;
-  boost::optional<float> floatV;
-  boost::optional<double> doubleV;
-  boost::optional<std::string> stringV;
+  Optional<bool> boolV;
+  Optional<int> intV;
+  Optional<IoTdbDate> dateV;
+  Optional<int64_t> longV;
+  Optional<float> floatV;
+  Optional<double> doubleV;
+  Optional<std::string> stringV;
 
   explicit Field(TSDataType::TSDataType a) {
     dataType = a;
@@ -192,7 +166,6 @@ public:
 
   Field() = default;
 
-  /** True if this field is SQL NULL (optional for the active dataType is unset). Unknown types are treated as null. */
   bool isNull() const {
     switch (dataType) {
     case TSDataType::BOOLEAN:
@@ -229,7 +202,7 @@ public:
   void clear();
   bool hasRemaining();
   int getInt();
-  boost::gregorian::date getDate();
+  IoTdbDate getDate();
   int64_t getInt64();
   float getFloat();
   double getDouble();
@@ -238,7 +211,7 @@ public:
   std::string getString();
 
   void putInt(int ins);
-  void putDate(boost::gregorian::date date);
+  void putDate(IoTdbDate date);
   void putInt64(int64_t ins);
   void putFloat(float ins);
   void putDouble(double ins);
@@ -258,7 +231,7 @@ private:
 
 private:
   bool isBigEndian{};
-  char numericBuf[8]{}; //only be used by int, long, float, double etc.
+  char numericBuf[8]{};
 };
 
 class BitMap {
@@ -347,10 +320,10 @@ public:
 
   explicit ExecutionException(const std::string& m) : IoTDBException(m) {}
 
-  explicit ExecutionException(const std::string& m, const TSStatus& tsStatus)
+  explicit ExecutionException(const std::string& m, const Status& tsStatus)
       : IoTDBException(m), status(tsStatus) {}
 
-  TSStatus status;
+  Status status;
 };
 
 class BatchExecutionException : public IoTDBException {
@@ -361,13 +334,13 @@ public:
 
   explicit BatchExecutionException(const std::string& m) : IoTDBException(m) {}
 
-  explicit BatchExecutionException(const std::vector<TSStatus>& statusList)
+  explicit BatchExecutionException(const std::vector<Status>& statusList)
       : statusList(statusList) {}
 
-  BatchExecutionException(const std::string& m, const std::vector<TSStatus>& statusList)
+  BatchExecutionException(const std::string& m, const std::vector<Status>& statusList)
       : IoTDBException(m), statusList(statusList) {}
 
-  std::vector<TSStatus> statusList;
+  std::vector<Status> statusList;
 };
 
 class RedirectException : public IoTDBException {
@@ -378,18 +351,18 @@ public:
 
   explicit RedirectException(const std::string& m) : IoTDBException(m) {}
 
-  RedirectException(const std::string& m, const TEndPoint& endPoint)
+  RedirectException(const std::string& m, const Endpoint& endPoint)
       : IoTDBException(m), endPoint(endPoint) {}
 
-  RedirectException(const std::string& m, const map<string, TEndPoint>& deviceEndPointMap)
+  RedirectException(const std::string& m, const map<string, Endpoint>& deviceEndPointMap)
       : IoTDBException(m), deviceEndPointMap(deviceEndPointMap) {}
 
-  RedirectException(const std::string& m, const vector<TEndPoint>& endPointList)
+  RedirectException(const std::string& m, const vector<Endpoint>& endPointList)
       : IoTDBException(m), endPointList(endPointList) {}
 
-  TEndPoint endPoint;
-  map<string, TEndPoint> deviceEndPointMap;
-  vector<TEndPoint> endPointList;
+  Endpoint endPoint;
+  map<string, Endpoint> deviceEndPointMap;
+  vector<Endpoint> endPointList;
 };
 
 class UnSupportedDataTypeException : public IoTDBException {
@@ -422,7 +395,7 @@ public:
 
 enum LogLevelType { LEVEL_DEBUG = 0, LEVEL_INFO, LEVEL_WARN, LEVEL_ERROR };
 
-extern LogLevelType LOG_LEVEL;
+extern IOTDB_SESSION_API LogLevelType LOG_LEVEL;
 
 #define log_debug(fmt, ...)                                                                        \
   do {                                                                                             \
@@ -452,63 +425,5 @@ extern LogLevelType LOG_LEVEL;
       printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);                          \
     }                                                                                              \
   } while (0)
-
-class RpcUtils {
-public:
-  std::shared_ptr<TSStatus> SUCCESS_STATUS;
-
-  RpcUtils() {
-    SUCCESS_STATUS = std::make_shared<TSStatus>();
-    SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
-  }
-
-  static void verifySuccess(const TSStatus& status);
-
-  static void verifySuccessWithRedirection(const TSStatus& status);
-
-  static void verifySuccessWithRedirectionForMultiDevices(const TSStatus& status,
-                                                          vector<string> devices);
-
-  static void verifySuccess(const std::vector<TSStatus>& statuses);
-
-  static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
-
-  static TSStatus getStatus(int code, const std::string& message);
-
-  static std::shared_ptr<TSExecuteStatementResp>
-  getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
-
-  static std::shared_ptr<TSExecuteStatementResp>
-  getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string& message);
-
-  static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus& status);
-
-  static std::shared_ptr<TSFetchResultsResp>
-  getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
-
-  static std::shared_ptr<TSFetchResultsResp>
-  getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string& appendMessage);
-
-  static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus& status);
-};
-
-class UrlUtils {
-private:
-  static const std::string PORT_SEPARATOR;
-  static const std::string ABB_COLON;
-
-  UrlUtils() = delete;
-  ~UrlUtils() = delete;
-
-public:
-  /**
-     * Parse TEndPoint from a given TEndPointUrl
-     * example:[D80:0000:0000:0000:ABAA:0000:00C2:0002]:22227
-     *
-     * @param endPointUrl ip:port
-     * @return TEndPoint with default values if parse error
-     */
-  static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl);
-};
 
 #endif

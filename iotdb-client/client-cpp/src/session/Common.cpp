@@ -18,8 +18,12 @@
  */
 
 #include "Common.h"
-#include <boost/date_time/gregorian/gregorian.hpp>
+
+#include <cstring>
+#include <ctime>
 #include <typeinfo>
+
+LogLevelType LOG_LEVEL = LEVEL_WARN;
 
 std::string extractExceptionMessage(const std::exception& exception) {
   const char* what = exception.what();
@@ -45,35 +49,6 @@ std::string extractExceptionMessage(const std::exception_ptr& exceptionPtr) {
   }
 }
 
-int32_t parseDateExpressionToInt(const boost::gregorian::date& date) {
-  if (date.is_not_a_date()) {
-    throw IoTDBException("Date expression is null or empty.");
-  }
-
-  const int year = date.year();
-  if (year < 1000 || year > 9999) {
-    throw DateTimeParseException("Year must be between 1000 and 9999.",
-                                 boost::gregorian::to_iso_extended_string(date), 0);
-  }
-
-  const int64_t result = static_cast<int64_t>(year) * 10000 + date.month() * 100 + date.day();
-  if (result > INT32_MAX || result < INT32_MIN) {
-    throw DateTimeParseException("Date value overflow. ",
-                                 boost::gregorian::to_iso_extended_string(date), 0);
-  }
-  return static_cast<int32_t>(result);
-}
-
-boost::gregorian::date parseIntToDate(int32_t dateInt) {
-  if (dateInt == EMPTY_DATE_INT) {
-    return boost::gregorian::date(boost::date_time::not_a_date_time);
-  }
-  int year = dateInt / 10000;
-  int month = (dateInt % 10000) / 100;
-  int day = dateInt % 100;
-  return boost::gregorian::date(year, month, day);
-}
-
 std::string getTimePrecision(int32_t timeFactor) {
   if (timeFactor >= 1000000)
     return "us";
@@ -84,7 +59,8 @@ std::string getTimePrecision(int32_t timeFactor) {
 
 std::string formatDatetime(const std::string& format, const std::string& precision,
                            int64_t timestamp, const std::string& zoneId) {
-  // Simplified implementation - in real code you'd use proper timezone handling
+  (void)precision;
+  (void)zoneId;
   std::time_t time = static_cast<std::time_t>(timestamp);
   std::tm* tm = std::localtime(&time);
   char buffer[80];
@@ -124,142 +100,8 @@ TSDataType::TSDataType getDataTypeByStr(const std::string& typeStr) {
 }
 
 std::tm int32ToDate(int32_t value) {
-  // Convert days since epoch (1970-01-01) to tm struct
-  std::time_t time = static_cast<std::time_t>(value) * 86400; // seconds per day
+  std::time_t time = static_cast<std::time_t>(value) * 86400;
   return *std::localtime(&time);
-}
-
-void RpcUtils::verifySuccess(const TSStatus& status) {
-  if (status.code == TSStatusCode::MULTIPLE_ERROR) {
-    verifySuccess(status.subStatus);
-    return;
-  }
-  if (status.code != TSStatusCode::SUCCESS_STATUS &&
-      status.code != TSStatusCode::REDIRECTION_RECOMMEND) {
-    throw ExecutionException(to_string(status.code) + ": " + status.message, status);
-  }
-}
-
-void RpcUtils::verifySuccessWithRedirection(const TSStatus& status) {
-  verifySuccess(status);
-  if (status.__isset.redirectNode) {
-    throw RedirectException(to_string(status.code) + ": " + status.message, status.redirectNode);
-  }
-  if (status.__isset.subStatus) {
-    auto statusSubStatus = status.subStatus;
-    vector<TEndPoint> endPointList(statusSubStatus.size());
-    int count = 0;
-    for (TSStatus subStatus : statusSubStatus) {
-      if (subStatus.__isset.redirectNode) {
-        endPointList[count++] = subStatus.redirectNode;
-      } else {
-        TEndPoint endPoint;
-        endPointList[count++] = endPoint;
-      }
-    }
-    if (!endPointList.empty()) {
-      throw RedirectException(to_string(status.code) + ": " + status.message, endPointList);
-    }
-  }
-}
-
-void RpcUtils::verifySuccessWithRedirectionForMultiDevices(const TSStatus& status,
-                                                           vector<string> devices) {
-  verifySuccess(status);
-
-  if (status.code == TSStatusCode::MULTIPLE_ERROR ||
-      status.code == TSStatusCode::REDIRECTION_RECOMMEND) {
-    map<string, TEndPoint> deviceEndPointMap;
-    vector<TSStatus> statusSubStatus;
-    for (int i = 0; i < statusSubStatus.size(); i++) {
-      TSStatus subStatus = statusSubStatus[i];
-      if (subStatus.__isset.redirectNode) {
-        deviceEndPointMap.insert(make_pair(devices[i], subStatus.redirectNode));
-      }
-    }
-    throw RedirectException(to_string(status.code) + ": " + status.message, deviceEndPointMap);
-  }
-
-  if (status.__isset.redirectNode) {
-    throw RedirectException(to_string(status.code) + ": " + status.message, status.redirectNode);
-  }
-  if (status.__isset.subStatus) {
-    auto statusSubStatus = status.subStatus;
-    vector<TEndPoint> endPointList(statusSubStatus.size());
-    int count = 0;
-    for (TSStatus subStatus : statusSubStatus) {
-      if (subStatus.__isset.redirectNode) {
-        endPointList[count++] = subStatus.redirectNode;
-      } else {
-        TEndPoint endPoint;
-        endPointList[count++] = endPoint;
-      }
-    }
-    if (!endPointList.empty()) {
-      throw RedirectException(to_string(status.code) + ": " + status.message, endPointList);
-    }
-  }
-}
-
-void RpcUtils::verifySuccess(const vector<TSStatus>& statuses) {
-  for (const TSStatus& status : statuses) {
-    if (status.code != TSStatusCode::SUCCESS_STATUS) {
-      throw BatchExecutionException(status.message, statuses);
-    }
-  }
-}
-
-TSStatus RpcUtils::getStatus(TSStatusCode::TSStatusCode tsStatusCode) {
-  TSStatus status;
-  status.__set_code(tsStatusCode);
-  return status;
-}
-
-TSStatus RpcUtils::getStatus(int code, const string& message) {
-  TSStatus status;
-  status.__set_code(code);
-  status.__set_message(message);
-  return status;
-}
-
-shared_ptr<TSExecuteStatementResp>
-RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode) {
-  TSStatus status = getStatus(tsStatusCode);
-  return getTSExecuteStatementResp(status);
-}
-
-shared_ptr<TSExecuteStatementResp>
-RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode,
-                                    const string& message) {
-  TSStatus status = getStatus(tsStatusCode, message);
-  return getTSExecuteStatementResp(status);
-}
-
-shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus& status) {
-  shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
-  TSStatus tsStatus(status);
-  resp->__set_status(status);
-  return resp;
-}
-
-shared_ptr<TSFetchResultsResp>
-RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode) {
-  TSStatus status = getStatus(tsStatusCode);
-  return getTSFetchResultsResp(status);
-}
-
-shared_ptr<TSFetchResultsResp>
-RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode,
-                                const string& appendMessage) {
-  TSStatus status = getStatus(tsStatusCode, appendMessage);
-  return getTSFetchResultsResp(status);
-}
-
-shared_ptr<TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus& status) {
-  shared_ptr<TSFetchResultsResp> resp(new TSFetchResultsResp());
-  TSStatus tsStatus(status);
-  resp->__set_status(tsStatus);
-  return resp;
 }
 
 MyStringBuffer::MyStringBuffer() : pos(0) {
@@ -287,7 +129,7 @@ int MyStringBuffer::getInt() {
   return *(int*)getOrderedByte(4);
 }
 
-boost::gregorian::date MyStringBuffer::getDate() {
+IoTdbDate MyStringBuffer::getDate() {
   return parseIntToDate(getInt());
 }
 
@@ -357,7 +199,7 @@ void MyStringBuffer::putInt(int ins) {
   putOrderedByte((char*)&ins, 4);
 }
 
-void MyStringBuffer::putDate(boost::gregorian::date date) {
+void MyStringBuffer::putDate(IoTdbDate date) {
   putInt(parseDateExpressionToInt(date));
 }
 
@@ -392,7 +234,7 @@ void MyStringBuffer::concat(const std::string& ins) {
 }
 
 void MyStringBuffer::checkBigEndian() {
-  static int chk = 0x0201; //used to distinguish CPU's type (BigEndian or LittleEndian)
+  static int chk = 0x0201;
   isBigEndian = (0x01 != *(char*)(&chk));
 }
 
@@ -432,7 +274,7 @@ BitMap::BitMap(size_t size) {
 
 void BitMap::resize(size_t size) {
   this->size = size;
-  this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
+  this->bits.resize((size >> 3) + 1);
   reset();
 }
 
@@ -503,48 +345,4 @@ const std::vector<char>& BitMap::getByteArray() const {
 
 size_t BitMap::getSize() const {
   return this->size;
-}
-
-const std::string UrlUtils::PORT_SEPARATOR = ":";
-const std::string UrlUtils::ABB_COLON = "[";
-
-TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl) {
-  TEndPoint endPoint;
-
-  // Return default TEndPoint if input is empty
-  if (endPointUrl.empty()) {
-    return endPoint;
-  }
-
-  size_t portSeparatorPos = endPointUrl.find_last_of(PORT_SEPARATOR);
-
-  // If no port separator found, treat entire string as IP
-  if (portSeparatorPos == std::string::npos) {
-    endPoint.__set_ip(endPointUrl);
-    return endPoint;
-  }
-
-  // Extract port part
-  std::string portStr = endPointUrl.substr(portSeparatorPos + 1);
-
-  // Extract IP part
-  std::string ip = endPointUrl.substr(0, portSeparatorPos);
-
-  // Handle IPv6 addresses with brackets
-  if (ip.find(ABB_COLON) != std::string::npos) {
-    // Remove surrounding square brackets for IPv6
-    if (ip.size() >= 2 && ip.front() == '[' && ip.back() == ']') {
-      ip = ip.substr(1, ip.size() - 2);
-    }
-  }
-
-  try {
-    int port = std::stoi(portStr);
-    endPoint.__set_ip(ip);
-    endPoint.__set_port(port);
-  } catch (const std::exception& e) {
-    endPoint.__set_ip(endPointUrl);
-  }
-
-  return endPoint;
 }

@@ -120,12 +120,9 @@ jobs:
           INSTALL="iotdb-client/client-cpp/target/install"
           if [ "${{ runner.os }}" = "Windows" ]; then
             test -d "${INSTALL}/include"
-            ls "${INSTALL}/lib/"*iotdb_session* "${INSTALL}/lib/"*thrift*
+            ls "${INSTALL}/lib/iotdb_session.dll" "${INSTALL}/lib/iotdb_session.lib"
           else
             test -f "${INSTALL}/lib/libiotdb_session.so" \
-              || test -f "${INSTALL}/lib/libiotdb_session.dylib" \
-              || test -f "${INSTALL}/lib/libiotdb_session.a"
-            test -f "${INSTALL}/lib/libthrift.a" \
-              || ls "${INSTALL}/lib/"*thrift* 1>/dev/null
+              || test -f "${INSTALL}/lib/libiotdb_session.dylib"
           fi
           ls -la "${INSTALL}/include" | head -20

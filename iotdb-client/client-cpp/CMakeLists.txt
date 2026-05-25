@@ -18,34 +18,10 @@
 # =============================================================================
 # Apache IoTDB - C++ Session Client (top-level CMake build)
 # =============================================================================
-# This is the single entry point that fully manages the C++ client build,
-# including third-party dependencies (Boost headers, Apache Thrift, optional
-# OpenSSL) and toolchain bootstrap (m4 / flex / bison on Linux & macOS when
-# the system PATH does not provide them).
-#
-# Standalone usage (no Maven required):
-#     cmake -S iotdb-client/client-cpp -B build [options]
-#     cmake --build build --config Release --target install
-#
-# Common options:
-#     -DWITH_SSL=ON|OFF           Enable OpenSSL support (default OFF)
-#     -DBUILD_TESTING=ON|OFF      Build IT executables (default OFF)
-#     -DIOTDB_OFFLINE=ON|OFF      Disable any network access (default OFF).
-#                                 Requires tarballs under third-party/{os}/.
-#     -DIOTDB_DEPS_DIR=<path>     Override the third-party cache root.
-#                                 Default: <client-cpp>/third-party
-#                                 (portable: copy the whole IoTDB tree to an
-#                                 offline machine after staging tarballs here).
-#     -DBOOST_ROOT=<path>         Existing Boost installation to reuse.
-#     -DCMAKE_INSTALL_PREFIX=...  Install location (defaults to build/install).
-# =============================================================================
 
 cmake_minimum_required(VERSION 3.16)
 project(iotdb_session CXX C)
 
-# ---------------------------------------------------------------------------
-# Global settings
-# ---------------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -61,13 +37,10 @@ if(NOT MSVC)
 endif()
 
 if(MSVC)
-    # Match thrift's MultiThreaded runtime so static libraries link cleanly.
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # /MD: matches default Visual Studio projects; CRT lives in the VC redistributable.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
-# ---------------------------------------------------------------------------
-# Cached options
-# ---------------------------------------------------------------------------
 option(WITH_SSL "Build with OpenSSL support" OFF)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
@@ -75,13 +48,10 @@ option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
 set(BOOST_VERSION "1.60.0"
-    CACHE STRING "Boost version used when downloading / unpacking")
+    CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
 set(THRIFT_VERSION "0.21.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
 
-# ---------------------------------------------------------------------------
-# Platform -> local tarball directory
-# ---------------------------------------------------------------------------
 if(WIN32)
     set(IOTDB_OS_DEPS_DIR "${IOTDB_DEPS_DIR}/windows")
 elseif(APPLE)
@@ -91,8 +61,6 @@ else()
 endif()
 file(MAKE_DIRECTORY "${IOTDB_OS_DEPS_DIR}")
 
-# Default install prefix lives inside the build tree so Maven's assembly
-# step can pick everything up under a stable path.
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install"
         CACHE PATH "Install prefix" FORCE)
@@ -100,50 +68,50 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# ---------------------------------------------------------------------------
-# Fetch / build third-party dependencies
-# ---------------------------------------------------------------------------
-include(FetchBoost)        # -> BOOST_INCLUDE_DIR
-include(FetchBuildTools)   # -> populates ${CMAKE_BINARY_DIR}/tools/bin and updates ENV{PATH}
+include(FetchBoost)        # -> BOOST_INCLUDE_DIR (Thrift build only)
+include(FetchBuildTools)
 if(WITH_SSL)
     include(FetchOpenSSL)
 endif()
-include(FetchThrift)       # -> target iotdb_thrift_static, THRIFT_EXECUTABLE, THRIFT_INCLUDE_DIR
-include(GenerateThriftSources)  # -> THRIFT_GENERATED_SRCS, THRIFT_GENERATED_HDRS
+include(FetchThrift)
+include(GenerateThriftSources)
 
-# ---------------------------------------------------------------------------
-# iotdb_session library
-# ---------------------------------------------------------------------------
-file(GLOB SESSION_HANDWRITTEN_SRCS CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.cpp")
-file(GLOB SESSION_HANDWRITTEN_HDRS CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.h")
+file(GLOB SESSION_PUBLIC_SRCS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/session/*.cpp")
+file(GLOB SESSION_RPC_SRCS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/rpc/*.cpp")
 
-if(MSVC)
-    add_library(iotdb_session STATIC
-            ${SESSION_HANDWRITTEN_SRCS}
-            ${THRIFT_GENERATED_SRCS})
-else()
-    add_library(iotdb_session SHARED
-            ${SESSION_HANDWRITTEN_SRCS}
-            ${THRIFT_GENERATED_SRCS})
+add_library(iotdb_session SHARED
+        ${SESSION_PUBLIC_SRCS}
+        ${SESSION_RPC_SRCS}
+        ${THRIFT_GENERATED_SRCS})
+
+if(WIN32)
+    set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
 
+target_compile_definitions(iotdb_session PRIVATE THRIFT_STATIC_DEFINE IOTDB_BUILDING_SHARED)
+
 target_include_directories(iotdb_session
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/main>
-            $<BUILD_INTERFACE:${THRIFT_GEN_CPP_DIR}>
-            $<BUILD_INTERFACE:${THRIFT_INCLUDE_DIR}>
-            $<INSTALL_INTERFACE:include>)
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/include>
+            $<INSTALL_INTERFACE:include>
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/rpc
+            ${THRIFT_GEN_CPP_DIR}
+            ${THRIFT_INCLUDE_DIR}
+            $<$<BOOL:${BOOST_INCLUDE_DIR}>:${BOOST_INCLUDE_DIR}>)
 
-if(BOOST_INCLUDE_DIR)
-    target_include_directories(iotdb_session PUBLIC
-            $<BUILD_INTERFACE:${BOOST_INCLUDE_DIR}>)
+if(APPLE)
+    target_link_libraries(iotdb_session PRIVATE "-Wl,-force_load,${THRIFT_STATIC_LIB_PATH}")
+elseif(UNIX AND NOT MSVC)
+    target_link_libraries(iotdb_session PRIVATE
+            -Wl,--whole-archive ${THRIFT_STATIC_LIB_PATH} -Wl,--no-as-needed)
+else()
+    target_link_libraries(iotdb_session PRIVATE iotdb_thrift_static)
 endif()
-
-target_link_libraries(iotdb_session PUBLIC iotdb_thrift_static)
 
 if(WITH_SSL)
     target_link_libraries(iotdb_session PUBLIC OpenSSL::SSL OpenSSL::Crypto)
@@ -156,38 +124,38 @@ if(UNIX)
     target_link_libraries(iotdb_session PUBLIC pthread)
 endif()
 
-# ---------------------------------------------------------------------------
-# Install rules - lay out the SDK exactly like the historical zip layout.
-#     <prefix>/include/*.h          (handwritten + generated cpp headers)
-#     <prefix>/include/thrift/...   (thrift runtime headers)
-#     <prefix>/lib/<libiotdb_session.*>
-#     <prefix>/lib/<libthrift.*>    (bundled so downstream users only need one tree)
-# ---------------------------------------------------------------------------
 include(GNUInstallDirs)
 
+set(IOTDB_PUBLIC_HEADERS
+        Export.h
+        Session.h
+        Common.h
+        Optional.h
+        Date.h
+        Status.h
+        Endpoint.h
+        SessionBuilder.h
+        AbstractSessionBuilder.h
+        TableSession.h
+        TableSessionBuilder.h
+        SessionC.h
+        SessionDataSet.h
+        DeviceID.h
+        Column.h
+        ColumnDecoder.h
+        TsBlock.h)
+
+# Windows: RUNTIME = iotdb_session.dll, ARCHIVE = import .lib (both under lib/ in the zip).
 install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/main/"
-        DESTINATION include
-        FILES_MATCHING PATTERN "*.h")
+foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/include/${_hdr}"
+            DESTINATION include)
+endforeach()
 
-install(DIRECTORY "${THRIFT_GEN_CPP_DIR}/"
-        DESTINATION include
-        FILES_MATCHING PATTERN "*.h")
-
-install(DIRECTORY "${THRIFT_INCLUDE_DIR}/thrift"
-        DESTINATION include)
-
-if(THRIFT_STATIC_LIB_PATH AND EXISTS "${THRIFT_STATIC_LIB_PATH}")
-    install(FILES "${THRIFT_STATIC_LIB_PATH}" DESTINATION lib)
-endif()
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(src/test)
@@ -198,7 +166,7 @@ message(STATUS "    WITH_SSL              = ${WITH_SSL}")
 message(STATUS "    BUILD_TESTING         = ${BUILD_TESTING}")
 message(STATUS "    IOTDB_OFFLINE         = ${IOTDB_OFFLINE}")
 message(STATUS "    IOTDB_DEPS_DIR        = ${IOTDB_DEPS_DIR}")
-message(STATUS "    BOOST_INCLUDE_DIR     = ${BOOST_INCLUDE_DIR}")
+message(STATUS "    BOOST_INCLUDE_DIR     = ${BOOST_INCLUDE_DIR} (Thrift build only)")
 message(STATUS "    THRIFT_INCLUDE_DIR    = ${THRIFT_INCLUDE_DIR}")
 message(STATUS "    THRIFT_STATIC_LIB     = ${THRIFT_STATIC_LIB_PATH}")
 message(STATUS "    THRIFT_EXECUTABLE     = ${THRIFT_EXECUTABLE}")

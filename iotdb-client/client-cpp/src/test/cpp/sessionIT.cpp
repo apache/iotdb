@@ -18,9 +18,12 @@
  */
 
 #include "catch.hpp"
+#include "Date.h"
+#include "RpcCommon.h"
 #include "Session.h"
 #include "SessionBuilder.h"
 #include "TsBlock.h"
+#include "common_types.h"
 
 using namespace std;
 
@@ -246,7 +249,7 @@ TEST_CASE("Test insertRecord with new datatypes ", "[testTypedInsertRecordNewDat
   string deviceId = "root.test.d1";
   vector<string> measurements = {"s1", "s2", "s3", "s4"};
   int64_t value1 = 20250507;
-  boost::gregorian::date value2 = boost::gregorian::date(2025, 5, 7);
+  IoTdbDate value2 = IoTdbDate(2025, 5, 7);
   string value3 = "20250507";
   string value4 = "20250507";
 
@@ -477,7 +480,7 @@ TEST_CASE("Test insertTablet multi datatype", "[testInsertTabletMultiDatatype]")
   }
 
   int64_t s1Value = 20250507;
-  boost::gregorian::date s2Value(2025, 5, 7);
+  IoTdbDate s2Value(2025, 5, 7);
   std::string s3Value("20250507");
   std::string s4Value("20250507");
 

@@ -20,6 +20,7 @@
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
 #include "catch.hpp"
+#include "Date.h"
 #include <math.h>
 
 using namespace std;
@@ -206,7 +207,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
     tablet.addValue(4, rowIndex, static_cast<double>(row * 1.1f));
     tablet.addValue(5, rowIndex, "text_" + to_string(row));
     tablet.addValue(6, rowIndex, static_cast<int64_t>(timestamp));
-    tablet.addValue(7, rowIndex, boost::gregorian::date(2025, 5, 15));
+    tablet.addValue(7, rowIndex, IoTdbDate(2025, 5, 15));
     tablet.addValue(8, rowIndex, "blob_" + to_string(row));
     tablet.addValue(9, rowIndex, "string_" + to_string(row));
 
@@ -254,7 +255,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
       REQUIRE(fabs(dataIter.getDoubleByIndex(6).value() - rowNum * 1.1f) < 0.1);
       REQUIRE(dataIter.getStringByIndex(7).value() == "text_" + to_string(rowNum));
       REQUIRE(dataIter.getTimestampByIndex(8).value() == static_cast<int64_t>(timestamp));
-      REQUIRE(dataIter.getDateByIndex(9).value() == boost::gregorian::date(2025, 5, 15));
+      REQUIRE(dataIter.getDateByIndex(9).value() == IoTdbDate(2025, 5, 15));
       REQUIRE(dataIter.getStringByIndex(10).value() == "blob_" + to_string(rowNum));
       REQUIRE(dataIter.getStringByIndex(11).value() == "string_" + to_string(rowNum));
     }
@@ -286,7 +287,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
       REQUIRE(fabs(record->fields[5].doubleV.value() - rowNum * 1.1f) < 0.1);
       REQUIRE(record->fields[6].stringV.value() == "text_" + to_string(rowNum));
       REQUIRE(record->fields[7].longV.value() == static_cast<int64_t>(timestamp));
-      REQUIRE(record->fields[8].dateV.value() == boost::gregorian::date(2025, 5, 15));
+      REQUIRE(record->fields[8].dateV.value() == IoTdbDate(2025, 5, 15));
       REQUIRE(record->fields[9].stringV.value() == "blob_" + to_string(rowNum));
       REQUIRE(record->fields[10].stringV.value() == "string_" + to_string(rowNum));
     }

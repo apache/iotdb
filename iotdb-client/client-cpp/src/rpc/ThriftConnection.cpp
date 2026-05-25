@@ -19,10 +19,19 @@
 #include "ThriftConnection.h"
 #include <ctime>
 #include <iostream>
+#include <thrift/protocol/TBinaryProtocol.h>
+#include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/TSocket.h>
+#include <thrift/transport/TTransportException.h>
 
-#include "Session.h"
+#include "RpcCommon.h"
 #include "SessionDataSet.h"
+#include "SessionDataSetFactory.h"
+
+using namespace apache::thrift;
+using namespace apache::thrift::protocol;
+using namespace apache::thrift::transport;
 
 const int ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
 const int ThriftConnection::THRIFT_MAX_FRAME_SIZE = 1048576;
@@ -141,10 +150,10 @@ std::unique_ptr<SessionDataSet> ThriftConnection::executeQueryStatement(const st
     throw IoTDBException(e.what());
   }
   std::shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
-  return std::unique_ptr<SessionDataSet>(new SessionDataSet(
+  return createSessionDataSet(
       "", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId_,
       client_, sessionId_, resp.queryResult, resp.ignoreTimeStamp, connectionTimeoutInMs_,
-      resp.moreData, fetchSize_, zoneId_, timeFactor_, resp.columnIndex2TsBlockColumnIndexList));
+      resp.moreData, fetchSize_, zoneId_, timeFactor_, resp.columnIndex2TsBlockColumnIndexList);
 }
 
 void ThriftConnection::close() {

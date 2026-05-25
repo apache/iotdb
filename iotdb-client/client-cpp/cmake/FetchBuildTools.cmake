@@ -33,8 +33,6 @@
 #   3. FATAL_ERROR otherwise
 # =============================================================================
 
-include(IotdbResolveTarball)
-
 set(_tools_prefix "${CMAKE_BINARY_DIR}/tools")
 set(_tools_bin "${_tools_prefix}/bin")
 file(MAKE_DIRECTORY "${_tools_bin}")
@@ -65,6 +63,49 @@ ProcessorCount(_jobs)
 if(_jobs LESS 1)
     set(_jobs 1)
 endif()
+
+# Resolve tarball: prefer the exact filename in ${IOTDB_OS_DEPS_DIR}/, then
+# any path matching GLOB_PATTERN (caller-supplied wildcard for relaxed naming,
+# e.g. win_flex_bison*.zip), and finally fall back to a download.
+function(_iotdb_resolve_tarball OUT_VAR FILENAME URL)
+    cmake_parse_arguments(ARG "" "GLOB_PATTERN" "" ${ARGN})
+
+    set(_local "${IOTDB_OS_DEPS_DIR}/${FILENAME}")
+    if(EXISTS "${_local}")
+        set(${OUT_VAR} "${_local}" PARENT_SCOPE)
+        return()
+    endif()
+
+    if(ARG_GLOB_PATTERN)
+        file(GLOB _matches "${IOTDB_OS_DEPS_DIR}/${ARG_GLOB_PATTERN}")
+        if(_matches)
+            list(GET _matches 0 _hit)
+            message(STATUS "[BuildTools] reusing ${_hit}")
+            set(${OUT_VAR} "${_hit}" PARENT_SCOPE)
+            return()
+        endif()
+    endif()
+
+    if(IOTDB_OFFLINE)
+        set(_hint "${FILENAME}")
+        if(ARG_GLOB_PATTERN)
+            set(_hint "${FILENAME} (or any ${ARG_GLOB_PATTERN})")
+        endif()
+        message(FATAL_ERROR
+                "[BuildTools] IOTDB_OFFLINE=ON but ${_hint} is missing in "
+                "${IOTDB_OS_DEPS_DIR}.")
+    endif()
+
+    message(STATUS "[BuildTools] downloading ${URL}")
+    file(DOWNLOAD "${URL}" "${_local}" SHOW_PROGRESS STATUS _st TLS_VERIFY ON)
+    list(GET _st 0 _code)
+    if(NOT _code EQUAL 0)
+        list(GET _st 1 _msg)
+        file(REMOVE "${_local}")
+        message(FATAL_ERROR "[BuildTools] download failed for ${FILENAME}: ${_msg}")
+    endif()
+    set(${OUT_VAR} "${_local}" PARENT_SCOPE)
+endfunction()
 
 # Configure-make-install <name> from <tarball> into ${_tools_prefix}.
 function(_iotdb_build_autotools NAME TARBALL EXTRACTED_DIRNAME)
@@ -126,8 +167,7 @@ if(WIN32)
     _iotdb_resolve_tarball(_wfb_zip
             "${_winflexbison_filename}"
             "${_winflexbison_url}"
-            GLOB_PATTERN "win_flex_bison*.zip"
-            LOG_PREFIX "BuildTools")
+            GLOB_PATTERN "win_flex_bison*.zip")
 
     set(_wfb_marker "${_tools_bin}/.winflexbison-installed")
     if(NOT EXISTS "${_wfb_marker}")
@@ -172,8 +212,7 @@ endif()
 # m4 (flex/bison both depend on this)
 find_program(M4_EXECUTABLE m4)
 if(NOT M4_EXECUTABLE)
-    _iotdb_resolve_tarball(_m4_tarball "m4-${M4_VERSION}.tar.gz" "${_m4_url}"
-            LOG_PREFIX "BuildTools")
+    _iotdb_resolve_tarball(_m4_tarball "m4-${M4_VERSION}.tar.gz" "${_m4_url}")
     _iotdb_build_autotools(m4 "${_m4_tarball}" "m4-${M4_VERSION}")
     find_program(M4_EXECUTABLE m4 PATHS "${_tools_bin}" NO_DEFAULT_PATH REQUIRED)
 endif()
@@ -182,8 +221,7 @@ message(STATUS "[BuildTools] m4    = ${M4_EXECUTABLE}")
 # flex
 find_program(FLEX_EXECUTABLE flex)
 if(NOT FLEX_EXECUTABLE)
-    _iotdb_resolve_tarball(_flex_tarball "flex-${FLEX_VERSION}.tar.gz" "${_flex_url}"
-            LOG_PREFIX "BuildTools")
+    _iotdb_resolve_tarball(_flex_tarball "flex-${FLEX_VERSION}.tar.gz" "${_flex_url}")
     _iotdb_build_autotools(flex "${_flex_tarball}" "flex-${FLEX_VERSION}")
     find_program(FLEX_EXECUTABLE flex PATHS "${_tools_bin}" NO_DEFAULT_PATH REQUIRED)
 endif()
@@ -192,8 +230,7 @@ message(STATUS "[BuildTools] flex  = ${FLEX_EXECUTABLE}")
 # bison
 find_program(BISON_EXECUTABLE bison)
 if(NOT BISON_EXECUTABLE)
-    _iotdb_resolve_tarball(_bison_tarball "bison-${BISON_VERSION}.tar.gz" "${_bison_url}"
-            LOG_PREFIX "BuildTools")
+    _iotdb_resolve_tarball(_bison_tarball "bison-${BISON_VERSION}.tar.gz" "${_bison_url}")
     _iotdb_build_autotools(bison "${_bison_tarball}" "bison-${BISON_VERSION}")
     find_program(BISON_EXECUTABLE bison PATHS "${_tools_bin}" NO_DEFAULT_PATH REQUIRED)
 endif()

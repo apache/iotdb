@@ -122,5 +122,5 @@ file(GLOB THRIFT_GENERATED_HDRS CONFIGURE_DEPENDS "${THRIFT_GEN_CPP_DIR}/*.h")
 
 list(FILTER THRIFT_GENERATED_SRCS EXCLUDE REGEX ".*_server\\.skeleton\\.cpp$")
 
-list(LENGTH THRIFT_GENERATED_SRCS _gen_count)
-message(STATUS "[GenThrift] generated ${_gen_count} cpp files in ${THRIFT_GEN_CPP_DIR}")
+message(STATUS "[GenThrift] generated ${THRIFT_GEN_CPP_DIR} with "
+        "$<LIST_LENGTH:THRIFT_GENERATED_SRCS> cpp files")

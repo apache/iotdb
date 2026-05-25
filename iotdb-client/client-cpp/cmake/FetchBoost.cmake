@@ -38,14 +38,6 @@ endif()
 # ---------------------------------------------------------------------------
 # Stage 1: find_package(Boost) - respects BOOST_ROOT / Boost_INCLUDE_DIR
 # ---------------------------------------------------------------------------
-# CMP0167 (CMake 3.30+): the bundled FindBoost was removed in favour of
-# BoostConfig.cmake shipped by Boost itself. For broad compatibility (we may
-# be looking at a Boost source tree that does NOT ship BoostConfig), keep the
-# legacy FindBoost behaviour and silence the developer warning.
-if(POLICY CMP0167)
-    cmake_policy(SET CMP0167 OLD)
-endif()
-
 find_package(Boost QUIET)
 if(Boost_FOUND AND Boost_INCLUDE_DIRS)
     set(BOOST_INCLUDE_DIR "${Boost_INCLUDE_DIRS}" CACHE PATH "Boost include directory" FORCE)

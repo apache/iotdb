@@ -16,21 +16,25 @@
 # under the License.
 #
 
-PROJECT(SessionExample)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+CMAKE_POLICY(SET CMP0091 NEW)
+
+PROJECT(iotdb_cpp_client_examples)
 
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
-# Add cpp-client include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
+IF(MSVC)
+    # Match the IoTDB C++ SDK (/MD); same as a default Visual Studio application.
+    SET(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+ENDIF()
 
-# =========================
-# SSL option (default OFF)
-# =========================
+set(IOTDB_SDK_ROOT "${CMAKE_SOURCE_DIR}/client"
+    CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)")
+
+INCLUDE_DIRECTORIES("${IOTDB_SDK_ROOT}/include")
+
 option(WITH_SSL "Build with SSL support" OFF)
 
 IF(WITH_SSL)
@@ -47,105 +51,74 @@ ELSE()
     ADD_DEFINITIONS(-DWITH_SSL=0)
 ENDIF()
 
-FIND_PACKAGE(Boost REQUIRED)
-IF (DEFINED BOOST_INCLUDEDIR)
-    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-ENDIF()
+if(WIN32)
+    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
+    set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")
+elseif(APPLE)
+    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.dylib")
+    set(_iotdb_runtime   "${_iotdb_link_lib}")
+else()
+    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.so")
+    set(_iotdb_runtime   "${_iotdb_link_lib}")
+endif()
 
-# Add the libs for the cpp-client
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/lib)
+if(NOT EXISTS "${_iotdb_link_lib}")
+    message(FATAL_ERROR
+        "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
+        "Unpack client-cpp-<version>-cpp-<os>.zip so that ${_iotdb_link_lib} exists.")
+endif()
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
 ADD_EXECUTABLE(TableModelSessionExample TableModelSessionExample.cpp)
 ADD_EXECUTABLE(MultiSvrNodeClient MultiSvrNodeClient.cpp)
 
-IF(MSVC)
-    IF(WITH_SSL)
-        TARGET_LINK_LIBRARIES(SessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(TableModelSessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(MultiSvrNodeClient
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-    ELSE()
-        TARGET_LINK_LIBRARIES(SessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-        )
-        TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-        )
-        TARGET_LINK_LIBRARIES(TableModelSessionExample
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-        )
-        TARGET_LINK_LIBRARIES(MultiSvrNodeClient
-            iotdb_session
-            "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
-        )
-    ENDIF()
-ELSE()
-    IF(WITH_SSL)
-        TARGET_LINK_LIBRARIES(SessionExample
-            iotdb_session
-            pthread
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
-            iotdb_session
-            pthread
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(TableModelSessionExample
-            iotdb_session
-            pthread
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-        TARGET_LINK_LIBRARIES(MultiSvrNodeClient
-            iotdb_session
-            pthread
-            OpenSSL::SSL
-            OpenSSL::Crypto
-        )
-    ELSE()
-        TARGET_LINK_LIBRARIES(SessionExample
-            iotdb_session
-            pthread
-        )
-        TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
-            iotdb_session
-            pthread
-        )
-        TARGET_LINK_LIBRARIES(TableModelSessionExample
-            iotdb_session
-            pthread
-        )
-        TARGET_LINK_LIBRARIES(MultiSvrNodeClient
-            iotdb_session
-            pthread
-        )
-    ENDIF()
-ENDIF()
+set(_example_targets
+    SessionExample
+    AlignedTimeseriesSessionExample
+    TableModelSessionExample
+    MultiSvrNodeClient)
+
+foreach(_t IN LISTS _example_targets)
+  IF(WITH_SSL)
+      TARGET_LINK_LIBRARIES(${_t} PRIVATE "${_iotdb_link_lib}" OpenSSL::SSL OpenSSL::Crypto)
+  ELSE()
+      TARGET_LINK_LIBRARIES(${_t} PRIVATE "${_iotdb_link_lib}")
+  ENDIF()
+  IF(UNIX)
+      TARGET_LINK_LIBRARIES(${_t} PRIVATE pthread)
+  ENDIF()
+
+  # Run from the build output directory without setting LD_LIBRARY_PATH / PATH.
+  if(UNIX)
+      set_target_properties(${_t} PROPERTIES
+          BUILD_RPATH "\$ORIGIN"
+          INSTALL_RPATH "\$ORIGIN")
+  endif()
+
+  if(EXISTS "${_iotdb_runtime}")
+      add_custom_command(TARGET ${_t} POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                  "${_iotdb_runtime}" $<TARGET_FILE_DIR:${_t}>
+          COMMENT "Copy IoTDB runtime library next to ${_t}")
+  elseif(WIN32)
+      message(WARNING "Missing ${_iotdb_runtime}; copy iotdb_session.dll manually before running ${_t}.")
+  endif()
+endforeach()
+
+# Optional: stage a self-contained folder for copying to another machine (see README).
+set(_example_dist_dir "${CMAKE_BINARY_DIR}/dist")
+add_custom_target(example-dist DEPENDS ${_example_targets}
+    COMMENT "Collect example binaries and IoTDB runtime into ${_example_dist_dir}")
+foreach(_t IN LISTS _example_targets)
+    add_custom_command(TARGET example-dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${_example_dist_dir}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:${_t}> "${_example_dist_dir}/"
+        COMMENT "Stage ${_t}")
+endforeach()
+if(EXISTS "${_iotdb_runtime}")
+    add_custom_command(TARGET example-dist POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_iotdb_runtime}" "${_example_dist_dir}/")
+endif()

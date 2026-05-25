@@ -17,19 +17,25 @@
  * under the License.
  */
 #include "SessionConnection.h"
-#include "Session.h"
+#include "SessionImpl.h"
+#include "RpcCommon.h"
 #include "common_types.h"
+#include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
+#include <thrift/transport/TSocket.h>
+#include <thrift/transport/TTransportException.h>
 
 #include <utility>
 
 #include "SessionDataSet.h"
+#include "SessionDataSetFactory.h"
 
 using namespace apache::thrift;
 using namespace apache::thrift::protocol;
 using namespace apache::thrift::transport;
 
-SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endpoint,
+SessionConnection::SessionConnection(Session::Impl* session_ptr, const TEndPoint& endpoint,
                                      const std::string& zoneId,
                                      std::shared_ptr<INodesSupplier> nodeSupplier, int fetchSize,
                                      int maxRetries, int64_t retryInterval,
@@ -189,10 +195,10 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
     RpcUtils::verifySuccess(resp.status);
   }
 
-  return std::unique_ptr<SessionDataSet>(new SessionDataSet(
-      sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId,
-      client, sessionId, resp.queryResult, resp.ignoreTimeStamp, timeoutInMs, resp.moreData,
-      fetchSize, zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList));
+  return createSessionDataSet(sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+                              resp.queryId, statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, timeoutInMs, resp.moreData, fetchSize, zoneId,
+                              timeFactor, resp.columnIndex2TsBlockColumnIndexList);
 }
 
 std::unique_ptr<SessionDataSet>
@@ -218,10 +224,10 @@ SessionConnection::executeRawDataQuery(const std::vector<std::string>& paths, in
   } else {
     RpcUtils::verifySuccess(resp.status);
   }
-  return std::unique_ptr<SessionDataSet>(new SessionDataSet(
-      "", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId,
-      client, sessionId, resp.queryResult, resp.ignoreTimeStamp, connectionTimeoutInMs,
-      resp.moreData, fetchSize, zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList));
+  return createSessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+                              resp.queryId, statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, connectionTimeoutInMs, resp.moreData, fetchSize,
+                              zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList);
 }
 
 std::unique_ptr<SessionDataSet>
@@ -246,10 +252,10 @@ SessionConnection::executeLastDataQuery(const std::vector<std::string>& paths, i
   } else {
     RpcUtils::verifySuccess(resp.status);
   }
-  return std::unique_ptr<SessionDataSet>(new SessionDataSet(
-      "", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId,
-      client, sessionId, resp.queryResult, resp.ignoreTimeStamp, connectionTimeoutInMs,
-      resp.moreData, fetchSize, zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList));
+  return createSessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+                              resp.queryId, statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, connectionTimeoutInMs, resp.moreData, fetchSize,
+                              zoneId, timeFactor, resp.columnIndex2TsBlockColumnIndexList);
 }
 
 void SessionConnection::executeNonQueryStatement(const string& sql) {

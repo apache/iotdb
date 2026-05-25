@@ -46,8 +46,6 @@
         <cmake.source.dir>${project.basedir}</cmake.source.dir>
         <cmake.project.dir>${project.build.directory}/build</cmake.project.dir>
         <cmake.install.prefix>${project.build.directory}/install</cmake.install.prefix>
-        <!-- Default: client-cpp/third-party (portable with the source tree).
-             Override via -Diotdb.deps.dir=... -->
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
         <with.ssl>OFF</with.ssl>
@@ -56,7 +54,7 @@
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
         <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
-        <boost.include.dir/>
+        <boost.include.dir></boost.include.dir>
     </properties>
     <dependencies>
         <dependency>

@@ -31,15 +31,16 @@
 #include "common_types.h"
 #include "NodesSupplier.h"
 #include "Common.h"
+#include "RpcCommon.h"
+#include "Session.h"
 
 class SessionDataSet;
-class Session;
 
 class SessionConnection : public std::enable_shared_from_this<SessionConnection> {
 public:
-  SessionConnection(Session* session_ptr, const TEndPoint& endpoint, const std::string& zoneId,
-                    std::shared_ptr<INodesSupplier> nodeSupplier, int fetchSize = 10000,
-                    int maxRetries = 3, int64_t retryInterval = 500,
+  SessionConnection(Session::Impl* session_ptr, const TEndPoint& endpoint,
+                    const std::string& zoneId, std::shared_ptr<INodesSupplier> nodeSupplier,
+                    int fetchSize = 10000, int maxRetries = 3, int64_t retryInterval = 500,
                     int64_t connectionTimeoutMs = 3 * 1000, std::string dialect = "tree",
                     std::string db = "");
 
@@ -183,9 +184,9 @@ private:
   std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
       std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
 #endif
-  std::shared_ptr<TTransport> transport;
+  std::shared_ptr<apache::thrift::transport::TTransport> transport;
   std::shared_ptr<IClientRPCServiceClient> client;
-  Session* session;
+  Session::Impl* session;
   int64_t sessionId;
   int64_t statementId;
   int64_t connectionTimeoutInMs;

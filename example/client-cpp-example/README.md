@@ -19,30 +19,217 @@
 
 -->
 
-# How to get a complete CPP client demo project
+# IoTDB C++ client examples
 
-## Get a project
+[中文说明](README_zh.md)
 
-Using maven to build this example project:
+Sample programs that link against the pre-built **IoTDB C++ Session SDK**
+(`iotdb_session`). Thrift and Boost are **not** required at application compile
+time; they are embedded inside the SDK shared library.
 
-* cd the root path of the whole project
-* run `mvn clean package -DskipTests -P with-cpp -pl example/client-cpp-example -am`
-* cd example/client-cpp-example/target
+All examples connect to a running IoTDB instance (default `127.0.0.1:6667`,
+user `root` / `root`).
 
-You can find some files to form a complete project:
+| Example | Description |
+|---------|-------------|
+| `SessionExample` | Tree model: DDL, insert, query, delete |
+| `AlignedTimeseriesSessionExample` | Aligned time series and templates |
+| `TableModelSessionExample` | Table (relational) model |
+| `MultiSvrNodeClient` | Multi-node insert/query loop |
+
+## SDK layout (after unpack)
+
+The SDK zip produced by `client-cpp` contains **public headers only** and one
+shared library:
+
 ```
-+-- client
-|   +-- include
-|       +-- Session.h
-|       +-- IClientRPCService.h
-|       +-- rpc_types.h
-|       +-- rpc_constants.h
-|       +-- thrift
-|           +-- thrift_headers...
-|   +-- lib
-|       +-- libiotdb_session.dylib
-+-- CMakeLists.txt
-+-- SessionExample.cpp
+client/
+├── include/
+│   ├── Session.h
+│   ├── Export.h
+│   └── ...          (17 public headers; no thrift/ or boost/)
+└── lib/
+    ├── iotdb_session.dll + iotdb_session.lib   (Windows)
+    ├── libiotdb_session.so                     (Linux)
+    └── libiotdb_session.dylib                  (macOS)
 ```
 
+## Build the examples
 
+### Option A – Maven (recommended in this repo)
+
+From the repository root:
+
+```bash
+mvn clean package -DskipTests -P with-cpp -pl example/client-cpp-example -am
+```
+
+Maven unpacks the SDK zip into `example/client-cpp-example/target/client/` and
+runs CMake in `target/`. Binaries are under `target/` (exact path depends on
+the generator; on Windows with Visual Studio: `target/Release/`).
+
+### Option B – CMake only (manual SDK)
+
+1. Build or download the SDK and unpack it so `client/include` and
+   `client/lib` exist (see layout above).
+2. Copy `src/*.cpp` and `src/CMakeLists.txt` into one directory (or use
+   `src/` as the source tree and place `client/` beside it).
+3. Configure and build:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+Windows (Visual Studio generator):
+
+```powershell
+cmake -S . -B build -A x64
+cmake --build build --config Release
+```
+
+Each executable is built with the IoTDB runtime library copied **next to the
+`.exe` / binary** (POST_BUILD step). Linux/macOS binaries use `$ORIGIN` rpath
+so they resolve the `.so` / `.dylib` in the same directory.
+
+Optional staging folder for deployment:
+
+```bash
+cmake --build build --target example-dist
+# -> build/dist/ contains all example binaries + libiotdb_session.{so,dll,dylib}
+```
+
+## Run on a clean machine (no compiler, no IoTDB SDK headers)
+
+You only need:
+
+1. A running IoTDB server reachable from the machine.
+2. The **example executable(s)** and the **IoTDB runtime library** in the
+   **same directory** (or on the system library path).
+
+Copy either from `build/.../Release/` (Windows) / `build/` (Ninja/Make) or from
+`build/dist/` after `example-dist`.
+
+### Windows
+
+**Files to copy**
+
+```
+SessionExample.exe
+iotdb_session.dll
+```
+
+(Repeat for the other example names if needed.)
+
+**Prerequisites on the target PC**
+
+- **64-bit Windows** (examples are built x64).
+- **[Microsoft Visual C++ Redistributable for Visual Studio 2015–2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)**  
+  (x64). The SDK and examples are built with **`/MD`**; the redistributable
+  supplies `vcruntime140.dll`, `msvcp140.dll`, etc.  
+  Installing this package is enough—you do **not** need Visual Studio or the
+  IoTDB SDK on the target machine.
+
+**Run**
+
+```powershell
+.\SessionExample.exe
+```
+
+If you see “The code execution cannot proceed because VCRUNRuntime140.dll was
+missing”, install the VC++ redistributable above.
+
+You do **not** need a separate Thrift or Boost runtime; they are inside
+`iotdb_session.dll`.
+
+### Linux
+
+**Files to copy**
+
+```
+SessionExample
+libiotdb_session.so
+chmod +x SessionExample
+```
+
+**Prerequisites on the target machine**
+
+- **glibc** on the target must be **≥ the glibc version on the machine that
+  built the SDK** (backward compatible only in that direction).
+
+Check **build machine** (record in release notes):
+
+```bash
+ldd --version | head -1
+# e.g. ldd (Ubuntu GLIBC 2.35-0ubuntu3) 2.35
+```
+
+Check **target machine**:
+
+```bash
+ldd --version | head -1
+# must be >= build glibc (same major.minor or newer)
+```
+
+See which `GLIBC_` symbols the binary needs:
+
+```bash
+objdump -T SessionExample | grep GLIBC_ | sed 's/.*GLIBC_/GLIBC_/' | sort -Vu | tail -5
+objdump -T libiotdb_session.so | grep GLIBC_ | sed 's/.*GLIBC_/GLIBC_/' | sort -Vu | tail -5
+```
+
+If the target glibc is too old, you'll get errors like
+`version 'GLIBC_2.34' not found` at runtime. Rebuild the SDK on an older distro
+(or in an older container) to widen compatibility.
+
+**Run** (with `.so` beside the binary):
+
+```bash
+./SessionExample
+```
+
+If the shared library is not found:
+
+```bash
+export LD_LIBRARY_PATH=.
+./SessionExample
+```
+
+No separate Thrift install is required.
+
+### macOS
+
+Copy the example binary and `libiotdb_session.dylib` together. The target macOS
+version should be **≥ the deployment target used to build the SDK**. Check with:
+
+```bash
+otool -L SessionExample
+```
+
+## Development notes
+
+- **Windows**: Application and SDK both use **`/MD`** (dynamic CRT). This
+  matches a default Visual Studio project; link `iotdb_session.lib`, ship
+  `iotdb_session.dll`.
+- **Linux**: SDK is `libiotdb_session.so`; link it directly. Prefer shipping
+  the `.so` next to your binary or setting `RPATH` to `$ORIGIN`.
+- Examples assume IoTDB is listening on `127.0.0.1:6667`; change host/port in
+  the source if needed.
+
+## Project layout in this module
+
+```
+client-cpp-example/
+├── pom.xml              # Maven: unpack SDK + invoke CMake
+├── README.md
+├── README_zh.md
+└── src/
+    ├── CMakeLists.txt
+    ├── SessionExample.cpp
+    ├── AlignedTimeseriesSessionExample.cpp
+    ├── TableModelSessionExample.cpp
+    └── MultiSvrNodeClient.cpp
+```
+
+After `mvn package`, the runnable tree is under `target/` (sources, `client/`,
+and CMake build output).

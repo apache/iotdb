@@ -37,7 +37,13 @@ add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRela
 
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/catch2")
+            "${CMAKE_CURRENT_SOURCE_DIR}/catch2"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../rpc"
+            "${THRIFT_GEN_CPP_DIR}"
+            "${THRIFT_INCLUDE_DIR}")
+    if(BOOST_INCLUDE_DIR)
+        target_include_directories(${_t} PRIVATE "${BOOST_INCLUDE_DIR}")
+    endif()
     target_link_libraries(${_t} PRIVATE iotdb_session)
     if(WITH_SSL)
         target_link_libraries(${_t} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
@@ -66,6 +72,11 @@ if(MSVC)
     add_test(NAME sessionRelationalIT    CONFIGURATIONS Release COMMAND session_relational_tests)
     add_test(NAME sessionCIT             CONFIGURATIONS Release COMMAND session_c_tests)
     add_test(NAME sessionCRelationalIT   CONFIGURATIONS Release COMMAND session_c_relational_tests)
+    foreach(_t IN LISTS _test_targets)
+        add_custom_command(TARGET ${_t} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>)
+    endforeach()
 else()
     add_test(NAME sessionIT              COMMAND session_tests)
     add_test(NAME sessionRelationalIT    COMMAND session_relational_tests)

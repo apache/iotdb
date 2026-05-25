@@ -18,15 +18,9 @@
 # =============================================================================
 # FetchThrift.cmake
 #
-# Resolves the Apache Thrift source tarball (same three-stage pattern as
-# FetchBuildTools / FetchBoost on every platform, including Windows):
-#
-#   1. Optional -DTHRIFT_TARBALL=<path> to an existing archive anywhere on disk.
-#   2. ${IOTDB_OS_DEPS_DIR}/thrift-<ver>.tar.gz (or any thrift-*.tar.gz match).
-#   3. file(DOWNLOAD) from archive.apache.org when IOTDB_OFFLINE is OFF.
-#
-# Then builds thrift from source as a static-only runtime + compiler artifact.
-# The build runs at configure time so the thrift compiler is available for the
+# Downloads (or uses a local copy of) the Apache Thrift source tarball and
+# builds it from source as a static-only, runtime-and-compiler artifact. The
+# build runs at configure time so the thrift compiler is available for the
 # code generation step that follows.
 #
 # Exported variables:
@@ -46,38 +40,30 @@
 # =============================================================================
 
 include(ExternalProject)
-include(IotdbResolveTarball)
-
-set(THRIFT_TARBALL "" CACHE FILEPATH
-        "Optional path to a pre-downloaded thrift tarball (bypasses ${IOTDB_OS_DEPS_DIR})")
-set(THRIFT_URL "" CACHE STRING
-        "Override download URL for the thrift tarball (default: Apache archive)")
 
 set(_thrift_dirname "thrift-${THRIFT_VERSION}")
 set(_thrift_tarname "${_thrift_dirname}.tar.gz")
 
 # ---------------------------------------------------------------------------
-# Resolve tarball (external path -> local cache / GLOB -> download)
+# Resolve tarball (local cache -> download)
 # ---------------------------------------------------------------------------
-if(THRIFT_TARBALL)
-    if(NOT EXISTS "${THRIFT_TARBALL}")
+set(_thrift_tarball "${IOTDB_OS_DEPS_DIR}/${_thrift_tarname}")
+if(NOT EXISTS "${_thrift_tarball}")
+    if(IOTDB_OFFLINE)
         message(FATAL_ERROR
-                "[Thrift] THRIFT_TARBALL points to a missing file: ${THRIFT_TARBALL}")
+                "[Thrift] IOTDB_OFFLINE=ON but ${_thrift_tarname} is missing in "
+                "${IOTDB_OS_DEPS_DIR}.")
     endif()
-    set(_thrift_tarball "${THRIFT_TARBALL}")
-    message(STATUS "[Thrift] using THRIFT_TARBALL=${_thrift_tarball}")
-else()
-    if(THRIFT_URL)
-        set(_thrift_url "${THRIFT_URL}")
-    else()
-        set(_thrift_url
-                "https://archive.apache.org/dist/thrift/${THRIFT_VERSION}/${_thrift_tarname}")
+    set(_thrift_url "https://archive.apache.org/dist/thrift/${THRIFT_VERSION}/${_thrift_tarname}")
+    message(STATUS "[Thrift] downloading ${_thrift_url}")
+    file(DOWNLOAD "${_thrift_url}" "${_thrift_tarball}"
+            SHOW_PROGRESS TLS_VERIFY ON STATUS _thrift_dl)
+    list(GET _thrift_dl 0 _code)
+    if(NOT _code EQUAL 0)
+        list(GET _thrift_dl 1 _msg)
+        file(REMOVE "${_thrift_tarball}")
+        message(FATAL_ERROR "[Thrift] download failed: ${_msg}")
     endif()
-    _iotdb_resolve_tarball(_thrift_tarball
-            "${_thrift_tarname}"
-            "${_thrift_url}"
-            GLOB_PATTERN "thrift-*.tar.gz"
-            LOG_PREFIX "Thrift")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -122,10 +108,6 @@ set(_thrift_cmake_args
         "-DWITH_STATIC_LIB=ON"
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
         "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
-        # Thrift 0.21.0 still declares cmake_minimum_required(VERSION 3.0)
-        # which CMake 4.x rejects. Bump the floor so the configure step
-        # passes on both 3.16+ and 4.x toolchains.
-        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
         "-DCMAKE_CXX_STANDARD=11")
 
 if(BOOST_INCLUDE_DIR)
@@ -136,7 +118,7 @@ endif()
 
 if(MSVC)
     list(APPEND _thrift_cmake_args
-            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
 else()
     list(APPEND _thrift_cmake_args
             "-DCMAKE_C_FLAGS=-fPIC"
@@ -154,13 +136,16 @@ endif()
 # invoking cmake twice via execute_process and only register a phony
 # ExternalProject for dependency ordering.
 
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}")
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-mdll")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")
 
-    # FetchBuildTools already prepended ${IOTDB_LOCAL_TOOLS_BIN} to ENV{PATH};
-    # the child cmake / build invocations inherit that environment.
+    # When we built m4/flex/bison locally, make sure CMake passes the
+    # updated PATH down to the nested cmake invocation.
+    if(IOTDB_LOCAL_TOOLS_BIN)
+        set(_thrift_env "PATH=${IOTDB_LOCAL_TOOLS_BIN}:$ENV{PATH}")
+    endif()
 
     if(CMAKE_GENERATOR_PLATFORM)
         set(_gen_platform_arg "-A" "${CMAKE_GENERATOR_PLATFORM}")

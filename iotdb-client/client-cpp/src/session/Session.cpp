@@ -20,11 +20,16 @@
 #include "Session.h"
 #include <algorithm>
 #include <memory>
+#include <stack>
 #include <time.h>
 #include <future>
 #include <unordered_set>
-#include "NodesSupplier.h"
+#include <thrift/transport/TTransportException.h>
+#include "SessionImpl.h"
 #include "SessionDataSet.h"
+#include "ThriftConvert.h"
+
+using apache::thrift::transport::TTransportException;
 
 using namespace std;
 
@@ -34,8 +39,6 @@ using namespace std;
 * And value 0 will disable the function of query timeout.
 */
 static const int64_t QUERY_TIMEOUT_MS = -1;
-
-LogLevelType LOG_LEVEL = LEVEL_DEBUG;
 
 TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
   // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, BLOB, TIMESTAMP, DATE, NULLTYPE
@@ -73,7 +76,7 @@ void Tablet::createColumns() {
       values[i] = new bool[maxRowNumber];
       break;
     case TSDataType::DATE:
-      values[i] = new boost::gregorian::date[maxRowNumber];
+      values[i] = new IoTdbDate[maxRowNumber];
       break;
     case TSDataType::INT32:
       values[i] = new int[maxRowNumber];
@@ -118,7 +121,7 @@ void Tablet::deleteColumns() {
       break;
     }
     case TSDataType::DATE: {
-      boost::gregorian::date* valueBuf = (boost::gregorian::date*)(values[i]);
+      IoTdbDate* valueBuf = (IoTdbDate*)(values[i]);
       delete[] valueBuf;
       break;
     }
@@ -180,9 +183,9 @@ void Tablet::deepCopyTabletColValue(void* const* srcPtr, void** destPtr,
     memcpy(*destPtr, src, maxRowNumber * sizeof(double));
     break;
   case TSDataType::DATE: {
-    *destPtr = new boost::gregorian::date[maxRowNumber];
-    boost::gregorian::date* srcDate = static_cast<boost::gregorian::date*>(src);
-    boost::gregorian::date* destDate = static_cast<boost::gregorian::date*>(*destPtr);
+    *destPtr = new IoTdbDate[maxRowNumber];
+    IoTdbDate* srcDate = static_cast<IoTdbDate*>(src);
+    IoTdbDate* destDate = static_cast<IoTdbDate*>(*destPtr);
     for (size_t j = 0; j < maxRowNumber; ++j) {
       destDate[j] = srcDate[j];
     }
@@ -319,7 +322,7 @@ string SessionUtils::getValue(const Tablet& tablet) {
       break;
     }
     case TSDataType::DATE: {
-      boost::gregorian::date* valueBuf = (boost::gregorian::date*)(tablet.values[i]);
+      IoTdbDate* valueBuf = (IoTdbDate*)(tablet.values[i]);
       for (size_t index = 0; index < tablet.rowSize; index++) {
         if (!bitMap.isMarked(index)) {
           valueBuffer.putDate(valueBuf[index]);
@@ -420,7 +423,7 @@ string MeasurementNode::serialize() const {
 
 string Template::serialize() const {
   MyStringBuffer buffer;
-  stack<pair<string, shared_ptr<TemplateNode>>> stack;
+  std::stack<std::pair<std::string, std::shared_ptr<TemplateNode>>> nodeStack;
   unordered_set<string> alignedPrefix;
   buffer.putString(getName());
   buffer.putBool(isAligned());
@@ -429,12 +432,12 @@ string Template::serialize() const {
   }
 
   for (const auto& child : children_) {
-    stack.push(make_pair("", child.second));
+    nodeStack.push(make_pair("", child.second));
   }
 
-  while (!stack.empty()) {
-    auto cur = stack.top();
-    stack.pop();
+  while (!nodeStack.empty()) {
+    auto cur = nodeStack.top();
+    nodeStack.pop();
 
     string prefix = cur.first;
     shared_ptr<TemplateNode> cur_node_ptr = cur.second;
@@ -449,7 +452,7 @@ string Template::serialize() const {
         alignedPrefix.emplace(fullPath);
       }
       for (const auto& child : cur_node_ptr->getChildren()) {
-        stack.push(make_pair(fullPath, child.second));
+        nodeStack.push(make_pair(fullPath, child.second));
       }
     } else {
       buffer.putString(prefix);
@@ -459,6 +462,104 @@ string Template::serialize() const {
   }
 
   return buffer.str;
+}
+
+Session::Session(const std::string& host, int rpcPort) : impl_(new Impl()) {
+  impl_->username_ = "root";
+  impl_->password_ = "root";
+  impl_->version = Version::V_1_0;
+  impl_->host_ = host;
+  impl_->rpcPort_ = rpcPort;
+  impl_->initZoneId();
+  impl_->initNodesSupplier();
+}
+
+Session::Session(const std::vector<std::string>& nodeUrls, const std::string& username,
+                 const std::string& password)
+    : impl_(new Impl()) {
+  impl_->nodeUrls_ = nodeUrls;
+  impl_->username_ = username;
+  impl_->password_ = password;
+  impl_->version = Version::V_1_0;
+  impl_->initZoneId();
+  impl_->initNodesSupplier(impl_->nodeUrls_);
+}
+
+Session::Session(const std::string& host, int rpcPort, const std::string& username,
+                 const std::string& password)
+    : impl_(new Impl()) {
+  impl_->host_ = host;
+  impl_->rpcPort_ = rpcPort;
+  impl_->username_ = username;
+  impl_->password_ = password;
+  impl_->fetchSize_ = Impl::DEFAULT_FETCH_SIZE;
+  impl_->version = Version::V_1_0;
+  impl_->initZoneId();
+  impl_->initNodesSupplier();
+}
+
+Session::Session(const std::string& host, int rpcPort, const std::string& username,
+                 const std::string& password, const std::string& zoneId, int fetchSize)
+    : impl_(new Impl()) {
+  impl_->host_ = host;
+  impl_->rpcPort_ = rpcPort;
+  impl_->username_ = username;
+  impl_->password_ = password;
+  impl_->zoneId_ = zoneId;
+  impl_->fetchSize_ = fetchSize;
+  impl_->version = Version::V_1_0;
+  impl_->initZoneId();
+  impl_->initNodesSupplier();
+}
+
+Session::Session(const std::string& host, const std::string& rpcPort, const std::string& username,
+                 const std::string& password, const std::string& zoneId, int fetchSize)
+    : impl_(new Impl()) {
+  impl_->host_ = host;
+  impl_->rpcPort_ = stoi(rpcPort);
+  impl_->username_ = username;
+  impl_->password_ = password;
+  impl_->zoneId_ = zoneId;
+  impl_->fetchSize_ = fetchSize;
+  impl_->version = Version::V_1_0;
+  impl_->initZoneId();
+  impl_->initNodesSupplier();
+}
+
+Session::Session(AbstractSessionBuilder* builder) : impl_(new Impl()) {
+  impl_->host_ = builder->host;
+  impl_->rpcPort_ = builder->rpcPort;
+  impl_->username_ = builder->username;
+  impl_->password_ = builder->password;
+  impl_->zoneId_ = builder->zoneId;
+  impl_->fetchSize_ = builder->fetchSize;
+  impl_->version = Version::V_1_0;
+  impl_->sqlDialect_ = builder->sqlDialect;
+  impl_->database_ = builder->database;
+  impl_->enableAutoFetch_ = builder->enableAutoFetch;
+  impl_->enableRedirection_ = builder->enableRedirections;
+  impl_->connectTimeoutMs_ = builder->connectTimeoutMs;
+  impl_->nodeUrls_ = builder->nodeUrls;
+  impl_->useSSL_ = builder->useSSL;
+  impl_->trustCertFilePath_ = builder->trustCertFilePath;
+  impl_->initZoneId();
+  impl_->initNodesSupplier(impl_->nodeUrls_);
+}
+
+void Session::setSqlDialect(const std::string& dialect) {
+  impl_->sqlDialect_ = dialect;
+}
+
+void Session::setDatabase(const std::string& database) {
+  impl_->database_ = database;
+}
+
+std::string Session::getDatabase() {
+  return impl_->database_;
+}
+
+void Session::changeDatabase(const std::string& database) {
+  impl_->database_ = database;
 }
 
 /**
@@ -472,7 +573,7 @@ Session::~Session() {
   }
 }
 
-void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection) {
+void Session::Impl::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection) {
   if (enableRedirection_) {
     this->endPointToSessionConnection.erase(sessionConnection->getEndPoint());
   }
@@ -501,7 +602,7 @@ void Session::removeBrokenSessionConnection(shared_ptr<SessionConnection> sessio
    *
    * @return whether the batch has been sorted
    */
-bool Session::checkSorted(const Tablet& tablet) {
+bool Session::Impl::checkSorted(const Tablet& tablet) {
   for (size_t i = 1; i < tablet.rowSize; i++) {
     if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
       return false;
@@ -510,7 +611,7 @@ bool Session::checkSorted(const Tablet& tablet) {
   return true;
 }
 
-bool Session::checkSorted(const vector<int64_t>& times) {
+bool Session::Impl::checkSorted(const vector<int64_t>& times) {
   for (size_t i = 1; i < times.size(); i++) {
     if (times[i] < times[i - 1]) {
       return false;
@@ -539,7 +640,7 @@ template <typename T> void sortValuesList(T* valueList, const int* index, size_t
   delete[] sortedValues;
 }
 
-void Session::sortTablet(Tablet& tablet) {
+void Session::Impl::sortTablet(Tablet& tablet) {
   /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -564,7 +665,7 @@ void Session::sortTablet(Tablet& tablet) {
       break;
     }
     case TSDataType::DATE: {
-      sortValuesList((boost::gregorian::date*)(tablet.values[i]), index, tablet.rowSize);
+      sortValuesList((IoTdbDate*)(tablet.values[i]), index, tablet.rowSize);
       break;
     }
     case TSDataType::TIMESTAMP:
@@ -596,7 +697,7 @@ void Session::sortTablet(Tablet& tablet) {
   delete[] index;
 }
 
-void Session::sortIndexByTimestamp(int* index, std::vector<int64_t>& timestamps, int length) {
+void Session::Impl::sortIndexByTimestamp(int* index, std::vector<int64_t>& timestamps, int length) {
   if (length <= 1) {
     return;
   }
@@ -608,7 +709,7 @@ void Session::sortIndexByTimestamp(int* index, std::vector<int64_t>& timestamps,
 /**
  * Append value into buffer in Big Endian order to comply with IoTDB server
  */
-void Session::appendValues(string& buffer, const char* value, int size) {
+void Session::Impl::appendValues(string& buffer, const char* value, int size) {
   static bool hasCheckedEndianFlag = false;
   static bool localCpuIsBigEndian = false;
   if (!hasCheckedEndianFlag) {
@@ -626,8 +727,8 @@ void Session::appendValues(string& buffer, const char* value, int size) {
   }
 }
 
-void Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types,
-                                  const vector<char*>& values, string& buf) {
+void Session::Impl::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types,
+                                        const vector<char*>& values, string& buf) {
   int32_t date;
   for (size_t i = 0; i < values.size(); i++) {
     int8_t typeNum = getDataTypeNumber(types[i]);
@@ -640,7 +741,7 @@ void Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types,
       appendValues(buf, values[i], sizeof(int32_t));
       break;
     case TSDataType::DATE:
-      date = parseDateExpressionToInt(*(boost::gregorian::date*)values[i]);
+      date = parseDateExpressionToInt(*(IoTdbDate*)values[i]);
       appendValues(buf, (char*)&date, sizeof(int32_t));
       break;
     case TSDataType::TIMESTAMP:
@@ -669,7 +770,7 @@ void Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types,
   }
 }
 
-int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
+int8_t Session::Impl::getDataTypeNumber(TSDataType::TSDataType type) {
   switch (type) {
   case TSDataType::BOOLEAN:
     return 0;
@@ -698,7 +799,7 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
   }
 }
 
-string Session::getVersionString(Version::Version version) {
+string Session::Impl::getVersionString(Version::Version version) {
   switch (version) {
   case Version::V_0_12:
     return "V_0_12";
@@ -711,7 +812,7 @@ string Session::getVersionString(Version::Version version) {
   }
 }
 
-void Session::initZoneId() {
+void Session::Impl::initZoneId() {
   if (!zoneId_.empty()) {
     return;
   }
@@ -729,7 +830,7 @@ void Session::initZoneId() {
   zoneId_ = zoneStr;
 }
 
-void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
+void Session::Impl::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
   std::vector<TEndPoint> endPoints;
   std::unordered_set<std::string> uniqueEndpoints;
 
@@ -775,7 +876,7 @@ void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
   }
 }
 
-void Session::initDefaultSessionConnection() {
+void Session::Impl::initDefaultSessionConnection() {
   // Try all endpoints from supplier until a connection is established.
   auto endpoints = nodesSupplier_->getEndPointList();
   bool connected = false;
@@ -807,10 +908,11 @@ void Session::initDefaultSessionConnection() {
   }
 }
 
-void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
-                                                 vector<vector<string>> measurementsList,
-                                                 vector<vector<string>> valuesList,
-                                                 bool isAligned) {
+void Session::Impl::insertStringRecordsWithLeaderCache(vector<string> deviceIds,
+                                                       vector<int64_t> times,
+                                                       vector<vector<string>> measurementsList,
+                                                       vector<vector<string>> valuesList,
+                                                       bool isAligned) {
   std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertStringRecordsReq> recordsGroup;
   for (int i = 0; i < deviceIds.size(); i++) {
     auto connection = getSessionConnection(deviceIds[i]);
@@ -843,10 +945,10 @@ void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vecto
   }
 }
 
-void Session::insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
-                                           vector<vector<string>> measurementsList,
-                                           const vector<vector<TSDataType::TSDataType>>& typesList,
-                                           vector<vector<char*>> valuesList, bool isAligned) {
+void Session::Impl::insertRecordsWithLeaderCache(
+    vector<string> deviceIds, vector<int64_t> times, vector<vector<string>> measurementsList,
+    const vector<vector<TSDataType::TSDataType>>& typesList, vector<vector<char*>> valuesList,
+    bool isAligned) {
   std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertRecordsReq> recordsGroup;
   for (int i = 0; i < deviceIds.size(); i++) {
     auto connection = getSessionConnection(deviceIds[i]);
@@ -884,8 +986,8 @@ void Session::insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int6
   }
 }
 
-void Session::insertTabletsWithLeaderCache(unordered_map<string, Tablet*> tablets, bool sorted,
-                                           bool isAligned) {
+void Session::Impl::insertTabletsWithLeaderCache(unordered_map<string, Tablet*>& tablets,
+                                                 bool sorted, bool isAligned) {
   std::unordered_map<std::shared_ptr<SessionConnection>, TSInsertTabletsReq> tabletsGroup;
   if (tablets.empty()) {
     throw BatchExecutionException("No tablet is inserting!");
@@ -932,38 +1034,39 @@ void Session::insertTabletsWithLeaderCache(unordered_map<string, Tablet*> tablet
 }
 
 void Session::open() {
-  open(false, DEFAULT_TIMEOUT_MS);
+  open(false, Impl::DEFAULT_TIMEOUT_MS);
 }
 
 void Session::open(bool enableRPCCompression) {
-  open(enableRPCCompression, DEFAULT_TIMEOUT_MS);
+  open(enableRPCCompression, Impl::DEFAULT_TIMEOUT_MS);
 }
 
 void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
-  if (!isClosed_) {
+  if (!impl_->isClosed_) {
     return;
   }
 
   try {
-    initDefaultSessionConnection();
+    impl_->initDefaultSessionConnection();
   } catch (const exception& e) {
     log_debug(e.what());
     throw IoTDBException(e.what());
   }
-  zoneId_ = defaultSessionConnection_->zoneId;
+  impl_->zoneId_ = impl_->defaultSessionConnection_->zoneId;
 
-  if (enableRedirection_) {
-    endPointToSessionConnection.insert(make_pair(defaultEndPoint_, defaultSessionConnection_));
+  if (impl_->enableRedirection_) {
+    impl_->endPointToSessionConnection.insert(
+        make_pair(impl_->defaultEndPoint_, impl_->defaultSessionConnection_));
   }
 
-  isClosed_ = false;
+  impl_->isClosed_ = false;
 }
 
 void Session::close() {
-  if (isClosed_) {
+  if (impl_->isClosed_) {
     return;
   }
-  isClosed_ = true;
+  impl_->isClosed_ = true;
 }
 
 void Session::insertRecord(const string& deviceId, int64_t time, const vector<string>& measurements,
@@ -975,14 +1078,15 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
   req.__set_values(values);
   req.__set_isAligned(false);
   try {
-    getSessionConnection(deviceId)->insertStringRecord(req);
+    impl_->getSessionConnection(deviceId)->insertStringRecord(req);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertStringRecord(req);
+        impl_->defaultSessionConnection_->insertStringRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -999,18 +1103,19 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
   req.__set_timestamp(time);
   req.__set_measurements(measurements);
   string buffer;
-  putValuesIntoBuffer(types, values, buffer);
+  impl_->putValuesIntoBuffer(types, values, buffer);
   req.__set_values(buffer);
   req.__set_isAligned(false);
   try {
-    getSessionConnection(deviceId)->insertRecord(req);
+    impl_->getSessionConnection(deviceId)->insertRecord(req);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertRecord(req);
+        impl_->defaultSessionConnection_->insertRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1029,14 +1134,15 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
   req.__set_values(values);
   req.__set_isAligned(true);
   try {
-    getSessionConnection(deviceId)->insertStringRecord(req);
+    impl_->getSessionConnection(deviceId)->insertStringRecord(req);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertStringRecord(req);
+        impl_->defaultSessionConnection_->insertStringRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1054,18 +1160,19 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
   req.__set_timestamp(time);
   req.__set_measurements(measurements);
   string buffer;
-  putValuesIntoBuffer(types, values, buffer);
+  impl_->putValuesIntoBuffer(types, values, buffer);
   req.__set_values(buffer);
   req.__set_isAligned(false);
   try {
-    getSessionConnection(deviceId)->insertRecord(req);
+    impl_->getSessionConnection(deviceId)->insertRecord(req);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertRecord(req);
+        impl_->defaultSessionConnection_->insertRecord(req);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1083,8 +1190,9 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     throw exception(e);
   }
 
-  if (enableRedirection_) {
-    insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
+  if (impl_->enableRedirection_) {
+    impl_->insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList,
+                                              false);
   } else {
     TSInsertStringRecordsReq request;
     request.__set_prefixPaths(deviceIds);
@@ -1093,7 +1201,7 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     request.__set_valuesList(valuesList);
     request.__set_isAligned(false);
     try {
-      defaultSessionConnection_->insertStringRecords(request);
+      impl_->defaultSessionConnection_->insertStringRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1109,8 +1217,9 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     throw exception(e);
   }
 
-  if (enableRedirection_) {
-    insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, false);
+  if (impl_->enableRedirection_) {
+    impl_->insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList,
+                                        false);
   } else {
     TSInsertRecordsReq request;
     request.__set_prefixPaths(deviceIds);
@@ -1119,13 +1228,13 @@ void Session::insertRecords(const vector<string>& deviceIds, const vector<int64_
     vector<string> bufferList;
     for (size_t i = 0; i < valuesList.size(); i++) {
       string buffer;
-      putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+      impl_->putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
       bufferList.push_back(buffer);
     }
     request.__set_valuesList(bufferList);
     request.__set_isAligned(false);
     try {
-      defaultSessionConnection_->insertRecords(request);
+      impl_->defaultSessionConnection_->insertRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1140,8 +1249,8 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     throw exception(e);
   }
 
-  if (enableRedirection_) {
-    insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
+  if (impl_->enableRedirection_) {
+    impl_->insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, true);
   } else {
     TSInsertStringRecordsReq request;
     request.__set_prefixPaths(deviceIds);
@@ -1150,7 +1259,7 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     request.__set_valuesList(valuesList);
     request.__set_isAligned(true);
     try {
-      defaultSessionConnection_->insertStringRecords(request);
+      impl_->defaultSessionConnection_->insertStringRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1166,8 +1275,9 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     throw exception(e);
   }
 
-  if (enableRedirection_) {
-    insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
+  if (impl_->enableRedirection_) {
+    impl_->insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList,
+                                        true);
   } else {
     TSInsertRecordsReq request;
     request.__set_prefixPaths(deviceIds);
@@ -1176,13 +1286,13 @@ void Session::insertAlignedRecords(const vector<string>& deviceIds, const vector
     vector<string> bufferList;
     for (size_t i = 0; i < valuesList.size(); i++) {
       string buffer;
-      putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+      impl_->putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
       bufferList.push_back(buffer);
     }
     request.__set_valuesList(bufferList);
     request.__set_isAligned(false);
     try {
-      defaultSessionConnection_->insertRecords(request);
+      impl_->defaultSessionConnection_->insertRecords(request);
     } catch (RedirectException& e) {
     }
   }
@@ -1199,13 +1309,13 @@ void Session::insertRecordsOfOneDevice(const string& deviceId, vector<int64_t>& 
                                        vector<vector<string>>& measurementsList,
                                        vector<vector<TSDataType::TSDataType>>& typesList,
                                        vector<vector<char*>>& valuesList, bool sorted) {
-  if (!checkSorted(times)) {
+  if (!impl_->checkSorted(times)) {
     int* index = new int[times.size()];
     for (size_t i = 0; i < times.size(); i++) {
       index[i] = (int)i;
     }
 
-    sortIndexByTimestamp(index, times, (int)(times.size()));
+    impl_->sortIndexByTimestamp(index, times, (int)(times.size()));
     times = sortList(times, index, (int)(times.size()));
     measurementsList = sortList(measurementsList, index, (int)(times.size()));
     typesList = sortList(typesList, index, (int)(times.size()));
@@ -1219,21 +1329,22 @@ void Session::insertRecordsOfOneDevice(const string& deviceId, vector<int64_t>& 
   vector<string> bufferList;
   for (size_t i = 0; i < valuesList.size(); i++) {
     string buffer;
-    putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+    impl_->putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
     bufferList.push_back(buffer);
   }
   request.__set_valuesList(bufferList);
   request.__set_isAligned(false);
   TSStatus respStatus;
   try {
-    getSessionConnection(deviceId)->insertRecordsOfOneDevice(request);
+    impl_->getSessionConnection(deviceId)->insertRecordsOfOneDevice(request);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertRecordsOfOneDevice(request);
+        impl_->defaultSessionConnection_->insertRecordsOfOneDevice(request);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1253,13 +1364,13 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId, vector<int
                                               vector<vector<string>>& measurementsList,
                                               vector<vector<TSDataType::TSDataType>>& typesList,
                                               vector<vector<char*>>& valuesList, bool sorted) {
-  if (!checkSorted(times)) {
+  if (!impl_->checkSorted(times)) {
     int* index = new int[times.size()];
     for (size_t i = 0; i < times.size(); i++) {
       index[i] = (int)i;
     }
 
-    sortIndexByTimestamp(index, times, (int)(times.size()));
+    impl_->sortIndexByTimestamp(index, times, (int)(times.size()));
     times = sortList(times, index, (int)(times.size()));
     measurementsList = sortList(measurementsList, index, (int)(times.size()));
     typesList = sortList(typesList, index, (int)(times.size()));
@@ -1273,21 +1384,22 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId, vector<int
   vector<string> bufferList;
   for (size_t i = 0; i < valuesList.size(); i++) {
     string buffer;
-    putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+    impl_->putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
     bufferList.push_back(buffer);
   }
   request.__set_valuesList(bufferList);
   request.__set_isAligned(true);
   TSStatus respStatus;
   try {
-    getSessionConnection(deviceId)->insertRecordsOfOneDevice(request);
+    impl_->getSessionConnection(deviceId)->insertRecordsOfOneDevice(request);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    impl_->handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
-    if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
-      deviceIdToEndpoint.erase(deviceId);
+    if (impl_->enableRedirection_ &&
+        impl_->deviceIdToEndpoint.find(deviceId) != impl_->deviceIdToEndpoint.end()) {
+      impl_->deviceIdToEndpoint.erase(deviceId);
       try {
-        defaultSessionConnection_->insertRecordsOfOneDevice(request);
+        impl_->defaultSessionConnection_->insertRecordsOfOneDevice(request);
       } catch (RedirectException& e) {
       }
     } else {
@@ -1306,7 +1418,7 @@ void Session::insertTablet(Tablet& tablet) {
   }
 }
 
-void Session::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
+void Session::Impl::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted) {
   if ((!sorted) && !checkSorted(tablet)) {
     sortTablet(tablet);
   }
@@ -1329,12 +1441,12 @@ void Session::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, b
   request.__set_isAligned(tablet.isAligned);
 }
 
-void Session::insertTablet(TSInsertTabletReq request) {
+void Session::Impl::insertTablet(TSInsertTabletReq request) {
   auto deviceId = request.prefixPath;
   try {
     getSessionConnection(deviceId)->insertTablet(request);
   } catch (RedirectException& e) {
-    handleRedirection(deviceId, e.endPoint);
+    handleRedirection(deviceId, endpointToThrift(e.endPoint));
   } catch (const IoTDBConnectionException& e) {
     if (enableRedirection_ && deviceIdToEndpoint.find(deviceId) != deviceIdToEndpoint.end()) {
       deviceIdToEndpoint.erase(deviceId);
@@ -1350,20 +1462,21 @@ void Session::insertTablet(TSInsertTabletReq request) {
 
 void Session::insertTablet(Tablet& tablet, bool sorted) {
   TSInsertTabletReq request;
-  buildInsertTabletReq(request, tablet, sorted);
-  insertTablet(request);
+  impl_->buildInsertTabletReq(request, tablet, sorted);
+  impl_->insertTablet(request);
 }
 
 void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
   std::unordered_map<std::shared_ptr<SessionConnection>, Tablet> relationalTabletGroup;
-  if (tableModelDeviceIdToEndpoint.empty()) {
-    relationalTabletGroup.insert(make_pair(defaultSessionConnection_, tablet));
+  if (impl_->tableModelDeviceIdToEndpoint.empty()) {
+    relationalTabletGroup.insert(make_pair(impl_->defaultSessionConnection_, tablet));
   } else if (SessionUtils::isTabletContainsSingleDevice(tablet)) {
-    relationalTabletGroup.insert(make_pair(getSessionConnection(tablet.getDeviceID(0)), tablet));
+    relationalTabletGroup.insert(
+        make_pair(impl_->getSessionConnection(tablet.getDeviceID(0)), tablet));
   } else {
     for (int row = 0; row < tablet.rowSize; row++) {
       auto iDeviceID = tablet.getDeviceID(row);
-      std::shared_ptr<SessionConnection> connection = getSessionConnection(iDeviceID);
+      std::shared_ptr<SessionConnection> connection = impl_->getSessionConnection(iDeviceID);
 
       auto it = relationalTabletGroup.find(connection);
       if (it == relationalTabletGroup.end()) {
@@ -1400,7 +1513,7 @@ void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
         case TSDataType::DATE: {
           currentTablet.addValue(
               tablet.schemas[col].first, rowIndex,
-              *(boost::gregorian::date*)tablet.getValue(col, row, tablet.schemas[col].second));
+              *(IoTdbDate*)tablet.getValue(col, row, tablet.schemas[col].second));
           break;
         }
         case TSDataType::STRING:
@@ -1418,9 +1531,9 @@ void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
     }
   }
   if (relationalTabletGroup.size() == 1) {
-    insertRelationalTabletOnce(relationalTabletGroup, sorted);
+    impl_->insertRelationalTabletOnce(relationalTabletGroup, sorted);
   } else {
-    insertRelationalTabletByGroup(relationalTabletGroup, sorted);
+    impl_->insertRelationalTabletByGroup(relationalTabletGroup, sorted);
   }
 }
 
@@ -1428,7 +1541,7 @@ void Session::insertRelationalTablet(Tablet& tablet) {
   insertRelationalTablet(tablet, false);
 }
 
-void Session::insertRelationalTabletOnce(
+void Session::Impl::insertRelationalTabletOnce(
     const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
     bool sorted) {
   auto iter = relationalTabletGroup.begin();
@@ -1450,7 +1563,7 @@ void Session::insertRelationalTabletOnce(
     auto endPointList = e.endPointList;
     for (int i = 0; i < endPointList.size(); i++) {
       auto deviceID = tablet.getDeviceID(i);
-      handleRedirection(deviceID, endPointList[i]);
+      handleRedirection(deviceID, endpointToThrift(endPointList[i]));
     }
   } catch (const IoTDBConnectionException& e) {
     if (endPointToSessionConnection.size() > 1) {
@@ -1476,7 +1589,7 @@ void Session::insertRelationalTabletOnce(
   }
 }
 
-void Session::insertRelationalTabletByGroup(
+void Session::Impl::insertRelationalTabletByGroup(
     const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
     bool sorted) {
   // Create a vector to store future objects for asynchronous operations
@@ -1487,32 +1600,33 @@ void Session::insertRelationalTabletByGroup(
     auto tablet = iter->second;
 
     // Launch asynchronous task for each tablet insertion
-    futures.emplace_back(std::async(std::launch::async, [=]() mutable {
-      TSInsertTabletReq request;
-      buildInsertTabletReq(request, tablet, sorted);
-      request.__set_writeToTable(true);
+    futures.emplace_back(
+        std::async(std::launch::async, [this, connection, tablet, sorted]() mutable {
+          TSInsertTabletReq request;
+          buildInsertTabletReq(request, tablet, sorted);
+          request.__set_writeToTable(true);
 
-      std::vector<int8_t> columnCategories;
-      for (auto& category : tablet.columnTypes) {
-        columnCategories.push_back(static_cast<int8_t>(category));
-      }
-      request.__set_columnCategories(columnCategories);
+          std::vector<int8_t> columnCategories;
+          for (auto& category : tablet.columnTypes) {
+            columnCategories.push_back(static_cast<int8_t>(category));
+          }
+          request.__set_columnCategories(columnCategories);
 
-      try {
-        TSStatus respStatus;
-        connection->getSessionClient()->insertTablet(respStatus, request);
-        RpcUtils::verifySuccess(respStatus);
-      } catch (const TTransportException& e) {
-        log_debug(e.what());
-        throw IoTDBConnectionException(e.what());
-      } catch (const IoTDBException& e) {
-        log_debug(e.what());
-        throw;
-      } catch (const exception& e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-      }
-    }));
+          try {
+            TSStatus respStatus;
+            connection->getSessionClient()->insertTablet(respStatus, request);
+            RpcUtils::verifySuccess(respStatus);
+          } catch (const TTransportException& e) {
+            log_debug(e.what());
+            throw IoTDBConnectionException(e.what());
+          } catch (const IoTDBException& e) {
+            log_debug(e.what());
+            throw;
+          } catch (const exception& e) {
+            log_debug(e.what());
+            throw IoTDBException(e.what());
+          }
+        }));
   }
 
   for (auto& f : futures) {
@@ -1551,16 +1665,16 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
   }
   auto beginIter = tablets.begin();
   bool isAligned = ((*beginIter).second)->isAligned;
-  if (enableRedirection_) {
-    insertTabletsWithLeaderCache(tablets, sorted, isAligned);
+  if (impl_->enableRedirection_) {
+    impl_->insertTabletsWithLeaderCache(tablets, sorted, isAligned);
   } else {
     TSInsertTabletsReq request;
     for (const auto& item : tablets) {
       if (isAligned != item.second->isAligned) {
         throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
       }
-      if (!checkSorted(*(item.second))) {
-        sortTablet(*(item.second));
+      if (!impl_->checkSorted(*(item.second))) {
+        impl_->sortTablet(*(item.second));
       }
       request.prefixPaths.push_back(item.second->deviceId);
       vector<string> measurements;
@@ -1578,7 +1692,7 @@ void Session::insertTablets(unordered_map<string, Tablet*>& tablets, bool sorted
     request.__set_isAligned(isAligned);
     try {
       TSStatus respStatus;
-      defaultSessionConnection_->insertTablets(request);
+      impl_->defaultSessionConnection_->insertTablets(request);
       RpcUtils::verifySuccess(respStatus);
     } catch (RedirectException& e) {
     }
@@ -1607,7 +1721,7 @@ void Session::testInsertRecord(const string& deviceId, int64_t time,
   req.__set_values(values);
   TSStatus tsStatus;
   try {
-    defaultSessionConnection_->testInsertStringRecord(req);
+    impl_->defaultSessionConnection_->testInsertStringRecord(req);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1633,7 +1747,7 @@ void Session::testInsertTablet(const Tablet& tablet) {
   request.__set_size(tablet.rowSize);
   try {
     TSStatus tsStatus;
-    defaultSessionConnection_->testInsertTablet(request);
+    impl_->defaultSessionConnection_->testInsertTablet(request);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1663,7 +1777,7 @@ void Session::testInsertRecords(const vector<string>& deviceIds, const vector<in
 
   try {
     TSStatus tsStatus;
-    defaultSessionConnection_->getSessionClient()->insertStringRecords(tsStatus, request);
+    impl_->defaultSessionConnection_->getSessionClient()->insertStringRecords(tsStatus, request);
     RpcUtils::verifySuccess(tsStatus);
   } catch (const TTransportException& e) {
     log_debug(e.what());
@@ -1684,7 +1798,7 @@ void Session::deleteTimeseries(const string& path) {
 }
 
 void Session::deleteTimeseries(const vector<string>& paths) {
-  defaultSessionConnection_->deleteTimeseries(paths);
+  impl_->defaultSessionConnection_->deleteTimeseries(paths);
 }
 
 void Session::deleteData(const string& path, int64_t endTime) {
@@ -1702,11 +1816,11 @@ void Session::deleteData(const vector<string>& paths, int64_t startTime, int64_t
   req.__set_paths(paths);
   req.__set_startTime(startTime);
   req.__set_endTime(endTime);
-  defaultSessionConnection_->deleteData(req);
+  impl_->defaultSessionConnection_->deleteData(req);
 }
 
 void Session::setStorageGroup(const string& storageGroupId) {
-  defaultSessionConnection_->setStorageGroup(storageGroupId);
+  impl_->defaultSessionConnection_->setStorageGroup(storageGroupId);
 }
 
 void Session::deleteStorageGroup(const string& storageGroup) {
@@ -1716,7 +1830,7 @@ void Session::deleteStorageGroup(const string& storageGroup) {
 }
 
 void Session::deleteStorageGroups(const vector<string>& storageGroups) {
-  defaultSessionConnection_->deleteStorageGroups(storageGroups);
+  impl_->defaultSessionConnection_->deleteStorageGroups(storageGroups);
 }
 
 void Session::createDatabase(const string& database) {
@@ -1765,7 +1879,7 @@ void Session::createTimeseries(const string& path, TSDataType::TSDataType dataTy
   if (!measurementAlias.empty()) {
     req.__set_measurementAlias(measurementAlias);
   }
-  defaultSessionConnection_->createTimeseries(req);
+  impl_->defaultSessionConnection_->createTimeseries(req);
 }
 
 void Session::createMultiTimeseries(const vector<string>& paths,
@@ -1814,7 +1928,7 @@ void Session::createMultiTimeseries(const vector<string>& paths,
     request.__set_measurementAliasList(*measurementAliasList);
   }
 
-  defaultSessionConnection_->createMultiTimeseries(request);
+  impl_->defaultSessionConnection_->createMultiTimeseries(request);
 }
 
 void Session::createAlignedTimeseries(
@@ -1847,7 +1961,7 @@ void Session::createAlignedTimeseries(
   }
   request.__set_compressors(compressorsOrdinal);
 
-  defaultSessionConnection_->createAlignedTimeseries(request);
+  impl_->defaultSessionConnection_->createAlignedTimeseries(request);
 }
 
 bool Session::checkTimeseriesExists(const string& path) {
@@ -1865,7 +1979,7 @@ bool Session::checkTimeseriesExists(const string& path) {
   }
 }
 
-shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
+shared_ptr<SessionConnection> Session::Impl::getQuerySessionConnection() {
   auto endPoint = nodesSupplier_->getQueryEndPoint();
   if (!endPoint.is_initialized() || endPointToSessionConnection.empty()) {
     return defaultSessionConnection_;
@@ -1884,12 +1998,12 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     endPointToSessionConnection.emplace(endPoint.value(), newConnection);
     return newConnection;
   } catch (exception& e) {
-    log_debug("Session::getQuerySessionConnection() exception: " + e.what());
+    log_debug("Session::Impl::getQuerySessionConnection() exception: " + e.what());
     return newConnection;
   }
 }
 
-shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId) {
+shared_ptr<SessionConnection> Session::Impl::getSessionConnection(std::string deviceId) {
   if (!enableRedirection_ || deviceIdToEndpoint.find(deviceId) == deviceIdToEndpoint.end() ||
       endPointToSessionConnection.find(deviceIdToEndpoint[deviceId]) ==
           endPointToSessionConnection.end()) {
@@ -1899,7 +2013,7 @@ shared_ptr<SessionConnection> Session::getSessionConnection(std::string deviceId
 }
 
 shared_ptr<SessionConnection>
-Session::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId) {
+Session::Impl::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId) {
   if (!enableRedirection_ ||
       tableModelDeviceIdToEndpoint.find(deviceId) == tableModelDeviceIdToEndpoint.end() ||
       endPointToSessionConnection.find(tableModelDeviceIdToEndpoint[deviceId]) ==
@@ -1910,15 +2024,15 @@ Session::getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId) {
 }
 
 string Session::getTimeZone() {
-  auto ret = defaultSessionConnection_->getTimeZone();
+  auto ret = impl_->defaultSessionConnection_->getTimeZone();
   return ret.timeZone;
 }
 
 void Session::setTimeZone(const string& zoneId) {
   TSSetTimeZoneReq req;
-  req.__set_sessionId(defaultSessionConnection_->sessionId);
+  req.__set_sessionId(impl_->defaultSessionConnection_->sessionId);
   req.__set_timeZone(zoneId);
-  defaultSessionConnection_->setTimeZone(req);
+  impl_->defaultSessionConnection_->setTimeZone(req);
 }
 
 unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql) {
@@ -1929,7 +2043,7 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string& sql, int
   return executeQueryStatementMayRedirect(sql, timeoutInMs);
 }
 
-void Session::handleQueryRedirection(TEndPoint endPoint) {
+void Session::Impl::handleQueryRedirection(TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
   shared_ptr<SessionConnection> newConnection;
@@ -1950,7 +2064,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
   defaultSessionConnection_ = newConnection;
 }
 
-void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
+void Session::Impl::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
   if (endPoint.ip == "127.0.0.1")
@@ -1974,8 +2088,8 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
   }
 }
 
-void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId,
-                                TEndPoint endPoint) {
+void Session::Impl::handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId,
+                                      TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
   if (endPoint.ip == "127.0.0.1")
@@ -2001,7 +2115,7 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
 
 std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const std::string& sql,
                                                                           int64_t timeoutInMs) {
-  auto sessionConnection = getQuerySessionConnection();
+  auto sessionConnection = impl_->getQuerySessionConnection();
   if (!sessionConnection) {
     log_warn("Session connection not found");
     return nullptr;
@@ -2010,9 +2124,9 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
     return sessionConnection->executeQueryStatement(sql, timeoutInMs);
   } catch (RedirectException& e) {
     log_warn("Session connection redirect exception: " + e.what());
-    handleQueryRedirection(e.endPoint);
+    impl_->handleQueryRedirection(endpointToThrift(e.endPoint));
     try {
-      return defaultSessionConnection_->executeQueryStatement(sql, timeoutInMs);
+      return impl_->defaultSessionConnection_->executeQueryStatement(sql, timeoutInMs);
     } catch (exception& e) {
       log_error("Exception while executing redirected query statement: %s", e.what());
       throw ExecutionException(e.what());
@@ -2025,7 +2139,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
 
 void Session::executeNonQueryStatement(const string& sql) {
   try {
-    defaultSessionConnection_->executeNonQueryStatement(sql);
+    impl_->defaultSessionConnection_->executeNonQueryStatement(sql);
   } catch (const exception& e) {
     throw IoTDBException(e.what());
   }
@@ -2033,7 +2147,7 @@ void Session::executeNonQueryStatement(const string& sql) {
 
 unique_ptr<SessionDataSet> Session::executeRawDataQuery(const vector<string>& paths,
                                                         int64_t startTime, int64_t endTime) {
-  return defaultSessionConnection_->executeRawDataQuery(paths, startTime, endTime);
+  return impl_->defaultSessionConnection_->executeRawDataQuery(paths, startTime, endTime);
 }
 
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& paths) {
@@ -2042,28 +2156,28 @@ unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& p
 
 unique_ptr<SessionDataSet> Session::executeLastDataQuery(const vector<string>& paths,
                                                          int64_t lastTime) {
-  return defaultSessionConnection_->executeLastDataQuery(paths, lastTime);
+  return impl_->defaultSessionConnection_->executeLastDataQuery(paths, lastTime);
 }
 
 void Session::createSchemaTemplate(const Template& templ) {
   TSCreateSchemaTemplateReq req;
   req.__set_name(templ.getName());
   req.__set_serializedTemplate(templ.serialize());
-  defaultSessionConnection_->createSchemaTemplate(req);
+  impl_->defaultSessionConnection_->createSchemaTemplate(req);
 }
 
 void Session::setSchemaTemplate(const string& template_name, const string& prefix_path) {
   TSSetSchemaTemplateReq req;
   req.__set_templateName(template_name);
   req.__set_prefixPath(prefix_path);
-  defaultSessionConnection_->setSchemaTemplate(req);
+  impl_->defaultSessionConnection_->setSchemaTemplate(req);
 }
 
 void Session::unsetSchemaTemplate(const string& prefix_path, const string& template_name) {
   TSUnsetSchemaTemplateReq req;
   req.__set_templateName(template_name);
   req.__set_prefixPath(prefix_path);
-  defaultSessionConnection_->unsetSchemaTemplate(req);
+  impl_->defaultSessionConnection_->unsetSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(
@@ -2097,7 +2211,7 @@ void Session::addAlignedMeasurementsInTemplate(
   }
   req.__set_compressors(compressorsOrdinal);
 
-  defaultSessionConnection_->appendSchemaTemplate(req);
+  impl_->defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addAlignedMeasurementsInTemplate(const string& template_name,
@@ -2143,7 +2257,7 @@ void Session::addUnalignedMeasurementsInTemplate(
   }
   req.__set_compressors(compressorsOrdinal);
 
-  defaultSessionConnection_->appendSchemaTemplate(req);
+  impl_->defaultSessionConnection_->appendSchemaTemplate(req);
 }
 
 void Session::addUnalignedMeasurementsInTemplate(const string& template_name,
@@ -2163,14 +2277,14 @@ void Session::deleteNodeInTemplate(const string& template_name, const string& pa
   TSPruneSchemaTemplateReq req;
   req.__set_name(template_name);
   req.__set_path(path);
-  defaultSessionConnection_->pruneSchemaTemplate(req);
+  impl_->defaultSessionConnection_->pruneSchemaTemplate(req);
 }
 
 int Session::countMeasurementsInTemplate(const string& template_name) {
   TSQueryTemplateReq req;
   req.__set_name(template_name);
   req.__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
-  TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.count;
 }
 
@@ -2179,7 +2293,7 @@ bool Session::isMeasurementInTemplate(const string& template_name, const string&
   req.__set_name(template_name);
   req.__set_measurement(path);
   req.__set_queryType(TemplateQueryType::IS_MEASUREMENT);
-  TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.result;
 }
 
@@ -2188,7 +2302,7 @@ bool Session::isPathExistInTemplate(const string& template_name, const string& p
   req.__set_name(template_name);
   req.__set_measurement(path);
   req.__set_queryType(TemplateQueryType::PATH_EXIST);
-  TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.result;
 }
 
@@ -2197,7 +2311,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
   req.__set_name(template_name);
   req.__set_measurement("");
   req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-  TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.measurements;
 }
 
@@ -2207,7 +2321,7 @@ std::vector<std::string> Session::showMeasurementsInTemplate(const string& templ
   req.__set_name(template_name);
   req.__set_measurement(pattern);
   req.__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
-  TSQueryTemplateResp resp = defaultSessionConnection_->querySchemaTemplate(req);
+  TSQueryTemplateResp resp = impl_->defaultSessionConnection_->querySchemaTemplate(req);
   return resp.measurements;
 }
 

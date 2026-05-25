@@ -32,19 +32,11 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <future>
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/protocol/TCompactProtocol.h>
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TTransportException.h>
-#include <thrift/transport/TBufferTransports.h>
-#include "IClientRPCService.h"
-#include "NodesSupplier.h"
 #include "AbstractSessionBuilder.h"
-#include "SessionConnection.h"
-#include "SessionDataSet.h"
-#include "DeviceID.h"
 #include "Common.h"
+#include "Date.h"
+#include "DeviceID.h"
+#include "SessionDataSet.h"
 
 //== For compatible with Windows OS ==
 #ifndef LONG_LONG_MIN
@@ -52,15 +44,6 @@
 #endif
 
 using namespace std;
-
-using ::apache::thrift::TException;
-using ::apache::thrift::protocol::TBinaryProtocol;
-using ::apache::thrift::protocol::TCompactProtocol;
-using ::apache::thrift::transport::TBufferedTransport;
-using ::apache::thrift::transport::TFramedTransport;
-using ::apache::thrift::transport::TSocket;
-using ::apache::thrift::transport::TTransport;
-using ::apache::thrift::transport::TTransportException;
 
 template <typename T, typename Target> void safe_cast(const T& value, Target& target) {
   /*
@@ -282,8 +265,7 @@ public:
       break;
     }
     case TSDataType::DATE: {
-      safe_cast<T, boost::gregorian::date>(value,
-                                           ((boost::gregorian::date*)values[schemaId])[rowIndex]);
+      safe_cast<T, IoTdbDate>(value, ((IoTdbDate*)values[schemaId])[rowIndex]);
       break;
     }
     case TSDataType::TIMESTAMP:
@@ -391,7 +373,7 @@ public:
     case TSDataType::INT32:
       return &(reinterpret_cast<int32_t*>(values[schemaId])[rowIndex]);
     case TSDataType::DATE:
-      return &(reinterpret_cast<boost::gregorian::date*>(values[schemaId])[rowIndex]);
+      return &(reinterpret_cast<IoTdbDate*>(values[schemaId])[rowIndex]);
     case TSDataType::TIMESTAMP:
     case TSDataType::INT64:
       return &(reinterpret_cast<int64_t*>(values[schemaId])[rowIndex]);
@@ -574,213 +556,33 @@ private:
   bool is_aligned_;
 };
 
+class SessionConnection;
+class TableSession;
+
 class Session {
-private:
-  std::string host_;
-  int rpcPort_;
-  bool useSSL_ = false;
-  std::string trustCertFilePath_;
-  std::vector<string> nodeUrls_;
-  std::string username_;
-  std::string password_;
-  const TSProtocolVersion::type protocolVersion_ = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
-  bool isClosed_ = true;
-  std::string zoneId_;
-  int fetchSize_;
-  const static int DEFAULT_FETCH_SIZE = 10000;
-  const static int DEFAULT_TIMEOUT_MS = 0;
-  int connectTimeoutMs_;
-  Version::Version version;
-  std::string sqlDialect_ = "tree"; // default sql dialect
-  std::string database_;
-  bool enableAutoFetch_ = true;
-  bool enableRedirection_ = true;
-  std::shared_ptr<INodesSupplier> nodesSupplier_;
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
   friend class SessionConnection;
   friend class TableSession;
-  std::shared_ptr<SessionConnection> defaultSessionConnection_;
-
-  TEndPoint defaultEndPoint_;
-
-  struct TEndPointHash {
-    size_t operator()(const TEndPoint& endpoint) const {
-      return std::hash<std::string>()(endpoint.ip) ^ std::hash<int>()(endpoint.port);
-    }
-  };
-
-  struct TEndPointEqual {
-    bool operator()(const TEndPoint& lhs, const TEndPoint& rhs) const {
-      return lhs.ip == rhs.ip && lhs.port == rhs.port;
-    }
-  };
-
-  using EndPointSessionMap =
-      std::unordered_map<TEndPoint, shared_ptr<SessionConnection>, TEndPointHash, TEndPointEqual>;
-  EndPointSessionMap endPointToSessionConnection;
-  std::unordered_map<std::string, TEndPoint> deviceIdToEndpoint;
-  std::unordered_map<std::shared_ptr<storage::IDeviceID>, TEndPoint> tableModelDeviceIdToEndpoint;
-
-private:
-  void removeBrokenSessionConnection(shared_ptr<SessionConnection> sessionConnection);
-
-  static bool checkSorted(const Tablet& tablet);
-
-  static bool checkSorted(const std::vector<int64_t>& times);
-
-  static void sortTablet(Tablet& tablet);
-
-  static void sortIndexByTimestamp(int* index, std::vector<int64_t>& timestamps, int length);
-
-  void appendValues(std::string& buffer, const char* value, int size);
-
-  void putValuesIntoBuffer(const std::vector<TSDataType::TSDataType>& types,
-                           const std::vector<char*>& values, std::string& buf);
-
-  int8_t getDataTypeNumber(TSDataType::TSDataType type);
-
-  struct TsCompare {
-    std::vector<int64_t>& timestamps;
-
-    explicit TsCompare(std::vector<int64_t>& inTimestamps) : timestamps(inTimestamps){};
-
-    bool operator()(int i, int j) {
-      return (timestamps[i] < timestamps[j]);
-    };
-  };
-
-  std::string getVersionString(Version::Version version);
-
-  void initZoneId();
-
-  void initNodesSupplier(const std::vector<std::string>& nodeUrls = std::vector<std::string>());
-
-  void initDefaultSessionConnection();
-
-  template <typename T, typename InsertConsumer>
-  void insertByGroup(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup,
-                     InsertConsumer insertConsumer);
-
-  template <typename T, typename InsertConsumer>
-  void insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup,
-                  InsertConsumer insertConsumer);
-
-  void insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
-                                          vector<vector<string>> measurementsList,
-                                          vector<vector<string>> valuesList, bool isAligned);
-
-  void insertRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
-                                    vector<vector<string>> measurementsList,
-                                    const vector<vector<TSDataType::TSDataType>>& typesList,
-                                    vector<vector<char*>> valuesList, bool isAligned);
-
-  void insertTabletsWithLeaderCache(unordered_map<string, Tablet*> tablets, bool sorted,
-                                    bool isAligned);
-
-  shared_ptr<SessionConnection> getQuerySessionConnection();
-
-  shared_ptr<SessionConnection> getSessionConnection(std::string deviceId);
-
-  shared_ptr<SessionConnection> getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId);
-
-  void handleQueryRedirection(TEndPoint endPoint);
-
-  void handleRedirection(const std::string& deviceId, TEndPoint endPoint);
-
-  void handleRedirection(const std::shared_ptr<storage::IDeviceID>& deviceId, TEndPoint endPoint);
-
-  void setSqlDialect(const std::string& dialect) {
-    this->sqlDialect_ = dialect;
-  }
-
-  void setDatabase(const std::string& database) {
-    this->database_ = database;
-  }
-
-  string getDatabase() {
-    return database_;
-  }
-
-  void changeDatabase(string database) {
-    this->database_ = database;
-  }
 
 public:
-  Session(const std::string& host, int rpcPort)
-      : username_("root"), password_("root"), version(Version::V_1_0) {
-    this->host_ = host;
-    this->rpcPort_ = rpcPort;
-    initZoneId();
-    initNodesSupplier();
-  }
-
-  Session(const std::vector<string>& nodeUrls, const std::string& username,
-          const std::string& password)
-      : nodeUrls_(nodeUrls), username_(username), password_(password), version(Version::V_1_0) {
-    initZoneId();
-    initNodesSupplier(this->nodeUrls_);
-  }
-
+  Session(const std::string& host, int rpcPort);
+  Session(const std::vector<std::string>& nodeUrls, const std::string& username,
+          const std::string& password);
   Session(const std::string& host, int rpcPort, const std::string& username,
-          const std::string& password)
-      : fetchSize_(DEFAULT_FETCH_SIZE) {
-    this->host_ = host;
-    this->rpcPort_ = rpcPort;
-    this->username_ = username;
-    this->password_ = password;
-    this->version = Version::V_1_0;
-    initZoneId();
-    initNodesSupplier();
-  }
-
+          const std::string& password);
   Session(const std::string& host, int rpcPort, const std::string& username,
-          const std::string& password, const std::string& zoneId,
-          int fetchSize = DEFAULT_FETCH_SIZE) {
-    this->host_ = host;
-    this->rpcPort_ = rpcPort;
-    this->username_ = username;
-    this->password_ = password;
-    this->zoneId_ = zoneId;
-    this->fetchSize_ = fetchSize;
-    this->version = Version::V_1_0;
-    initZoneId();
-    initNodesSupplier();
-  }
-
+          const std::string& password, const std::string& zoneId, int fetchSize = 10000);
   Session(const std::string& host, const std::string& rpcPort, const std::string& username = "user",
           const std::string& password = "password", const std::string& zoneId = "",
-          int fetchSize = DEFAULT_FETCH_SIZE) {
-    this->host_ = host;
-    this->rpcPort_ = stoi(rpcPort);
-    this->username_ = username;
-    this->password_ = password;
-    this->zoneId_ = zoneId;
-    this->fetchSize_ = fetchSize;
-    this->version = Version::V_1_0;
-    initZoneId();
-    initNodesSupplier();
-  }
-
-  Session(AbstractSessionBuilder* builder) {
-    this->host_ = builder->host;
-    this->rpcPort_ = builder->rpcPort;
-    this->username_ = builder->username;
-    this->password_ = builder->password;
-    this->zoneId_ = builder->zoneId;
-    this->fetchSize_ = builder->fetchSize;
-    this->version = Version::V_1_0;
-    this->sqlDialect_ = builder->sqlDialect;
-    this->database_ = builder->database;
-    this->enableAutoFetch_ = builder->enableAutoFetch;
-    this->enableRedirection_ = builder->enableRedirections;
-    this->connectTimeoutMs_ = builder->connectTimeoutMs;
-    this->nodeUrls_ = builder->nodeUrls;
-    this->useSSL_ = builder->useSSL;
-    this->trustCertFilePath_ = builder->trustCertFilePath;
-    initZoneId();
-    initNodesSupplier(this->nodeUrls_);
-  }
-
+          int fetchSize = 10000);
+  Session(AbstractSessionBuilder* builder);
   ~Session();
+
+  void setSqlDialect(const std::string& dialect);
+  void setDatabase(const std::string& database);
+  std::string getDatabase();
+  void changeDatabase(const std::string& database);
 
   void open();
 
@@ -858,19 +660,7 @@ public:
 
   void insertRelationalTablet(Tablet& tablet);
 
-  void insertRelationalTabletOnce(
-      const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
-      bool sorted);
-
-  void insertRelationalTabletByGroup(
-      const std::unordered_map<std::shared_ptr<SessionConnection>, Tablet>& relationalTabletGroup,
-      bool sorted);
-
   void insertRelationalTablet(Tablet& tablet, bool sorted);
-
-  static void buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, bool sorted);
-
-  void insertTablet(TSInsertTabletReq request);
 
   void insertAlignedTablet(Tablet& tablet);
 
@@ -1007,80 +797,5 @@ public:
 
   bool checkTemplateExists(const std::string& template_name);
 };
-
-template <typename T, typename InsertConsumer>
-void Session::insertByGroup(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup,
-                            InsertConsumer insertConsumer) {
-  std::vector<std::future<void>> futures;
-
-  for (auto& entry : insertGroup) {
-    auto connection = entry.first;
-    auto& req = entry.second;
-    futures.emplace_back(std::async(std::launch::async, [=, &req]() mutable {
-      try {
-        insertConsumer(connection, req);
-      } catch (const RedirectException& e) {
-        for (const auto& deviceEndPoint : e.deviceEndPointMap) {
-          handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
-        }
-      } catch (const IoTDBConnectionException& e) {
-        if (endPointToSessionConnection.size() > 1) {
-          removeBrokenSessionConnection(connection);
-          try {
-            insertConsumer(defaultSessionConnection_, req);
-          } catch (const RedirectException&) {
-          }
-        } else {
-          throw;
-        }
-      } catch (const std::exception& e) {
-        log_debug(e.what());
-        throw IoTDBException(e.what());
-      }
-    }));
-  }
-
-  std::string errorMessages;
-  for (auto& f : futures) {
-    try {
-      f.get();
-    } catch (const IoTDBConnectionException& e) {
-      throw;
-    } catch (const std::exception& e) {
-      if (!errorMessages.empty()) {
-        errorMessages += ";";
-      }
-      errorMessages += e.what();
-    }
-  }
-
-  if (!errorMessages.empty()) {
-    throw StatementExecutionException(errorMessages);
-  }
-}
-
-template <typename T, typename InsertConsumer>
-void Session::insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, T>& insertGroup,
-                         InsertConsumer insertConsumer) {
-  auto connection = insertGroup.begin()->first;
-  auto req = insertGroup.begin()->second;
-  try {
-    insertConsumer(connection, req);
-  } catch (const RedirectException& e) {
-    for (const auto& deviceEndPoint : e.deviceEndPointMap) {
-      handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
-    }
-  } catch (const IoTDBConnectionException& e) {
-    if (endPointToSessionConnection.size() > 1) {
-      removeBrokenSessionConnection(connection);
-      try {
-        insertConsumer(defaultSessionConnection_, req);
-      } catch (const RedirectException& e) {
-      }
-    } else {
-      throw;
-    }
-  }
-}
 
 #endif // IOTDB_SESSION_H

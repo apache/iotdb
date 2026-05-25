@@ -21,7 +21,7 @@
 
 #include <vector>
 #include <atomic>
-#include <boost/optional.hpp>
+#include "Optional.h"
 #include <mutex>
 #include <chrono>
 #include <thread>
@@ -41,7 +41,7 @@ public:
 class INodesSupplier {
 public:
   virtual ~INodesSupplier() = default;
-  virtual boost::optional<TEndPoint> getQueryEndPoint() = 0;
+  virtual Optional<TEndPoint> getQueryEndPoint() = 0;
   virtual std::vector<TEndPoint> getEndPointList() = 0;
   using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
 };
@@ -51,7 +51,7 @@ public:
   explicit StaticNodesSupplier(const std::vector<TEndPoint>& nodes,
                                NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-  boost::optional<TEndPoint> getQueryEndPoint() override;
+  Optional<TEndPoint> getQueryEndPoint() override;
 
   std::vector<TEndPoint> getEndPointList() override;
 
@@ -97,7 +97,7 @@ public:
 
   std::vector<TEndPoint> getEndPointList() override;
 
-  boost::optional<TEndPoint> getQueryEndPoint() override;
+  Optional<TEndPoint> getQueryEndPoint() override;
 
   ~NodesSupplier() override;
 
