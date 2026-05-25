@@ -104,14 +104,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-
-    if (isTabletBatchModeEnabled) {
-      LOGGER.warn(
-          "Batch mode is enabled by the given parameters. "
-              + "IoTDBAirGapConnector does not support batch mode. "
-              + "Disable batch mode.");
-    }
-
     for (int i = 0; i < nodeUrls.size(); i++) {
       isSocketAlive.add(false);
       sockets.add(null);
@@ -323,14 +315,16 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
   protected boolean send(
       final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
       throws IOException {
+    bytes = compressIfNeeded(bytes);
+    rateLimitIfNeeded(pipeName, creationTime, socket.getEndPoint(), bytes.length);
+    return sendBytes(socket, bytes);
+  }
+
+  protected boolean sendBytes(final AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       throw new SocketException(
           String.format("Socket %s is closed, will try to handshake", socket));
     }
-
-    bytes = compressIfNeeded(bytes);
-
-    rateLimitIfNeeded(pipeName, creationTime, socket.getEndPoint(), bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);
