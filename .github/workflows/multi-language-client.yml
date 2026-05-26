@@ -5,7 +5,6 @@ on:
       - master
       - "rc/*"
     paths:
-      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -13,13 +12,15 @@ on:
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
+      - '.github/workflows/client-cpp-source-build.yml'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
   pull_request:
     branches:
       - master
       - "rc/*"
       - 'force_ci/**'
     paths:
-      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
@@ -27,6 +28,9 @@ on:
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
+      - '.github/workflows/client-cpp-source-build.yml'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -54,7 +58,6 @@ jobs:
         with:
           filters: |
             cpp:
-              - 'pom.xml'
               - 'iotdb-client/pom.xml'
               - 'iotdb-client/client-cpp/**'
               - 'example/client-cpp-example/**'
@@ -62,6 +65,8 @@ jobs:
               - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/multi-language-client.yml'
               - '.github/workflows/client-cpp-source-build.yml'
+              - '.github/workflows/client-cpp-package.yml'
+              - '.github/scripts/package-client-cpp-*.sh'
             python:
               - 'pom.xml'
               - 'iotdb-client/pom.xml'

@@ -79,7 +79,7 @@ deployment environment:
 | Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
 | Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64` |
+| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64-glibc231` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows + Visual Studio 2015 | `windows-x86_64-vs2015` |
@@ -311,22 +311,22 @@ as a separate install artifact.
 
 ```cpp
 #include "Session.h"
-#include <memory>
-#include <iostream>
+    #include <memory>
+    #include <iostream>
 
-int main() {
+    int main() {
     auto session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
-    session->open(false);
-    session->setStorageGroup("root.test01");
-    if (!session->checkTimeseriesExists("root.test01.d0.s0")) {
+        session->open(false);
+        session->setStorageGroup("root.test01");
+        if (!session->checkTimeseriesExists("root.test01.d0.s0")) {
         session->createTimeseries(
             "root.test01.d0.s0",
             TSDataType::INT64,
             TSEncoding::RLE,
             CompressionType::SNAPPY);
     }
-    session->close();
-}
+        session->close();
+    }
 ```
 
 Compile against the produced SDK:

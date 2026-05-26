@@ -14,6 +14,9 @@ on:
       - "site/**"
       - "iotdb-client/client-cpp/**"
       - "example/client-cpp-example/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/workflows/client-cpp-source-build.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
   pull_request:
     branches:
       - master
@@ -26,6 +29,9 @@ on:
       - "site/**"
       - "iotdb-client/client-cpp/**"
       - "example/client-cpp-example/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/workflows/client-cpp-source-build.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
   # allow manually run the action:
   workflow_dispatch:
 

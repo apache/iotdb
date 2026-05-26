@@ -52,10 +52,15 @@ jobs:
         with:
           filters: |
             cpp:
-              - 'pom.xml'
-              - 'iotdb-client/**'
-              - 'iotdb-protocol/**'
+              - 'iotdb-client/client-cpp/**'
+              - 'iotdb-client/pom.xml'
+              - 'example/client-cpp-example/**'
+              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/client-cpp-package.yml'
+              - '.github/workflows/client-cpp-source-build.yml'
+              - '.github/scripts/package-client-cpp-*.sh'
+              - '.github/scripts/package-client-cpp-*.sh'
       - id: result
         shell: bash
         run: |
@@ -123,7 +128,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"1.67.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -181,42 +186,33 @@ jobs:
           path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-x86_64-glibc217.zip
           if-no-files-found: error
 
-  package-linux-aarch64:
-    name: Package (linux-aarch64)
+  package-linux-aarch64-glibc231:
+    name: Package (linux-aarch64-glibc231)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
     runs-on: ubuntu-22.04-arm
+    container:
+      image: ubuntu:20.04
     steps:
       - uses: actions/checkout@v5
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-      - name: Install C++ dependencies (Linux aarch64)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: linux-aarch64-m2-${{ hashFiles('**/pom.xml') }}
+          key: linux-aarch64-glibc231-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            linux-aarch64-m2-
-      - name: Package client-cpp
+            linux-aarch64-glibc231-m2-
+      - name: Package client-cpp (glibc 2.31 baseline)
         shell: bash
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-            -Dspotless.skip=true
+          chmod +x .github/scripts/package-client-cpp-ubuntu20-arm.sh
+          .github/scripts/package-client-cpp-ubuntu20-arm.sh
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-linux-aarch64
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-aarch64.zip
+          name: client-cpp-linux-aarch64-glibc231
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-aarch64-glibc231.zip
           if-no-files-found: error
 
   package-macos:
@@ -302,9 +298,19 @@ jobs:
         shell: pwsh
         run: |
           choco install winflexbison3 -y --no-progress
-          choco install ${{ matrix.boost_choco }} -y --no-progress
-          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
-          echo $boost_path >> $env:GITHUB_PATH
+          $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
+          if ('${{ matrix.boost_choco_version }}' -ne '') {
+            $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
+          }
+          & choco @boostArgs
+          if (-not (Test-Path 'C:\local')) {
+            New-Item -ItemType Directory -Path 'C:\local' -Force | Out-Null
+          }
+          $boostDir = Get-ChildItem -Path 'C:\local\' -Filter 'boost_*' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $boostDir) {
+            throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
+          }
+          echo $boostDir.FullName >> $env:GITHUB_PATH
           choco install openssl -y --no-progress
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH

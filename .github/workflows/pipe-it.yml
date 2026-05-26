@@ -11,6 +11,9 @@ on:
       - "site/**"
       - "iotdb-client/client-cpp/**"
       - "example/client-cpp-example/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/workflows/client-cpp-source-build.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
       - "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/**" #queryengine
   pull_request:
     branches:
@@ -23,6 +26,9 @@ on:
       - "site/**"
       - "iotdb-client/client-cpp/**"
       - "example/client-cpp-example/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/workflows/client-cpp-source-build.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
       - "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/**" #queryengine
   # allow manually run the action:
   workflow_dispatch:
