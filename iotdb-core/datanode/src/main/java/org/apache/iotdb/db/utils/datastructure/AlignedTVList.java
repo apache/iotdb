@@ -1149,8 +1149,7 @@ public abstract class AlignedTVList extends TVList {
       } else {
         allocateValueArray = columns != null && columns[i] != null;
       }
-      size +=
-          allocateValueArray ? valueListArrayMemCost(type) : emptyValueListArrayMemCost();
+      size += allocateValueArray ? valueListArrayMemCost(type) : emptyValueListArrayMemCost();
     }
     if (fieldColumnCount == 0) {
       return 0;
@@ -1164,9 +1163,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static long alignedTvListArrayMemCost(
-      TSDataType[] types,
-      TsTableColumnCategory[] columnCategories,
-      Object[] values) {
+      TSDataType[] types, TsTableColumnCategory[] columnCategories, Object[] values) {
     return alignedTvListArrayMemCost(types, columnCategories, values, null, null);
   }
 
@@ -1235,8 +1232,7 @@ public abstract class AlignedTVList extends TVList {
     // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
       // skip empty row
-      if (ignoreAllNullRows
-          && isEmptyValueRowAtValueIndex(getValueIndex(sortedRowIndex))) {
+      if (ignoreAllNullRows && isEmptyValueRowAtValueIndex(getValueIndex(sortedRowIndex))) {
         continue;
       }
       if (isTimeDeleted(sortedRowIndex)) {
@@ -1244,8 +1240,7 @@ public abstract class AlignedTVList extends TVList {
       }
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < rowCount
-          && ((ignoreAllNullRows
-                  && isEmptyValueRowAtValueIndex(getValueIndex(nextRowIndex)))
+          && ((ignoreAllNullRows && isEmptyValueRowAtValueIndex(getValueIndex(nextRowIndex)))
               || (isTimeDeleted(nextRowIndex)))) {
         nextRowIndex++;
       }
@@ -1278,8 +1273,7 @@ public abstract class AlignedTVList extends TVList {
       currentWriteRowIndex = 0;
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip empty row
-        if ((ignoreAllNullRows
-                && isEmptyValueRowAtValueIndex(getValueIndex(sortedRowIndex)))
+        if ((ignoreAllNullRows && isEmptyValueRowAtValueIndex(getValueIndex(sortedRowIndex)))
             || (isTimeDeleted(sortedRowIndex))) {
           continue;
         }
@@ -1698,9 +1692,7 @@ public abstract class AlignedTVList extends TVList {
     return true;
   }
 
-  /**
-   * Whether the row has no value columns for ignore-all-null-rows optimization (query / flush).
-   */
+  /** Whether the row has no value columns for ignore-all-null-rows optimization (query / flush). */
   public boolean isEmptyValueRowAtValueIndex(int valueIndex) {
     if (allValueColDeletedMap != null && valueIndex < allValueColDeletedMap.getSize()) {
       return allValueColDeletedMap.isMarked(valueIndex);

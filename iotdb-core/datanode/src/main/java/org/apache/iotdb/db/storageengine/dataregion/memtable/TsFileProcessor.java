@@ -910,8 +910,7 @@ public class TsFileProcessor {
           if (alignedMemChunk != null) {
             memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
           } else {
-            memTableIncrement +=
-                AlignedTVList.alignedTvListArrayMemCost(dataTypes, null, values);
+            memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, null, values);
           }
         }
         if (alignedMemChunk != null) {
@@ -1091,8 +1090,7 @@ public class TsFileProcessor {
           incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
               + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
       boolean[] columnHasNonNull =
-          buildAlignedColumnHasNonNull(
-              dataTypes, columns, bitMaps, columnCategories, start, end);
+          buildAlignedColumnHasNonNull(dataTypes, columns, bitMaps, columnCategories, start, end);
       memIncrements[0] +=
           numArraysToAdd
               * AlignedTVList.alignedTvListArrayMemCost(
@@ -1180,7 +1178,8 @@ public class TsFileProcessor {
         continue;
       }
       columnHasNonNull[i] =
-          alignedColumnHasNonNullInRange(columns[i], bitMaps == null ? null : bitMaps[i], start, end);
+          alignedColumnHasNonNullInRange(
+              columns[i], bitMaps == null ? null : bitMaps[i], start, end);
     }
     return columnHasNonNull;
   }

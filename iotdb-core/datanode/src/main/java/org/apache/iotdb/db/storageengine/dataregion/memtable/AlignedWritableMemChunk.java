@@ -939,8 +939,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     return memCostIncrement;
   }
 
-  private static boolean columnHasNonNullInRange(
-      Object column, BitMap bitMap, int start, int end) {
+  private static boolean columnHasNonNullInRange(Object column, BitMap bitMap, int start, int end) {
     if (bitMap == null) {
       return true;
     }
