@@ -65,7 +65,8 @@ During configure CMake will, in order:
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
 The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
-land at `iotdb-client/client-cpp/target/client-cpp-<version>-cpp-<classifier>.zip`,
+land at `iotdb-client/client-cpp/target/client-cpp-<version>-<classifier>.zip`
+(with `include/` and `lib/` under `client-cpp-<version>-<classifier>/` inside the zip),
 where `<classifier>` defaults to the OS name (for example `linux-x86_64`) and
 can be overridden with `-Dclient.cpp.package.classifier=...` when building
 multiple toolchains on the same platform.
@@ -88,7 +89,7 @@ deployment environment:
 | Windows + Visual Studio 2026 | `windows-x86_64-vs2026` |
 
 Example file name:
-`client-cpp-2.0.7-SNAPSHOT-cpp-linux-x86_64-glibc217.zip`.
+`client-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc217.zip`.
 
 Thrift **0.21.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
@@ -287,10 +288,10 @@ JDK 11+).
 ## Package layout
 
 A successful `mvn ... package` produces
-`target/client-cpp-<version>-cpp-<os>.zip` with the historical layout:
+`target/client-cpp-<version>-<classifier>.zip` with this layout:
 
 ```
-.
+client-cpp-<version>-<classifier>/
 ├── include/
 │   ├── Session.h
 │   ├── SessionC.h

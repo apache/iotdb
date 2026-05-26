@@ -40,7 +40,7 @@
 
 CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml)）
 会按平台/工具链打出多份 zip，文件名形如
-`client-cpp-<version>-cpp-<classifier>.zip`。请按目标环境选择：
+`client-cpp-<version>-<classifier>.zip`（解压后为 `client-cpp-<version>-<classifier>/`，内含 `include/` 与 `lib/`）。请按目标环境选择：
 
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|

@@ -19,16 +19,17 @@
   -->
 <!--
   The CMake build installs everything (headers + libs) into
-  ${cmake.install.prefix} = target/install. We simply mirror that tree into
-  the zip's include/ and lib/ directories.
+  ${cmake.install.prefix} = target/install. Package layout:
+  client-cpp-<version>-<classifier>/{include,lib}
 -->
 <assembly>
-    <id>cpp-${client.cpp.package.classifier}</id>
+    <id>${client.cpp.package.classifier}</id>
     <formats>
         <format>zip</format>
         <format>dir</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>${project.artifactId}-${project.version}-${client.cpp.package.classifier}</baseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}/install/include</directory>

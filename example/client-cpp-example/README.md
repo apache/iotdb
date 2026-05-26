@@ -41,7 +41,7 @@ user `root` / `root`).
 
 Release CI ([client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml))
 publishes one zip per platform/toolchain:
-`client-cpp-<version>-cpp-<classifier>.zip`.
+`client-cpp-<version>-<classifier>.zip` (root folder `client-cpp-<version>-<classifier>/` with `include/` and `lib/`).
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|

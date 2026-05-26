@@ -182,11 +182,27 @@ jobs:
             -e GITHUB_WORKSPACE=/work \
             quay.io/centos/centos:7 \
             bash .github/scripts/package-client-cpp-centos7.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-x86_64-glibc217.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-linux-x86_64-glibc217
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-x86_64-glibc217.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
           if-no-files-found: error
 
   package-linux-aarch64-glibc231:
@@ -215,11 +231,27 @@ jobs:
             -e GITHUB_WORKSPACE=/work \
             ubuntu:20.04 \
             bash .github/scripts/package-client-cpp-ubuntu20-arm.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-aarch64-glibc231.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-linux-aarch64-glibc231
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-aarch64-glibc231.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
           if-no-files-found: error
 
   package-macos:
@@ -267,11 +299,24 @@ jobs:
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
           if-no-files-found: error
 
   package-windows:
@@ -342,9 +387,22 @@ jobs:
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
           "${MVN_ARGS[@]}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*-${{ matrix.package_classifier }}.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-${{ matrix.package_classifier }}.zip
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
           if-no-files-found: error

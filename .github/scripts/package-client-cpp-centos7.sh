@@ -17,15 +17,23 @@
 # Build client-cpp inside CentOS 7 + devtoolset-8 for glibc 2.17-compatible .so.
 set -euxo pipefail
 
-# CentOS 7 EOL: use vault mirrors when default mirrors are unavailable.
-for repo in /etc/yum.repos.d/CentOS-*.repo; do
-  if [[ -f "${repo}" ]] && grep -q '^mirrorlist=' "${repo}"; then
-    sed -i 's/^mirrorlist=/#mirrorlist=/g' "${repo}"
-    sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "${repo}"
-  fi
-done
+# CentOS 7 EOL: point mirrorlist/baseurl entries at vault.centos.org.
+fix_centos_vault_repos() {
+  find /etc/yum.repos.d/ -name 'CentOS*.repo' -print0 | while IFS= read -r -d '' repo_file; do
+    if grep -qE '^mirrorlist=' "${repo_file}"; then
+      sed -i 's/^mirrorlist=/#mirrorlist=/g' "${repo_file}"
+      sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "${repo_file}"
+    fi
+    sed -i 's|http://mirror.centos.org|http://vault.centos.org|g' "${repo_file}"
+  done
+}
 
+# Base repos first; centos-release-scl adds CentOS-SCLo-*.repo (needed for devtoolset-8).
+fix_centos_vault_repos
 yum install -y ca-certificates centos-release-scl epel-release
+# SCLo repo files appear only after centos-release-scl is installed.
+fix_centos_vault_repos
+
 yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-binutils \
   devtoolset-8-libstdc++-devel scl-utils \
   make wget tar which git patch unzip bzip2

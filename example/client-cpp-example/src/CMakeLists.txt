@@ -65,7 +65,7 @@ endif()
 if(NOT EXISTS "${_iotdb_link_lib}")
     message(FATAL_ERROR
         "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
-        "Unpack client-cpp-<version>-cpp-<os>.zip so that ${_iotdb_link_lib} exists.")
+        "Unpack client-cpp-<version>-<classifier>.zip so that ${_iotdb_link_lib} exists.")
 endif()
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)

@@ -98,8 +98,14 @@
                                     <artifactId>client-cpp</artifactId>
                                     <version>${project.version}</version>
                                     <type>zip</type>
-                                    <classifier>cpp-${os.classifier}</classifier>
+                                    <classifier>${os.classifier}</classifier>
                                     <overWrite>true</overWrite>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                            <pattern>^[^/]+/(.*)$</pattern>
+                                            <replacement>$1</replacement>
+                                        </org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                    </fileMappers>
                                 </artifactItem>
                             </artifactItems>
                             <outputDirectory>${project.build.directory}/client</outputDirectory>
