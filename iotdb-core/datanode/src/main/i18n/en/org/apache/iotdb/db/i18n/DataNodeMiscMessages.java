@@ -684,29 +684,29 @@ public final class DataNodeMiscMessages {
   public static final String SUBSCRIPTION_UNKNOWN_REQUEST_TYPE =
       "Subscription: Unknown PipeSubscribeRequestType, response status = {}.";
   public static final String SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS =
-      "Subscription: consumer {} heartbeat successfully";
+      "Subscription: consumer {} heartbeat succeeded";
   public static final String SUBSCRIPTION_CONSUMER_SUBSCRIBE_SUCCESS =
-      "Subscription: consumer {} subscribe {} successfully";
+      "Subscription: consumer {} subscribed to {} successfully";
   public static final String SUBSCRIPTION_CONSUMER_CLOSE_SUCCESS =
-      "Subscription: consumer {} close successfully";
+      "Subscription: consumer {} closed successfully";
   public static final String SUBSCRIPTION_EXCEPTION_HANDSHAKING =
-      "Exception occurred when handshaking with request {}";
+      "Exception occurred while handling handshake request {}";
   public static final String SUBSCRIPTION_EXCEPTION_HEARTBEAT =
-      "Exception occurred when heartbeat with request {}";
+      "Exception occurred while handling heartbeat request {}";
   public static final String SUBSCRIPTION_EXCEPTION_SUBSCRIBING =
-      "Exception occurred when subscribing with request {}";
+      "Exception occurred while handling subscribe request {}";
   public static final String SUBSCRIPTION_EXCEPTION_UNSUBSCRIBING =
-      "Exception occurred when unsubscribing with request {}";
+      "Exception occurred while handling unsubscribe request {}";
   public static final String SUBSCRIPTION_EXCEPTION_POLLING =
-      "Exception occurred when polling with request {}";
+      "Exception occurred while handling poll request {}";
   public static final String SUBSCRIPTION_EXCEPTION_COMMITTING =
-      "Exception occurred when committing with request {}";
+      "Exception occurred while handling commit request {}";
   public static final String SUBSCRIPTION_EXCEPTION_CLOSING =
-      "Exception occurred when closing with request {}";
+      "Exception occurred while handling close request {}";
   public static final String SUBSCRIPTION_EXCEPTION_CREATING_CONSUMER =
-      "Exception occurred when creating consumer {} in config node";
+      "Exception occurred while creating consumer {} in ConfigNode";
   public static final String SUBSCRIPTION_EXCEPTION_CLOSING_CONSUMER =
-      "Exception occurred when closing consumer {} in config node";
+      "Exception occurred while closing consumer {} in ConfigNode";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionBrokerAgent
@@ -720,13 +720,13 @@ public final class DataNodeMiscMessages {
   // subscription – SubscriptionConsumerAgent
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_DROPPING_CONSUMER_GROUP =
-      "Exception occurred when dropping consumer group {}";
+      "Exception occurred while dropping consumer group {}";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionTopicAgent
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_DROPPING_TOPIC =
-      "Exception occurred when dropping topic {}";
+      "Exception occurred while dropping topic {}";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionEvent
@@ -750,17 +750,17 @@ public final class DataNodeMiscMessages {
   // subscription – SubscriptionPipeEventBatches
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_SEALING_EVENTS =
-      "Exception occurred when sealing events from batch {}";
+      "Exception occurred while sealing events from batch {}";
   public static final String EXCEPTION_CONSTRUCT_NEW_BATCH =
-      "Exception occurred when construct new batch";
+      "Exception occurred while constructing a new batch";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionPrefetchingQueue
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_EXECUTE_RECEIVER_SUBTASK =
-      "Exception {} occurred when {} execute receiver subtask";
+      "Exception {} occurred while {} was executing receiver subtask";
   public static final String EXCEPTION_CONSTRUCT_TABLET_ITERATOR =
-      "Exception {} occurred when {} construct ToTabletIterator";
+      "Exception {} occurred while {} was constructing ToTabletIterator";
 
   // ---------------------------------------------------------------------------
   // consensus – BaseStateMachine
@@ -905,8 +905,9 @@ public final class DataNodeMiscMessages {
   public static final String EXPECTING_NON_EMPTY_STRING_FOR = "Expecting a non-empty string for ";
   public static final String FAILED_TO_CONSTRUCT_PIPE_SINK = "Failed to construct PipeSink, because of ";
   public static final String FAILED_TO_GET_UDF_JAR = "Failed to get UDF jar from config node.";
-  public static final String FAILED_TO_GET_CONSUMER_GROUP_META = "Failed to get consumer group meta from config node.";
-  public static final String FAILED_TO_GET_TOPIC_META = "Failed to get topic meta from config node.";
+  public static final String FAILED_TO_GET_CONSUMER_GROUP_META =
+      "Failed to get consumer group meta from ConfigNode.";
+  public static final String FAILED_TO_GET_TOPIC_META = "Failed to get topic meta from ConfigNode.";
   public static final String FAILED_TO_GET_TRIGGER_JAR = "Failed to get trigger jar from config node.";
   public static final String FETCH_SCHEMA_FAILED = "Fetch Schema failed. ";
   public static final String INDEX_BELOW_START_POSITION = "Index below startPosition: ";

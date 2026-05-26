@@ -191,7 +191,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
 
     LOGGER.warn(
-        "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+        "SubscriptionPipeTabletEventBatch {} only supports converting PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignoring {}.",
         this,
         tabletInsertionEvent);
     return null;
@@ -333,7 +333,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     if (enrichedEvent instanceof TsFileInsertionEvent) {
       if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
         LOGGER.warn(
-            "SubscriptionPipeTabletEventBatch {} override non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
+            "SubscriptionPipeTabletEventBatch {} overrides non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
             this);
       }
       final PipeTsFileInsertionEvent tsFileInsertionEvent =
@@ -354,7 +354,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return convertToTablets((TabletInsertionEvent) enrichedEvent);
     } else {
       LOGGER.warn(
-          "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when iterating (broken invariant).",
+          "SubscriptionPipeTabletEventBatch {} ignores EnrichedEvent {} when iterating (broken invariant).",
           this,
           enrichedEvent);
       return null;

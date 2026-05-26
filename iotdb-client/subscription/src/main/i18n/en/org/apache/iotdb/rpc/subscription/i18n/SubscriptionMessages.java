@@ -26,11 +26,11 @@ public final class SubscriptionMessages {
 
   // --- SubscriptionPollRequest ---
   public static final String UNEXPECTED_REQUEST_TYPE =
-      "unexpected request type: {}, payload will be null";
+      "Unexpected request type: {}, payload will be null";
 
   // --- SubscriptionPollResponse ---
   public static final String UNEXPECTED_RESPONSE_TYPE =
-      "unexpected response type: {}, payload will be null";
+      "Unexpected response type: {}, payload will be null";
 
   // --- IdentifierUtils ---
   public static final String NULL_IDENTIFIER_NOT_SUPPORTED = "null identifier is not supported";
@@ -41,55 +41,56 @@ public final class SubscriptionMessages {
 
   // --- AbstractSubscriptionPushConsumer ---
   public static final String PUSH_CONSUMER_CANCEL_AUTO_POLL =
-      "SubscriptionPushConsumer {} cancel auto poll worker";
+      "SubscriptionPushConsumer {} is canceling the auto-poll worker";
   public static final String PUSH_CONSUMER_SUBMIT_AUTO_POLL =
-      "SubscriptionPushConsumer {} submit auto poll worker";
+      "SubscriptionPushConsumer {} is submitting the auto-poll worker";
   public static final String CONSUMER_LISTENER_FAILURE =
-      "Consumer listener result failure when consuming message: {}";
-  public static final String AUTO_POLL_UNEXPECTED = "something unexpected happened when auto poll messages...";
+      "Consumer listener returned failure when consuming message: {}";
+  public static final String AUTO_POLL_UNEXPECTED =
+      "Unexpected exception while auto-polling messages.";
 
   // --- SubscriptionExecutorServiceManager ---
   public static final String EXECUTOR_LAUNCHING = "Launching {} with core pool size {}...";
   public static final String EXECUTOR_SHUTTING_DOWN = "Shutting down {}...";
   public static final String EXECUTOR_NOT_LAUNCHED_SUBMIT =
-      "{} has not been launched, ignore submit task";
+      "{} has not been launched, ignoring submitted task";
   public static final String EXECUTOR_NOT_LAUNCHED_INVOKE =
-      "{} has not been launched, ignore invoke all tasks";
+      "{} has not been launched, ignoring invokeAll tasks";
   public static final String EXECUTOR_NOT_LAUNCHED_ZERO =
-      "{} has not been launched, return zero";
+      "{} has not been launched, returning zero";
   public static final String EXECUTOR_NOT_LAUNCHED_SCHEDULE =
-      "{} has not been launched, ignore scheduleWithFixedDelay for task";
+      "{} has not been launched, ignoring scheduleWithFixedDelay task";
 
   // --- AbstractSubscriptionProviders ---
   public static final String PROVIDER_CLOSE_FAILED =
-      "Failed to close subscription provider {} because of {}";
-  public static final String ADD_NEW_PROVIDER = "add new subscription provider {}";
-  public static final String CLOSE_STALE_PROVIDER = "close and remove stale subscription provider {}";
+      "Failed to close subscription provider {} because {}";
+  public static final String ADD_NEW_PROVIDER = "Adding new subscription provider {}";
+  public static final String CLOSE_STALE_PROVIDER = "Closing and removing stale subscription provider {}";
   public static final String OPEN_PROVIDERS_FAILED =
-      "Failed to open providers for consumer {} because of {}";
+      "Failed to open providers for consumer {} because {}";
   public static final String FETCH_ENDPOINTS_FAILED =
-      "Failed to fetch all endpoints for consumer {} because of {}";
+      "Failed to fetch all endpoints for consumer {} because {}";
 
   // --- AbstractSubscriptionPullConsumer ---
   public static final String PULL_CONSUMER_CANCEL_AUTO_COMMIT =
-      "SubscriptionPullConsumer {} cancel auto commit worker";
+      "SubscriptionPullConsumer {} is canceling the auto-commit worker";
   public static final String PULL_CONSUMER_SUBMIT_AUTO_COMMIT =
-      "SubscriptionPullConsumer {} submit auto commit worker";
+      "SubscriptionPullConsumer {} is submitting the auto-commit worker";
   public static final String AUTO_COMMIT_UNEXPECTED =
-      "something unexpected happened when auto commit messages...";
+      "Unexpected exception while auto-committing messages.";
   public static final String COMMIT_DURING_CLOSE_UNEXPECTED =
-      "something unexpected happened when commit messages during close";
+      "Unexpected exception while committing messages during close.";
 
   // --- AbstractSubscriptionConsumer ---
-  public static final String UNEXPECTED_RESPONSE_TYPE_WARN = "unexpected response type: {}";
+  public static final String UNEXPECTED_RESPONSE_TYPE_WARN = "Unexpected response type: {}";
   public static final String CONSUMER_CANCEL_HEARTBEAT_WORKER =
-      "SubscriptionConsumer {} cancel heartbeat worker";
+      "SubscriptionConsumer {} is canceling the heartbeat worker";
   public static final String CONSUMER_SUBMIT_HEARTBEAT_WORKER =
-      "SubscriptionConsumer {} submit heartbeat worker";
+      "SubscriptionConsumer {} is submitting the heartbeat worker";
   public static final String CONSUMER_CANCEL_ENDPOINTS_SYNCER =
-      "SubscriptionConsumer {} cancel endpoints syncer";
+      "SubscriptionConsumer {} is canceling the endpoints syncer";
   public static final String CONSUMER_SUBMIT_ENDPOINTS_SYNCER =
-      "SubscriptionConsumer {} submit endpoints syncer";
+      "SubscriptionConsumer {} is submitting the endpoints syncer";
 
   private SubscriptionMessages() {}
 }

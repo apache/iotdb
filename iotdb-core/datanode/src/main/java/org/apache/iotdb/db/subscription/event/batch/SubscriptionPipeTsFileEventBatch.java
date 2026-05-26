@@ -83,7 +83,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected void onTsFileInsertionEvent(final TsFileInsertionEvent event) {
     LOGGER.warn(
-        "SubscriptionPipeTsFileEventBatch {} ignore TsFileInsertionEvent {} when batching.",
+        "SubscriptionPipeTsFileEventBatch {} ignores TsFileInsertionEvent {} when batching.",
         this,
         event);
   }
