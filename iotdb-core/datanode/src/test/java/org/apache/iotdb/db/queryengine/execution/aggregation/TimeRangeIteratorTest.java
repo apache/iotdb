@@ -25,10 +25,13 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.T
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
 public class TimeRangeIteratorTest {
@@ -220,10 +223,9 @@ public class TimeRangeIteratorTest {
 
   @Test
   public void testNaturalMonthTimeRange() {
-    // The following test results greatly depend on the timezone the test is run in.
     TimeZone oldDefault = TimeZone.getDefault();
     try {
-      TimeZone.setDefault(TimeZone.getTimeZone("Bejing"));
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
       String[] res1 = {
         "[ 1604102400000 : 1606694399999 ]",
@@ -433,6 +435,90 @@ public class TimeRangeIteratorTest {
             true,
             ZoneId.systemDefault()),
         res);
+  }
+
+  @Test
+  @Ignore(
+      "org.apache.tsfile.utils.TimeDuration treats days as a physical duration, not calendar days")
+  public void testOffsetCases() {
+    ZoneId berlin = ZoneId.of("Europe/Berlin");
+    ZoneId apia = ZoneId.of("Pacific/Apia");
+
+    // 23h day (DST Spring transition)
+    assertDailyWindows(2023, 3, 26, 0, 0, 0, berlin);
+    // 25h day (DST Autumn/Fall transition)
+    assertDailyWindows(2023, 10, 29, 0, 0, 0, berlin);
+    // historical offset
+    assertDailyWindows(1893, 4, 1, 0, 0, 0, berlin);
+    // 2011-12-30 skipped
+    assertDailyWindows(2011, 12, 29, 0, 0, 0, apia);
+  }
+
+  private void assertDailyWindows(int y, int m, int d, int h, int min, int s, ZoneId zone) {
+    LocalDate date = LocalDate.of(y, m, d);
+    ZonedDateTime start = date.atStartOfDay(zone);
+    ZonedDateTime end = date.plusDays(2).atStartOfDay(zone);
+
+    long startMs = start.toInstant().toEpochMilli();
+    long endMs = end.toInstant().toEpochMilli() - 1;
+
+    String[] expected = new String[2];
+    ZonedDateTime day1End = date.plusDays(1).atStartOfDay(zone);
+    expected[0] = "[ " + startMs + " : " + (day1End.toInstant().toEpochMilli() - 1) + " ]";
+    expected[1] = "[ " + day1End.toInstant().toEpochMilli() + " : " + endMs + " ]";
+
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            startMs,
+            endMs + 1,
+            new TimeDuration(0, 86400000L),
+            new TimeDuration(0, 86400000L),
+            true,
+            true,
+            true,
+            zone),
+        expected);
+  }
+
+  @Test
+  public void testMonthOffsetCases() {
+    ZoneId berlin = ZoneId.of("Europe/Berlin");
+    ZoneId apia = ZoneId.of("Pacific/Apia");
+
+    // 23h day (DST Spring transition)
+    assertMonthlyWindows(2023, 3, 1, berlin);
+    // 25h day (DST Autumn/Fall transition)
+    assertMonthlyWindows(2023, 10, 1, berlin);
+    // historical offset
+    assertMonthlyWindows(1893, 3, 1, berlin);
+    // 2011-12-30 skipped
+    assertMonthlyWindows(2011, 12, 1, apia);
+  }
+
+  private void assertMonthlyWindows(int y, int m, int d, ZoneId zone) {
+    LocalDate date = LocalDate.of(y, m, d);
+    ZonedDateTime start = date.atStartOfDay(zone);
+    ZonedDateTime end = date.plusMonths(2).atStartOfDay(zone);
+
+    long startMs = start.toInstant().toEpochMilli();
+    long endMs = end.toInstant().toEpochMilli() - 1;
+
+    String[] expected = new String[2];
+    ZonedDateTime month1End = date.plusMonths(1).atStartOfDay(zone);
+    expected[0] = "[ " + startMs + " : " + (month1End.toInstant().toEpochMilli() - 1) + " ]";
+    expected[1] = "[ " + month1End.toInstant().toEpochMilli() + " : " + endMs + " ]";
+
+    checkRes(
+        TimeRangeIteratorFactory.getTimeRangeIterator(
+            startMs,
+            endMs + 1,
+            new TimeDuration(1, 0),
+            new TimeDuration(1, 0),
+            true,
+            true,
+            true,
+            zone),
+        expected);
   }
 
   private void checkRes(ITimeRangeIterator timeRangeIterator, String[] res) {
