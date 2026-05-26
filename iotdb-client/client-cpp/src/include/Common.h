@@ -20,6 +20,7 @@
 #define IOTDB_COMMON_H
 
 #include <cstdint>
+#include <ctime>
 #include <exception>
 #include <map>
 #include <string>
