@@ -159,12 +159,13 @@ jobs:
     name: Package (linux-x86_64-glibc217)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
-    # No job container: checkout uses Node 24 (needs glibc 2.27+); build runs in CentOS 7 via docker.
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - name: Cache Maven packages
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: linux-glibc217-m2-${{ hashFiles('**/pom.xml') }}
@@ -175,16 +176,7 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-centos7.sh
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -v "${HOME}/.m2:/root/.m2" \
-            -w /work \
-            -e GITHUB_WORKSPACE=/work \
-            quay.io/centos/centos:7 \
-            bash .github/scripts/package-client-cpp-centos7.sh
-      - name: Restore workspace ownership after container build
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+          bash .github/scripts/package-client-cpp-centos7.sh
       - name: Resolve package zip
         id: pkg
         shell: bash
@@ -199,7 +191,7 @@ jobs:
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.pkg.outputs.name }}
           path: ${{ steps.pkg.outputs.path }}

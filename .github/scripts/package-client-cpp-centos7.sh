@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Build client-cpp inside CentOS 7 + devtoolset-8 for glibc 2.17-compatible .so.
+# Build client-cpp on manylinux2014 (CentOS 7, glibc 2.17 baseline) with devtoolset-8.
 set -euxo pipefail
 
 # CentOS 7 EOL: redirect yum repos to vault.centos.org (see CentOS wiki / SIG SCLo).
