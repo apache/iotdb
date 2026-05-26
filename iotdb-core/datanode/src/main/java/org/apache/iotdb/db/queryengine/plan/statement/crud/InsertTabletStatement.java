@@ -390,7 +390,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
       if (this.nullBitMaps != null) {
-        statement.setBitMaps(copiedBitMaps);
+        statement.setBitMaps(compactBitMaps(copiedBitMaps, rowCount));
       }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
       insertTabletStatementList.add(statement);
@@ -833,7 +833,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           tabletColumnTypes,
           timestamps,
           tabletValues,
-          bitMaps,
+          compactBitMaps(bitMaps, rowSize),
           rowSize);
     } catch (final Exception e) {
       throw new MetadataException(
@@ -898,6 +898,24 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     // For other types, return as-is (should not happen for standard types)
     return columnValue;
+  }
+
+  private static BitMap[] compactBitMaps(final BitMap[] bitMaps, final int rowCount) {
+    if (bitMaps == null) {
+      return null;
+    }
+
+    boolean hasBitMap = false;
+    for (int i = 0; i < bitMaps.length; ++i) {
+      if (bitMaps[i] != null
+          && bitMaps[i].isAllUnmarked(Math.min(rowCount, bitMaps[i].getSize()))) {
+        bitMaps[i] = null;
+      }
+      if (bitMaps[i] != null) {
+        hasBitMap = true;
+      }
+    }
+    return hasBitMap ? bitMaps : null;
   }
 
   @Override

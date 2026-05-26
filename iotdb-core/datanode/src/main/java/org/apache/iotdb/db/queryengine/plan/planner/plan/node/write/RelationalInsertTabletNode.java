@@ -180,7 +180,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
             getPlanNodeId(),
@@ -442,7 +442,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         if (dataTypes[i] != null) {
           System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[i] != null) {
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[i] != null
+            && i < this.bitMaps.length
+            && this.bitMaps[i] != null) {
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }
@@ -451,6 +454,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = compactBitMaps(subNode.bitMaps, subNode.rowCount);
     result.add(subNode);
     return result;
   }

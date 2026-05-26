@@ -332,7 +332,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     return new InsertTabletNode(
         getPlanNodeId(),
         targetPath,
@@ -370,7 +370,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         if (dataTypes[k] != null) {
           System.arraycopy(columns[k], start, subNode.columns[k], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[k] != null) {
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[k] != null
+            && k < this.bitMaps.length
+            && this.bitMaps[k] != null) {
           BitMap.copyOfRange(this.bitMaps[k], start, subNode.bitMaps[k], destLoc, length);
         }
       }
@@ -379,6 +382,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = compactBitMaps(subNode.bitMaps, subNode.rowCount);
     return subNode;
   }
 
@@ -439,6 +443,42 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       bitMaps[i] = new BitMap(rowSize);
     }
     return bitMaps;
+  }
+
+  protected BitMap[] initBitmapsForSplit(int columnSize, int rowSize) {
+    if (this.bitMaps == null) {
+      return null;
+    }
+
+    final int sourceRowCount = rowCount > 0 ? rowCount : times == null ? 0 : times.length;
+    final BitMap[] splitBitMaps = new BitMap[columnSize];
+    boolean hasBitMap = false;
+    for (int i = 0; i < columnSize && i < this.bitMaps.length; ++i) {
+      if (this.bitMaps[i] != null
+          && !this.bitMaps[i].isAllUnmarked(Math.min(sourceRowCount, this.bitMaps[i].getSize()))) {
+        splitBitMaps[i] = new BitMap(rowSize);
+        hasBitMap = true;
+      }
+    }
+    return hasBitMap ? splitBitMaps : null;
+  }
+
+  protected static BitMap[] compactBitMaps(final BitMap[] bitMaps, final int rowCount) {
+    if (bitMaps == null) {
+      return null;
+    }
+
+    boolean hasBitMap = false;
+    for (int i = 0; i < bitMaps.length; ++i) {
+      if (bitMaps[i] != null
+          && bitMaps[i].isAllUnmarked(Math.min(rowCount, bitMaps[i].getSize()))) {
+        bitMaps[i] = null;
+      }
+      if (bitMaps[i] != null) {
+        hasBitMap = true;
+      }
+    }
+    return hasBitMap ? bitMaps : null;
   }
 
   @Override
