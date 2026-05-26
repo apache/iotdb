@@ -153,6 +153,7 @@ public class PipeRow implements Row {
   @Override
   public boolean isNull(final int columnIndex) {
     return bitMaps != null
+        && columnIndex < bitMaps.length
         && bitMaps[columnIndex] != null
         && bitMaps[columnIndex].isMarked(rowIndex);
   }

@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGr
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -382,7 +383,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
-    subNode.bitMaps = compactBitMaps(subNode.bitMaps, subNode.rowCount);
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     return subNode;
   }
 
@@ -461,24 +462,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
     return hasBitMap ? splitBitMaps : null;
-  }
-
-  protected static BitMap[] compactBitMaps(final BitMap[] bitMaps, final int rowCount) {
-    if (bitMaps == null) {
-      return null;
-    }
-
-    boolean hasBitMap = false;
-    for (int i = 0; i < bitMaps.length; ++i) {
-      if (bitMaps[i] != null
-          && bitMaps[i].isAllUnmarked(Math.min(rowCount, bitMaps[i].getSize()))) {
-        bitMaps[i] = null;
-      }
-      if (bitMaps[i] != null) {
-        hasBitMap = true;
-      }
-    }
-    return hasBitMap ? bitMaps : null;
   }
 
   @Override

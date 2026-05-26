@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -129,6 +130,11 @@ public final class PipeTabletUtils {
     return Objects.nonNull(tabletStringInternPool) ? tabletStringInternPool.intern(tablet) : tablet;
   }
 
+  /**
+   * Initializes the bitmap array shell without allocating per-column bitmaps. Null values must be
+   * recorded through {@link #markNullValue(Tablet, int, int)} so the column bitmap is allocated
+   * lazily.
+   */
   public static void initEmptyBitMaps(final Tablet tablet) {
     tablet.setBitMaps(new BitMap[getColumnCount(tablet)]);
   }
@@ -141,22 +147,7 @@ public final class PipeTabletUtils {
   }
 
   public static BitMap[] compactBitMaps(final BitMap[] bitMaps, final int rowCount) {
-    if (Objects.isNull(bitMaps)) {
-      return null;
-    }
-
-    boolean hasMarkedBitMap = false;
-    for (int i = 0; i < bitMaps.length; ++i) {
-      if (Objects.nonNull(bitMaps[i])
-          && bitMaps[i].isAllUnmarked(Math.min(rowCount, bitMaps[i].getSize()))) {
-        bitMaps[i] = null;
-      }
-      if (Objects.nonNull(bitMaps[i])) {
-        hasMarkedBitMap = true;
-      }
-    }
-
-    return hasMarkedBitMap ? bitMaps : null;
+    return BitMapUtils.compactBitMaps(bitMaps, rowCount);
   }
 
   public static BitMap[] copyBitMapsOrCreateEmpty(final Tablet tablet) {

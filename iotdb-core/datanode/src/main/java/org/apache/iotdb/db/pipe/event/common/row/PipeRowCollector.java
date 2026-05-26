@@ -25,6 +25,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -77,7 +78,7 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       Pair<Integer, Integer> rowCountAndMemorySize =
           PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
       tablet = new Tablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
-      tablet.initBitMaps();
+      PipeTabletUtils.initEmptyBitMaps(tablet);
       isAligned = pipeRow.isAligned();
     }
 
@@ -94,7 +95,7 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
         tablet.addValue(measurementSchemaArray[i].getMeasurementName(), rowIndex, value);
       }
       if (row.isNull(i)) {
-        tablet.getBitMaps()[i].mark(rowIndex);
+        PipeTabletUtils.markNullValue(tablet, rowIndex, i);
       }
     }
 
@@ -105,6 +106,7 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      PipeTabletUtils.compactBitMaps(tablet);
       // TODO: non-PipeInsertionEvent sourceEvent is not supported?
       final PipeInsertionEvent pipeInsertionEvent =
           sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
