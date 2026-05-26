@@ -49,6 +49,7 @@ statement
     // Database Statement
     | useDatabaseStatement
     | showDatabasesStatement
+    | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
     | dropDbStatement
@@ -213,6 +214,10 @@ useDatabaseStatement
 
 showDatabasesStatement
     : SHOW DATABASES (DETAILS)?
+    ;
+
+countDatabasesStatement
+    : COUNT DATABASES
     ;
 
 createDbStatement

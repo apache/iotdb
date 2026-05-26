@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Mig
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -350,7 +351,10 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      final ShowDB showDB, final Predicate<String> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeeDB);
+
+  SettableFuture<ConfigTaskResult> countDatabases(
+      final CountDB countDB, final Predicate<String> canSeeDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
@@ -374,7 +378,7 @@ public interface IConfigTaskExecutor {
       final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 

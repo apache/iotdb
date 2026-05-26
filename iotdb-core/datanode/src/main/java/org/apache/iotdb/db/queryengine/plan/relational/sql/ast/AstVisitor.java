@@ -79,6 +79,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  default R visitCountDB(final CountDB node, final C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitCreateTable(final CreateTable node, final C context) {
     return visitStatement(node, context);
   }
