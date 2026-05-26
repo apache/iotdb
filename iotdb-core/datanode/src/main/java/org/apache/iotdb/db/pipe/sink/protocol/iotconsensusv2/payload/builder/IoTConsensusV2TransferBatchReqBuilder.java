@@ -118,15 +118,14 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
 
     if (getMaxBatchSizeInBytes() != requestMaxBatchSizeInBytes) {
       LOGGER.info(
-          "IoTConsensusV2TransferBatchReqBuilder: the max batch size is adjusted from {} to {} due to the "
-              + "memory restriction",
+          DataNodePipeMessages.IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED,
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
   }
 
   /**
-   * Try offer {@link Event} into cache if the given {@link Event} is not duplicated.
+   * Try to offer the {@link Event} into the cache if the given {@link Event} is not duplicated.
    *
    * @param event the given {@link Event}
    * @return {@link true} if the batch can be transferred
@@ -200,8 +199,8 @@ public abstract class IoTConsensusV2TransferBatchReqBuilder implements AutoClose
             pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-    // Read the bytebuffer from the wal file and transfer it directly without serializing or
-    // deserializing if possible
+    // Read the ByteBuffer from the WAL file and transfer it directly without serializing or
+    // deserializing if possible.
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // IoTConsensusV2 will transfer binary data to TIoTConsensusV2TransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();

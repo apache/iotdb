@@ -53,9 +53,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * The core idea of this buffer is to write deletion to the Page cache and fsync them to disk when
- * certain conditions are met. This design does not decouple serialization and writing, but provides
- * an easier way to maintain and understand.
+ * This buffer writes deletions to the page cache and fsyncs them to disk when certain conditions
+ * are met. This design does not decouple serialization and writing, but it is easier to maintain
+ * and understand.
  */
 public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
@@ -64,10 +64,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
-  // Buffer config keep consistent with WAL.
+  // Keep the buffer config consistent with WAL.
   public static int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
 
-  // DeletionResources received from storage engine, which is waiting to be persisted.
+  // DeletionResources received from the storage engine and waiting to be persisted.
   private final BlockingQueue<DeletionResource> deletionResources =
       new PriorityBlockingQueue<>(
           QUEUE_CAPACITY,
@@ -77,21 +77,21 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   : (o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1));
   // Data region id
   private final int dataRegionId;
-  // directory to store .deletion files
+  // Directory for storing .deletion files.
   private final String baseDirectory;
-  // single thread to serialize WALEntry to workingBuffer
+  // Single thread for serializing WALEntry to workingBuffer.
   private final ExecutorService persistThread;
   private final Lock buffersLock = new ReentrantLock();
   // Total size of this batch.
   private final AtomicInteger totalSize = new AtomicInteger(0);
-  // All deletions that will be handled in a single persist task
+  // All deletions that will be handled in a single persist task.
   private final List<DeletionResource> pendingDeletionsInOneTask = new CopyOnWriteArrayList<>();
 
-  // whether close method is called
+  // Whether the close method is called.
   private volatile boolean isClosed = false;
-  // Serialize buffer in current persist task
+  // Serialization buffer in the current persist task.
   private volatile ByteBuffer serializeBuffer;
-  // Current Logging file.
+  // Current logging file.
   private volatile File logFile;
   private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;

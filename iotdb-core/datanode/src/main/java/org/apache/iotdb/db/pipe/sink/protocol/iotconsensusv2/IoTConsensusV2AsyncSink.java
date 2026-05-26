@@ -135,9 +135,9 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
       throws Exception {
     super.customize(parameters, configuration);
 
-    // Get consensusGroupId from parameters passed by IoTConsensusV2Impl
+    // Get consensusGroupId from parameters passed by the consensus pipe creator.
     consensusGroupId = parameters.getInt(CONNECTOR_CONSENSUS_GROUP_ID_KEY);
-    // Get consensusPipeName from parameters passed by IoTConsensusV2Impl
+    // Get consensusPipeName from parameters passed by the consensus pipe creator.
     consensusPipeName = parameters.getString(CONNECTOR_CONSENSUS_PIPE_NAME);
 
     // initialize metric components
@@ -146,9 +146,9 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
         .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.iotConsensusV2SinkMetrics);
 
-    // In IoTConsensusV2, one iotConsensusV2Task corresponds to a iotConsensusV2Connector. Thus,
-    // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
-    // retain the implementation of list to cope with possible future expansion
+    // In IoTConsensusV2, one iotConsensusV2Task corresponds to one iotConsensusV2Connector. Thus,
+    // `nodeUrls` is currently a singleton list that contains one peer's TEndPoint. Keep the list
+    // implementation for possible future expansion.
     retryConnector =
         new IoTConsensusV2SyncSink(
             nodeUrls, consensusGroupId, thisDataNodeId, iotConsensusV2SinkMetrics);
@@ -182,8 +182,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
             event.getReplicateIndexForIoTV2(),
             event);
       }
-      // Special judge to avoid transfer stuck when re-transfer events that will not be put in
-      // retryQueue.
+      // Avoid transfer stalls when retransferring events that will not be put in retryQueue.
       if (transferBuffer.contains(event)) {
         return true;
       }
@@ -213,8 +212,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   }
 
   /**
-   * if one event is successfully processed by receiver in IoTConsensusV2, we will remove this event
-   * from transferBuffer in order to transfer other event.
+   * If an event is successfully processed by the IoTConsensusV2 receiver, remove it from
+   * transferBuffer so other events can be transferred.
    */
   public synchronized void removeEventFromBuffer(EnrichedEvent event) {
     if (LOGGER.isDebugEnabled()) {

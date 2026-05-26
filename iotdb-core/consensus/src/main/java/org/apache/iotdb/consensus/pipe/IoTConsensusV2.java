@@ -146,7 +146,7 @@ public class IoTConsensusV2 implements IConsensus {
       }
       return CompletableFuture.completedFuture(null);
     } else {
-      // asynchronously recover, retry logic is implemented at IoTConsensusV2Impl
+      // Recover asynchronously; retry logic is handled by the async backend checker.
       return CompletableFuture.runAsync(
               () -> {
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
@@ -166,8 +166,8 @@ public class IoTConsensusV2 implements IConsensus {
                     } catch (Exception e) {
                       LOGGER.error(
                           IoTConsensusV2Messages.FAILED_RECOVER_CONSENSUS,
-                          storageDir,
                           consensusGroupId,
+                          storageDir,
                           e);
                     }
                   }
@@ -199,12 +199,12 @@ public class IoTConsensusV2 implements IConsensus {
 
     if (correctPeerListBeforeStart != null) {
       if (correctPeerListBeforeStart.containsKey(consensusGroupId)) {
-        // make peers which are in list correct
+        // Correct peers listed in correctPeerListBeforeStart.
         resetPeerListWithoutThrow.accept(
             consensusGroupId, correctPeerListBeforeStart.get(consensusGroupId));
         consensus.start();
       } else {
-        // clear peers which are not in the list
+        // Clear peers that are not listed in correctPeerListBeforeStart.
         resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList());
       }
 
@@ -344,21 +344,21 @@ public class IoTConsensusV2 implements IConsensus {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
     try {
-      // step 1: inactive new Peer to prepare for following steps
+      // Step 1: deactivate the new peer to prepare for the following steps.
       LOGGER.info(IoTConsensusV2Messages.INACTIVATE_NEW_PEER, CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false, false);
 
-      // step 2: notify all the other Peers to create consensus pipes to newPeer
-      // NOTE: For this step, all the other peers will try to transfer its user write data to target
+      // Step 2: notify all other peers to create consensus pipes to the new peer.
+      // Each peer will transfer its user-written data to the target peer.
       LOGGER.info(IoTConsensusV2Messages.NOTIFY_CREATE_CONSENSUS_PIPES, CLASS_NAME);
       impl.notifyPeersToCreateConsensusPipes(peer);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
-      // step 3: wait until all other Peers finish transferring
+      // Step 3: wait until all other peers finish transferring.
       LOGGER.info(IoTConsensusV2Messages.WAIT_PEERS_FINISH_TRANSFER, CLASS_NAME);
       impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
-      // step 4: active new Peer to let new Peer receive client requests
+      // Step 4: activate the new peer so it can receive client requests.
       LOGGER.info(IoTConsensusV2Messages.ACTIVATE_NEW_PEER, CLASS_NAME);
       impl.setRemotePeerActive(peer, true, false);
       KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
@@ -387,23 +387,23 @@ public class IoTConsensusV2 implements IConsensus {
     KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
 
     try {
-      // let other peers to drop consensus pipes to target
+      // Let other peers drop consensus pipes to the target.
       LOGGER.info(IoTConsensusV2Messages.NOTIFY_DROP_CONSENSUS_PIPES, CLASS_NAME);
       impl.notifyPeersToDropConsensusPipe(peer);
       KillPoint.setKillPoint(
           IoTConsensusRemovePeerCoordinatorKillPoints
               .AFTER_NOTIFY_PEERS_TO_REMOVE_REPLICATE_CHANNEL);
 
-      // let target peer reject new write
+      // Let the target peer reject new writes.
       LOGGER.info(IoTConsensusV2Messages.INACTIVATE_PEER, CLASS_NAME, peer);
       impl.setRemotePeerActive(peer, false, true);
       KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
 
-      // wait its consensus pipes to complete
+      // Wait for its consensus pipes to complete.
       LOGGER.info(IoTConsensusV2Messages.WAIT_TARGET_PEER_COMPLETE_TRANSFER, CLASS_NAME, peer);
       impl.waitTargetPeerToPeersTransmissionCompleted(peer);
 
-      // wait target peer to release all resource
+      // Wait for the target peer to release all resources.
       LOGGER.info(IoTConsensusV2Messages.WAIT_PEER_RELEASE_RESOURCE, CLASS_NAME, peer);
       impl.waitReleaseAllRegionRelatedResource(peer);
     } catch (ConsensusGroupModifyPeerException e) {
