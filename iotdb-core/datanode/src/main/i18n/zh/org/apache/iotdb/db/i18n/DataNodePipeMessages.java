@@ -24,59 +24,61 @@ public final class DataNodePipeMessages {
   // ===================== CONSENSUS =====================
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR = "正在关闭 {} 的删除资源管理器...";
-  public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER = "DAL 线程 {} 在 30 秒后仍未退出";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY =
       "DeletionManager-{}：当前 DAL 目录 {} 已成功删除";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED =
       "DeletionManager-{}：当前 DAL 目录 {} 未初始化，无需删除。";
   public static final String DELETIONMANAGER_CURRENT_WAITING_IS_INTERRUPTED_MAY_BECAUSE =
-      "DeletionManager-{}：当前等待被中断，可能是因为当前应用已停止。";
+      "DeletionManager-{}：等待被中断，可能是因为应用正在关闭。";
   public static final String DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR =
-      "DeletionManager-{}：正在删除目录 {} 中的删除文件...";
+      "DeletionManager-{}：已删除删除文件 {}。";
   public static final String DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR =
-      "DeletionManager-{}：删除目录 {} 中的文件失败，请手动检查！";
+      "DeletionManager-{}：删除 {} 下的文件失败，请手动检查！";
   public static final String DELETIONRESOURCE_HAS_BEEN_RELEASED_TRIGGER_A_REMOVE =
-      "DeletionResource {} 已释放，触发移除 DAL...";
+      "DeletionResource {} 已释放，触发 DAL 清理。";
   public static final String DELETION_PERSIST_CANNOT_CREATE_FILE_PLEASE_CHECK =
-      "Deletion persist：无法创建文件 {}，请手动检查文件系统。";
+      "Deletion persist：创建文件 {} 失败，请手动检查文件系统。";
   public static final String DELETION_PERSIST_CANNOT_WRITE_TO_MAY_CAUSE =
-      "Deletion persist：无法写入 {}，可能导致数据不一致。";
+      "Deletion persist：写入 {} 失败，可能导致数据不一致。";
   public static final String DELETION_PERSIST_CURRENT_BATCH_FSYNC_DUE_TO =
-      "Deletion persist-{}：当前批次因超时执行 fsync";
+      "Deletion persist-{}：因超时对当前批次执行 fsync";
   public static final String DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED =
       "Deletion persist-{}：当前文件已关闭";
   public static final String DELETION_PERSIST_SERIALIZE_DELETION_RESOURCE =
-      "Deletion persist-{}：序列化删除资源 {}";
+      "Deletion persist-{}：正在序列化删除资源 {}";
   public static final String DELETION_PERSIST_STARTING_TO_PERSIST_CURRENT_WRITING =
-      "Deletion persist-{}：开始持久化，当前写入文件：{}";
+      "Deletion persist-{}：开始持久化，当前文件：{}";
   public static final String DELETION_PERSIST_SWITCHING_TO_A_NEW_FILE =
-      "Deletion persist-{}：切换到新文件，当前写入文件：{}";
+      "Deletion persist-{}：已切换到新文件，当前文件：{}";
   public static final String DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY =
       "{} 的删除资源管理器已成功关闭！";
   public static final String DETECT_FILE_CORRUPTED_WHEN_RECOVER_DAL_DISCARD =
-      "恢复 DAL-{} 时检测到文件损坏，将丢弃后续所有 DAL...";
+      "恢复 DAL-{} 时检测到文件损坏，将丢弃后续所有 DAL。";
   public static final String FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER =
       "初始化 DeletionResourceManager 失败";
   public static final String FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE =
-      "读取删除文件 {} 失败，原因可能是该文件写入时已损坏。";
+      "读取删除文件 {} 失败，该文件可能在写入时已损坏。";
   public static final String FAILED_TO_RECOVER_DELETIONRESOURCEMANAGER =
       "恢复 DeletionResourceManager 失败";
   public static final String FAIL_TO_ALLOCATE_DELETIONBUFFER_GROUP_S_BUFFER =
-      "分配 deletionBuffer-group-{} 的缓冲区失败，原因：内存不足。";
-  public static final String FAIL_TO_CLOSE_CURRENT_LOGGING_FILE_WHEN = "关闭时无法关闭当前日志文件";
+      "分配 deletionBuffer-group-{} 的缓冲区失败，内存不足。";
+  public static final String FAIL_TO_CLOSE_CURRENT_LOGGING_FILE_WHEN = "关闭过程中关闭当前日志文件失败";
   public static final String FAIL_TO_REGISTER_DELETIONRESOURCE_INTO_DELETIONBUFFER_BECAUSE =
-      "向 deletionBuffer-{} 注册 DeletionResource 失败，原因：该缓冲区已关闭。";
-  public static final String INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED = "等待所有删除操作刷盘时被中断。";
+      "向 deletionBuffer-{} 注册 DeletionResource 失败，因为该缓冲区已关闭。";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED =
+      "等待所有删除操作刷盘时被中断。";
+  public static final String INTERRUPTED_WHILE_WAITING_FOR_DAL_THREAD_TO_EXIT =
+      "等待 dataRegion {} 的 DAL 线程退出时被中断。";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_RESULT = "等待结果时被中断。";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM =
       "等待从阻塞队列中取出 DeletionResource 进行序列化时被中断。";
-  public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM =
-      "等待从阻塞队列中取出 WALEntry 进行序列化时被中断。";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_POLLING_DELETIONRESOURCE_FROM =
+      "等待从阻塞队列中轮询 DeletionResource 进行序列化时被中断。";
   public static final String INVALID_DELETION_PROGRESS_INDEX = "无效的删除进度索引：";
-  public static final String PERSISTTHREAD_DID_NOT_TERMINATE_WITHIN_S = "persistThread 在 {} 秒内未终止";
+  public static final String PERSISTTHREAD_DID_NOT_TERMINATE_WITHIN_S = "持久化线程未在 {} 秒内终止";
   public static final String READ_DELETION_FILE_MAGIC_VERSION =
-      "读取删除文件-{} 的 magic version：{}";
-  public static final String READ_DELETION_FROM_FILE = "从文件 {} 读取删除操作：{}";
+      "读取删除文件 {} 的 magic version：{}";
+  public static final String READ_DELETION_FROM_FILE = "读取删除操作：{}，来自文件 {}";
   public static final String UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT =
       "无法在 {} 创建 IoTConsensusV2 删除目录";
 

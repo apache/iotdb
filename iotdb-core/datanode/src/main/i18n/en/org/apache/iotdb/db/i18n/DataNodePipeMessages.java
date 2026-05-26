@@ -25,67 +25,67 @@ public final class DataNodePipeMessages {
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
       "Closing deletion resource manager for {}...";
-  public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER =
-      "DAL Thread {} still doesn't exit after 30s";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY =
       "DeletionManager-{}: current DAL dir {} is deleted successfully";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED =
       "DeletionManager-{}: current DAL dir {} is not initialized, no need to delete.";
   public static final String DELETIONMANAGER_CURRENT_WAITING_IS_INTERRUPTED_MAY_BECAUSE =
-      "DeletionManager-{}: current waiting is interrupted. May because current application is "
-          + "down. ";
+      "DeletionManager-{}: waiting was interrupted, possibly because the application is "
+          + "shutting down.";
   public static final String DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR =
-      "DeletionManager-{} delete deletion file in {} dir...";
+      "DeletionManager-{}: deleted deletion file {}.";
   public static final String DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR =
-      "DeletionManager-{} failed to delete file in {} dir, please manually check!";
+      "DeletionManager-{}: failed to delete files under {}, please check manually!";
   public static final String DELETIONRESOURCE_HAS_BEEN_RELEASED_TRIGGER_A_REMOVE =
-      "DeletionResource {} has been released, trigger a remove of DAL...";
+      "DeletionResource {} has been released; triggering DAL cleanup.";
   public static final String DELETION_PERSIST_CANNOT_CREATE_FILE_PLEASE_CHECK =
-      "Deletion persist: Cannot create file {}, please check your file system manually.";
+      "Deletion persist: failed to create file {}; please check the file system manually.";
   public static final String DELETION_PERSIST_CANNOT_WRITE_TO_MAY_CAUSE =
-      "Deletion persist: Cannot write to {}, may cause data inconsistency.";
+      "Deletion persist: failed to write to {}; data may become inconsistent.";
   public static final String DELETION_PERSIST_CURRENT_BATCH_FSYNC_DUE_TO =
-      "Deletion persist-{}: current batch fsync due to timeout";
+      "Deletion persist-{}: fsync current batch due to timeout";
   public static final String DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED =
       "Deletion persist-{}: current file has been closed";
   public static final String DELETION_PERSIST_SERIALIZE_DELETION_RESOURCE =
-      "Deletion persist-{}: serialize deletion resource {}";
+      "Deletion persist-{}: serializing deletion resource {}";
   public static final String DELETION_PERSIST_STARTING_TO_PERSIST_CURRENT_WRITING =
-      "Deletion persist-{}: starting to persist, current writing: {}";
+      "Deletion persist-{}: starting to persist, current file: {}";
   public static final String DELETION_PERSIST_SWITCHING_TO_A_NEW_FILE =
-      "Deletion persist-{}: switching to a new file, current writing: {}";
+      "Deletion persist-{}: switched to a new file, current file: {}";
   public static final String DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY =
       "Deletion resource manager for {} has been successfully closed!";
   public static final String DETECT_FILE_CORRUPTED_WHEN_RECOVER_DAL_DISCARD =
-      "Detect file corrupted when recover DAL-{}, discard all subsequent DALs...";
+      "Detected a corrupted file while recovering DAL-{}; discarding all subsequent DALs.";
   public static final String FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER =
       "Failed to initialize DeletionResourceManager";
   public static final String FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE =
-      "Failed to read deletion file {}, possibly because this file was corrupted while being written.";
+      "Failed to read deletion file {}; it may have been corrupted while being written.";
   public static final String FAILED_TO_RECOVER_DELETIONRESOURCEMANAGER =
       "Failed to recover DeletionResourceManager";
   public static final String FAIL_TO_ALLOCATE_DELETIONBUFFER_GROUP_S_BUFFER =
-      "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.";
+      "Failed to allocate deletionBuffer-group-{}'s buffer because memory is insufficient.";
   public static final String FAIL_TO_CLOSE_CURRENT_LOGGING_FILE_WHEN =
-      "Fail to close current logging file when closing";
+      "Failed to close current logging file while closing";
   public static final String FAIL_TO_REGISTER_DELETIONRESOURCE_INTO_DELETIONBUFFER_BECAUSE =
-      "Fail to register DeletionResource into deletionBuffer-{} because this buffer is closed.";
+      "Failed to register DeletionResource into deletionBuffer-{} because the buffer is closed.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED =
-      "Interrupted when waiting for all deletions flushed.";
+      "Interrupted while waiting for all deletions to be flushed.";
+  public static final String INTERRUPTED_WHILE_WAITING_FOR_DAL_THREAD_TO_EXIT =
+      "Interrupted while waiting for the DAL thread of dataRegion {} to exit.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_RESULT =
-      "Interrupted when waiting for result.";
+      "Interrupted while waiting for result.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM =
-      "Interrupted when waiting for taking DeletionResource from blocking queue to serialize.";
-  public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM =
-      "Interrupted when waiting for taking WALEntry from blocking queue to serialize.";
+      "Interrupted while taking a DeletionResource from the blocking queue for serialization.";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_POLLING_DELETIONRESOURCE_FROM =
+      "Interrupted while polling a DeletionResource from the blocking queue for serialization.";
   public static final String INVALID_DELETION_PROGRESS_INDEX = "Invalid deletion progress index: ";
   public static final String PERSISTTHREAD_DID_NOT_TERMINATE_WITHIN_S =
-      "persistThread did not terminate within {}s";
+      "Persist thread did not terminate within {}s";
   public static final String READ_DELETION_FILE_MAGIC_VERSION =
-      "Read deletion file-{} magic version: {}";
+      "Read deletion file {} magic version: {}";
   public static final String READ_DELETION_FROM_FILE = "Read deletion: {} from file {}";
   public static final String UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT =
-      "Unable to create iotConsensusV2 deletion dir at {}";
+      "Unable to create IoTConsensusV2 deletion directory at {}";
 
   // ===================== AGENT =====================
 

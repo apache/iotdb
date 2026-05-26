@@ -43,8 +43,8 @@ import java.util.function.Consumer;
 
 /**
  * DeletionResource is designed for IoTConsensusV2 to manage the lifecycle of all deletion
- * operations including realtime deletion and historical deletion. In order to be compatible with
- * user pipe framework, IoTConsensusV2 will use {@link PipeDeleteDataNodeEvent}
+ * operations including real-time deletion and historical deletion. In order to be compatible with
+ * the user pipe framework, IoTConsensusV2 will use {@link PipeDeleteDataNodeEvent}.
  */
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
@@ -54,7 +54,7 @@ public class DeletionResource implements PersistentResource {
   private final ConsensusGroupId consensusGroupId;
   private volatile Status currentStatus;
 
-  // it's safe to use volatile here to make this reference thread-safe.
+  // It is safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile Exception cause;
 
@@ -119,8 +119,8 @@ public class DeletionResource implements PersistentResource {
   }
 
   /**
-   * Only the default implementation is provided here, which will not be called in practice, but is
-   * only used to implement the interface
+   * This default implementation is provided only to implement the interface and should not be
+   * called in practice.
    */
   @Override
   public long getFileStartTime() {
@@ -128,8 +128,8 @@ public class DeletionResource implements PersistentResource {
   }
 
   /**
-   * Only the default implementation is provided here, which will not be called in practice, but is
-   * only used to implement the interface
+   * This default implementation is provided only to implement the interface and should not be
+   * called in practice.
    */
   @Override
   public long getFileEndTime() {

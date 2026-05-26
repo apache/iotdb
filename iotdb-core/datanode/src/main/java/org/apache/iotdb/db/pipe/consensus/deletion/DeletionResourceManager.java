@@ -88,7 +88,7 @@ public class DeletionResourceManager implements AutoCloseable {
     recoverLock.lock();
     try {
       if (!storageDir.exists()) {
-        // Init
+        // Initialize the storage directory.
         if (!storageDir.mkdirs()) {
           LOGGER.warn(
               DataNodePipeMessages.UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT, storageDir);
@@ -142,7 +142,7 @@ public class DeletionResourceManager implements AutoCloseable {
             deleteDataNode,
             key ->
                 new DeletionResource(deleteDataNode, this::removeDeletionResource, dataRegionId));
-    // register a persist task for current deletionResource
+    // Register a persist task for the current DeletionResource.
     deletionBuffer.registerDeletionResource(deletionResource);
     return deletionResource;
   }
@@ -208,11 +208,11 @@ public class DeletionResourceManager implements AutoCloseable {
                           path.getFileName().toString(), currentProgressIndex))
               .sorted(this::compareFileProgressIndex)
               .toArray(Path[]::new);
-      // File name represents the max progressIndex in its previous file. If currentProgressIndex is
-      // larger than a fileName's progressIndex, it means that the file before this file has been
-      // fully synchronized and can be deleted.
-      // So here we cannot guarantee that the last file can be deleted, we can only guarantee that
-      // the first n-1 files can be deleted (if the length of deletionPaths is n)
+      // The file name represents the max ProgressIndex in the previous file. If
+      // currentProgressIndex is larger than a file name's ProgressIndex, the file before this file
+      // has been fully synchronized and can be deleted.
+      // The last file is not guaranteed to be deletable here, so only the first n - 1 files can be
+      // deleted when deletionPaths has n entries.
       for (int i = 0; i < deletionPaths.length - 1; i++) {
         File fileToDelete = deletionPaths[i].toFile();
         FileUtils.deleteFileOrDirectory(fileToDelete);
@@ -225,7 +225,8 @@ public class DeletionResourceManager implements AutoCloseable {
       LOGGER.warn(
           DataNodePipeMessages.DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR,
           dataRegionId,
-          storageDir);
+          storageDir,
+          e);
     }
   }
 
@@ -235,7 +236,7 @@ public class DeletionResourceManager implements AutoCloseable {
     String fileName2 = file2.getFileName().toString();
     Matcher matcher1 = pattern.matcher(fileName1);
     Matcher matcher2 = pattern.matcher(fileName2);
-    // Definitely match. Because upper caller has filtered fileNames.
+    // Must match because the caller has filtered file names.
     if (matcher1.matches() && matcher2.matches()) {
       int fileRebootTimes1 = Integer.parseInt(matcher1.group(REBOOT_TIME));
       long fileMemTableFlushOrderId1 = Long.parseLong(matcher1.group(MEM_TABLE_FLUSH_ORDER));
@@ -260,7 +261,7 @@ public class DeletionResourceManager implements AutoCloseable {
 
       Pattern pattern = Pattern.compile(DELETION_FILE_NAME_PATTERN);
       Matcher matcher = pattern.matcher(fileName);
-      // Definitely match. Because upper caller has filtered fileNames.
+      // Must match because the caller has filtered file names.
       if (matcher.matches()) {
         int fileRebootTimes = Integer.parseInt(matcher.group(REBOOT_TIME));
         long fileMemTableFlushOrderId = Long.parseLong(matcher.group(MEM_TABLE_FLUSH_ORDER));
@@ -302,7 +303,7 @@ public class DeletionResourceManager implements AutoCloseable {
         });
   }
 
-  // Only when consensus protocol is IoTConsensusV2, will this class be initialized.
+  // This class is initialized only when the consensus protocol is IoTConsensusV2.
   public static void build() {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2) {
       DeletionResourceManagerHolder.build();
