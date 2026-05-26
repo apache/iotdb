@@ -1,9 +1,27 @@
 # Manual run; Release published; v* tag pushes; rc/** pushes only when C++-related paths change
 # (job should-package). release events use the workflow file from the default branch.
+#
+# Produces per-platform/per-toolchain SDK zips (classifier suffix in artifact name).
 name: C++ Client package
 
 on:
   workflow_dispatch:
+    inputs:
+      variants:
+        description: "Which packages to build"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux
+          - macos
+          - windows
+          - windows-vs2015
+          - windows-vs2017
+          - windows-vs2019
+          - windows-vs2022
+          - windows-vs2026
   release:
     types: [published]
   push:
@@ -62,19 +80,107 @@ jobs:
           fi
           echo "run=false" >> "$GITHUB_OUTPUT"
 
-  package-linux:
-    name: Package (${{ matrix.name }})
+  resolve-matrix:
+    name: Resolve package matrix
     needs: should-package
     if: needs.should-package.outputs.run == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-x86_64
-            runs-on: ubuntu-22.04
-          - name: linux-aarch64
-            runs-on: ubuntu-22.04-arm
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ubuntu-latest
+    outputs:
+      run_linux: ${{ steps.filter.outputs.run_linux }}
+      run_macos: ${{ steps.filter.outputs.run_macos }}
+      run_windows: ${{ steps.filter.outputs.run_windows }}
+      windows_matrix: ${{ steps.filter.outputs.windows_matrix }}
+    steps:
+      - id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          VARIANT="${{ github.event.inputs.variants || 'all' }}"
+
+          run_linux=false
+          run_macos=false
+          run_windows=false
+          case "$VARIANT" in
+            all)
+              run_linux=true
+              run_macos=true
+              run_windows=true
+              ;;
+            linux) run_linux=true ;;
+            macos) run_macos=true ;;
+            windows) run_windows=true ;;
+            windows-vs2015|windows-vs2017|windows-vs2019|windows-vs2022|windows-vs2026)
+              run_windows=true
+              ;;
+            *)
+              echo "Unknown variant: $VARIANT" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "run_linux=${run_linux}" >> "$GITHUB_OUTPUT"
+          echo "run_macos=${run_macos}" >> "$GITHUB_OUTPUT"
+          echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
+
+          WINDOWS_MATRIX='[
+            {"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},
+            {"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},
+            {"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},
+            {"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},
+            {"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}
+          ]'
+
+          if [[ "$run_windows" == true ]]; then
+            if [[ "$VARIANT" == all || "$VARIANT" == windows ]]; then
+              FILTERED="$WINDOWS_MATRIX"
+            elif [[ "$VARIANT" =~ ^windows-vs ]]; then
+              FILTERED=$(echo "$WINDOWS_MATRIX" | jq -c --arg v "$VARIANT" '[.[] | select(.name == $v)]')
+            else
+              FILTERED='[]'
+            fi
+            if [[ $(echo "$FILTERED" | jq 'length') -eq 0 ]]; then
+              echo "No Windows matrix rows for variant=${VARIANT}" >&2
+              exit 1
+            fi
+            echo "windows_matrix=${FILTERED}" >> "$GITHUB_OUTPUT"
+          else
+            echo "windows_matrix=[]" >> "$GITHUB_OUTPUT"
+          fi
+
+  package-linux-glibc217:
+    name: Package (linux-x86_64-glibc217)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    runs-on: ubuntu-22.04
+    container:
+      image: quay.io/centos/centos:7
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: linux-glibc217-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            linux-glibc217-m2-
+      - name: Package client-cpp (glibc 2.17 baseline)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x .github/scripts/package-client-cpp-centos7.sh
+          .github/scripts/package-client-cpp-centos7.sh
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-cpp-linux-x86_64-glibc217
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-x86_64-glibc217.zip
+          if-no-files-found: error
+
+  package-linux-aarch64:
+    name: Package (linux-aarch64)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    runs-on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v5
       - name: Set up JDK 17
@@ -82,48 +188,36 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install C++ dependencies (Linux)
+      - name: Install C++ dependencies (Linux aarch64)
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
-          . /etc/os-release
-          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
-            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
-            chmod +x /tmp/llvm.sh
-            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
-            # llvm.sh installs clang-17/lldb/lld/clangd but not the clang-format-17 package
-            sudo apt-get install -y clang-format-17
-          else
-            sudo apt-get install -y clang-format-17
-          fi
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
-          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
-          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: linux-aarch64-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-m2-
+            linux-aarch64-m2-
       - name: Package client-cpp
         shell: bash
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+            -Dspotless.skip=true
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
-          name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          name: client-cpp-linux-aarch64
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-linux-aarch64.zip
           if-no-files-found: error
 
   package-macos:
     name: Package (${{ matrix.name }})
-    needs: should-package
-    if: needs.should-package.outputs.run == 'true'
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_macos == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -154,16 +248,17 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: macos-${{ matrix.name }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-m2-
+            macos-${{ matrix.name }}-m2-
       - name: Package client-cpp
         shell: bash
         env:
           MACOSX_DEPLOYMENT_TARGET: "12.0"
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+            -Dspotless.skip=true
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
@@ -173,22 +268,13 @@ jobs:
 
   package-windows:
     name: Package (${{ matrix.name }})
-    needs: should-package
-    if: needs.should-package.outputs.run == 'true'
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_windows == 'true'
+    continue-on-error: ${{ matrix.continue_on_error }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: windows-vs2022
-            runs-on: windows-2022
-            boost_choco: boost-msvc-14.3
-            cmake_generator: ""
-            iotdb_tools_thrift_version: ""
-          - name: windows-vs2026
-            runs-on: windows-2025-vs2026
-            boost_choco: boost-msvc-14.3
-            cmake_generator: Visual Studio 18 2026
-            iotdb_tools_thrift_version: ""
+        include: ${{ fromJSON(needs.resolve-matrix.outputs.windows_matrix) }}
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v5
@@ -197,44 +283,59 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Install Visual Studio Build Tools (${{ matrix.name }})
+        if: matrix.vs_choco != ''
+        shell: pwsh
+        run: |
+          $params = '${{ matrix.vs_choco_params }}'
+          if ($params) {
+            choco install ${{ matrix.vs_choco }} -y --package-parameters="$params" --no-progress
+          } else {
+            choco install ${{ matrix.vs_choco }} -y --no-progress
+          }
       - name: Install C++ dependencies (Windows)
         shell: pwsh
         run: |
-          choco install winflexbison3 -y
-          choco install ${{ matrix.boost_choco }} -y
+          choco install winflexbison3 -y --no-progress
+          choco install ${{ matrix.boost_choco }} -y --no-progress
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
-          choco install openssl -y
+          choco install openssl -y --no-progress
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
-          choco install llvm --version=17.0.6 --force -y
-          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: windows-${{ matrix.name }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-m2-
+            windows-${{ matrix.name }}-m2-
       - name: Package client-cpp
         shell: bash
         env:
           CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
-          IOTDB_TOOLS_THRIFT_VERSION: ${{ matrix.iotdb_tools_thrift_version }}
+          PACKAGE_CLASSIFIER: ${{ matrix.package_classifier }}
         run: |
           set -euxo pipefail
-          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests)
+          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+            -Dspotless.skip=true \
+            "-Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}")
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
-          if [ -n "${IOTDB_TOOLS_THRIFT_VERSION:-}" ]; then
-            MVN_ARGS+=("-Diotdb-tools-thrift.version=${IOTDB_TOOLS_THRIFT_VERSION}")
-          fi
-          "${MVN_ARGS[@]}"
+          "${MVN_ARGS[@]}" 2>&1 | tee "mvn-package-${{ matrix.name }}.log"
+      - name: Upload build log (VS2015 fallback)
+        if: failure() && matrix.continue_on_error
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-cpp-${{ matrix.name }}-build-log
+          path: mvn-package-${{ matrix.name }}.log
+          retention-days: 14
       - name: Upload zip artifact
+        if: success()
         uses: actions/upload-artifact@v6
         with:
           name: client-cpp-${{ matrix.name }}
-          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-${{ matrix.package_classifier }}.zip
           if-no-files-found: error

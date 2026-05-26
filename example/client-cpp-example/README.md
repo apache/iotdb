@@ -37,6 +37,26 @@ user `root` / `root`).
 | `TableModelSessionExample` | Table (relational) model |
 | `MultiSvrNodeClient` | Multi-node insert/query loop |
 
+## Which SDK zip to use
+
+Release CI ([client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml))
+publishes one zip per platform/toolchain:
+`client-cpp-<version>-cpp-<classifier>.zip`.
+
+| Deployment target | Classifier suffix |
+|-------------------|-------------------|
+| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64` |
+| macOS x86_64 | `mac-x86_64` |
+| macOS arm64 | `mac-aarch64` |
+| Windows (match your Visual Studio version) | `windows-x86_64-vs2017` … `vs2026` |
+
+The current build compiles Thrift 0.21 from source at CMake configure time.
+Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
+pre-built Thrift workflow only; for glibc 2.17 on x86_64 use the
+`linux-x86_64-glibc217` artifact or build on an old enough host (see
+[client-cpp README](../../iotdb-client/client-cpp/README.md)).
+
 ## SDK layout (after unpack)
 
 The SDK zip produced by `client-cpp` contains **public headers only** and one

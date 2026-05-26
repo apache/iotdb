@@ -36,6 +36,25 @@
 | `TableModelSessionExample` | 表模型（关系型） |
 | `MultiSvrNodeClient` | 多节点写入/查询循环 |
 
+## 选择哪个 SDK 压缩包
+
+CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml)）
+会按平台/工具链打出多份 zip，文件名形如
+`client-cpp-<version>-cpp-<classifier>.zip`。请按目标环境选择：
+
+| 目标环境 | classifier 后缀 |
+|----------|-----------------|
+| Linux x86_64，glibc ≥ 2.17 | `linux-x86_64-glibc217` |
+| Linux aarch64，glibc ≥ 2.31 | `linux-aarch64` |
+| macOS x86_64 | `mac-x86_64` |
+| macOS arm64 | `mac-aarch64` |
+| Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2015` … `vs2026`（VS2015 包由 CI 尽力构建，失败时请本地编译） |
+
+当前 CMake 构建在配置阶段从源码编译 Thrift 0.21，**不再**通过
+`-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc；
+x86_64 上若要兼容 glibc 2.17，请使用 `linux-x86_64-glibc217` 包或在
+glibc ≤ 2.17 的系统上本地编译（见 [client-cpp README](../../iotdb-client/client-cpp/README.md)）。
+
 ## SDK 目录结构（解压后）
 
 `client-cpp` 打出的 SDK 压缩包只包含 **公开头文件** 和 **一个共享库**：

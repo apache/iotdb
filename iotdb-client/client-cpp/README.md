@@ -65,7 +65,65 @@ During configure CMake will, in order:
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
 The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
-land at `iotdb-client/client-cpp/target/client-cpp-<version>-cpp-<os>.zip`.
+land at `iotdb-client/client-cpp/target/client-cpp-<version>-cpp-<classifier>.zip`,
+where `<classifier>` defaults to the OS name (for example `linux-x86_64`) and
+can be overridden with `-Dclient.cpp.package.classifier=...` when building
+multiple toolchains on the same platform.
+
+### Release packages (CI)
+
+The [C++ Client package](../../.github/workflows/client-cpp-package.yml) workflow
+builds one zip per platform/toolchain. Pick the artifact that matches your
+deployment environment:
+
+| Target environment | Zip classifier (suffix) |
+|--------------------|-------------------------|
+| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64` |
+| macOS x86_64 | `mac-x86_64` |
+| macOS arm64 | `mac-aarch64` |
+| Windows + Visual Studio 2015 | `windows-x86_64-vs2015` |
+| Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |
+| Windows + Visual Studio 2019 | `windows-x86_64-vs2019` |
+| Windows + Visual Studio 2022 | `windows-x86_64-vs2022` |
+| Windows + Visual Studio 2026 | `windows-x86_64-vs2026` |
+
+Example file name:
+`client-cpp-2.0.7-SNAPSHOT-cpp-linux-x86_64-glibc217.zip`.
+
+Thrift **0.21.0** is compiled from source during the CMake configure step (see
+`cmake/FetchThrift.cmake`). Older releases that used pre-built
+`iotdb-tools-thrift` Maven artifacts and `-Diotdb-tools-thrift.version=...`
+for glibc/MSVC compatibility apply only to the **legacy** client-cpp build;
+with the current CMake build, compatibility is determined by the **compiler
+and OS used to build** the SDK, not by that Maven property.
+
+### Local build for a specific classifier
+
+Linux x86_64 (glibc 2.17 baseline — use CentOS 7 + devtoolset-8, or any host
+whose glibc is ≤ your deployment target):
+
+```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc217 package
+```
+
+Windows (match the Visual Studio version you use to build your application):
+
+```powershell
+# Visual Studio 2022 (default on recent Windows)
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
+
+# Visual Studio 2019
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
+  -Dcmake.generator="Visual Studio 16 2019" `
+  -Dclient.cpp.package.classifier=windows-x86_64-vs2019 package
+
+# Visual Studio 2017
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
+  -Dcmake.generator="Visual Studio 15 2017" `
+  -Dclient.cpp.package.classifier=windows-x86_64-vs2017 package
+```
 
 ## CMake options
 
@@ -154,7 +212,11 @@ CI environments can share a single cache by setting
 
 ### Windows
 
-The recommended toolchain is Visual Studio 2019 or 2022.
+Visual Studio **2017, 2019, 2022, or 2026** is supported for building the SDK.
+CI also attempts a **VS2015** package (`windows-x86_64-vs2015`); if that job
+fails, build locally with `-Dcmake.generator="Visual Studio 14 2015"` and the
+matching classifier. Link your application against the zip built with the **same
+VS generation** you use for your project.
 
 Prerequisites:
 

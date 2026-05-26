@@ -23,7 +23,7 @@
   the zip's include/ and lib/ directories.
 -->
 <assembly>
-    <id>cpp-${os.classifier}</id>
+    <id>cpp-${client.cpp.package.classifier}</id>
     <formats>
         <format>zip</format>
         <format>dir</format>

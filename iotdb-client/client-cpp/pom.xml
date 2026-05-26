@@ -55,6 +55,8 @@
         <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
         <boost.include.dir></boost.include.dir>
+        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
+        <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
     </properties>
     <dependencies>
         <dependency>
