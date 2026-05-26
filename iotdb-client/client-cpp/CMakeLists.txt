@@ -47,7 +47,12 @@ option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
-set(BOOST_VERSION "1.84.0"
+if(APPLE)
+    set(_iotdb_default_boost_version "1.84.0")
+else()
+    set(_iotdb_default_boost_version "1.60.0")
+endif()
+set(BOOST_VERSION "${_iotdb_default_boost_version}"
     CACHE STRING "Boost version used when downloading / unpacking (Thrift build only)")
 set(THRIFT_VERSION "0.21.0"
     CACHE STRING "Apache Thrift version used when downloading / building")
@@ -107,9 +112,13 @@ target_include_directories(iotdb_session
 if(APPLE)
     target_link_libraries(iotdb_session PRIVATE "-Wl,-force_load,${THRIFT_STATIC_LIB_PATH}")
 elseif(UNIX AND NOT MSVC)
-    # Link only required Thrift objects into the shared library. --whole-archive can
-    # pull duplicate libgcc morestack symbols on modern GCC (split-stack).
-    target_link_libraries(iotdb_session PRIVATE ${THRIFT_STATIC_LIB_PATH})
+    # whole-archive pulls all Thrift objects into libiotdb_session.so; allow-multiple-definition
+    # avoids libgcc __morestack_* duplicate symbol errors on some GCC/toolchain combos.
+    target_link_libraries(iotdb_session PRIVATE
+            -Wl,--whole-archive
+            ${THRIFT_STATIC_LIB_PATH}
+            -Wl,--no-whole-archive
+            -Wl,--allow-multiple-definition)
 else()
     target_link_libraries(iotdb_session PRIVATE iotdb_thrift_static)
 endif()

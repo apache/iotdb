@@ -78,7 +78,7 @@ passed directly to `cmake`.
 | `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables.                                                                           |
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
-| `BOOST_VERSION`       | `1.84.0`                         | Boost version that CMake will look for / download.                                                       |
+| `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
 | `THRIFT_VERSION`      | `0.21.0`                         | Apache Thrift version to build from source.                                                              |
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
@@ -104,13 +104,13 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir
 
    | Platform   | Required files                                                                                                                                                       |
    |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`)            |
-   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (Apple already ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                                                   |
-   | `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` or `boost_1_84_0.zip` (headers only; no `b2` build required)                                                           |
+   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`)            |
+   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
+   | `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
 
    Reference URLs (the configure step uses the same):
    - Apache Thrift 0.21.0: <https://archive.apache.org/dist/thrift/0.21.0/thrift-0.21.0.tar.gz>
-   - Boost 1.84.0:        <https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz>
+   - Boost 1.60.0:        <https://archives.boost.io/release/1.60.0/source/boost_1_60_0.tar.gz>
    - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
    - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
@@ -160,7 +160,7 @@ Prerequisites:
 
 1. **Boost.** Download and extract
    <https://archives.boost.io/release/1.88.0/source/boost_1_88_0.zip>
-   (1.74+ recommended for modern Clang; 1.84.0 is the default download). `iotdb_session` only needs Boost
+   (any 1.60+ release will work). `iotdb_session` only needs Boost
    headers, so running `bootstrap.bat` / `b2` is optional. Pass the
    location with either `-Dboost.include.dir="C:\boost_1_88_0"` (Maven)
    or `-DBOOST_ROOT="C:\boost_1_88_0"` (raw CMake).
