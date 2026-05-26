@@ -55,7 +55,7 @@ public class PipeTaskMeta {
    * PipeRuntimeSinkCriticalException} and {@link PipeRuntimeNonCriticalException}.
    *
    * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
-   * sharing the same connector, and nothing.
+   * sharing the same sink, and nothing.
    */
   private final Set<PipeRuntimeException> exceptionMessages =
       Collections.newSetFromMap(new ConcurrentHashMap<>());

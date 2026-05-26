@@ -61,7 +61,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   private final String attributeSortedString;
   private final int sinkIndex;
 
-  // Now parallel connectors run the same time, thus the heartbeat events are not sure
+  // Now parallel sinks run at the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
@@ -192,14 +192,14 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     } finally {
       inputPendingQueue.discardAllEvents();
 
-      // Should be called after outputPipeConnector.close()
+      // Should be called after outputPipeSink.close()
       super.close();
     }
   }
 
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued events in the output pipe connector.
+   * When a pipe is dropped, the sink may be reused and will not be closed. So we just discard its
+   * queued events in the output pipe sink.
    */
   public void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {

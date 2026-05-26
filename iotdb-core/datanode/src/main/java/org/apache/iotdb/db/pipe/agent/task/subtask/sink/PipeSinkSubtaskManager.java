@@ -58,7 +58,7 @@ public class PipeSinkSubtaskManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSinkSubtaskManager.class);
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
-      "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+      "Failed to deregister PipeSinkSubtask. No such subtask: ";
 
   private final Map<String, List<PipeSinkSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
@@ -114,7 +114,7 @@ public class PipeSinkSubtaskManager {
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
       attributeSortedString = "data_" + attributeSortedString;
     } else {
-      // Do not allow parallel tasks for schema region connectors
+      // Do not allow parallel tasks for schema region sinks
       // to avoid the potential disorder of the schema region data transfer
       sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
@@ -141,7 +141,7 @@ public class PipeSinkSubtaskManager {
             isDataRegionSink
                 ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
                 : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeSinkParameters);
-        // 1. Construct, validate and customize PipeConnector, and then handshake (create
+        // 1. Construct, validate and customize PipeSink, and then handshake (create
         // connection) with the target
         try {
           if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
@@ -164,7 +164,7 @@ public class PipeSinkSubtaskManager {
               e);
         }
 
-        // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+        // 2. Construct PipeSinkSubtaskLifeCycle to manage PipeSinkSubtask's life cycle
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
                 String.format(

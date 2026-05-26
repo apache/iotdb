@@ -153,7 +153,7 @@ public abstract class PipeSubtask
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
       final Event actualLastEvent, final boolean shouldReport) {
-    // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
+    // lastEvent may be set to null due to PipeSinkSubtask#discardEventsOfPipe
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent)
@@ -163,8 +163,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
-    // and finally exception occurs, we need to release the actual last event from the connector
+    // If lastEvent is set to null due to PipeSinkSubtask#discardEventsOfPipe (sink close)
+    // and finally exception occurs, we need to release the actual last event from the sink
     // given by the parameter
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {
@@ -174,7 +174,7 @@ public abstract class PipeSubtask
   }
 
   protected synchronized void clearReferenceCountAndReleaseLastEvent(final Event actualLastEvent) {
-    // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
+    // lastEvent may be set to null due to PipeSinkSubtask#discardEventsOfPipe
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
@@ -183,8 +183,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
-    // and finally exception occurs, we need to release the actual last event from the connector
+    // If lastEvent is set to null due to PipeSinkSubtask#discardEventsOfPipe (sink close)
+    // and finally exception occurs, we need to release the actual last event from the sink
     // given by the parameter
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {
