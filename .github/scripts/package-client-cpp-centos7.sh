@@ -17,22 +17,54 @@
 # Build client-cpp inside CentOS 7 + devtoolset-8 for glibc 2.17-compatible .so.
 set -euxo pipefail
 
-# CentOS 7 EOL: point mirrorlist/baseurl entries at vault.centos.org.
-fix_centos_vault_repos() {
-  find /etc/yum.repos.d/ -name 'CentOS*.repo' -print0 | while IFS= read -r -d '' repo_file; do
-    if grep -qE '^mirrorlist=' "${repo_file}"; then
-      sed -i 's/^mirrorlist=/#mirrorlist=/g' "${repo_file}"
-      sed -i 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' "${repo_file}"
-    fi
-    sed -i 's|http://mirror.centos.org|http://vault.centos.org|g' "${repo_file}"
+# CentOS 7 EOL: redirect yum repos to vault.centos.org (see CentOS wiki / SIG SCLo).
+fix_yum_vault_repos() {
+  local repo
+  for repo in /etc/yum.repos.d/*.repo; do
+    [[ -f "${repo}" ]] || continue
+    sed -i \
+      -e 's/mirror\.centos\.org/vault.centos.org/g' \
+      -e 's/^mirrorlist=/#mirrorlist=/g' \
+      -e 's/^#baseurl=/baseurl=/g' \
+      -e 's/^# baseurl=/baseurl=/g' \
+      "${repo}"
   done
 }
 
-# Base repos first; centos-release-scl adds CentOS-SCLo-*.repo (needed for devtoolset-8).
-fix_centos_vault_repos
+# SCLo packages live under vault .../7.9.2009/sclo/... ; $releasever is "7" in the image.
+write_sclo_vault_repos() {
+  cat > /etc/yum.repos.d/CentOS-SCLo-scl.repo <<'EOF'
+[centos-sclo-sclo]
+name=CentOS-7 - SCLo sclo
+baseurl=http://vault.centos.org/centos/7.9.2009/sclo/$basearch/sclo/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+
+[centos-sclo-scl]
+name=CentOS-7 - SCLo scl
+baseurl=http://vault.centos.org/centos/7.9.2009/sclo/$basearch/scl/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+EOF
+
+  cat > /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo <<'EOF'
+[centos-sclo-rh]
+name=CentOS-7 - SCLo rh
+baseurl=http://vault.centos.org/centos/7.9.2009/sclo/$basearch/rh/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+EOF
+}
+
+fix_yum_vault_repos
 yum install -y ca-certificates centos-release-scl epel-release
-# SCLo repo files appear only after centos-release-scl is installed.
-fix_centos_vault_repos
+write_sclo_vault_repos
+fix_yum_vault_repos
+yum clean all
+yum makecache -y
 
 yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-binutils \
   devtoolset-8-libstdc++-devel scl-utils \
