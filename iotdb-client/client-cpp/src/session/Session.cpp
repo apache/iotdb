@@ -19,6 +19,7 @@
 
 #include "Session.h"
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <stack>
 #include <time.h>
