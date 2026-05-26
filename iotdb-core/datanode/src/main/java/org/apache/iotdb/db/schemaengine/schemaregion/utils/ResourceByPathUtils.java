@@ -240,7 +240,6 @@ public abstract class ResourceByPathUtils {
            */
           LOGGER.debug(
               "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
-          QueryContext firstQuery = list.getQueryContextSet().iterator().next();
 
           // Synchronize on memChunk to prevent concurrent clone-and-replace races.
           // Another query entering this same branch could call memChunk.setWorkingTVList(cloneList)
@@ -258,6 +257,7 @@ public abstract class ResourceByPathUtils {
                     : ((AlignedTVList) workingTVList).calculateRamSize(columnsToClone);
 
             // reserve query memory
+            QueryContext firstQuery = workingTVList.getQueryContextSet().iterator().next();
             if (firstQuery instanceof FragmentInstanceContext) {
               MemoryReservationManager memoryReservationManager =
                   ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
@@ -482,10 +482,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
     Set<Integer> accessedColumns = new HashSet<>();
     for (QueryContext queryContext : tvList.getQueryContextSet()) {
-      if (queryContext instanceof FragmentInstanceContext) {
-        accessedColumns.addAll(
-            ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
+      if (!(queryContext instanceof FragmentInstanceContext)) {
+        return null;
       }
+      accessedColumns.addAll(
+          ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
     }
     return accessedColumns;
   }
