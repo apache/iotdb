@@ -46,7 +46,7 @@ publishes one zip per platform/toolchain:
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
 | Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64-glibc231` |
+| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows (match your Visual Studio version) | `windows-x86_64-vs2017` … `vs2026` |

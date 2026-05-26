@@ -45,7 +45,7 @@ CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|
 | Linux x86_64，glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64，glibc ≥ 2.31 | `linux-aarch64-glibc231` |
+| Linux aarch64，glibc ≥ 2.17 | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2017` … `vs2026` |

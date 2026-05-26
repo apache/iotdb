@@ -80,7 +80,7 @@ deployment environment:
 | Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
 | Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.31 | `linux-aarch64-glibc231` |
+| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |

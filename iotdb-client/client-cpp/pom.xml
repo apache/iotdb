@@ -258,7 +258,7 @@
                 <os.suffix>win</os.suffix>
             </properties>
         </profile>
-        <!-- Visual Studio generators (esp. VS2017) default to Win32 unless -A x64 is set. -->
+        <!-- Windows: default to x64 (VS2017 and older default to Win32 without -A x64). -->
         <profile>
             <id>client-cpp-vs-x64</id>
             <activation>

@@ -14,8 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Build client-cpp for glibc 2.17 baseline (manylinux2014 or CentOS 7 + devtoolset-8).
+# Build client-cpp for glibc 2.17 baseline (manylinux2014 x86_64/aarch64, or CentOS 7 fallback).
+# Set PACKAGE_CLASSIFIER (e.g. linux-x86_64-glibc217 / linux-aarch64-glibc217).
 set -euxo pipefail
+
+MACHINE=$(uname -m)
+case "${MACHINE}" in
+  x86_64)
+    CMAKE_PKG_ARCH=linux-x86_64
+    JDK_API_ARCH=linux/x64
+  ;;
+  aarch64)
+    CMAKE_PKG_ARCH=linux-aarch64
+    JDK_API_ARCH=linux/aarch64
+  ;;
+  *)
+    echo "Unsupported architecture: ${MACHINE}" >&2
+    exit 1
+    ;;
+esac
+
+if [[ -z "${PACKAGE_CLASSIFIER:-}" ]]; then
+  if [[ "${MACHINE}" == "x86_64" ]]; then
+    PACKAGE_CLASSIFIER=linux-x86_64-glibc217
+  else
+    PACKAGE_CLASSIFIER=linux-aarch64-glibc217
+  fi
+fi
 
 run_maven_build() {
   gcc --version
@@ -24,7 +49,7 @@ run_maven_build() {
   cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
   ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
     -Dspotless.skip=true \
-    -Dclient.cpp.package.classifier=linux-x86_64-glibc217
+    -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}"
 }
 
 # CentOS 7 EOL: redirect yum repos to vault.centos.org (see CentOS wiki / SIG SCLo).
@@ -82,7 +107,7 @@ install_centos7_devtoolset8() {
 }
 
 if [[ -x /opt/rh/devtoolset-10/root/usr/bin/gcc ]]; then
-  # manylinux2014_x86_64 ships devtoolset-10 on PATH for glibc 2.17-compatible builds.
+  # manylinux2014 images ship devtoolset-10 on PATH for glibc 2.17-compatible builds.
   yum install -y wget tar which git patch unzip bzip2 || true
 else
   install_centos7_devtoolset8
@@ -91,18 +116,18 @@ fi
 CMAKE_VERSION=3.28.4
 CMAKE_DIR=/opt/cmake-${CMAKE_VERSION}
 if [[ ! -x "${CMAKE_DIR}/bin/cmake" ]]; then
-  wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+  wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${CMAKE_PKG_ARCH}.tar.gz" \
     -O /tmp/cmake.tar.gz
   rm -rf "${CMAKE_DIR}"
   mkdir -p /opt
   tar xf /tmp/cmake.tar.gz -C /opt
-  mv "/opt/cmake-${CMAKE_VERSION}-linux-x86_64" "${CMAKE_DIR}"
+  mv "/opt/cmake-${CMAKE_VERSION}-${CMAKE_PKG_ARCH}" "${CMAKE_DIR}"
 fi
 
 JAVA_HOME=/opt/jdk-17
 if [[ ! -x "${JAVA_HOME}/bin/java" ]]; then
   wget -qL -O /tmp/jdk17.tar.gz \
-    "https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse?project=jdk"
+    "https://api.adoptium.net/v3/binary/latest/17/ga/${JDK_API_ARCH}/jdk/hotspot/normal/eclipse?project=jdk"
   rm -rf /opt/jdk-17*
   mkdir -p /opt
   tar xf /tmp/jdk17.tar.gz -C /opt
@@ -117,16 +142,16 @@ export JAVA_HOME
 if [[ -x /opt/rh/devtoolset-10/root/usr/bin/gcc ]]; then
   run_maven_build
 else
-  scl enable devtoolset-8 -- bash -c '
+  scl enable devtoolset-8 -- bash -c "
     set -euxo pipefail
     gcc --version
     cmake --version
     java -version
-    cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
+    cd \"\${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}\"
     ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
       -Dspotless.skip=true \
-      -Dclient.cpp.package.classifier=linux-x86_64-glibc217
-  '
+      -Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}
+  "
 fi
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
