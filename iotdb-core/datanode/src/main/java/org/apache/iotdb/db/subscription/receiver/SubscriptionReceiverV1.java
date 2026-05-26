@@ -240,8 +240,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HANDSHAKING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling handshake request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling handshake request %s: %s", req, e);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage),
           -1,
@@ -308,8 +307,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HEARTBEAT, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling heartbeat request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling heartbeat request %s: %s", req, e);
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, exceptionMessage));
     }
@@ -384,8 +382,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_SUBSCRIBING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling subscribe request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling subscribe request %s: %s", req, e);
       return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, exceptionMessage));
     }
@@ -466,8 +463,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_POLLING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling poll request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling poll request %s: %s", req, e);
       return PipeSubscribePollResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage),
           Collections.emptyList());
@@ -645,8 +641,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_COMMITTING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling commit request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling commit request %s: %s", req, e);
       return PipeSubscribeCommitResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
     }
@@ -692,8 +687,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_CLOSING, req, e);
       final String exceptionMessage =
           String.format(
-              "Subscription: unexpected exception while handling close request %s: %s",
-              req, e);
+              "Subscription: unexpected exception while handling close request %s: %s", req, e);
       return PipeSubscribeCloseResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, exceptionMessage));
     }

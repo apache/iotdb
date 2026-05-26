@@ -187,10 +187,10 @@ public class SubscriptionBroker {
       // If there is no prefetching queue for the topic, check if it's completed
       if (Objects.isNull(prefetchingQueue)) {
         if (completedTopicNames.containsKey(topicName)) {
-              LOGGER.info(
-                  "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, returning termination response to client",
-                  topicName,
-                  brokerId);
+          LOGGER.info(
+              "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, returning termination response to client",
+              topicName,
+              brokerId);
           // Add a termination event for the completed topic
           eventsToPoll.add(
               new SubscriptionEvent(

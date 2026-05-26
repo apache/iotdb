@@ -97,7 +97,8 @@ final class AbstractSubscriptionProviders {
       try {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
       } catch (final Exception e) {
-        LOGGER.warn("{} failed to fetch all endpoints from {} because {}", consumer, endPoint, e, e);
+        LOGGER.warn(
+            "{} failed to fetch all endpoints from {} because {}", consumer, endPoint, e, e);
         break;
       }
 

@@ -1401,7 +1401,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
-              "Cluster has no available subscription providers when %s fetches all endpoints", this));
+              "Cluster has no available subscription providers when %s fetches all endpoints",
+              this));
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
