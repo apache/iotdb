@@ -131,7 +131,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           }
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+              StorageEngineMessages.FAILED_CONVERT_DATA_TYPE_FOR_LOAD_TSFILE_STATEMENT,
+              loadTsFileStatement,
+              e);
           return Optional.of(
               loadTsFileStatement.accept(
                   LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
@@ -155,7 +157,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           }
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+              StorageEngineMessages.FAILED_CONVERT_DATA_TYPE_FOR_LOAD_TSFILE_STATEMENT,
+              loadTsFileStatement,
+              e);
           return Optional.of(
               loadTsFileStatement.accept(
                   LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
@@ -183,8 +187,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               });
     }
 
-    LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.DATA_TYPE_CONVERSION_SUCCESS, loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
@@ -234,7 +237,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {
       LOGGER.warn(
-          "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.",
+          StorageEngineMessages.FAILED_CONVERT_DATA_TYPE_STATUS_CODE,
           loadTsFileStatement,
           result.getCode());
       return false;

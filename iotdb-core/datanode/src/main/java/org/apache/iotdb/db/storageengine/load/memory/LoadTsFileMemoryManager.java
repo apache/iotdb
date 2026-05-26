@@ -89,7 +89,7 @@ public class LoadTsFileMemoryManager {
     }
     if (usedMemorySizeInBytes.get() < sizeInBytes) {
       LOGGER.error(
-          "Load: Attempting to release more memory ({}) than allocated ({})",
+          StorageEngineMessages.RELEASE_MORE_MEMORY_THAN_ALLOCATED,
           sizeInBytes,
           usedMemorySizeInBytes.get());
     }
@@ -113,7 +113,7 @@ public class LoadTsFileMemoryManager {
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
         LOGGER.info(
-            "Load: Query engine's memory is not sufficient, allocated MemoryBlock from DataCacheMemoryBlock, size: {}",
+            StorageEngineMessages.ALLOCATED_MEMORY_BLOCK_FROM_DATA_CACHE,
             sizeInBytes);
         return new LoadTsFileMemoryBlock(sizeInBytes);
       }
@@ -142,7 +142,7 @@ public class LoadTsFileMemoryManager {
 
       if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
         LOGGER.error(
-            "Load: Failed to setTotalMemorySizeInBytes memory block {} to {} bytes, current memory usage {} bytes",
+            StorageEngineMessages.RESIZE_MEMORY_BLOCK_FAILED,
             memoryBlock,
             newSizeInBytes,
             memoryBlock.getMemoryUsageInBytes());
@@ -158,14 +158,14 @@ public class LoadTsFileMemoryManager {
       forceAllocateFromQuery(bytesNeeded);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}",
+            StorageEngineMessages.FORCE_RESIZED_MEMORY_BLOCK_FROM_QUERY,
             bytesNeeded,
             newSizeInBytes);
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(bytesNeeded)) {
         LOGGER.info(
-            "Load: Query engine's memory is not sufficient, force resized LoadTsFileMemoryBlock with memory from DataCacheMemoryBlock, size added: {}, new size: {}",
+            StorageEngineMessages.FORCE_RESIZED_MEMORY_BLOCK_FROM_DATA_CACHE,
             bytesNeeded,
             newSizeInBytes);
       } else {
@@ -193,7 +193,7 @@ public class LoadTsFileMemoryManager {
         throw e;
       }
       LOGGER.info(
-          "Create Data Cache Memory Block {}, allocate memory {}",
+          StorageEngineMessages.CREATE_DATA_CACHE_MEMORY_BLOCK,
           dataCacheMemoryBlock,
           actuallyAllocateMemoryInBytes);
     }

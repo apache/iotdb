@@ -106,10 +106,6 @@ public class LoadTsFileManager {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
-      "%s TsFileWriterManager has been closed.";
-  private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
-
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
@@ -192,7 +188,7 @@ public class LoadTsFileManager {
         } else {
           final long waitTimeInMs = cleanupTask.scheduledTime - System.currentTimeMillis();
           LOGGER.info(
-              "Next load cleanup task {} is not ready to run, wait for at least {} ms ({}s).",
+              StorageEngineMessages.NEXT_LOAD_CLEANUP_TASK_NOT_READY,
               cleanupTask.uuid,
               waitTimeInMs,
               waitTimeInMs / 1000.0);
@@ -463,7 +459,8 @@ public class LoadTsFileManager {
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
         throws IOException, PageException {
       if (isClosed) {
-        throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+        throw new IOException(
+            String.format(StorageEngineMessages.WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       if (!dataPartition2Writer.containsKey(partitionInfo)) {
         File newTsFile =
@@ -538,7 +535,7 @@ public class LoadTsFileManager {
         }
         if (writer.isWritingChunkGroup()) {
           LOGGER.warn(
-              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              StorageEngineMessages.WRITER_ALREADY_WRITING_CHUNK_GROUP,
               writer.getFile().getAbsolutePath(),
               partitionInfo,
               device,
@@ -555,7 +552,8 @@ public class LoadTsFileManager {
     private void writeDeletion(DataRegion dataRegion, DeletionData deletionData)
         throws IOException {
       if (isClosed) {
-        throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+        throw new IOException(
+            String.format(StorageEngineMessages.WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         final DataPartitionInfo partitionInfo = entry.getKey();
@@ -565,7 +563,8 @@ public class LoadTsFileManager {
             File newModificationFile = ModificationFile.getExclusiveMods(writer.getFile());
             if (!newModificationFile.createNewFile()) {
               LOGGER.error(
-                  "Can not create ModificationFile {} for writing.", newModificationFile.getPath());
+                  StorageEngineMessages.CANNOT_CREATE_MODIFICATION_FILE_FOR_WRITING,
+                  newModificationFile.getPath());
               return;
             }
 
@@ -584,7 +583,8 @@ public class LoadTsFileManager {
         Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
         throws IOException, LoadFileException {
       if (isClosed) {
-        throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+        throw new IOException(
+            String.format(StorageEngineMessages.WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
       for (final Map.Entry<DataPartitionInfo, ModificationFile> entry :
           dataPartition2ModificationFile.entrySet()) {
@@ -771,7 +771,7 @@ public class LoadTsFileManager {
       } catch (DirectoryNotEmptyException e) {
         LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
       } catch (IOException e) {
-        LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
+        LOGGER.warn(StorageEngineMessages.FAILED_TO_DELETE_LOAD_TASK_DIR, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
       dataPartition2Resource = null;

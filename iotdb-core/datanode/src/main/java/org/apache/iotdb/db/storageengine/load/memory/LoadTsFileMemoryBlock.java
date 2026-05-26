@@ -102,7 +102,7 @@ public class LoadTsFileMemoryBlock extends LoadTsFileAbstractMemoryBlock {
   protected synchronized void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
-          "Try to release memory from a memory block {} which has not released all memory", this);
+          StorageEngineMessages.RELEASE_MEMORY_BLOCK_WITH_USAGE, this);
     }
     MEMORY_MANAGER.releaseToQuery(totalMemorySizeInBytes);
   }

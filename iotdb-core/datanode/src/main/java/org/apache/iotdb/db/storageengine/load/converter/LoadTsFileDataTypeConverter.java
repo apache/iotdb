@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -88,7 +89,7 @@ public class LoadTsFileDataTypeConverter {
           tableStatementDataTypeConvertExecutionVisitor, loadTsFileTableStatement.getDatabase());
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to convert data types for table model statement {}.",
+          StorageEngineMessages.FAILED_CONVERT_DATA_TYPES_FOR_TABLE_MODEL,
           loadTsFileTableStatement,
           e);
       return Optional.of(
@@ -140,7 +141,9 @@ public class LoadTsFileDataTypeConverter {
       return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
+          StorageEngineMessages.FAILED_CONVERT_DATA_TYPES_FOR_TREE_MODEL,
+          loadTsFileTreeStatement,
+          e);
       return Optional.of(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } finally {

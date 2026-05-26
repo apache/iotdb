@@ -81,7 +81,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   protected void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
-          "Try to release memory from a memory block {} which has not released all memory", this);
+          StorageEngineMessages.RELEASE_MEMORY_BLOCK_WITH_USAGE, this);
     }
     MEMORY_MANAGER.releaseToQuery(limitedMemorySizeInBytes.get());
   }
@@ -89,7 +89,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   public boolean doShrink(long shrinkMemoryInBytes) {
     if (shrinkMemoryInBytes < 0) {
       LOGGER.warn(
-          "Try to shrink a negative memory size {} from memory block {}",
+          StorageEngineMessages.SHRINK_NEGATIVE_MEMORY,
           shrinkMemoryInBytes,
           this);
       return false;

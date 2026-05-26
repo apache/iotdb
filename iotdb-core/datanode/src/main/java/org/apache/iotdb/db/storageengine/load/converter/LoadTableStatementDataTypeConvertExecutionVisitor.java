@@ -66,7 +66,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
     if (Objects.isNull(databaseName)) {
       final String errorMsg =
           String.format(
-              "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type conversion.",
+              StorageEngineMessages.DATABASE_NAME_NULL_SKIP_DATA_TYPE_CONVERSION,
               loadTsFileStatement);
       LOGGER.warn(errorMsg);
       return Optional.of(
@@ -110,7 +110,9 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            StorageEngineMessages.FAILED_CONVERT_DATA_TYPE_FOR_LOAD_TSFILE_STATEMENT,
+            loadTsFileStatement,
+            e);
         return Optional.of(
             LoadTsFileDataTypeConverter.TABLE_STATEMENT_EXCEPTION_VISITOR.process(
                 loadTsFileStatement, e));
@@ -130,8 +132,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               });
     }
 
-    LOGGER.info(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.DATA_TYPE_CONVERSION_SUCCESS, loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

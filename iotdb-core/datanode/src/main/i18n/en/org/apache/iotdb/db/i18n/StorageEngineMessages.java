@@ -507,6 +507,85 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active load periodical jobs executor is stopped successfully.";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "Error occurred during moving file {} to fail directory.";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "Failed to count failed files in fail directory.";
+  public static final String NEXT_LOAD_CLEANUP_TASK_NOT_READY =
+      "Next load cleanup task {} is not ready to run, wait for at least {} ms ({}s).";
+  public static final String WRITER_MANAGER_HAS_BEEN_CLOSED =
+      "%s TsFileWriterManager has been closed.";
+  public static final String FAILED_TO_DELETE_LOAD_TASK_DIR = "Failed to delete load task dir {}.";
+  public static final String WRITER_ALREADY_WRITING_CHUNK_GROUP =
+      "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}.";
+  public static final String CANNOT_CREATE_MODIFICATION_FILE_FOR_WRITING =
+      "Can not create ModificationFile {} for writing.";
+  public static final String ACTIVE_LOAD_CREATE_FAIL_DIR_ERROR =
+      "Error occurred during creating fail directory {} for active load.";
+  public static final String ACTIVE_LOAD_TSFILE_SUCCESS =
+      "Successfully auto load TsFile {} (isGeneratedByPipe = {})";
+  public static final String ACTIVE_LOAD_TSFILE_FAILED_STATUS_MOVE_FAIL_DIR =
+      "Failed to auto load TsFile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.";
+  public static final String ACTIVE_LOAD_TSFILE_FILE_NOT_FOUND_SKIP =
+      "Failed to auto load TsFile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.";
+  public static final String ACTIVE_LOAD_TSFILE_UNEXPECTED_EXCEPTION_MOVE_FAIL_DIR =
+      "Failed to auto load TsFile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.";
+  public static final String ACTIVE_LOAD_REJECT_MEMORY =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.";
+  public static final String ACTIVE_LOAD_REJECT_READ_ONLY =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) because the system is read-only, will retry later.";
+  public static final String ACTIVE_LOAD_REJECT_PROCEDURE_RETURN_TIMEOUT =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) due to timeout while waiting for procedure return, will retry later.";
+  public static final String ACTIVE_LOAD_REJECT_DATANODE_NOT_ENOUGH =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) because there are not enough DataNodes, will retry later.";
+  public static final String ACTIVE_LOAD_REJECT_CONFIG_NODE_CONNECTION =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) because connecting to any ConfigNode failed, will retry later.";
+  public static final String ACTIVE_LOAD_REJECT_QUERY_TIMEOUT =
+      "Rejecting auto load TsFile {} (isGeneratedByPipe = {}) because the current query timed out, will retry later.";
+  public static final String ACTIVE_LOAD_DIR_NOT_READABLE =
+      "Current dir path is not readable: {}. Skip scanning this dir. Please check the permission.";
+  public static final String ACTIVE_LOAD_DIR_NOT_WRITABLE =
+      "Current dir path is not writable: {}. Skip scanning this dir. Please check the permission.";
+  public static final String ACTIVE_LOAD_CHECK_DIR_PERMISSION_ERROR =
+      "Error occurred during checking read/write permission of dir: {}. Skip scanning this dir.";
+  public static final String ACTIVE_LOAD_HOT_RELOAD_DIRS_ERROR =
+      "Error occurred during hot reload active load dirs. Current active load listening dirs: {}.";
+  public static final String FAILED_FIND_MOUNT_POINT =
+      "Failed to find mount point {}, skip registering it to map";
+  public static final String EXCEPTION_READING_DATA_DIR_MOUNT_POINT =
+      "Exception occurs when reading data dir's mount point {}";
+  public static final String EXCEPTION_READING_TARGET_FILE_MOUNT_POINT =
+      "Exception occurs when reading target file's mount point {}";
+  public static final String RELEASE_MORE_MEMORY_THAN_ALLOCATED =
+      "Load: Attempting to release more memory ({}) than allocated ({})";
+  public static final String ALLOCATED_MEMORY_BLOCK_FROM_DATA_CACHE =
+      "Load: Query engine memory is not sufficient, allocated MemoryBlock from DataCacheMemoryBlock, size: {}";
+  public static final String RESIZE_MEMORY_BLOCK_FAILED =
+      "Load: Failed to set total memory size of memory block {} to {} bytes, current memory usage {} bytes";
+  public static final String FORCE_RESIZED_MEMORY_BLOCK_FROM_QUERY =
+      "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}";
+  public static final String FORCE_RESIZED_MEMORY_BLOCK_FROM_DATA_CACHE =
+      "Load: Query engine memory is not sufficient, force resized LoadTsFileMemoryBlock with memory from DataCacheMemoryBlock, size added: {}, new size: {}";
+  public static final String CREATE_DATA_CACHE_MEMORY_BLOCK =
+      "Create Data Cache Memory Block {}, allocate memory {}";
+  public static final String RELEASE_MEMORY_BLOCK_WITH_USAGE =
+      "Try to release memory from a memory block {} which has not released all memory";
+  public static final String SHRINK_NEGATIVE_MEMORY =
+      "Try to shrink a negative memory size {} from memory block {}";
+  public static final String CAST_TABLET_TYPE =
+      "Load: Inserting tablet to {}.{}. Casting type from {} to {}.";
+  public static final String DATABASE_NAME_NULL_SKIP_DATA_TYPE_CONVERSION =
+      "Database name is unexpectedly null for LoadTsFileStatement: %s. Skip data type conversion.";
+  public static final String FAILED_CONVERT_DATA_TYPE_FOR_LOAD_TSFILE_STATEMENT =
+      "Failed to convert data type for LoadTsFileStatement: {}.";
+  public static final String DATA_TYPE_CONVERSION_SUCCESS =
+      "Data type conversion for LoadTsFileStatement {} is successful.";
+  public static final String FAILED_CONVERT_DATA_TYPE_STATUS_CODE =
+      "Failed to convert data type for LoadTsFileStatement: {}, status code is {}.";
+  public static final String FAILED_CONVERT_DATA_TYPES_FOR_TABLE_MODEL =
+      "Failed to convert data types for table model statement {}.";
+  public static final String FAILED_CONVERT_DATA_TYPES_FOR_TREE_MODEL =
+      "Failed to convert data types for tree model statement {}.";
+  public static final String TRY_LOAD_TSFILE_V3_TO_CURRENT_V4 =
+      "Try to load TsFile V3 into current version (V4), file path: {}";
+  public static final String FILE_VERSION_HIGHER_THAN_CURRENT =
+      "The file's version number is higher than current, file path: {}";
 
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "String '%s' is not a legal repair log";
 
