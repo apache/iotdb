@@ -122,13 +122,17 @@ jobs:
           echo "run_macos=${run_macos}" >> "$GITHUB_OUTPUT"
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
-          WINDOWS_MATRIX='[
-            {"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},
-            {"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},
-            {"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},
-            {"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},
-            {"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}
-          ]'
+          # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}]'
+
+          write_windows_matrix_output() {
+            local matrix_json="$1"
+            {
+              echo 'windows_matrix<<__MATRIX_EOF__'
+              echo "${matrix_json}"
+              echo '__MATRIX_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          }
 
           if [[ "$run_windows" == true ]]; then
             if [[ "$VARIANT" == all || "$VARIANT" == windows ]]; then
@@ -142,9 +146,10 @@ jobs:
               echo "No Windows matrix rows for variant=${VARIANT}" >&2
               exit 1
             fi
-            echo "windows_matrix=${FILTERED}" >> "$GITHUB_OUTPUT"
+            FILTERED=$(echo "$FILTERED" | jq -c '.')
+            write_windows_matrix_output "${FILTERED}"
           else
-            echo "windows_matrix=[]" >> "$GITHUB_OUTPUT"
+            write_windows_matrix_output '[]'
           fi
 
   package-linux-glibc217:
