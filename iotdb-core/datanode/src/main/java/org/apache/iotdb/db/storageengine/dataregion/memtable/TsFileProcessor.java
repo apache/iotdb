@@ -92,6 +92,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -544,6 +545,7 @@ public class TsFileProcessor {
               insertTabletNode.getMeasurements(),
               insertTabletNode.getDataTypes(),
               insertTabletNode.getColumns(),
+              insertTabletNode.getBitMaps(),
               insertTabletNode.getColumnCategories(),
               splitStart,
               splitEnd,
@@ -784,11 +786,11 @@ public class TsFileProcessor {
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
               * dataTypes.length;
-      memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
+      memTableIncrement +=
+          AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories, values);
     } else {
       // For existed device of this mem table
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      List<TSDataType> dataTypesInTVList = new ArrayList<>();
       for (int i = 0; i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (dataTypes[i] == null
@@ -804,15 +806,19 @@ public class TsFileProcessor {
                   + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE > 0
                       ? 1
                       : 0);
-          memTableIncrement += currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
-          dataTypesInTVList.add(dataTypes[i]);
+          long columnArrayCost =
+              values[i] != null
+                  ? AlignedTVList.valueListArrayMemCost(dataTypes[i])
+                  : AlignedTVList.emptyValueListArrayMemCost();
+          memTableIncrement += currentArrayNum * columnArrayCost;
         }
       }
       // this insertion will result in a new array
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
         memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
+      memTableIncrement +=
+          alignedMemChunk.getTvListArrayMemCostIncrement(measurements, dataTypes, values);
     }
 
     for (int i = 0; i < dataTypes.length; i++) {
@@ -848,7 +854,7 @@ public class TsFileProcessor {
         chunkMetadataIncrement +=
             ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
                 * dataTypes.length;
-        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, null);
+        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes, null, values);
         for (int i = 0; i < dataTypes.length; i++) {
           // Skip failed Measurements
           if (dataTypes[i] == null
@@ -867,7 +873,6 @@ public class TsFileProcessor {
         // For existed device of this mem table
         AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
         int currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
-        List<TSDataType> dataTypesInTVList = new ArrayList<>();
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
         for (int i = 0; i < dataTypes.length; i++) {
@@ -892,22 +897,26 @@ public class TsFileProcessor {
                             > 0
                         ? 1
                         : 0);
-            memTableIncrement +=
-                currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+            long columnArrayCost =
+                values[i] != null
+                    ? AlignedTVList.valueListArrayMemCost(dataTypes[i])
+                    : AlignedTVList.emptyValueListArrayMemCost();
+            memTableIncrement += currentArrayNum * columnArrayCost;
           }
         }
         int addingPointNum = addingPointNumInfo.right;
         // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
-            dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
+            memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
+          } else {
+            memTableIncrement +=
+                AlignedTVList.alignedTvListArrayMemCost(dataTypes, null, values);
           }
-          dataTypesInTVList.addAll(addingPointNumInfo.left.values());
+        }
+        if (alignedMemChunk != null) {
           memTableIncrement +=
-              alignedMemChunk != null
-                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
-                  : AlignedTVList.alignedTvListArrayMemCost(
-                      dataTypesInTVList.toArray(new TSDataType[0]), null);
+              alignedMemChunk.getTvListArrayMemCostIncrement(measurements, dataTypes, values);
         }
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
@@ -962,6 +971,7 @@ public class TsFileProcessor {
       String[] measurements,
       TSDataType[] dataTypes,
       Object[] columns,
+      BitMap[] bitMaps,
       TsTableColumnCategory[] columnCategories,
       int start,
       int end,
@@ -981,6 +991,7 @@ public class TsFileProcessor {
         end,
         memIncrements,
         columns,
+        bitMaps,
         columnCategories,
         noFailure,
         results);
@@ -1038,6 +1049,7 @@ public class TsFileProcessor {
       int end,
       long[] memIncrements,
       Object[] columns,
+      BitMap[] bitMaps,
       TsTableColumnCategory[] columnCategories,
       boolean noFailure,
       TSStatus[] results) {
@@ -1078,11 +1090,15 @@ public class TsFileProcessor {
       int numArraysToAdd =
           incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
               + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+      boolean[] columnHasNonNull =
+          buildAlignedColumnHasNonNull(
+              dataTypes, columns, bitMaps, columnCategories, start, end);
       memIncrements[0] +=
-          numArraysToAdd * AlignedTVList.alignedTvListArrayMemCost(dataTypes, columnCategories);
+          numArraysToAdd
+              * AlignedTVList.alignedTvListArrayMemCost(
+                  dataTypes, columnCategories, null, columns, columnHasNonNull);
     } else {
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
-      List<TSDataType> dataTypesInTVList = new ArrayList<>();
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
       for (int i = 0; i < dataTypes.length; i++) {
@@ -1097,11 +1113,17 @@ public class TsFileProcessor {
         }
 
         if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
-          // add a new column in the TVList, the new column should be as long as existing ones
-          memIncrements[0] +=
-              (currentPointNum / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                  * AlignedTVList.valueListArrayMemCost(dataType);
-          dataTypesInTVList.add(dataType);
+          int newColumnArrayNum =
+              currentPointNum / PrimitiveArrayManager.ARRAY_SIZE
+                  + (currentPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0)
+                  + incomingPointNum / PrimitiveArrayManager.ARRAY_SIZE
+                  + (incomingPointNum % PrimitiveArrayManager.ARRAY_SIZE > 0 ? 1 : 0);
+          long columnArrayCost =
+              alignedColumnHasNonNullInRange(
+                      column, bitMaps == null ? null : bitMaps[i], start, end)
+                  ? AlignedTVList.valueListArrayMemCost(dataType)
+                  : AlignedTVList.emptyValueListArrayMemCost();
+          memIncrements[0] += newColumnArrayNum * columnArrayCost;
         }
       }
 
@@ -1115,11 +1137,12 @@ public class TsFileProcessor {
       long acquireArray = newArrayCnt - currentArrayCnt;
 
       if (acquireArray != 0) {
-        // memory of extending the TVList
-        dataTypesInTVList.addAll(alignedMemChunk.getWorkingTVList().getTsDataTypes());
         memIncrements[0] +=
             acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
+      memIncrements[0] +=
+          alignedMemChunk.getTvListArrayMemCostIncrementForTablet(
+              measurementIds, dataTypes, columns, bitMaps, start, end);
     }
 
     // flexible-length data size
@@ -1139,6 +1162,40 @@ public class TsFileProcessor {
         memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end, results);
       }
     }
+  }
+
+  private static boolean[] buildAlignedColumnHasNonNull(
+      TSDataType[] dataTypes,
+      Object[] columns,
+      BitMap[] bitMaps,
+      TsTableColumnCategory[] columnCategories,
+      int start,
+      int end) {
+    boolean[] columnHasNonNull = new boolean[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (dataTypes[i] == null || columns[i] == null) {
+        continue;
+      }
+      if (columnCategories != null && columnCategories[i] != TsTableColumnCategory.FIELD) {
+        continue;
+      }
+      columnHasNonNull[i] =
+          alignedColumnHasNonNullInRange(columns[i], bitMaps == null ? null : bitMaps[i], start, end);
+    }
+    return columnHasNonNull;
+  }
+
+  private static boolean alignedColumnHasNonNullInRange(
+      Object column, BitMap bitMap, int start, int end) {
+    if (bitMap == null) {
+      return true;
+    }
+    for (int i = start; i < end; i++) {
+      if (!bitMap.isMarked(i)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void updateMemoryInfo(

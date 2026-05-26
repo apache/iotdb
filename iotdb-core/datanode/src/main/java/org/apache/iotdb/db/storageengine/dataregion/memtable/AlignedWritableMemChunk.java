@@ -350,7 +350,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             alignedTVList.getMinTime(), alignedTVList.getMaxTime())) {
       return;
     }
-    BitMap allValueColDeletedMap = alignedTVList.getAllValueColDeletedMap();
     int rowCount = alignedTVList.rowCount();
     List<int[]> valueColumnDeleteCursor = new ArrayList<>();
     if (valueColumnsDeletionList != null) {
@@ -379,8 +378,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       int limit = (i == timestampsList.size() - 1) ? rowCount - i * ARRAY_SIZE : ARRAY_SIZE;
       for (int j = 0; j < limit; j++) {
         row++;
-        // the row is deleted
-        if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(row)) {
+        // the row is deleted or has no value columns (unwritten columns count as null)
+        int valueIndex = indices == null ? row : indices[j];
+        if (ignoreAllNullRows && alignedTVList.isEmptyValueRowAtValueIndex(valueIndex)) {
           continue;
         }
         long timestamp = timestamps[j];
@@ -551,11 +551,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BlockingQueue<Object> ioTaskQueue,
       long maxNumberOfPointsInChunk,
       int maxNumberOfPointsInPage) {
-    BitMap allValueColDeletedMap;
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
-
-    allValueColDeletedMap =
-        ignoreAllNullRows ? alignedWorkingListForFlush.getAllValueColDeletedMap() : null;
 
     boolean[] timeDuplicateInfo = null;
 
@@ -592,8 +588,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < alignedWorkingListForFlush.rowCount()
-          && ((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(
+          && ((ignoreAllNullRows
+                  && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
                       alignedWorkingListForFlush.getValueIndex(nextRowIndex)))
               || alignedWorkingListForFlush.isTimeDeleted(nextRowIndex))) {
         nextRowIndex++;
@@ -615,15 +611,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       chunkRange.add(pageRange);
     }
 
-    handleEncoding(
-        ioTaskQueue, chunkRange, timeDuplicateInfo, allValueColDeletedMap, maxNumberOfPointsInPage);
+    handleEncoding(ioTaskQueue, chunkRange, timeDuplicateInfo, maxNumberOfPointsInPage);
   }
 
   private void handleEncoding(
       BlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
       boolean[] timeDuplicateInfo,
-      BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
     List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
@@ -643,8 +637,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
             // skip empty row
-            if (allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(
+            if (ignoreAllNullRows
+                && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
                     alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
               continue;
             }
@@ -753,8 +747,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
           // skip empty row
-          if (((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(
+          if (((ignoreAllNullRows
+                  && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
                       alignedWorkingListForFlush.getValueIndex(sortedRowIndex)))
               || (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)))) {
             continue;
@@ -889,6 +883,71 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         }
       }
       return true;
+    }
+    return false;
+  }
+
+  /**
+   * Extra memory for allocating value arrays in the current (last) chunk when columns are written
+   * for the first time in that chunk.
+   */
+  public long getTvListArrayMemCostIncrement(
+      String[] insertingMeasurements, TSDataType[] insertingTypes, Object[] insertingValues) {
+    long memCostIncrement = 0;
+    for (int i = 0; i < insertingMeasurements.length; i++) {
+      if (insertingTypes[i] == null || insertingMeasurements[i] == null) {
+        continue;
+      }
+      Integer columnIndex = measurementIndexMap.get(insertingMeasurements[i]);
+      if (columnIndex == null) {
+        continue;
+      }
+      if (!list.isLastValueArrayUnallocated(columnIndex)) {
+        continue;
+      }
+      if (insertingValues != null && insertingValues[i] != null) {
+        memCostIncrement += AlignedTVList.valueListArrayMemCost(insertingTypes[i]);
+      }
+    }
+    return memCostIncrement;
+  }
+
+  /**
+   * Extra memory for tablet insertion: allocate value arrays only when the column has non-null
+   * values in the inserting range of the last chunk.
+   */
+  public long getTvListArrayMemCostIncrementForTablet(
+      String[] insertingMeasurements,
+      TSDataType[] insertingTypes,
+      Object[] columns,
+      BitMap[] bitMaps,
+      int start,
+      int end) {
+    long memCostIncrement = 0;
+    for (int i = 0; i < insertingMeasurements.length; i++) {
+      if (insertingTypes[i] == null || insertingMeasurements[i] == null || columns[i] == null) {
+        continue;
+      }
+      Integer columnIndex = measurementIndexMap.get(insertingMeasurements[i]);
+      if (columnIndex == null || !list.isLastValueArrayUnallocated(columnIndex)) {
+        continue;
+      }
+      if (columnHasNonNullInRange(columns[i], bitMaps == null ? null : bitMaps[i], start, end)) {
+        memCostIncrement += AlignedTVList.valueListArrayMemCost(insertingTypes[i]);
+      }
+    }
+    return memCostIncrement;
+  }
+
+  private static boolean columnHasNonNullInRange(
+      Object column, BitMap bitMap, int start, int end) {
+    if (bitMap == null) {
+      return true;
+    }
+    for (int i = start; i < end; i++) {
+      if (!bitMap.isMarked(i)) {
+        return true;
+      }
     }
     return false;
   }
