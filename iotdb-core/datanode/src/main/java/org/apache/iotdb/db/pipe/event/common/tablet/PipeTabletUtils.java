@@ -195,6 +195,17 @@ public final class PipeTabletUtils {
       default:
         throw new UnSupportedDataTypeException(DataNodePipeMessages.UNSUPPORTED + dataType);
     }
+    unmarkNullValue(tablet, rowIndex, columnIndex);
+  }
+
+  private static void unmarkNullValue(
+      final Tablet tablet, final int rowIndex, final int columnIndex) {
+    final BitMap[] bitMaps = tablet.getBitMaps();
+    if (Objects.nonNull(bitMaps)
+        && columnIndex < bitMaps.length
+        && Objects.nonNull(bitMaps[columnIndex])) {
+      bitMaps[columnIndex].unmark(rowIndex);
+    }
   }
 
   private static BitMap[] ensureBitMaps(final Tablet tablet, final int minColumnCount) {
