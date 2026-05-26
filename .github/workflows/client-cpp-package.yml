@@ -159,13 +159,12 @@ jobs:
     name: Package (linux-x86_64-glibc217)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # Checkout/cache on host (Node actions need modern glibc); build in manylinux2014 via docker run.
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: linux-glibc217-m2-${{ hashFiles('**/pom.xml') }}
@@ -176,7 +175,16 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-centos7.sh
-          bash .github/scripts/package-client-cpp-centos7.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /workspace \
+            -e GITHUB_WORKSPACE=/workspace \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash .github/scripts/package-client-cpp-centos7.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
       - name: Resolve package zip
         id: pkg
         shell: bash
@@ -191,7 +199,7 @@ jobs:
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
           path: ${{ steps.pkg.outputs.path }}

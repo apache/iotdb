@@ -14,8 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Build client-cpp on manylinux2014 (CentOS 7, glibc 2.17 baseline) with devtoolset-8.
+# Build client-cpp for glibc 2.17 baseline (manylinux2014 or CentOS 7 + devtoolset-8).
 set -euxo pipefail
+
+run_maven_build() {
+  gcc --version
+  cmake --version
+  java -version
+  cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
+  ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+    -Dspotless.skip=true \
+    -Dclient.cpp.package.classifier=linux-x86_64-glibc217
+}
 
 # CentOS 7 EOL: redirect yum repos to vault.centos.org (see CentOS wiki / SIG SCLo).
 fix_yum_vault_repos() {
@@ -59,16 +69,24 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
 EOF
 }
 
-fix_yum_vault_repos
-yum install -y ca-certificates centos-release-scl epel-release
-write_sclo_vault_repos
-fix_yum_vault_repos
-yum clean all
-yum makecache -y
+install_centos7_devtoolset8() {
+  fix_yum_vault_repos
+  yum install -y ca-certificates centos-release-scl epel-release
+  write_sclo_vault_repos
+  fix_yum_vault_repos
+  yum clean all
+  yum makecache -y
+  yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-binutils \
+    devtoolset-8-libstdc++-devel scl-utils \
+    make wget tar which git patch unzip bzip2
+}
 
-yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-binutils \
-  devtoolset-8-libstdc++-devel scl-utils \
-  make wget tar which git patch unzip bzip2
+if [[ -x /opt/rh/devtoolset-10/root/usr/bin/gcc ]]; then
+  # manylinux2014_x86_64 ships devtoolset-10 on PATH for glibc 2.17-compatible builds.
+  yum install -y wget tar which git patch unzip bzip2 || true
+else
+  install_centos7_devtoolset8
+fi
 
 CMAKE_VERSION=3.28.4
 CMAKE_DIR=/opt/cmake-${CMAKE_VERSION}
@@ -96,16 +114,20 @@ fi
 export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 export JAVA_HOME
 
-scl enable devtoolset-8 -- bash -c '
-  set -euxo pipefail
-  gcc --version
-  cmake --version
-  java -version
-  cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
-  ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-    -Dspotless.skip=true \
-    -Dclient.cpp.package.classifier=linux-x86_64-glibc217
-'
+if [[ -x /opt/rh/devtoolset-10/root/usr/bin/gcc ]]; then
+  run_maven_build
+else
+  scl enable devtoolset-8 -- bash -c '
+    set -euxo pipefail
+    gcc --version
+    cmake --version
+    java -version
+    cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
+    ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+      -Dspotless.skip=true \
+      -Dclient.cpp.package.classifier=linux-x86_64-glibc217
+  '
+fi
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
