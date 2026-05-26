@@ -317,7 +317,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_PROGRESS,
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+              i + 1,
+              tsfileNum,
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
         continue;
       }
@@ -328,7 +330,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_PROGRESS,
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+              i + 1,
+              tsfileNum,
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
@@ -343,13 +347,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             DataNodeQueryMessages.FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT, tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
-                DataNodeQueryMessages.FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT_S,
-                tsFile.getPath()));
+                DataNodeQueryMessages.FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT_S, tsFile.getPath()));
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
                 DataNodeQueryMessages.LOADING_FILE_FAILED_DETAIL,
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                tsFile.getPath(),
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));

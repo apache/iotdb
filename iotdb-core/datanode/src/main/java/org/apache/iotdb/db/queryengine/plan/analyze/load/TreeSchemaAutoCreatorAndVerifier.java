@@ -119,10 +119,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           continue;
         }
       } catch (IllegalPathException e) {
-        LOGGER.warn(
-            DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS,
-            device,
-            e);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS, device, e);
       }
 
       for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
@@ -248,9 +245,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
-            DataNodeQueryMessages
-                .LOAD_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT,
-            statementString, e.getMessage()));
+            DataNodeQueryMessages.LOAD_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT,
+            statementString,
+            e.getMessage()));
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
@@ -384,12 +381,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /
         // root.db.ss.a) conflicts with the created database. just do not throw exception here.
         && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
-      LOGGER.warn(
-          DataNodeQueryMessages.CREATE_DATABASE_ERROR, statement, result.status);
+      LOGGER.warn(DataNodeQueryMessages.CREATE_DATABASE_ERROR, statement, result.status);
       throw new LoadFileException(
-          String.format(
-              DataNodeQueryMessages.CREATE_DATABASE_ERROR_S,
-              statement, result.status));
+          String.format(DataNodeQueryMessages.CREATE_DATABASE_ERROR_S, statement, result.status));
     }
   }
 

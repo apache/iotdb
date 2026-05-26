@@ -112,9 +112,7 @@ public class LoadTsFileMemoryManager {
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
-        LOGGER.info(
-            StorageEngineMessages.ALLOCATED_MEMORY_BLOCK_FROM_DATA_CACHE,
-            sizeInBytes);
+        LOGGER.info(StorageEngineMessages.ALLOCATED_MEMORY_BLOCK_FROM_DATA_CACHE, sizeInBytes);
         return new LoadTsFileMemoryBlock(sizeInBytes);
       }
       throw e;

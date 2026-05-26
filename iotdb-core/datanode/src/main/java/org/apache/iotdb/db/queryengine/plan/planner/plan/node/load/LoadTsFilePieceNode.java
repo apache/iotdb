@@ -140,9 +140,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
         tsFileData.serialize(stream);
       } catch (IOException e) {
         LOGGER.error(
-            DataNodeQueryMessages.SERIALIZE_TSFILE_DATA_ERROR_SKIP,
-            tsFile.getPath(),
-            tsFileData);
+            DataNodeQueryMessages.SERIALIZE_TSFILE_DATA_ERROR_SKIP, tsFile.getPath(), tsFileData);
       }
     }
   }

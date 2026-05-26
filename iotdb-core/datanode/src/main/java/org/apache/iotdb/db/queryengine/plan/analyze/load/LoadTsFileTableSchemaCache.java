@@ -146,9 +146,7 @@ public class LoadTsFileTableSchemaCache {
       createTableAndDatabaseIfNecessary(device.getTableName());
     } catch (final Exception e) {
       if (IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck()) {
-        LOGGER.info(
-            DataNodeQueryMessages.SKIP_FAILED_TABLE_SCHEMA_CHECK,
-            e.getMessage());
+        LOGGER.info(DataNodeQueryMessages.SKIP_FAILED_TABLE_SCHEMA_CHECK, e.getMessage());
       } else {
         throw e;
       }
@@ -166,10 +164,7 @@ public class LoadTsFileTableSchemaCache {
       return ModificationUtils.isDeviceDeletedByMods(
           currentModifications, currentTimeIndex, device);
     } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS,
-          device,
-          e);
+      LOGGER.warn(DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS, device, e);
       return false;
     }
   }

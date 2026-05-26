@@ -299,8 +299,7 @@ public class LoadTsFileScheduler implements IScheduler {
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
           LOGGER.info(
-              DataNodeQueryMessages.LOAD_TSFILES_FAILED_TRY_CONVERT_TO_TABLETS,
-              failedTsFiles);
+              DataNodeQueryMessages.LOAD_TSFILES_FAILED_TRY_CONVERT_TO_TABLETS, failedTsFiles);
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
@@ -379,8 +378,7 @@ public class LoadTsFileScheduler implements IScheduler {
         }
         TSStatus status = result.getFailureStatus();
         status.setMessage(
-            String.format(
-                DataNodeQueryMessages.LOAD_PIECE_ERROR_FIRST_PHASE, pieceNode.getTsFile())
+            String.format(DataNodeQueryMessages.LOAD_PIECE_ERROR_FIRST_PHASE, pieceNode.getTsFile())
                 + status.getMessage());
         return false;
       }
@@ -394,8 +392,7 @@ public class LoadTsFileScheduler implements IScheduler {
       dispatchResultFuture.cancel(true);
       LOGGER.warn(
           String.format(
-              DataNodeQueryMessages.WAIT_FOR_LOADING_TIMEOUT,
-              LoadTsFilePieceNode.class.getName()),
+              DataNodeQueryMessages.WAIT_FOR_LOADING_TIMEOUT, LoadTsFilePieceNode.class.getName()),
           e);
       return false;
     }
@@ -428,7 +425,9 @@ public class LoadTsFileScheduler implements IScheduler {
                           throw new RuntimeException(
                               String.format(
                                   DataNodeQueryMessages.SERIALIZE_PROGRESS_INDEX_ERROR,
-                                  isFirstPhaseSuccess, uuid, tsFile.getAbsolutePath()),
+                                  isFirstPhaseSuccess,
+                                  uuid,
+                                  tsFile.getAbsolutePath()),
                               e);
                         }
                       })));

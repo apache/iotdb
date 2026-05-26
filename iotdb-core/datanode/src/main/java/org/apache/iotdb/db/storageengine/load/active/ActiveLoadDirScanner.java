@@ -164,10 +164,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       noPermissionDirs.remove(listeningDir);
       return true;
     } catch (final Exception e) {
-      LOGGER.error(
-          StorageEngineMessages.ACTIVE_LOAD_CHECK_DIR_PERMISSION_ERROR,
-          listeningDir,
-          e);
+      LOGGER.error(StorageEngineMessages.ACTIVE_LOAD_CHECK_DIR_PERMISSION_ERROR, listeningDir, e);
       return false;
     }
   }
@@ -208,10 +205,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updatePendingDirList(listeningDirs);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
     } catch (final Exception e) {
-      LOGGER.warn(
-          StorageEngineMessages.ACTIVE_LOAD_HOT_RELOAD_DIRS_ERROR,
-          listeningDirs,
-          e);
+      LOGGER.warn(StorageEngineMessages.ACTIVE_LOAD_HOT_RELOAD_DIRS_ERROR, listeningDirs, e);
     }
   }
 

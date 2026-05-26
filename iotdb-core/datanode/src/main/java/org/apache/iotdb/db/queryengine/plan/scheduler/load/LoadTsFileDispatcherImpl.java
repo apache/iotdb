@@ -229,7 +229,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final String exceptionMessage =
           String.format(
               DataNodeQueryMessages.FAILED_DISPATCH_LOAD_COMMAND_TO_NODE,
-              loadTsFileReq, endPoint, e);
+              loadTsFileReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -324,7 +326,9 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final String exceptionMessage =
           String.format(
               DataNodeQueryMessages.FAILED_DISPATCH_LOAD_COMMAND_TO_NODE,
-              loadCommandReq, endPoint, e);
+              loadCommandReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
