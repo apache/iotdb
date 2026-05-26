@@ -19,12 +19,24 @@ set -euxo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y build-essential cmake wget git ca-certificates \
+apt-get install -y build-essential wget git ca-certificates \
   openjdk-17-jdk binutils
+
+# Ubuntu 20.04 ships CMake 3.16; FetchBoost.cmake needs ARCHIVE_EXTRACT (3.18+).
+CMAKE_VERSION=3.28.4
+CMAKE_DIR=/opt/cmake-${CMAKE_VERSION}
+if [[ ! -x "${CMAKE_DIR}/bin/cmake" ]]; then
+  wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.tar.gz" \
+    -O /tmp/cmake.tar.gz
+  rm -rf "${CMAKE_DIR}"
+  mkdir -p /opt
+  tar xf /tmp/cmake.tar.gz -C /opt
+  mv "/opt/cmake-${CMAKE_VERSION}-linux-aarch64" "${CMAKE_DIR}"
+fi
 
 JAVA_BIN=$(readlink -f "$(command -v java)")
 export JAVA_HOME=$(dirname "$(dirname "${JAVA_BIN}")")
-export PATH="${JAVA_HOME}/bin:${PATH}"
+export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 
 java -version
 gcc --version

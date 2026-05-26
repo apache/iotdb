@@ -17,7 +17,6 @@ on:
           - linux
           - macos
           - windows
-          - windows-vs2015
           - windows-vs2017
           - windows-vs2019
           - windows-vs2022
@@ -59,7 +58,6 @@ jobs:
               - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/client-cpp-package.yml'
               - '.github/workflows/client-cpp-source-build.yml'
-              - '.github/scripts/package-client-cpp-*.sh'
               - '.github/scripts/package-client-cpp-*.sh'
       - id: result
         shell: bash
@@ -114,7 +112,7 @@ jobs:
             linux) run_linux=true ;;
             macos) run_macos=true ;;
             windows) run_windows=true ;;
-            windows-vs2015|windows-vs2017|windows-vs2019|windows-vs2022|windows-vs2026)
+            windows-vs2017|windows-vs2019|windows-vs2022|windows-vs2026)
               run_windows=true
               ;;
             *)
@@ -128,7 +126,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":"","continue_on_error":false},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended","continue_on_error":false},{"name":"windows-vs2015","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"1.67.0","cmake_generator":"Visual Studio 14 2015","package_classifier":"windows-x86_64-vs2015","vs_choco":"visualstudio2015buildtools","vs_choco_params":"","continue_on_error":true}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -161,9 +159,8 @@ jobs:
     name: Package (linux-x86_64-glibc217)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # No job container: checkout uses Node 24 (needs glibc 2.27+); build runs in CentOS 7 via docker.
     runs-on: ubuntu-22.04
-    container:
-      image: quay.io/centos/centos:7
     steps:
       - uses: actions/checkout@v5
       - name: Cache Maven packages
@@ -178,7 +175,13 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-centos7.sh
-          .github/scripts/package-client-cpp-centos7.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /work \
+            -e GITHUB_WORKSPACE=/work \
+            quay.io/centos/centos:7 \
+            bash .github/scripts/package-client-cpp-centos7.sh
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
@@ -191,8 +194,6 @@ jobs:
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
     runs-on: ubuntu-22.04-arm
-    container:
-      image: ubuntu:20.04
     steps:
       - uses: actions/checkout@v5
       - name: Cache Maven packages
@@ -207,7 +208,13 @@ jobs:
         run: |
           set -euxo pipefail
           chmod +x .github/scripts/package-client-cpp-ubuntu20-arm.sh
-          .github/scripts/package-client-cpp-ubuntu20-arm.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /work \
+            -e GITHUB_WORKSPACE=/work \
+            ubuntu:20.04 \
+            bash .github/scripts/package-client-cpp-ubuntu20-arm.sh
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
@@ -271,7 +278,6 @@ jobs:
     name: Package (${{ matrix.name }})
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_windows == 'true'
-    continue-on-error: ${{ matrix.continue_on_error }}
     strategy:
       fail-fast: false
       matrix:
@@ -335,16 +341,8 @@ jobs:
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
-          "${MVN_ARGS[@]}" 2>&1 | tee "mvn-package-${{ matrix.name }}.log"
-      - name: Upload build log (VS2015 fallback)
-        if: failure() && matrix.continue_on_error
-        uses: actions/upload-artifact@v6
-        with:
-          name: client-cpp-${{ matrix.name }}-build-log
-          path: mvn-package-${{ matrix.name }}.log
-          retention-days: 14
+          "${MVN_ARGS[@]}"
       - name: Upload zip artifact
-        if: success()
         uses: actions/upload-artifact@v6
         with:
           name: client-cpp-${{ matrix.name }}

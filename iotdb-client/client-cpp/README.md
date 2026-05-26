@@ -82,7 +82,6 @@ deployment environment:
 | Linux aarch64, glibc ≥ 2.31 | `linux-aarch64-glibc231` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
-| Windows + Visual Studio 2015 | `windows-x86_64-vs2015` |
 | Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |
 | Windows + Visual Studio 2019 | `windows-x86_64-vs2019` |
 | Windows + Visual Studio 2022 | `windows-x86_64-vs2022` |
@@ -213,10 +212,8 @@ CI environments can share a single cache by setting
 ### Windows
 
 Visual Studio **2017, 2019, 2022, or 2026** is supported for building the SDK.
-CI also attempts a **VS2015** package (`windows-x86_64-vs2015`); if that job
-fails, build locally with `-Dcmake.generator="Visual Studio 14 2015"` and the
-matching classifier. Link your application against the zip built with the **same
-VS generation** you use for your project.
+Link your application against the zip built with the **same VS generation** you
+use for your project.
 
 Prerequisites:
 

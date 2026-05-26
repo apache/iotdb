@@ -48,7 +48,7 @@ CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.
 | Linux aarch64，glibc ≥ 2.31 | `linux-aarch64-glibc231` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
-| Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2015` … `vs2026`（VS2015 包由 CI 尽力构建，失败时请本地编译） |
+| Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2017` … `vs2026` |
 
 当前 CMake 构建在配置阶段从源码编译 Thrift 0.21，**不再**通过
 `-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc；
