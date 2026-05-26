@@ -156,8 +156,6 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
           new Tablet(
               // Used for tree model
               deviceIdString, schemas, 1);
-      PipeTabletUtils.initEmptyBitMaps(tablet);
-      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
 
@@ -173,7 +171,6 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
             new Tablet(
                 // Used for tree model
                 deviceIdString, schemas, rowCountAndMemorySize.getLeft());
-        PipeTabletUtils.initEmptyBitMaps(tablet);
         if (allocatedBlockForTablet.getMemoryUsageInBytes() < rowCountAndMemorySize.getRight()) {
           PipeDataNodeResourceManager.memory()
               .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());

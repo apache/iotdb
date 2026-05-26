@@ -325,7 +325,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   new ArrayList<>(dataTypeList),
                   new ArrayList<>(columnTypes),
                   rowCountAndMemorySize.getLeft());
-          PipeTabletUtils.initEmptyBitMaps(tablet);
           isFirstRow = false;
         }
         final int rowIndex = tablet.getRowSize();
@@ -346,7 +345,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     if (isFirstRow) {
       tablet = new Tablet(tableName, measurementList, dataTypeList, columnTypes, 0);
-      PipeTabletUtils.initEmptyBitMaps(tablet);
     }
 
     PipeTabletUtils.compactBitMaps(tablet);

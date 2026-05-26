@@ -309,8 +309,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
       if (!data.hasCurrent()) {
         tablet = new Tablet(currentDeviceString, currentMeasurements, 1);
-        PipeTabletUtils.initEmptyBitMaps(tablet);
-        PipeTabletUtils.compactBitMaps(tablet);
         return tablet;
       }
 
@@ -325,7 +323,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             tablet =
                 new Tablet(
                     currentDeviceString, currentMeasurements, rowCountAndMemorySize.getLeft());
-            PipeTabletUtils.initEmptyBitMaps(tablet);
             if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
                 < rowCountAndMemorySize.getRight()) {
               PipeDataNodeResourceManager.memory()
@@ -353,7 +350,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
       if (tablet == null) {
         tablet = new Tablet(currentDeviceString, currentMeasurements, 1);
-        PipeTabletUtils.initEmptyBitMaps(tablet);
       }
 
       // Switch chunk reader iff current chunk is all consumed

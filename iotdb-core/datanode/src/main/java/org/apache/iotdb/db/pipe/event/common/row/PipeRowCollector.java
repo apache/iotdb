@@ -78,7 +78,6 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       Pair<Integer, Integer> rowCountAndMemorySize =
           PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
       tablet = new Tablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
-      PipeTabletUtils.initEmptyBitMaps(tablet);
       isAligned = pipeRow.isAligned();
     }
 
@@ -86,14 +85,14 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       final Object value = row.getObject(i);
-      if (value instanceof Binary) {
-        tablet.addValue(
-            measurementSchemaArray[i].getMeasurementName(),
-            rowIndex,
-            PipeBinaryTransformer.transformToBinary((Binary) value));
-      } else {
-        tablet.addValue(measurementSchemaArray[i].getMeasurementName(), rowIndex, value);
-      }
+      PipeTabletUtils.putValue(
+          tablet,
+          rowIndex,
+          i,
+          measurementSchemaArray[i].getType(),
+          value instanceof Binary
+              ? PipeBinaryTransformer.transformToBinary((Binary) value)
+              : value);
       if (row.isNull(i)) {
         PipeTabletUtils.markNullValue(tablet, rowIndex, i);
       }

@@ -130,15 +130,6 @@ public final class PipeTabletUtils {
     return Objects.nonNull(tabletStringInternPool) ? tabletStringInternPool.intern(tablet) : tablet;
   }
 
-  /**
-   * Initializes the bitmap array shell without allocating per-column bitmaps. Null values must be
-   * recorded through {@link #markNullValue(Tablet, int, int)} so the column bitmap is allocated
-   * lazily.
-   */
-  public static void initEmptyBitMaps(final Tablet tablet) {
-    tablet.setBitMaps(new BitMap[getColumnCount(tablet)]);
-  }
-
   public static void compactBitMaps(final Tablet tablet) {
     if (Objects.isNull(tablet)) {
       return;
