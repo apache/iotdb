@@ -34,9 +34,10 @@ import org.apache.iotdb.pipe.api.event.Event;
  * <p>The lifecycle of a {@link PipeSource} is as follows:
  *
  * <ul>
- *   <li>When a collaboration task is created, the KV pairs of `WITH EXTRACTOR` clause in SQL are
- *       parsed and the validation method {@link PipeSource#validate(PipeParameterValidator)} will
- *       be called to validate the {@link PipeParameters}.
+ *   <li>When a collaboration task is created, the KV pairs of `WITH SOURCE` (or the legacy `WITH
+ *       EXTRACTOR`) clause in SQL are parsed and the validation method {@link
+ *       PipeSource#validate(PipeParameterValidator)} will be called to validate the {@link
+ *       PipeParameters}.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)} will be called to
  *       configure the runtime behavior of the {@link PipeSource}.

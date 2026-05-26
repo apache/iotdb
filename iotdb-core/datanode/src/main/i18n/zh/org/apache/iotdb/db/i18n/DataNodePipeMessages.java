@@ -78,7 +78,7 @@ public final class DataNodePipeMessages {
       "读取删除文件-{} 的 magic version：{}";
   public static final String READ_DELETION_FROM_FILE = "从文件 {} 读取删除操作：{}";
   public static final String UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT =
-      "无法在 {} 创建 iotConsensusV2 删除目录";
+      "无法在 {} 创建 IoTConsensusV2 删除目录";
 
   // ===================== AGENT =====================
 
@@ -651,27 +651,27 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVEN =
       "IoTConsensusV2AsyncConnector 仅支持 PipeTsFileInsertionEvent。当前事件：{}。";
   public static final String IOTCONSENSUSV2CONNECTOR_TRANSFERBUFFER_QUEUE_OFFER_IS_INTERRUPTED =
-      "IoTConsensusV2Connector 的 transferBuffer 队列 offer 操作被中断。";
+      "IoTConsensusV2Connector 写入 transferBuffer 队列时被中断。";
   public static final String IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED =
-      "IoTConsensusV2TransferBatchReqBuilder：由于内存限制，最大批次大小从 {} 调整为 {}";
+      "IoTConsensusV2TransferBatchReqBuilder：最大批次大小因内存限制从 {} 调整为 {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_NOT_FOUND_IN_TRANSFERBUFFER =
-      "IoTConsensusV2-ConsensusGroup-{}：transferBuffer 中未找到 event-{}，跳过移除。queue size = {}";
+      "IoTConsensusV2-ConsensusGroup-{}：transferBuffer 中未找到事件-{}，跳过移除。队列大小 = {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED =
-      "IoTConsensusV2-ConsensusGroup-{}：事件 {}（replicate index {}）传输失败，且加入重试队列失败，"
+      "IoTConsensusV2-ConsensusGroup-{}：事件 {}（复制索引 {}）传输失败，且加入重试队列失败，"
           + "该事件将被忽略。";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED_1 =
-      "IoTConsensusV2-ConsensusGroup-{}：事件 {}（replicate index {}）传输失败，将加入重试队列。";
+      "IoTConsensusV2-ConsensusGroup-{}：事件 {}（复制索引 {}）传输失败，将加入重试队列。";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_NO_EVENT_ADDED_TO_CONNECTOR =
-      "IoTConsensusV2-ConsensusGroup-{}：第 {} 个 event-{} 已添加到 connector buffer";
+      "IoTConsensusV2-ConsensusGroup-{}：第 {} 个事件-{} 已添加到连接器缓冲区";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_ONE_EVENT_SUCCESSFULLY_RECEIVED_BY =
-      "IoTConsensusV2-ConsensusGroup-{}：event-{} 已被 follower 成功接收，将从队列移除，"
-          + "queue size = {}，limit size = {}";
+      "IoTConsensusV2-ConsensusGroup-{}：事件-{} 已被从节点成功接收，将从队列移除，"
+          + "队列大小 = {}，限制大小 = {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_RETRYEVENTQUEUE_IS_NOT_EMPTY_AFTER =
-      "IoTConsensusV2-ConsensusGroup-{}：20 秒后 retryEventQueue 仍不为空。retryQueue size：{}";
+      "IoTConsensusV2-ConsensusGroup-{}：20 秒后重试事件队列仍不为空。重试队列大小：{}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_RETRY_WITH_INTERVAL_FOR_INDEX =
-      "IoTConsensusV2-ConsensusGroup-{}：以间隔 {} 重试 index {} {}";
+      "IoTConsensusV2-ConsensusGroup-{}：以间隔 {} 重试索引 {} {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_TRY_TO_REMOVE_EVENT_AFTER =
-      "IoTConsensusV2-ConsensusGroup-{}：iotConsensusV2AsyncConnector 已关闭后尝试移除 event-{}，将忽略。";
+      "IoTConsensusV2-ConsensusGroup-{}：连接器已关闭后尝试移除事件-{}，将忽略。";
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN =
       "IoTConsensusV2-{}：传输文件失败后关闭文件读取器失败。";
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_1 =
@@ -679,13 +679,13 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_2 =
       "IoTConsensusV2-{}：成功传输 mod 文件后关闭文件读取器失败。";
   public static final String IOTCONSENSUSV2_FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH_TOTAL =
-      "IoTConsensusV2：传输 TabletInsertionEvent 批次失败。失败事件总数：{}，相关 pipe 名称：{}";
+      "IoTConsensusV2：传输 TabletInsertionEvent 批次失败。失败事件总数：{}，相关 Pipe 名称：{}";
   public static final String IOTCONSENSUSV2_FAILED_TO_TRANSFER_TSFILEINSERTIONEVENT_COMMITTER_KEY =
-      "IoTConsensusV2-{}：传输 TsFileInsertionEvent {}（committer key {}，replicate index {}）失败。";
+      "IoTConsensusV2-{}：传输 TsFileInsertionEvent {}（提交器键 {}，复制索引 {}）失败。";
   public static final String IOTCONSENSUSV2_REDIRECT_FILE_POSITION_TO =
       "IoTConsensusV2-{}：将文件位置重定向到 {}。";
   public static final String IOTCONSENSUSV2_SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_REPLICATE =
-      "IoTConsensusV2-{}：成功传输文件 {}（committer key={}，replicate index={}）。";
+      "IoTConsensusV2-{}：成功传输文件 {}（提交器键={}，复制索引={}）。";
   public static final String IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB =
       "IoTDBCDCConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 PipeRawTabletInsertionEvent。";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
@@ -889,7 +889,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_HANDLE_CONFIG_CLIENT_ID_EXIT =
       "处理 config client（id = {}）退出失败";
   public static final String FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS =
-      "创建 iotConsensusV2 接收文件目录分配策略失败，原因：所有目录所在磁盘均已满。";
+      "创建 IoTConsensusV2 接收文件目录分配策略失败，原因：所有目录所在磁盘均已满。";
   public static final String FAIL_TO_CREATE_PIPE_RECEIVER_FILE_FOLDERS =
       "创建 pipe 接收文件目录分配策略失败，原因：所有目录所在磁盘均已满。";
   public static final String FAIL_TO_INITIATE_FILE_BUFFER_FOLDER_ERROR =
@@ -903,16 +903,16 @@ public final class DataNodePipeMessages {
   public static final String INVOKE_TRANSPORTPIPEDATA_METHOD_FROM_CLIENT_IP =
       "调用来自客户端 ip = {} 的 transportPipeData 方法";
   public static final String IOTCONSENSUSV2RECEIVER_THREAD_IS_INTERRUPTED_WHEN_WAITING_FOR =
-      "IoTConsensusV2Receiver 线程在等待接收器初始化时被中断，可能是因为系统退出。";
+      "IoTConsensusV2Receiver 线程在等待接收器初始化时被中断，可能是系统正在退出。";
   public static final String IOTCONSENSUSV2_PIPENAME = "IoTConsensusV2-PipeName-{}：{}";
   public static final String IOTCONSENSUSV2_PIPENAME_CURRENT_WAITING_IS_INTERRUPTED_ONSYNCEDCOMMITINDEX =
       "IoTConsensusV2-PipeName-{}：当前等待被中断。onSyncedCommitIndex：{}。异常：";
   public static final String IOTCONSENSUSV2_PIPENAME_CURRENT_WRITING_FILE_WRITER_IS =
-      "IoTConsensusV2-PipeName-{}：当前写入文件 writer 为空，无需关闭。";
+      "IoTConsensusV2-PipeName-{}：当前写入文件的 writer 为空，无需关闭。";
   public static final String IOTCONSENSUSV2_PIPENAME_CURRENT_WRITING_FILE_WRITER_WAS =
-      "IoTConsensusV2-PipeName-{}：当前写入文件 writer {} 已关闭。";
+      "IoTConsensusV2-PipeName-{}：当前写入文件的 writer {} 已关闭。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CLOSE_CURRENT_WRITING =
-      "IoTConsensusV2-PipeName-{}：关闭当前写入文件 writer {} 失败，原因：{}。";
+      "IoTConsensusV2-PipeName-{}：关闭当前写入文件的 writer {} 失败，原因：{}。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE =
       "IoTConsensusV2-PipeName-{}：创建接收文件目录 {} 失败。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_1 =
@@ -920,7 +920,7 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_2 =
       "IoTConsensusV2-PipeName-{}：创建接收文件目录 {} 失败，可能原因：权限不足或目录已存在等。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_TSFILEWRITER =
-      "IoTConsensusV2-PipeName-{}：创建接收端 tsFileWriter-{} 文件目录 {} 失败";
+      "IoTConsensusV2-PipeName-{}：创建接收端 TsFileWriter-{} 的文件目录 {} 失败";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_DELETE_BECAUSE =
       "IoTConsensusV2-PipeName-{}：{} 删除 {} 失败，原因：{}。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_GET_BASE_DIRECTORY =
@@ -930,7 +930,7 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_READ_TSFILE_WHEN =
       "IoTConsensusV2-PipeName-{}：统计点数时读取 TsFile 失败：{}。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_RETURN_TSFILEWRITER =
-      "IoTConsensusV2-PipeName-{}：归还 tsFileWriter {} 失败。";
+      "IoTConsensusV2-PipeName-{}：归还 TsFileWriter {} 失败。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE =
       "IoTConsensusV2-PipeName-{}：封存文件 {} 失败，原因：文件不存在。";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE_1 =
@@ -956,21 +956,21 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_IS_NOT_EXISTED_NO_NEED =
       "IoTConsensusV2-PipeName-{}：{} {} 不存在，无需删除。";
   public static final String IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_AFTER =
-      "IoTConsensusV2-PipeName-{}：等待超时后执行第 {} 个事件，当前接收端 syncIndex：{}";
+      "IoTConsensusV2-PipeName-{}：等待超时后执行第 {} 个事件，当前接收端同步索引：{}";
   public static final String IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_BECAUSE =
-      "IoTConsensusV2-PipeName-{}：执行第 {} 个事件，因为接收端 buffer 长度 >= pipeline，"
-          + "当前接收端 syncIndex {}，当前 buffer 长度 {}";
+      "IoTConsensusV2-PipeName-{}：执行第 {} 个事件，原因：接收端缓冲区长度已达到 pipeline 阈值，"
+          + "当前接收端同步索引 {}，当前缓冲区长度 {}";
   public static final String IOTCONSENSUSV2_PIPENAME_PATH_TRAVERSAL_ATTEMPT_DETECTED_FILENAME =
       "IoTConsensusV2-PipeName-{}：检测到路径遍历尝试！文件名：{}";
   public static final String IOTCONSENSUSV2_PIPENAME_PROCESS_NO_EVENT_SUCCESSFULLY =
-      "IoTConsensusV2-PipeName-{}：成功处理第 {} 个事件！";
+      "IoTConsensusV2-PipeName-{}：处理第 {} 个事件成功。";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVED_A_DEPRECATED_REQUEST_WHICH =
       "IoTConsensusV2-PipeName-{}：收到已弃用的请求-{}，可能原因：{}。";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_PIPETASKRESTARTTIMES =
       "IoTConsensusV2-PipeName-{}：接收端检测到更新的 pipeTaskRestartTimes，表示 pipe 任务已重启。"
           + "接收端将重置其所有数据。";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_REBOOTTIMES =
-      "IoTConsensusV2-PipeName-{}：接收端检测到更新的 rebootTimes，表示 leader 已重启。接收端将重置其所有数据。";
+      "IoTConsensusV2-PipeName-{}：接收端检测到更新的 rebootTimes，表示主节点已重启。接收端将重置其所有数据。";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_FILE_DIR_WAS_CREATED =
       "IoTConsensusV2-PipeName-{}：接收文件目录 {} 已创建。";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_THREAD_GET_INTERRUPTED_WHEN =
@@ -978,9 +978,9 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_SEAL_FILE_SUCCESSFULLY =
       "IoTConsensusV2-PipeName-{}：成功封存文件 {}。";
   public static final String IOTCONSENSUSV2_PIPENAME_SEAL_FILE_WITH_MODS_SUCCESSFULLY =
-      "IoTConsensusV2-PipeName-{}：成功封存带 mods 的文件 {}。";
+      "IoTConsensusV2-PipeName-{}：成功封存包含 mods 的文件 {}。";
   public static final String IOTCONSENSUSV2_PIPENAME_SKIP_LOAD_TSFILE_WHEN_SEALING =
-      "IoTConsensusV2-PipeName-{}：封存时跳过加载 TsFile-{}，因为该 region 已被移除或迁移。";
+      "IoTConsensusV2-PipeName-{}：封存时跳过加载 TsFile-{}，因为该 Region 已被移除或迁移。";
   public static final String IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_PIECES =
       "IoTConsensusV2-PipeName-{}：开始接收 TsFile 片段";
   public static final String IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_SEAL =
@@ -992,18 +992,18 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_THE_POINT_COUNT_OF_TSFILE =
       "IoTConsensusV2-PipeName-{}：发送端未给出 TsFile {} 的点数，将从 TsFile 读取实际点数。";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_RETURNED_SELF =
-      "IoTConsensusV2-PipeName-{}：tsFileWriter-{} 已归还自身";
+      "IoTConsensusV2-PipeName-{}：TsFileWriter-{} 已归还自身";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_ROLL_TO_WRITING_PATH =
-      "IoTConsensusV2-PipeName-{}：tsFileWriter-{} 滚动到写入路径 {}";
+      "IoTConsensusV2-PipeName-{}：TsFileWriter-{} 已切换至写入路径 {}";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILE_WRITER_IS_CLEANED_UP =
-      "IoTConsensusV2-PipeName-{}：tsFile writer-{} 已清理，原因：长时间未收到新请求。";
+      "IoTConsensusV2-PipeName-{}：TsFileWriter-{} 已被清理，原因：长时间未收到新请求。";
   public static final String IOTCONSENSUSV2_PIPENAME_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS =
       "IoTConsensusV2-PipeName-{}：未知的 PipeRequestType，响应状态 = {}。";
   public static final String IOTCONSENSUSV2_PIPENAME_WAS_DELETED =
       "IoTConsensusV2-PipeName-{}：{} {} 已删除。";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_AVAILABLE =
       "IoTConsensusV2-PipeName-{}：写入文件 {} 不可用。写入文件为空：{}，写入文件存在：{}，"
-          + "写入文件 writer 为空：{}。";
+          + "写入文件的 writer 为空：{}。";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_EXISTED =
       "IoTConsensusV2-PipeName-{}：写入文件 {} 不存在或名称不正确，尝试创建。当前写入文件为 {}。";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_S_OFFSET_IS =
@@ -1011,19 +1011,19 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_WAS_CREATED_READY =
       "IoTConsensusV2-PipeName-{}：写入文件 {} 已创建。准备写入文件片段。";
   public static final String IOTCONSENSUSV2_RECEIVE_ON_THE_FLY_NO_EVENT =
-      "IoTConsensusV2-{}：data region 已删除后收到 on-the-fly 第 {} 个事件，将丢弃该事件";
+      "IoTConsensusV2-{}：DataRegion 已删除后收到实时传输的第 {} 个事件，将丢弃该事件";
   public static final String IOTCONSENSUSV2_TRANSFER_BATCH_HASN_T_BEEN_IMPLEMENTED =
       "IoTConsensusV2 批量传输尚未实现。";
   public static final String IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE =
       "IoTConsensusV2-{}：TsFileWriter-{} 将写入文件设为空";
   public static final String IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE_WRITER =
-      "IoTConsensusV2-{}：TsFileWriter-{} 将写入文件 writer 设为空";
+      "IoTConsensusV2-{}：TsFileWriter-{} 将写入文件的 writer 设为空";
   public static final String IOTCONSENSUSV2_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_RESPONSE_STATUS =
       "IoTConsensusV2：未知的 IoTConsensusV2RequestVersion，响应状态 = {}。";
   public static final String IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS =
       "IoTConsensusV2：未知的 PipeRequestType，响应状态 = {}。";
   public static final String IOTCONSENSUSV2_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES =
-      "IoTConsensusV2-{}：等待上一个事件超时，当前 peek {}，当前 id {}";
+      "IoTConsensusV2-{}：等待上一个事件超时，当前队首元素：{}，当前 ID：{}";
   public static final String IOTDBAIRGAPRECEIVERAGENT_STARTED =
       "IoTDBAirGapReceiverAgent {} 已启动。";
   public static final String IOTDBAIRGAPRECEIVERAGENT_STOPPED =
@@ -1081,7 +1081,7 @@ public final class DataNodePipeMessages {
   public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
       "air gap receiver 遇到临时不可用异常，将在本地重试。";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
-      "iotConsensusV2 请求版本 {} 与发送端请求版本 {} 不同，接收端将重置为发送端请求版本。";
+      "IoTConsensusV2 请求版本 {} 与发送端请求版本 {} 不同，接收端将重置为发送端请求版本。";
   public static final String THE_START_INDEX_OF_DATA_SYNC_IS =
       "数据同步起始索引 {} 无效。文件不存在，起始索引应等于 0。";
   public static final String THE_START_INDEX_OF_DATA_SYNC_IS_1 =

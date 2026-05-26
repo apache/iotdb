@@ -46,7 +46,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractSinkSubtask.class);
 
-  // For output (transfer events to the target system in connector)
+  // For output (transfer events to the target system in sink)
   protected PipeConnector outputPipeSink;
 
   // For thread pool to execute callbacks
@@ -104,8 +104,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       }
 
       // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
-      // connector subtask. Then, it may fail because of released resource and block the other pipes
-      // using the same connector. We simply discard it.
+      // sink subtask. Then, it may fail because of released resource and block the other pipes
+      // using the same sink. We simply discard it.
       if (lastExceptionEvent instanceof EnrichedEvent
           && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
         LOGGER.info(PipeMessages.ON_FAILURE_IGNORED_EVENT_RELEASED, throwable);
@@ -138,7 +138,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       }
 
       // Handle exceptions if any available clients exist
-      // Notice that the PipeRuntimeConnectorCriticalException must be thrown here
+      // Notice that the PipeRuntimeSinkCriticalException must be thrown here
       // because the upper layer relies on this to stop all the related pipe tasks
       // Other exceptions may cause the subtask to stop forever and can not be restarted
       if (throwable instanceof PipeRuntimeSinkCriticalException) {
@@ -220,7 +220,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   /**
    * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
-   * called when connector starts or the subTask finishes the last round, Thus the {@link
+   * called when sink starts or the subTask finishes the last round, Thus the {@link
    * PipeAbstractSinkSubtask#isSubmitted} sign is added to avoid concurrent problem of the two,
    * ensuring two or more submitting threads generates only one winner.
    */

@@ -269,7 +269,7 @@ public class PipeHeartbeatParser {
                           runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
                       .forEach(
                           runtimeMeta -> {
-                            // Record the connector exception for each pipe affected
+                            // Record the sink exception for each pipe affected
                             Map<Integer, PipeRuntimeException> exceptionMap =
                                 runtimeMeta.getNodeId2PipeRuntimeExceptionMap();
                             if (!exceptionMap.containsKey(nodeId)
@@ -285,7 +285,7 @@ public class PipeHeartbeatParser {
 
                             LOGGER.warn(
                                 String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s "
+                                    "Detect PipeRuntimeSinkCriticalException %s "
                                         + "from agent, stop pipe %s.",
                                     exception, pipeName));
                           });

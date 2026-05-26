@@ -36,9 +36,9 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecuto
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.PipeSink;
+import org.apache.iotdb.pipe.api.PipeSource;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -56,8 +56,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param creationTime pipe creation time
    * @param pipeProcessorParameters used to create {@link PipeProcessor}
    * @param regionId {@link DataRegion} id
-   * @param pipeSourceInputEventSupplier used to input {@link Event}s from {@link PipeExtractor}
-   * @param pipeSinkOutputPendingQueue used to output {@link Event}s to {@link PipeConnector}
+   * @param pipeSourceInputEventSupplier used to input {@link Event}s from {@link PipeSource}
+   * @param pipeSinkOutputPendingQueue used to output {@link Event}s to {@link PipeSink}
    * @throws PipeException if failed to {@link PipeProcessor#validate(PipeParameterValidator)} or
    *     {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)}}
    */

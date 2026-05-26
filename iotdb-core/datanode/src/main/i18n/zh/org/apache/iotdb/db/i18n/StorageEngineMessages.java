@@ -100,8 +100,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CLOSE_TSFILE_WHEN_RECOVERING = "恢复过程中关闭 TsFile {} 失败";
   public static final String FAIL_TO_RECOVER_SEALED_TSFILE_SKIP = "恢复已封闭的 TsFile {} 失败，跳过该文件。";
   public static final String DATA_INCONSISTENT_NOT_TRIGGER_TWICE = "数据不一致异常不应被触发两次";
-  public static final String INSERT_TO_TSFILE_PROCESSOR_REJECTED = "写入 TsFileProcessor 被拒绝, {}";
-  public static final String INSERT_TO_TSFILE_PROCESSOR_ERROR = "写入 TsFileProcessor 出错 ";
+  public static final String INSERT_TO_TSFILE_PROCESSOR_REJECTED = "写入 TsFileProcessor 被拒绝，{}";
+  public static final String INSERT_TO_TSFILE_PROCESSOR_ERROR = "写入 TsFileProcessor 时出错";
   public static final String IOEXCEPTION_CREATING_TSFILE_PROCESSOR_RETRY = "创建 TsFileProcessor 时遇到 IOException，正在重试";
   public static final String CANNOT_CLOSE_TSFILE_RESOURCE = "无法关闭 TsFileResource {}";
   public static final String CANNOT_REMOVE_MOD_FILE = "无法删除修改文件 {}";
@@ -236,9 +236,9 @@ public final class StorageEngineMessages {
   public static final String DELETION_WRITTEN_WHEN_FLUSH = "[Deletion] flush memtable 时写入删除: {}";
   public static final String FSYNC_MEMTABLE_TO_DISK_ERROR = "将 memtable 数据同步到磁盘出错，";
   public static final String FLUSHING_MEMTABLES_CLEAR = "{} 的 flushing memtable 已清空";
-  public static final String START_TO_END_FILE = "开始结束文件 {}";
-  public static final String ENDED_FILE = "已结束文件 {}";
-  public static final String START_TO_END_EMPTY_FILE = "开始结束空文件 {}";
+  public static final String START_TO_END_FILE = "开始封闭文件 {}";
+  public static final String ENDED_FILE = "已封闭文件 {}";
+  public static final String START_TO_END_EMPTY_FILE = "开始封闭空文件 {}";
   public static final String TIME_CHUNK_METADATA_SHOULD_NOT_BE_EMPTY = "对齐设备中的 TimeChunkMetadata 不应为空";
   public static final String WRITABLE_MEM_CHUNK_UNSUPPORTED_TYPE = "WritableMemChunk 不支持数据类型: {}";
 
@@ -345,16 +345,16 @@ public final class StorageEngineMessages {
   // ======================== Read ========================
 
   public static final String MEM_CHUNK_READER_NOT_SUPPORT_METHOD = "内存 Chunk 读取器不支持此方法";
-  public static final String MEM_ALIGNED_PAGE_READER_TSBLOCK = "[memAlignedPageReader] TsBlock:{}";
+  public static final String MEM_ALIGNED_PAGE_READER_TSBLOCK = "[内存对齐页读取器] TsBlock:{}";
   public static final String AFTER_FILTER_CHUNK_METADATA_LIST = "按过滤器移除后的 Chunk 元数据列表: ";
   public static final String AFTER_MODIFICATION_CHUNK_METADATA_LIST = "修改后的 Chunk 元数据列表: ";
   public static final String TIME_DATA_SIZE_NOT_MATCH = "时间数据大小不匹配";
   public static final String QUERY_OPENED_FILES = "查询已打开 {} 个文件！";
   public static final String CANNOT_CLOSE_TSFILE_SEQUENCE_READER = "无法关闭 TsFileSequenceReader {}！";
-  public static final String QUERY_SEALED_FILE_INFO = "[Query Sealed File Info]\n";
-  public static final String QUERY_ID_FORMAT = "\t[queryId: {}]\n";
+  public static final String QUERY_SEALED_FILE_INFO = "[已封闭文件查询信息]\n";
+  public static final String QUERY_ID_FORMAT = "\t[查询 ID: {}]\n";
   public static final String QUERY_FILE_PATH_FORMAT = "\t\t{}\n";
-  public static final String QUERY_UNSEALED_FILE_INFO = "[Query Unsealed File Info]\n";
+  public static final String QUERY_UNSEALED_FILE_INFO = "[未封闭文件查询信息]\n";
 
   // ======================== Snapshot ========================
 
@@ -399,7 +399,7 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_GET_SHARED_MOD_FILE = "获取共享修改文件失败";
   public static final String UPGRADING_MOD_FILE_INTERRUPTED = "升级修改文件被中断";
   public static final String CANNOT_UPGRADE_MOD_FILE = "无法升级修改文件";
-  public static final String TIME_INDEX_VALUE = "TimeIndex = {}";
+  public static final String TIME_INDEX_VALUE = "时间索引 = {}";
   public static final String RESOURCE_FILE_NOT_FOUND = "资源文件未找到";
   public static final String CANNOT_BUILD_DEVICE_TIME_INDEX = "无法从资源文件构建 DeviceTimeIndex: ";
   public static final String TSFILE_CANNOT_BE_DELETED = "TsFile {} 无法删除: {}";
@@ -439,7 +439,7 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_APPLY_TABLE_DISK_USAGE_INDEX = "应用 TableDiskUsageIndex 操作时遇到异常。";
   public static final String FAILED_RECOVER_TABLE_DISK_USAGE_INDEX = "恢复 TableDiskUsageIndex 失败";
   public static final String FAILED_SYNC_TABLE_SIZE_INDEX = "同步 TsFile 表大小索引失败。";
-  public static final String WRITE_OBJECT_DELTA = "writeObjectDelta";
+  public static final String WRITE_OBJECT_DELTA = "写入对象增量";
   public static final String EXCEPTION_REMOVE_TABLE_DISK_USAGE_INDEX = "移除 TableDiskUsageIndex 时遇到异常。";
   public static final String INTERRUPTED_ADDING_OP_TO_QUEUE = "将操作 {} 添加到队列时被中断。";
   public static final String FAILED_TO_MOVE_FILE = "移动 {} 到 {} 失败";

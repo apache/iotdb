@@ -1063,7 +1063,7 @@ public final class DataNodeQueryMessages {
   public static final String METHOD_NOT_IMPLEMENTED_YET =
       "方法尚未实现";
   public static final String INSERTION_CONTAINS_DUPLICATED_MEASUREMENT =
-      "插入操作包含重复的测量值：";
+      "插入操作包含重复的测点：";
   public static final String UNSUPPORTED_DATA_TYPE =
       "不支持的数据类型：";
   public static final String FAILED_TO_CONVERT_INSERTTABLETSTATEMENT_TO_TABLET =
@@ -1428,7 +1428,7 @@ public final class DataNodeQueryMessages {
   public static final String SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED =
       "[SeriesScanUtil] pageReader.isModified() 为 {}";
   public static final String GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK =
-      "[getAllSatisfiedPageData] TsBlock:{}";
+      "[获取满足条件的所有页数据] TsBlock:{}";
 
   // --- Plan / Relational / Metadata (additional debug) ---
 
@@ -1501,9 +1501,9 @@ public final class DataNodeQueryMessages {
   public static final String PRINT_FI_STATE =
       "[PrintFIState] 状态为 {}";
   public static final String START_FETCH_SCHEMA =
-      "[StartFetchSchema]";
+      "[开始获取 Schema]";
   public static final String END_FETCH_SCHEMA =
-      "[EndFetchSchema]";
+      "[结束获取 Schema]";
   public static final String CACHE_HIT =
       "[{} Cache] 命中";
   public static final String PARTITION_CACHE_INVALID =
@@ -1511,7 +1511,7 @@ public final class DataNodeQueryMessages {
   public static final String PARTITION_CACHE_IS_INVALID =
       "[Partition Cache] 无效：{}";
   public static final String CANCEL_FI =
-      "[CancelFI]";
+      "[取消 FragmentInstance]";
   public static final String RENAME_VIEW_NOT_SUPPORT_WILDCARD =
       "重命名视图不支持带通配符的路径模式。";
   public static final String REMOVE_CONFIG_NODE_FAILED =

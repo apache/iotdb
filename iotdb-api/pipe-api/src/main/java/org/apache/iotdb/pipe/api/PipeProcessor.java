@@ -30,8 +30,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 /**
  * {@link PipeProcessor}
  *
- * <p>{@link PipeProcessor} is used to filter and transform the {@link Event} formed by the {@link
- * PipeExtractor}.
+ * <p>{@link PipeProcessor} is used to filter and transform the {@link Event} supplied by the {@link
+ * PipeSource}.
  *
  * <p>The lifecycle of a {@link PipeProcessor} is as follows:
  *
@@ -44,15 +44,14 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
  *       to config the runtime behavior of the {@link PipeProcessor}.
  *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>{@link PipeExtractor} captures the {@link Event}s and wraps them into three types of
+ *         <li>{@link PipeSource} captures the {@link Event}s and wraps them into three types of
  *             {@link Event} instances.
  *         <li>{@link PipeProcessor} processes the {@link Event} and then passes them to the {@link
- *             PipeConnector}. The following 3 methods will be called: {@link
+ *             PipeSink}. The following 3 methods will be called: {@link
  *             PipeProcessor#process(TabletInsertionEvent, EventCollector)}, {@link
  *             PipeProcessor#process(TsFileInsertionEvent, EventCollector)} and {@link
  *             PipeProcessor#process(Event, EventCollector)}.
- *         <li>{@link PipeConnector} serializes the {@link Event}s into binaries and send them to
- *             sinks.
+ *         <li>{@link PipeSink} serializes the {@link Event}s into binaries and sends them to sinks.
  *       </ul>
  *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
  *       PipeProcessor#close() } method will be called.
