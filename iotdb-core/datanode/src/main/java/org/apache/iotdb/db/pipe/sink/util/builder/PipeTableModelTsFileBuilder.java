@@ -244,8 +244,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedColumnCategories.addAll(tablet.getColumnTypes());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(
-            Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {

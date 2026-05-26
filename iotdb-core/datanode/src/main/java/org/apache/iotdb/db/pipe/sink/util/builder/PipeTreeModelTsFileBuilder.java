@@ -231,8 +231,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(
-            Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {
