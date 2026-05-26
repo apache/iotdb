@@ -2330,6 +2330,9 @@ bool Session::checkTemplateExists(const string& template_name) {
   try {
     std::unique_ptr<SessionDataSet> dataset =
         executeQueryStatement("SHOW NODES IN DEVICE TEMPLATE " + template_name);
+    if (dataset == nullptr) {
+      throw IoTDBException("executeQueryStatement failed");
+    }
     bool isExisted = dataset->hasNext();
     dataset->closeOperationHandle();
     return isExisted;

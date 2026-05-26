@@ -117,6 +117,7 @@ public:
     const std::vector<std::string>& getColumnTypeList() const;
   };
 
+  // The returned iterator must not outlive this SessionDataSet.
   DataIterator getIterator();
 };
 

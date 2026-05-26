@@ -127,12 +127,22 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
 
 On Windows, the build passes `-DCMAKE_GENERATOR_PLATFORM=x64` so Visual Studio
 generators target **x64** (VS2017 otherwise defaults to Win32).
-```
 
 ## CMake options
 
-All of these can be set on the Maven command line (`-DWITH_SSL=ON`, etc.) or
-passed directly to `cmake`.
+The table below lists CMake cache variables. When building through **Maven**,
+pass them as Maven properties (the POM maps them to `-D` options for CMake):
+
+| CMake variable | Maven property (`-D...`) |
+|----------------|--------------------------|
+| `WITH_SSL` | `with.ssl` (e.g. `-Dwith.ssl=ON`) |
+| `IOTDB_OFFLINE` | `iotdb.offline` |
+| `BUILD_TESTING` | `build.tests` |
+| `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
+| `BOOST_INCLUDEDIR` | `boost.include.dir` (legacy alias) |
+
+For a **standalone** `cmake` configure, pass `-DWITH_SSL=ON`, `-DIOTDB_OFFLINE=ON`,
+etc. directly.
 
 | Option                | Default                          | Purpose                                                                                                  |
 |-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
@@ -178,11 +188,11 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir
    - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
    - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
 
-2. Run the build with `-DIOTDB_OFFLINE=ON`:
+2. Run the build with offline mode enabled:
 
    ```bash
    mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-       -DIOTDB_OFFLINE=ON package
+       -Diotdb.offline=ON package
    ```
 
    or, going straight through CMake:
@@ -247,7 +257,8 @@ the GNU autotools tarballs assume a POSIX shell environment.
 ## SSL
 
 Both Thrift and `iotdb_session` build without OpenSSL by default. Enable
-SSL support with `-DWITH_SSL=ON`. CMake first calls `find_package(OpenSSL)`;
+SSL with `-Dwith.ssl=ON` (Maven) or `-DWITH_SSL=ON` (standalone CMake).
+CMake first calls `find_package(OpenSSL)`;
 if nothing is found, it falls back to:
 
 - **Linux / macOS** – use a local `openssl-<ver>.tar.gz` (or download it

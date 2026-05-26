@@ -17,6 +17,7 @@ on:
       - ".github/workflows/client-cpp-package.yml"
       - ".github/workflows/client-cpp-source-build.yml"
       - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
@@ -31,6 +32,7 @@ on:
       - ".github/workflows/client-cpp-package.yml"
       - ".github/workflows/client-cpp-source-build.yml"
       - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
