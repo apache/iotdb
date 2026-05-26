@@ -123,8 +123,8 @@ if(MSVC)
             "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
 else()
     list(APPEND _thrift_cmake_args
-            "-DCMAKE_C_FLAGS=-fPIC"
-            "-DCMAKE_CXX_FLAGS=-fPIC")
+            "-DCMAKE_C_FLAGS=-fPIC -fno-split-stack"
+            "-DCMAKE_CXX_FLAGS=-fPIC -fno-split-stack")
 endif()
 
 if(WITH_SSL)
