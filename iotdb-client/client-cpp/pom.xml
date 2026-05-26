@@ -258,6 +258,33 @@
                 <os.suffix>win</os.suffix>
             </properties>
         </profile>
+        <!-- Visual Studio generators (esp. VS2017) default to Win32 unless -A x64 is set. -->
+        <profile>
+            <id>client-cpp-vs-x64</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.github.cmake-maven-plugin</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cmake-generate</id>
+                                <configuration>
+                                    <options combine.children="append">
+                                        <option>-DCMAKE_GENERATOR_PLATFORM=x64</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>.skipTests</id>
             <activation>

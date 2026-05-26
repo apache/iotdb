@@ -119,10 +119,14 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
   -Dcmake.generator="Visual Studio 16 2019" `
   -Dclient.cpp.package.classifier=windows-x86_64-vs2019 package
 
-# Visual Studio 2017
+# Visual Studio 2017 (CMake uses -A x64 on Windows automatically)
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
   -Dcmake.generator="Visual Studio 15 2017" `
   -Dclient.cpp.package.classifier=windows-x86_64-vs2017 package
+```
+
+On Windows, the build passes `-DCMAKE_GENERATOR_PLATFORM=x64` so Visual Studio
+generators target **x64** (VS2017 otherwise defaults to Win32).
 ```
 
 ## CMake options

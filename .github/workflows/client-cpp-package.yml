@@ -387,6 +387,20 @@ jobs:
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
           "${MVN_ARGS[@]}"
+      - name: Verify Windows SDK is x64
+        shell: pwsh
+        run: |
+          $dll = "iotdb-client/client-cpp/target/install/lib/iotdb_session.dll"
+          if (-not (Test-Path $dll)) {
+            throw "Missing $dll"
+          }
+          $bytes = [System.IO.File]::ReadAllBytes($dll)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw "Expected PE32+ x64 (machine=0x8664), got 0x$($machine.ToString('X4'))"
+          }
+          Write-Host "Verified x64 DLL: $dll"
       - name: Resolve package zip
         id: pkg
         shell: bash
