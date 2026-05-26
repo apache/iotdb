@@ -81,7 +81,7 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
           return null;
         }
         logger.info(
-            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted, isStopByUser: {}",
+            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted, stoppedByUser: {}",
             workerId,
             false);
       } catch (Exception e) {

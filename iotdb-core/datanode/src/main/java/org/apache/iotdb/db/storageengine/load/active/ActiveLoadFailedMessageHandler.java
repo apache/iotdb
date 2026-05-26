@@ -38,7 +38,7 @@ public class ActiveLoadFailedMessageHandler {
       Collections.unmodifiableMap(
           new HashMap<String, ExceptionMessageHandler>() {
             {
-              // system is memory constrains
+              // The system has memory constraints.
               put(
                   "memory",
                   filePair ->
@@ -46,7 +46,7 @@ public class ActiveLoadFailedMessageHandler {
                           StorageEngineMessages.ACTIVE_LOAD_REJECT_MEMORY,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
-              // system is read only
+              // The system is read-only.
               put(
                   "read only",
                   filePair ->
@@ -54,7 +54,7 @@ public class ActiveLoadFailedMessageHandler {
                           StorageEngineMessages.ACTIVE_LOAD_REJECT_READ_ONLY,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
-              // Timed out to wait for procedure return. The procedure is still running.
+              // Timed out waiting for procedure return. The procedure is still running.
               put(
                   "procedure return",
                   filePair ->
@@ -79,7 +79,7 @@ public class ActiveLoadFailedMessageHandler {
                           StorageEngineMessages.ACTIVE_LOAD_REJECT_CONFIG_NODE_CONNECTION,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
-              // Current query is time out, query start time is 1729653161797, ddl is
+              // Current query timed out, query start time is 1729653161797, ddl is
               // -3046040214706, current time is 1729653184210, please check your statement or
               // modify timeout parameter
               put(

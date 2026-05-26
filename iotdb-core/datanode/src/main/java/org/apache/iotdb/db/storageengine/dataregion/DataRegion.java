@@ -3778,7 +3778,7 @@ public class DataRegion implements IDataRegionForQuery {
         return 0;
       }
       logger.debug(
-          "[TTL] {}-{} Start ttl and modification checking.", databaseName, dataRegionIdString);
+          "[TTL] {}-{} Start TTL and modification checking.", databaseName, dataRegionIdString);
       CompactionScheduleContext context =
           new CompactionScheduleContext(
               EncryptDBUtils.getFirstEncryptParamFromDatabase(databaseName));
@@ -3802,14 +3802,14 @@ public class DataRegion implements IDataRegionForQuery {
       }
       if (context.hasSubmitTask()) {
         logger.info(
-            "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
+            "[TTL] {}-{} Selected {} fully outdated files and {} partially outdated files.",
             databaseName,
             dataRegionIdString,
             context.getFullyDirtyFileNum(),
             context.getPartiallyDirtyFileNum());
       } else {
         logger.debug(
-            "[TTL] {}-{} No all-outdated or partial-outdated files are selected.",
+            "[TTL] {}-{} No fully outdated or partially outdated files are selected.",
             databaseName,
             dataRegionIdString);
       }

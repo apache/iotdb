@@ -311,7 +311,7 @@ public final class DataNodeQueryMessages {
   public static final String TSFILE_ENCRYPTION_ENABLED_LOAD_DISABLED =
       "TsFile 加密已启用，加载 TsFile 功能已禁用";
   public static final String LOAD_DATANODE_READ_ONLY_CONVERT_TO_TABLETS =
-      "LoadTsFileAnalyzer：当前 DataNode 为只读模式，将尝试转换为 Tablet 后再插入。";
+      "LoadTsFileAnalyzer：当前 DataNode 为只读模式。将尝试转换为 Tablet 后再插入。";
   public static final String LOAD_ANALYSIS_STAGE_PROGRESS =
       "加载 - 分析阶段：已分析 {}/{} 个 TsFile，进度：{}%";
   public static final String FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT =
@@ -337,17 +337,17 @@ public final class DataNodeQueryMessages {
   public static final String SKIP_FAILED_TABLE_SCHEMA_CHECK =
       "检查表 schema 失败，但 skipFailedTableSchemaCheck 为 true，将跳过。消息：{}";
   public static final String FAILED_CHECK_DEVICE_DELETED_BY_MODS =
-      "检查设备 {} 是否被 mods 删除失败，将视为未删除。";
+      "检查设备 {} 是否被 mods 删除失败，按未删除处理。";
   public static final String FAILED_CHECK_TIMESERIES_DELETED_BY_MODS =
-      "检查设备 {} 的时间序列 {} 是否被 mods 删除失败，将视为未删除。";
+      "检查设备 {} 的时间序列 {} 是否被 mods 删除失败，按未删除处理。";
   public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_DETAIL =
       "自动创建或验证 schema 出错。详情：%s。";
   public static final String DATA_TYPE_MISMATCH_FOR_COLUMN =
       "列 {} 在表 {} 中的数据类型不匹配，TsFile 中类型：{}，IoTDB 中类型：{}";
   public static final String CREATE_DATABASE_ERROR =
-      "创建数据库出错，语句：{}，结果状态：{}";
+      "创建数据库失败，语句：{}，结果状态：{}";
   public static final String CREATE_DATABASE_ERROR_S =
-      "创建数据库出错，语句：%s，结果状态：%s";
+      "创建数据库失败，语句：%s，结果状态：%s";
   public static final String MEASUREMENT_DATATYPE_NOT_MATCH =
       "测点 {}{}{} 的数据类型不匹配，TsFile 中类型：{}，IoTDB 中类型：{}";
   public static final String ENCODING_TYPE_NOT_MATCH =
@@ -1010,19 +1010,19 @@ public final class DataNodeQueryMessages {
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "加载：所有失败的 TsFile 已转换为 Tablet 并插入。";
   public static final String LOAD_REGION_MIGRATION_DETECTED_CONVERT_TO_INSERTION =
-      "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移，将转换为插入以避免数据丢失";
+      "LoadTsFileScheduler：加载 TsFile {} 期间检测到 Region 迁移。将转换为插入以避免数据丢失。";
   public static final String LOAD_TSFILE_SUCCESSFULLY_PROCESS =
       "成功加载 TsFile {}，加载进度 [{}/{}]";
   public static final String CANNOT_LOAD_TSFILE_PROCESS =
       "无法加载 TsFile {}，加载进度 [{}/{}]";
   public static final String LOAD_TSFILES_FAILED_TRY_CONVERT_TO_TABLETS =
-      "加载 TsFile 失败，将尝试转换为 Tablet 后插入。失败的 TsFile：{}";
+      "加载 TsFile 失败。将尝试转换为 Tablet 后插入。失败的 TsFile：{}";
   public static final String DISPATCH_TSFILE_DATA_ERROR_WHEN_PARSING =
       "解析 TsFile %s 时分发 TsFileData 出错。";
   public static final String PARSE_OR_SEND_TSFILE_ERROR =
       "解析或发送 TsFile %s 出错。";
   public static final String DISPATCH_ONE_PIECE_ERROR =
-      "向副本集 {} 分发分片失败。结果状态码：{}。结果状态消息：{}。分发失败的分片节点：%n{}";
+      "向副本集 {} 分发分片失败。结果状态码：{}。结果状态消息：{}。失败的分片节点：%n{}";
   public static final String SUB_STATUS_CODE_MESSAGE =
       "子状态码：{}。子状态消息：{}。";
   public static final String LOAD_PIECE_ERROR_FIRST_PHASE =
@@ -1030,7 +1030,7 @@ public final class DataNodeQueryMessages {
   public static final String WAIT_FOR_LOADING_TIMEOUT =
       "等待加载 %s 超时。";
   public static final String SERIALIZE_PROGRESS_INDEX_ERROR =
-      "序列化 ProgressIndex 出错，isFirstPhaseSuccess：%s，uuid：%s，tsFile：%s";
+      "序列化 ProgressIndex 失败，isFirstPhaseSuccess：%s，uuid：%s，TsFile：%s";
   public static final String DISPATCH_LOAD_COMMAND_ERROR =
       "分发加载命令 {}（TsFile {}，副本集 {}）失败。结果状态码：{}。结果状态消息：{}。";
   public static final String LOAD_TSFILE_ERROR_SECOND_PHASE =

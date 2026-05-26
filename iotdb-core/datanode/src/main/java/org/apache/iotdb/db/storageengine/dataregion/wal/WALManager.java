@@ -206,7 +206,7 @@ public class WALManager implements IService {
       long suppressedCount = suppressedWalDiskUsageOverThrottleLogCount.getAndSet(0);
       logger.warn(
           "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, "
-              + "please check your write load, iot consensus and the pipe module. "
+              + "please check your write load, IoTConsensus, and Pipe. "
               + "It's better to allocate more disk for WAL. suppressedSimilarLogs={}",
           getTotalDiskUsage(),
           getThrottleThreshold(),

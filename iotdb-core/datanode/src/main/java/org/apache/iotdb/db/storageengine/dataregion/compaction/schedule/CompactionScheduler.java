@@ -56,10 +56,10 @@ import java.util.stream.Collectors;
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
  * total number of running compaction task. There are three compaction strategy: BALANCE,
- * INNER_CROSS, CROSS_INNER. Difference strategies will lead to different compaction preferences.
- * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
- * the corresponding {@link ICompactionSelector selector} according to the compaction machanism of
- * the task(e.g. LevelCompaction, SizeTiredCompaction), and the selection and submission process is
+ * INNER_CROSS, CROSS_INNER. Different strategies lead to different compaction preferences. For
+ * different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call the
+ * corresponding {@link ICompactionSelector selector} according to the compaction mechanism of the
+ * task(e.g. LevelCompaction, SizeTieredCompaction), and the selection and submission process is
  * carried out in the {@link ICompactionSelector#selectInnerSpaceTask(List)} () and {@link
  * ICompactionSelector#selectCrossSpaceTask(List, List)}} in selector.
  */
@@ -225,7 +225,7 @@ public class CompactionScheduler {
         && LAST_DISK_SPACE_CHECK_FAIL_LOG_TIME.compareAndSet(lastLogTime, now)) {
       long suppressedCount = SUPPRESSED_DISK_SPACE_CHECK_FAIL_LOG_COUNT.getAndSet(0);
       LOGGER.info(
-          "Skip compaction task because disk free ratio is less than disk_space_warning_threshold, "
+          "Skip compaction task because the disk free ratio is lower than disk_space_warning_threshold, "
               + "taskType={}, storageGroup={}, dataRegion={}, timePartition={}, processedFileNum={}, suppressedSimilarLogs={}",
           task.getCompactionTaskType(),
           task.getStorageGroupName(),

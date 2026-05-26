@@ -75,7 +75,7 @@ public class TTLScheduleTask implements Callable<Void> {
           return null;
         }
         logger.info(
-            "[TTLCheckTask-{}] TTL checker is interrupted, isStoppedByUser: {}", workerId, false);
+            "[TTLCheckTask-{}] TTL checker is interrupted, stoppedByUser: {}", workerId, false);
       } catch (Exception e) {
         logger.error(StorageEngineMessages.TTL_CHECK_TASK_FAILED, workerId, e);
       } catch (Throwable t) {
