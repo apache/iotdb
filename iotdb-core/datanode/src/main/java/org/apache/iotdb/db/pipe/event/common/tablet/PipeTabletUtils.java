@@ -31,6 +31,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -156,6 +157,13 @@ public final class PipeTabletUtils {
     }
 
     return hasMarkedBitMap ? bitMaps : null;
+  }
+
+  public static BitMap[] copyBitMapsOrCreateEmpty(final Tablet tablet) {
+    final BitMap[] bitMaps = tablet.getBitMaps();
+    return Objects.nonNull(bitMaps)
+        ? Arrays.copyOf(bitMaps, bitMaps.length)
+        : new BitMap[getColumnCount(tablet)];
   }
 
   public static void markNullValue(final Tablet tablet, final int rowIndex, final int columnIndex) {

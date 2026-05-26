@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -243,7 +244,8 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedColumnCategories.addAll(tablet.getColumnTypes());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        aggregatedBitMaps.addAll(
+            Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {

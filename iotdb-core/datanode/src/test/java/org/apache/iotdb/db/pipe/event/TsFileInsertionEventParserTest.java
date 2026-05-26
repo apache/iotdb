@@ -105,6 +105,7 @@ public class TsFileInsertionEventParserTest {
       "iotdb.query.parser.performance.enabled";
   private static final String MANUAL_TABLE_PARSER_PERFORMANCE_TEST =
       "iotdb.table.parser.performance.enabled";
+  private static final long BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE = 1024 * 1024L;
 
   private File alignedTsFile;
   private File nonalignedTsFile;
@@ -290,52 +291,65 @@ public class TsFileInsertionEventParserTest {
 
   @Test
   public void testTableParserSkipsUnnecessaryBitMaps() throws Exception {
-    alignedTsFile = new File("table-parser-bitmap.tsfile");
-    if (alignedTsFile.exists()) {
-      Assert.assertTrue(alignedTsFile.delete());
-    }
+    final long originalPipeMaxReaderChunkSize =
+        PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMaxReaderChunkSize(BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE);
 
-    final List<IMeasurementSchema> schemaList =
-        Arrays.asList(
-            new MeasurementSchema("tag0", TSDataType.STRING),
-            new MeasurementSchema("dense", TSDataType.INT64),
-            new MeasurementSchema("sparse", TSDataType.INT64));
-    final List<String> columnNameList = Arrays.asList("tag0", "dense", "sparse");
-    final List<TSDataType> dataTypeList =
-        Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.INT64);
-    final List<ColumnCategory> columnCategoryList =
-        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+    try {
+      alignedTsFile = new File("table-parser-bitmap.tsfile");
+      if (alignedTsFile.exists()) {
+        Assert.assertTrue(alignedTsFile.delete());
+      }
 
-    final Tablet tablet =
-        new Tablet("bitmap_table", columnNameList, dataTypeList, columnCategoryList, 2);
-    for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
-      tablet.addTimestamp(rowIndex, rowIndex);
-      tablet.addValue(rowIndex, 0, "tag-value");
-      tablet.addValue(rowIndex, 1, (long) rowIndex);
-      tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
-    }
+      final List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("tag0", TSDataType.STRING),
+              new MeasurementSchema("dense", TSDataType.INT64),
+              new MeasurementSchema("sparse", TSDataType.INT64));
+      final List<String> columnNameList = Arrays.asList("tag0", "dense", "sparse");
+      final List<TSDataType> dataTypeList =
+          Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.INT64);
+      final List<ColumnCategory> columnCategoryList =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
 
-    try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-      writer.registerTableSchema(new TableSchema("bitmap_table", schemaList, columnCategoryList));
-      writer.writeTable(tablet);
-    }
+      final Tablet tablet =
+          new Tablet("bitmap_table", columnNameList, dataTypeList, columnCategoryList, 2);
+      for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
+        tablet.addTimestamp(rowIndex, rowIndex);
+        tablet.addValue(rowIndex, 0, "tag-value");
+        tablet.addValue(rowIndex, 1, (long) rowIndex);
+        tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
+      }
 
-    try (final TsFileInsertionEventTableParser parser =
-        new TsFileInsertionEventTableParser(
-            alignedTsFile,
-            new TablePattern(true, null, null),
-            Long.MIN_VALUE,
-            Long.MAX_VALUE,
-            null,
-            null,
-            null,
-            false)) {
-      final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
-      Assert.assertTrue(iterator.hasNext());
-      final Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
-      assertBitMapExistence(parsedTablet, false, false, true);
-      Assert.assertTrue(parsedTablet.isNull(1, 2));
-      Assert.assertFalse(iterator.hasNext());
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerTableSchema(new TableSchema("bitmap_table", schemaList, columnCategoryList));
+        writer.writeTable(tablet);
+      }
+
+      try (final TsFileInsertionEventTableParser parser =
+          new TsFileInsertionEventTableParser(
+              alignedTsFile,
+              new TablePattern(true, null, null),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null,
+              null,
+              false)) {
+        final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+        Assert.assertTrue(iterator.hasNext());
+        final Tablet parsedTablet =
+            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        assertBitMapExistence(parsedTablet, false, false, true);
+        Assert.assertTrue(parsedTablet.isNull(1, 2));
+        Assert.assertFalse(iterator.hasNext());
+      }
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
     }
   }
 
@@ -1034,45 +1048,63 @@ public class TsFileInsertionEventParserTest {
   }
 
   private void testTreeParserSkipsUnnecessaryBitMaps(final boolean isQuery) throws Exception {
-    alignedTsFile = new File(isQuery ? "query-parser-bitmap.tsfile" : "scan-parser-bitmap.tsfile");
-    if (alignedTsFile.exists()) {
-      Assert.assertTrue(alignedTsFile.delete());
-    }
+    final long originalPipeMaxReaderChunkSize =
+        PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMaxReaderChunkSize(BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE);
 
-    final List<IMeasurementSchema> schemaList =
-        Arrays.asList(
-            new MeasurementSchema("dense", TSDataType.INT64),
-            new MeasurementSchema("sparse", TSDataType.INT64));
-    final Tablet tablet = new Tablet("root.sg.d", schemaList, 2);
-    for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
-      tablet.addTimestamp(rowIndex, rowIndex);
-      tablet.addValue("dense", rowIndex, (long) rowIndex);
-      tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
-    }
+    try {
+      alignedTsFile =
+          new File(isQuery ? "query-parser-bitmap.tsfile" : "scan-parser-bitmap.tsfile");
+      if (alignedTsFile.exists()) {
+        Assert.assertTrue(alignedTsFile.delete());
+      }
 
-    try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-      writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
-      writer.writeAligned(tablet);
-    }
+      final List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("dense", TSDataType.INT64),
+              new MeasurementSchema("sparse", TSDataType.INT64));
+      final Tablet tablet = new Tablet("root.sg.d", schemaList, 2);
+      for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
+        tablet.addTimestamp(rowIndex, rowIndex);
+        tablet.addValue("dense", rowIndex, (long) rowIndex);
+        tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
+      }
 
-    try (final TsFileInsertionEventParser parser =
-        isQuery
-            ? new TsFileInsertionEventQueryParser(
-                alignedTsFile, new PrefixTreePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, null)
-            : new TsFileInsertionEventScanParser(
-                alignedTsFile,
-                new PrefixTreePattern("root"),
-                Long.MIN_VALUE,
-                Long.MAX_VALUE,
-                null,
-                null,
-                false)) {
-      final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
-      Assert.assertTrue(iterator.hasNext());
-      final Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
-      assertBitMapExistence(parsedTablet, false, true);
-      Assert.assertTrue(parsedTablet.isNull(1, 1));
-      Assert.assertFalse(iterator.hasNext());
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.writeAligned(tablet);
+      }
+
+      try (final TsFileInsertionEventParser parser =
+          isQuery
+              ? new TsFileInsertionEventQueryParser(
+                  alignedTsFile,
+                  new PrefixTreePattern("root"),
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE,
+                  null)
+              : new TsFileInsertionEventScanParser(
+                  alignedTsFile,
+                  new PrefixTreePattern("root"),
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE,
+                  null,
+                  null,
+                  false)) {
+        final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+        Assert.assertTrue(iterator.hasNext());
+        final Tablet parsedTablet =
+            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        assertBitMapExistence(parsedTablet, false, true);
+        Assert.assertTrue(parsedTablet.isNull(1, 1));
+        Assert.assertFalse(iterator.hasNext());
+      }
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
     }
   }
 

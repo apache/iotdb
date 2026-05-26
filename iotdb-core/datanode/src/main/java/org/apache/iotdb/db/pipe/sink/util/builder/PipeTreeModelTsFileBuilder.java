@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -230,7 +231,8 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedValues.addAll(Arrays.asList(tablet.getValues()));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.getBitMaps()));
+        aggregatedBitMaps.addAll(
+            Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {
