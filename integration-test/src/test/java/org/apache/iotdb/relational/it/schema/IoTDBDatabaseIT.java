@@ -578,6 +578,7 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "database,STRING,FIELD,",
                   "table_name,STRING,FIELD,",
+                  "table_type,STRING,FIELD,",
                   "datanode_id,INT32,FIELD,",
                   "region_id,INT32,FIELD,",
                   "time_partition,INT64,FIELD,",
