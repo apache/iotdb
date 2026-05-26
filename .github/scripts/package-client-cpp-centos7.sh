@@ -106,7 +106,7 @@ if [[ ! -x "${JAVA_HOME}/bin/java" ]]; then
   rm -rf /opt/jdk-17*
   mkdir -p /opt
   tar xf /tmp/jdk17.tar.gz -C /opt
-  JAVA_HOME=$(find /opt -maxdepth 1 -type d -name 'jdk-17*' | head -1)
+  JAVA_HOME=$(find /opt -maxdepth 1 -type d -name 'jdk-17*' -print -quit)
   ln -sfn "${JAVA_HOME}" /opt/jdk-17
   JAVA_HOME=/opt/jdk-17
 fi
@@ -133,7 +133,7 @@ SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
 
 echo "=== Build host glibc ==="
-ldd --version | head -1
+ldd --version 2>&1 | sed -n '1p'
 
 echo "=== Highest GLIBC_* symbols in libiotdb_session.so ==="
 objdump -T "${SO}" | grep GLIBC_ | sed "s/.*GLIBC_/GLIBC_/" | sort -Vu | tail -10

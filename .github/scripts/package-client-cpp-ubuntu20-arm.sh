@@ -41,7 +41,7 @@ export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 java -version
 gcc --version
 cmake --version
-ldd --version | head -1
+ldd --version 2>&1 | sed -n '1p'
 
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
