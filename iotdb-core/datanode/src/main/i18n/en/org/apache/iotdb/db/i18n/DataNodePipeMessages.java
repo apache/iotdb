@@ -115,7 +115,8 @@ public final class DataNodePipeMessages {
   public static final String EXCEPTION_OCCURS_WHEN_EXECUTING_PIPE_TASK =
       "Exception occurs when executing pipe task: ";
   public static final String FAILED_TO_CHECK_IF_PIPE_HAS_RELEASE =
-      "Failed to check if pipe has release region related resource with consensus group id: {}.";
+      "Failed to check whether pipe has released region-related resources for consensus group "
+          + "id: {}.";
   public static final String FAILED_TO_CLEAR_CLOSE_THE_SCHEMA_REGION =
       "Failed to clear/close the schema region listening queue, because {}. Will wait until "
           + "success or the region's state machine is stopped.";
@@ -141,7 +142,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
       "Failed to persist progress index to configNode, status: {}";
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
-      "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
+      "Failed to register pipe plugin {}. Skip this plugin and continue startup.";
   public static final String PIPECONNECTOR = "PipeConnector: ";
   public static final String PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION =
       "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}";
@@ -156,7 +157,7 @@ public final class DataNodePipeMessages {
           + "to 'false' to prevent premature halt before transfer completion.";
   public static final String PIPEDATANODETASKBUILDER_WHEN_SOURCE_USES_SNAPSHOT_MODEL_REALTIME_1 =
       "PipeDataNodeTaskBuilder: When source uses snapshot model, 'realtime-first' set to "
-          + "'true' may cause prevent premature halt before transfer completion.";
+          + "'true' may cause premature halt before transfer completion.";
   public static final String PIPEDATANODETASKBUILDER_WHEN_THE_REALTIME_SYNC_IS_ENABLED =
       "PipeDataNodeTaskBuilder: When the realtime sync is enabled, not enabling the rate "
           + "limiter in sending tsfile may introduce delay for realtime sending.";
@@ -169,7 +170,7 @@ public final class DataNodePipeMessages {
       "Pipe: connector subtask {} ({}) was closed within {} ms";
   public static final String PIPE_META_NOT_FOUND = "Pipe meta not found: ";
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
-      "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
+      "Pipe sink subtasks with attributes {} are bound to sinkExecutor {} and "
           + "callbackExecutor {}.";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
@@ -208,7 +209,7 @@ public final class DataNodePipeMessages {
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
-      "The executor {} and {} has been successfully shutdown.";
+      "The executors {} and {} have been shut down successfully.";
 
   // ===================== EVENT =====================
 
@@ -671,7 +672,7 @@ public final class DataNodePipeMessages {
       "Failed to send initial value to new subscription, nodeId={}";
   public static final String FAILED_TO_SERIALIZE_PROGRESS_INDEX =
       "Failed to serialize progress index {}";
-  public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "Failed to shutdown executor {}.";
+  public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "Failed to shut down executor {}.";
   public static final String FAILED_TO_TRANSFER_DATAVALUE = "Failed to transfer dataValue";
   public static final String FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED =
       "Failed to transfer dataValue after successfully created nodes";
@@ -705,9 +706,9 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTConsensusV2AsyncConnector does not support transferring generic event: {}.";
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT =
-      "IoTConsensusV2AsyncConnector does not support transfer generic event: {}.";
+      "IoTConsensusV2AsyncConnector does not support transferring generic event: {}.";
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVEN =
-      "IoTConsensusV2AsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "IoTConsensusV2AsyncConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String IOTCONSENSUSV2CONNECTOR_TRANSFERBUFFER_QUEUE_OFFER_IS_INTERRUPTED =
       "IoTConsensusV2Connector transferBuffer queue offer is interrupted.";
   public static final String IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED =
@@ -752,22 +753,22 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_REPLICATE =
       "IoTConsensusV2-{}: Successfully transferred file {} (committer key={}, replicate index={}).";
   public static final String IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB =
-      "IoTDBCDCConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "IoTDBCDCConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_A =
-      "IoTDBDataRegionAirGapConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector supports only PipeTsFileInsertionEvent. Ignoring {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector does not support transferring generic event: {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
-      "IoTDBLegacyPipeConnector only support PipeInsertNodeInsertionEvent and "
-          + "PipeTabletInsertionEvent.";
+      "IoTDBLegacyPipeConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT =
-      "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.";
+      "IoTDBLegacyPipeConnector supports only PipeTsFileInsertionEvent.";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
       "IoTDBSchemaRegionAirGapSink can't transfer TabletInsertionEvent.";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
@@ -783,19 +784,19 @@ public final class DataNodePipeMessages {
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBThriftAsyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT =
-      "IoTDBThriftAsyncConnector does not support transfer generic event: {}.";
+      "IoTDBThriftAsyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PI =
-      "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "IoTDBThriftAsyncConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent. Current event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "IoTDBThriftAsyncConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBThriftSyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIP =
-      "IoTDBThriftSyncConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector supports only PipeTsFileInsertionEvent. Ignoring {}.";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO =
       "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO =
@@ -803,7 +804,7 @@ public final class DataNodePipeMessages {
   public static final String LOADING_KEYSTORE_AT = "Loading KeyStore at {}";
   public static final String LOADING_KEYSTORE_AT_1 = "Loading KeyStore at {}.";
   public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "Load keyStore failed, the existing keyStore may be stale, re-constructing...";
+      "Failed to load KeyStore. The existing KeyStore may be stale; rebuilding it.";
   public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
       "No OPC client or server is specified when transferring tablet";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS =
@@ -831,7 +832,8 @@ public final class DataNodePipeMessages {
   public static final String SUCCESSFULLY_ADDED_ITEM = "Successfully added item {}.";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
       "Successfully converted progID {} to CLSID: {{}}";
-  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR = "Successfully shutdown executor {}.";
+  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR =
+      "Successfully shut down executor {}.";
   public static final String SUCCESSFULLY_TRANSFERRED_DELETION_EVENT =
       "Successfully transferred deletion event {}.";
   public static final String SUCCESSFULLY_TRANSFERRED_FILE = "Successfully transferred file {}.";
@@ -903,8 +905,8 @@ public final class DataNodePipeMessages {
   public static final String THE_WRITTEN_TABLET_TIME_MAY_OVERLAP_OR =
       "The written Tablet time may overlap or the Schema may be incorrect";
   public static final String THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLET =
-      "This Connector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "This sink supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String TIMED_OUT_WHEN_WAITING_FOR_CLIENT_HANDSHAKE =
       "Timed out when waiting for client handshake finish.";
   public static final String TIOTCONSENSUSV2BATCHTRANSFERRESP_IS_NULL =
@@ -926,20 +928,20 @@ public final class DataNodePipeMessages {
   public static final String WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE =
       "Wait for resource enough for slicing tsfile {} for {} seconds.";
   public static final String WEBSOCKETCONNECTOR_FAILED_TO_INCREASE_THE_REFERENCE_COUNT =
-      "WebsocketConnector failed to increase the reference count of the event. Ignore it. "
+      "WebSocketConnector failed to increase the reference count of the event. Ignore it. "
           + "Current event: {}.";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTA =
-      "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "WebSocketConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent. Current event: {}.";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "WebSocketConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String WHEN_THE_OPC_UA_SINK_POINTS_TO =
       "When the OPC UA sink points to an outer server, the table model data is not supported.";
   public static final String WHEN_THE_OPC_UA_SINK_SETS_WITH =
       "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.";
   public static final String WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI =
-      "WriteBackSink only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "WriteBackSink supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
 
   // ===================== RECEIVER =====================
 

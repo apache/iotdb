@@ -140,7 +140,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       // Handle exceptions if any available clients exist
       // Notice that the PipeRuntimeSinkCriticalException must be thrown here
       // because the upper layer relies on this to stop all the related pipe tasks
-      // Other exceptions may cause the subtask to stop forever and can not be restarted
+      // Other exceptions may cause the subtask to stop forever and cannot be restarted.
       if (throwable instanceof PipeRuntimeSinkCriticalException) {
         super.onFailure(throwable);
       } else {
@@ -219,10 +219,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   }
 
   /**
-   * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
-   * called when sink starts or the subTask finishes the last round, Thus the {@link
-   * PipeAbstractSinkSubtask#isSubmitted} sign is added to avoid concurrent problem of the two,
-   * ensuring two or more submitting threads generates only one winner.
+   * Submit a {@link PipeSubtask} to the executor to keep it running. This function can be called
+   * when the sink starts or when the subtask finishes the last round, so {@link
+   * PipeAbstractSinkSubtask#isSubmitted} avoids concurrent submissions and ensures that only one
+   * submitting thread wins.
    */
   @Override
   public synchronized void submitSelf() {

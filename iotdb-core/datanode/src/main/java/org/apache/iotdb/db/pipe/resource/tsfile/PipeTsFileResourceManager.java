@@ -77,10 +77,10 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
-   * @param pipeName Nonnull if the pipe is from a historical source or assigner -> sources, null if
-   *     it is dataRegion -> assigner
-   * @param sourceFile for inner use, historical source will use this to create hardlink from pipe
-   *     tsFile -> common tsFile
+   * @param pipeName non-null if the file belongs to a pipe-specific source, null if it belongs to
+   *     the shared dataRegion -> assigner resource
+   * @param sourceFile for internal use; historical sources use this to create a hardlink from a
+   *     pipe tsFile to a common tsFile
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
@@ -227,7 +227,7 @@ public class PipeTsFileResourceManager {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
 
-    // Decrease the assigner's file to clear hard-link and memory cache
+    // Decrease the shared assigner file reference to clear the hard-link and memory cache.
     // Note that it does not exist for historical files
     decreasePublicReferenceIfExists(hardlinkOrCopiedFile, pipeName);
   }
@@ -236,7 +236,7 @@ public class PipeTsFileResourceManager {
     if (Objects.isNull(pipeName)) {
       return;
     }
-    // Decrease the assigner's file to allow hard-link and memory cache cleaning
+    // Decrease the shared assigner file reference to allow hard-link and memory cache cleanup.
     // Note that it does not exist for historical files
     decreaseFileReference(new File(getCommonFilePath(file)), null);
   }

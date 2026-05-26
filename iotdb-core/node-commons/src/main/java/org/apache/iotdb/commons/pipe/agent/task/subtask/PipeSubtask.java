@@ -163,9 +163,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeSinkSubtask#discardEventsOfPipe (sink close)
-    // and finally exception occurs, we need to release the actual last event from the sink
-    // given by the parameter
+    // If lastEvent is set to null by PipeSinkSubtask#discardEventsOfPipe (sink close) and an
+    // exception occurs later, release the actual last event passed by the sink.
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {
       ((EnrichedEvent) actualLastEvent)
@@ -183,9 +182,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeSinkSubtask#discardEventsOfPipe (sink close)
-    // and finally exception occurs, we need to release the actual last event from the sink
-    // given by the parameter
+    // If lastEvent is set to null by PipeSinkSubtask#discardEventsOfPipe (sink close) and an
+    // exception occurs later, release the actual last event passed by the sink.
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {
       ((EnrichedEvent) actualLastEvent).clearReferenceCount(PipeSubtask.class.getName());

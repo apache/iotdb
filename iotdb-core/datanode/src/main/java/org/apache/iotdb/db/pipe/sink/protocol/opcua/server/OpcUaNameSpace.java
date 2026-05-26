@@ -669,9 +669,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           nodeId,
           subscribedItems.size());
 
-      // 2. 【Key Optimization】Proactively push the current node's initial value when the new
-      // subscription item is created
-      // Eliminate Bad_WaitingForInitialData, no need to wait for any polling
+      // 2. Proactively push the current node's initial value when the new subscription item is
+      // created. This avoids Bad_WaitingForInitialData without waiting for polling.
       try {
         UaVariableNode node = (UaVariableNode) getNodeManager().getNode(nodeId).orElse(null);
         if (node != null && node.getValue() != null) {
@@ -706,7 +705,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
               nodeId,
               (k, existingList) -> {
                 existingList.remove(item);
-                // Automatically clean up the key when there are no subscribers, save memory
+                // Automatically clean up the key when there are no subscribers to save memory.
                 return existingList.isEmpty() ? null : existingList;
               });
       LOGGER.debug(

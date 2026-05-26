@@ -698,7 +698,8 @@ public final class DataNodePipeMessages {
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector 不支持传输通用事件：{}。";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
-      "IoTDBLegacyPipeConnector 仅支持 PipeInsertNodeInsertionEvent 和 PipeTabletInsertionEvent。";
+      "IoTDBLegacyPipeConnector 仅支持 PipeInsertNodeTabletInsertionEvent 和 "
+          + "PipeRawTabletInsertionEvent。";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT =
       "IoTDBLegacyPipeConnector 仅支持 PipeTsFileInsertionEvent。";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
@@ -736,7 +737,7 @@ public final class DataNodePipeMessages {
   public static final String LOADING_KEYSTORE_AT = "正在从 {} 加载 KeyStore";
   public static final String LOADING_KEYSTORE_AT_1 = "正在从 {} 加载 KeyStore";
   public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "加载 KeyStore 失败，现有 KeyStore 可能已过期，正在重新构建...";
+      "加载 KeyStore 失败。现有 KeyStore 可能已过期，将重新构建。";
   public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
       "传输 tablet 时未指定 OPC 客户端或服务器";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS = "opc-da-sink 必须在 Windows 系统上运行。";

@@ -69,12 +69,12 @@ class OpcUaKeyStoreLoader {
         keyStore.load(is, password);
       } catch (final IOException e) {
         LOGGER.warn(
-            "Load keyStore {} failed, the existing keyStore may be stale, re-constructing.",
+            "Failed to load KeyStore {}. The existing KeyStore may be stale; rebuilding it.",
             serverKeyStore,
             e);
         if (!serverKeyStore.delete()) {
           LOGGER.warn(
-              "Delete stale keyStore {} failed. The file will be overwritten if possible.",
+              "Failed to delete stale KeyStore {}. The file will be overwritten if possible.",
               serverKeyStore);
           needRewrite = true;
         }
@@ -82,7 +82,7 @@ class OpcUaKeyStoreLoader {
     }
 
     if (!serverKeyStore.exists() || needRewrite) {
-      LOGGER.info("Generating new server keyStore at {}", serverKeyStore);
+      LOGGER.info("Generating a new server KeyStore at {}", serverKeyStore);
       keyStore.load(null, password);
 
       final KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
@@ -134,10 +134,10 @@ class OpcUaKeyStoreLoader {
 
       final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
-      LOGGER.info("Loaded server certificate from keyStore alias {}.", SERVER_ALIAS);
+      LOGGER.info("Loaded server certificate from KeyStore alias {}.", SERVER_ALIAS);
     } else {
       throw new Exception(
-          "Invalid keyStore, the serverPrivateKey is "
+          "Invalid KeyStore, the serverPrivateKey is "
               + (serverPrivateKey != null ? serverPrivateKey.getClass().getSimpleName() : "null"));
     }
 

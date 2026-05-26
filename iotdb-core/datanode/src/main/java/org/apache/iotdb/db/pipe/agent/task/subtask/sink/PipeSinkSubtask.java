@@ -61,10 +61,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   private final String attributeSortedString;
   private final int sinkIndex;
 
-  // Now parallel sinks run at the same time, thus the heartbeat events are not sure
-  // to trigger the general event transfer function, causing potentially such as
-  // the random delay of the batch transmission. Therefore, here we inject cron events
-  // when no event can be pulled.
+  // Parallel sinks run at the same time, so heartbeat events may not trigger generic event
+  // transfer in time. This can delay batch transmission, so inject cron events when no event can be
+  // pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT = new PipeHeartbeatEvent(-1, false);
 
   public PipeSinkSubtask(
@@ -142,7 +141,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
-    // DO NOT call heartbeat or transfer after closed, or will cause connection leak
+    // Do not call heartbeat or transfer after close, otherwise connections may leak.
     if (isClosed.get()) {
       return;
     }
@@ -198,8 +197,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   /**
-   * When a pipe is dropped, the sink may be reused and will not be closed. So we just discard its
-   * queued events in the output pipe sink.
+   * When a pipe is dropped, the sink may be reused and will not be closed. Discard its queued
+   * events in the output pipe sink.
    */
   public void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
@@ -214,8 +213,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task
         // has stopped submission but will not be stopped by critical exceptions, because when it
         // acquires lock, the pipe is already dropped, thus it will do nothing. Note that since we
-        // use a new thread to stop all the pipes, we will not encounter deadlock here. Or else we
-        // will.
+        // use a new thread to stop all the pipes, we will not encounter deadlock here. Calling this
+        // from the same thread that stops all pipes could deadlock.
         if (lastEvent instanceof EnrichedEvent
             && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
             && creationTimeToDrop == ((EnrichedEvent) lastEvent).getCreationTime()

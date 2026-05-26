@@ -112,9 +112,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector only support "
+          "IoTDBDataRegionAirGapConnector supports only "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+              + "Ignoring {}.",
           tabletInsertionEvent);
       return;
     }

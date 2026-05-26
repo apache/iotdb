@@ -54,8 +54,8 @@ public class PipeTaskMeta {
    * <p>The exceptions are instances of {@link PipeRuntimeCriticalException}, {@link
    * PipeRuntimeSinkCriticalException} and {@link PipeRuntimeNonCriticalException}.
    *
-   * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
-   * sharing the same sink, and nothing.
+   * <p>The failures they represent respectively stop the pipe, stop the pipes sharing the same
+   * sink, or only record a non-critical exception.
    */
   private final Set<PipeRuntimeException> exceptionMessages =
       Collections.newSetFromMap(new ConcurrentHashMap<>());

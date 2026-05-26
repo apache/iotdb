@@ -230,9 +230,9 @@ public class WriteBackSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WriteBackSink only support "
+          "WriteBackSink supports only "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+              + "Ignoring {}.",
           tabletInsertionEvent);
       return;
     }

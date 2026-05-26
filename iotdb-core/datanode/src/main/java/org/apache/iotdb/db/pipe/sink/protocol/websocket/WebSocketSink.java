@@ -102,7 +102,7 @@ public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDisca
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "WebSocketConnector supports only PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
