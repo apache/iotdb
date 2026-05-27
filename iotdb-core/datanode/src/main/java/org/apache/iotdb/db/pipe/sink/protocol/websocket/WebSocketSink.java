@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
@@ -174,6 +175,13 @@ public class WebSocketSink implements PipeConnector, PipeConnectorWithEventDisca
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     if (server != null) {
       server.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+    }
+  }
+
+  @Override
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
+    if (server != null) {
+      server.discardEventsOfPipe(committerKey);
     }
   }
 
