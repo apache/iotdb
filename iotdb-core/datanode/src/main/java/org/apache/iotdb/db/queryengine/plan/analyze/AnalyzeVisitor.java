@@ -983,10 +983,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree schemaTree,
       UnaryOperator<Expression> havingExpressionAnalyzer,
       MPPQueryContext queryContext) {
+    Expression havingPredicate =
+        PredicateUtils.predicateRemoveNot(queryStatement.getHavingCondition().getPredicate());
     // get removeWildcard Expressions in Having
     List<Expression> conJunctions =
         ExpressionAnalyzer.bindSchemaForPredicate(
-            queryStatement.getHavingCondition().getPredicate(),
+            havingPredicate,
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
             true,
@@ -1062,7 +1064,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<IDeviceID, Set<Expression>> deviceToOutputExpressions =
         analysis.getDeviceToOutputExpressions();
 
-    Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
+    Expression havingExpression =
+        PredicateUtils.predicateRemoveNot(queryStatement.getHavingCondition().getPredicate());
     Set<Expression> conJunctions = new HashSet<>();
 
     for (PartialPath device : deviceSet) {
@@ -1522,9 +1525,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.hasWhere()) {
       return;
     }
+    Expression wherePredicate =
+        PredicateUtils.predicateRemoveNot(queryStatement.getWhereCondition().getPredicate());
     List<Expression> conJunctions =
         ExpressionAnalyzer.bindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(),
+            wherePredicate,
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
             true,
@@ -1548,13 +1553,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final PartialPath devicePath,
       final ISchemaTree schemaTree,
       final MPPQueryContext queryContext) {
+    Expression wherePredicate =
+        PredicateUtils.predicateRemoveNot(queryStatement.getWhereCondition().getPredicate());
     List<Expression> conJunctions =
         ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
-            queryStatement.getWhereCondition().getPredicate(),
-            devicePath,
-            schemaTree,
-            true,
-            queryContext);
+            wherePredicate, devicePath, schemaTree, true, queryContext);
     return convertConJunctionsToWhereExpression(conJunctions);
   }
 
