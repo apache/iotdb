@@ -109,8 +109,15 @@ public class SessionManager implements SessionManagerMBean {
 
   private final Object sessionLimitLock = new Object();
 
+  private static final int PASSWORD_HISTORY_LOCK_COUNT = 1024;
+
+  private final Object[] passwordHistoryLocks = new Object[PASSWORD_HISTORY_LOCK_COUNT];
+
   protected SessionManager() {
     // singleton
+    for (int i = 0; i < PASSWORD_HISTORY_LOCK_COUNT; i++) {
+      passwordHistoryLocks[i] = new Object();
+    }
     String mbeanName =
         String.format(
             "%s:%s=%s",
@@ -220,6 +227,46 @@ public class SessionManager implements SessionManagerMBean {
         }
 
         String logInMessage = "Login successfully";
+        if (timeToExpire == null) {
+          synchronized (getPasswordHistoryLock(userId)) {
+            expirationAndModifiedTime =
+                DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
+            timeToExpire =
+                expirationAndModifiedTime != null ? expirationAndModifiedTime.left : null;
+            if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
+              openSessionResp
+                  .sessionId(-1)
+                  .setCode(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
+                  .setMessage(
+                      "Password has expired, please use \"ALTER USER\" to change to a new one");
+              cleanupFailedSuppliedSession(session);
+              return openSessionResp;
+            }
+            if (timeToExpire == null) {
+              LOGGER.info(
+                  "No password history for user {}, using the current time to create a new one",
+                  username);
+              long currentTime = CommonDateTimeUtils.currentTime();
+              TSStatus tsStatus =
+                  DataNodeAuthUtils.recordPasswordHistory(
+                      userId, password, AuthUtils.encryptPassword(password), currentTime);
+              if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                openSessionResp
+                    .sessionId(-1)
+                    .setCode(tsStatus.getCode())
+                    .setMessage(tsStatus.getMessage());
+                cleanupFailedSuppliedSession(session);
+                return openSessionResp;
+              }
+              timeToExpire =
+                  CommonDateTimeUtils.convertIoTDBTimeToMillis(currentTime)
+                      + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
+                          * 1000
+                          * 86400;
+            }
+          }
+        }
+
         long passwordStaleWarningDays =
             CommonDescriptor.getInstance().getConfig().getPasswordStaleWarningDays();
         if (passwordStaleWarningDays > 0 && expirationAndModifiedTime != null) {
@@ -232,42 +279,15 @@ public class SessionManager implements SessionManagerMBean {
                     passwordStaleWarningDays);
           }
         }
-
-        if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
+        if (timeToExpire != null
+            && timeToExpire != Long.MAX_VALUE
+            && timeToExpire > System.currentTimeMillis()) {
           DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
           logInMessage +=
               ". Your password will expire at "
                   + dateFormat.format(
                       LocalDateTime.ofInstant(
                           Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-        } else if (timeToExpire == null) {
-          LOGGER.info(
-              "No password history for user {}, using the current time to create a new one",
-              username);
-          long currentTime = CommonDateTimeUtils.currentTime();
-          TSStatus tsStatus =
-              DataNodeAuthUtils.recordPasswordHistory(
-                  userId, password, AuthUtils.encryptPassword(password), currentTime);
-          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            openSessionResp
-                .sessionId(-1)
-                .setCode(tsStatus.getCode())
-                .setMessage(tsStatus.getMessage());
-            return openSessionResp;
-          }
-          timeToExpire =
-              CommonDateTimeUtils.convertIoTDBTimeToMillis(currentTime)
-                  + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
-                      * 1000
-                      * 86400;
-          if (timeToExpire > System.currentTimeMillis()) {
-            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            logInMessage +=
-                ". Your password will expire at "
-                    + dateFormat.format(
-                        LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-          }
         }
         openSessionResp
             .sessionId(session.getId())
@@ -337,6 +357,15 @@ public class SessionManager implements SessionManagerMBean {
     }
 
     return openSessionResp;
+  }
+
+  private void cleanupFailedSuppliedSession(IClientSession session) {
+    closeSession(session, Coordinator.getInstance()::cleanupQueryExecution, false);
+    session.setLogin(false);
+    session.setUserId(-1);
+    session.setUsername(null);
+    session.setLogInTime(0);
+    session.setDatabaseName(null);
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
@@ -445,6 +474,10 @@ public class SessionManager implements SessionManagerMBean {
     long statementId = statementIdGenerator.incrementAndGet();
     session.addStatementId(statementId);
     return statementId;
+  }
+
+  private Object getPasswordHistoryLock(long userId) {
+    return passwordHistoryLocks[Math.floorMod(Long.hashCode(userId), passwordHistoryLocks.length)];
   }
 
   public void closeStatement(

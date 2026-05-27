@@ -170,26 +170,59 @@ public class DataNodeAuthUtils {
 
   public static TSStatus recordPasswordHistory(
       long userId, String password, String oldEncryptedPassword, long timeToRecord) {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
     try {
-      insertRowStatement.setDevicePath(
-          new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`"));
-      insertRowStatement.setTime(timeToRecord);
-      insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
-      insertRowStatement.setValues(
-          new Object[] {
-            new Binary(AuthUtils.encryptPassword(password), TSFileConfig.STRING_CHARSET),
-            oldEncryptedPassword == null
-                ? null
-                : new Binary(oldEncryptedPassword, TSFileConfig.STRING_CHARSET)
-          });
-      insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.STRING});
+      TSStatus status =
+          executePasswordHistoryInsert(
+              createPasswordHistoryInsertStatement(
+                  userId, password, oldEncryptedPassword, timeToRecord));
+      if (isTimeseriesAlreadyExistStatus(status)) {
+        LOGGER.info(
+            "Retry creating password history for user {} after concurrent schema creation", userId);
+        status =
+            executePasswordHistoryInsert(
+                createPasswordHistoryInsertStatement(
+                    userId, password, oldEncryptedPassword, timeToRecord));
+      }
+      return status;
     } catch (IllegalPathException ignored) {
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
           .setMessage(
               "Cannot create password history for " + userId + " because the path will be illegal");
+    } catch (Exception e) {
+      if (CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays() < 0
+          && CommonDescriptor.getInstance().getConfig().getPasswordReuseIntervalDays() < 0) {
+        // password history is not used in the current configuration, tolerate the failure
+        return StatusUtils.OK;
+      }
+      if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
+        return StatusUtils.OK;
+      }
+      LOGGER.error("Cannot create password history for {}", userId, e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage("The server is not ready for login, please check the server log for details");
     }
+  }
 
+  private static InsertRowStatement createPasswordHistoryInsertStatement(
+      long userId, String password, String oldEncryptedPassword, long timeToRecord)
+      throws IllegalPathException {
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setDevicePath(
+        new PartialPath(DNAuditLogger.PREFIX_PASSWORD_HISTORY + ".`_" + userId + "`"));
+    insertRowStatement.setTime(timeToRecord);
+    insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
+    insertRowStatement.setValues(
+        new Object[] {
+          new Binary(AuthUtils.encryptPassword(password), TSFileConfig.STRING_CHARSET),
+          oldEncryptedPassword == null
+              ? null
+              : new Binary(oldEncryptedPassword, TSFileConfig.STRING_CHARSET)
+        });
+    insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.STRING});
+    return insertRowStatement;
+  }
+
+  private static TSStatus executePasswordHistoryInsert(InsertRowStatement insertRowStatement) {
     long queryId = -1;
     try {
       SessionInfo sessionInfo =
@@ -212,23 +245,30 @@ public class DataNodeAuthUtils {
                   ClusterPartitionFetcher.getInstance(),
                   ClusterSchemaFetcher.getInstance());
       return result.status;
-    } catch (Exception e) {
-      if (CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays() < 0
-          && CommonDescriptor.getInstance().getConfig().getPasswordReuseIntervalDays() < 0) {
-        // password history is not used in the current configuration, tolerate the failure
-        return StatusUtils.OK;
-      }
-      if (CommonDescriptor.getInstance().getConfig().isMayBypassPasswordCheckInException()) {
-        return StatusUtils.OK;
-      }
-      LOGGER.error("Cannot create password history for {}", userId, e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-          .setMessage("The server is not ready for login, please check the server log for details");
     } finally {
       if (queryId != -1) {
         Coordinator.getInstance().cleanupQueryExecution(queryId);
       }
     }
+  }
+
+  private static boolean isTimeseriesAlreadyExistStatus(TSStatus status) {
+    if (status == null) {
+      return false;
+    }
+    if (status.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+      return true;
+    }
+    if (status.getCode() != TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+        || status.getSubStatusSize() == 0) {
+      return false;
+    }
+    return status.getSubStatus().stream()
+        .allMatch(
+            subStatus ->
+                subStatus != null
+                    && (subStatus.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
+                        || subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   public static TSStatus deletePasswordHistory(long userId) {
