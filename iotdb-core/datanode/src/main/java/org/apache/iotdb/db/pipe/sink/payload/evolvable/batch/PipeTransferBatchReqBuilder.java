@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -202,10 +203,12 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
 
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    defaultBatch.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
-    endPointToBatch
-        .values()
-        .forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    defaultBatch.discardEventsOfPipe(committerKey);
+    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(committerKey));
   }
 
   public int size() {
