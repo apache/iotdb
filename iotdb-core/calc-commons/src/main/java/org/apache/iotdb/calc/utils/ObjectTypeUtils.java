@@ -118,16 +118,14 @@ public class ObjectTypeUtils {
       }
 
       final IObjectPath newObjectPath;
+      final String[] subPath = new String[path.getNameCount() - 1];
+      for (int i = 1; i < path.getNameCount(); i++) {
+        subPath[i - 1] = path.getName(i).toString();
+      }
       if (objectPath instanceof PlainObjectPath) {
-        newObjectPath =
-            new PlainObjectPath(
-                objectPath.toString().replaceFirst(regionId + "", newRegionId + ""));
+        newObjectPath = new PlainObjectPath(Paths.get(String.valueOf(newRegionId), subPath));
       } else {
-        final String[] subPath = new String[path.getNameCount() - 1];
-        for (int i = 1; i < path.getNameCount(); i++) {
-          subPath[i - 1] = path.getName(i).toString();
-        }
-        newObjectPath = new Base32ObjectPath(Paths.get(newRegionId + "", subPath));
+        newObjectPath = new Base32ObjectPath(Paths.get(String.valueOf(newRegionId), subPath));
       }
       return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
     } catch (NumberFormatException e) {

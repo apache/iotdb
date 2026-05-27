@@ -230,8 +230,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
-    for (int i = 0; i < times.length; i++) {
+    final List<TEndPoint> redirectNodeList = new ArrayList<>(rowCount);
+    for (int i = 0; i < rowCount; i++) {
       final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(endPointMap.get(deviceId));
     }
@@ -407,7 +407,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         setDataRegionReplicaSet(entry.getKey());
         for (int i = 0; i < columns.length; i++) {
           if (dataTypes[i] == TSDataType.OBJECT) {
-            handleObjectValue(i, 0, times.length, entry, result);
+            handleObjectValue(i, 0, rowCount, entry, result);
           }
         }
         result.add(this);
@@ -478,12 +478,21 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       Map.Entry<TRegionReplicaSet, List<Integer>> entry,
       List<WritePlanNode> result) {
     for (int row = startRow; row < endRow; row++) {
+      if (bitMaps != null && bitMaps[column] != null && bitMaps[column].isMarked(row)) {
+        continue;
+      }
       if (((Binary[]) columns[column])[row] == null) {
         continue;
       }
       final byte[] binary = ((Binary[]) columns[column])[row].getValues();
       if (binary == null || binary.length == 0) {
         continue;
+      }
+      if (binary.length < Byte.BYTES + Long.BYTES) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Malformed OBJECT binary for measurement %s, length is %d",
+                measurements[column], binary.length));
       }
       final ByteBuffer buffer = ByteBuffer.wrap(binary);
       final boolean isEOF = buffer.get() == 1;

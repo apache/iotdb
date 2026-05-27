@@ -35,12 +35,27 @@ public class IoTConsensusV2ObjectFilePieceReq extends TIoTConsensusV2TransferReq
 
   private transient ObjectNode objectNode;
 
+  private transient ByteBuffer byteBuffer;
+
   private IoTConsensusV2ObjectFilePieceReq() {
     // Do nothing
   }
 
   public ObjectNode getObjectNode() {
+    if (objectNode == null) {
+      final PlanNode planNode = convertToPlanNode();
+      if (planNode instanceof ObjectNode) {
+        objectNode = (ObjectNode) planNode;
+      }
+    }
     return objectNode;
+  }
+
+  public PlanNode convertToPlanNode() {
+    if (objectNode != null) {
+      return objectNode;
+    }
+    return WALEntry.deserializeForConsensus(byteBuffer.duplicate());
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -59,6 +74,7 @@ public class IoTConsensusV2ObjectFilePieceReq extends TIoTConsensusV2TransferReq
     req.version = IoTConsensusV2RequestVersion.VERSION_1.getVersion();
     req.type = IoTConsensusV2RequestType.TRANSFER_OBJECT_FILE_PIECE.getType();
     req.body = objectNode.serialize();
+    req.byteBuffer = req.body;
 
     return req;
   }
@@ -67,9 +83,7 @@ public class IoTConsensusV2ObjectFilePieceReq extends TIoTConsensusV2TransferReq
       final TIoTConsensusV2TransferReq transferReq) {
     final IoTConsensusV2ObjectFilePieceReq req = new IoTConsensusV2ObjectFilePieceReq();
 
-    final ByteBuffer body = transferReq.body.duplicate();
-    final PlanNode planNode = WALEntry.deserializeForConsensus(body);
-    req.objectNode = (ObjectNode) planNode;
+    req.byteBuffer = transferReq.body;
 
     req.version = transferReq.version;
     req.type = transferReq.type;

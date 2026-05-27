@@ -45,8 +45,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -60,8 +58,6 @@ import java.util.Optional;
 import static org.apache.iotdb.calc.utils.ObjectTypeUtils.generateObjectBinary;
 
 public class ObjectNode extends SearchNode implements WALEntryValue {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ObjectNode.class);
 
   private final boolean isEOF;
 
@@ -167,7 +163,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     if (objectFile.isPresent()) {
       try (RandomAccessFile raf = new RandomAccessFile(objectFile.get(), "r")) {
         raf.seek(offset);
-        raf.read(contents);
+        raf.readFully(contents);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -301,11 +297,14 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
           }
         }
       }
-      if (!readSuccess && LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            DataNodeQueryMessages.ERROR_WHEN_READ_OBJECT_FILE, filePath.toString(), ioException);
+      if (!readSuccess) {
+        throw new IOException(
+            String.format(
+                "Failed to read object file %s at offset %d with length %d",
+                filePath, offset, contentLength),
+            ioException);
       }
-      ReadWriteIOUtils.write(readSuccess && isEOF, stream);
+      ReadWriteIOUtils.write(isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);
       filePath.serialize(stream);
       ReadWriteIOUtils.write(contentLength, stream);
@@ -319,7 +318,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private void readContentFromFile(File file, byte[] contents) throws IOException {
     try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
       raf.seek(offset);
-      raf.read(contents);
+      raf.readFully(contents);
     }
   }
 
@@ -327,7 +326,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     final RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(this.getPlanNodeId());
     insertRowNode.setAligned(true);
     insertRowNode.setDeviceID(filePath.getDeviceID());
-    insertRowNode.setTargetPath(new PartialPath(filePath.getDeviceID().getTableName()));
+    insertRowNode.setTargetPath(new PartialPath(filePath.getDeviceID().getTableName(), false));
     insertRowNode.setTime(filePath.getTime());
     insertRowNode.setMeasurements(new String[] {filePath.getMeasurement()});
     insertRowNode.setDataTypes(new TSDataType[] {TSDataType.OBJECT});

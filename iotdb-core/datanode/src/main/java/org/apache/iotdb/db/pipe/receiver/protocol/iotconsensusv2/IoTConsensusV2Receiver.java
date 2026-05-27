@@ -359,7 +359,14 @@ public class IoTConsensusV2Receiver {
     IoTConsensusV2ServerImpl impl =
         Optional.ofNullable(iotConsensusV2.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
-    final ObjectNode objectNode = req.getObjectNode();
+    final PlanNode planNode = req.convertToPlanNode();
+    if (!(planNode instanceof ObjectNode)) {
+      return new TIoTConsensusV2TransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.IOT_CONSENSUS_V2_TYPE_ERROR,
+              String.format("Unsupported object file piece plan node %s.", planNode)));
+    }
+    final ObjectNode objectNode = (ObjectNode) planNode;
     objectNode.markAsGeneratedByRemoteConsensusLeader();
     return new TIoTConsensusV2TransferResp(impl.writeOnFollowerReplica(objectNode));
   }

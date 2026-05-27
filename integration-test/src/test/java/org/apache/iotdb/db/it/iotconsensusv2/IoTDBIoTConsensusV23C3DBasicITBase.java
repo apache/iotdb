@@ -388,6 +388,10 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       session.executeNonQueryStatement("FLUSH");
     }
 
+    final int targetRegionId;
+    final int leaderDataNodeId;
+    final DataNodeWrapper leaderNode;
+    final DataNodeWrapper followerNode;
     try (Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement tableStatement = tableConnection.createStatement()) {
       tableStatement.execute("USE " + OBJECT_DATABASE);
@@ -408,47 +412,44 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       }
 
       final ObjectRegionSelection targetRegion = waitForObjectRegion(dataRegionMap, objectBytes);
-      final int targetRegionId = targetRegion.regionId;
-      final int leaderDataNodeId = targetRegion.leaderDataNodeId;
+      targetRegionId = targetRegion.regionId;
+      leaderDataNodeId = targetRegion.leaderDataNodeId;
       final int followerDataNodeId = targetRegion.followerDataNodeId;
-      final Set<Integer> targetReplicaIds = targetRegion.replicaDataNodeIds;
-      verifyObjectFileOnReplicas(targetRegionId, targetReplicaIds, objectBytes);
+      verifyObjectFileOnReplicas(targetRegionId, targetRegion.replicaDataNodeIds, objectBytes);
 
-      final DataNodeWrapper leaderNode =
+      leaderNode =
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(leaderDataNodeId)
               .orElseThrow(() -> new AssertionError("Leader DataNode not found"));
-      final DataNodeWrapper followerNode =
+      followerNode =
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(followerDataNodeId)
               .orElseThrow(() -> new AssertionError("Follower DataNode not found"));
-
-      LOGGER.info(
-          "Stopping object-region leader DataNode {} (region {})",
-          leaderDataNodeId,
-          targetRegionId);
-      leaderNode.stopForcibly();
-      Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
-
-      Awaitility.await()
-          .pollDelay(2, TimeUnit.SECONDS)
-          .atMost(2, TimeUnit.MINUTES)
-          .untilAsserted(
-              () -> {
-                try (Connection followerConnection =
-                        EnvFactory.getEnv()
-                            .getConnection(
-                                followerNode,
-                                SessionConfig.DEFAULT_USER,
-                                SessionConfig.DEFAULT_PASSWORD,
-                                BaseEnv.TABLE_SQL_DIALECT);
-                    Statement followerStatement = followerConnection.createStatement()) {
-                  followerStatement.execute("USE " + OBJECT_DATABASE);
-                  verifyObjectLength(
-                      followerStatement, "follower after object leader stop", objectBytes.length);
-                }
-              });
     }
+
+    LOGGER.info(
+        "Stopping object-region leader DataNode {} (region {})", leaderDataNodeId, targetRegionId);
+    leaderNode.stopForcibly();
+    Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
+
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try (Connection followerConnection =
+                      EnvFactory.getEnv()
+                          .getConnection(
+                              followerNode,
+                              SessionConfig.DEFAULT_USER,
+                              SessionConfig.DEFAULT_PASSWORD,
+                              BaseEnv.TABLE_SQL_DIALECT);
+                  Statement followerStatement = followerConnection.createStatement()) {
+                followerStatement.execute("USE " + OBJECT_DATABASE);
+                verifyObjectLength(
+                    followerStatement, "follower after object leader stop", objectBytes.length);
+              }
+            });
   }
 
   private Map<Integer, Pair<Integer, Set<Integer>>> waitForDataRegionMap(

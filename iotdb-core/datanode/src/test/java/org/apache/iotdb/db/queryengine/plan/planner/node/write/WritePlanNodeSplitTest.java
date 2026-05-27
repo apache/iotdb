@@ -43,15 +43,20 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -304,6 +309,79 @@ public class WritePlanNodeSplitTest {
   }
 
   @Test
+  public void testSplitRelationalInsertTabletObjectColumnIgnoresRowsBeyondRowCount()
+      throws IllegalPathException {
+    RelationalInsertTabletNode relationalInsertTabletNode =
+        getRelationalInsertTabletNodeWithObjectColumn(
+            2,
+            new Binary[] {
+              getObjectPieceBinary(0, new byte[] {1}),
+              getObjectPieceBinary(0, new byte[] {2}),
+              getObjectPieceBinary(0, new byte[] {3}),
+              getObjectPieceBinary(0, new byte[] {4})
+            },
+            null);
+
+    List<WritePlanNode> splitNodes =
+        relationalInsertTabletNode.splitByPartition(
+            getAnalysisForRelationalInsertTablet(relationalInsertTabletNode));
+
+    Assert.assertEquals(2L, countObjectNodes(splitNodes));
+  }
+
+  @Test
+  public void testSplitRelationalInsertTabletObjectColumnHonorsNullBitmap()
+      throws IllegalPathException {
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[1] = new BitMap(2);
+    bitMaps[1].mark(1);
+    RelationalInsertTabletNode relationalInsertTabletNode =
+        getRelationalInsertTabletNodeWithObjectColumn(
+            2,
+            new Binary[] {
+              getObjectPieceBinary(0, new byte[] {1}), getObjectPieceBinary(0, new byte[] {2})
+            },
+            bitMaps);
+
+    List<WritePlanNode> splitNodes =
+        relationalInsertTabletNode.splitByPartition(
+            getAnalysisForRelationalInsertTablet(relationalInsertTabletNode));
+
+    Assert.assertEquals(1L, countObjectNodes(splitNodes));
+  }
+
+  @Test
+  public void testSplitRelationalInsertRowsSkipsEmptyObjectBinary() throws IllegalPathException {
+    RelationalInsertRowsNode relationalInsertRowsNode =
+        new RelationalInsertRowsNode(new PlanNodeId("plan node object rows"));
+    RelationalInsertRowNode insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId("plan node object rows"),
+            new PartialPath("root.sg2", false),
+            false,
+            new String[] {"device", "file"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.OBJECT},
+            1,
+            new Object[] {new Binary("d1", StandardCharsets.UTF_8), new Binary(new byte[0])},
+            false,
+            new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+    relationalInsertRowsNode.addOneInsertRowNode(insertRowNode, 0);
+
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDeviceID(insertRowNode.getDeviceID());
+    dataPartitionQueryParam.setTimePartitionSlotList(insertRowNode.getTimePartitionSlots());
+    DataPartition dataPartition =
+        getDataPartition(Collections.singletonList(dataPartitionQueryParam));
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(dataPartition);
+    analysis.setDatabaseName("root.sg2");
+
+    List<WritePlanNode> splitNodes = relationalInsertRowsNode.splitByPartition(analysis);
+
+    Assert.assertEquals(0L, countObjectNodes(splitNodes));
+  }
+
+  @Test
   public void testInsertMultiTablets() throws IllegalPathException {
     InsertMultiTabletsNode insertMultiTabletsNode =
         new InsertMultiTabletsNode(new PlanNodeId("plan node 3"));
@@ -464,5 +542,55 @@ public class WritePlanNodeSplitTest {
   public void tearDown() {
     TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
+  }
+
+  private RelationalInsertTabletNode getRelationalInsertTabletNodeWithObjectColumn(
+      int rowCount, Binary[] objectValues, BitMap[] bitMaps) throws IllegalPathException {
+    long[] times = new long[objectValues.length];
+    Binary[] devices = new Binary[objectValues.length];
+    for (int i = 0; i < objectValues.length; i++) {
+      times[i] = i + 1;
+      devices[i] = new Binary("d1", StandardCharsets.UTF_8);
+    }
+    return new RelationalInsertTabletNode(
+        new PlanNodeId("plan node object tablet"),
+        new PartialPath("root.sg2", false),
+        false,
+        new String[] {"device", "file"},
+        new TSDataType[] {TSDataType.STRING, TSDataType.OBJECT},
+        times,
+        bitMaps,
+        new Object[] {devices, objectValues},
+        rowCount,
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
+  }
+
+  private Analysis getAnalysisForRelationalInsertTablet(
+      RelationalInsertTabletNode relationalInsertTabletNode) {
+    List<DataPartitionQueryParam> dataPartitionQueryParamList = new ArrayList<>();
+    for (int i = 0; i < relationalInsertTabletNode.getRowCount(); i++) {
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDeviceID(relationalInsertTabletNode.getDeviceID(i));
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          Collections.singletonList(
+              TimePartitionUtils.getTimePartitionSlot(relationalInsertTabletNode.getTimes()[i])));
+      dataPartitionQueryParamList.add(dataPartitionQueryParam);
+    }
+    Analysis analysis = new Analysis();
+    analysis.setDataPartitionInfo(getDataPartition(dataPartitionQueryParamList));
+    analysis.setDatabaseName("root.sg2");
+    return analysis;
+  }
+
+  private Binary getObjectPieceBinary(long offset, byte[] content) {
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Long.BYTES + content.length);
+    buffer.put((byte) 1);
+    buffer.putLong(offset);
+    buffer.put(content);
+    return new Binary(buffer.array());
+  }
+
+  private long countObjectNodes(List<WritePlanNode> writePlanNodes) {
+    return writePlanNodes.stream().filter(ObjectNode.class::isInstance).count();
   }
 }

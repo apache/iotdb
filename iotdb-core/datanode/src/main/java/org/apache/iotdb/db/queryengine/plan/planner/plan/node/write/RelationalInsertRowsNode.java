@@ -214,6 +214,15 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
         continue;
       }
       final byte[] binary = ((Binary) values[i]).getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
+      if (binary.length < Byte.BYTES + Long.BYTES) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Malformed OBJECT binary for measurement %s, length is %d",
+                insertRowNode.getMeasurements()[i], binary.length));
+      }
       final ByteBuffer buffer = ByteBuffer.wrap(binary);
       final boolean isEOF = buffer.get() == 1;
       final long offset = buffer.getLong();
