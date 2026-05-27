@@ -323,6 +323,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
 

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -37,6 +39,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -57,6 +60,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
 
   private final String deviceId;
   private final List<String> measurements;
+  private final List<MeasurementSchema> schemas;
 
   private final IExpression timeFilterExpression;
 
@@ -76,20 +80,28 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
       final List<String> measurements,
       final IExpression timeFilterExpression,
       final PipeMemoryBlock allocatedBlockForTablet,
-      final PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications)
+      final PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications,
+      final TabletStringInternPool tabletStringInternPool)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
 
-    this.deviceId = deviceId;
+    this.deviceId = tabletStringInternPool.intern(deviceId);
     this.measurements =
         measurements.stream()
             .filter(
                 measurement ->
                     // time column in aligned time-series should not be a query column
                     measurement != null && !measurement.isEmpty())
+            .map(tabletStringInternPool::intern)
             .sorted()
             .collect(Collectors.toList());
+    this.schemas = new ArrayList<>();
+    for (final String measurement : this.measurements) {
+      final TSDataType dataType =
+          measurementDataTypeMap.get(this.deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
+      schemas.add(new MeasurementSchema(measurement, dataType));
+    }
 
     this.timeFilterExpression = timeFilterExpression;
 
@@ -99,7 +111,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
 
     this.measurementModsList =
         ModsOperationUtil.initializeMeasurementMods(
-            deviceId, this.measurements, currentModifications);
+            this.deviceId, this.measurements, currentModifications);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
@@ -133,18 +145,9 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   }
 
   private Tablet buildNextTablet() throws IOException {
-    final List<MeasurementSchema> schemas = new ArrayList<>();
-    for (final String measurement : measurements) {
-      final TSDataType dataType =
-          measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
-      schemas.add(new MeasurementSchema(measurement, dataType));
-    }
-
     Tablet tablet = null;
     if (!queryDataSet.hasNext()) {
-      tablet = new Tablet(deviceId, schemas, 1);
-      tablet.initBitMaps();
-      return tablet;
+      return new Tablet(deviceId, schemas, 1);
     }
 
     boolean isFirstRow = true;
@@ -156,7 +159,6 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
         Pair<Integer, Integer> rowCountAndMemorySize =
             PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
         tablet = new Tablet(deviceId, schemas, rowCountAndMemorySize.getLeft());
-        tablet.initBitMaps();
         if (allocatedBlockForTablet.getMemoryUsageInBytes() < rowCountAndMemorySize.getRight()) {
           PipeDataNodeResourceManager.memory()
               .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
@@ -172,27 +174,30 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
-        final String measurement = measurements.get(i);
+        final TSDataType dataType = schemas.get(i).getType();
         // Check if this value is deleted by mods
         if (field == null
             || ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i))) {
-          tablet.bitMaps[i].mark(rowIndex);
+          if (dataType != null && dataType.isBinary()) {
+            PipeTabletUtils.putValue(tablet, rowIndex, i, dataType, Binary.EMPTY_VALUE);
+          }
+          PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         } else {
-          tablet.addValue(measurement, rowIndex, field.getObjectValue(schemas.get(i).getType()));
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, i, dataType, field.getObjectValue(schemas.get(i).getType()));
           isNeedFillTime = true;
         }
       }
       if (isNeedFillTime) {
-        tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
+        PipeTabletUtils.putTimestamp(tablet, rowIndex, rowRecord.getTimestamp());
       }
-
-      tablet.rowSize++;
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         break;
       }
     }
 
+    PipeTabletUtils.compactBitMaps(tablet);
     return tablet;
   }
 }

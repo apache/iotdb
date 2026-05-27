@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletEventConverter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -66,27 +67,26 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
       Pair<Integer, Integer> rowCountAndMemorySize =
           PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
       tablet = new Tablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
-      tablet.initBitMaps();
       isAligned = pipeRow.isAligned();
     }
 
     final int rowIndex = tablet.rowSize;
-    tablet.addTimestamp(rowIndex, row.getTime());
+    PipeTabletUtils.putTimestamp(tablet, rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       final Object value = row.getObject(i);
-      if (value instanceof org.apache.iotdb.pipe.api.type.Binary) {
-        tablet.addValue(
-            measurementSchemaArray[i].getMeasurementId(),
-            rowIndex,
-            PipeBinaryTransformer.transformToBinary((org.apache.iotdb.pipe.api.type.Binary) value));
-      } else {
-        tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, value);
-      }
+      PipeTabletUtils.putValue(
+          tablet,
+          rowIndex,
+          i,
+          measurementSchemaArray[i].getType(),
+          value instanceof org.apache.iotdb.pipe.api.type.Binary
+              ? PipeBinaryTransformer.transformToBinary(
+                  (org.apache.iotdb.pipe.api.type.Binary) value)
+              : value);
       if (row.isNull(i)) {
-        tablet.bitMaps[i].mark(rowIndex);
+        PipeTabletUtils.markNullValue(tablet, rowIndex, i);
       }
     }
-    tablet.rowSize++;
 
     if (tablet.rowSize == tablet.getMaxRowNumber()) {
       collectTabletInsertionEvent();
@@ -95,6 +95,7 @@ public class PipeRowCollector extends PipeRawTabletEventConverter implements Row
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      PipeTabletUtils.compactBitMaps(tablet);
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
               tablet,

@@ -319,6 +319,36 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
+  public void convertToTabletSkipsUnnecessaryBitMapsForTest() throws Exception {
+    final BitMap[] bitMaps = new BitMap[schemas.length];
+    bitMaps[0] = new BitMap(times.length);
+    bitMaps[1] = new BitMap(times.length);
+    bitMaps[1].mark(1);
+
+    final InsertTabletNode nodeWithSparseColumn =
+        new InsertTabletNode(
+            new PlanNodeId("plannode bitmap"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            times,
+            bitMaps,
+            insertTabletNode.getColumns(),
+            times.length);
+
+    final Tablet tablet =
+        new TabletInsertionDataContainer(nodeWithSparseColumn, new PrefixPipePattern(pattern))
+            .convertToTablet();
+
+    Assert.assertNotNull(tablet.bitMaps);
+    Assert.assertNull(tablet.bitMaps[0]);
+    Assert.assertNotNull(tablet.bitMaps[1]);
+    Assert.assertTrue(tablet.bitMaps[1].isMarked(1));
+  }
+
+  @Test
   public void convertToTabletWithFilteredRowsForTest() {
     TabletInsertionDataContainer container1 =
         new TabletInsertionDataContainer(
