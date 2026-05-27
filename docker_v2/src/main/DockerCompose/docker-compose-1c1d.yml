@@ -1,0 +1,70 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+version: "3"
+services:
+  timechodb-confignode:
+    image: nexus.infra.timecho.com:8243/timecho/timechodb:version-standalone
+    command: ["confignode"]
+    hostname: timechodb-confignode
+    container_name: timechodb-confignode
+    # Set the memory limit for this container. Docker writes this value
+    # to cgroup, and entrypoint.sh reads it to size JVM memory.
+    # Tune it according to host resources and workload before production use.
+    mem_limit: 2g
+    environment:
+      - cn_internal_address=timechodb-confignode
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
+      - cn_seed_config_node=timechodb-confignode:10710
+    volumes:
+      - ./data/confignode:/iotdb/data
+      - ./logs/confignode:/iotdb/logs
+    networks:
+      timechodb:
+        ipv4_address: 172.18.0.2
+
+  timechodb-datanode-1:
+    image: nexus.infra.timecho.com:8243/timecho/timechodb:version-standalone
+    command: ["datanode"]
+    hostname: timechodb-datanode-1
+    container_name: timechodb-datanode-1
+    # Set the memory limit for this container. Docker writes this value
+    # to cgroup, and entrypoint.sh reads it to size JVM memory.
+    # Tune it according to host resources and workload before production use.
+    mem_limit: 8g
+    ports:
+      - "6667:6667"
+    environment:
+      - dn_rpc_address=timechodb-datanode-1
+      - dn_internal_address=timechodb-datanode-1
+      - dn_seed_config_node=timechodb-confignode:10710
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
+    volumes:
+      - ./data/datanode1:/iotdb/data/
+      - ./logs/datanode1:/iotdb/logs/
+    networks:
+      timechodb:
+        ipv4_address: 172.18.0.3
+
+networks:
+  timechodb:
+    external: true
