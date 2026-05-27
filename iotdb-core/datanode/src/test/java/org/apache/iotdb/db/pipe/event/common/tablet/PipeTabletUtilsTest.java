@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -47,5 +48,25 @@ public class PipeTabletUtilsTest {
 
     Assert.assertNull(tablet.bitMaps[0]);
     Assert.assertTrue(tablet.bitMaps[1].isMarked(0));
+  }
+
+  @Test
+  public void testCopyBitMapsOrCreateEmptyWithNullBitMaps() {
+    final List<MeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.FLOAT),
+            new MeasurementSchema("s2", TSDataType.FLOAT));
+    final Tablet tablet = new Tablet("root.sg.d1", schemas, 2);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("s1", 0, 1.0f);
+    tablet.addValue("s2", 0, 2.0f);
+
+    Assert.assertNull(tablet.bitMaps);
+
+    final BitMap[] bitMaps = PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet);
+
+    Assert.assertEquals(schemas.size(), bitMaps.length);
+    Assert.assertNull(bitMaps[0]);
+    Assert.assertNull(bitMaps[1]);
   }
 }
