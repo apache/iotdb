@@ -251,11 +251,11 @@ Optional<int64_t> SessionDataSet::DataIterator::getTimestamp(const std::string& 
   return impl_->iotdbRpcDataSet_->getTimestamp(columnName);
 }
 
-Optional<IoTdbDate> SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
+Optional<IoTDBDate> SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getDateByIndex(columnIndex);
 }
 
-Optional<IoTdbDate> SessionDataSet::DataIterator::getDate(const std::string& columnName) {
+Optional<IoTDBDate> SessionDataSet::DataIterator::getDate(const std::string& columnName) {
   return impl_->iotdbRpcDataSet_->getDate(columnName);
 }
 

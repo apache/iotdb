@@ -168,7 +168,7 @@ endforeach()
 
 if(BUILD_TESTING)
     enable_testing()
-    add_subdirectory(src/test)
+    add_subdirectory(test)
 endif()
 
 message(STATUS "iotdb_session configuration summary:")

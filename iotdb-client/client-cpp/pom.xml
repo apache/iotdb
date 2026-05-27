@@ -117,7 +117,7 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
-                            <projectDirectory>${cmake.project.dir}/src/test</projectDirectory>
+                            <projectDirectory>${cmake.project.dir}/test</projectDirectory>
                             <skipTests>${maven.test.skip}</skipTests>
                         </configuration>
                     </execution>
@@ -322,7 +322,7 @@
                                     <include>src/**/*.cpp</include>
                                 </includes>
                                 <excludes>
-                                    <exclude>src/test/catch2/**</exclude>
+                                    <exclude>test/catch2/**</exclude>
                                 </excludes>
                                 <clangFormat>
                                     <version>${clang.format.version}</version>

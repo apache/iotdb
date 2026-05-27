@@ -473,20 +473,20 @@ Optional<int64_t> IoTDBRpcDataSet::getTimestampByTsBlockColumnIndex(int32_t tsBl
   return getLongByTsBlockColumnIndex(tsBlockColumnIndex);
 }
 
-Optional<IoTdbDate> IoTDBRpcDataSet::getDateByIndex(int32_t columnIndex) {
+Optional<IoTDBDate> IoTDBRpcDataSet::getDateByIndex(int32_t columnIndex) {
   int32_t index = getTsBlockColumnIndexForColumnIndex(columnIndex);
   return getDateByTsBlockColumnIndex(index);
 }
 
-Optional<IoTdbDate> IoTDBRpcDataSet::getDate(const std::string& columnName) {
+Optional<IoTDBDate> IoTDBRpcDataSet::getDate(const std::string& columnName) {
   int32_t index = getTsBlockColumnIndexForColumnName(columnName);
   return getDateByTsBlockColumnIndex(index);
 }
 
-Optional<IoTdbDate> IoTDBRpcDataSet::getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
+Optional<IoTDBDate> IoTDBRpcDataSet::getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
   auto value = getIntByTsBlockColumnIndex(tsBlockColumnIndex);
   if (!value.is_initialized()) {
-    return Optional<IoTdbDate>::none();
+    return Optional<IoTDBDate>::none();
   }
   return parseIntToDate(value.value());
 }

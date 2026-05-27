@@ -77,8 +77,8 @@ public:
   Optional<std::string> getString(const std::string& columnName);
   Optional<int64_t> getTimestampByIndex(int32_t columnIndex);
   Optional<int64_t> getTimestamp(const std::string& columnName);
-  Optional<IoTdbDate> getDateByIndex(int32_t columnIndex);
-  Optional<IoTdbDate> getDate(const std::string& columnName);
+  Optional<IoTDBDate> getDateByIndex(int32_t columnIndex);
+  Optional<IoTDBDate> getDate(const std::string& columnName);
 
   TSDataType::TSDataType getDataTypeByIndex(int32_t columnIndex);
   TSDataType::TSDataType getDataType(const std::string& columnName);
@@ -114,7 +114,7 @@ private:
   Optional<int64_t> getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   std::shared_ptr<Binary> getBinaryByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<std::string> getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-  Optional<IoTdbDate> getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+  Optional<IoTDBDate> getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<int64_t> getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
 
   std::string sql_;

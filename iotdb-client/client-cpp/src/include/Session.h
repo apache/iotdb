@@ -265,7 +265,7 @@ public:
       break;
     }
     case TSDataType::DATE: {
-      safe_cast<T, IoTdbDate>(value, ((IoTdbDate*)values[schemaId])[rowIndex]);
+      safe_cast<T, IoTDBDate>(value, ((IoTDBDate*)values[schemaId])[rowIndex]);
       break;
     }
     case TSDataType::TIMESTAMP:
@@ -373,7 +373,7 @@ public:
     case TSDataType::INT32:
       return &(reinterpret_cast<int32_t*>(values[schemaId])[rowIndex]);
     case TSDataType::DATE:
-      return &(reinterpret_cast<IoTdbDate*>(values[schemaId])[rowIndex]);
+      return &(reinterpret_cast<IoTDBDate*>(values[schemaId])[rowIndex]);
     case TSDataType::TIMESTAMP:
     case TSDataType::INT64:
       return &(reinterpret_cast<int64_t*>(values[schemaId])[rowIndex]);

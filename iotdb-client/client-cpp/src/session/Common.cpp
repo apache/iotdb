@@ -129,7 +129,7 @@ int MyStringBuffer::getInt() {
   return *(int*)getOrderedByte(4);
 }
 
-IoTdbDate MyStringBuffer::getDate() {
+IoTDBDate MyStringBuffer::getDate() {
   return parseIntToDate(getInt());
 }
 
@@ -199,7 +199,7 @@ void MyStringBuffer::putInt(int ins) {
   putOrderedByte((char*)&ins, 4);
 }
 
-void MyStringBuffer::putDate(IoTdbDate date) {
+void MyStringBuffer::putDate(IoTDBDate date) {
   putInt(parseDateExpressionToInt(date));
 }
 

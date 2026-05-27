@@ -155,7 +155,7 @@ public:
   TSDataType::TSDataType dataType = TSDataType::UNKNOWN;
   Optional<bool> boolV;
   Optional<int> intV;
-  Optional<IoTdbDate> dateV;
+  Optional<IoTDBDate> dateV;
   Optional<int64_t> longV;
   Optional<float> floatV;
   Optional<double> doubleV;
@@ -203,7 +203,7 @@ public:
   void clear();
   bool hasRemaining();
   int getInt();
-  IoTdbDate getDate();
+  IoTDBDate getDate();
   int64_t getInt64();
   float getFloat();
   double getDouble();
@@ -212,7 +212,7 @@ public:
   std::string getString();
 
   void putInt(int ins);
-  void putDate(IoTdbDate date);
+  void putDate(IoTDBDate date);
   void putInt64(int64_t ins);
   void putFloat(float ins);
   void putDouble(double ins);

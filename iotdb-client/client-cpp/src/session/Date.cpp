@@ -25,7 +25,7 @@
 
 #include "Common.h"
 
-std::string IoTdbDate::toIsoExtendedString() const {
+std::string IoTDBDate::toIsoExtendedString() const {
   if (!valid_) {
     return "";
   }
@@ -34,7 +34,7 @@ std::string IoTdbDate::toIsoExtendedString() const {
   return std::string(buf);
 }
 
-int32_t parseDateExpressionToInt(const IoTdbDate& date) {
+int32_t parseDateExpressionToInt(const IoTDBDate& date) {
   if (date.is_not_a_date()) {
     throw IoTDBException("Date expression is null or empty.");
   }
@@ -52,12 +52,12 @@ int32_t parseDateExpressionToInt(const IoTdbDate& date) {
   return static_cast<int32_t>(result);
 }
 
-IoTdbDate parseIntToDate(int32_t dateInt) {
+IoTDBDate parseIntToDate(int32_t dateInt) {
   if (dateInt == EMPTY_DATE_INT) {
-    return IoTdbDate::notADate();
+    return IoTDBDate::notADate();
   }
   const int year = dateInt / 10000;
   const int month = (dateInt % 10000) / 100;
   const int day = dateInt % 100;
-  return IoTdbDate(year, month, day);
+  return IoTDBDate(year, month, day);
 }

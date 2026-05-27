@@ -38,7 +38,7 @@ add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRela
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/catch2"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../rpc"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../src/rpc"
             "${THRIFT_GEN_CPP_DIR}"
             "${THRIFT_INCLUDE_DIR}")
     if(BOOST_INCLUDE_DIR)

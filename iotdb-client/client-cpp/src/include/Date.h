@@ -24,14 +24,14 @@
 
 constexpr int32_t EMPTY_DATE_INT = 10000101;
 
-class IoTdbDate {
+class IoTDBDate {
 public:
-  IoTdbDate() : valid_(false), year_(0), month_(0), day_(0) {}
+  IoTDBDate() : valid_(false), year_(0), month_(0), day_(0) {}
 
-  IoTdbDate(int year, int month, int day) : valid_(true), year_(year), month_(month), day_(day) {}
+  IoTDBDate(int year, int month, int day) : valid_(true), year_(year), month_(month), day_(day) {}
 
-  static IoTdbDate notADate() {
-    return IoTdbDate();
+  static IoTDBDate notADate() {
+    return IoTDBDate();
   }
 
   bool is_not_a_date() const {
@@ -52,12 +52,12 @@ public:
 
   std::string toIsoExtendedString() const;
 
-  friend bool operator==(const IoTdbDate& lhs, const IoTdbDate& rhs) {
+  friend bool operator==(const IoTDBDate& lhs, const IoTDBDate& rhs) {
     return lhs.valid_ == rhs.valid_ && lhs.year_ == rhs.year_ && lhs.month_ == rhs.month_ &&
            lhs.day_ == rhs.day_;
   }
 
-  friend bool operator!=(const IoTdbDate& lhs, const IoTdbDate& rhs) {
+  friend bool operator!=(const IoTDBDate& lhs, const IoTDBDate& rhs) {
     return !(lhs == rhs);
   }
 
@@ -68,7 +68,7 @@ private:
   int day_;
 };
 
-int32_t parseDateExpressionToInt(const IoTdbDate& date);
-IoTdbDate parseIntToDate(int32_t dateInt);
+int32_t parseDateExpressionToInt(const IoTDBDate& date);
+IoTDBDate parseIntToDate(int32_t dateInt);
 
 #endif

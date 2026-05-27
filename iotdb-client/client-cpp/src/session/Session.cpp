@@ -77,7 +77,7 @@ void Tablet::createColumns() {
       values[i] = new bool[maxRowNumber];
       break;
     case TSDataType::DATE:
-      values[i] = new IoTdbDate[maxRowNumber];
+      values[i] = new IoTDBDate[maxRowNumber];
       break;
     case TSDataType::INT32:
       values[i] = new int[maxRowNumber];
@@ -122,7 +122,7 @@ void Tablet::deleteColumns() {
       break;
     }
     case TSDataType::DATE: {
-      IoTdbDate* valueBuf = (IoTdbDate*)(values[i]);
+      IoTDBDate* valueBuf = (IoTDBDate*)(values[i]);
       delete[] valueBuf;
       break;
     }
@@ -184,9 +184,9 @@ void Tablet::deepCopyTabletColValue(void* const* srcPtr, void** destPtr,
     memcpy(*destPtr, src, maxRowNumber * sizeof(double));
     break;
   case TSDataType::DATE: {
-    *destPtr = new IoTdbDate[maxRowNumber];
-    IoTdbDate* srcDate = static_cast<IoTdbDate*>(src);
-    IoTdbDate* destDate = static_cast<IoTdbDate*>(*destPtr);
+    *destPtr = new IoTDBDate[maxRowNumber];
+    IoTDBDate* srcDate = static_cast<IoTDBDate*>(src);
+    IoTDBDate* destDate = static_cast<IoTDBDate*>(*destPtr);
     for (size_t j = 0; j < maxRowNumber; ++j) {
       destDate[j] = srcDate[j];
     }
@@ -323,7 +323,7 @@ string SessionUtils::getValue(const Tablet& tablet) {
       break;
     }
     case TSDataType::DATE: {
-      IoTdbDate* valueBuf = (IoTdbDate*)(tablet.values[i]);
+      IoTDBDate* valueBuf = (IoTDBDate*)(tablet.values[i]);
       for (size_t index = 0; index < tablet.rowSize; index++) {
         if (!bitMap.isMarked(index)) {
           valueBuffer.putDate(valueBuf[index]);
@@ -666,7 +666,7 @@ void Session::Impl::sortTablet(Tablet& tablet) {
       break;
     }
     case TSDataType::DATE: {
-      sortValuesList((IoTdbDate*)(tablet.values[i]), index, tablet.rowSize);
+      sortValuesList((IoTDBDate*)(tablet.values[i]), index, tablet.rowSize);
       break;
     }
     case TSDataType::TIMESTAMP:
@@ -742,7 +742,7 @@ void Session::Impl::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& ty
       appendValues(buf, values[i], sizeof(int32_t));
       break;
     case TSDataType::DATE:
-      date = parseDateExpressionToInt(*(IoTdbDate*)values[i]);
+      date = parseDateExpressionToInt(*(IoTDBDate*)values[i]);
       appendValues(buf, (char*)&date, sizeof(int32_t));
       break;
     case TSDataType::TIMESTAMP:
@@ -1514,7 +1514,7 @@ void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
         case TSDataType::DATE: {
           currentTablet.addValue(
               tablet.schemas[col].first, rowIndex,
-              *(IoTdbDate*)tablet.getValue(col, row, tablet.schemas[col].second));
+              *(IoTDBDate*)tablet.getValue(col, row, tablet.schemas[col].second));
           break;
         }
         case TSDataType::STRING:

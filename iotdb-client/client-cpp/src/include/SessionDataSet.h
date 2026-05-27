@@ -109,8 +109,8 @@ public:
     Optional<int64_t> getTimestampByIndex(int32_t columnIndex);
     Optional<int64_t> getTimestamp(const std::string& columnName);
 
-    Optional<IoTdbDate> getDateByIndex(int32_t columnIndex);
-    Optional<IoTdbDate> getDate(const std::string& columnName);
+    Optional<IoTDBDate> getDateByIndex(int32_t columnIndex);
+    Optional<IoTDBDate> getDate(const std::string& columnName);
 
     int32_t findColumn(const std::string& columnName);
     const std::vector<std::string>& getColumnNames() const;
