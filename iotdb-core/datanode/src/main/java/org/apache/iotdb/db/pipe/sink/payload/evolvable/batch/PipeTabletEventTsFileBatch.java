@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.sink.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -361,7 +362,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         // Aggregate the current tablet's data
         aggregatedSchemas.addAll(tablet.getSchemas());
         aggregatedValues.addAll(Arrays.asList(tablet.values));
-        aggregatedBitMaps.addAll(Arrays.asList(tablet.bitMaps));
+        aggregatedBitMaps.addAll(Arrays.asList(PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet)));
         // Remove the aggregated tablet
         tablets.pollFirst();
       } else {
@@ -563,7 +564,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                 .map(schema -> (MeasurementSchema) schema)
                 .toArray(MeasurementSchema[]::new);
         Object[] values = Arrays.copyOf(tablet.values, tablet.values.length);
-        BitMap[] bitMaps = Arrays.copyOf(tablet.bitMaps, tablet.bitMaps.length);
+        BitMap[] bitMaps = PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet);
 
         // convert date value to int refer to
         // org.apache.iotdb.db.storageengine.dataregion.memtable.WritableMemChunk.writeNonAlignedTablet
