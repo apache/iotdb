@@ -322,6 +322,46 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqInternsRepeatedMeasurementNames() throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(
+            PipeTransferTabletBatchReq.toTPipeTransferReq(Collections.emptyList(), tabletBuffers));
+    final Tablet firstTablet = deserializedReq.getTabletReqs().get(0).getTablet();
+    final Tablet secondTablet = deserializedReq.getTabletReqs().get(1).getTablet();
+
+    Assert.assertSame(firstTablet.deviceId, secondTablet.deviceId);
+    Assert.assertSame(
+        firstTablet.getSchemas().get(0).getMeasurementId(),
+        secondTablet.getSchemas().get(0).getMeasurementId());
+  }
+
+  private static Tablet createSingleValueTablet(final String deviceId, final String measurement) {
+    final List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema(measurement, TSDataType.INT32));
+    final Tablet tablet = new Tablet(deviceId, schemaList, 1);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue(measurement, 0, 1);
+    tablet.rowSize = 1;
+    return tablet;
+  }
+
+  private static ByteBuffer serializeTablet(final Tablet tablet, final boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  @Test
   public void testPipeTransferFilePieceReq() throws IOException {
     final byte[] body = "testPipeTransferFilePieceReq".getBytes();
     final String fileName = "1.tsfile";

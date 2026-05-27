@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -217,7 +218,7 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertRowNode.values = values;
     tabletForInsertRowNode.timestamps = new long[] {times[0]};
     tabletForInsertRowNode.rowSize = 1;
-    tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
+    tabletForInsertRowNode.bitMaps = PipeTabletUtils.compactBitMaps(bitMapsForInsertRowNode, 1);
 
     // create tablet for insertTabletNode
     BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
@@ -253,7 +254,8 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertTabletNode.values = values;
     tabletForInsertTabletNode.timestamps = times;
     tabletForInsertTabletNode.rowSize = times.length;
-    tabletForInsertTabletNode.bitMaps = bitMapsForInsertTabletNode;
+    tabletForInsertTabletNode.bitMaps =
+        PipeTabletUtils.compactBitMaps(bitMapsForInsertTabletNode, times.length);
   }
 
   @Test
@@ -316,6 +318,36 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void convertToTabletSkipsUnnecessaryBitMapsForTest() throws Exception {
+    final BitMap[] bitMaps = new BitMap[schemas.length];
+    bitMaps[0] = new BitMap(times.length);
+    bitMaps[1] = new BitMap(times.length);
+    bitMaps[1].mark(1);
+
+    final InsertTabletNode nodeWithSparseColumn =
+        new InsertTabletNode(
+            new PlanNodeId("plannode bitmap"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            times,
+            bitMaps,
+            insertTabletNode.getColumns(),
+            times.length);
+
+    final Tablet tablet =
+        new TabletInsertionDataContainer(nodeWithSparseColumn, new PrefixPipePattern(pattern))
+            .convertToTablet();
+
+    Assert.assertNotNull(tablet.bitMaps);
+    Assert.assertNull(tablet.bitMaps[0]);
+    Assert.assertNotNull(tablet.bitMaps[1]);
+    Assert.assertTrue(tablet.bitMaps[1].isMarked(1));
   }
 
   @Test
