@@ -37,10 +37,24 @@ esac
 
 PACKAGE_CLASSIFIER="${PACKAGE_CLASSIFIER:-${DEFAULT_CLASSIFIER}}"
 
+# manylinux2014 images ship curl but not wget (old CentOS7 path installed wget via yum).
+download() {
+  local url="$1"
+  local out="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "${out}" "${url}"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qL -O "${out}" "${url}"
+  else
+    echo "Need curl or wget to download: ${url}" >&2
+    exit 1
+  fi
+}
+
 CMAKE_VERSION=3.28.4
 CMAKE_DIR="/opt/cmake-${CMAKE_VERSION}"
 if [[ ! -x "${CMAKE_DIR}/bin/cmake" ]]; then
-  wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${CMAKE_PKG_ARCH}.tar.gz" -O /tmp/cmake.tar.gz
+  download "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${CMAKE_PKG_ARCH}.tar.gz" /tmp/cmake.tar.gz
   rm -rf "${CMAKE_DIR}"
   mkdir -p /opt
   tar xf /tmp/cmake.tar.gz -C /opt
@@ -49,7 +63,7 @@ fi
 
 JAVA_HOME=/opt/jdk-17
 if [[ ! -x "${JAVA_HOME}/bin/java" ]]; then
-  wget -qL -O /tmp/jdk17.tar.gz "https://api.adoptium.net/v3/binary/latest/17/ga/${JDK_API_ARCH}/jdk/hotspot/normal/eclipse?project=jdk"
+  download "https://api.adoptium.net/v3/binary/latest/17/ga/${JDK_API_ARCH}/jdk/hotspot/normal/eclipse?project=jdk" /tmp/jdk17.tar.gz
   rm -rf /opt/jdk-17*
   mkdir -p /opt
   tar xf /tmp/jdk17.tar.gz -C /opt
