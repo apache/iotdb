@@ -183,6 +183,13 @@ public class DNAuditLogger extends AbstractAuditLogger {
   @NotNull
   private static InsertRowStatement generateInsertStatement(
       IAuditEntity auditLogFields, String log, PartialPath logDevice) {
+    return generateInsertStatement(
+        auditLogFields, log, logDevice, CommonDateTimeUtils.currentTime());
+  }
+
+  @NotNull
+  private static InsertRowStatement generateInsertStatement(
+      IAuditEntity auditLogFields, String log, PartialPath logDevice, long logTimestamp) {
     String username = auditLogFields.getUsername();
     String address = auditLogFields.getCliHostname();
     AuditEventType type = auditLogFields.getAuditEventType();
@@ -200,7 +207,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(logDevice);
-    insertStatement.setTime(CommonDateTimeUtils.currentTime());
+    insertStatement.setTime(logTimestamp);
     insertStatement.setMeasurements(
         new String[] {
           AUDIT_LOG_USERNAME,
@@ -705,7 +712,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     }
   }
 
-  public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId)
+  public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId, long logTimestamp)
       throws IllegalPathException {
     if (!commonConfig.isEnableAuditLog()) {
       return;
@@ -724,7 +731,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
           generateInsertStatement(
               auditLogFields,
               log,
-              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, nodeId, user)));
+              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, nodeId, user)),
+              logTimestamp);
       asyncBatchUtils.push(statement);
     } catch (Exception e) {
       logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);

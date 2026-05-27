@@ -28,20 +28,55 @@ import org.slf4j.LoggerFactory;
 public class DataNodeWriteAuditLogHandler implements AsyncMethodCallback<TSStatus> {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeWriteAuditLogHandler.class);
   private final int nodeId;
+  private final Runnable retryCallback;
+  private final Runnable successCallback;
 
   public DataNodeWriteAuditLogHandler(int nodeId) {
+    this(nodeId, null);
+  }
+
+  public DataNodeWriteAuditLogHandler(int nodeId, Runnable retryCallback) {
+    this(nodeId, retryCallback, null);
+  }
+
+  public DataNodeWriteAuditLogHandler(
+      int nodeId, Runnable retryCallback, Runnable successCallback) {
     this.nodeId = nodeId;
+    this.retryCallback = retryCallback;
+    this.successCallback = successCallback;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus == null || tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       logger.error("Failed to write audit log to DataNode {}, response: {}", nodeId, tsStatus);
+      retry();
+    } else {
+      onSuccess();
     }
   }
 
   @Override
   public void onError(Exception e) {
     logger.error("Failed to write audit log to DataNode {}", nodeId, e);
+    retry();
+  }
+
+  private void retry() {
+    runCallback(retryCallback, "retry");
+  }
+
+  private void onSuccess() {
+    runCallback(successCallback, "success");
+  }
+
+  private void runCallback(Runnable callback, String callbackType) {
+    if (callback != null) {
+      try {
+        callback.run();
+      } catch (Exception e) {
+        logger.warn("Failed to run audit log {} callback", callbackType, e);
+      }
+    }
   }
 }

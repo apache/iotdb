@@ -63,7 +63,7 @@ public class AsyncDataNodeHeartbeatClientPool {
     }
   }
 
-  public void writeAuditLog(
+  public boolean writeAuditLog(
       TEndPoint endPoint, TAuditLogReq req, DataNodeWriteAuditLogHandler handler) {
     AsyncDataNodeInternalServiceClient client = null;
     boolean dispatched = false;
@@ -76,6 +76,7 @@ public class AsyncDataNodeHeartbeatClientPool {
     } finally {
       returnClientIfNotDispatched(endPoint, client, dispatched);
     }
+    return dispatched;
   }
 
   // After the async call is dispatched, the client's onComplete/onError callback is responsible

@@ -104,6 +104,7 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -4291,7 +4292,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             req.getDatabase(),
             req.getSqlString());
     try {
-      DNAuditLogger.getInstance().logFromCN(fields, req.getLog(), req.getCnId());
+      DNAuditLogger.getInstance()
+          .logFromCN(
+              fields,
+              req.getLog(),
+              req.getCnId(),
+              req.isSetLogTimestamp() ? req.getLogTimestamp() : CommonDateTimeUtils.currentTime());
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }

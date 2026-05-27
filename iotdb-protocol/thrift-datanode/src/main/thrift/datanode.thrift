@@ -796,6 +796,7 @@ struct TAuditLogReq {
   9: required string sqlString
   10: required string log
   11: required i32 cnId
+  12: optional i64 logTimestamp
 }
 
 /**

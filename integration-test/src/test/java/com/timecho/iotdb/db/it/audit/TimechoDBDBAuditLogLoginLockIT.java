@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.audit;
+package com.timecho.iotdb.db.it.audit;
 
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.PrivilegeLevel;
@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBAuditLogLoginLockIT {
+public class TimechoDBDBAuditLogLoginLockIT {
 
   private static final int FAILED_LOGIN_ATTEMPTS = 5;
   private static final long POLL_TIMEOUT_MS = 30_000;

@@ -1,6 +1,5 @@
 package com.timecho.iotdb.db.it.audit;
 
-import org.apache.iotdb.db.it.audit.AuditLogSet;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -25,14 +24,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDITABLE_OPERATION_LEVEL;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDITABLE_OPERATION_RESULT;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDITABLE_OPERATION_TYPE;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDIT_TABLE_CATEGORIES;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDIT_TABLE_COLUMNS;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.AUDIT_TABLE_DATA_TYPES;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.ENABLE_AUDIT_LOG;
-import static org.apache.iotdb.db.it.audit.IoTDBAuditLogBasicIT.closeConnectionCompletely;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDITABLE_CONTROL_EVENT_TYPE_WITHOUT_ENTITY_STATUS_CHANGED;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDITABLE_OPERATION_LEVEL;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDITABLE_OPERATION_RESULT;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDITABLE_OPERATION_TYPE;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDIT_TABLE_CATEGORIES;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDIT_TABLE_COLUMNS;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.AUDIT_TABLE_DATA_TYPES;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.ENABLE_AUDIT_LOG;
+import static com.timecho.iotdb.db.it.audit.TimechoDBAuditLogBasicIT.closeConnectionCompletely;
 
 /**
  * This test class ensures the audit log behave exactly the same as we expected when enable
@@ -54,7 +54,8 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
         .setEnableAuditLog(ENABLE_AUDIT_LOG)
         .setAuditableOperationType(AUDITABLE_OPERATION_TYPE)
         .setAuditableOperationLevel(AUDITABLE_OPERATION_LEVEL)
-        .setAuditableOperationResult(AUDITABLE_OPERATION_RESULT);
+        .setAuditableOperationResult(AUDITABLE_OPERATION_RESULT)
+        .setAuditableControlEventType(AUDITABLE_CONTROL_EVENT_TYPE_WITHOUT_ENTITY_STATUS_CHANGED);
 
     // Init 1C1D cluster environment
     EnvFactory.getEnv().initClusterEnvironment();
@@ -142,20 +143,9 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
           "DROP USER user2",
           "DROP ROLE role1");
 
-  private static final List<String> TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS =
-      Arrays.asList(
-          "node_",
-          "u_4",
-          "__internal_auditor",
-          "null",
-          "ENTITY_STATUS_CHANGED",
-          "CONTROL",
-          "[AUDIT]",
-          "GLOBAL",
-          "true",
-          "null",
-          "null",
-          "Statistics");
+  // ENTITY_STATUS_CHANGED audit logs are validated in
+  // TimechoDBAuditLogEntityStatusChangedBasicIT / TimechoDBAuditLogEntityStatusChangedClusterIT;
+  // here the event is filtered out via setAuditableControlEventType in setUp.
   private static final AuditLogSet TABLE_MODEL_AUDIT_FIELDS =
       new AuditLogSet(
           // Start audit service
@@ -172,20 +162,6 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
               "null",
               "null",
               "Successfully start the Audit service with configurations (auditableOperationType [DDL, DML, QUERY, CONTROL], auditableOperationLevel GLOBAL, auditableOperationResult SUCCESS,FAIL)"),
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TABLE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
           // Environment init login/logout
           Arrays.asList(
               "node_1",
@@ -1563,19 +1539,9 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
           "DROP USER user2",
           "DROP ROLE role1");
 
-  private static final List<String> TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS =
-      Arrays.asList(
-          "u_4",
-          "true",
-          "GLOBAL",
-          "[AUDIT]",
-          "null",
-          "CONTROL",
-          "Statistics",
-          "null",
-          "ENTITY_STATUS_CHANGED",
-          "null",
-          "__internal_auditor");
+  // ENTITY_STATUS_CHANGED audit logs are validated in
+  // TimechoDBAuditLogEntityStatusChangedBasicIT / TimechoDBAuditLogEntityStatusChangedClusterIT;
+  // here the event is filtered out via setAuditableControlEventType in setUp.
   private static final AuditLogSet TREE_MODEL_AUDIT_FIELDS =
       new AuditLogSet(
           // Start audit service
@@ -1591,27 +1557,6 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
               "CHANGE_AUDIT_OPTION",
               "null",
               "__internal_auditor"),
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
-          TREE_MODEL_ENTITY_STATUS_CHANGED_AUDIT_FIELDS,
           // Environment setup login/logout
           Arrays.asList(
               "root.__audit.log.node_1.u_0",

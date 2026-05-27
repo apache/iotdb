@@ -457,6 +457,9 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
+    if (auditLogger != null) {
+      auditLogger.close();
+    }
     if (partitionManager != null) {
       partitionManager.getRegionMaintainer().shutdown();
     }
