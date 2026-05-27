@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -217,7 +218,7 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertRowNode.values = values;
     tabletForInsertRowNode.timestamps = new long[] {times[0]};
     tabletForInsertRowNode.rowSize = 1;
-    tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
+    tabletForInsertRowNode.bitMaps = PipeTabletUtils.compactBitMaps(bitMapsForInsertRowNode, 1);
 
     // create tablet for insertTabletNode
     BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
@@ -253,7 +254,8 @@ public class PipeTabletInsertionEventTest {
     tabletForInsertTabletNode.values = values;
     tabletForInsertTabletNode.timestamps = times;
     tabletForInsertTabletNode.rowSize = times.length;
-    tabletForInsertTabletNode.bitMaps = bitMapsForInsertTabletNode;
+    tabletForInsertTabletNode.bitMaps =
+        PipeTabletUtils.compactBitMaps(bitMapsForInsertTabletNode, times.length);
   }
 
   @Test
