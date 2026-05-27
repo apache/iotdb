@@ -19,6 +19,7 @@ import concurrent
 import queue
 import random
 import threading
+import traceback
 from concurrent.futures import wait
 from queue import Empty
 from typing import Dict, Optional
@@ -196,17 +197,17 @@ class PoolController:
             try:
                 task_fn(*args, **kwargs)
             except Exception as e:
-                logger.error(f"Error executing task: {e}")
+                logger.error(f"Error executing task: {e}\n{traceback.format_exc()}")
             finally:
                 self._task_queue.task_done()
 
     def _load_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
         def _load_one_model_on_device_task(device_id: torch.device):
-            if not self.has_pool_on_device(device_id):
+            if not self.has_request_pools(model_id, device_id):
                 self._expand_pools_on_device(model_id, device_id, 1)
             else:
                 logger.info(
-                    f"[Inference][{device_id}] There are already pools on this device."
+                    f"[Inference][{device_id}] Model {model_id} is already installed."
                 )
 
         load_model_futures = self._executor.submit_batch(
@@ -299,6 +300,7 @@ class PoolController:
 
         def _expand_pool_on_device(*_):
             request_queue = mp.Queue()
+            startup_status_queue = mp.Queue()
             pool_id = self._new_pool_id.get_and_increment()
             model_info = self._model_manager.get_model_info(model_id)
             pool = InferenceRequestPool(
@@ -308,6 +310,7 @@ class PoolController:
                 request_queue=request_queue,
                 result_queue=self._result_queue,
                 ready_event=mp.Event(),
+                startup_status_queue=startup_status_queue,
             )
             pool.start()
             self._register_pool(model_id, device_id, pool_id, pool, request_queue)
@@ -315,9 +318,30 @@ class PoolController:
                 logger.error(
                     f"[Inference][{device_id}][Pool-{pool_id}] Pool failed to be ready in time"
                 )
+                pool.terminate()
+                pool.join(timeout=5)
                 # TODO: retry or decrease the count? this error should be better handled
                 self._erase_pool(model_id, device_id, pool_id)
             else:
+                startup_status = {}
+                try:
+                    startup_status = startup_status_queue.get(timeout=1)
+                except Empty:
+                    logger.error(
+                        f"[Inference][{device_id}][Pool-{pool_id}] Pool signaled ready without startup status for model {model_id}"
+                    )
+                if not startup_status.get("ok", False):
+                    logger.error(
+                        f"[Inference][{device_id}][Pool-{pool_id}] Pool failed to start for model {model_id}. "
+                        f"error={startup_status.get('error', 'unknown')}, "
+                        f"traceback={startup_status.get('traceback', '')}"
+                    )
+                    pool.join(timeout=5)
+                    if pool.is_alive():
+                        pool.terminate()
+                        pool.join(timeout=5)
+                    self._erase_pool(model_id, device_id, pool_id)
+                    return
                 self.set_state(model_id, device_id, pool_id, PoolState.RUNNING)
                 logger.info(
                     f"[Inference][{device_id}][Pool-{pool_id}] Pool started running for model {model_id}"

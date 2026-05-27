@@ -1,3 +1,5 @@
+import traceback
+
 import torch
 
 from iotdb.ainode.core.config import AINodeDescriptor
@@ -136,7 +138,10 @@ class TimechoInferenceManager(InferenceManager):
                 [resp_list[0]] if single_batch else resp_list,
             )
         except Exception as e:
-            logger.error(e)
+            logger.error(
+                f"[Inference] Failed to run classify for model {model_id}: {e}\n"
+                f"{traceback.format_exc()}"
+            )
             status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
             empty = b"" if single_batch else []
             return resp_cls(status, empty)
@@ -190,7 +195,10 @@ class TimechoInferenceManager(InferenceManager):
             )
 
         except Exception as e:
-            logger.error(e)
+            logger.error(
+                f"[Inference] Failed to run forecast for model {model_id}: {e}\n"
+                f"{traceback.format_exc()}"
+            )
             status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
             empty = b"" if single_batch else []
             return resp_cls(status, empty)

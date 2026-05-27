@@ -18,6 +18,7 @@
 
 import atexit
 import threading
+import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable, Iterable, List, Optional
 
@@ -113,7 +114,9 @@ class BatchExecutor:
         try:
             _ = future.result()
         except Exception as e:
-            logger.error(f"Batch task failed (item={item}), because {e}")
+            logger.error(
+                f"Batch task failed (item={item}), because {e}\n{traceback.format_exc()}"
+            )
 
     def _attach_done_callback(self, fut: Future, item: Any) -> None:
         def _cb(f: Future, _item=item, self_ref=self):
@@ -121,7 +124,7 @@ class BatchExecutor:
                 self_ref.on_task_done(_item, f)
             except Exception as e:
                 logger.error(
-                    f"Error in on_task_done callback (item={_item}), because {e}"
+                    f"Error in on_task_done callback (item={_item}), because {e}\n{traceback.format_exc()}"
                 )
 
         fut.add_done_callback(_cb)

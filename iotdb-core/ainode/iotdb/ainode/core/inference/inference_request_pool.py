@@ -19,6 +19,7 @@
 import random
 import threading
 import time
+import traceback
 from collections import defaultdict
 from enum import Enum
 
@@ -68,6 +69,7 @@ class InferenceRequestPool(mp.Process):
         request_queue: mp.Queue,
         result_queue: mp.Queue,
         ready_event,
+        startup_status_queue: mp.Queue = None,
         **pool_kwargs,
     ):
         super().__init__()
@@ -75,6 +77,7 @@ class InferenceRequestPool(mp.Process):
         self.model_info = model_info
         self.pool_kwargs = pool_kwargs
         self.ready_event = ready_event
+        self.startup_status_queue = startup_status_queue
         self.device = device
 
         self._threads = []
@@ -186,29 +189,46 @@ class InferenceRequestPool(mp.Process):
         self._logger = Logger(
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
-        self._backend = DeviceManager()
-        self._request_scheduler.device = self.device
-        self._inference_pipeline = load_pipeline(self.model_info, self.device)
-        self.ready_event.set()
+        try:
+            self._backend = DeviceManager()
+            self._request_scheduler.device = self.device
+            self._logger.info(
+                f"[Inference][{self.device}][Pool-{self.pool_id}] Loading inference pipeline for model {self.model_info.model_id}."
+            )
+            self._inference_pipeline = load_pipeline(self.model_info, self.device)
+            if self.startup_status_queue is not None:
+                self.startup_status_queue.put({"ok": True})
+            self.ready_event.set()
 
-        activate_daemon = threading.Thread(
-            target=self._requests_activate_loop, daemon=True
-        )
-        self._threads.append(activate_daemon)
-        activate_daemon.start()
-        execute_daemon = threading.Thread(
-            target=self._requests_execute_loop, daemon=True
-        )
-        self._threads.append(execute_daemon)
-        execute_daemon.start()
-        self._logger.info(
-            f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} is activated."
-        )
-        for thread in self._threads:
-            thread.join()
-        self._logger.info(
-            f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} exited cleanly."
-        )
+            activate_daemon = threading.Thread(
+                target=self._requests_activate_loop, daemon=True
+            )
+            self._threads.append(activate_daemon)
+            activate_daemon.start()
+            execute_daemon = threading.Thread(
+                target=self._requests_execute_loop, daemon=True
+            )
+            self._threads.append(execute_daemon)
+            execute_daemon.start()
+            self._logger.info(
+                f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} is activated."
+            )
+            for thread in self._threads:
+                thread.join()
+            self._logger.info(
+                f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} exited cleanly."
+            )
+        except Exception as e:
+            error_traceback = traceback.format_exc()
+            self._logger.error(
+                f"[Inference][{self.device}][Pool-{self.pool_id}] Failed to start inference pool for model {self.model_info.model_id}: {e}\n{error_traceback}"
+            )
+            if self.startup_status_queue is not None:
+                self.startup_status_queue.put(
+                    {"ok": False, "error": str(e), "traceback": error_traceback}
+                )
+            self.ready_event.set()
+            self._stop_event.set()
 
     def stop(self):
         self._stop_event.set()

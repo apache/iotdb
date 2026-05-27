@@ -18,6 +18,7 @@
 
 import json
 import os
+import traceback
 from typing import Any, Dict, Optional, Tuple
 
 import torch
@@ -51,21 +52,138 @@ logger = Logger()
 BACKEND = DeviceManager()
 
 
-def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
-    if model_info.auto_map is not None:
-        model = _load_transformers_model(model_info, **model_kwargs)
-    elif model_info.hub_mixin_cls is not None:
-        model = _load_hub_mixin_model(model_info, **model_kwargs)
-    else:
-        if model_info.model_type == "sktime":
-            model = create_sktime_model(model_info.model_id)
-        else:
-            model = _load_torchscript_model(model_info, **model_kwargs)
+def _enum_value(value):
+    return getattr(value, "value", value)
 
-    logger.info(
-        f"Model {model_info.model_id} loaded to device {next(model.parameters()).device if model_info.model_type != 'sktime' else 'cpu'} successfully."
+
+def _format_model_info(model_info: ModelInfo) -> str:
+    return (
+        f"model_id={model_info.model_id}, model_type={model_info.model_type}, "
+        f"category={_enum_value(model_info.category)}, state={_enum_value(model_info.state)}, "
+        f"base_model_id={model_info.base_model_id}, has_auto_map={model_info.auto_map is not None}, "
+        f"has_hub_mixin_cls={model_info.hub_mixin_cls is not None}"
     )
-    return model
+
+
+def _format_torch_runtime() -> str:
+    default_device = "unknown"
+    if hasattr(torch, "get_default_device"):
+        try:
+            default_device = str(torch.get_default_device())
+        except Exception as e:
+            default_device = f"unavailable({e})"
+    return (
+        f"torch_version={torch.__version__}, default_dtype={torch.get_default_dtype()}, "
+        f"default_device={default_device}, backend={BACKEND.type.value}"
+    )
+
+
+def _format_model_files(model_path: str) -> str:
+    if not os.path.isdir(model_path):
+        return "model_path_missing"
+    target_files = (
+        CONFIG_JSON,
+        *MODEL_WEIGHT_FILES,
+        ADAPTER_CONFIG,
+        ADAPTER_SAFETENSORS,
+        ADAPTER_PT,
+        ADAPTER_BIN,
+        TRAINING_STATE,
+    )
+    existing_files = [
+        file_name
+        for file_name in target_files
+        if os.path.exists(os.path.join(model_path, file_name))
+    ]
+    return ",".join(existing_files) if existing_files else "no_known_model_files_found"
+
+
+def _collect_meta_tensors(
+    model: torch.nn.Module, limit: int = 10
+) -> Tuple[int, list[str]]:
+    if not isinstance(model, torch.nn.Module):
+        return 0, []
+    total = 0
+    samples = []
+    for tensor_type, named_tensors in (
+        ("parameter", model.named_parameters(recurse=True)),
+        ("buffer", model.named_buffers(recurse=True)),
+    ):
+        for name, tensor in named_tensors:
+            if getattr(tensor, "is_meta", False):
+                total += 1
+                if len(samples) < limit:
+                    samples.append(
+                        f"{tensor_type}:{name}, shape={tuple(tensor.shape)}, "
+                        f"dtype={tensor.dtype}, device={tensor.device}"
+                    )
+    return total, samples
+
+
+def _first_model_device(model: Any) -> str:
+    if not isinstance(model, torch.nn.Module):
+        return "cpu"
+    for tensor in model.parameters():
+        return str(tensor.device)
+    for tensor in model.buffers():
+        return str(tensor.device)
+    return "no_parameters_or_buffers"
+
+
+def _move_model_with_diagnostics(
+    model: torch.nn.Module,
+    model_info: ModelInfo,
+    model_path: str,
+    device_map,
+) -> torch.nn.Module:
+    logger.info(
+        f"Moving model to device. {_format_model_info(model_info)}, target_device={device_map}, "
+        f"model_path={model_path}, model_files={_format_model_files(model_path)}, {_format_torch_runtime()}"
+    )
+    meta_count, meta_samples = _collect_meta_tensors(model)
+    if meta_count:
+        logger.error(
+            f"Detected {meta_count} meta tensors before moving model {model_info.model_id} "
+            f"to {device_map}. samples={meta_samples}"
+        )
+    try:
+        return BACKEND.move_model(model, device_map)
+    except Exception as e:
+        logger.error(
+            f"Failed to move model {model_info.model_id} to {device_map}: {e}. "
+            f"{_format_model_info(model_info)}, model_path={model_path}, "
+            f"model_files={_format_model_files(model_path)}, meta_tensor_count={meta_count}, "
+            f"meta_tensor_samples={meta_samples}, {_format_torch_runtime()}\n{traceback.format_exc()}"
+        )
+        raise
+
+
+def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
+    try:
+        logger.info(
+            f"Start loading model. {_format_model_info(model_info)}, model_kwargs={model_kwargs}, {_format_torch_runtime()}"
+        )
+        if model_info.auto_map is not None:
+            model = _load_transformers_model(model_info, **model_kwargs)
+        elif model_info.hub_mixin_cls is not None:
+            model = _load_hub_mixin_model(model_info, **model_kwargs)
+        else:
+            if model_info.model_type == "sktime":
+                model = create_sktime_model(model_info.model_id)
+            else:
+                model = _load_torchscript_model(model_info, **model_kwargs)
+
+        logger.info(
+            f"Model {model_info.model_id} loaded to device {_first_model_device(model)} successfully."
+        )
+        return model
+    except Exception as e:
+        logger.error(
+            f"Failed to load model {model_info.model_id}: {e}. "
+            f"{_format_model_info(model_info)}, model_kwargs={model_kwargs}, {_format_torch_runtime()}\n"
+            f"{traceback.format_exc()}"
+        )
+        raise
 
 
 def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
@@ -109,7 +227,7 @@ def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
     if has_base_model:
         model = _apply_adapter(model, model_path)
 
-    return BACKEND.move_model(model, device_map)
+    return _move_model_with_diagnostics(model, model_info, model_path, device_map)
 
 
 def _load_hub_mixin_model(model_info: ModelInfo, **model_kwargs):
@@ -121,7 +239,7 @@ def _load_hub_mixin_model(model_info: ModelInfo, **model_kwargs):
         raise ModelNotExistException(model_info.model_id)
     # Load model
     model = model_class.from_pretrained(model_path)
-    return BACKEND.move_model(model, device_map)
+    return _move_model_with_diagnostics(model, model_info, model_path, device_map)
 
 
 def _load_torchscript_model(model_info: ModelInfo, **kwargs):
@@ -139,7 +257,7 @@ def _load_torchscript_model(model_info: ModelInfo, **kwargs):
         model = torch.compile(model)
     except Exception as e:
         logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
-    return BACKEND.move_model(model, device_map)
+    return _move_model_with_diagnostics(model, model_info, model_path, device_map)
 
 
 def _apply_adapter(

@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_LTSM_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
@@ -83,6 +84,11 @@ public class AINodeSharedClusterIT {
   private static final String TARGET_DEVICES_STR = "0,1";
   private static final Set<String> TARGET_DEVICES =
       new HashSet<>(Arrays.asList(TARGET_DEVICES_STR.split(",")));
+  private static final String CPU_DEVICE = "cpu";
+  private static final List<FakeModelInfo> SUPPORTED_CPU_LTSM_MODELS =
+      Arrays.asList(BUILTIN_LTSM_MAP.get("sundial"), BUILTIN_LTSM_MAP.get("timer_xl"));
+  private static final int CPU_MODEL_TEST_INPUT_LENGTH = 256;
+  private static final int CPU_MODEL_TEST_OUTPUT_LENGTH = 8;
 
   private static final String CALL_INFERENCE_SQL_TEMPLATE =
       "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT %d\", generateTime=true, outputLength=%d)";
@@ -532,6 +538,117 @@ public class AINodeSharedClusterIT {
     checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES_STR);
     statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES_STR));
     checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES_STR);
+  }
+
+  @Test
+  public void loadMultipleModelsToCpuTestInTreeModel() throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      loadMultipleLtsmModelsToCpuTest(statement, true);
+    }
+  }
+
+  @Test
+  public void loadMultipleModelsToCpuTestInTableModel() throws SQLException, InterruptedException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      loadMultipleLtsmModelsToCpuTest(statement, false);
+    }
+  }
+
+  private void loadMultipleLtsmModelsToCpuTest(Statement statement, boolean treeModel)
+      throws SQLException, InterruptedException {
+    List<String> loadedModelIds = new LinkedList<>();
+    try {
+      for (FakeModelInfo modelInfo : SUPPORTED_CPU_LTSM_MODELS) {
+        String modelId = modelInfo.getModelId();
+        statement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, CPU_DEVICE));
+        loadedModelIds.add(modelId);
+        for (String loadedModelId : loadedModelIds) {
+          checkModelOnSpecifiedDevice(statement, loadedModelId, CPU_DEVICE);
+        }
+        checkLoadedModelsVisible(statement, CPU_DEVICE, loadedModelIds);
+      }
+      for (FakeModelInfo modelInfo : SUPPORTED_CPU_LTSM_MODELS) {
+        if (treeModel) {
+          checkCallInferenceWorks(statement, modelInfo.getModelId());
+        } else {
+          checkForecastWorks(statement, modelInfo.getModelId());
+        }
+      }
+    } finally {
+      unloadModelsFromDevice(statement, loadedModelIds, CPU_DEVICE);
+    }
+  }
+
+  private static void checkLoadedModelsVisible(
+      Statement statement, String device, List<String> modelIds) throws SQLException {
+    Set<String> visibleModelIds = new HashSet<>();
+    try (ResultSet resultSet =
+        statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+      checkHeader(resultSet.getMetaData(), "DeviceId,ModelId,Count(instances)");
+      while (resultSet.next()) {
+        if (device.equals(resultSet.getString("DeviceId"))
+            && resultSet.getInt("Count(instances)") > 0) {
+          visibleModelIds.add(resultSet.getString("ModelId"));
+        }
+      }
+    }
+    assertTrue(
+        "Expected loaded models " + modelIds + " on " + device + ", but found " + visibleModelIds,
+        visibleModelIds.containsAll(modelIds));
+  }
+
+  private static void checkCallInferenceWorks(Statement statement, String modelId)
+      throws SQLException {
+    String callInferenceSQL =
+        String.format(
+            CALL_INFERENCE_SQL_TEMPLATE,
+            modelId,
+            0,
+            CPU_MODEL_TEST_INPUT_LENGTH,
+            CPU_MODEL_TEST_OUTPUT_LENGTH);
+    try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      checkHeader(resultSetMetaData, "Time,output");
+      Assert.assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(2));
+      int count = 0;
+      while (resultSet.next()) {
+        resultSet.getDouble("output");
+        count++;
+      }
+      Assert.assertEquals(CPU_MODEL_TEST_OUTPUT_LENGTH, count);
+    }
+  }
+
+  private static void checkForecastWorks(Statement statement, String modelId) throws SQLException {
+    String forecastTableFunctionSQL =
+        String.format(
+            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+            modelId,
+            0,
+            CPU_MODEL_TEST_INPUT_LENGTH,
+            CPU_MODEL_TEST_INPUT_LENGTH,
+            CPU_MODEL_TEST_INPUT_LENGTH,
+            CPU_MODEL_TEST_OUTPUT_LENGTH,
+            1,
+            "time");
+    try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQL)) {
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertTrue(count > 0);
+    }
+  }
+
+  private static void unloadModelsFromDevice(
+      Statement statement, List<String> modelIds, String device)
+      throws SQLException, InterruptedException {
+    for (String modelId : modelIds) {
+      statement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelId, device));
+      checkModelNotOnSpecifiedDevice(statement, modelId, device);
+    }
   }
 
   @Test

@@ -18,6 +18,7 @@
 
 import threading
 import time
+import traceback
 
 import torch
 import torch.multiprocessing as mp
@@ -169,7 +170,10 @@ class InferenceManager:
             outputs = infer_proxy.wait_for_result()
             return outputs
         except Exception as e:
-            logger.error(e)
+            logger.error(
+                f"[Inference][Req-{req_id}] Failed to process request for model {req.model_id}: {e}\n"
+                f"{traceback.format_exc()}"
+            )
             raise InferenceModelInternalException(str(e))
         finally:
             with self._result_wrapper_lock:
@@ -259,7 +263,10 @@ class InferenceManager:
             )
 
         except Exception as e:
-            logger.error(e)
+            logger.error(
+                f"[Inference] Failed to run forecast/inference for model {model_id}: {e}\n"
+                f"{traceback.format_exc()}"
+            )
             status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
             empty = b"" if single_batch else []
             return resp_cls(status, empty)
