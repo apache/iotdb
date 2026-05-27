@@ -1,3 +1,4 @@
+# Shared client CI: run only affected language jobs via paths-filter.
 name: Multi-Language Client
 on:
   push:
@@ -88,6 +89,7 @@ jobs:
 
   cpp:
     needs: changes
+    # Full client validation (format + server build + verify) for C++ examples and SDK.
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.cpp == 'true'
     strategy:
       fail-fast: false

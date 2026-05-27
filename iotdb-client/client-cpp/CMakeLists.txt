@@ -19,7 +19,7 @@
 # Apache IoTDB - C++ Session Client (top-level CMake build)
 # =============================================================================
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.15)
 project(iotdb_session CXX C)
 
 set(CMAKE_CXX_STANDARD 11)

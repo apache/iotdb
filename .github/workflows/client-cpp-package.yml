@@ -1,7 +1,7 @@
-# Manual run; Release published; v* tag pushes; rc/** pushes only when C++-related paths change
-# (job should-package). release events use the workflow file from the default branch.
-#
-# Produces per-platform/per-toolchain SDK zips (classifier suffix in artifact name).
+# Publish-oriented packaging workflow:
+# - manual runs, release:published, v* tags
+# - rc/** pushes only when C++-related paths change (job should-package)
+# release events always use the workflow file from the default branch.
 name: C++ Client package
 
 on:
@@ -39,6 +39,7 @@ env:
 
 jobs:
   should-package:
+    # Keep rc branch cost low: skip full matrix when unrelated files change.
     runs-on: ubuntu-latest
     outputs:
       run: ${{ steps.result.outputs.run }}
@@ -95,6 +96,7 @@ jobs:
       windows_matrix: ${{ steps.filter.outputs.windows_matrix }}
     steps:
       - id: filter
+        # Resolve workflow_dispatch variants to a compact matrix payload for fromJSON().
         shell: bash
         run: |
           set -euo pipefail
@@ -174,14 +176,14 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-centos7.sh
+          chmod +x .github/scripts/package-client-cpp-manylinux-glibc217.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
             quay.io/pypa/manylinux2014_x86_64 \
-            bash .github/scripts/package-client-cpp-centos7.sh
+            bash .github/scripts/package-client-cpp-manylinux-glibc217.sh
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
@@ -224,14 +226,14 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-centos7.sh
+          chmod +x .github/scripts/package-client-cpp-manylinux-glibc217.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
             quay.io/pypa/manylinux2014_aarch64 \
-            bash .github/scripts/package-client-cpp-centos7.sh
+            bash .github/scripts/package-client-cpp-manylinux-glibc217.sh
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
@@ -389,6 +391,7 @@ jobs:
           fi
           "${MVN_ARGS[@]}"
       - name: Verify Windows SDK is x64
+        # Guard against accidental Win32 generator defaults on legacy VS matrices.
         shell: pwsh
         run: |
           $dll = "iotdb-client/client-cpp/target/install/lib/iotdb_session.dll"
