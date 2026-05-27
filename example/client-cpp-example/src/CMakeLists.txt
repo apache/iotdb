@@ -72,12 +72,16 @@ ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
 ADD_EXECUTABLE(TableModelSessionExample TableModelSessionExample.cpp)
 ADD_EXECUTABLE(MultiSvrNodeClient MultiSvrNodeClient.cpp)
+ADD_EXECUTABLE(tree_example tree_example.c)
+ADD_EXECUTABLE(table_example table_example.c)
 
 set(_example_targets
     SessionExample
     AlignedTimeseriesSessionExample
     TableModelSessionExample
-    MultiSvrNodeClient)
+    MultiSvrNodeClient
+    tree_example
+    table_example)
 
 foreach(_t IN LISTS _example_targets)
   IF(WITH_SSL)

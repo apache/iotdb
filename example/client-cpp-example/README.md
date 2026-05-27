@@ -36,6 +36,8 @@ user `root` / `root`).
 | `AlignedTimeseriesSessionExample` | Aligned time series and templates |
 | `TableModelSessionExample` | Table (relational) model |
 | `MultiSvrNodeClient` | Multi-node insert/query loop |
+| `tree_example` | C Session API (tree model) |
+| `table_example` | C Session API (table model) |
 
 ## Which SDK zip to use
 
@@ -92,7 +94,7 @@ the generator; on Windows with Visual Studio: `target/Release/`).
 
 1. Build or download the SDK and unpack it so `client/include` and
    `client/lib` exist (see layout above).
-2. Copy `src/*.cpp` and `src/CMakeLists.txt` into one directory (or use
+2. Copy `src/*.{cpp,c}` and `src/CMakeLists.txt` into one directory (or use
    `src/` as the source tree and place `client/` beside it).
 3. Configure and build:
 
@@ -248,7 +250,9 @@ client-cpp-example/
     ├── SessionExample.cpp
     ├── AlignedTimeseriesSessionExample.cpp
     ├── TableModelSessionExample.cpp
-    └── MultiSvrNodeClient.cpp
+    ├── MultiSvrNodeClient.cpp
+    ├── tree_example.c
+    └── table_example.c
 ```
 
 After `mvn package`, the runnable tree is under `target/` (sources, `client/`,

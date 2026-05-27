@@ -22,9 +22,9 @@
  * Edit HOST / PORT / credentials below to match your IoTDB.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "SessionC.h"

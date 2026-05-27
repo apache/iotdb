@@ -35,6 +35,8 @@
 | `AlignedTimeseriesSessionExample` | 对齐时间序列与模板 |
 | `TableModelSessionExample` | 表模型（关系型） |
 | `MultiSvrNodeClient` | 多节点写入/查询循环 |
+| `tree_example` | C Session API（树模型） |
+| `table_example` | C Session API（表模型） |
 
 ## 选择哪个 SDK 压缩包
 
@@ -89,7 +91,7 @@ Windows + Visual Studio 一般为 `target/Release/`）。
 
 1. 自行编译或下载 SDK，解压后保证存在 `client/include` 与 `client/lib`（见
    上文目录结构）。
-2. 将 `src/*.cpp` 与 `src/CMakeLists.txt` 放在同一目录（或保留 `src/`
+2. 将 `src/*.{cpp,c}` 与 `src/CMakeLists.txt` 放在同一目录（或保留 `src/`
    结构，并在同级放置 `client/`）。
 3. 配置并编译：
 
@@ -241,7 +243,9 @@ client-cpp-example/
     ├── SessionExample.cpp
     ├── AlignedTimeseriesSessionExample.cpp
     ├── TableModelSessionExample.cpp
-    └── MultiSvrNodeClient.cpp
+    ├── MultiSvrNodeClient.cpp
+    ├── tree_example.c
+    └── table_example.c
 ```
 
 执行 `mvn package` 后，可在 `target/` 下找到源码、`client/` SDK 与 CMake
