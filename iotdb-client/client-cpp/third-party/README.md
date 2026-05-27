@@ -25,7 +25,9 @@ build `client-cpp` with `-DIOTDB_OFFLINE=ON`**.
 
 Tarballs themselves are **not** committed to Git (see per-platform
 `.gitignore` files). Only this README and the empty platform folders are
-tracked.
+tracked. Each `linux/`, `mac/`, and `windows/` sub-folder ships a minimal
+`.gitignore` (`*` with `!.gitignore`) so Git keeps the directory in the
+tree while ignoring downloaded archives.
 
 ## Layout
 

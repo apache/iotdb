@@ -493,7 +493,7 @@ Session::Session(const std::string& host, int rpcPort, const std::string& userna
   impl_->rpcPort_ = rpcPort;
   impl_->username_ = username;
   impl_->password_ = password;
-  impl_->fetchSize_ = Impl::DEFAULT_FETCH_SIZE;
+  impl_->fetchSize_ = iotdb::session::DEFAULT_FETCH_SIZE;
   impl_->version = Version::V_1_0;
   impl_->initZoneId();
   impl_->initNodesSupplier();

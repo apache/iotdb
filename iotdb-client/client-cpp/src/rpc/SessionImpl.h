@@ -49,10 +49,9 @@ public:
   const TSProtocolVersion::type protocolVersion_ = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
   bool isClosed_ = true;
   std::string zoneId_;
-  int fetchSize_ = 10000;
-  static const int DEFAULT_FETCH_SIZE = 10000;
+  int fetchSize_ = iotdb::session::DEFAULT_FETCH_SIZE;
   static const int DEFAULT_TIMEOUT_MS = 0;
-  int connectTimeoutMs_ = 3000;
+  int connectTimeoutMs_ = iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS;
   Version::Version version = Version::V_1_0;
   std::string sqlDialect_ = "tree";
   std::string database_;

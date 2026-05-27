@@ -36,7 +36,6 @@ using namespace apache::thrift::transport;
 const int ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
 const int ThriftConnection::THRIFT_MAX_FRAME_SIZE = 1048576;
 const int ThriftConnection::CONNECTION_TIMEOUT_IN_MS = 1000;
-const int ThriftConnection::DEFAULT_FETCH_SIZE = 10000;
 
 ThriftConnection::ThriftConnection(const TEndPoint& endPoint, int thriftDefaultBufferSize,
                                    int thriftMaxFrameSize, int connectionTimeoutInMs, int fetchSize)

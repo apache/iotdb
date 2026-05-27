@@ -72,7 +72,6 @@ public:
   static const std::string REMOVING_STATUS;
 
   static const int64_t TIMEOUT_IN_MS;
-  static const int FETCH_SIZE;
   static const int THRIFT_DEFAULT_BUFFER_SIZE;
   static const int THRIFT_MAX_FRAME_SIZE;
   static const int CONNECTION_TIMEOUT_IN_MS;

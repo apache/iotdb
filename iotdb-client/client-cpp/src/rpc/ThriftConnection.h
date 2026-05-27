@@ -24,6 +24,7 @@
 #include <thrift/transport/TSSLSocket.h>
 #endif
 #include "IClientRPCService.h"
+#include "SessionConfig.h"
 
 class SessionDataSet;
 
@@ -32,13 +33,12 @@ public:
   static const int THRIFT_DEFAULT_BUFFER_SIZE;
   static const int THRIFT_MAX_FRAME_SIZE;
   static const int CONNECTION_TIMEOUT_IN_MS;
-  static const int DEFAULT_FETCH_SIZE;
 
   explicit ThriftConnection(const TEndPoint& endPoint,
                             int thriftDefaultBufferSize = THRIFT_DEFAULT_BUFFER_SIZE,
                             int thriftMaxFrameSize = THRIFT_MAX_FRAME_SIZE,
                             int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS,
-                            int fetchSize = DEFAULT_FETCH_SIZE);
+                            int fetchSize = iotdb::session::DEFAULT_FETCH_SIZE);
 
   ~ThriftConnection();
 

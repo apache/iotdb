@@ -33,6 +33,7 @@
 #include "Common.h"
 #include "RpcCommon.h"
 #include "Session.h"
+#include "SessionConfig.h"
 
 class SessionDataSet;
 
@@ -40,9 +41,11 @@ class SessionConnection : public std::enable_shared_from_this<SessionConnection>
 public:
   SessionConnection(Session::Impl* session_ptr, const TEndPoint& endpoint,
                     const std::string& zoneId, std::shared_ptr<INodesSupplier> nodeSupplier,
-                    int fetchSize = 10000, int maxRetries = 3, int64_t retryInterval = 500,
-                    int64_t connectionTimeoutMs = 3 * 1000, std::string dialect = "tree",
-                    std::string db = "");
+                    int fetchSize = iotdb::session::DEFAULT_FETCH_SIZE,
+                    int maxRetries = iotdb::session::DEFAULT_MAX_RETRIES,
+                    int64_t retryInterval = iotdb::session::DEFAULT_RETRY_DELAY_MS,
+                    int64_t connectionTimeoutMs = iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS,
+                    std::string dialect = "tree", std::string db = "");
 
   ~SessionConnection();
 

@@ -572,10 +572,11 @@ public:
   Session(const std::string& host, int rpcPort, const std::string& username,
           const std::string& password);
   Session(const std::string& host, int rpcPort, const std::string& username,
-          const std::string& password, const std::string& zoneId, int fetchSize = 10000);
+          const std::string& password, const std::string& zoneId,
+          int fetchSize = AbstractSessionBuilder::DEFAULT_FETCH_SIZE);
   Session(const std::string& host, const std::string& rpcPort, const std::string& username = "user",
           const std::string& password = "password", const std::string& zoneId = "",
-          int fetchSize = 10000);
+          int fetchSize = AbstractSessionBuilder::DEFAULT_FETCH_SIZE);
   Session(AbstractSessionBuilder* builder);
   ~Session();
 

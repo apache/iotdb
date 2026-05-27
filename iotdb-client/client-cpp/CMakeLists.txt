@@ -138,6 +138,7 @@ include(GNUInstallDirs)
 
 set(IOTDB_PUBLIC_HEADERS
         Export.h
+        SessionConfig.h
         Session.h
         Common.h
         Optional.h
