@@ -191,14 +191,14 @@ public class PipeMemoryWeightUtil {
       return new Pair<>(1, 0);
     }
 
-    // Calculate row number according to the max size of a pipe tablet.
-    // "-100" is the estimated size of other data structures in a pipe tablet.
+    // Calculate row number according to the max size of a pipe tablet. "100" is the estimated size
+    // of other data structures in a pipe tablet.
     // "*8" converts bytes to bits, because the bitmap size is 1 bit per schema.
-    // Here we estimate the max use of
     int sizeLimit =
-        Math.min(
-            IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
-            (int) (inputNum * rowBytesUsed * 1.2));
+        (int)
+            Math.min(
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
+                Math.min(Integer.MAX_VALUE, 100 + inputNum * (double) rowBytesUsed * 1.2));
 
     int rowNumber = 8 * (sizeLimit - 100) / (8 * rowBytesUsed + schemaCount);
     rowNumber = Math.max(1, rowNumber);

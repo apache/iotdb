@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -211,6 +212,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
       final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
+    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Binary req, for rolling upgrade
     ReadWriteIOUtils.readInt(transferReq.body);
@@ -220,12 +222,14 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
-              ReadWriteIOUtils.readString(transferReq.body)));
+              tabletStringInternPool.intern(ReadWriteIOUtils.readString(transferReq.body))));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
-      batchReq.tabletReqs.add(PipeTransferTabletRawReqV2.toTPipeTransferRawReq(transferReq.body));
+      batchReq.tabletReqs.add(
+          PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
+              transferReq.body, tabletStringInternPool));
     }
 
     batchReq.version = transferReq.version;

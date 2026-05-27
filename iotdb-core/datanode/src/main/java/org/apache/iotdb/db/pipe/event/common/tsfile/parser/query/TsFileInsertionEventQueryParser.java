@@ -33,6 +33,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -79,6 +80,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
+  private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -418,7 +420,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               entry.getValue(),
                               timeFilterExpression,
                               allocatedMemoryBlockForTablet,
-                              currentModifications);
+                              currentModifications,
+                              tabletStringInternPool);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(

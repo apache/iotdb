@@ -455,6 +455,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
     return initEventParser().convertToTablet();
