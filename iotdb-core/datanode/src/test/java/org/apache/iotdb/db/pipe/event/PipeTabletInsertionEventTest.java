@@ -198,11 +198,6 @@ public class PipeTabletInsertionEventTest {
     final Object[] values = new Object[schemas.length];
 
     // create tablet for insertRowNode
-    BitMap[] bitMapsForInsertRowNode = new BitMap[schemas.length];
-    for (int i = 0; i < schemas.length; i++) {
-      bitMapsForInsertRowNode[i] = new BitMap(1);
-    }
-
     values[0] = new int[1];
     values[1] = new long[1];
     values[2] = new float[1];
@@ -228,20 +223,9 @@ public class PipeTabletInsertionEventTest {
     }
 
     tabletForInsertRowNode =
-        new Tablet(
-            deviceId,
-            Arrays.asList(schemas),
-            new long[] {times[0]},
-            values,
-            bitMapsForInsertRowNode,
-            1);
+        new Tablet(deviceId, Arrays.asList(schemas), new long[] {times[0]}, values, null, 1);
 
     // create tablet for insertTabletNode
-    BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
-    for (int i = 0; i < schemas.length; i++) {
-      bitMapsForInsertTabletNode[i] = new BitMap(times.length);
-    }
-
     values[0] = new int[times.length];
     values[1] = new long[times.length];
     values[2] = new float[times.length];
@@ -268,13 +252,7 @@ public class PipeTabletInsertionEventTest {
 
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
     tabletForInsertTabletNode =
-        new Tablet(
-            deviceId,
-            Arrays.asList(schemas),
-            times,
-            values,
-            bitMapsForInsertTabletNode,
-            times.length);
+        new Tablet(deviceId, Arrays.asList(schemas), times, values, null, times.length);
   }
 
   @Test
@@ -339,6 +317,37 @@ public class PipeTabletInsertionEventTest {
     boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
+  }
+
+  @Test
+  public void convertToTabletSkipsUnnecessaryBitMapsForTest() throws Exception {
+    final BitMap[] bitMaps = new BitMap[schemas.length];
+    bitMaps[0] = new BitMap(times.length);
+    bitMaps[1] = new BitMap(times.length);
+    bitMaps[1].mark(1);
+
+    final InsertTabletNode nodeWithSparseColumn =
+        new InsertTabletNode(
+            new PlanNodeId("plannode bitmap"),
+            new PartialPath(deviceId),
+            false,
+            measurementIds,
+            dataTypes,
+            schemas,
+            times,
+            bitMaps,
+            insertTabletNode.getColumns(),
+            times.length);
+
+    final Tablet tablet =
+        new TabletInsertionEventTreePatternParser(
+                nodeWithSparseColumn, new PrefixTreePattern(pattern))
+            .convertToTablet();
+
+    Assert.assertNotNull(tablet.getBitMaps());
+    Assert.assertNull(tablet.getBitMaps()[0]);
+    Assert.assertNotNull(tablet.getBitMaps()[1]);
+    Assert.assertTrue(tablet.isNull(1, 1));
   }
 
   @Test

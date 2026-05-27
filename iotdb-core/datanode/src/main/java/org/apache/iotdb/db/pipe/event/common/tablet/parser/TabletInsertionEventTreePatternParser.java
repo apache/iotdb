@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletCollector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -202,7 +203,10 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
             Arrays.asList(measurementSchemaList),
             timestampColumn,
             valueColumns,
-            nullValueColumnBitmaps,
+            nullValueColumnBitmaps == null
+                ? null
+                : PipeTabletUtils.compactBitMaps(
+                    Arrays.copyOf(nullValueColumnBitmaps, nullValueColumnBitmaps.length), rowCount),
             rowCount);
     return tablet;
   }

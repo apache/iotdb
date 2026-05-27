@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -54,6 +55,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -495,6 +497,28 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqInternsRepeatedMeasurementNames() throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+    tabletBuffers.add(
+        serializeTablet(createSingleValueTablet(new String("root.sg.d"), new String("s1")), false));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(
+            PipeTransferTabletBatchReq.toTPipeTransferReq(Collections.emptyList(), tabletBuffers));
+    final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statements =
+        deserializedReq.constructStatements();
+    final List<InsertTabletStatement> insertTabletStatements =
+        statements.getRight().getInsertTabletStatementList();
+
+    Assert.assertEquals(2, insertTabletStatements.size());
+    Assert.assertSame(
+        insertTabletStatements.get(0).getMeasurements()[0],
+        insertTabletStatements.get(1).getMeasurements()[0]);
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqV2() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
@@ -769,5 +793,25 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
     Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());
+  }
+
+  private static Tablet createSingleValueTablet(final String deviceId, final String measurement) {
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema(measurement, TSDataType.INT32));
+
+    final Tablet tablet = new Tablet(deviceId, schemaList, 8);
+    tablet.addTimestamp(0, 1);
+    tablet.addValue(measurement, 0, 1);
+    return tablet;
+  }
+
+  private static ByteBuffer serializeTablet(final Tablet tablet, final boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 }
