@@ -59,7 +59,6 @@ public final class BitMapUtils {
     }
 
     final int remainingBitCount = checkedSize % Byte.SIZE;
-    return remainingBitCount == 0
-        || (bytes[fullByteCount] & ((1 << remainingBitCount) - 1)) == 0;
+    return remainingBitCount == 0 || (bytes[fullByteCount] & ((1 << remainingBitCount) - 1)) == 0;
   }
 }
