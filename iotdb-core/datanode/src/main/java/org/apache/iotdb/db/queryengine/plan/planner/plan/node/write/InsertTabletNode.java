@@ -455,7 +455,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     final BitMap[] splitBitMaps = new BitMap[columnSize];
     boolean hasBitMap = false;
     for (int i = 0; i < columnSize && i < this.bitMaps.length; ++i) {
-      if (this.bitMaps[i] != null && !BitMapUtils.isAllUnmarked(this.bitMaps[i], sourceRowCount)) {
+      if (this.bitMaps[i] != null
+          && !BitMapUtils.isAllUnmarked(this.bitMaps[i], sourceRowCount)) {
         splitBitMaps[i] = new BitMap(rowSize);
         hasBitMap = true;
       }
