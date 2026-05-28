@@ -1230,7 +1230,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+            if (tvPair != TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN) {
               LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),
@@ -1399,7 +1399,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (timeValuePair == null) {
               allCached = false;
               break;
-            } else if (timeValuePair.getValue() == null) {
+            } else if (timeValuePair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || timeValuePair.getValue() == null) {
               // there is no data for this sensor
               if (!canUseNullEntry) {
                 allCached = false;

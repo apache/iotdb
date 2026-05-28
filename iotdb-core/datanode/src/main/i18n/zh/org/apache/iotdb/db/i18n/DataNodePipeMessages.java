@@ -1243,8 +1243,8 @@ public final class DataNodePipeMessages {
       "注销 pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE =
       "注销 pipe schema region source metrics, IoTDBSchemaRegionSource({}) does not exist 失败";
-  public static final String FAILED_TO_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
-      "注销 pipe tsfile to tablets metrics, pipeID({}) does not exist 失败";
+  public static final String SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
+      "跳过注销 pipe tsfile to tablets metrics，因为 pipeID({}) 未注册";
   public static final String FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS =
       "注销 schema region listener metrics, SchemaRegionListeningQueue({}) does not exist 失败";
   public static final String FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR =

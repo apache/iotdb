@@ -70,13 +70,15 @@ public class TTLInfo implements SnapshotProcessor {
     try {
       // check ttl rule capacity
       final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
-      if (getTTLCount() >= tTlRuleCapacity) {
+      final int newTTLRuleCount = calculateNewTTLRuleCount(plan);
+      final int requestedTTLRuleCount = ttlCache.getTtlCount() + newTTLRuleCount;
+      if (newTTLRuleCount > 0 && requestedTTLRuleCount > tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
             String.format(
-                "The number of TTL rules has reached the limit (%d). Please delete "
-                    + "some existing rules first.",
-                tTlRuleCapacity));
+                "The number of TTL rules has reached the limit "
+                    + "(capacity: %d, requested total: %d). Please delete some existing rules first.",
+                tTlRuleCapacity, requestedTTLRuleCount));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
@@ -90,6 +92,20 @@ public class TTLInfo implements SnapshotProcessor {
       lock.writeLock().unlock();
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private int calculateNewTTLRuleCount(SetTTLPlan plan) {
+    int newTTLRuleCount = isNewTTLRule(plan.getPathPattern()) ? 1 : 0;
+    if (plan.isDataBase()) {
+      String[] pathNodes = Arrays.copyOf(plan.getPathPattern(), plan.getPathPattern().length + 1);
+      pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+      newTTLRuleCount += isNewTTLRule(pathNodes) ? 1 : 0;
+    }
+    return newTTLRuleCount;
+  }
+
+  private boolean isNewTTLRule(String[] pathNodes) {
+    return ttlCache.getLastNodeTTL(pathNodes) == TTLCache.NULL_TTL;
   }
 
   /** Only used for upgrading from database level ttl to device level ttl. */
@@ -154,6 +170,15 @@ public class TTLInfo implements SnapshotProcessor {
     lock.readLock().lock();
     try {
       return ttlCache.getTtlCount();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public long getTTL(final String[] pathPattern) {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getLastNodeTTL(pathPattern);
     } finally {
       lock.readLock().unlock();
     }

@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -181,7 +182,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
             getPlanNodeId(),
@@ -452,7 +453,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
             System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
           }
         }
-        if (this.bitMaps != null && this.bitMaps[i] != null) {
+        if (this.bitMaps != null && i < this.bitMaps.length && this.bitMaps[i] != null) {
           if (subNode.bitMaps == null) {
             subNode.bitMaps = new BitMap[subNode.columns.length];
           }
@@ -467,6 +468,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     result.add(subNode);
     return result;
   }

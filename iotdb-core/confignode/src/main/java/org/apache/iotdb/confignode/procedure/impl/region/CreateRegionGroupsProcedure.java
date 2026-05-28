@@ -180,6 +180,21 @@ public class CreateRegionGroupsProcedure
           LOGGER.warn(
               ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
         }
+        setNextState(CreateRegionGroupsState.REBALANCE_DATA_PARTITION_POLICY);
+        break;
+      case REBALANCE_DATA_PARTITION_POLICY:
+        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
+          // Re-balance all corresponding DataPartitionPolicyTable before the newly created
+          // RegionGroups become available for serving partitions.
+          persistPlan
+              .getRegionGroupMap()
+              .keySet()
+              .forEach(
+                  database ->
+                      env.getConfigManager()
+                          .getLoadManager()
+                          .reBalanceDataPartitionPolicy(database));
+        }
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
       case ACTIVATE_REGION_GROUPS:
@@ -240,17 +255,6 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
-        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
-          // Re-balance all corresponding DataPartitionPolicyTable
-          persistPlan
-              .getRegionGroupMap()
-              .keySet()
-              .forEach(
-                  database ->
-                      env.getConfigManager()
-                          .getLoadManager()
-                          .reBalanceDataPartitionPolicy(database));
-        }
         return Flow.NO_MORE_STATE;
     }
 
