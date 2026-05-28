@@ -117,7 +117,7 @@ Linux x86_64 (glibc 2.24 + CXX11 ABI — match `manylinux_2_24` release builds):
 ```bash
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dclient.cpp.package.classifier=linux-x86_64-glibc224 \
-  -Diotdb.extra.cxx.flags=-D_GLIBCXX_USE_CXX11_ABI=1 package
+  -Diotdb.libstdcxx.cxx11.abi=ON package
 ```
 
 Linux x86_64 (glibc 2.17 + legacy ABI — CentOS 7 / manylinux2014):

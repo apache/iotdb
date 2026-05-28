@@ -32,8 +32,17 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+set(IOTDB_EXTRA_CXX_FLAGS ""
+    CACHE STRING "Extra flags appended to CMAKE_CXX_FLAGS")
+option(IOTDB_LIBSTDCXX_CXX11_ABI
+        "Use libstdc++ dual-ABI new layout (_GLIBCXX_USE_CXX11_ABI=1); release glibc224 zips"
+        OFF)
+
 if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+    if(IOTDB_LIBSTDCXX_CXX11_ABI)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+    endif()
     if(IOTDB_EXTRA_CXX_FLAGS)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IOTDB_EXTRA_CXX_FLAGS}")
     endif()
@@ -47,8 +56,6 @@ endif()
 option(WITH_SSL "Build with OpenSSL support" OFF)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
-set(IOTDB_EXTRA_CXX_FLAGS ""
-    CACHE STRING "Extra flags appended to CMAKE_CXX_FLAGS (e.g. libstdc++ ABI for release zips)")
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
@@ -187,3 +194,4 @@ message(STATUS "    THRIFT_INCLUDE_DIR    = ${THRIFT_INCLUDE_DIR}")
 message(STATUS "    THRIFT_STATIC_LIB     = ${THRIFT_STATIC_LIB_PATH}")
 message(STATUS "    THRIFT_EXECUTABLE     = ${THRIFT_EXECUTABLE}")
 message(STATUS "    CMAKE_INSTALL_PREFIX  = ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "    IOTDB_LIBSTDCXX_CXX11_ABI = ${IOTDB_LIBSTDCXX_CXX11_ABI}")

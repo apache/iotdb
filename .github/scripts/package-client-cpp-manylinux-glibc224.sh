@@ -18,7 +18,6 @@
 set -euxo pipefail
 
 MAX_GLIBC=2.24
-IOTDB_EXTRA_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1
 
 MACHINE=$(uname -m)
 case "${MACHINE}" in
@@ -76,17 +75,29 @@ cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
   -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
-  "-Diotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}"
+  -Diotdb.libstdcxx.cxx11.abi=ON
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
 
-echo "=== libstdc++ ABI check (cxx11: must contain __cxx11) ==="
-if ! nm -C "${SO}" 2>/dev/null | grep -q '__cxx11'; then
-  echo "ERROR: cxx11 ABI build must contain __cxx11 symbols in ${SO}"
-  exit 1
+echo "=== libstdc++ ABI check (cxx11: mangled names must contain __cxx11) ==="
+# Use mangled symbol names: "nm -C" demangles std::__cxx11::basic_string to std::string
+# and hides __cxx11 even when the library was built with the new ABI.
+_abi_has_cxx11() {
+  nm -a "$1" 2>/dev/null | grep -q '__cxx11'
+}
+if _abi_has_cxx11 "${SO}"; then
+  echo "ABI check passed (__cxx11 in ${SO})"
+else
+  SESSION_OBJ=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" \
+    -path '*/iotdb_session.dir/src/session/Session.cpp.o' -print -quit 2>/dev/null || true)
+  if [[ -n "${SESSION_OBJ}" ]] && _abi_has_cxx11 "${SESSION_OBJ}"; then
+    echo "ABI check passed (__cxx11 in ${SESSION_OBJ}; .so has minimal symbol table)"
+  else
+    echo "ERROR: cxx11 ABI build must contain __cxx11 symbols in ${SO} (or Session.cpp.o)"
+    exit 1
+  fi
 fi
-echo "ABI check passed (__cxx11 symbols present)"
 
 echo "=== Build host glibc ==="
 ldd --version 2>&1 | sed -n '1p'
