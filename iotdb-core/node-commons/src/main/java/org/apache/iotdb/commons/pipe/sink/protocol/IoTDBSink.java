@@ -191,6 +191,7 @@ public abstract class IoTDBSink
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
+  protected String sinkTaskId;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -393,8 +394,10 @@ public abstract class IoTDBSink
       throws Exception {
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
-      attributeSortedString =
-          ((PipeTaskSinkRuntimeEnvironment) environment).getAttributeSortedString();
+      final PipeTaskSinkRuntimeEnvironment sinkEnvironment =
+          (PipeTaskSinkRuntimeEnvironment) environment;
+      attributeSortedString = sinkEnvironment.getAttributeSortedString();
+      sinkTaskId = sinkEnvironment.getSinkTaskId();
     }
 
     nodeUrls.clear();

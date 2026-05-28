@@ -199,8 +199,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
 
   private void createTimer(final String taskID) {
     final PipeSinkSubtask sink = sinkMap.get(taskID);
-    compressionTimerMap.putIfAbsent(
-        sink.getAttributeSortedString(),
+    compressionTimerMap.put(
+        taskID,
         metricService.getOrCreateTimer(
             Metric.PIPE_COMPRESSION_TIME.toString(),
             MetricLevel.IMPORTANT,
@@ -394,7 +394,7 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
         sink.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(sink.getCreationTime()));
-    compressionTimerMap.remove(sink.getAttributeSortedString());
+    compressionTimerMap.remove(taskID);
   }
 
   private void removeHistogram(final String taskID) {
@@ -492,8 +492,8 @@ public class PipeDataRegionSinkMetrics implements IMetricSet {
     rate.mark();
   }
 
-  public Timer getCompressionTimer(final String attributeSortedString) {
-    return Objects.isNull(metricService) ? null : compressionTimerMap.get(attributeSortedString);
+  public Timer getCompressionTimer(final String taskID) {
+    return Objects.isNull(metricService) ? null : compressionTimerMap.get(taskID);
   }
 
   //////////////////////////// singleton ////////////////////////////
