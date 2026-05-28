@@ -1953,7 +1953,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
 void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "127.0.0.1")
+  if (endPoint.ip == "0.0.0.0")
     return;
   deviceIdToEndpoint[deviceId] = endPoint;
 
@@ -1978,7 +1978,7 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
                                 TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "127.0.0.1")
+  if (endPoint.ip == "0.0.0.0")
     return;
   tableModelDeviceIdToEndpoint[deviceId] = endPoint;
 
