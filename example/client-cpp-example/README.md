@@ -47,20 +47,19 @@ publishes one zip per platform/toolchain:
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
-| Linux x86_64, glibc ≥ 2.24 (default g++, cxx11 ABI) | `linux-x86_64-glibc224` |
-| Linux aarch64, glibc ≥ 2.24 (default g++, cxx11 ABI) | `linux-aarch64-glibc224` |
-| Linux x86_64, glibc ≥ 2.17 (legacy ABI, app needs `-D_GLIBCXX_USE_CXX11_ABI=0`) | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.17 (legacy ABI) | `linux-aarch64-glibc217` |
+| Linux x86_64, glibc ≥ 2.28 (default g++) | `linux-x86_64-glibc228` |
+| Linux aarch64, glibc ≥ 2.28 (default g++) | `linux-aarch64-glibc228` |
+| Linux x86_64, glibc ≥ 2.17 (legacy libstdc++ ABI) | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.17 (legacy libstdc++ ABI) | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows (match your Visual Studio version) | `windows-x86_64-vs2017` … `vs2026` |
 
 The current build compiles Thrift 0.21 from source at CMake configure time.
 Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
-pre-built Thrift workflow only. On Linux, prefer **`glibc224`** when your
-distro has glibc ≥ 2.24 and you build with the default compiler ABI. Use
-**`glibc217`** only when the target host cannot run glibc 2.24+ binaries or
-when you must match the legacy libstdc++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0`).
+pre-built Thrift workflow only. On Linux, prefer **`glibc228`** when your
+distro has glibc ≥ 2.28 and you build with the system default `g++`. Use
+**`glibc217`** only when the target host cannot run glibc 2.28+ binaries.
 See [client-cpp README](../../iotdb-client/client-cpp/README.md).
 
 ## SDK layout (after unpack)

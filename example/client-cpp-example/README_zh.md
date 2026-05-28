@@ -46,19 +46,19 @@ CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.
 
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|
-| Linux x86_64，glibc ≥ 2.24（默认 g++，cxx11 ABI） | `linux-x86_64-glibc224` |
-| Linux aarch64，glibc ≥ 2.24（默认 g++，cxx11 ABI） | `linux-aarch64-glibc224` |
-| Linux x86_64，glibc ≥ 2.17（旧 ABI，应用需 `-D_GLIBCXX_USE_CXX11_ABI=0`） | `linux-x86_64-glibc217` |
-| Linux aarch64，glibc ≥ 2.17（旧 ABI） | `linux-aarch64-glibc217` |
+| Linux x86_64，glibc ≥ 2.28（默认 g++） | `linux-x86_64-glibc228` |
+| Linux aarch64，glibc ≥ 2.28（默认 g++） | `linux-aarch64-glibc228` |
+| Linux x86_64，glibc ≥ 2.17（旧 libstdc++ ABI） | `linux-x86_64-glibc217` |
+| Linux aarch64，glibc ≥ 2.17（旧 libstdc++ ABI） | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2017` … `vs2026` |
 
 当前 CMake 构建在配置阶段从源码编译 Thrift 0.21，**不再**通过
 `-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc。
-Linux 上若目标机 glibc ≥ 2.24 且使用默认编译器 ABI，请优先选用
-**`glibc224`** 包；仅当目标机无法使用 glibc 2.24+ 二进制，或必须与旧
-libstdc++ ABI（`-D_GLIBCXX_USE_CXX11_ABI=0`）一致时，才选用 **`glibc217`** 包。
+Linux 上若目标机 glibc ≥ 2.28 且使用系统默认 `g++`，请优先选用
+**`glibc228`** 包；仅当目标机无法使用 glibc 2.28+ 二进制时，才选用
+**`glibc217`** 包。应用侧无需设置额外的 ABI 编译宏。
 详见 [client-cpp README](../../iotdb-client/client-cpp/README.md)。
 
 ## SDK 目录结构（解压后）

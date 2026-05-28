@@ -14,23 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# cxx11 libstdc++ ABI on manylinux_2_24; max glibc 2.24.
+# manylinux_2_28 baseline package; image default toolchain; max glibc 2.28.
 set -euxo pipefail
 
-MAX_GLIBC=2.24
-IOTDB_EXTRA_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1
+MAX_GLIBC=2.28
 
 MACHINE=$(uname -m)
 case "${MACHINE}" in
   x86_64)
     CMAKE_PKG_ARCH=linux-x86_64
     JDK_API_ARCH=linux/x64
-    DEFAULT_CLASSIFIER=linux-x86_64-glibc224
+    DEFAULT_CLASSIFIER=linux-x86_64-glibc228
     ;;
   aarch64)
     CMAKE_PKG_ARCH=linux-aarch64
     JDK_API_ARCH=linux/aarch64
-    DEFAULT_CLASSIFIER=linux-aarch64-glibc224
+    DEFAULT_CLASSIFIER=linux-aarch64-glibc228
     ;;
   *)
     echo "Unsupported architecture: ${MACHINE}" >&2
@@ -64,30 +63,18 @@ fi
 export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 export JAVA_HOME
 
-SYSTEM_GCC=$(command -v gcc)
-SYSTEM_GXX=$(command -v g++)
-if [[ -z "${SYSTEM_GCC}" || ! -x "${SYSTEM_GCC}" ]]; then
-  echo "ERROR: gcc not found on PATH" >&2
-  exit 1
-fi
-if [[ -z "${SYSTEM_GXX}" || ! -x "${SYSTEM_GXX}" ]]; then
-  echo "ERROR: g++ not found on PATH" >&2
-  exit 1
-fi
-
-export CC="${SYSTEM_GCC}"
-export CXX="${SYSTEM_GXX}"
-
-"${SYSTEM_GCC}" --version
-"${SYSTEM_GXX}" --version
+echo "=== Toolchain (image default) ==="
+command -v gcc g++ || true
+gcc --version | head -1
+g++ --version | head -1
+g++ -dM -E -x c++ /dev/null | grep GLIBCXX_USE_CXX11_ABI || true
 cmake --version
 java -version
 
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
-  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
-  "-Diotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}"
+  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}"
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
@@ -115,17 +102,16 @@ fi
 
 echo "glibc compatibility check passed (max=${max_glibc} <= ${MAX_GLIBC})"
 
-echo "=== Optional example link test (cxx11 ABI) ==="
+echo "=== Example link test (image default g++) ==="
 INSTALL_ROOT="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/install"
 EXAMPLE_SRC="${GITHUB_WORKSPACE}/example/client-cpp-example/src"
-LINKTEST_BUILD="/tmp/client-cpp-example-linktest-glibc224"
+LINKTEST_BUILD="/tmp/client-cpp-example-linktest-glibc228"
 rm -rf "${LINKTEST_BUILD}"
 mkdir -p "${LINKTEST_BUILD}"
 unset CC CXX CFLAGS CXXFLAGS
 "${CMAKE_DIR}/bin/cmake" -S "${EXAMPLE_SRC}" -B "${LINKTEST_BUILD}" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DIOTDB_SDK_ROOT="${INSTALL_ROOT}" \
-  -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1
+  -DIOTDB_SDK_ROOT="${INSTALL_ROOT}"
 "${CMAKE_DIR}/bin/cmake" --build "${LINKTEST_BUILD}" --target SessionExample -j"$(nproc)"
 test -x "${LINKTEST_BUILD}/SessionExample"
 echo "Example link test passed"
