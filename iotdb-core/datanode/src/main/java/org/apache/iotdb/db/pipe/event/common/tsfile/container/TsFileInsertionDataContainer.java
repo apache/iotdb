@@ -97,16 +97,18 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
             .forceAllocateForTabletWithRetry(
                 IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
 
-    LOGGER.debug(
-        "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
-        tsFile,
-        getClass().getSimpleName(),
-        pipeName,
-        creationTime,
-        pattern,
-        startTime,
-        endTime,
-        isWithMod);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
+          tsFile,
+          getClass().getSimpleName(),
+          pipeName,
+          creationTime,
+          pattern,
+          startTime,
+          endTime,
+          isWithMod);
+    }
   }
 
   /**
