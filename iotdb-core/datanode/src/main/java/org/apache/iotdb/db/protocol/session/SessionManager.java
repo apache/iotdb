@@ -210,8 +210,14 @@ public class SessionManager implements SessionManagerMBean {
       } else {
         synchronized (sessionLimitLock) {
           // check session nums
-          User user =
-              AuthorityChecker.getAuthorityFetcher().getAuthorCache().getUserCache(username);
+          User user = AuthorityChecker.getUser(username);
+          if (user == null) {
+            openSessionResp
+                .sessionId(-1)
+                .setCode(TSStatusCode.USER_NOT_EXIST.getStatusCode())
+                .setMessage(String.format("User %s does not exist", username));
+            return openSessionResp;
+          }
           TSStatus checkSessionNumStatus =
               checkSessionNums(username, user.getMaxSessionPerUser(), user.getMinSessionPerUser());
           if (checkSessionNumStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
