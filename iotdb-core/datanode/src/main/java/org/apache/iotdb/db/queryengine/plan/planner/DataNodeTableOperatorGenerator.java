@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
@@ -1114,6 +1115,13 @@ public class DataNodeTableOperatorGenerator
         DeviceTableScanNode.class.getSimpleName());
 
     return tableScanOperator;
+  }
+
+  @Override
+  public Operator visitExternalTsFileScan(
+      ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException(
+        "ExternalTsFileScanNode physical operator is not implemented yet");
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

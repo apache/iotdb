@@ -96,6 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggre
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
@@ -725,6 +726,16 @@ public class TableDistributedPlanGenerator
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
     }
+  }
+
+  @Override
+  public List<PlanNode> visitExternalTsFileScan(
+      final ExternalTsFileScanNode node, final PlanContext context) {
+    node.setRegionReplicaSet(
+        new TRegionReplicaSet(
+            null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation())));
+    context.mostUsedRegion = node.getRegionReplicaSet();
+    return Collections.singletonList(node);
   }
 
   private List<PlanNode> constructDeviceTableScanByTags(

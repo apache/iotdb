@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -267,6 +268,35 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownPredicate(),
               node.getPushDownLimit(),
               node.getPushDownOffset()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitExternalTsFileScan(
+        ExternalTsFileScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      node.getAssignments()
+          .forEach(
+              (symbol, handle) -> {
+                Symbol newSymbol = mapper.map(symbol);
+                newAssignments.put(newSymbol, handle);
+              });
+
+      return new PlanAndMappings(
+          new ExternalTsFileScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getPushDownPredicate() == null ? null : mapper.map(node.getPushDownPredicate()),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.getTsFilePaths()),
           mapping);
     }
 

@@ -1,0 +1,478 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.TableFunction;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
+import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
+import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
+import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
+import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
+import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+
+/** Reads one or more TsFiles as a table function source. */
+public class ReadTsFileTableFunction implements TableFunction {
+  private static final String TABLE_NAME_PARAMETER_NAME = "TABLE_NAME";
+  private static final String TSFILE_PATHS_PARAMETER_NAME = "TSFILE_PATHS";
+
+  @Override
+  public List<ParameterSpecification> getArgumentsSpecifications() {
+    return Arrays.asList(
+        ScalarParameterSpecification.builder()
+            .name(TABLE_NAME_PARAMETER_NAME)
+            .type(Type.STRING)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(TSFILE_PATHS_PARAMETER_NAME)
+            .type(Type.STRING)
+            .build());
+  }
+
+  @Override
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
+    String tableName = getRequiredStringArgument(arguments, TABLE_NAME_PARAMETER_NAME);
+    List<String> tsFilePaths =
+        parseTsFilePaths(getRequiredStringArgument(arguments, TSFILE_PATHS_PARAMETER_NAME));
+    TsFileSchemaCollection schemaCollection =
+        collectTsFilesAndResolveSchema(tableName, tsFilePaths);
+    if (schemaCollection.mergedTableSchema == null) {
+      throw new UDFArgumentNotValidException(
+          "No table schema found for table " + tableName + " in TsFiles");
+    }
+    DescribedSchema outputSchema = convertToDescribedSchema(schemaCollection.mergedTableSchema);
+
+    ReadTsFileTableFunctionHandle handle =
+        new ReadTsFileTableFunctionHandle(
+            tableName,
+            schemaCollection.tsFiles.stream()
+                .map(File::getAbsolutePath)
+                .collect(Collectors.toList()),
+            outputSchema);
+
+    return TableFunctionAnalysis.builder().properColumnSchema(outputSchema).handle(handle).build();
+  }
+
+  @Override
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new ReadTsFileTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
+    ReadTsFileTableFunctionHandle handle = (ReadTsFileTableFunctionHandle) tableFunctionHandle;
+    return new TableFunctionProcessorProvider() {
+      @Override
+      public TableFunctionLeafProcessor getSplitProcessor() {
+        return new ReadTsFileLeafProcessor(handle);
+      }
+    };
+  }
+
+  private static String getRequiredStringArgument(Map<String, Argument> arguments, String name) {
+    Argument argument = arguments.get(name);
+    if (!(argument instanceof ScalarArgument)) {
+      throw new UDFArgumentNotValidException("Missing scalar argument: " + name);
+    }
+    Object value = ((ScalarArgument) argument).getValue();
+    if (!(value instanceof String) || ((String) value).trim().isEmpty()) {
+      throw new UDFArgumentNotValidException("Argument " + name + " should not be empty");
+    }
+    return ((String) value).trim();
+  }
+
+  private static List<String> parseTsFilePaths(String tsFilePaths) {
+    List<String> paths =
+        Arrays.stream(tsFilePaths.split(","))
+            .map(String::trim)
+            .filter(path -> !path.isEmpty())
+            .collect(Collectors.toList());
+    if (paths.isEmpty()) {
+      throw new UDFArgumentNotValidException(
+          "Argument " + TSFILE_PATHS_PARAMETER_NAME + " should contain at least one path");
+    }
+    return paths;
+  }
+
+  private static TsFileSchemaCollection collectTsFilesAndResolveSchema(
+      String tableName, List<String> tsFilePaths) {
+    List<File> tsFiles = new ArrayList<>();
+    MergedTableSchemaBuilder schemaBuilder = null;
+    for (String tsFilePath : tsFilePaths) {
+      Path path = new File(tsFilePath).toPath();
+      if (!Files.exists(path)) {
+        throw new UDFArgumentNotValidException("TsFile path does not exist: " + tsFilePath);
+      }
+      try (Stream<Path> walkedPaths = Files.walk(path)) {
+        Iterator<Path> iterator = walkedPaths.filter(Files::isRegularFile).iterator();
+        while (iterator.hasNext()) {
+          Path filePath = iterator.next();
+          TableSchema tableSchema = tryReadTableSchema(tableName, filePath.toFile());
+          if (tableSchema == null) {
+            continue;
+          }
+          tsFiles.add(filePath.toFile());
+          if (schemaBuilder == null) {
+            schemaBuilder = new MergedTableSchemaBuilder(tableName, tableSchema);
+          } else {
+            schemaBuilder.merge(tableSchema);
+          }
+        }
+      } catch (IOException e) {
+        throw new UDFArgumentNotValidException("Failed to scan TsFile path: " + tsFilePath);
+      }
+    }
+    if (tsFiles.isEmpty()) {
+      throw new UDFArgumentNotValidException("No valid TsFiles found");
+    }
+    return new TsFileSchemaCollection(
+        tsFiles, schemaBuilder == null ? null : schemaBuilder.build());
+  }
+
+  private static TableSchema tryReadTableSchema(String tableName, File tsFile) {
+    if (!tsFile.canRead()) {
+      return null;
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      if (!reader.isComplete() || reader.readVersionNumber() != TSFileConfig.VERSION_NUMBER) {
+        return null;
+      }
+      Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+      return tableSchemaMap.get(tableName.toLowerCase(Locale.ENGLISH));
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private static class TsFileSchemaCollection {
+    private final List<File> tsFiles;
+    private final TableSchema mergedTableSchema;
+
+    private TsFileSchemaCollection(List<File> tsFiles, TableSchema mergedTableSchema) {
+      this.tsFiles = tsFiles;
+      this.mergedTableSchema = mergedTableSchema;
+    }
+  }
+
+  private static class MergedTableSchemaBuilder {
+    private final String tableName;
+    private IMeasurementSchema timeColumnSchema;
+    private final List<IMeasurementSchema> tagColumnSchemas = new ArrayList<>();
+    private final Map<String, IMeasurementSchema> fieldColumnSchemaMap = new LinkedHashMap<>();
+
+    private MergedTableSchemaBuilder(String tableName, TableSchema tableSchema) {
+      this.tableName = tableName.toLowerCase(Locale.ENGLISH);
+      merge(tableSchema);
+    }
+
+    private void merge(TableSchema tableSchema) {
+      IMeasurementSchema currentTimeColumn = null;
+      List<IMeasurementSchema> currentTagColumns = new ArrayList<>();
+      List<IMeasurementSchema> currentFieldColumns = new ArrayList<>();
+      List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+      List<ColumnCategory> columnCategories = tableSchema.getColumnTypes();
+
+      for (int i = 0; i < columnCategories.size(); i++) {
+        if (columnCategories.get(i) == ColumnCategory.TIME) {
+          if (currentTimeColumn != null) {
+            throw new UDFArgumentNotValidException(
+                "Multiple time columns found when merging table schema for table " + tableName);
+          }
+          currentTimeColumn = columnSchemas.get(i);
+        } else if (columnCategories.get(i) == ColumnCategory.TAG) {
+          currentTagColumns.add(columnSchemas.get(i));
+        } else if (columnCategories.get(i) == ColumnCategory.FIELD) {
+          currentFieldColumns.add(columnSchemas.get(i));
+        }
+      }
+
+      mergeTimeColumn(currentTimeColumn);
+      mergeTagColumns(currentTagColumns);
+      mergeFieldColumns(currentFieldColumns);
+    }
+
+    private void mergeTimeColumn(IMeasurementSchema currentTimeColumn) {
+      if (currentTimeColumn == null) {
+        return;
+      }
+      if (timeColumnSchema == null) {
+        timeColumnSchema = currentTimeColumn;
+        return;
+      }
+      if (!timeColumnSchema.getMeasurementName().equals(currentTimeColumn.getMeasurementName())
+          || currentTimeColumn.getType() != TSDataType.TIMESTAMP) {
+        throw new UDFArgumentNotValidException(
+            "Time column conflicts when merging table schema for table " + tableName);
+      }
+    }
+
+    private void mergeTagColumns(List<IMeasurementSchema> currentTagColumns) {
+      int prefixLength = Math.min(tagColumnSchemas.size(), currentTagColumns.size());
+      for (int i = 0; i < prefixLength; i++) {
+        if (!tagColumnSchemas
+            .get(i)
+            .getMeasurementName()
+            .equals(currentTagColumns.get(i).getMeasurementName())) {
+          throw new UDFArgumentNotValidException(
+              "Tag columns conflict when merging table schema for table " + tableName);
+        }
+      }
+      tagColumnSchemas.addAll(currentTagColumns.subList(prefixLength, currentTagColumns.size()));
+    }
+
+    private void mergeFieldColumns(List<IMeasurementSchema> currentFieldColumns) {
+      for (IMeasurementSchema fieldColumn : currentFieldColumns) {
+        String fieldName = fieldColumn.getMeasurementName().toLowerCase(Locale.ENGLISH);
+        IMeasurementSchema existingColumn = fieldColumnSchemaMap.get(fieldName);
+        if (existingColumn != null && existingColumn.getType() != fieldColumn.getType()) {
+          throw new UDFArgumentNotValidException(
+              "Field column "
+                  + fieldColumn.getMeasurementName()
+                  + " has conflicting data types when merging table schema for table "
+                  + tableName);
+        }
+        fieldColumnSchemaMap.putIfAbsent(fieldName, fieldColumn);
+      }
+    }
+
+    private TableSchema build() {
+      List<IMeasurementSchema> columnSchemas = new ArrayList<>();
+      List<ColumnCategory> columnCategories = new ArrayList<>();
+      columnSchemas.add(
+          timeColumnSchema == null
+              ? new MeasurementSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP)
+              : timeColumnSchema);
+      columnCategories.add(ColumnCategory.TIME);
+      for (IMeasurementSchema tagColumnSchema : tagColumnSchemas) {
+        columnSchemas.add(tagColumnSchema);
+        columnCategories.add(ColumnCategory.TAG);
+      }
+      for (IMeasurementSchema fieldColumnSchema : fieldColumnSchemaMap.values()) {
+        columnSchemas.add(fieldColumnSchema);
+        columnCategories.add(ColumnCategory.FIELD);
+      }
+      return new TableSchema(tableName, columnSchemas, columnCategories);
+    }
+  }
+
+  private static DescribedSchema convertToDescribedSchema(TableSchema tableSchema) {
+    DescribedSchema.Builder builder = DescribedSchema.builder();
+    for (IMeasurementSchema columnSchema : tableSchema.getColumnSchemas()) {
+      builder.addField(
+          columnSchema.getMeasurementName(),
+          UDFDataTypeTransformer.transformToUDFDataType(columnSchema.getType()));
+    }
+    return builder.build();
+  }
+
+  private static class ReadTsFileLeafProcessor implements TableFunctionLeafProcessor {
+    private final ReadTsFileTableFunctionHandle handle;
+    private boolean finished;
+
+    private ReadTsFileLeafProcessor(ReadTsFileTableFunctionHandle handle) {
+      this.handle = handle;
+    }
+
+    @Override
+    public void beforeStart() {
+      // TODO: Open TsFile resources here.
+      finished = true;
+    }
+
+    @Override
+    public void process(List<ColumnBuilder> columnBuilders) {
+      // TODO: Read one batch from TsFile resources and write values into column builders.
+    }
+
+    @Override
+    public boolean isFinish() {
+      return finished;
+    }
+
+    @Override
+    public void beforeDestroy() {
+      // TODO: Close TsFile resources here.
+    }
+  }
+
+  public static class ReadTsFileTableFunctionHandle implements TableFunctionHandle {
+    private String tableName;
+    private List<String> tsFilePaths;
+    private List<String> outputColumnNames;
+    private List<Type> outputColumnTypes;
+
+    public ReadTsFileTableFunctionHandle() {
+      this("", Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+    }
+
+    public ReadTsFileTableFunctionHandle(
+        String tableName, List<String> tsFilePaths, DescribedSchema outputSchema) {
+      this(
+          tableName,
+          tsFilePaths,
+          outputSchema.getFields().stream()
+              .map(field -> field.getName().orElse(""))
+              .collect(Collectors.toList()),
+          outputSchema.getFields().stream()
+              .map(DescribedSchema.Field::getType)
+              .collect(Collectors.toList()));
+    }
+
+    private ReadTsFileTableFunctionHandle(
+        String tableName,
+        List<String> tsFilePaths,
+        List<String> outputColumnNames,
+        List<Type> outputColumnTypes) {
+      if (outputColumnNames.size() != outputColumnTypes.size()) {
+        throw new IllegalArgumentException("Output column names and types size mismatch");
+      }
+      this.tableName = tableName;
+      this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
+      this.outputColumnNames = Collections.unmodifiableList(new ArrayList<>(outputColumnNames));
+      this.outputColumnTypes = Collections.unmodifiableList(new ArrayList<>(outputColumnTypes));
+    }
+
+    public String getTableName() {
+      return tableName;
+    }
+
+    public List<String> getTsFilePaths() {
+      return tsFilePaths;
+    }
+
+    public List<String> getOutputColumnNames() {
+      return outputColumnNames;
+    }
+
+    public List<Type> getOutputColumnTypes() {
+      return outputColumnTypes;
+    }
+
+    @Override
+    public byte[] serialize() {
+      ByteBuffer buffer = ByteBuffer.allocate(calculateSerializeSize());
+      writeString(buffer, tableName);
+      buffer.putInt(tsFilePaths.size());
+      tsFilePaths.forEach(path -> writeString(buffer, path));
+      buffer.putInt(outputColumnNames.size());
+      for (int i = 0; i < outputColumnNames.size(); i++) {
+        writeString(buffer, outputColumnNames.get(i));
+        buffer.put(outputColumnTypes.get(i).getType());
+      }
+      return buffer.array();
+    }
+
+    @Override
+    public void deserialize(byte[] bytes) {
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+      tableName = readString(buffer);
+      int size = buffer.getInt();
+      List<String> paths = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        paths.add(readString(buffer));
+      }
+      tsFilePaths = Collections.unmodifiableList(paths);
+      size = buffer.getInt();
+      List<String> columnNames = new ArrayList<>(size);
+      List<Type> columnTypes = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        columnNames.add(readString(buffer));
+        columnTypes.add(Type.valueOf(buffer.get()));
+      }
+      outputColumnNames = Collections.unmodifiableList(columnNames);
+      outputColumnTypes = Collections.unmodifiableList(columnTypes);
+    }
+
+    @Override
+    public String toString() {
+      return "ReadTsFileTableFunctionHandle{"
+          + "tableName='"
+          + tableName
+          + '\''
+          + ", tsFilePaths="
+          + tsFilePaths
+          + ", outputColumnNames="
+          + outputColumnNames
+          + ", outputColumnTypes="
+          + outputColumnTypes
+          + '}';
+    }
+
+    private int calculateSerializeSize() {
+      int size = Integer.BYTES + tableName.getBytes(StandardCharsets.UTF_8).length;
+      size += Integer.BYTES;
+      for (String path : tsFilePaths) {
+        size += Integer.BYTES + path.getBytes(StandardCharsets.UTF_8).length;
+      }
+      size += Integer.BYTES;
+      for (String columnName : outputColumnNames) {
+        size += Integer.BYTES + columnName.getBytes(StandardCharsets.UTF_8).length + Byte.BYTES;
+      }
+      return size;
+    }
+
+    private static void writeString(ByteBuffer buffer, String value) {
+      byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+      buffer.putInt(bytes.length);
+      buffer.put(bytes);
+    }
+
+    private static String readString(ByteBuffer buffer) {
+      byte[] bytes = new byte[buffer.getInt()];
+      buffer.get(bytes);
+      return new String(bytes, StandardCharsets.UTF_8);
+    }
+  }
+}

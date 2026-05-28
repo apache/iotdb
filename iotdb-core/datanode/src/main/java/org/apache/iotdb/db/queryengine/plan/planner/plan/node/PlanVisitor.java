@@ -124,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
@@ -646,6 +647,10 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
   // =============================== Used for Table Model ====================================
 
   default R visitDeviceTableScan(DeviceTableScanNode node, C context) {
+    return visitTableScan(node, context);
+  }
+
+  default R visitExternalTsFileScan(ExternalTsFileScanNode node, C context) {
     return visitTableScan(node, context);
   }
 
