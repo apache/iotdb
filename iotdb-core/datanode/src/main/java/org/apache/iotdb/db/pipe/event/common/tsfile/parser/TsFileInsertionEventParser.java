@@ -140,7 +140,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     this.objectPathsOnly = objectPathsOnly;
 
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.TSFILE_HAS_INITIALIZED_PIPENAME_CREATION_TIME_PATTERN,
         tsFile,
         getClass().getSimpleName(),
