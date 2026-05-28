@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -118,43 +120,50 @@ class QueryModificationLoader implements AutoCloseable {
 
     long claimedCacheQuotaBytes = 0;
     int readModCount = 0;
+    boolean estimatedAfterLastAppend = false;
 
     while (currentIterator.hasNext()) {
       ModEntry modification = currentIterator.next();
       readModCount++;
       if (!queryContext.shouldSkipModification(modification)) {
         modifications.append(modification.keyOfPatternTree(), modification);
+        estimatedAfterLastAppend = false;
       }
 
       if (readModCount % modsMemoryEstimateReadInterval == 0) {
         long currentEstimatedSize = estimateModsTreeMemory(modifications);
-        if (currentEstimatedSize < claimedCacheQuotaBytes) {
-          throw new IllegalStateException(
-              String.format(
-                  "Estimated mods tree size decreased from %d to %d for TsFile %s.",
-                  claimedCacheQuotaBytes, currentEstimatedSize, resource));
-        }
+        checkEstimatedSizeNotDecreased(claimedCacheQuotaBytes, currentEstimatedSize);
         long delta = currentEstimatedSize - claimedCacheQuotaBytes;
         if (!tryClaimCacheQuota(delta)) {
           return new LoadedModsResult(modifications, claimedCacheQuotaBytes, false);
         }
         claimedCacheQuotaBytes = currentEstimatedSize;
+        estimatedAfterLastAppend = true;
       }
     }
 
-    long finalEstimatedSize = estimateModsTreeMemory(modifications);
-    if (finalEstimatedSize < claimedCacheQuotaBytes) {
+    if (!estimatedAfterLastAppend) {
+      long finalEstimatedSize = estimateModsTreeMemory(modifications);
+      checkEstimatedSizeNotDecreased(claimedCacheQuotaBytes, finalEstimatedSize);
+      long delta = finalEstimatedSize - claimedCacheQuotaBytes;
+      if (!tryClaimCacheQuota(delta)) {
+        return new LoadedModsResult(modifications, claimedCacheQuotaBytes, false);
+      }
+      claimedCacheQuotaBytes = finalEstimatedSize;
+    }
+    return new LoadedModsResult(modifications, claimedCacheQuotaBytes, true);
+  }
+
+  private void checkEstimatedSizeNotDecreased(
+      long previousEstimatedSize, long currentEstimatedSize) {
+    if (currentEstimatedSize < previousEstimatedSize) {
       throw new IllegalStateException(
           String.format(
-              "Estimated mods tree size decreased from %d to %d for TsFile %s.",
-              claimedCacheQuotaBytes, finalEstimatedSize, resource));
+              DataNodeQueryMessages.ESTIMATED_MODS_TREE_SIZE_DECREASED,
+              previousEstimatedSize,
+              currentEstimatedSize,
+              resource));
     }
-    long delta = finalEstimatedSize - claimedCacheQuotaBytes;
-    if (!tryClaimCacheQuota(delta)) {
-      return new LoadedModsResult(modifications, claimedCacheQuotaBytes, false);
-    }
-    claimedCacheQuotaBytes = finalEstimatedSize;
-    return new LoadedModsResult(modifications, claimedCacheQuotaBytes, true);
   }
 
   private boolean tryClaimCacheQuota(long delta) {
@@ -182,11 +191,12 @@ class QueryModificationLoader implements AutoCloseable {
       // has already been read, then continue scanning the same iterator by path.
       List<ModEntry> matchedMods;
       try {
-        matchedMods = modsTreeMatcher.match(partialTree.mods);
+        matchedMods = new ArrayList<>(modsTreeMatcher.match(partialTree.mods));
       } finally {
         partialTree.mods = null;
         releaseClaimedCacheQuota(partialTree);
       }
+      reserveMatchedModsMemory(matchedMods);
 
       while (currentIterator.hasNext()) {
         ModEntry modification = currentIterator.next();
@@ -194,12 +204,12 @@ class QueryModificationLoader implements AutoCloseable {
           continue;
         }
         if (modificationMatcher.test(modification)) {
+          reserveMatchedModMemory(modification);
           matchedMods.add(modification);
         }
       }
 
       matchedMods = ModificationUtils.sortAndMerge(matchedMods);
-      reserveMatchedModsMemory(matchedMods);
       return matchedMods;
     } finally {
       close();
@@ -213,7 +223,7 @@ class QueryModificationLoader implements AutoCloseable {
       // Return only the matched mods and release the cache quota claimed during loading.
       List<ModEntry> matchedMods;
       try {
-        matchedMods = modsTreeMatcher.match(loadedTree.mods);
+        matchedMods = new ArrayList<>(modsTreeMatcher.match(loadedTree.mods));
       } finally {
         loadedTree.mods = null;
         releaseClaimedCacheQuota(loadedTree);
@@ -226,26 +236,20 @@ class QueryModificationLoader implements AutoCloseable {
   }
 
   private void reserveMatchedModsMemory(List<ModEntry> matchedMods) {
-    long memCost =
-        RamUsageEstimator.shallowSizeOf(matchedMods)
-            + (long) matchedMods.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + matchedMods.stream().mapToLong(ModEntry::ramBytesUsed).sum();
-    if (memCost > 0) {
-      reserveMemoryImmediately(memCost);
+    reserveMemoryImmediately(RamUsageEstimator.shallowSizeOf(matchedMods));
+    for (ModEntry matchedMod : matchedMods) {
+      reserveMatchedModMemory(matchedMod);
     }
   }
 
+  private void reserveMatchedModMemory(ModEntry matchedMod) {
+    reserveMemoryImmediately(RamUsageEstimator.NUM_BYTES_OBJECT_REF + matchedMod.ramBytesUsed());
+  }
+
   private void reserveMemoryImmediately(long bytes) {
-    synchronized (memoryReservationManager) {
-      try {
-        memoryReservationManager.reserveMemoryCumulatively(bytes);
-        memoryReservationManager.reserveMemoryImmediately();
-      } catch (MemoryNotEnoughException e) {
-        // reserveMemoryCumulatively has already added bytes to the pending reservation. Clear it
-        // while holding the same lock so other loader threads cannot observe the stale pending
-        // size.
-        memoryReservationManager.releaseMemoryVirtually(bytes);
-        throw e;
+    if (bytes > 0) {
+      synchronized (memoryReservationManager) {
+        memoryReservationManager.reserveMemoryImmediately(bytes);
       }
     }
   }

@@ -136,6 +136,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "Free more memory than has been reserved.";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "Estimated mods tree size decreased from %d to %d for TsFile %s.";
 
   // --- Execution / Operator ---
 
