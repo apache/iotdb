@@ -342,7 +342,12 @@ public class TsFileInsertionEventParserTest {
               false,
               false)) {
         final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
-        assertParserSkipsUnnecessaryBitMaps(iterator, "tag0", "dense", "sparse");
+        Assert.assertTrue(iterator.hasNext());
+        final Tablet parsedTablet =
+            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        assertBitMapExistence(parsedTablet, false, false, true);
+        Assert.assertTrue(parsedTablet.isNull(1, 2));
+        Assert.assertFalse(iterator.hasNext());
       }
     } finally {
       CommonDescriptor.getInstance()
@@ -1095,7 +1100,12 @@ public class TsFileInsertionEventParserTest {
                   false,
                   false)) {
         final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
-        assertParserSkipsUnnecessaryBitMaps(iterator, null, "dense", "sparse");
+        Assert.assertTrue(iterator.hasNext());
+        final Tablet parsedTablet =
+            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        assertBitMapExistence(parsedTablet, false, true);
+        Assert.assertTrue(parsedTablet.isNull(1, 1));
+        Assert.assertFalse(iterator.hasNext());
       }
     } finally {
       CommonDescriptor.getInstance()
@@ -1104,86 +1114,17 @@ public class TsFileInsertionEventParserTest {
     }
   }
 
-  private void assertParserSkipsUnnecessaryBitMaps(
-      final Iterator<TabletInsertionEvent> iterator,
-      final String tagColumnName,
-      final String denseColumnName,
-      final String sparseColumnName) {
-    int tagValueCount = 0;
-    int denseValueCount = 0;
-    int sparseValueCount = 0;
-    int sparseNullCount = 0;
-
-    while (iterator.hasNext()) {
-      final Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
-      final BitMap[] bitMaps = parsedTablet.getBitMaps();
-
-      final int tagColumnIndex = getColumnIndex(parsedTablet, tagColumnName);
-      if (tagColumnIndex >= 0) {
-        assertColumnHasNoBitMap(bitMaps, tagColumnIndex);
-        for (int rowIndex = 0; rowIndex < parsedTablet.getRowSize(); ++rowIndex) {
-          Assert.assertFalse(parsedTablet.isNull(rowIndex, tagColumnIndex));
-          ++tagValueCount;
-        }
-      }
-
-      final int denseColumnIndex = getColumnIndex(parsedTablet, denseColumnName);
-      if (denseColumnIndex >= 0) {
-        assertColumnHasNoBitMap(bitMaps, denseColumnIndex);
-        for (int rowIndex = 0; rowIndex < parsedTablet.getRowSize(); ++rowIndex) {
-          Assert.assertFalse(parsedTablet.isNull(rowIndex, denseColumnIndex));
-          ++denseValueCount;
-        }
-      }
-
-      final int sparseColumnIndex = getColumnIndex(parsedTablet, sparseColumnName);
-      if (sparseColumnIndex >= 0) {
-        boolean hasSparseNull = false;
-        for (int rowIndex = 0; rowIndex < parsedTablet.getRowSize(); ++rowIndex) {
-          if (parsedTablet.isNull(rowIndex, sparseColumnIndex)) {
-            hasSparseNull = true;
-            ++sparseNullCount;
-          }
-          ++sparseValueCount;
-        }
-        if (hasSparseNull) {
-          assertColumnHasBitMap(bitMaps, sparseColumnIndex);
-        } else {
-          assertColumnHasNoBitMap(bitMaps, sparseColumnIndex);
-        }
-      }
-    }
-
-    if (Objects.nonNull(tagColumnName)) {
-      Assert.assertEquals(2, tagValueCount);
-    }
-    Assert.assertEquals(2, denseValueCount);
-    Assert.assertEquals(2, sparseValueCount);
-    Assert.assertEquals(1, sparseNullCount);
-  }
-
-  private int getColumnIndex(final Tablet tablet, final String columnName) {
-    if (Objects.isNull(columnName)) {
-      return -1;
-    }
-    for (int i = 0; i < tablet.getSchemas().size(); ++i) {
-      if (columnName.equals(tablet.getSchemas().get(i).getMeasurementName())) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  private void assertColumnHasBitMap(final BitMap[] bitMaps, final int columnIndex) {
+  private void assertBitMapExistence(
+      final Tablet tablet, final boolean... expectedColumnHasBitMap) {
+    final BitMap[] bitMaps = tablet.getBitMaps();
     Assert.assertNotNull(bitMaps);
-    Assert.assertTrue(columnIndex < bitMaps.length);
-    Assert.assertNotNull(bitMaps[columnIndex]);
-  }
-
-  private void assertColumnHasNoBitMap(final BitMap[] bitMaps, final int columnIndex) {
-    if (Objects.nonNull(bitMaps)) {
-      Assert.assertTrue(columnIndex < bitMaps.length);
-      Assert.assertNull(bitMaps[columnIndex]);
+    Assert.assertEquals(expectedColumnHasBitMap.length, bitMaps.length);
+    for (int i = 0; i < expectedColumnHasBitMap.length; ++i) {
+      if (expectedColumnHasBitMap[i]) {
+        Assert.assertNotNull(bitMaps[i]);
+      } else {
+        Assert.assertNull(bitMaps[i]);
+      }
     }
   }
 
