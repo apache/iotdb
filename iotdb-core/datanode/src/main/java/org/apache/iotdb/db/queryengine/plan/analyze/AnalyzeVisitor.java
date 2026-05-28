@@ -3112,7 +3112,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PathPatternTree patternTree,
       Analysis analysis,
       MPPQueryContext context,
-      PathPatternTree authorityScope)
+      PathPatternTree authorityScope,
+      boolean includeLogicalView)
       throws IllegalPathException {
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
@@ -3124,7 +3125,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFinishQueryAfterAnalyze(true);
       return false;
     }
-    removeLogicViewMeasurement(schemaTree);
+    List<DeviceSchemaInfo> deviceSchemaInfoList;
+    if (includeLogicalView) {
+      deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+      updateSchemaTreeByViews(analysis, schemaTree, context);
+    } else {
+      removeLogicViewMeasurement(schemaTree);
+      deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+    }
+
     Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext =
         new HashMap<>();
     /**
@@ -3132,38 +3141,56 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
      * as a normal node, not a device+templateId. This means that all nodes are what we need.). We
      * can use ALL_MATCH_PATTERN to get result.
      */
-    List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
     Set<String> deviceSet = new HashSet<>();
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       boolean isAligned = deviceSchemaInfo.isAligned();
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-      deviceSet.add(devicePath.getFullPath());
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
         List<IMeasurementSchema> schemaList = new ArrayList<>();
         List<TimeseriesContext> timeseriesContextList = new ArrayList<>();
         for (IMeasurementSchemaInfo measurementSchemaInfo :
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
+          if (includeLogicalView && measurementSchemaInfo.isLogicalView()) {
+            addLogicalViewSourcesForActiveCount(
+                devicePath,
+                measurementSchemaInfo,
+                schemaTree,
+                deviceToTimeseriesContext,
+                deviceSet);
+            continue;
+          }
           schemaList.add(measurementSchemaInfo.getSchema());
           measurementList.add(measurementSchemaInfo.getName());
           timeseriesContextList.add(new TimeseriesContext(measurementSchemaInfo));
         }
-        AlignedPath alignedPath =
-            new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
-        deviceToTimeseriesContext
-            .computeIfAbsent(devicePath, k -> new HashMap<>())
-            .put(alignedPath, timeseriesContextList);
+        if (!measurementList.isEmpty()) {
+          deviceSet.add(devicePath.getFullPath());
+          AlignedPath alignedPath =
+              new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
+          deviceToTimeseriesContext
+              .computeIfAbsent(devicePath, k -> new HashMap<>())
+              .put(alignedPath, timeseriesContextList);
+        }
       } else {
         for (IMeasurementSchemaInfo measurementSchemaInfo :
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
-          MeasurementPath measurementPath =
-              new MeasurementPath(
-                  devicePath.concatNode(measurementSchemaInfo.getName()).getNodes());
-          deviceToTimeseriesContext
-              .computeIfAbsent(devicePath, k -> new HashMap<>())
-              .put(
-                  measurementPath,
-                  Collections.singletonList(new TimeseriesContext(measurementSchemaInfo)));
+          if (includeLogicalView && measurementSchemaInfo.isLogicalView()) {
+            addLogicalViewSourcesForActiveCount(
+                devicePath,
+                measurementSchemaInfo,
+                schemaTree,
+                deviceToTimeseriesContext,
+                deviceSet);
+          } else {
+            addPhysicalTimeseriesForActiveCount(
+                devicePath,
+                measurementSchemaInfo,
+                false,
+                new TimeseriesContext(measurementSchemaInfo),
+                deviceToTimeseriesContext,
+                deviceSet);
+          }
         }
       }
     }
@@ -3173,6 +3200,75 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree, context);
     analysis.setDataPartitionInfo(dataPartition);
     return true;
+  }
+
+  private void addLogicalViewSourcesForActiveCount(
+      PartialPath viewDevicePath,
+      IMeasurementSchemaInfo viewSchemaInfo,
+      ISchemaTree schemaTree,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      Set<String> deviceSet) {
+    LogicalViewSchema logicalViewSchema = viewSchemaInfo.getSchemaAsLogicalViewSchema();
+    if (logicalViewSchema == null) {
+      return;
+    }
+
+    String viewPath = viewDevicePath.concatNode(viewSchemaInfo.getName()).getFullPath();
+    for (PartialPath sourcePath : getSourcePaths(logicalViewSchema.getExpression())) {
+      if (sourcePath.getNodeLength() <= 1) {
+        continue;
+      }
+      PartialPath sourceDevicePath =
+          new PartialPath(Arrays.copyOf(sourcePath.getNodes(), sourcePath.getNodeLength() - 1));
+      DeviceSchemaInfo sourceDeviceSchemaInfo =
+          schemaTree.searchDeviceSchemaInfo(
+              sourceDevicePath, Collections.singletonList(sourcePath.getMeasurement()));
+      if (sourceDeviceSchemaInfo == null
+          || sourceDeviceSchemaInfo.getMeasurementSchemaInfoList().isEmpty()) {
+        continue;
+      }
+
+      IMeasurementSchemaInfo sourceSchemaInfo =
+          sourceDeviceSchemaInfo.getMeasurementSchemaInfoList().get(0);
+      if (sourceSchemaInfo == null || sourceSchemaInfo.isLogicalView()) {
+        continue;
+      }
+
+      addPhysicalTimeseriesForActiveCount(
+          sourceDevicePath,
+          sourceSchemaInfo,
+          sourceDeviceSchemaInfo.isAligned(),
+          new TimeseriesContext(sourceSchemaInfo, 0, Collections.singleton(viewPath)),
+          deviceToTimeseriesContext,
+          deviceSet);
+    }
+  }
+
+  private void addPhysicalTimeseriesForActiveCount(
+      PartialPath devicePath,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      boolean isAligned,
+      TimeseriesContext timeseriesContext,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      Set<String> deviceSet) {
+    deviceSet.add(devicePath.getFullPath());
+    PartialPath timeseriesPath =
+        isAligned
+            ? new AlignedPath(
+                devicePath.getNodes(),
+                Collections.singletonList(measurementSchemaInfo.getName()),
+                Collections.singletonList(measurementSchemaInfo.getSchema()))
+            : new MeasurementPath(
+                devicePath.concatNode(measurementSchemaInfo.getName()).getNodes());
+    Map<PartialPath, List<TimeseriesContext>> timeseriesContextMap =
+        deviceToTimeseriesContext.computeIfAbsent(devicePath, k -> new HashMap<>());
+    List<TimeseriesContext> existingContextList = timeseriesContextMap.get(timeseriesPath);
+    if (existingContextList == null) {
+      timeseriesContextMap.put(
+          timeseriesPath, new ArrayList<>(Collections.singletonList(timeseriesContext)));
+    } else {
+      existingContextList.set(0, existingContextList.get(0).mergeActiveCount(timeseriesContext));
+    }
   }
 
   @Override
@@ -3193,7 +3289,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 patternTree,
                 analysis,
                 context,
-                showTimeSeriesStatement.getAuthorityScope());
+                showTimeSeriesStatement.getAuthorityScope(),
+                false);
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
           return analysis;
@@ -3437,7 +3534,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 patternTree,
                 analysis,
                 context,
-                countTimeSeriesStatement.getAuthorityScope());
+                countTimeSeriesStatement.getAuthorityScope(),
+                true);
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
           return analysis;
