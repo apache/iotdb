@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -45,11 +46,18 @@ public class TopicMeta {
   private long creationTime; // unit in ms
   private TopicConfig config;
 
+  private String ownerId;
+  private long ownerEpoch;
+  private long ownerLastTransferTimeMs;
+  private Long ownerLeaseExpireTimeMs;
+
   // TODO: remove this variable later
   private Set<String> subscribedConsumerGroupIds; // unused now
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
+    this.ownerEpoch = -1L;
+    this.ownerLastTransferTimeMs = -1L;
 
     this.subscribedConsumerGroupIds = new HashSet<>();
   }
@@ -59,6 +67,9 @@ public class TopicMeta {
     this.topicName = topicName;
     this.creationTime = creationTime;
     this.config = new TopicConfig(topicAttributes);
+    this.ownerEpoch = -1L;
+    this.ownerLastTransferTimeMs = -1L;
+    initOwnerFromTopicAttributes(topicAttributes);
 
     this.subscribedConsumerGroupIds = new HashSet<>();
   }
@@ -68,6 +79,10 @@ public class TopicMeta {
     copied.topicName = topicName;
     copied.creationTime = creationTime;
     copied.config = new TopicConfig(new HashMap<>(config.getAttribute()));
+    copied.ownerId = ownerId;
+    copied.ownerEpoch = ownerEpoch;
+    copied.ownerLastTransferTimeMs = ownerLastTransferTimeMs;
+    copied.ownerLeaseExpireTimeMs = ownerLeaseExpireTimeMs;
 
     copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
     return copied;
@@ -83,6 +98,81 @@ public class TopicMeta {
 
   public TopicConfig getConfig() {
     return config;
+  }
+
+  public boolean isOwnerFencingEnabled() {
+    return Objects.nonNull(ownerId) && ownerEpoch >= 0;
+  }
+
+  public String getOwnerId() {
+    return ownerId;
+  }
+
+  public long getOwnerEpoch() {
+    return ownerEpoch;
+  }
+
+  public long getOwnerLastTransferTimeMs() {
+    return ownerLastTransferTimeMs;
+  }
+
+  public Long getOwnerLeaseExpireTimeMs() {
+    return ownerLeaseExpireTimeMs;
+  }
+
+  public void transferOwner(final String ownerId, final long ownerEpoch) {
+    transferOwner(ownerId, ownerEpoch, null);
+  }
+
+  public void transferOwner(
+      final String ownerId, final long ownerEpoch, final Long ownerLeaseExpireTimeMs) {
+    if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
+      throw new IllegalArgumentException("Subscription topic owner id should not be empty");
+    }
+    if (ownerEpoch < 0) {
+      throw new IllegalArgumentException("Subscription topic owner epoch should not be negative");
+    }
+    if (isOwnerFencingEnabled() && ownerEpoch <= this.ownerEpoch) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner epoch should increase monotonically, current epoch is %s,"
+                  + " incoming epoch is %s",
+              this.ownerEpoch, ownerEpoch));
+    }
+
+    this.ownerId = ownerId;
+    this.ownerEpoch = ownerEpoch;
+    this.ownerLeaseExpireTimeMs = ownerLeaseExpireTimeMs;
+    this.ownerLastTransferTimeMs = System.currentTimeMillis();
+
+    config.getAttribute().put(TopicConstant.OWNER_ID_KEY, ownerId);
+    config.getAttribute().put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    if (Objects.nonNull(ownerLeaseExpireTimeMs)) {
+      config
+          .getAttribute()
+          .put(
+              TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+    } else {
+      config.getAttribute().remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+    }
+  }
+
+  public void clearOwner() {
+    ownerId = null;
+    ownerEpoch = -1L;
+    ownerLastTransferTimeMs = -1L;
+    ownerLeaseExpireTimeMs = null;
+    config.getAttribute().remove(TopicConstant.OWNER_ID_KEY);
+    config.getAttribute().remove(TopicConstant.OWNER_EPOCH_KEY);
+    config.getAttribute().remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+  }
+
+  public boolean matchesOwner(final String requestOwnerId, final Long requestOwnerEpoch) {
+    return !isOwnerFencingEnabled()
+        || (Objects.equals(ownerId, requestOwnerId)
+            && Objects.equals(ownerEpoch, requestOwnerEpoch)
+            && (Objects.isNull(ownerLeaseExpireTimeMs)
+                || System.currentTimeMillis() <= ownerLeaseExpireTimeMs));
   }
 
   /**
@@ -156,6 +246,8 @@ public class TopicMeta {
       topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(inputStream));
     }
 
+    topicMeta.initOwnerFromTopicAttributes(topicMeta.config.getAttribute());
+
     return topicMeta;
   }
 
@@ -177,7 +269,66 @@ public class TopicMeta {
       topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
+    topicMeta.initOwnerFromTopicAttributes(topicMeta.config.getAttribute());
+
     return topicMeta;
+  }
+
+  public static void validateOwnerProgression(
+      final TopicMeta currentTopicMeta, final TopicMeta updatedTopicMeta) {
+    if (Objects.isNull(currentTopicMeta)
+        || Objects.isNull(updatedTopicMeta)
+        || !currentTopicMeta.isOwnerFencingEnabled()) {
+      return;
+    }
+
+    if (!updatedTopicMeta.isOwnerFencingEnabled()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner should not be cleared by stale topic meta, topic: %s,"
+                  + " current owner-id: %s, current owner-epoch: %s",
+              currentTopicMeta.getTopicName(),
+              currentTopicMeta.getOwnerId(),
+              currentTopicMeta.getOwnerEpoch()));
+    }
+
+    final boolean epochRollback =
+        updatedTopicMeta.getOwnerEpoch() < currentTopicMeta.getOwnerEpoch();
+    final boolean sameEpochOwnerChanged =
+        updatedTopicMeta.getOwnerEpoch() == currentTopicMeta.getOwnerEpoch()
+            && !Objects.equals(updatedTopicMeta.getOwnerId(), currentTopicMeta.getOwnerId());
+    if (epochRollback || sameEpochOwnerChanged) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner epoch should not roll back, topic: %s, current owner-id:"
+                  + " %s, current owner-epoch: %s, incoming owner-id: %s, incoming owner-epoch:"
+                  + " %s",
+              currentTopicMeta.getTopicName(),
+              currentTopicMeta.getOwnerId(),
+              currentTopicMeta.getOwnerEpoch(),
+              updatedTopicMeta.getOwnerId(),
+              updatedTopicMeta.getOwnerEpoch()));
+    }
+  }
+
+  private void initOwnerFromTopicAttributes(final Map<String, String> topicAttributes) {
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    final String configuredOwnerId = topicConfig.getString(TopicConstant.OWNER_ID_KEY);
+    if (Objects.isNull(configuredOwnerId)) {
+      return;
+    }
+
+    final Long configuredOwnerEpoch = topicConfig.getLong(TopicConstant.OWNER_EPOCH_KEY);
+    if (Objects.isNull(configuredOwnerEpoch)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner epoch should be set when %s is set",
+              TopicConstant.OWNER_ID_KEY));
+    }
+    transferOwner(
+        configuredOwnerId,
+        configuredOwnerEpoch,
+        topicConfig.getLong(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY));
   }
 
   /////////////////////////////// utilities ///////////////////////////////
@@ -257,12 +408,16 @@ public class TopicMeta {
     final TopicMeta that = (TopicMeta) obj;
     return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
-        && Objects.equals(config, that.config);
+        && Objects.equals(config, that.config)
+        && Objects.equals(ownerId, that.ownerId)
+        && ownerEpoch == that.ownerEpoch
+        && Objects.equals(ownerLeaseExpireTimeMs, that.ownerLeaseExpireTimeMs);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, creationTime, config);
+    return Objects.hash(
+        topicName, creationTime, config, ownerId, ownerEpoch, ownerLeaseExpireTimeMs);
   }
 
   @Override
@@ -274,6 +429,14 @@ public class TopicMeta {
         + creationTime
         + ", config="
         + config
+        + ", ownerId='"
+        + ownerId
+        + "', ownerEpoch="
+        + ownerEpoch
+        + ", ownerLastTransferTimeMs="
+        + ownerLastTransferTimeMs
+        + ", ownerLeaseExpireTimeMs="
+        + ownerLeaseExpireTimeMs
         + '}';
   }
 }

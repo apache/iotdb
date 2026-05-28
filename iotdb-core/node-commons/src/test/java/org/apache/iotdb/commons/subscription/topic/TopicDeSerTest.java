@@ -20,10 +20,13 @@
 package org.apache.iotdb.commons.subscription.topic;
 
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -53,6 +56,64 @@ public class TopicDeSerTest {
     Assert.assertEquals(topicMeta.getConfig(), topicMeta2.getConfig());
     Assert.assertEquals(
         topicMeta.getSubscribedConsumerGroupIds(), topicMeta2.getSubscribedConsumerGroupIds());
+  }
+
+  @Test
+  public void testTopicOwnerDeSer() throws IOException {
+    Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+
+    TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    Assert.assertTrue(topicMeta.isOwnerFencingEnabled());
+    Assert.assertEquals("sn1", topicMeta.getOwnerId());
+    Assert.assertEquals(5L, topicMeta.getOwnerEpoch());
+    Assert.assertTrue(topicMeta.matchesOwner("sn1", 5L));
+    Assert.assertFalse(topicMeta.matchesOwner("sn2", 5L));
+    Assert.assertFalse(topicMeta.matchesOwner("sn1", 4L));
+
+    TopicMeta topicMeta1 = TopicMeta.deserialize(topicMeta.serialize());
+    TopicMeta topicMeta2 = topicMeta1.deepCopy();
+
+    Assert.assertEquals(topicMeta, topicMeta1);
+    Assert.assertEquals(topicMeta, topicMeta2);
+    Assert.assertEquals(topicMeta.getOwnerId(), topicMeta2.getOwnerId());
+    Assert.assertEquals(topicMeta.getOwnerEpoch(), topicMeta2.getOwnerEpoch());
+    Assert.assertEquals(
+        topicMeta.getOwnerLeaseExpireTimeMs(), topicMeta2.getOwnerLeaseExpireTimeMs());
+
+    topicMeta.transferOwner("sn2", 6L, 100L);
+    Assert.assertEquals("sn2", topicMeta.getOwnerId());
+    Assert.assertEquals(6L, topicMeta.getOwnerEpoch());
+    Assert.assertEquals("sn2", topicMeta.getConfig().getString(TopicConstant.OWNER_ID_KEY));
+    Assert.assertEquals(
+        6L, topicMeta.getConfig().getLong(TopicConstant.OWNER_EPOCH_KEY).longValue());
+    Assert.assertEquals(
+        100L,
+        topicMeta.getConfig().getLong(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY).longValue());
+
+    topicMeta.clearOwner();
+    Assert.assertFalse(topicMeta.isOwnerFencingEnabled());
+    Assert.assertFalse(topicMeta.getConfig().hasAttribute(TopicConstant.OWNER_ID_KEY));
+    Assert.assertFalse(topicMeta.getConfig().hasAttribute(TopicConstant.OWNER_EPOCH_KEY));
+    Assert.assertFalse(
+        topicMeta.getConfig().hasAttribute(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY));
+  }
+
+  @Test
+  public void testSequentialTopicMetaDeserializeDoesNotConsumeNextTopic() throws IOException {
+    final TopicMeta firstTopicMeta = new TopicMeta("first_topic", 1, new HashMap<>());
+    final TopicMeta secondTopicMeta = new TopicMeta("second_topic", 2, new HashMap<>());
+
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    firstTopicMeta.serialize(outputStream);
+    secondTopicMeta.serialize(outputStream);
+
+    final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    Assert.assertEquals(firstTopicMeta, TopicMeta.deserialize(inputStream));
+    Assert.assertEquals(secondTopicMeta, TopicMeta.deserialize(inputStream));
+    Assert.assertEquals(0, inputStream.available());
   }
 
   @Test

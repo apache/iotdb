@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPollTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
@@ -105,6 +106,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   protected String consumerId;
   protected String consumerGroupId;
+  protected String ownerId;
+  protected Long ownerEpoch;
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
@@ -154,6 +157,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
+  public String getOwnerId() {
+    return ownerId;
+  }
+
+  public Long getOwnerEpoch() {
+    return ownerEpoch;
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
   protected AbstractSubscriptionConsumer(final AbstractSubscriptionConsumerBuilder builder) {
@@ -183,6 +194,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
+    this.ownerId = builder.ownerId;
+    this.ownerEpoch = builder.ownerEpoch;
 
     this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
     this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
@@ -213,6 +226,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             .encryptedPassword((String) properties.get(ConsumerConstant.ENCRYPTED_PASSWORD_KEY))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
+            .ownerId((String) properties.get(ConsumerConstant.OWNER_ID_KEY))
+            .ownerEpoch((Long) properties.get(ConsumerConstant.OWNER_EPOCH_KEY))
             .heartbeatIntervalMs(
                 (Long)
                     properties.getOrDefault(
@@ -394,6 +409,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs);
@@ -408,6 +425,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.encryptedPassword,
             this.consumerId,
             this.consumerGroupId,
+            this.ownerId,
+            this.ownerEpoch,
             this.thriftMaxFrameSize,
             this.heartbeatIntervalMs,
             this.connectionTimeoutInMs);
@@ -1341,6 +1360,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         subscribedTopics = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
+        if (e instanceof SubscriptionOwnerFencedException) {
+          throw (SubscriptionOwnerFencedException) e;
+        }
         if (e instanceof SubscriptionPipeTimeoutException) {
           // degrade exception to log for pipe timeout
           LOGGER.warn(e.getMessage());
@@ -1429,6 +1451,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
+    result.put("ownerId", ownerId);
+    result.put("ownerEpoch", String.valueOf(ownerEpoch));
     result.put("isClosed", isClosed.toString());
     result.put("fileSaveDir", fileSaveDir);
     result.put(
@@ -1443,6 +1467,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final Map<String, String> result = new HashMap<>();
     result.put("consumerId", consumerId);
     result.put("consumerGroupId", consumerGroupId);
+    result.put("ownerId", ownerId);
+    result.put("ownerEpoch", String.valueOf(ownerEpoch));
     result.put("heartbeatIntervalMs", String.valueOf(heartbeatIntervalMs));
     result.put("endpointsSyncIntervalMs", String.valueOf(endpointsSyncIntervalMs));
     result.put("providers", providers.toString());

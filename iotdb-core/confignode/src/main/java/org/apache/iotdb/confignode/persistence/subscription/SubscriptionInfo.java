@@ -338,6 +338,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private TSStatus alterTopicInternal(final AlterTopicPlan plan) {
+    try {
+      TopicMeta.validateOwnerProgression(
+          topicMetaKeeper.getTopicMeta(plan.getTopicMeta().getTopicName()), plan.getTopicMeta());
+    } catch (final IllegalArgumentException e) {
+      return new TSStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+
     topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
     topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

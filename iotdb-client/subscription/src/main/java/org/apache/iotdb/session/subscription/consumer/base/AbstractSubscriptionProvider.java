@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionPipeTimeoutException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
@@ -81,6 +82,8 @@ public abstract class AbstractSubscriptionProvider {
 
   private String consumerId;
   private String consumerGroupId;
+  private final String ownerId;
+  private final Long ownerEpoch;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
@@ -109,6 +112,8 @@ public abstract class AbstractSubscriptionProvider {
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -124,6 +129,8 @@ public abstract class AbstractSubscriptionProvider {
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+    this.ownerId = ownerId;
+    this.ownerEpoch = ownerEpoch;
     this.username = username;
     this.password = password;
     this.encryptedPassword = encryptedPassword;
@@ -176,6 +183,12 @@ public abstract class AbstractSubscriptionProvider {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    if (ownerId != null) {
+      consumerAttributes.put(ConsumerConstant.OWNER_ID_KEY, ownerId);
+    }
+    if (ownerEpoch != null) {
+      consumerAttributes.put(ConsumerConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    }
     consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
     consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
     if (encryptedPassword != null) {
@@ -451,6 +464,17 @@ public abstract class AbstractSubscriptionProvider {
       case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
         throw new SubscriptionPipeTimeoutException(
             String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
+      case 1913: // SUBSCRIPTION_OWNER_FENCED
+      case 1914: // SUBSCRIPTION_OWNER_REQUIRED
+      case 1915: // SUBSCRIPTION_OWNER_EPOCH_REQUIRED
+      case 1916: // SUBSCRIPTION_OWNER_LEASE_EXPIRED
+      case 1917: // SUBSCRIPTION_OWNER_EPOCH_CONFLICT
+        {
+          final String errorMessage =
+              String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionOwnerFencedException(errorMessage);
+        }
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1909: // SUBSCRIPTION_MISSING_CUSTOMER

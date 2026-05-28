@@ -326,6 +326,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // TODO: do something
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic()
+            .checkTopicOwners(
+                consumerConfig,
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
+    }
 
     LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CONSUMER_HEARTBEAT_SUCCESS, consumerConfig);
 
@@ -406,6 +416,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // subscribe topics
     final Set<String> topicNames = req.getTopicNames();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNames);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(ownerStatus);
+    }
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -498,16 +513,48 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
       switch (SubscriptionPollRequestType.valueOf(requestType)) {
         case POLL:
+          final Set<String> pollTopicNames = ((PollPayload) request.getPayload()).getTopicNames();
+          final Set<String> subscribedTopicNames =
+              SubscriptionAgent.consumer()
+                  .getTopicNamesSubscribedByConsumer(
+                      consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+          final Set<String> topicNamesToCheck = new HashSet<>(pollTopicNames);
+          topicNamesToCheck.removeIf(topicName -> !subscribedTopicNames.contains(topicName));
+          final TSStatus ownerStatus =
+              SubscriptionAgent.topic().checkTopicOwners(consumerConfig, topicNamesToCheck);
+          if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(ownerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollRequest(
                   consumerConfig, (PollPayload) request.getPayload(), maxBytes);
           break;
         case POLL_FILE:
+          final TSStatus tsFileOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollFilePayload) request.getPayload()).getCommitContext().getTopicName());
+          if (tsFileOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tsFileOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTsFileRequest(
                   consumerConfig, (PollFilePayload) request.getPayload());
           break;
         case POLL_TABLETS:
+          final TSStatus tabletsOwnerStatus =
+              SubscriptionAgent.topic()
+                  .checkTopicOwner(
+                      consumerConfig,
+                      ((PollTabletsPayload) request.getPayload())
+                          .getCommitContext()
+                          .getTopicName());
+          if (tabletsOwnerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return PipeSubscribePollResp.toTPipeSubscribeResp(
+                tabletsOwnerStatus, Collections.emptyList());
+          }
           events =
               handlePipeSubscribePollTabletsRequest(
                   consumerConfig, (PollTabletsPayload) request.getPayload());
@@ -666,6 +713,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic()
+            .checkTopicOwners(
+                consumerConfig,
+                commitContexts.stream()
+                    .map(SubscriptionCommitContext::getTopicName)
+                    .collect(Collectors.toSet()));
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeCommitResp.toTPipeSubscribeResp(ownerStatus);
+    }
     final boolean nack = req.isNack();
     final List<SubscriptionCommitContext> successfulCommitContexts =
         SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);

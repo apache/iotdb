@@ -52,6 +52,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
       final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
+      final String ownerId,
+      final Long ownerEpoch,
       final int thriftMaxFrameSize,
       final long heartbeatIntervalMs,
       final int connectionTimeoutInMs) {
@@ -62,6 +64,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
         encryptedPassword,
         consumerId,
         consumerGroupId,
+        ownerId,
+        ownerEpoch,
         thriftMaxFrameSize,
         heartbeatIntervalMs,
         connectionTimeoutInMs);
@@ -85,6 +89,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
             .encryptedPassword(builder.encryptedPassword)
             .consumerId(builder.consumerId)
             .consumerGroupId(builder.consumerGroupId)
+            .ownerId(builder.ownerId)
+            .ownerEpoch(builder.ownerEpoch)
             .heartbeatIntervalMs(builder.heartbeatIntervalMs)
             .endpointsSyncIntervalMs(builder.endpointsSyncIntervalMs)
             .fileSaveDir(builder.fileSaveDir)
@@ -238,6 +244,8 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
 
     private String consumerId;
     private String consumerGroupId;
+    private String ownerId;
+    private Long ownerEpoch;
 
     private long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
     private long endpointsSyncIntervalMs =
@@ -296,6 +304,19 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
         return this;
       }
       this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
+      return this;
+    }
+
+    public Builder ownerId(@Nullable final String ownerId) {
+      if (Objects.isNull(ownerId)) {
+        return this;
+      }
+      this.ownerId = ownerId;
+      return this;
+    }
+
+    public Builder ownerEpoch(final long ownerEpoch) {
+      this.ownerEpoch = ownerEpoch;
       return this;
     }
 
