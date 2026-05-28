@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Legacy libstdc++ ABI (_GLIBCXX_USE_CXX11_ABI=0) on manylinux2014; max glibc 2.17.
+# Default libstdc++ cxx11 ABI on manylinux_2_24; max glibc 2.24.
 set -euxo pipefail
 
-MAX_GLIBC=2.17
+MAX_GLIBC=2.24
 SYSTEM_GCC=/usr/bin/gcc
 SYSTEM_GXX=/usr/bin/g++
 
@@ -26,12 +26,12 @@ case "${MACHINE}" in
   x86_64)
     CMAKE_PKG_ARCH=linux-x86_64
     JDK_API_ARCH=linux/x64
-    DEFAULT_CLASSIFIER=linux-x86_64-glibc217
+    DEFAULT_CLASSIFIER=linux-x86_64-glibc224
     ;;
   aarch64)
     CMAKE_PKG_ARCH=linux-aarch64
     JDK_API_ARCH=linux/aarch64
-    DEFAULT_CLASSIFIER=linux-aarch64-glibc217
+    DEFAULT_CLASSIFIER=linux-aarch64-glibc224
     ;;
   *)
     echo "Unsupported architecture: ${MACHINE}" >&2
@@ -67,8 +67,6 @@ export JAVA_HOME
 
 export CC="${SYSTEM_GCC}"
 export CXX="${SYSTEM_GXX}"
-export CFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 ${CFLAGS:-}"
-export CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 ${CXXFLAGS:-}"
 
 "${SYSTEM_GCC}" --version
 "${SYSTEM_GXX}" --version
@@ -83,12 +81,12 @@ cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
 
-echo "=== libstdc++ ABI check (legacy: must not contain __cxx11) ==="
-if nm -C "${SO}" 2>/dev/null | grep -q '__cxx11'; then
-  echo "ERROR: legacy ABI build must not contain __cxx11 symbols in ${SO}"
+echo "=== libstdc++ ABI check (cxx11: must contain __cxx11) ==="
+if ! nm -C "${SO}" 2>/dev/null | grep -q '__cxx11'; then
+  echo "ERROR: cxx11 ABI build must contain __cxx11 symbols in ${SO}"
   exit 1
 fi
-echo "ABI check passed (no __cxx11 symbols)"
+echo "ABI check passed (__cxx11 symbols present)"
 
 echo "=== Build host glibc ==="
 ldd --version 2>&1 | sed -n '1p'
@@ -106,17 +104,16 @@ fi
 
 echo "glibc compatibility check passed (max=${max_glibc} <= ${MAX_GLIBC})"
 
-echo "=== Optional example link test (legacy ABI) ==="
+echo "=== Optional example link test (default cxx11 ABI) ==="
 INSTALL_ROOT="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/install"
 EXAMPLE_SRC="${GITHUB_WORKSPACE}/example/client-cpp-example/src"
-LINKTEST_BUILD="/tmp/client-cpp-example-linktest-glibc217"
+LINKTEST_BUILD="/tmp/client-cpp-example-linktest-glibc224"
 rm -rf "${LINKTEST_BUILD}"
 mkdir -p "${LINKTEST_BUILD}"
 unset CC CXX CFLAGS CXXFLAGS
 "${CMAKE_DIR}/bin/cmake" -S "${EXAMPLE_SRC}" -B "${LINKTEST_BUILD}" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DIOTDB_SDK_ROOT="${INSTALL_ROOT}" \
-  -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
+  -DIOTDB_SDK_ROOT="${INSTALL_ROOT}"
 "${CMAKE_DIR}/bin/cmake" --build "${LINKTEST_BUILD}" --target SessionExample -j"$(nproc)"
 test -x "${LINKTEST_BUILD}/SessionExample"
 echo "Example link test passed"

@@ -79,8 +79,10 @@ deployment environment:
 
 | Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
-| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc217` |
+| Linux x86_64, glibc ≥ 2.24, default g++ (cxx11 ABI) | `linux-x86_64-glibc224` |
+| Linux aarch64, glibc ≥ 2.24, default g++ (cxx11 ABI) | `linux-aarch64-glibc224` |
+| Linux x86_64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |
@@ -89,7 +91,19 @@ deployment environment:
 | Windows + Visual Studio 2026 | `windows-x86_64-vs2026` |
 
 Example file name:
-`client-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc217.zip`.
+`client-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc224.zip`.
+
+**Linux ABI and glibc:** Two Linux families are published. **`glibc224`** packages
+are built on [`manylinux_2_24`](https://github.com/pypa/manylinux) with the
+image default `/usr/bin/g++` and the **new** libstdc++ ABI (symbols contain
+`__cxx11`); they require **glibc ≥ 2.24** on the deployment host. Prefer these
+on modern distros (Ubuntu 22.04+, Kylin V10, etc.) when your application uses
+the default compiler ABI. **`glibc217`** packages are built on `manylinux2014`
+with **`-D_GLIBCXX_USE_CXX11_ABI=0`** (no `__cxx11` symbols) for hosts that only
+have **glibc 2.17** and cannot upgrade to 2.24+; your application must compile
+with the same flag when linking against that SDK. The `manylinux_2_24` image
+series is **EOL**; it remains the oldest manylinux image that ships a gcc with
+native cxx11 ABI support.
 
 Thrift **0.21.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
@@ -100,10 +114,19 @@ and OS used to build** the SDK, not by that Maven property.
 
 ### Local build for a specific classifier
 
-Linux x86_64 (glibc 2.17 baseline — use CentOS 7 + devtoolset-8, or any host
-whose glibc is ≤ your deployment target):
+Linux x86_64 (glibc 2.24 + cxx11 ABI — match a modern distro or
+`manylinux_2_24`):
 
 ```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc224 package
+```
+
+Linux x86_64 (glibc 2.17 + legacy ABI — CentOS 7 / manylinux2014; compile with
+`-D_GLIBCXX_USE_CXX11_ABI=0`):
+
+```bash
+export CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0"
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dclient.cpp.package.classifier=linux-x86_64-glibc217 package
 ```

@@ -257,6 +257,106 @@ jobs:
           path: ${{ steps.pkg.outputs.path }}
           if-no-files-found: error
 
+  package-linux-glibc224:
+    name: Package (linux-x86_64-glibc224)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # Checkout/cache on host; build in manylinux_2_24 via docker run (glibc 2.24 baseline, cxx11 ABI).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: linux-glibc224-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            linux-glibc224-m2-
+      - name: Package client-cpp (glibc 2.24 baseline, cxx11 ABI)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x .github/scripts/package-client-cpp-manylinux-glibc224.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /workspace \
+            -e GITHUB_WORKSPACE=/workspace \
+            quay.io/pypa/manylinux_2_24_x86_64 \
+            bash .github/scripts/package-client-cpp-manylinux-glibc224.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-x86_64-glibc224.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
+          if-no-files-found: error
+
+  package-linux-aarch64-glibc224:
+    name: Package (linux-aarch64-glibc224)
+    needs: [should-package, resolve-matrix]
+    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
+    # Checkout/cache on host; build in manylinux_2_24 aarch64 via docker run.
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: linux-aarch64-glibc224-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            linux-aarch64-glibc224-m2-
+      - name: Package client-cpp (glibc 2.24 baseline, cxx11 ABI)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x .github/scripts/package-client-cpp-manylinux-glibc224.sh
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "${HOME}/.m2:/root/.m2" \
+            -w /workspace \
+            -e GITHUB_WORKSPACE=/workspace \
+            quay.io/pypa/manylinux_2_24_aarch64 \
+            bash .github/scripts/package-client-cpp-manylinux-glibc224.sh
+      - name: Restore workspace ownership after container build
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
+      - name: Resolve package zip
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-aarch64-glibc224.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.path }}
+          if-no-files-found: error
+
   package-macos:
     name: Package (${{ matrix.name }})
     needs: [should-package, resolve-matrix]
