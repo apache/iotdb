@@ -34,8 +34,7 @@ public final class BitMapUtils {
 
     boolean hasMarkedBitMap = false;
     for (int i = 0; i < bitMaps.length; ++i) {
-      if (Objects.nonNull(bitMaps[i])
-          && bitMaps[i].isAllUnmarked(Math.min(rowCount, bitMaps[i].getSize()))) {
+      if (Objects.nonNull(bitMaps[i]) && isAllUnmarked(bitMaps[i], rowCount)) {
         bitMaps[i] = null;
       }
       if (Objects.nonNull(bitMaps[i])) {
@@ -43,5 +42,24 @@ public final class BitMapUtils {
       }
     }
     return hasMarkedBitMap ? bitMaps : null;
+  }
+
+  private static boolean isAllUnmarked(final BitMap bitMap, final int rowCount) {
+    final int checkedSize = Math.min(rowCount, bitMap.getSize());
+    if (checkedSize <= 0) {
+      return true;
+    }
+
+    final byte[] bytes = bitMap.getByteArray();
+    final int fullByteCount = checkedSize / Byte.SIZE;
+    for (int i = 0; i < fullByteCount; ++i) {
+      if (bytes[i] != 0) {
+        return false;
+      }
+    }
+
+    final int remainingBitCount = checkedSize % Byte.SIZE;
+    return remainingBitCount == 0
+        || (bytes[fullByteCount] & (0xFF << (Byte.SIZE - remainingBitCount))) == 0;
   }
 }
