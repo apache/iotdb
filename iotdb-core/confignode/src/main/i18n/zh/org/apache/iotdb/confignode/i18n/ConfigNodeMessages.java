@@ -462,7 +462,7 @@ public final class ConfigNodeMessages {
   public static final String UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP =
       "Unknown host when checking seed configNode IP {}";
   public static final String UNKNOWN_LEADER_DISTRIBUTION_POLICY =
-      "未知 leader_distribution_policy：%s，请设置为 \"GREEDY\"、\"CFD\" 或 \"HASH\"";
+      "未知 leader_distribution_policy：%s，请设置为 \"GREEDY\"、\"CFS\" 或 \"HASH\"";
   public static final String UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE =
       "unknown PhysicalPlan configPhysicalPlanType: ";
   public static final String UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO =
