@@ -55,6 +55,8 @@
         <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
         <boost.include.dir></boost.include.dir>
+        <!-- e.g. -D_GLIBCXX_USE_CXX11_ABI=0 for legacy Linux packages (see README). -->
+        <iotdb.extra.cxx.flags></iotdb.extra.cxx.flags>
         <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
     </properties>
@@ -92,6 +94,7 @@
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DCMAKE_POLICY_DEFAULT_CMP0091=NEW</option>
+                                <option>-DIOTDB_EXTRA_CXX_FLAGS=${iotdb.extra.cxx.flags}</option>
                             </options>
                         </configuration>
                     </execution>

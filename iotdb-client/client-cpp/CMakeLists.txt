@@ -34,6 +34,9 @@ endif()
 
 if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+    if(IOTDB_EXTRA_CXX_FLAGS)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IOTDB_EXTRA_CXX_FLAGS}")
+    endif()
 endif()
 
 if(MSVC)
@@ -44,6 +47,9 @@ endif()
 option(WITH_SSL "Build with OpenSSL support" OFF)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
+# e.g. -D_GLIBCXX_USE_CXX11_ABI=0 for legacy Linux release zips (Maven: -Diotdb.extra.cxx.flags=...)
+set(IOTDB_EXTRA_CXX_FLAGS ""
+    CACHE STRING "Extra flags appended to CMAKE_CXX_FLAGS (libstdc++ ABI, etc.)")
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")

@@ -18,8 +18,7 @@
 set -euxo pipefail
 
 MAX_GLIBC=2.17
-SYSTEM_GCC=/usr/bin/gcc
-SYSTEM_GXX=/usr/bin/g++
+IOTDB_EXTRA_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0
 
 MACHINE=$(uname -m)
 case "${MACHINE}" in
@@ -62,13 +61,23 @@ if [[ ! -x "${JAVA_HOME}/bin/java" ]]; then
   JAVA_HOME=/opt/jdk-17
 fi
 
-export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:/usr/bin:${PATH}"
+export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 export JAVA_HOME
+
+# manylinux images expose gcc under devtoolset paths, not /usr/bin/gcc.
+SYSTEM_GCC=$(command -v gcc)
+SYSTEM_GXX=$(command -v g++)
+if [[ -z "${SYSTEM_GCC}" || ! -x "${SYSTEM_GCC}" ]]; then
+  echo "ERROR: gcc not found on PATH" >&2
+  exit 1
+fi
+if [[ -z "${SYSTEM_GXX}" || ! -x "${SYSTEM_GXX}" ]]; then
+  echo "ERROR: g++ not found on PATH" >&2
+  exit 1
+fi
 
 export CC="${SYSTEM_GCC}"
 export CXX="${SYSTEM_GXX}"
-export CFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 ${CFLAGS:-}"
-export CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=0 ${CXXFLAGS:-}"
 
 "${SYSTEM_GCC}" --version
 "${SYSTEM_GXX}" --version
@@ -78,7 +87,8 @@ java -version
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
-  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}"
+  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
+  "-Diotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}"
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
