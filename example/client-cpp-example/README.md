@@ -47,17 +47,20 @@ publishes one zip per platform/toolchain:
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
-| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc217` |
+| Linux x86_64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-x86_64-glibc224` |
+| Linux aarch64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-aarch64-glibc224` |
+| Linux x86_64, glibc ≥ 2.17, legacy ABI | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.17, legacy ABI | `linux-aarch64-glibc217` |
 | macOS x86_64 | `mac-x86_64` |
 | macOS arm64 | `mac-aarch64` |
 | Windows (match your Visual Studio version) | `windows-x86_64-vs2017` … `vs2026` |
 
 The current build compiles Thrift 0.21 from source at CMake configure time.
 Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
-pre-built Thrift workflow only; for glibc 2.17 on x86_64 use the
-`linux-x86_64-glibc217` artifact or build on an old enough host (see
-[client-cpp README](../../iotdb-client/client-cpp/README.md)).
+pre-built Thrift workflow only. On Linux, prefer **`glibc224`** when your host has
+glibc ≥ 2.24 and you use the default `g++`. Use **`glibc217`** only for glibc 2.17
+systems or legacy ABI; on Ubuntu 22/24 you may need `-D_GLIBCXX_USE_CXX11_ABI=0`
+when linking against `glibc217`. See [client-cpp README](../../iotdb-client/client-cpp/README.md).
 
 ## SDK layout (after unpack)
 

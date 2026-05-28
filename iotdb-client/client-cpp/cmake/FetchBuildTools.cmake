@@ -124,24 +124,50 @@ function(_iotdb_build_autotools NAME TARBALL EXTRACTED_DIRNAME)
                 "[BuildTools] expected configure script at ${_src}/configure")
     endif()
     message(STATUS "[BuildTools] building ${NAME} -> ${_tools_prefix}")
-    execute_process(
-            COMMAND ./configure --prefix=${_tools_prefix}
-            WORKING_DIRECTORY "${_src}"
-            RESULT_VARIABLE _rc)
+    # flex 2.6.4: reallocarray() needs _GNU_SOURCE on glibc 2.26+ (westes/flex#241).
+    set(_env_prefix "")
+    if(NAME STREQUAL "flex" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_env_prefix env CFLAGS=-D_GNU_SOURCE CXXFLAGS=-D_GNU_SOURCE)
+    endif()
+    if(_env_prefix)
+        execute_process(
+                COMMAND ${_env_prefix} ./configure --prefix=${_tools_prefix}
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    else()
+        execute_process(
+                COMMAND ./configure --prefix=${_tools_prefix}
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    endif()
     if(NOT _rc EQUAL 0)
         message(FATAL_ERROR "[BuildTools] configure failed for ${NAME}")
     endif()
-    execute_process(
-            COMMAND make -j${_jobs}
-            WORKING_DIRECTORY "${_src}"
-            RESULT_VARIABLE _rc)
+    if(_env_prefix)
+        execute_process(
+                COMMAND ${_env_prefix} make -j${_jobs}
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    else()
+        execute_process(
+                COMMAND make -j${_jobs}
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    endif()
     if(NOT _rc EQUAL 0)
         message(FATAL_ERROR "[BuildTools] make failed for ${NAME}")
     endif()
-    execute_process(
-            COMMAND make install
-            WORKING_DIRECTORY "${_src}"
-            RESULT_VARIABLE _rc)
+    if(_env_prefix)
+        execute_process(
+                COMMAND ${_env_prefix} make install
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    else()
+        execute_process(
+                COMMAND make install
+                WORKING_DIRECTORY "${_src}"
+                RESULT_VARIABLE _rc)
+    endif()
     if(NOT _rc EQUAL 0)
         message(FATAL_ERROR "[BuildTools] make install failed for ${NAME}")
     endif()

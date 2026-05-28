@@ -122,9 +122,15 @@ if(MSVC)
     list(APPEND _thrift_cmake_args
             "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
 else()
+    set(_thrift_cxxflags "-fPIC")
+    if(IOTDB_EXTRA_CXX_FLAGS MATCHES "_GLIBCXX_USE_CXX11_ABI=0")
+        set(_thrift_cxxflags "-D_GLIBCXX_USE_CXX11_ABI=0 -fPIC")
+    elseif(IOTDB_EXTRA_CXX_FLAGS MATCHES "_GLIBCXX_USE_CXX11_ABI=1")
+        set(_thrift_cxxflags "-D_GLIBCXX_USE_CXX11_ABI=1 -fPIC")
+    endif()
     list(APPEND _thrift_cmake_args
             "-DCMAKE_C_FLAGS=-fPIC"
-            "-DCMAKE_CXX_FLAGS=-fPIC")
+            "-DCMAKE_CXX_FLAGS=${_thrift_cxxflags}")
 endif()
 
 if(WITH_SSL)
