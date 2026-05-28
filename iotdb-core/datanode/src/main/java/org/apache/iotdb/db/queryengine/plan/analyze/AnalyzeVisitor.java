@@ -3338,7 +3338,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context,
       PathPatternTree authorityScope,
       boolean canSeeAuditDB,
-      boolean isOnlyNeedInvalidTimeSeries)
+      boolean isOnlyNeedInvalidTimeSeries,
+      boolean includeLogicalView)
       throws IllegalPathException {
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
@@ -3354,29 +3355,50 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFinishQueryAfterAnalyze(true);
       return false;
     }
-    removeLogicViewMeasurement(schemaTree);
-    Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext;
+
+    List<DeviceSchemaInfo> deviceSchemaInfoList;
+    if (includeLogicalView) {
+      deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+      updateSchemaTreeByViews(analysis, schemaTree, context, canSeeAuditDB);
+    } else {
+      removeLogicViewMeasurement(schemaTree);
+      deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+    }
+
+    Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext =
+        new HashMap<>();
     /**
      * Since we fetch raw time series schema without template(The template sequence will be treated
      * as a normal node, not a device+templateId. This means that all nodes are what we need.). We
      * can use ALL_MATCH_PATTERN to get result.
      */
-    List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
-    Set<String> databases = schemaTree.getDatabases();
-
-    deviceToTimeseriesContext =
-        buildDeviceToTimeseriesContext(
-            deviceSchemaInfoList, patternTree, databases, false, isOnlyNeedInvalidTimeSeries);
+    Set<IDeviceID> deviceSet = new HashSet<>();
+    if (includeLogicalView) {
+      deviceSet =
+          buildDeviceToTimeseriesContextForActiveCount(
+              deviceSchemaInfoList,
+              patternTree,
+              schemaTree.getDatabases(),
+              schemaTree,
+              deviceToTimeseriesContext,
+              isOnlyNeedInvalidTimeSeries);
+    } else {
+      deviceToTimeseriesContext =
+          buildDeviceToTimeseriesContext(
+              deviceSchemaInfoList,
+              patternTree,
+              schemaTree.getDatabases(),
+              false,
+              isOnlyNeedInvalidTimeSeries);
+      deviceSet =
+          deviceToTimeseriesContext.keySet().stream()
+              .map(PartialPath::getIDeviceIDAsFullDevice)
+              .collect(Collectors.toSet());
+    }
 
     analysis.setDeviceToTimeseriesSchemas(deviceToTimeseriesContext);
     // fetch Data partition
-    DataPartition dataPartition =
-        fetchDataPartitionByDevices(
-            deviceToTimeseriesContext.keySet().stream()
-                .map(PartialPath::getIDeviceIDAsFullDevice)
-                .collect(Collectors.toSet()),
-            schemaTree,
-            context);
+    DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree, context);
     analysis.setDataPartitionInfo(dataPartition);
     return true;
   }
@@ -3423,6 +3445,169 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return null;
   }
 
+  private Set<IDeviceID> buildDeviceToTimeseriesContextForActiveCount(
+      List<DeviceSchemaInfo> deviceSchemaInfoList,
+      PathPatternTree patternTree,
+      Set<String> databases,
+      ISchemaTree schemaTree,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      boolean skipAliasSeries) {
+    Set<IDeviceID> deviceSet = new HashSet<>();
+    for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
+      PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+      List<IMeasurementSchemaInfo> physicalMeasurementSchemaInfoList = new ArrayList<>();
+      List<IMeasurementSchemaInfo> logicalViewSchemaInfoList = new ArrayList<>();
+      for (IMeasurementSchemaInfo measurementSchemaInfo :
+          deviceSchemaInfo.getMeasurementSchemaInfoList()) {
+        if (measurementSchemaInfo.isLogicalView()) {
+          logicalViewSchemaInfoList.add(measurementSchemaInfo);
+        } else {
+          physicalMeasurementSchemaInfoList.add(measurementSchemaInfo);
+        }
+      }
+
+      Pair<List<IMeasurementSchemaInfo>, List<String>> validMeasurements =
+          collectValidMeasurements(
+              physicalMeasurementSchemaInfoList,
+              devicePath,
+              patternTree,
+              databases,
+              false,
+              skipAliasSeries);
+      if (!validMeasurements.left.isEmpty()) {
+        if (deviceSchemaInfo.isAligned()) {
+          addAlignedDeviceToActiveCountContext(
+              deviceToTimeseriesContext,
+              devicePath,
+              validMeasurements.left,
+              validMeasurements.right,
+              deviceSet);
+        } else {
+          addNonAlignedDeviceToActiveCountContext(
+              deviceToTimeseriesContext,
+              devicePath,
+              validMeasurements.left,
+              validMeasurements.right,
+              deviceSet);
+        }
+      }
+
+      for (IMeasurementSchemaInfo logicalViewSchemaInfo : logicalViewSchemaInfoList) {
+        addLogicalViewSourcesForActiveCount(
+            devicePath,
+            logicalViewSchemaInfo,
+            schemaTree,
+            databases,
+            deviceToTimeseriesContext,
+            deviceSet);
+      }
+    }
+    return deviceSet;
+  }
+
+  private void addAlignedDeviceToActiveCountContext(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      PartialPath devicePath,
+      List<IMeasurementSchemaInfo> validMeasurementSchemaInfoList,
+      List<String> validDatabaseList,
+      Set<IDeviceID> deviceSet) {
+    deviceSet.add(devicePath.getIDeviceIDAsFullDevice());
+    addAlignedDeviceToContext(
+        deviceToTimeseriesContext, devicePath, validMeasurementSchemaInfoList, validDatabaseList);
+  }
+
+  private void addNonAlignedDeviceToActiveCountContext(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      PartialPath devicePath,
+      List<IMeasurementSchemaInfo> validMeasurementSchemaInfoList,
+      List<String> validDatabaseList,
+      Set<IDeviceID> deviceSet) {
+    for (int i = 0; i < validMeasurementSchemaInfoList.size(); i++) {
+      IMeasurementSchemaInfo measurementSchemaInfo = validMeasurementSchemaInfoList.get(i);
+      addPhysicalTimeseriesForActiveCount(
+          devicePath,
+          measurementSchemaInfo,
+          false,
+          new TimeseriesContext(measurementSchemaInfo, validDatabaseList.get(i)),
+          deviceToTimeseriesContext,
+          deviceSet);
+    }
+  }
+
+  private void addLogicalViewSourcesForActiveCount(
+      PartialPath viewDevicePath,
+      IMeasurementSchemaInfo viewSchemaInfo,
+      ISchemaTree schemaTree,
+      Set<String> databases,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      Set<IDeviceID> deviceSet) {
+    LogicalViewSchema logicalViewSchema = viewSchemaInfo.getSchemaAsLogicalViewSchema();
+    if (logicalViewSchema == null) {
+      return;
+    }
+
+    String viewPath = viewDevicePath.concatNode(viewSchemaInfo.getName()).getFullPath();
+    for (PartialPath sourcePath : getSourcePaths(logicalViewSchema.getExpression())) {
+      if (sourcePath.getNodeLength() <= 1) {
+        continue;
+      }
+      PartialPath sourceDevicePath =
+          new PartialPath(Arrays.copyOf(sourcePath.getNodes(), sourcePath.getNodeLength() - 1));
+      DeviceSchemaInfo sourceDeviceSchemaInfo =
+          schemaTree.searchDeviceSchemaInfo(
+              sourceDevicePath, Collections.singletonList(sourcePath.getMeasurement()));
+      if (sourceDeviceSchemaInfo == null
+          || sourceDeviceSchemaInfo.getMeasurementSchemaInfoList().isEmpty()) {
+        continue;
+      }
+
+      IMeasurementSchemaInfo sourceSchemaInfo =
+          sourceDeviceSchemaInfo.getMeasurementSchemaInfoList().get(0);
+      if (sourceSchemaInfo == null || sourceSchemaInfo.isLogicalView()) {
+        continue;
+      }
+
+      addPhysicalTimeseriesForActiveCount(
+          sourceDevicePath,
+          sourceSchemaInfo,
+          sourceDeviceSchemaInfo.isAligned(),
+          new TimeseriesContext(
+              sourceSchemaInfo,
+              getDatabaseForMeasurement(sourceSchemaInfo, sourceDevicePath, databases, false),
+              0,
+              Collections.singleton(viewPath)),
+          deviceToTimeseriesContext,
+          deviceSet);
+    }
+  }
+
+  private void addPhysicalTimeseriesForActiveCount(
+      PartialPath devicePath,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      boolean isAligned,
+      TimeseriesContext timeseriesContext,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext,
+      Set<IDeviceID> deviceSet) {
+    deviceSet.add(devicePath.getIDeviceIDAsFullDevice());
+    PartialPath timeseriesPath =
+        isAligned
+            ? new AlignedPath(
+                devicePath.getNodes(),
+                Collections.singletonList(measurementSchemaInfo.getName()),
+                Collections.singletonList(measurementSchemaInfo.getSchema()))
+            : new MeasurementPath(
+                devicePath.concatNode(measurementSchemaInfo.getName()).getNodes());
+    Map<PartialPath, List<TimeseriesContext>> timeseriesContextMap =
+        deviceToTimeseriesContext.computeIfAbsent(devicePath, k -> new HashMap<>());
+    List<TimeseriesContext> existingContextList = timeseriesContextMap.get(timeseriesPath);
+    if (existingContextList == null) {
+      timeseriesContextMap.put(
+          timeseriesPath, new ArrayList<>(Collections.singletonList(timeseriesContext)));
+    } else {
+      existingContextList.set(0, existingContextList.get(0).mergeActiveCount(timeseriesContext));
+    }
+  }
+
   @Override
   public Analysis visitShowTimeSeries(
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
@@ -3453,7 +3638,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 context,
                 showTimeSeriesStatement.getAuthorityScope(),
                 showTimeSeriesStatement.isCanSeeAuditDB(),
-                showTimeSeriesStatement.isOnlyShowDisable());
+                showTimeSeriesStatement.isOnlyShowDisable(),
+                false);
         if (!hasSchema) {
           if (showTimeSeriesStatement.isOnlyShowDisable()) {
             analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowInvalidTimeSeriesHeader());
@@ -3957,7 +4143,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 context,
                 countTimeSeriesStatement.getAuthorityScope(),
                 countTimeSeriesStatement.isCanSeeAuditDB(),
-                false);
+                false,
+                true);
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
           return analysis;

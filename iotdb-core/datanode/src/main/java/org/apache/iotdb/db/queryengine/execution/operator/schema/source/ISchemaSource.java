@@ -57,6 +57,10 @@ public interface ISchemaSource<T extends ISchemaInfo> {
 
   long getSchemaStatistic(final ISchemaRegion schemaRegion);
 
+  default boolean shouldSkipSchemaRegion(final ISchemaRegion schemaRegion) {
+    return false;
+  }
+
   default boolean checkRegionDatabaseIncluded(final ISchemaRegion schemaRegion) {
     return true;
   }

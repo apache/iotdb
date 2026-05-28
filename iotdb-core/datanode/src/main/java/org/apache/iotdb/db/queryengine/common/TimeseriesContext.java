@@ -30,8 +30,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
@@ -47,8 +49,29 @@ public class TimeseriesContext {
   private final String deadbandParameters;
   private final Map<String, String> props;
   private final String database;
+  private final int activeCountMultiplier;
+  private final Set<String> activeLogicalViewCountSet;
 
   public TimeseriesContext(IMeasurementSchemaInfo schemaInfo, String database) {
+    this(schemaInfo, database, 1, Collections.emptySet());
+  }
+
+  public TimeseriesContext(IMeasurementSchemaInfo schemaInfo) {
+    this(schemaInfo, null, 1, Collections.emptySet());
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
+    this(schemaInfo, null, activeCountMultiplier, activeLogicalViewCountSet);
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      String database,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
@@ -62,6 +85,8 @@ public class TimeseriesContext {
     Map<String, String> schemaProps = schemaInfo.getSchema().getProps();
     this.props = schemaProps != null ? schemaProps : Collections.emptyMap();
     this.database = database;
+    this.activeCountMultiplier = activeCountMultiplier;
+    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
   }
 
   public String getDataType() {
@@ -104,6 +129,64 @@ public class TimeseriesContext {
     return database;
   }
 
+  public int getActiveCountMultiplier() {
+    return activeCountMultiplier;
+  }
+
+  public Set<String> getActiveLogicalViewCountSet() {
+    return activeLogicalViewCountSet;
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        Collections.emptyMap(),
+        null,
+        1,
+        Collections.emptySet());
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        Collections.emptyMap(),
+        null,
+        activeCountMultiplier,
+        activeLogicalViewCountSet);
+  }
+
   public TimeseriesContext(
       String dataType,
       String alias,
@@ -115,6 +198,34 @@ public class TimeseriesContext {
       String deadbandParameters,
       Map<String, String> props,
       String database) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        props,
+        database,
+        1,
+        Collections.emptySet());
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      Map<String, String> props,
+      String database,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
     this.dataType = dataType;
     this.alias = alias;
     this.encoding = encoding;
@@ -125,6 +236,26 @@ public class TimeseriesContext {
     this.deadbandParameters = deadbandParameters;
     this.props = props != null ? new HashMap<>(props) : new HashMap<>();
     this.database = database;
+    this.activeCountMultiplier = activeCountMultiplier;
+    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+  }
+
+  public TimeseriesContext mergeActiveCount(TimeseriesContext that) {
+    Set<String> mergedActiveLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+    mergedActiveLogicalViewCountSet.addAll(that.activeLogicalViewCountSet);
+    return new TimeseriesContext(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        props,
+        database,
+        activeCountMultiplier + that.activeCountMultiplier,
+        mergedActiveLogicalViewCountSet);
   }
 
   public void serializeAttributes(ByteBuffer byteBuffer) {
@@ -138,6 +269,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(deadbandParameters, byteBuffer);
     ReadWriteIOUtils.write(props, byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
+    ReadWriteIOUtils.write(activeCountMultiplier, byteBuffer);
+    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), byteBuffer);
+    for (String logicalView : activeLogicalViewCountSet) {
+      ReadWriteIOUtils.write(logicalView, byteBuffer);
+    }
   }
 
   public void serializeAttributes(DataOutputStream stream) throws IOException {
@@ -151,6 +287,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(deadbandParameters, stream);
     ReadWriteIOUtils.write(props, stream);
     ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(activeCountMultiplier, stream);
+    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), stream);
+    for (String logicalView : activeLogicalViewCountSet) {
+      ReadWriteIOUtils.write(logicalView, stream);
+    }
   }
 
   public static TimeseriesContext deserialize(ByteBuffer buffer) {
@@ -164,6 +305,12 @@ public class TimeseriesContext {
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
     Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     String database = ReadWriteIOUtils.readString(buffer);
+    int activeCountMultiplier = ReadWriteIOUtils.readInt(buffer);
+    int activeLogicalViewCountSetSize = ReadWriteIOUtils.readInt(buffer);
+    Set<String> activeLogicalViewCountSet = new HashSet<>();
+    for (int i = 0; i < activeLogicalViewCountSetSize; i++) {
+      activeLogicalViewCountSet.add(ReadWriteIOUtils.readString(buffer));
+    }
     return new TimeseriesContext(
         dataType,
         alias,
@@ -174,7 +321,9 @@ public class TimeseriesContext {
         deadband,
         deadbandParameters,
         props,
-        database);
+        database,
+        activeCountMultiplier,
+        activeLogicalViewCountSet);
   }
 
   @Override
@@ -196,7 +345,9 @@ public class TimeseriesContext {
             && Objects.equals(deadband, that.deadband)
             && Objects.equals(deadbandParameters, that.deadbandParameters)
             && Objects.equals(props, that.props)
-            && Objects.equals(database, that.database);
+            && Objects.equals(database, that.database)
+            && activeCountMultiplier == that.activeCountMultiplier
+            && Objects.equals(activeLogicalViewCountSet, that.activeLogicalViewCountSet);
     return res;
   }
 
@@ -212,6 +363,8 @@ public class TimeseriesContext {
         deadband,
         deadbandParameters,
         props,
-        database);
+        database,
+        activeCountMultiplier,
+        activeLogicalViewCountSet);
   }
 }

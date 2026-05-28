@@ -49,7 +49,7 @@ public class SchemaSourceFactory {
       Map<Integer, Template> templateMap,
       PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope, true, null);
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, true, scope, true, null);
   }
 
   // show time series
@@ -70,6 +70,7 @@ public class SchemaSourceFactory {
         schemaFilter,
         templateMap,
         true,
+        false,
         scope,
         true,
         timeseriesOrdering);
@@ -155,6 +156,7 @@ public class SchemaSourceFactory {
         null, // schemaFilter
         Collections.emptyMap(), // templateMap
         true, // needViewDetail
+        false, // excludeInternalDatabase
         scope,
         false, // skipInvalidSchema=false to get all series (including invalid)
         true, // onlyInvalidSchema=true to filter only invalid
