@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -48,5 +49,27 @@ public class PipeTabletUtilsTest {
 
     Assert.assertFalse(tablet.isNull(0, 0));
     Assert.assertTrue(tablet.isNull(0, 1));
+  }
+
+  @Test
+  public void testCompactBitMapsIgnoresUnusedTailBits() {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.FLOAT),
+            new MeasurementSchema("s2", TSDataType.FLOAT));
+    final Tablet tablet = new Tablet("root.sg.d1", schemas, 2);
+    final BitMap[] bitMaps = new BitMap[] {new BitMap(2), new BitMap(2)};
+    bitMaps[0].markAll();
+    bitMaps[0].unmark(0);
+    bitMaps[0].unmark(1);
+    bitMaps[1].mark(1);
+    tablet.setBitMaps(bitMaps);
+    tablet.setRowSize(2);
+
+    PipeTabletUtils.compactBitMaps(tablet);
+
+    Assert.assertNotNull(tablet.getBitMaps());
+    Assert.assertNull(tablet.getBitMaps()[0]);
+    Assert.assertNotNull(tablet.getBitMaps()[1]);
   }
 }
