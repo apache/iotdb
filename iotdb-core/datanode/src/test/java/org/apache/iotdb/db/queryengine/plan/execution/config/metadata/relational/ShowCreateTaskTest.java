@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 
 import org.junit.Test;
@@ -78,7 +79,10 @@ public class ShowCreateTaskTest {
     sourceAttributes.put("__audit.source", "audit");
     sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, "1");
     sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "alice");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, "hashed-password");
     sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, "host");
+    sourceAttributes.put(
+        SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
 
     final Map<String, String> processorAttributes = new HashMap<>();
     processorAttributes.put(PipeProcessorConstant.PROCESSOR_KEY, "do-nothing-processor");
@@ -91,7 +95,9 @@ public class ShowCreateTaskTest {
     sinkAttributes.put("__audit.sink", "audit");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USER_ID, "1");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, "alice");
+    sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, "hashed-password");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, "host");
+    sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
 
     final PipeMeta pipeMeta =
         new PipeMeta(
@@ -121,6 +127,40 @@ public class ShowCreateTaskTest {
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, "secret");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USER_ID, "1");
     sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, "host");
+
+    final PipeMeta pipeMeta =
+        new PipeMeta(
+            new PipeStaticMeta("test_pipe", 1L, sourceAttributes, new HashMap<>(), sinkAttributes),
+            new PipeRuntimeMeta());
+
+    assertEquals(
+        "CREATE PIPE \"test_pipe\""
+            + " WITH SOURCE ('source'='iotdb-source','source.password'='secret','source.username'='alice')"
+            + " WITH SINK ('sink'='write-back-sink','sink.password'='secret','sink.username'='alice')",
+        ShowCreatePipeTask.getShowCreatePipeSQL(pipeMeta));
+  }
+
+  @Test
+  public void testShowCreatePipeSQLShouldKeepExplicitCredentialsWhenInjectionMarkerIsReset() {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_KEY, "iotdb-source");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, "alice");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, "secret");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_USER_ID, "1");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, "host");
+    sourceAttributes.put(
+        SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
+
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sinkAttributes.put(PipeSinkConstant.SINK_KEY, "write-back-sink");
+    sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, "alice");
+    sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY, "secret");
+    sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_USER_ID, "1");
+    sinkAttributes.put(PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, "host");
+    sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
+
+    TableConfigTaskVisitor.markSourceAuthenticationAsExplicitIfNecessary(sourceAttributes);
+    TableConfigTaskVisitor.markSinkAuthenticationAsExplicitIfNecessary(sinkAttributes);
 
     final PipeMeta pipeMeta =
         new PipeMeta(

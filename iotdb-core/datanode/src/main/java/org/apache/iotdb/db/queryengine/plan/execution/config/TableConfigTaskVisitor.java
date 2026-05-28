@@ -1204,6 +1204,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY, userEntity.getUsername());
       replacedSourceAttributes.put(
           PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
+      replacedSourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
     } else if (!sourceParameters.hasAnyAttributes(
         PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
         PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
@@ -1273,6 +1275,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       connectorAttributes.put(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY, userEntity.getUsername());
       connectorAttributes.put(
           PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME, userEntity.getCliHostname());
+      connectorAttributes.put(
+          SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.TRUE.toString());
     } else if (!connectorParameters.hasAnyAttributes(
         PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
@@ -1315,6 +1319,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           extractorAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSourceAuthenticationAsExplicitIfNecessary(extractorAttributes);
     }
     mayChangeSourcePattern(extractorAttributes);
 
@@ -1324,9 +1330,40 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           node.getConnectorAttributes(),
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
+    } else {
+      markSinkAuthenticationAsExplicitIfNecessary(node.getConnectorAttributes());
     }
 
     return new AlterPipeTask(node, userName);
+  }
+
+  public static void markSourceAuthenticationAsExplicitIfNecessary(
+      final Map<String, String> sourceAttributes) {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    if (sourceParameters.hasAnyAttributes(
+        PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      sourceAttributes.put(
+          SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+    }
+  }
+
+  public static void markSinkAuthenticationAsExplicitIfNecessary(
+      final Map<String, String> sinkAttributes) {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    if (sinkParameters.hasAnyAttributes(
+        PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeSinkConstant.SINK_IOTDB_USER_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+        PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
+      sinkAttributes.put(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY, Boolean.FALSE.toString());
+    }
   }
 
   @Override

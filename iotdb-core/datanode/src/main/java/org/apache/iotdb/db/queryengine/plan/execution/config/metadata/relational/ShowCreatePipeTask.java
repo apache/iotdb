@@ -115,37 +115,47 @@ public class ShowCreatePipeTask implements IConfigTask {
   }
 
   private static Map<String, String> sanitizeSourceAttributes(final Map<String, String> source) {
+    final boolean hasInjectedSourceAuthentication =
+        Boolean.parseBoolean(source.get(SystemConstant.SOURCE_AUTHENTICATION_INJECTED_KEY));
     final Map<String, String> result = sanitizeCommonAttributes(source);
     result.remove(PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID);
     result.remove(PipeSourceConstant.SOURCE_IOTDB_USER_ID);
     result.remove(PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME);
     result.remove(PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
-    if (!hasAnyKey(
-        result,
-        PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
-        PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+    if (hasInjectedSourceAuthentication
+        || !hasAnyKey(
+            result,
+            PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+            PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       result.remove(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY);
       result.remove(PipeSourceConstant.SOURCE_IOTDB_USER_KEY);
       result.remove(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY);
       result.remove(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+      result.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
+      result.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
     }
     return result;
   }
 
   private static Map<String, String> sanitizeSinkAttributes(final Map<String, String> sink) {
+    final boolean hasInjectedSinkAuthentication =
+        Boolean.parseBoolean(sink.get(SystemConstant.SINK_AUTHENTICATION_INJECTED_KEY));
     final Map<String, String> result = sanitizeCommonAttributes(sink);
     result.remove(PipeSinkConstant.CONNECTOR_IOTDB_USER_ID);
     result.remove(PipeSinkConstant.SINK_IOTDB_USER_ID);
     result.remove(PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME);
     result.remove(PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME);
-    if (!hasAnyKey(
-        result,
-        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
-        PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
+    if (hasInjectedSinkAuthentication
+        || !hasAnyKey(
+            result,
+            PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+            PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       result.remove(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY);
       result.remove(PipeSinkConstant.SINK_IOTDB_USER_KEY);
       result.remove(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY);
       result.remove(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
+      result.remove(PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY);
+      result.remove(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
     }
     return result;
   }
