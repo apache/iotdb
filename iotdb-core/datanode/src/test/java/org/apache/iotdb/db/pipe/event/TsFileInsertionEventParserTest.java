@@ -346,7 +346,11 @@ public class TsFileInsertionEventParserTest {
           Assert.assertTrue(parsedTablet.isNull(1, 2));
           Assert.assertFalse(iterator.hasNext());
         } else {
-          Assert.assertNull(parsedTablet.getBitMaps());
+          if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
+            Assert.assertNull(parsedTablet.getBitMaps());
+          } else {
+            Assert.assertTrue(parsedTablet.isNull(1, 1));
+          }
           while (iterator.hasNext()) {
             parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
             if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
