@@ -115,6 +115,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<TSDataType> dataTypeList;
   private List<String> objectMeasurementList;
   private List<IMeasurementSchema> fieldSchemaList;
+  private List<ColumnCategory> fieldColumnTypeList;
   private int deviceIdSize;
 
   private List<ModsOperationUtil.ModsInfo> modsInfoList;
@@ -288,6 +289,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               columnTypes = new ArrayList<>();
               measurementList = new ArrayList<>();
               fieldSchemaList = new ArrayList<>();
+              fieldColumnTypeList = new ArrayList<>();
               objectMeasurementList = new ArrayList<>();
 
               for (int i = 0; i < columnSchemaSize; i++) {
@@ -304,8 +306,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   } else if (schema.getType() == TSDataType.OBJECT) {
                     objectMeasurementList.add(measurementName);
                   }
-                  if (ColumnCategory.FIELD.equals(columnCategory)) {
+                  if (ColumnCategory.FIELD.equals(columnCategory)
+                      || ColumnCategory.ATTRIBUTE.equals(columnCategory)) {
                     fieldSchemaList.add(schema);
+                    fieldColumnTypeList.add(columnCategory);
                   }
                 }
               }
@@ -482,8 +486,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         }
         hasSelectedNonNullChunk = true;
       }
-      columnTypes.add(ColumnCategory.FIELD);
+
+      columnTypes.add(fieldColumnTypeList.get(offset));
       measurementList.add(measurementName);
+
       dataTypeList.add(schema.getType());
       valueChunkList.add(chunk);
       hasSelectedField = true;

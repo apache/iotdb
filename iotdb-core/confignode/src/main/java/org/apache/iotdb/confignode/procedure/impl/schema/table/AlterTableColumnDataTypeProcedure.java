@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTy
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AlterWritableViewColumnDataTypePlan;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -43,11 +45,10 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class AlterTableColumnDataTypeProcedure
-    extends AbstractAlterOrDropTableProcedure<AlterTableColumnDataTypeState> {
+    extends AbstractAlterOrDropTableColumnProcedure<AlterTableColumnDataTypeState> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AlterTableColumnDataTypeProcedure.class);
 
-  private String columnName;
   private TSDataType dataType;
 
   public AlterTableColumnDataTypeProcedure(final boolean isGeneratedByPipe) {
@@ -61,8 +62,7 @@ public class AlterTableColumnDataTypeProcedure
       final String columnName,
       final TSDataType dataType,
       final boolean isGeneratedByPipe) {
-    super(database, tableName, queryId, isGeneratedByPipe);
-    this.columnName = columnName;
+    super(database, tableName, queryId, columnName, isGeneratedByPipe);
     this.dataType = dataType;
   }
 
@@ -76,6 +76,7 @@ public class AlterTableColumnDataTypeProcedure
       final ConfigNodeProcedureEnv env, final AlterTableColumnDataTypeState state)
       throws InterruptedException {
     final long startTime = System.currentTimeMillis();
+    mayInitOriginal();
     try {
       switch (state) {
         case CHECK_AND_INVALIDATE_COLUMN:
@@ -134,7 +135,15 @@ public class AlterTableColumnDataTypeProcedure
           env.getConfigManager()
               .getClusterSchemaManager()
               .tableColumnCheckForColumnAltering(
-                  database, tableName, columnName, dataType, isGeneratedByPipe);
+                  database,
+                  tableName,
+                  columnName,
+                  dataType,
+                  isGeneratedByPipe,
+                  getTableSchemaObjectType().getClusterSchemaTableType(),
+                  getOriginalDatabaseForColumn(),
+                  getOriginalTableNameForColumn(),
+                  getOriginalColumnName());
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -152,13 +161,25 @@ public class AlterTableColumnDataTypeProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                new AlterColumnDataTypePlan(database, tableName, columnName, dataType),
-                isGeneratedByPipe);
+            .executePlan(createAlterColumnDataTypePlan(), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
     setNextState(AlterTableColumnDataTypeState.COMMIT_RELEASE);
+  }
+
+  private ConfigPhysicalPlan createAlterColumnDataTypePlan() {
+    if (getTableSchemaObjectType() == TableSchemaObjectType.WRITABLE_VIEW) {
+      return new AlterWritableViewColumnDataTypePlan(
+          database,
+          tableName,
+          columnName,
+          dataType,
+          getOriginalDatabaseForColumn(),
+          getOriginalTableNameForColumn(),
+          getOriginalColumnName());
+    }
+    return new AlterColumnDataTypePlan(database, tableName, columnName, dataType);
   }
 
   @Override
@@ -195,29 +216,28 @@ public class AlterTableColumnDataTypeProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE.getTypeCode()
             : ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE.getTypeCode());
-    super.serialize(stream);
+    innerSerialize(stream);
+  }
 
-    ReadWriteIOUtils.write(columnName, stream);
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.innerSerialize(stream);
     ReadWriteIOUtils.write(dataType, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-
-    this.columnName = ReadWriteIOUtils.readString(byteBuffer);
     this.dataType = ReadWriteIOUtils.readDataType(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
-        && Objects.equals(columnName, ((AlterTableColumnDataTypeProcedure) o).columnName)
         && Objects.equals(dataType, ((AlterTableColumnDataTypeProcedure) o).dataType);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), columnName, dataType);
+    return Objects.hash(super.hashCode(), dataType);
   }
 }

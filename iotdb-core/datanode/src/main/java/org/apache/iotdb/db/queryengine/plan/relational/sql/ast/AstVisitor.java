@@ -247,6 +247,10 @@ public interface AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitNode(node, context);
   }
 
+  default R visitCreateWritableView(final CreateWritableView node, final C context) {
+    return visitStatement(node, context);
+  }
+
   default R visitShowSystemInfo(ShowSystemInfo node, C context) {
     return visitStatement(node, context);
   }

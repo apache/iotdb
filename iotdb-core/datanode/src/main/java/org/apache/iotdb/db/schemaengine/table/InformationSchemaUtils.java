@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -42,6 +43,7 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -99,6 +101,7 @@ public class InformationSchemaUtils {
   public static boolean mayShowTable(
       final String database,
       final boolean isDetails,
+      final Predicate<TTableInfo> checkCanShowTable,
       final SettableFuture<ConfigTaskResult> future) {
     if (!database.equals(INFORMATION_DATABASE)) {
       return false;
@@ -112,6 +115,12 @@ public class InformationSchemaUtils {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final String schemaTable :
         getSchemaTables().keySet().stream().sorted().collect(Collectors.toList())) {
+      final TTableInfo tableInfo =
+          new TTableInfo(schemaTable, IoTDBConstant.TTL_INFINITE)
+              .setType(TableType.SYSTEM_VIEW.ordinal());
+      if (!checkCanShowTable.test(tableInfo)) {
+        continue;
+      }
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(schemaTable, TSFileConfig.STRING_CHARSET));
       builder.getColumnBuilder(1).writeBinary(new Binary("INF", TSFileConfig.STRING_CHARSET));

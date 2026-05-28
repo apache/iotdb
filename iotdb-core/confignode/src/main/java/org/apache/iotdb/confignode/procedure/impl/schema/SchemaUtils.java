@@ -62,6 +62,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -248,13 +249,20 @@ public class SchemaUtils {
 
   public static Map<Integer, TSStatus> preReleaseTable(
       final String database,
+      final @Nullable String originalDatabase,
       final TsTable table,
+      final @Nullable TsTable originalTable,
       final ConfigManager configManager,
       final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
     req.setOldName(oldName);
+    if (Objects.nonNull(originalTable)) {
+      req.setOriginalInfo(
+          TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(
+              originalDatabase, originalTable));
+    }
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -269,7 +277,9 @@ public class SchemaUtils {
 
   public static Map<Integer, TSStatus> commitReleaseTable(
       final String database,
+      final @Nullable String originalDatabase,
       final String tableName,
+      final String originalTableName,
       final ConfigManager configManager,
       final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
@@ -283,6 +293,17 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+
+    if (Objects.nonNull(originalTableName)) {
+      outputStream.reset();
+      try {
+        ReadWriteIOUtils.write(originalDatabase, outputStream);
+        ReadWriteIOUtils.write(originalTableName, outputStream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream will not throw IOException
+      }
+      req.setOriginalInfo(outputStream.toByteArray());
+    }
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -298,6 +319,8 @@ public class SchemaUtils {
   public static Map<Integer, TSStatus> rollbackPreRelease(
       final String database,
       final String tableName,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName,
       final ConfigManager configManager,
       final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
@@ -311,6 +334,17 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+
+    if (Objects.nonNull(originalTableName)) {
+      outputStream.reset();
+      try {
+        ReadWriteIOUtils.write(originalDatabase, outputStream);
+        ReadWriteIOUtils.write(originalTableName, outputStream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream will not throw IOException
+      }
+      req.setOriginalInfo(outputStream.toByteArray());
+    }
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();

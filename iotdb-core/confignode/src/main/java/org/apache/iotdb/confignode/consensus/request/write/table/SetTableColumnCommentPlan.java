@@ -31,8 +31,8 @@ public class SetTableColumnCommentPlan extends AbstractTableColumnPlan {
 
   private String comment;
 
-  public SetTableColumnCommentPlan() {
-    super(ConfigPhysicalPlanType.SetTableColumnComment);
+  public SetTableColumnCommentPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public SetTableColumnCommentPlan(
@@ -41,6 +41,16 @@ public class SetTableColumnCommentPlan extends AbstractTableColumnPlan {
       final String columnName,
       final String comment) {
     super(ConfigPhysicalPlanType.SetTableColumnComment, database, tableName, columnName);
+    this.comment = comment;
+  }
+
+  public SetTableColumnCommentPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String comment) {
+    super(type, database, tableName, columnName);
     this.comment = comment;
   }
 

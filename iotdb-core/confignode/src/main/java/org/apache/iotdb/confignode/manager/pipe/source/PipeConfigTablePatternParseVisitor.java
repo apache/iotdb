@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
+import org.apache.iotdb.confignode.consensus.request.TimechoConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -39,10 +40,178 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AddWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AlterWritableViewColumnDataTypePlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitDeleteWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitDeleteWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewColumnCommentPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewCommentPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewPropertiesPlan;
+
+import java.util.Objects;
 import java.util.Optional;
+
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getAddWritableViewColumnPlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getAlterWritableViewColumnDataTypePlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getCommitDeleteWritableViewColumnPlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getCommitDeleteWritableViewPlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getSetWritableViewColumnCommentPlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getSetWritableViewCommentPlan;
+import static org.apache.iotdb.confignode.manager.pipe.source.PipeConfigTablePrivilegeParseVisitor.getSetWritableViewPropertiesPlan;
 
 public class PipeConfigTablePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern> {
+
+  private final TimechoConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern>
+      timechoVisitor =
+          new TimechoConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern>(this) {
+            @Override
+            public Optional<ConfigPhysicalPlan> visitAddWritableViewColumn(
+                final AddWritableViewColumnPlan addWritableViewColumnPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(addWritableViewColumnPlan.getOriginalDatabase())
+                  ? getAddWritableViewColumnPlan(
+                      addWritableViewColumnPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  addWritableViewColumnPlan.getDatabase()))
+                          && pattern.matchesTable(addWritableViewColumnPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  addWritableViewColumnPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(addWritableViewColumnPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      addWritableViewColumnPlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitSetWritableViewProperties(
+                final SetWritableViewPropertiesPlan setWritableViewPropertiesPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(setWritableViewPropertiesPlan.getOriginalDatabase())
+                  ? getSetWritableViewPropertiesPlan(
+                      setWritableViewPropertiesPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewPropertiesPlan.getDatabase()))
+                          && pattern.matchesTable(setWritableViewPropertiesPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewPropertiesPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              setWritableViewPropertiesPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      setWritableViewPropertiesPlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitCommitDeleteWritableViewColumn(
+                final CommitDeleteWritableViewColumnPlan commitDeleteWritableViewColumnPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(commitDeleteWritableViewColumnPlan.getOriginalDatabase())
+                  ? getCommitDeleteWritableViewColumnPlan(
+                      commitDeleteWritableViewColumnPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  commitDeleteWritableViewColumnPlan.getDatabase()))
+                          && pattern.matchesTable(
+                              commitDeleteWritableViewColumnPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  commitDeleteWritableViewColumnPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              commitDeleteWritableViewColumnPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      commitDeleteWritableViewColumnPlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitAlterWritableViewColumnDataType(
+                final AlterWritableViewColumnDataTypePlan alterWritableViewColumnDataTypePlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(alterWritableViewColumnDataTypePlan.getOriginalDatabase())
+                  ? getAlterWritableViewColumnDataTypePlan(
+                      alterWritableViewColumnDataTypePlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  alterWritableViewColumnDataTypePlan.getDatabase()))
+                          && pattern.matchesTable(
+                              alterWritableViewColumnDataTypePlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  alterWritableViewColumnDataTypePlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              alterWritableViewColumnDataTypePlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      alterWritableViewColumnDataTypePlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitCommitDeleteWritableView(
+                final CommitDeleteWritableViewPlan commitDeleteWritableViewPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(commitDeleteWritableViewPlan.getOriginalDatabase())
+                  ? getCommitDeleteWritableViewPlan(
+                      commitDeleteWritableViewPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  commitDeleteWritableViewPlan.getDatabase()))
+                          && pattern.matchesTable(commitDeleteWritableViewPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  commitDeleteWritableViewPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              commitDeleteWritableViewPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      commitDeleteWritableViewPlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitSetWritableViewComment(
+                final SetWritableViewCommentPlan setWritableViewCommentPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(setWritableViewCommentPlan.getOriginalDatabase())
+                  ? getSetWritableViewCommentPlan(
+                      setWritableViewCommentPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewCommentPlan.getDatabase()))
+                          && pattern.matchesTable(setWritableViewCommentPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewCommentPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              setWritableViewCommentPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      setWritableViewCommentPlan, pattern);
+            }
+
+            @Override
+            public Optional<ConfigPhysicalPlan> visitSetWritableViewColumnComment(
+                final SetWritableViewColumnCommentPlan setWritableViewColumnCommentPlan,
+                final TablePattern pattern) {
+              return Objects.nonNull(setWritableViewColumnCommentPlan.getOriginalDatabase())
+                  ? getSetWritableViewColumnCommentPlan(
+                      setWritableViewColumnCommentPlan,
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewColumnCommentPlan.getDatabase()))
+                          && pattern.matchesTable(setWritableViewColumnCommentPlan.getTableName()),
+                      pattern.matchesDatabase(
+                              PathUtils.unQualifyDatabaseName(
+                                  setWritableViewColumnCommentPlan.getOriginalDatabase()))
+                          && pattern.matchesTable(
+                              setWritableViewColumnCommentPlan.getOriginalTableName()))
+                  : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
+                      setWritableViewColumnCommentPlan, pattern);
+            }
+          };
+
+  @Override
+  protected TimechoConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern>
+      getTimechoVisitor() {
+    return timechoVisitor;
+  }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(

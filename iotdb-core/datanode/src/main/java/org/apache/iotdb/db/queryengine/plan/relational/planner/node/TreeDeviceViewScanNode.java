@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class TreeDeviceViewScanNode extends DeviceTableScanNode {
   protected String treeDBName;
@@ -51,7 +52,13 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
       Map<Symbol, Integer> tagAndAttributeIndexMap,
       String treeDBName,
       Map<String, String> measurementColumnNameMap) {
-    super(id, qualifiedObjectName, outputSymbols, assignments, tagAndAttributeIndexMap);
+    super(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        tagAndAttributeIndexMap,
+        Optional.empty());
     this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }
@@ -85,7 +92,8 @@ public class TreeDeviceViewScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        containsNonAlignedDevice,
+        Optional.empty());
     this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }

@@ -4405,10 +4405,6 @@ public class IoTDBTableAggregationIT {
         "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
         DATABASE_NAME);
     tableAssertTestFail(
-        "select approx_count_distinct(province, 0.3) from table1",
-        "750: Max Standard Error must be in [0.0040625, 0.26]: 0.3",
-        DATABASE_NAME);
-    tableAssertTestFail(
         "select approx_count_distinct(province, 'test') from table1",
         "701: Second argument of Aggregate functions [approx_count_distinct] should be numberic type and do not use expression",
         DATABASE_NAME);

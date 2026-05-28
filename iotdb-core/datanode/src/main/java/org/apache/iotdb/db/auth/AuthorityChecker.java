@@ -306,6 +306,15 @@ public class AuthorityChecker {
   }
 
   public static TSStatus getTSStatus(
+      boolean hasPermission, List<PrivilegeType> neededPrivileges, String database, String table) {
+    return hasPermission
+        ? SUCCEED
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(
+                NO_PERMISSION_PROMOTION + neededPrivileges + " ON " + database + "." + table);
+  }
+
+  public static TSStatus getTSStatus(
       boolean hasPermission, PartialPath path, PrivilegeType neededPrivilege) {
     return hasPermission
         ? SUCCEED
@@ -400,6 +409,18 @@ public class AuthorityChecker {
             .checkUserTBPrivileges(userName, database, table, permission)
             .getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  public static boolean checkTablePermission(
+      String userName, String database, String table, List<PrivilegeType> permissions) {
+    return permissions.stream()
+        .allMatch(
+            permission ->
+                authorityFetcher
+                        .get()
+                        .checkUserTBPrivileges(userName, database, table, permission)
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public static boolean checkTablePermissionGrantOption(

@@ -232,6 +232,24 @@ public enum ConfigPhysicalPlanType {
   AlterColumnDataType((short) 878),
   PreAlterColumnDataType((short) 879),
 
+  // We need to define writable view plans separately because they may also need to change the
+  // original table, and the pipe may need to tell whether the target is a writable view and throw
+  // exception if the receiver's table is not
+  RollbackCreateWritableView((short) -880),
+  CommitCreateWritableView((short) -881),
+  AddWritableViewColumn((short) -882),
+  CommitDeleteWritableViewColumn((short) -883),
+  CommitDeleteWritableView((short) -884),
+  RenameWritableView((short) -885),
+  SetWritableViewProperties((short) -886),
+  PreDeleteWritableViewColumn((short) -887),
+  PreDeleteWritableView((short) -888),
+  RenameWritableViewColumn((short) -889),
+  PreAlterWritableViewColumnDataType((short) -890),
+  AlterWritableViewColumnDataType((short) -891),
+  SetWritableViewColumnComment((short) -892),
+  SetWritableViewComment((short) -893),
+
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
   CreatePipeSinkV1((short) 900),

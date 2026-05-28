@@ -26,12 +26,21 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Objects;
-
+/**
+ * Tree-view-specific table properties and path helpers.
+ *
+ * <p>Shared per-column source-name metadata lives in {@link ViewColumnSchemaUtils}. Keeping that
+ * mapping outside this class avoids making writable-view support look like a TreeView capability.
+ */
 public class TreeViewSchema {
-  public static final String ORIGINAL_NAME = "__original_name";
+  // Keep the legacy serialized key stable even though writable view now shares the column-level
+  // mapping through ViewColumnSchemaUtils instead of depending on TreeView naming.
+  public static final String ORIGINAL_NAME = ViewColumnSchemaUtils.SOURCE_NAME;
   public static final String TREE_PATH_PATTERN = "__tree_path_pattern";
   public static final String RESTRICT = "__restrict";
+  // Transient marker used only by ALTER VIEW ADD COLUMN requests to distinguish explicit FROM
+  // syntax from implicit source-name preservation.
+  public static final String EXPLICIT_FROM = "__explicit_from";
 
   public static boolean isTreeViewTable(final TsTable table) {
     return table.getPropValue(TREE_PATH_PATTERN).isPresent();
@@ -64,17 +73,15 @@ public class TreeViewSchema {
   }
 
   public static String getSourceName(final TsTableColumnSchema schema) {
-    return Objects.nonNull(TreeViewSchema.getOriginalName(schema))
-        ? TreeViewSchema.getOriginalName(schema)
-        : schema.getColumnName();
+    return ViewColumnSchemaUtils.getSourceName(schema);
   }
 
   public static String getOriginalName(final TsTableColumnSchema schema) {
-    return schema.getProps().get(ORIGINAL_NAME);
+    return ViewColumnSchemaUtils.getMappedSourceName(schema);
   }
 
   public static void setOriginalName(final TsTableColumnSchema schema, final String name) {
-    schema.getProps().put(ORIGINAL_NAME, name);
+    ViewColumnSchemaUtils.setSourceName(schema, name);
   }
 
   public static boolean isRestrict(final TsTable table) {

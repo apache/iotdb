@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeWritableViewException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -48,6 +54,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,16 +62,22 @@ import java.util.Set;
 public class LoadTsFileAnalyzerTest {
 
   private int dataNodeId;
+  private boolean skipFailedTableSchemaCheck;
 
   @Before
   public void setUp() {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    skipFailedTableSchemaCheck =
+        IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
   }
 
   @After
   public void tearDown() {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSkipFailedTableSchemaCheck(skipFailedTableSchemaCheck);
   }
 
   @Test
@@ -107,6 +120,58 @@ public class LoadTsFileAnalyzerTest {
     Assert.assertTrue(schemaCache.containsDevice("table1", "tagA"));
     Assert.assertTrue(schemaCache.containsDevice("table1", "tagB"));
     Assert.assertEquals(2, schemaCache.getVerifiedDeviceCount());
+  }
+
+  @Test
+  public void testWritableViewTargetTriggersTabletConversion() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_writable_view_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              null, new MPPQueryContext(new QueryId("load_view")), false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("temperature", TSDataType.INT32)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        final LoadAnalyzeWritableViewException exception =
+            Assert.assertThrows(
+                LoadAnalyzeWritableViewException.class,
+                () -> schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0")));
+        Assert.assertTrue(exception.getMessage().contains("requires tablet conversion"));
+        Assert.assertTrue(exception.getMessage().contains(sourceName));
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
   }
 
   private void writeTableTsFileWithMixedDevices(final File tsFile) throws Exception {

@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -53,9 +54,9 @@ import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableViewProcedure extends CreateTableProcedure {
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableViewProcedure.class);
-  private boolean replace;
-  private TsTable oldView;
-  private TableNodeStatus oldStatus;
+  protected boolean replace;
+  protected TsTable oldView;
+  protected TableNodeStatus oldStatus;
 
   public CreateTableViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -71,9 +72,14 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
   }
 
   @Override
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.VIEW;
+  }
+
+  @Override
   protected void checkTableExistence(final ConfigNodeProcedureEnv env) {
     if (!replace) {
-      super.checkTableExistence(env);
+      superCheckTableExistence(env);
     } else {
       try {
         final Optional<Pair<TsTable, TableNodeStatus>> oldTableAndStatus =
@@ -114,6 +120,10 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
     }
   }
 
+  protected void superCheckTableExistence(final ConfigNodeProcedureEnv env) {
+    super.checkTableExistence(env);
+  }
+
   @Override
   protected void preCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
@@ -149,6 +159,11 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
             ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE.getTypeCode()
             : ProcedureType.CREATE_TABLE_VIEW_PROCEDURE.getTypeCode());
     innerSerialize(stream);
+  }
+
+  @Override
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
+    super.innerSerialize(stream);
     ReadWriteIOUtils.write(replace, stream);
 
     ReadWriteIOUtils.write(Objects.nonNull(oldView), stream);

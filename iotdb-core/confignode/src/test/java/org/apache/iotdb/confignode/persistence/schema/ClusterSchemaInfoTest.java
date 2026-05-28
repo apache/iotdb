@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -28,6 +33,9 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -36,7 +44,14 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitDeleteWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.PreDeleteWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RenameWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RollbackCreateWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewPropertiesPlan;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -54,6 +69,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -80,6 +96,105 @@ public class ClusterSchemaInfoTest {
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
+  }
+
+  @Test
+  public void testDropWritableViewCascadesToSourceTable() throws Exception {
+    createTableDatabase("db");
+    createUsingBaseTable("db", "source");
+    createUsingWritableView("db", "view", "source");
+
+    assertSuccess(
+        clusterSchemaInfo.preDeleteTable(
+            new PreDeleteWritableViewPlan("db", "view", "db", "source")));
+
+    Optional<Pair<TsTable, TableNodeStatus>> sourceTable =
+        clusterSchemaInfo.getTsTableIfExists("db", "source");
+    Assert.assertTrue(sourceTable.isPresent());
+    Assert.assertEquals(TableNodeStatus.PRE_DELETE, sourceTable.get().getRight());
+
+    assertSuccess(
+        clusterSchemaInfo.dropTable(
+            new CommitDeleteWritableViewPlan("db", "view", "db", "source")));
+
+    Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "view").isPresent());
+    Assert.assertFalse(clusterSchemaInfo.getTsTableIfExists("db", "source").isPresent());
+  }
+
+  @Test
+  public void testRenameWritableViewColumnPreservesSourceColumnMapping() throws Exception {
+    createTableDatabase("db");
+
+    final TsTable source = new TsTable("source");
+    source.addColumnSchema(new FieldColumnSchema("source_value", TSDataType.INT32));
+    assertSuccess(clusterSchemaInfo.preCreateTable(new PreCreateTablePlan("db", source)));
+    assertSuccess(clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan("db", "source")));
+
+    final WritableView view = new WritableView("view", "db", "source", true);
+    view.addColumnSchema(new FieldColumnSchema("view_value", TSDataType.INT32));
+    view.putViewColumnSourceColumnMapping("view_value", "source_value");
+    assertSuccess(
+        clusterSchemaInfo.preCreateTableView(
+            new PreCreateTableViewPlan("db", view, TableNodeStatus.PRE_CREATE)));
+    assertSuccess(clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan("db", "view")));
+
+    assertSuccess(
+        clusterSchemaInfo.renameTableColumn(
+            new RenameWritableViewColumnPlan(
+                "db",
+                "view",
+                "view_value",
+                "renamed_value",
+                "db",
+                "source",
+                "source_value",
+                "renamed_value")));
+
+    final WritableView renamedView =
+        (WritableView) clusterSchemaInfo.getTsTableIfExists("db", "view").get().getLeft();
+    Assert.assertNull(renamedView.getColumnSchema("view_value"));
+    Assert.assertNotNull(renamedView.getColumnSchema("renamed_value"));
+    Assert.assertEquals("source_value", renamedView.getMappedSourceColumnName("renamed_value"));
+    Assert.assertEquals("source_value", renamedView.getOriginalColumnName("renamed_value"));
+
+    final TsTable renamedSource =
+        clusterSchemaInfo.getTsTableIfExists("db", "source").get().getLeft();
+    Assert.assertNotNull(renamedSource.getColumnSchema("source_value"));
+    Assert.assertNull(renamedSource.getColumnSchema("renamed_value"));
+  }
+
+  @Test
+  public void testCascadeSetPropertiesSkipsMissingSourceTable() throws Exception {
+    createTableDatabase("db");
+    createUsingWritableView("db", "view", "missing_source");
+
+    final Map<String, String> properties = new TreeMap<>();
+    properties.put(TsTable.TTL_PROPERTY, "1");
+    assertSuccess(
+        clusterSchemaInfo.setTableProperties(
+            new SetWritableViewPropertiesPlan("db", "view", properties, "db", "missing_source")));
+
+    final TsTable view = clusterSchemaInfo.getTsTableIfExists("db", "view").get().getLeft();
+    Assert.assertEquals("1", view.getPropValue(TsTable.TTL_PROPERTY).orElse(null));
+  }
+
+  @Test
+  public void testSetWritableViewPropertiesRejectsInvalidSchemaCascade() throws Exception {
+    createTableDatabase("db");
+    createUsingWritableView("db", "view", "source");
+
+    final Map<String, String> properties = new TreeMap<>();
+    properties.put(WritableView.SCHEMA_CASCADE, "not_bool");
+    final TSStatus status =
+        clusterSchemaInfo.setTableProperties(
+            new SetWritableViewPropertiesPlan("db", "view", properties, null, null));
+
+    Assert.assertEquals(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), status.getCode());
+    Assert.assertTrue(
+        status.getMessage().contains("schema_cascade value must be a BooleanLiteral"));
+    final Pair<TsTable, TableNodeStatus> view =
+        clusterSchemaInfo.getTsTableIfExists("db", "view").get();
+    Assert.assertTrue(((WritableView) view.getLeft()).isSchemaCascade());
   }
 
   @Test
@@ -157,6 +272,63 @@ public class ClusterSchemaInfoTest {
     Assert.assertTrue(pathList.contains("root.test3.template"));
   }
 
+  @Test
+  public void testRollbackCreateWritableViewRestoresOriginalTable() throws Exception {
+    final String database = "rollback_writable_view_db";
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(
+            ConfigPhysicalPlanType.CreateDatabase,
+            new TDatabaseSchema(database).setIsTableModel(true)));
+
+    final TsTable sourceBeforeCreate = new TsTable("source_table");
+    sourceBeforeCreate.addProp(TsTable.COMMENT_KEY, "before-create");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaInfo
+            .preCreateTable(new PreCreateTablePlan(database, sourceBeforeCreate))
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaInfo
+            .commitCreateTable(
+                new CommitCreateTablePlan(database, sourceBeforeCreate.getTableName()))
+            .getCode());
+
+    final WritableView view = new WritableView("writable_view", database, "source_table", true);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaInfo
+            .preCreateTableView(
+                new PreCreateTableViewPlan(database, view, TableNodeStatus.PRE_CREATE))
+            .getCode());
+
+    final TsTable sourceAfterCascade = new TsTable(sourceBeforeCreate);
+    sourceAfterCascade.addProp(TsTable.COMMENT_KEY, "after-cascade");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaInfo
+            .commitCreateTable(
+                new CommitCreateWritableViewPlan(
+                    database, view.getTableName(), database, sourceAfterCascade))
+            .getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        clusterSchemaInfo
+            .rollbackCreateWritableView(
+                new RollbackCreateWritableViewPlan(
+                    database, view, TableNodeStatus.PRE_CREATE, database, sourceBeforeCreate))
+            .getCode());
+
+    Assert.assertFalse(
+        clusterSchemaInfo.getTsTableIfExists(database, view.getTableName()).isPresent());
+    final Pair<TsTable, TableNodeStatus> restoredSource =
+        clusterSchemaInfo.getTsTableIfExists(database, sourceBeforeCreate.getTableName()).get();
+    Assert.assertEquals(TableNodeStatus.USING, restoredSource.getRight());
+    Assert.assertEquals(
+        "before-create", restoredSource.getLeft().getPropValue(TsTable.COMMENT_KEY).orElse(null));
+  }
+
   private Template newSchemaTemplate(String name) throws IllegalPathException {
     List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
@@ -164,6 +336,38 @@ public class ClusterSchemaInfoTest {
     List<CompressionType> compressors =
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
+  }
+
+  private void createTableDatabase(final String database) {
+    assertSuccess(
+        clusterSchemaInfo.createDatabase(
+            new DatabaseSchemaPlan(
+                ConfigPhysicalPlanType.CreateDatabase,
+                new TDatabaseSchema(database).setIsTableModel(true))));
+  }
+
+  private void createUsingBaseTable(final String database, final String tableName) {
+    assertSuccess(
+        clusterSchemaInfo.preCreateTable(new PreCreateTablePlan(database, new TsTable(tableName))));
+    assertSuccess(
+        clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, tableName)));
+  }
+
+  private void createUsingWritableView(
+      final String database, final String viewName, final String sourceTableName) {
+    assertSuccess(
+        clusterSchemaInfo.preCreateTableView(
+            new PreCreateTableViewPlan(
+                database,
+                new WritableView(viewName, database, sourceTableName, true),
+                TableNodeStatus.PRE_CREATE)));
+    assertSuccess(
+        clusterSchemaInfo.commitCreateTable(new CommitCreateTablePlan(database, viewName)));
+  }
+
+  private void assertSuccess(final TSStatus status) {
+    Assert.assertEquals(
+        status.getMessage(), TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
   @Test

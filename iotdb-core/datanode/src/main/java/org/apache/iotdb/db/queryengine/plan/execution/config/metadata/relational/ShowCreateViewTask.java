@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -60,7 +63,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
 
   public static void buildTsBlock(
       final TsTable table, final SettableFuture<ConfigTaskResult> future) {
-    if (!TreeViewSchema.isTreeViewTable(table)) {
+    if (!ViewTableUtils.isView(table)) {
       throw new SemanticException(
           "The table "
               + table.getTableName()
@@ -78,7 +81,12 @@ public class ShowCreateViewTask extends AbstractTableTask {
         .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
     builder
         .getColumnBuilder(1)
-        .writeBinary(new Binary(getShowCreateViewSQL(table), TSFileConfig.STRING_CHARSET));
+        .writeBinary(
+            new Binary(
+                ViewTableUtils.isWritableView(table)
+                    ? getShowCreateWritableViewSQL((WritableView) table)
+                    : getShowCreateViewSQL(table),
+                TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
 
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowCreateViewColumnHeader();
@@ -114,8 +122,10 @@ public class ShowCreateViewTask extends AbstractTableTask {
               .append(schema.getDataType())
               .append(" ")
               .append("FIELD");
-          if (Objects.nonNull(TreeViewSchema.getOriginalName(schema))) {
-            builder.append(" FROM ").append(getIdentifier(TreeViewSchema.getOriginalName(schema)));
+          if (Objects.nonNull(ViewColumnSchemaUtils.getMappedSourceName(schema))) {
+            builder
+                .append(" FROM ")
+                .append(getIdentifier(ViewColumnSchemaUtils.getMappedSourceName(schema)));
           }
           break;
         case ATTRIBUTE:
@@ -157,6 +167,63 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.append(".\"").append(pathNodes[i].replace("`", "")).append("\"");
     }
     builder.append(".").append(pathNodes[pathNodes.length - 1]);
+
+    return builder.toString();
+  }
+
+  public static String getShowCreateWritableViewSQL(final WritableView view) {
+    final StringBuilder builder =
+        new StringBuilder("CREATE WRITABLE VIEW ")
+            .append(getIdentifier(view.getTableName()))
+            .append(" AS SELECT ");
+
+    for (final TsTableColumnSchema schema : view.getColumnList()) {
+      switch (schema.getColumnCategory()) {
+        case TAG:
+        case FIELD:
+        case ATTRIBUTE:
+        case TIME:
+          final String sourceColumnName = view.getOriginalColumnName(schema.getColumnName());
+          if (Objects.nonNull(view.getMappedSourceColumnName(schema.getColumnName()))
+              || !Objects.equals(sourceColumnName, schema.getColumnName())) {
+            builder
+                .append(getIdentifier(sourceColumnName))
+                .append(" AS ")
+                .append(getIdentifier(schema.getColumnName()));
+          } else {
+            builder.append(getIdentifier(schema.getColumnName()));
+          }
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Unsupported column type: " + schema.getColumnCategory());
+      }
+      if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
+        builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));
+      }
+      builder.append(",");
+    }
+
+    if (!view.getColumnList().isEmpty()) {
+      builder.deleteCharAt(builder.length() - 1);
+    }
+
+    builder.append(" FROM ").append(getIdentifier(view.getSourceTableName()));
+
+    if (view.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
+      builder.append(" COMMENT ").append(getString(view.getPropValue(TsTable.COMMENT_KEY).get()));
+    }
+
+    String ttlString = view.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE);
+    if (ttlString.equals(TTL_INFINITE)) {
+      ttlString = "'" + ttlString + "'";
+    }
+    builder
+        .append(" WITH (ttl=")
+        .append(ttlString)
+        .append(", schema_cascade=")
+        .append(view.isSchemaCascade())
+        .append(")");
 
     return builder.toString();
   }

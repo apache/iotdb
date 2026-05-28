@@ -22,12 +22,15 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -57,11 +60,28 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
   }
 
   @Override
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.VIEW;
+  }
+
+  @Override
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
+    addedColumnList.forEach(schema -> schema.getProps().remove(TreeViewSchema.EXPLICIT_FROM));
     super.columnCheck(env);
     // Check failure
     if (getState().equals(ProcedureState.FAILED)) {
       return;
+    }
+
+    for (final TsTableColumnSchema schema : addedColumnList) {
+      if (schema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    "Tree view does not support adding ATTRIBUTE columns.",
+                    TSStatusCode.SEMANTIC_ERROR.getStatusCode())));
+        return;
+      }
     }
 
     final Map<String, Set<FieldColumnSchema>> fields2Detect = new HashMap<>();
@@ -69,7 +89,7 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
       if (!(schema instanceof FieldColumnSchema) || schema.getDataType() != TSDataType.UNKNOWN) {
         continue;
       }
-      final String key = TreeViewSchema.getSourceName(schema);
+      final String key = ViewColumnSchemaUtils.getSourceName(schema);
       if (!fields2Detect.containsKey(key)) {
         fields2Detect.put(key, new HashSet<>());
       }

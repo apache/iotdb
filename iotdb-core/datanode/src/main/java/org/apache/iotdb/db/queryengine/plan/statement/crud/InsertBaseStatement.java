@@ -157,6 +157,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void setDevicePath(PartialPath devicePath) {
     this.devicePath = devicePath;
+    resetTableDeviceIDCache();
   }
 
   public String[] getMeasurements() {
@@ -350,6 +351,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
   }
 
   public void setColumnCategory(TsTableColumnCategory columnCategory, int i) {
@@ -357,8 +360,18 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = new TsTableColumnCategory[measurements.length];
     }
     this.columnCategories[i] = columnCategory;
-    this.tagColumnIndices = null;
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
   }
+
+  @TableModel
+  public void invalidateTableColumnIndexCaches() {
+    tagColumnIndices = null;
+    attrColumnIndices = null;
+  }
+
+  @TableModel
+  public void resetTableDeviceIDCache() {}
 
   public List<Integer> getTagColumnIndices() {
     if (tagColumnIndices == null && columnCategories != null) {
@@ -499,8 +512,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     subRemoveAttributeColumns(columnsToKeep);
 
     // to reconstruct indices
-    tagColumnIndices = null;
-    attrColumnIndices = null;
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
     attributeColumnsPresent = false;
   }
 
@@ -697,8 +710,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       System.arraycopy(
           columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
       columnCategories = tmpCategories;
-      tagColumnIndices = null;
     }
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
   }
 
   public void swapColumn(int src, int target) {
@@ -722,7 +736,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (inputLocations != null) {
       CommonUtils.swapArray(inputLocations, src, target);
     }
-    tagColumnIndices = null;
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
   }
 
   /**
@@ -793,8 +808,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     inputLocations = newInputLocations;
 
     // Clear cached indices
-    tagColumnIndices = null;
-    attrColumnIndices = null;
+    invalidateTableColumnIndexCaches();
+    resetTableDeviceIDCache();
   }
 
   public boolean isWriteToTable() {
@@ -848,6 +863,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   @TableModel
   public void toLowerCaseForDevicePath() {
     devicePath.toLowerCase();
+    resetTableDeviceIDCache();
   }
 
   @TableModel

@@ -24,8 +24,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class TimePartitionTableSizeQueryContext implements Accountable {
   private static final long SHALLOW_SIZE =
@@ -37,11 +39,19 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
    */
   private final Map<String, Long> tableSizeResultMap;
 
+  private final Map<String, String> resultTableToScanTableMap;
+
   // tsFileIDOffsetInValueFileMap should be null at first
   private Map<TsFileID, Long> tsFileIDOffsetInValueFileMap;
 
   public TimePartitionTableSizeQueryContext(Map<String, Long> tableSizeResultMap) {
+    this(tableSizeResultMap, Collections.emptyMap());
+  }
+
+  public TimePartitionTableSizeQueryContext(
+      Map<String, Long> tableSizeResultMap, Map<String, String> resultTableToScanTableMap) {
     this.tableSizeResultMap = tableSizeResultMap;
+    this.resultTableToScanTableMap = resultTableToScanTableMap;
   }
 
   public void addIndexedTsFileIDAndOffsetInValueFile(TsFileID tsFileID, long offset) {
@@ -71,6 +81,17 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
 
   public Map<String, Long> getTableSizeResultMap() {
     return tableSizeResultMap;
+  }
+
+  public Map<String, Long> getTableSizeResultMapWithWritableView() {
+    if (resultTableToScanTableMap.isEmpty()) {
+      return tableSizeResultMap;
+    }
+    Map<String, Long> resultTableSizeMap = new TreeMap<>();
+    for (Map.Entry<String, String> entry : resultTableToScanTableMap.entrySet()) {
+      resultTableSizeMap.put(entry.getKey(), tableSizeResultMap.getOrDefault(entry.getValue(), 0L));
+    }
+    return resultTableSizeMap;
   }
 
   public Long getIndexedTsFileIdOffset(TsFileID tsFileID) {

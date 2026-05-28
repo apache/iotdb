@@ -510,6 +510,15 @@ public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> 
   }
 
   @Override
+  public Void visitCreateWritableView(final CreateWritableView node, final C context) {
+    for (final Property property : node.getProperties()) {
+      process(property, context);
+    }
+
+    return null;
+  }
+
+  @Override
   public Void visitProperty(Property node, C context) {
     process(node.getName(), context);
     if (!node.isSetToDefault()) {
@@ -529,7 +538,11 @@ public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> 
 
   @Override
   public Void visitAddColumn(final AddColumn node, final C context) {
-    process(node.getColumn(), context);
+    if (node.getWritableViewColumn().isPresent()) {
+      process(node.getWritableViewColumn().get(), context);
+    } else {
+      process(node.getColumn(), context);
+    }
 
     return null;
   }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -96,7 +97,8 @@ public class TreeDeviceViewFieldDetector {
                 final FieldColumnSchema columnSchema =
                     new FieldColumnSchema(field, TSDataType.getTsDataType(type));
                 if (!field.equals(lowerCase2OriginalMap.get(field))) {
-                  TreeViewSchema.setOriginalName(columnSchema, lowerCase2OriginalMap.get(field));
+                  ViewColumnSchemaUtils.setSourceName(
+                      columnSchema, lowerCase2OriginalMap.get(field));
                 }
                 table.addColumnSchema(columnSchema);
               });
@@ -109,7 +111,7 @@ public class TreeDeviceViewFieldDetector {
               || schema.getDataType() != TSDataType.UNKNOWN) {
             continue;
           }
-          final String key = TreeViewSchema.getSourceName(schema);
+          final String key = ViewColumnSchemaUtils.getSourceName(schema);
           if (!unknownFields.containsKey(key)) {
             unknownFields.put(key, new HashSet<>());
           }

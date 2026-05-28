@@ -23,16 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RenameWritableViewPlan;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -109,7 +110,10 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
           env.getConfigManager()
               .getClusterSchemaManager()
               .tableCheckForRenaming(
-                  database, tableName, newName, this instanceof RenameViewProcedure);
+                  database,
+                  tableName,
+                  newName,
+                  getTableSchemaObjectType().getClusterSchemaTableType());
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(new ProcedureException(new IoTDBException(status)));
@@ -132,11 +136,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof RenameViewProcedure
-                    ? new RenameViewPlan(database, tableName, newName)
-                    : new RenameTablePlan(database, tableName, newName),
-                isGeneratedByPipe);
+            .executePlan(createRenameTablePlan(tableName, newName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
@@ -180,13 +180,21 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof RenameViewProcedure
-                    ? new RenameViewPlan(database, newName, tableName)
-                    : new RenameTablePlan(database, newName, tableName),
-                isGeneratedByPipe);
+            .executePlan(createRenameTablePlan(newName, tableName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+    }
+  }
+
+  private ConfigPhysicalPlan createRenameTablePlan(
+      final String originalTableName, final String renamedTableName) {
+    switch (getTableSchemaObjectType()) {
+      case VIEW:
+        return new RenameViewPlan(database, originalTableName, renamedTableName);
+      case WRITABLE_VIEW:
+        return new RenameWritableViewPlan(database, originalTableName, renamedTableName);
+      default:
+        return new RenameTablePlan(database, originalTableName, renamedTableName);
     }
   }
 

@@ -358,11 +358,14 @@ struct TUpdateTableReq {
   1: required byte type
   2: required binary tableInfo
   3: optional string oldName
+  4: optional binary originalInfo
 }
 
 struct TInvalidateTableCacheReq {
   1: required string database
   2: required string tableName
+  3: optional string originalDatabase
+  4: optional string originalTableName
 }
 
 struct TInvalidateColumnCacheReq {
@@ -370,6 +373,9 @@ struct TInvalidateColumnCacheReq {
   2: required string tableName,
   3: required string columnName,
   4: required bool isAttributeColumn
+  5: optional string originalDatabase,
+  6: optional string originalTableName,
+  7: optional string originalColumnName
 }
 
 struct TDeleteColumnDataReq {

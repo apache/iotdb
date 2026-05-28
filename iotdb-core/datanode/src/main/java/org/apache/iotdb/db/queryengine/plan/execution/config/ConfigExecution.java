@@ -81,6 +81,7 @@ public class ConfigExecution implements IQueryExecution {
                   TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(),
                   TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.TABLE_NOT_EXISTS.getStatusCode(),
+                  TSStatusCode.TABLE_INCOMPATIBLE.getStatusCode(),
                   TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode(),
                   TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode(),

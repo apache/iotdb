@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
@@ -38,6 +39,11 @@ public class RenameViewColumnProcedure extends RenameTableColumnProcedure {
       final String newName,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, oldName, newName, isGeneratedByPipe);
+  }
+
+  @Override
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.VIEW;
   }
 
   @Override

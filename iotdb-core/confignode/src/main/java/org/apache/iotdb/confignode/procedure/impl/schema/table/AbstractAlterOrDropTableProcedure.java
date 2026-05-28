@@ -33,6 +33,8 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.WritableViewUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,11 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   protected String queryId;
 
   protected TsTable table;
+
+  // Used for cascading writable view
+  private transient boolean init;
+  protected transient String originalDatabase;
+  protected transient TsTable originalTable;
 
   protected AbstractAlterOrDropTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -86,13 +93,66 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     return queryId;
   }
 
+  public TsTable getTable() {
+    return table;
+  }
+
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.TABLE;
+  }
+
+  /////////////////////////////// Writable View ///////////////////////////////
+  public void setTable(final TsTable table) {
+    this.table = table;
+  }
+
+  public String getOriginalDatabase() {
+    mayInitOriginal();
+    return originalDatabase;
+  }
+
+  public TsTable getOriginalTable() {
+    mayInitOriginal();
+    return originalTable;
+  }
+
+  public String getOriginalTableName() {
+    final TsTable table = getOriginalTable();
+    return Objects.nonNull(table) ? table.getTableName() : null;
+  }
+
+  protected void mayInitOriginal() {
+    if (init) {
+      return;
+    }
+    final Pair<String, TsTable> sourceDatabaseTable =
+        WritableViewUtils.getSourceDatabaseAndTable(this, getSourceResolutionOverride());
+    init = true;
+    if (Objects.isNull(sourceDatabaseTable)) {
+      return;
+    }
+    this.originalDatabase = sourceDatabaseTable.left;
+    this.originalTable = sourceDatabaseTable.right;
+  }
+
+  // Non-null when a procedure must keep its source-resolution decision stable after ser/de.
+  protected Boolean getSourceResolutionOverride() {
+    return null;
+  }
+
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     preRelease(env, null);
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
+        SchemaUtils.preReleaseTable(
+            database,
+            getOriginalDatabase(),
+            table,
+            getOriginalTable(),
+            env.getConfigManager(),
+            oldName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
@@ -116,7 +176,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   protected void commitRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(
-            database, table.getTableName(), env.getConfigManager(), oldName);
+            database,
+            getOriginalDatabase(),
+            table.getTableName(),
+            getOriginalTableName(),
+            env.getConfigManager(),
+            oldName);
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
           ProcedureMessages.FAILED_TO_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
@@ -140,7 +205,12 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
       final ConfigNodeProcedureEnv env, final @Nullable String tableName) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.rollbackPreRelease(
-            database, table.getTableName(), env.getConfigManager(), tableName);
+            database,
+            table.getTableName(),
+            getOriginalDatabase(),
+            getOriginalTableName(),
+            env.getConfigManager(),
+            tableName);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

@@ -1078,7 +1078,7 @@ public class DataNodeTableOperatorGenerator
         context,
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
-        Long.MAX_VALUE);
+        getOriginalWritableViewTTL(node));
   }
 
   @Override
@@ -1563,7 +1563,7 @@ public class DataNodeTableOperatorGenerator
         context,
         AbstractAggTableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
-        Long.MAX_VALUE);
+        getOriginalWritableViewTTL(node));
   }
 
   @Override
@@ -1610,6 +1610,7 @@ public class DataNodeTableOperatorGenerator
             .getTTLForTable(
                 node.getQualifiedObjectName().getDatabaseName(),
                 node.getQualifiedObjectName().getObjectName());
+    tableTTL = Math.min(tableTTL, getOriginalWritableViewTTL(node));
     Filter updateTimeFilter =
         updateFilterUsingTTL(parameter.getSeriesScanOptions().getGlobalTimeFilter(), tableTTL);
     if (isLastRowOptimize) {
@@ -1725,8 +1726,7 @@ public class DataNodeTableOperatorGenerator
             }
 
             if (updateTimeFilter != null
-                && !LastQueryUtil.satisfyFilter(
-                    parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
+                && !LastQueryUtil.satisfyFilter(updateTimeFilter, timeValuePair)) {
               if (isFilterGtOrGe(updateTimeFilter)) {
                 // it means there is no data meets Filter
                 timeValuePair.setValue(PLACEHOLDER_NO_VALUE);
@@ -1826,6 +1826,15 @@ public class DataNodeTableOperatorGenerator
     } finally {
       context.dataNodeQueryContext.unLock(true);
     }
+  }
+
+  private long getOriginalWritableViewTTL(DeviceTableScanNode node) {
+    return node.getOriginalWritableViewName()
+        .map(
+            viewName ->
+                DataNodeTTLCache.getInstance()
+                    .getTTLForTable(viewName.getDatabaseName(), viewName.getObjectName()))
+        .orElse(Long.MAX_VALUE);
   }
 
   private SeriesScanOptions buildSeriesScanOptions(

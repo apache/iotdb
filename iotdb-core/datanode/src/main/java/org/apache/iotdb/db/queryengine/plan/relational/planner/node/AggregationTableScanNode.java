@@ -96,7 +96,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode.GroupingSetDescriptor groupingSets,
       List<Symbol> preGroupedSymbols,
       AggregationNode.Step step,
-      Optional<Symbol> groupIdSymbol) {
+      Optional<Symbol> groupIdSymbol,
+      Optional<QualifiedObjectName> originalWritableViewName) {
     super(
         id,
         qualifiedObjectName,
@@ -110,7 +111,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        containsNonAlignedDevice,
+        originalWritableViewName);
     this.projection = projection;
 
     this.aggregations = transformCountStar(aggregations, assignments);
@@ -282,7 +284,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         groupingSets,
         preGroupedSymbols,
         step,
-        groupIdSymbol);
+        groupIdSymbol,
+        originalWritableViewName);
   }
 
   @Override
@@ -340,7 +343,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
         aggregationNode.getStep(),
-        aggregationNode.getGroupIdSymbol());
+        aggregationNode.getGroupIdSymbol(),
+        tableScanNode.getOriginalWritableViewName());
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
@@ -394,7 +398,8 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
         step,
-        aggregationNode.getGroupIdSymbol());
+        aggregationNode.getGroupIdSymbol(),
+        tableScanNode.getOriginalWritableViewName());
   }
 
   public boolean mayUseLastCache() {

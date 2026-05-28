@@ -398,6 +398,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.isTableModelTsFile.set(i, isTableModelFile);
       this.isTableModelTsFileReliableIndex = i;
 
+      if (isTableModelFile) {
+        setTableModelDatabaseFromContextIfNecessary();
+      }
+
       if (0 <= tabletConversionThresholdBytes
           && tsFile.length() <= tabletConversionThresholdBytes
           && handleSingleMiniFile(i)) {
@@ -546,21 +550,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     long writePointCount = 0;
 
-    if (Objects.isNull(databaseForTableData)) {
-      // If database is not specified, use the database from current session.
-      // If still not specified, throw an exception.
-      final Optional<String> dbName = context.getDatabaseName();
-      if (dbName.isPresent()) {
-        databaseForTableData = dbName.get();
-        if (isTableModelStatement) {
-          loadTsFileTableStatement.setDatabase(dbName.get());
-        } else {
-          loadTsFileTreeStatement.setDatabase(dbName.get());
-        }
-      } else {
-        throw new SemanticException(DATABASE_NOT_SPECIFIED);
-      }
-    }
+    setTableModelDatabaseFromContextIfNecessary();
 
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
@@ -615,6 +605,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
     return false;
+  }
+
+  private void setTableModelDatabaseFromContextIfNecessary() {
+    if (Objects.nonNull(databaseForTableData)) {
+      return;
+    }
+
+    // If database is not specified, use the database from current session.
+    // If still not specified, throw an exception.
+    final Optional<String> dbName = context.getDatabaseName();
+    if (dbName.isPresent()) {
+      databaseForTableData = dbName.get();
+      if (isTableModelStatement) {
+        loadTsFileTableStatement.setDatabase(dbName.get());
+      } else {
+        loadTsFileTreeStatement.setDatabase(dbName.get());
+      }
+    } else {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
   }
 
   private static boolean timeseriesMetadataBatchContainsObjectColumn(

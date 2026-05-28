@@ -142,5 +142,10 @@ public final class CalcMessages {
   public static final String PUSHED_ELEMENT_IS_NULL =
       "推入的元素为 null";
 
+  public static final String WRITABLE_VIEW_COLUMN_NOT_IN_SOURCE_TABLE =
+      "列 '%s' 在可写视图 '%s.%s' 中无法解析，因为它不存在于源表 '%s.%s' 中。";
+  public static final String WRITABLE_VIEW_SOURCE_COLUMN_NOT_IN_SOURCE_TABLE =
+      "列 '%s' 在可写视图 '%s.%s' 中无法解析，因为源列 '%s' 不存在于源表 '%s.%s' 中。";
+
   public static final String FAILED_TO_DELETE_TEMP_DIR = "删除临时目录 {} 失败。";
 }

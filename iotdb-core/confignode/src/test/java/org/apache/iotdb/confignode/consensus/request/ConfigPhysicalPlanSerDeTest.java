@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -186,6 +187,8 @@ import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RenameWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RollbackCreateWritableViewPlan;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -1435,6 +1438,58 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void rollbackCreateWritableViewPlanTest() throws IOException {
+    final WritableView writableView = new WritableView("view1", "root.database1", "table1", true);
+    final RollbackCreateWritableViewPlan rollbackCreateWritableViewPlan0 =
+        new RollbackCreateWritableViewPlan(
+            "root.database1", writableView, TableNodeStatus.PRE_CREATE, null, null);
+    final RollbackCreateWritableViewPlan rollbackCreateWritableViewPlan1 =
+        (RollbackCreateWritableViewPlan)
+            ConfigPhysicalPlan.Factory.create(
+                rollbackCreateWritableViewPlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(
+        rollbackCreateWritableViewPlan0.getDatabase(),
+        rollbackCreateWritableViewPlan1.getDatabase());
+    Assert.assertTrue(rollbackCreateWritableViewPlan1.getTable() instanceof WritableView);
+    assertWritableViewEquals(
+        (WritableView) rollbackCreateWritableViewPlan0.getTable(),
+        (WritableView) rollbackCreateWritableViewPlan1.getTable());
+    Assert.assertEquals(
+        rollbackCreateWritableViewPlan0.getStatus(), rollbackCreateWritableViewPlan1.getStatus());
+    Assert.assertNull(rollbackCreateWritableViewPlan1.getOriginalDatabase());
+    Assert.assertNull(rollbackCreateWritableViewPlan1.getOriginalTable());
+    Assert.assertFalse(rollbackCreateWritableViewPlan1.isRestoreView());
+
+    final TsTable originalTable = new TsTable("table1");
+    originalTable.addProp(TsTable.COMMENT_KEY, "source-comment-before-create");
+    originalTable.addColumnSchema(new TagColumnSchema("source_id", TSDataType.STRING));
+    originalTable.addColumnSchema(
+        new FieldColumnSchema(
+            "source_value", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final RollbackCreateWritableViewPlan rollbackCreateWritableViewPlanWithOriginal0 =
+        new RollbackCreateWritableViewPlan(
+            "root.database1",
+            writableView,
+            TableNodeStatus.PRE_CREATE,
+            "root.database1",
+            originalTable,
+            true);
+    final RollbackCreateWritableViewPlan rollbackCreateWritableViewPlanWithOriginal1 =
+        (RollbackCreateWritableViewPlan)
+            ConfigPhysicalPlan.Factory.create(
+                rollbackCreateWritableViewPlanWithOriginal0.serializeToByteBuffer());
+
+    Assert.assertEquals(
+        rollbackCreateWritableViewPlanWithOriginal0.getOriginalDatabase(),
+        rollbackCreateWritableViewPlanWithOriginal1.getOriginalDatabase());
+    assertTsTableEquals(
+        rollbackCreateWritableViewPlanWithOriginal0.getOriginalTable(),
+        rollbackCreateWritableViewPlanWithOriginal1.getOriginalTable());
+    Assert.assertTrue(rollbackCreateWritableViewPlanWithOriginal1.isRestoreView());
+  }
+
+  @Test
   public void RollbackCreateTablePlanTest() throws IOException {
     final RollbackCreateTablePlan rollbackCreateTablePlan0 =
         new RollbackCreateTablePlan("database1", "table1");
@@ -1479,6 +1534,44 @@ public class ConfigPhysicalPlanSerDeTest {
         renameViewPropertiesPlan0.getOldName(), renameViewPropertiesPlan1.getOldName());
     Assert.assertEquals(
         renameViewPropertiesPlan0.getNewName(), renameViewPropertiesPlan1.getNewName());
+  }
+
+  @Test
+  public void RenameWritableViewColumnPlanTest() throws IOException {
+    final RenameWritableViewColumnPlan renameWritableViewColumnPlan0 =
+        new RenameWritableViewColumnPlan(
+            "database1",
+            "table1",
+            "attr1",
+            "attr2",
+            "database1",
+            "source_table",
+            "source_attr1",
+            "source_attr2");
+    final RenameWritableViewColumnPlan renameWritableViewColumnPlan1 =
+        (RenameWritableViewColumnPlan)
+            ConfigPhysicalPlan.Factory.create(
+                renameWritableViewColumnPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getDatabase(), renameWritableViewColumnPlan1.getDatabase());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getTableName(), renameWritableViewColumnPlan1.getTableName());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getOldName(), renameWritableViewColumnPlan1.getOldName());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getNewName(), renameWritableViewColumnPlan1.getNewName());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getOriginalDatabase(),
+        renameWritableViewColumnPlan1.getOriginalDatabase());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getOriginalTableName(),
+        renameWritableViewColumnPlan1.getOriginalTableName());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getOriginalOldName(),
+        renameWritableViewColumnPlan1.getOriginalOldName());
+    Assert.assertEquals(
+        renameWritableViewColumnPlan0.getOriginalNewName(),
+        renameWritableViewColumnPlan1.getOriginalNewName());
   }
 
   @Test
@@ -2125,6 +2218,20 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeCreateTableOrViewPlan0.getTable().getTagNum(),
         pipeCreateTableOrViewPlan1.getTable().getTagNum());
+
+    final WritableView writableView = new WritableView("view1", "root.database1", "table1", true);
+    final PipeCreateTableOrViewPlan writableViewPlan0 =
+        new PipeCreateTableOrViewPlan("root.database1", writableView);
+    final PipeCreateTableOrViewPlan writableViewPlan1 =
+        (PipeCreateTableOrViewPlan)
+            ConfigPhysicalPlan.Factory.create(writableViewPlan0.serializeToByteBuffer());
+
+    Assert.assertTrue(writableViewPlan1.getTable() instanceof WritableView);
+    Assert.assertEquals(writableViewPlan0.getDatabase(), writableViewPlan1.getDatabase());
+    Assert.assertEquals(
+        writableViewPlan0.getTable().getTableName(), writableViewPlan1.getTable().getTableName());
+    assertWritableViewEquals(
+        (WritableView) writableViewPlan0.getTable(), (WritableView) writableViewPlan1.getTable());
   }
 
   @Test
@@ -2202,5 +2309,39 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetRegionGroupsByTimePlan)
             ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
+  }
+
+  private void assertWritableViewEquals(final WritableView expected, final WritableView actual) {
+    assertTsTableEquals(expected, actual);
+    Assert.assertEquals(expected.getSourceTableDatabase(), actual.getSourceTableDatabase());
+    Assert.assertEquals(expected.getSourceTableName(), actual.getSourceTableName());
+    Assert.assertEquals(expected.isSchemaCascade(), actual.isSchemaCascade());
+    Assert.assertEquals(
+        expected.getViewColumnToSourceColumnMap(), actual.getViewColumnToSourceColumnMap());
+  }
+
+  private void assertTsTableEquals(final TsTable expected, final TsTable actual) {
+    Assert.assertEquals(expected.getClass(), actual.getClass());
+    Assert.assertEquals(expected.getTableName(), actual.getTableName());
+    Assert.assertEquals(expected.getColumnNum(), actual.getColumnNum());
+    Assert.assertEquals(expected.getTagNum(), actual.getTagNum());
+    Assert.assertEquals(expected.getFieldNum(), actual.getFieldNum());
+    Assert.assertEquals(expected.getProps(), actual.getProps());
+    Assert.assertEquals(expected.getColumnList().size(), actual.getColumnList().size());
+    for (int i = 0; i < expected.getColumnList().size(); i++) {
+      Assert.assertEquals(
+          expected.getColumnList().get(i).getClass(), actual.getColumnList().get(i).getClass());
+      Assert.assertEquals(
+          expected.getColumnList().get(i).getColumnName(),
+          actual.getColumnList().get(i).getColumnName());
+      Assert.assertEquals(
+          expected.getColumnList().get(i).getDataType(),
+          actual.getColumnList().get(i).getDataType());
+      Assert.assertEquals(
+          expected.getColumnList().get(i).getColumnCategory(),
+          actual.getColumnList().get(i).getColumnCategory());
+      Assert.assertEquals(
+          expected.getColumnList().get(i).getProps(), actual.getColumnList().get(i).getProps());
+    }
   }
 }

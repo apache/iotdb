@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewInsertRewriteSupport;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -48,6 +51,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
@@ -131,7 +135,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   }
 
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = getDatabase();
+    final String databaseName = getDatabase();
+    rewriteWritableViewTargetIfNecessary(metadata, databaseName, getInnerTreeStatement());
     metadata.validateInsertNodeMeasurements(
         databaseName,
         getInsertNodeMeasurementInfo(),
@@ -147,6 +152,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       final InsertRowStatement insertRowStatement,
       final String databaseName,
       final boolean allowCreateTable) {
+    rewriteWritableViewTargetIfNecessary(metadata, databaseName, insertRowStatement);
     metadata.validateInsertNodeMeasurements(
         databaseName,
         toInsertNodeMeasurementInfo(insertRowStatement),
@@ -471,6 +477,55 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
     metadata.validateDeviceSchema(this, context);
+  }
+
+  protected void rewriteWritableViewTargetIfNecessary(
+      final Metadata metadata,
+      final String databaseName,
+      final InsertBaseStatement insertBaseStatement) {
+    final Optional<WritableViewInsertRewriteSupport> rewriteSupport =
+        metadata.getWritableViewInsertRewriteSupport(
+            context.getSession(),
+            new QualifiedObjectName(databaseName, insertBaseStatement.getTableName()));
+    if (!rewriteSupport.isPresent()) {
+      return;
+    }
+
+    final WritableViewInsertRewriteSupport support = rewriteSupport.get();
+    support.ensureSourceTableExists();
+    final QualifiedObjectName sourceTableName = support.getSourceTableName();
+
+    if (support.requiresSourceColumnRewrite()) {
+      final String[] measurements = insertBaseStatement.getMeasurements();
+      if (measurements != null) {
+        for (int i = 0; i < measurements.length; i++) {
+          if (measurements[i] != null) {
+            measurements[i] = support.resolveExistingSourceColumnName(measurements[i]);
+          }
+        }
+      }
+
+      final MeasurementSchema[] measurementSchemas = insertBaseStatement.getMeasurementSchemas();
+      if (measurementSchemas != null) {
+        for (int i = 0; i < measurementSchemas.length; i++) {
+          if (measurementSchemas[i] != null) {
+            final String rewrittenMeasurementName =
+                measurements != null && i < measurements.length
+                    ? measurements[i]
+                    : support.resolveExistingSourceColumnName(
+                        measurementSchemas[i].getMeasurementName());
+            measurementSchemas[i].setMeasurementName(rewrittenMeasurementName);
+          }
+        }
+      }
+    }
+
+    insertBaseStatement.setDevicePath(new PartialPath(sourceTableName.getObjectName(), false));
+    insertBaseStatement.setDatabaseName(sourceTableName.getDatabaseName());
+    insertBaseStatement.invalidateTableColumnIndexCaches();
+    insertBaseStatement.setSemanticChecked(false);
+    insertBaseStatement.setToLowerCaseApplied(false);
+    tableSchema = null;
   }
 
   public String getDatabase() {

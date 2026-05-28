@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.PlanAndMappings;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 
@@ -82,6 +83,7 @@ class SubqueryPlanner {
   private final QueryId idAllocator;
   private final MPPQueryContext plannerContext;
   private final SessionInfo session;
+  private final Metadata metadata;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
   private final PredicateWithUncorrelatedScalarSubqueryReconstructor
       predicateWithUncorrelatedScalarSubqueryReconstructor;
@@ -92,6 +94,7 @@ class SubqueryPlanner {
       MPPQueryContext plannerContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
+      Metadata metadata,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
@@ -100,6 +103,7 @@ class SubqueryPlanner {
     requireNonNull(plannerContext, "plannerContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
+    requireNonNull(metadata, "metadata is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
@@ -110,6 +114,7 @@ class SubqueryPlanner {
     this.idAllocator = plannerContext.getQueryId();
     this.plannerContext = plannerContext;
     this.session = session;
+    this.metadata = metadata;
     this.recursiveSubqueries = recursiveSubqueries;
     this.predicateWithUncorrelatedScalarSubqueryReconstructor =
         predicateWithUncorrelatedScalarSubqueryReconstructor;
@@ -367,6 +372,7 @@ class SubqueryPlanner {
             plannerContext,
             Optional.of(outerContext),
             session,
+            metadata,
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor)
         .process(subquery, null);

@@ -28,10 +28,12 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -378,7 +380,9 @@ public interface IConfigTaskExecutor {
       final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails);
+      final String database,
+      final Predicate<TTableInfo> checkCanShowTable,
+      final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
@@ -465,7 +469,16 @@ public interface IConfigTaskExecutor {
       final DeleteDevice deleteDevice, final String queryId, final SessionInfo sessionInfo);
 
   SettableFuture<ConfigTaskResult> createTableView(
-      final TsTable table, final String database, final boolean replace);
+      final TsTable table,
+      final String database,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap);
+
+  SettableFuture<ConfigTaskResult> createWritableView(
+      final WritableView table,
+      final String database,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap);
 
   SettableFuture<ConfigTaskResult> showVersion();
 

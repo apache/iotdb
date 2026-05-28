@@ -118,6 +118,7 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.DATE_OUT_OF_RANGE.getStatusCode()
             || status.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
+            || status.getCode() == TSStatusCode.TABLE_INCOMPATIBLE.getStatusCode()
             || status.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()

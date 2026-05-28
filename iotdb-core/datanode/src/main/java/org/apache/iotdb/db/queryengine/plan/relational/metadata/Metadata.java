@@ -60,6 +60,31 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
    */
   Optional<TableSchema> getTableSchema(final SessionInfo session, final QualifiedObjectName name);
 
+  default Optional<WritableViewInsertRewriteSupport> getWritableViewInsertRewriteSupport(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final Optional<TableSchema> targetTableSchema = getTableSchema(session, name);
+    if (!targetTableSchema.isPresent()
+        || !(targetTableSchema.get() instanceof WritableViewSchema)) {
+      return Optional.empty();
+    }
+
+    final WritableViewSchema writableViewSchema = (WritableViewSchema) targetTableSchema.get();
+    final Optional<TableSchema> sourceTableSchema = writableViewSchema.getSourceTableSchema();
+    final Optional<TableSchema> resolvedSourceTableSchema =
+        sourceTableSchema.isPresent()
+            ? sourceTableSchema
+            : getTableSchema(session, writableViewSchema.getSourceTableName());
+    return Optional.of(
+        new WritableViewInsertRewriteSupport(
+            name,
+            writableViewSchema.getSourceTableName(),
+            writableViewSchema.getViewColumnToSourceColumnMap(),
+            resolvedSourceTableSchema.isPresent(),
+            resolvedSourceTableSchema.isPresent()
+                ? resolvedSourceTableSchema.get().getColumnSchemaMap()::containsKey
+                : columnName -> false));
+  }
+
   Type getOperatorReturnType(
       final OperatorType operatorType, final List<? extends Type> argumentTypes)
       throws OperatorNotFoundException;

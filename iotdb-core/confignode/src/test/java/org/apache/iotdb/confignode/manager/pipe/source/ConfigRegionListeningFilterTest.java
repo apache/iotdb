@@ -22,11 +22,13 @@ package org.apache.iotdb.confignode.manager.pipe.source;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,6 +38,27 @@ import java.util.Set;
 public class ConfigRegionListeningFilterTest {
 
   @Test
+  public void testCommitCreateWritableViewShouldBeListened() {
+    Assert.assertTrue(
+        ConfigRegionListeningFilter.shouldPlanBeListened(
+            new CommitCreateWritableViewPlan("db", "view", null, (TsTable) null)));
+  }
+
+  @Test
+  public void testSchemaTableCreateOptionContainsCommitCreateWritableView() throws Exception {
+    final Set<ConfigPhysicalPlanType> planTypes =
+        ConfigRegionListeningFilter.parseListeningPlanTypeSet(
+            new PipeParameters(
+                new HashMap<String, String>() {
+                  {
+                    put(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "schema.table.create");
+                    put(PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+                  }
+                }));
+
+    Assert.assertTrue(planTypes.contains(ConfigPhysicalPlanType.CommitCreateWritableView));
+  }
+
   public void testAuthUserRevokeUsesRevokeRelationalPlans() throws Exception {
     final Set<ConfigPhysicalPlanType> listenedPlanTypes =
         ConfigRegionListeningFilter.parseListeningPlanTypeSet(

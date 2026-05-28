@@ -637,6 +637,12 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @TableModel
   @Override
+  public void resetTableDeviceIDCache() {
+    deviceID = null;
+  }
+
+  @TableModel
+  @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRow(this, context);
   }

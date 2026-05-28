@@ -27,13 +27,28 @@ public interface ITableCache {
 
   void init(final byte[] tableInitializationBytes);
 
-  void preUpdateTable(final String database, final TsTable table, final @Nullable String oldName);
+  void preUpdateTable(final String database1, final TsTable table, final @Nullable String oldName);
+
+  void preUpdateTable(
+      final String database1, final String database2, final TsTable table1, final TsTable table2);
 
   void rollbackUpdateTable(
       final String database, final String tableName, final @Nullable String oldName);
 
-  void commitUpdateTable(
+  void rollbackUpdateTable(
+      final String database1,
+      final String database2,
+      final String tableName1,
+      final String tableName2);
+
+  boolean commitUpdateTable(
       final String database, final String tableName, final @Nullable String oldName);
+
+  boolean commitUpdateTable(
+      final String database1,
+      final String database2,
+      final String tableName1,
+      final String tableName2);
 
   /**
    * @param database shouldn't start with `root.`
@@ -42,5 +57,19 @@ public interface ITableCache {
 
   void invalid(final String database, final String tableName);
 
+  void invalid(
+      final String database1,
+      final String tableName1,
+      final String database2,
+      final String tableName2);
+
   void invalid(final String database, final String tableName, final String columnName);
+
+  void invalid(
+      final String database1,
+      final String tableName1,
+      final String columnName1,
+      final String database2,
+      final String tableName2,
+      final String columnName2);
 }

@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +153,13 @@ public class CreateTableProcedure
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
+        SchemaUtils.preReleaseTable(
+            database,
+            getOriginalDatabase(),
+            table,
+            getOriginalTable(),
+            env.getConfigManager(),
+            null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
@@ -171,12 +178,9 @@ public class CreateTableProcedure
 
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitCreateTablePlan(database, table.getTableName()))
-                : new CommitCreateTablePlan(database, table.getTableName()),
-            env,
-            LOGGER);
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .executePlan(createCommitCreatePlan(), isGeneratedByPipe);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
@@ -184,10 +188,28 @@ public class CreateTableProcedure
     }
   }
 
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.TABLE;
+  }
+
+  private ConfigPhysicalPlan createCommitCreatePlan() {
+    if (getTableSchemaObjectType() == TableSchemaObjectType.WRITABLE_VIEW) {
+      return new CommitCreateWritableViewPlan(
+          database, table.getTableName(), getOriginalDatabase(), getOriginalTable());
+    }
+    return new CommitCreateTablePlan(database, table.getTableName());
+  }
+
   private void commitReleaseTable(final ConfigNodeProcedureEnv env) {
+    final TsTable originalTable = getOriginalTable();
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(
-            database, table.getTableName(), env.getConfigManager(), null);
+            database,
+            getOriginalDatabase(),
+            table.getTableName(),
+            Objects.nonNull(originalTable) ? originalTable.getTableName() : null,
+            env.getConfigManager(),
+            null);
 
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
@@ -196,6 +218,14 @@ public class CreateTableProcedure
           table.getTableName(),
           failedResults);
     }
+  }
+
+  protected String getOriginalDatabase() {
+    return null;
+  }
+
+  protected TsTable getOriginalTable() {
+    return null;
   }
 
   @Override
@@ -240,9 +270,15 @@ public class CreateTableProcedure
   }
 
   private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final TsTable originalTable = getOriginalTable();
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.rollbackPreRelease(
-            database, table.getTableName(), env.getConfigManager(), null);
+            database,
+            table.getTableName(),
+            getOriginalDatabase(),
+            Objects.nonNull(originalTable) ? originalTable.getTableName() : null,
+            env.getConfigManager(),
+            null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

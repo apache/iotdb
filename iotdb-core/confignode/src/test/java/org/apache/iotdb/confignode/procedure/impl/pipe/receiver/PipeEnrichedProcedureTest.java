@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOperand;
@@ -68,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.AddWritableViewColumnProcedure;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -79,6 +81,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -650,6 +653,51 @@ public class PipeEnrichedProcedureTest {
   }
 
   @Test
+  public void addWritableViewColumnTest() throws IOException {
+    final AddWritableViewColumnProcedure addWritableViewColumnProcedure =
+        new AddWritableViewColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    addWritableViewColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_ADD_WRITABLE_VIEW_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final AddWritableViewColumnProcedure deserializedProcedure =
+        new AddWritableViewColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(
+        addWritableViewColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        addWritableViewColumnProcedure.getTableName(), deserializedProcedure.getTableName());
+    Assert.assertEquals(
+        addWritableViewColumnProcedure.getQueryId(), deserializedProcedure.getQueryId());
+    assertColumnSchemaListEquals(
+        getFieldValue(
+            addWritableViewColumnProcedure, AddTableColumnProcedure.class, "addedColumnList"),
+        getFieldValue(deserializedProcedure, AddTableColumnProcedure.class, "addedColumnList"));
+    assertColumnSchemaListEquals(
+        getFieldValue(
+            addWritableViewColumnProcedure,
+            AddWritableViewColumnProcedure.class,
+            "originalAddedColumnList"),
+        getFieldValue(
+            deserializedProcedure,
+            AddWritableViewColumnProcedure.class,
+            "originalAddedColumnList"));
+  }
+
+  @Test
   public void dropViewColumnTest() throws IOException {
     final DropViewColumnProcedure dropViewColumnProcedure =
         new DropViewColumnProcedure("database1", "table1", "0", "columnName", true);
@@ -787,5 +835,31 @@ public class PipeEnrichedProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(alterEncodingCompressorProcedure, deserializedProcedure);
+  }
+
+  private void assertColumnSchemaListEquals(
+      final List<TsTableColumnSchema> expected, final List<TsTableColumnSchema> actual) {
+    Assert.assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      final TsTableColumnSchema expectedSchema = expected.get(i);
+      final TsTableColumnSchema actualSchema = actual.get(i);
+      Assert.assertEquals(expectedSchema.getClass(), actualSchema.getClass());
+      Assert.assertEquals(expectedSchema.getColumnName(), actualSchema.getColumnName());
+      Assert.assertEquals(expectedSchema.getDataType(), actualSchema.getDataType());
+      Assert.assertEquals(expectedSchema.getColumnCategory(), actualSchema.getColumnCategory());
+      Assert.assertEquals(expectedSchema.getProps(), actualSchema.getProps());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T> T getFieldValue(
+      final Object target, final Class<?> ownerClass, final String fieldName) {
+    try {
+      final Field field = ownerClass.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      return (T) field.get(target);
+    } catch (final ReflectiveOperationException e) {
+      throw new AssertionError(e);
+    }
   }
 }

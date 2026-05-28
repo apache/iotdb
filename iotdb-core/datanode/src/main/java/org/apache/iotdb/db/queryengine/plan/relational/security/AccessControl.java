@@ -158,6 +158,9 @@ public interface AccessControl {
   void checkCanDeleteFromTable(
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity);
 
+  void checkCanCreateWritableViewFromSourceTable(
+      QualifiedObjectName tableName, IAuditEntity auditEntity, boolean isCascade);
+
   /**
    * Check if user is allowed to show or describe the specified table.
    *

@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
@@ -40,8 +45,28 @@ public class DropViewColumnProcedure extends DropTableColumnProcedure {
   }
 
   @Override
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.VIEW;
+  }
+
+  @Override
   protected String getActionMessage() {
     return "drop view column";
+  }
+
+  @Override
+  protected ConfigPhysicalPlan createPreDeleteColumnPlan() {
+    return new PreDeleteViewColumnPlan(database, tableName, columnName);
+  }
+
+  @Override
+  protected DropTableColumnState getStateAfterInvalidateCache() {
+    return DropTableColumnState.DROP_COLUMN;
+  }
+
+  @Override
+  protected ConfigPhysicalPlan createCommitDeleteColumnPlan() {
+    return new CommitDeleteViewColumnPlan(database, tableName, columnName);
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface ITableAuthChecker {
 
@@ -74,6 +75,12 @@ public interface ITableAuthChecker {
       String userName,
       QualifiedObjectName tableName,
       TableModelPrivilege privilege,
+      IAuditEntity auditEntity);
+
+  void checkTablePrivileges(
+      String userName,
+      final QualifiedObjectName tableName,
+      final List<TableModelPrivilege> privileges,
       IAuditEntity auditEntity);
 
   void checkTablePrivilegeGrantOption(

@@ -24,6 +24,7 @@ public enum TableType {
   VIEW_FROM_TREE("VIEW FROM TREE"),
   VIEW("VIEW"),
   SYSTEM_VIEW("SYSTEM VIEW"),
+  WRITABLE_VIEW("WRITABLE VIEW"),
   ;
 
   private final String name;

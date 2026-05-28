@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,6 +32,10 @@ import java.nio.ByteBuffer;
 public class AbstractTableColumnPlan extends AbstractTablePlan {
 
   private String columnName;
+
+  // Used for writable views, the cluster may not need this,
+  // This is only for the meta pipe's receiver
+  protected @Nullable String originalColumnName;
 
   public AbstractTableColumnPlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -48,15 +54,26 @@ public class AbstractTableColumnPlan extends AbstractTablePlan {
     return columnName;
   }
 
+  @Nullable
+  public String getOriginalColumnName() {
+    return originalColumnName;
+  }
+
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     super.serializeImpl(stream);
     ReadWriteIOUtils.write(columnName, stream);
+    if (needOriginal()) {
+      ReadWriteIOUtils.write(originalColumnName, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     super.deserializeImpl(buffer);
     this.columnName = ReadWriteIOUtils.readString(buffer);
+    if (needOriginal()) {
+      this.originalColumnName = ReadWriteIOUtils.readString(buffer);
+    }
   }
 }

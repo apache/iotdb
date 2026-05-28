@@ -30,8 +30,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
@@ -800,7 +800,7 @@ public class TableHeaderSchemaValidator {
                 // Skip encoding & compressors because view query does not need these
                 : new FieldColumnSchema(columnName, dataType);
         if (Objects.nonNull(from)) {
-          TreeViewSchema.setOriginalName(schema, from);
+          ViewColumnSchemaUtils.setSourceName(schema, from);
         }
         if (dataType == TSDataType.OBJECT && hasMultipleTiers()) {
           throw new SemanticException("The tiered storage does not support object type yet.");

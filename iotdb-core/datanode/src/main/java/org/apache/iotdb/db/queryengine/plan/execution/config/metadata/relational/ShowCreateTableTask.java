@@ -21,8 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -45,6 +46,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask.getShowCreateWritableViewSQL;
 
 public class ShowCreateTableTask extends AbstractTableTask {
   public ShowCreateTableTask(final String database, final String tableName) {
@@ -59,7 +61,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
 
   public static void buildTsBlock(
       final TsTable table, final SettableFuture<ConfigTaskResult> future) {
-    if (TreeViewSchema.isTreeViewTable(table)) {
+    if (ViewTableUtils.isTreeView(table)) {
       ShowCreateViewTask.buildTsBlock(table, future);
       return;
     }
@@ -75,7 +77,12 @@ public class ShowCreateTableTask extends AbstractTableTask {
         .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
     builder
         .getColumnBuilder(1)
-        .writeBinary(new Binary(getShowCreateTableSQL(table), TSFileConfig.STRING_CHARSET));
+        .writeBinary(
+            new Binary(
+                ViewTableUtils.isWritableView(table)
+                    ? getShowCreateWritableViewSQL((WritableView) table)
+                    : getShowCreateTableSQL(table),
+                TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
 
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowCreateTableColumnHeader();

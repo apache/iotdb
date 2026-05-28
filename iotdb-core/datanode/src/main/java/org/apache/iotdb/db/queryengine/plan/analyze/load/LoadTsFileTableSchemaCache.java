@@ -25,12 +25,15 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeWritableViewException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -144,6 +147,8 @@ public class LoadTsFileTableSchemaCache {
 
     try {
       createTableAndDatabaseIfNecessary(device.getTableName());
+    } catch (final LoadAnalyzeWritableViewException e) {
+      throw e;
     } catch (final Exception e) {
       if (IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck()) {
         LOGGER.info(
@@ -290,6 +295,19 @@ public class LoadTsFileTableSchemaCache {
     final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.remove(tableName);
     if (Objects.isNull(schema)) {
       return;
+    }
+
+    final TsTable existingTable =
+        DataNodeTableCache.getInstance().getTableInWrite(database, tableName);
+    if (existingTable instanceof WritableView) {
+      final WritableView writableView = (WritableView) existingTable;
+      throw new LoadAnalyzeWritableViewException(
+          String.format(
+              DataNodeQueryMessages.LOAD_TSFILE_TARGET_IS_WRITABLE_VIEW_REQUIRES_TABLET_CONVERSION,
+              database,
+              tableName,
+              writableView.getSourceTableDatabase(),
+              writableView.getSourceTableName()));
     }
 
     // Check on creation, do not auto-create tables or database that cannot be inserted

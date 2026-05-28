@@ -1427,5 +1427,22 @@ public final class DataNodeQueryMessages {
 
   public static final String QUERY_EXECUTION_MISSING = "Query execution %s is missing during fetching device schema";
 
+  public static final String SOURCE_TABLE_OF_WRITABLE_VIEW_DOES_NOT_EXIST =
+      "The source table '%s.%s' of writable view '%s.%s' does not exist.";
+  public static final String LOAD_TSFILE_TARGET_IS_WRITABLE_VIEW_REQUIRES_TABLET_CONVERSION =
+      "LOAD TSFILE target '%s.%s' is a writable view and requires tablet conversion to load into source table '%s.%s'.";
+  public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
+      "INSERT into writable view without column list requires every source table column to be mapped, but source column '%s' is not exposed by the view. Use an explicit column list.";
+  public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =
+      "Only writable view timeseries are supported in ALIGN BY DEVICE queries.";
+  public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW =
+      "Can not insert data to a view which is not alias series.";
+  public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW_WITH_PATH =
+      "Can not insert data to a view which is not alias series. (View path: %s)";
+  public static final String VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN =
+      "The view column %s and %s cannot be from the same source column %s";
+  public static final String VIEW_COLUMN_CANNOT_MAP_FROM_MULTIPLE_SOURCE_COLUMNS =
+      "The view column %s cannot be mapped from multiple source columns %s and %s";
+
   private DataNodeQueryMessages() {}
 }

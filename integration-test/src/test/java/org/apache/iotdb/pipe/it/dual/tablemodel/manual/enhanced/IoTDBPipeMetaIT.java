@@ -197,6 +197,392 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testWritableViewMetaSync() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.capture.tree", "false");
+      extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("user", "root");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      final String dbName = "test";
+      TableModelUtils.createDatabase(senderEnv, dbName, 100);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create table table1(a tag, b attribute, c int32) comment 'source table' with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view view1 as select * from table1 comment 'view comment' with (ttl=200, schema_cascade=true)",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from test",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,200,USING,view comment,BASE TABLE,null,",
+                  "view1,200,USING,view comment,WRITABLE VIEW,table1,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 add column d int64 field",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe view1 details",
+          "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,time,",
+                  "a,STRING,TAG,USING,null,a,",
+                  "b,STRING,ATTRIBUTE,USING,null,b,",
+                  "c,INT32,FIELD,USING,null,c,",
+                  "d,INT64,FIELD,USING,null,d,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe table1 details",
+          "ColumnName,DataType,Category,Status,Comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,",
+                  "a,STRING,TAG,USING,null,",
+                  "b,STRING,ATTRIBUTE,USING,null,",
+                  "c,INT32,FIELD,USING,null,",
+                  "d,INT64,FIELD,USING,null,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter table view1 alter column d set data type double",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 rename column d to d1",
+          null);
+      TestUtils.executeNonQuery(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "alter view view1 rename to view2", null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "comment on column view2.a is 'view_a_comment'",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from test",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,200,USING,view comment,BASE TABLE,null,",
+                  "view2,200,USING,view comment,WRITABLE VIEW,table1,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe view2 details",
+          "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,time,",
+                  "a,STRING,TAG,USING,view_a_comment,a,",
+                  "b,STRING,ATTRIBUTE,USING,null,b,",
+                  "c,INT32,FIELD,USING,null,c,",
+                  "d1,DOUBLE,FIELD,USING,null,d,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe table1 details",
+          "ColumnName,DataType,Category,Status,Comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,",
+                  "a,STRING,TAG,USING,view_a_comment,",
+                  "b,STRING,ATTRIBUTE,USING,null,",
+                  "c,INT32,FIELD,USING,null,",
+                  "d,DOUBLE,FIELD,USING,null,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "alter view view2 drop column d1", null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe view2 details",
+          "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,time,",
+                  "a,STRING,TAG,USING,view_a_comment,a,",
+                  "b,STRING,ATTRIBUTE,USING,null,b,",
+                  "c,INT32,FIELD,USING,null,c,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe table1 details",
+          "ColumnName,DataType,Category,Status,Comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,",
+                  "a,STRING,TAG,USING,view_a_comment,",
+                  "b,STRING,ATTRIBUTE,USING,null,",
+                  "c,INT32,FIELD,USING,null,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view2 set properties schema_cascade=false",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view2 set properties ttl=300",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from test",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,200,USING,view comment,BASE TABLE,null,",
+                  "view2,300,USING,view comment,WRITABLE VIEW,table1,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe view2 details",
+          "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,time,",
+                  "a,STRING,TAG,USING,view_a_comment,a,",
+                  "b,STRING,ATTRIBUTE,USING,null,b,",
+                  "c,INT32,FIELD,USING,null,c,")),
+          dbName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "describe table1 details",
+          "ColumnName,DataType,Category,Status,Comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,",
+                  "a,STRING,TAG,USING,view_a_comment,",
+                  "b,STRING,ATTRIBUTE,USING,null,",
+                  "c,INT32,FIELD,USING,null,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "drop view view2", null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from test",
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          Collections.singleton("table1,200,USING,view comment,BASE TABLE,null,"),
+          dbName);
+    }
+  }
+
+  @Test
+  public void testWritableViewMetaSyncWithReceiverCascadeMismatch() throws Exception {
+    final String dbName = "cascade_mismatch";
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      createTableModelPipe(client, "testPipe", dbName, null);
+
+      TableModelUtils.createDatabase(senderEnv, dbName, 100);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create table table1(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view view1 as select * from table1 with (schema_cascade=true)",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,100,USING,null,BASE TABLE,null,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "alter view view1 set properties schema_cascade=false",
+          null);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 set properties ttl=300",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,300,USING,null,BASE TABLE,null,",
+                  "view1,300,USING,null,WRITABLE VIEW,table1,")),
+          dbName);
+    }
+  }
+
+  @Test
+  public void testWritableViewMetaSyncWithTablePattern() throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final String viewOnlyDb = "view_only";
+      createTableModelPipe(client, "viewOnlyPipe", viewOnlyDb, "view.*");
+
+      TableModelUtils.createDatabase(receiverEnv, viewOnlyDb, 100);
+      TestUtils.executeNonQuery(
+          viewOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "create table table1(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TableModelUtils.createDatabase(senderEnv, viewOnlyDb, 100);
+      TestUtils.executeNonQuery(
+          viewOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create table table1(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          viewOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view view1 as select * from table1 with (schema_cascade=true)",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + viewOnlyDb,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,100,USING,null,BASE TABLE,null,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+          viewOnlyDb);
+
+      TestUtils.executeNonQuery(
+          viewOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 set properties ttl=200, schema_cascade=false",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + viewOnlyDb,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,100,USING,null,BASE TABLE,null,",
+                  "view1,200,USING,null,WRITABLE VIEW,table1,")),
+          viewOnlyDb);
+
+      final String sourceOnlyDb = "source_only";
+      createTableModelPipe(client, "sourceOnlyPipe", sourceOnlyDb, "table.*");
+
+      TableModelUtils.createDatabase(senderEnv, sourceOnlyDb, 100);
+      TestUtils.executeNonQuery(
+          sourceOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create table table1(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          sourceOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view view1 as select * from table1 with (schema_cascade=true)",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + sourceOnlyDb,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          Collections.singleton("table1,100,USING,null,BASE TABLE,null,"),
+          sourceOnlyDb);
+
+      TestUtils.executeNonQuery(
+          sourceOnlyDb,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 set properties ttl=300",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + sourceOnlyDb,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          Collections.singleton("table1,300,USING,null,BASE TABLE,null,"),
+          sourceOnlyDb);
+    }
+  }
+
+  @Test
   public void testNoTree() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -448,5 +834,38 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
         "a,b,c,",
         new HashSet<>(Arrays.asList("1,1,1,", "2,2,2,")),
         "test");
+  }
+
+  private void createTableModelPipe(
+      final SyncConfigNodeIServiceClient client,
+      final String pipeName,
+      final String databaseName,
+      final String tableNamePattern)
+      throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("extractor.inclusion", "all");
+    extractorAttributes.put("extractor.capture.tree", "false");
+    extractorAttributes.put("extractor.capture.table", "true");
+    extractorAttributes.put("extractor.database-name", databaseName);
+    if (tableNamePattern != null) {
+      extractorAttributes.put("extractor.table-name", tableNamePattern);
+    }
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.ip", receiverDataNode.getIp());
+    connectorAttributes.put("connector.port", Integer.toString(receiverDataNode.getPort()));
+
+    final TSStatus status =
+        client.createPipe(
+            new TCreatePipeReq(pipeName, connectorAttributes)
+                .setExtractorAttributes(extractorAttributes)
+                .setProcessorAttributes(processorAttributes));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 }

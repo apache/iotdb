@@ -676,11 +676,15 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     setFailure(new ProcedureException(source, cause));
   }
 
-  protected synchronized void setFailure(final ProcedureException exception) {
+  public synchronized void setFailure(final ProcedureException exception) {
     this.exception = exception;
     if (!isFinished()) {
       setState(ProcedureState.FAILED);
     }
+  }
+
+  public synchronized ProcedureException getFailure() {
+    return exception;
   }
 
   /**

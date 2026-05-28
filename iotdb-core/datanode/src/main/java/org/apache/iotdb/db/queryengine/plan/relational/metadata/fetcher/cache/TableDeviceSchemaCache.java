@@ -622,6 +622,22 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  public void invalidate(
+      final String database,
+      final String tableName,
+      final String originalDatabase,
+      final String originalTableName) {
+    readWriteLock.writeLock().lock();
+    try {
+      // Table cache's invalidate must be guarded by this lock
+      DataNodeTableCache.getInstance()
+          .invalid(database, tableName, originalDatabase, originalTableName);
+      dualKeyCache.invalidate(new TableId(originalDatabase, originalTableName));
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   // The fuzzy filters are not considered because:
   // 1. We can actually invalidate more cache entries than we need.
   // 2. Constructing the filterOperators may require some time and complication
@@ -687,6 +703,37 @@ public class TableDeviceSchemaCache {
               ? entry -> -entry.invalidateAttributeColumn(columnName)
               : entry -> -entry.invalidateLastCache(columnName);
       dualKeyCache.update(new TableId(database, tableName), deviceID -> true, updateFunction);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @TableModel
+  public void invalidate(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final boolean isAttributeColumn,
+      final String originalDatabase,
+      final String originalTableName,
+      final String originalColumnName) {
+    readWriteLock.writeLock().lock();
+    try {
+      // Table cache's invalidate must be guarded by this lock
+      DataNodeTableCache.getInstance()
+          .invalid(
+              database,
+              tableName,
+              columnName,
+              originalDatabase,
+              originalTableName,
+              originalColumnName);
+      final ToIntFunction<TableDeviceCacheEntry> updateFunction =
+          isAttributeColumn
+              ? entry -> -entry.invalidateAttributeColumn(originalColumnName)
+              : entry -> -entry.invalidateLastCache(originalColumnName);
+      dualKeyCache.update(
+          new TableId(originalDatabase, originalTableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();
     }

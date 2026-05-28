@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.CommonUtils;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -673,7 +674,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getTagColumnIndices().size(); i++) {
         final Integer columnIndex = getTagColumnIndices().get(i);
-        boolean isNull = isNull(rowIdx, i);
+        boolean isNull = isNull(rowIdx, columnIndex);
         deviceIdSegments[i + 1] =
             isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();
       }
@@ -685,6 +686,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public IDeviceID[] getRawTableDeviceIDs() {
     return deviceIDs;
+  }
+
+  @TableModel
+  @Override
+  public void resetTableDeviceIDCache() {
+    deviceIDs = null;
+    singleDevice = false;
   }
 
   public void setSingleDevice() {

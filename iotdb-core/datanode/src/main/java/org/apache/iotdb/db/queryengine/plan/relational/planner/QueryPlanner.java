@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -127,6 +128,7 @@ public class QueryPlanner {
   private final MPPQueryContext queryContext;
   private final QueryId queryIdAllocator;
   private final SessionInfo session;
+  private final Metadata metadata;
   private final SubqueryPlanner subqueryPlanner;
   private final Optional<TranslationMap> outerContext;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
@@ -143,6 +145,7 @@ public class QueryPlanner {
       MPPQueryContext queryContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
+      Metadata metadata,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
@@ -151,6 +154,7 @@ public class QueryPlanner {
     requireNonNull(queryContext, "queryContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
+    requireNonNull(metadata, "metadata is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
@@ -161,6 +165,7 @@ public class QueryPlanner {
     this.queryContext = queryContext;
     this.queryIdAllocator = queryContext.getQueryId();
     this.session = session;
+    this.metadata = metadata;
     this.outerContext = outerContext;
     this.subqueryPlanner =
         new SubqueryPlanner(
@@ -169,6 +174,7 @@ public class QueryPlanner {
             queryContext,
             outerContext,
             session,
+            metadata,
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor);
     this.recursiveSubqueries = recursiveSubqueries;
@@ -771,6 +777,7 @@ public class QueryPlanner {
                 queryContext,
                 outerContext,
                 session,
+                metadata,
                 recursiveSubqueries,
                 predicateWithUncorrelatedScalarSubqueryReconstructor)
             .process(queryBody, null);
@@ -787,6 +794,7 @@ public class QueryPlanner {
                   queryContext,
                   outerContext,
                   session,
+                  metadata,
                   recursiveSubqueries,
                   predicateWithUncorrelatedScalarSubqueryReconstructor)
               .process(node.getFrom().orElse(null), null);

@@ -603,7 +603,8 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    if (context.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+        || context.getCode() == TSStatusCode.TABLE_INCOMPATIBLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }

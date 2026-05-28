@@ -21,13 +21,18 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.DropInvalidCategoryColumnException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -50,6 +55,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -451,6 +457,101 @@ public class ConfigMTreeTest {
 
     Assert.assertTrue(
         root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
+  }
+
+  @Test
+  public void testAlterWritableViewColumnTypeRequiresSchemaCascade() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final WritableView table = new WritableView("view1", "root.sg", "source1", false);
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    try {
+      root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+      fail("Expected exception");
+    } catch (final SemanticException e) {
+      assertEquals("ALTER COLUMN DATA TYPE requires schema_cascade=true", e.getMessage());
+    }
+
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
+  }
+
+  @Test
+  public void testSetWritableViewSchemaCascadeRejectsInvalidValue() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final WritableView table = new WritableView("view1", "root.sg", "source1", true);
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    final Map<String, String> properties = new LinkedHashMap<>();
+    properties.put(TsTable.TTL_PROPERTY, "1");
+    properties.put(WritableView.SCHEMA_CASCADE, "not_bool");
+    try {
+      root.setTableProperties(database, table.getTableName(), properties);
+      fail("Expected exception");
+    } catch (final SemanticException e) {
+      assertEquals(
+          "schema_cascade value must be a BooleanLiteral, but now is not_bool", e.getMessage());
+    }
+
+    Assert.assertTrue(
+        ((WritableView) root.getUsingTableSchema(database, table.getTableName()))
+            .isSchemaCascade());
+    Assert.assertFalse(
+        root.getUsingTableSchema(database, table.getTableName())
+            .getPropValue(TsTable.TTL_PROPERTY)
+            .isPresent());
+  }
+
+  @Test
+  public void testPreDeleteTagColumnThrowsSpecificException() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    try {
+      root.preDeleteColumn(database, table.getTableName(), "id", TableType.BASE_TABLE);
+      fail("Expected exception");
+    } catch (final DropInvalidCategoryColumnException e) {
+      assertEquals(TsTableColumnCategory.TAG, e.getInvalidCategory());
+    }
   }
 
   @Test

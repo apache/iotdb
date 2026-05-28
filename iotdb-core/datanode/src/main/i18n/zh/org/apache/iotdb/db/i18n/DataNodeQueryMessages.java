@@ -1426,6 +1426,22 @@ public final class DataNodeQueryMessages {
 
   public static final String QUERY_EXECUTION_MISSING = "查询执行实体 %s 在拉取元数据期间丢失";
 
+  public static final String SOURCE_TABLE_OF_WRITABLE_VIEW_DOES_NOT_EXIST =
+      "源表 '%s.%s' 不存在，它是可写视图 '%s.%s' 的源表。";
+  public static final String LOAD_TSFILE_TARGET_IS_WRITABLE_VIEW_REQUIRES_TABLET_CONVERSION =
+      "LOAD TSFILE 目标 '%s.%s' 是可写视图，需要先转换为 Tablet 再加载到源表 '%s.%s'。";
+  public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
+      "不带列列表向可写视图 INSERT 时，源表的每一列都必须映射到视图列，但源列 '%s' 未暴露在视图中。请使用显式列列表。";
+  public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =
+      "ALIGN BY DEVICE 查询仅支持可写视图时间序列。";
+  public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW =
+      "不能向非别名序列视图插入数据。";
+  public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW_WITH_PATH =
+      "不能向非别名序列视图插入数据。（视图路径：%s）";
+  public static final String VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN =
+      "视图列 %s 和 %s 不能来自同一个源列 %s";
+  public static final String VIEW_COLUMN_CANNOT_MAP_FROM_MULTIPLE_SOURCE_COLUMNS =
+      "视图列 %s 不能映射自多个源列 %s 和 %s";
 
   private DataNodeQueryMessages() {}
 }

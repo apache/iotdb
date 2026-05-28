@@ -31,13 +31,26 @@ public class AlterColumnDataTypePlan extends AbstractTableColumnPlan {
 
   private TSDataType newType;
 
-  public AlterColumnDataTypePlan() {
-    super(ConfigPhysicalPlanType.AlterColumnDataType);
+  public AlterColumnDataTypePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public AlterColumnDataTypePlan(
-      String database, String tableName, String columnName, TSDataType newType) {
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType newType) {
     super(ConfigPhysicalPlanType.AlterColumnDataType, database, tableName, columnName);
+    this.newType = newType;
+  }
+
+  public AlterColumnDataTypePlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType newType) {
+    super(type, database, tableName, columnName);
     this.newType = newType;
   }
 

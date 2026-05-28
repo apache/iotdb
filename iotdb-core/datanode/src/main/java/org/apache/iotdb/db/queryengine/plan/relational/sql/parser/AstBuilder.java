@@ -145,6 +145,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingEx
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -177,6 +178,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -264,6 +266,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WritableViewColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -304,9 +307,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -487,6 +492,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitWritableViewColumnDefinition(
+      final RelationalSqlParser.WritableViewColumnDefinitionContext ctx) {
+    final String sourceName =
+        lowerIdentifier((Identifier) visit(ctx.identifier().get(0))).getValue();
+    return new WritableViewColumnDefinition(
+        getLocation(ctx),
+        ctx.identifier().size() > 1
+            ? lowerIdentifier((Identifier) visit(ctx.identifier().get(1))).getValue()
+            : sourceName,
+        sourceName,
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
+  }
+
+  @Override
   public Node visitDropTableStatement(final RelationalSqlParser.DropTableStatementContext ctx) {
     return new DropTable(
         getLocation(ctx), getQualifiedName(ctx.qualifiedName()), ctx.EXISTS() != null, false);
@@ -500,6 +519,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             lowerIdentifier((Identifier) visit(ctx.database)),
             Objects.nonNull(ctx.DETAILS()))
         : new ShowTables(getLocation(ctx), Objects.nonNull(ctx.DETAILS()));
+  }
+
+  @Override
+  public Node visitShowViewStatement(final RelationalSqlParser.ShowViewStatementContext ctx) {
+    final Set<TableType> tableTypeFilter;
+    if (Objects.isNull(ctx.viewType)) {
+      tableTypeFilter = EnumSet.of(TableType.VIEW_FROM_TREE, TableType.WRITABLE_VIEW);
+    } else if (ctx.viewType.getType() == RelationalSqlParser.TREE) {
+      tableTypeFilter = EnumSet.of(TableType.VIEW_FROM_TREE);
+    } else if (ctx.viewType.getType() == RelationalSqlParser.WRITABLE) {
+      tableTypeFilter = EnumSet.of(TableType.WRITABLE_VIEW);
+    } else {
+      throw new SemanticException("Unsupported view type: " + ctx.viewType.getText());
+    }
+
+    return Objects.nonNull(ctx.database)
+        ? new ShowTables(
+            getLocation(ctx),
+            lowerIdentifier((Identifier) visit(ctx.database)),
+            false,
+            tableTypeFilter)
+        : new ShowTables(getLocation(ctx), false, tableTypeFilter);
   }
 
   @Override
@@ -540,6 +581,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
         (ColumnDefinition) visit(ctx.column),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()),
+        false);
+  }
+
+  @Override
+  public Node visitAddWritableViewColumn(
+      final RelationalSqlParser.AddWritableViewColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        (WritableViewColumnDefinition) visit(ctx.column),
         ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
         Objects.nonNull(ctx.NOT()),
         false);
@@ -684,7 +737,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new AddColumn(
         getLocation(ctx),
         getQualifiedName(ctx.viewName),
-        (ColumnDefinition) visit(ctx.viewColumnDefinition()),
+        (ColumnDefinition) visit(ctx.alterViewColumnDefinition()),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()),
+        true);
+  }
+
+  @Override
+  public Node visitAddWritableViewColumnView(
+      final RelationalSqlParser.AddWritableViewColumnViewContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.viewName),
+        (WritableViewColumnDefinition) visit(ctx.writableViewColumnDefinition()),
         ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
         Objects.nonNull(ctx.NOT()),
         true);
@@ -742,36 +807,51 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
-    final Identifier rawColumnName = (Identifier) visit(ctx.identifier().get(0));
-    final Identifier columnName = lowerIdentifier(rawColumnName);
-    final TsTableColumnCategory columnCategory = getColumnCategory(ctx.columnCategory);
-    Identifier originalMeasurement = null;
+    return buildViewColumnDefinition(
+        getLocation(ctx),
+        (Identifier) visit(ctx.identifier().get(0)),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+        ctx.columnCategory,
+        Objects.nonNull(ctx.FROM()) ? (Identifier) visit(ctx.original_measurement) : null,
+        Objects.nonNull(ctx.FROM()),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
+  }
 
-    if (Objects.nonNull(ctx.FROM())) {
-      originalMeasurement = (Identifier) visit(ctx.original_measurement);
-    } else if (columnCategory == FIELD && !columnName.equals(rawColumnName)) {
+  @Override
+  public Node visitAlterViewColumnDefinition(
+      final RelationalSqlParser.AlterViewColumnDefinitionContext ctx) {
+    return buildViewColumnDefinition(
+        getLocation(ctx),
+        (Identifier) visit(ctx.identifier().get(0)),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
+        ctx.columnCategory,
+        Objects.nonNull(ctx.FROM()) ? (Identifier) visit(ctx.original_measurement) : null,
+        Objects.nonNull(ctx.FROM()),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
+  }
+
+  private Node buildViewColumnDefinition(
+      final NodeLocation location,
+      final Identifier rawColumnName,
+      final @Nullable DataType type,
+      final @Nullable Token columnCategoryToken,
+      final @Nullable Identifier sourceColumnName,
+      final boolean explicitFrom,
+      final @Nullable String comment) {
+    final Identifier columnName = lowerIdentifier(rawColumnName);
+    final TsTableColumnCategory columnCategory = getColumnCategory(columnCategoryToken);
+    Identifier originalMeasurement = sourceColumnName;
+
+    if (Objects.isNull(originalMeasurement)
+        && columnCategory == FIELD
+        && !columnName.equals(rawColumnName)) {
       originalMeasurement = rawColumnName;
     }
 
     return columnCategory == FIELD
         ? new ViewFieldDefinition(
-            getLocation(ctx),
-            columnName,
-            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
-            null,
-            ctx.comment() == null
-                ? null
-                : ((StringLiteral) visit(ctx.comment().string())).getValue(),
-            originalMeasurement)
-        : new ColumnDefinition(
-            getLocation(ctx),
-            columnName,
-            Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
-            columnCategory,
-            null,
-            ctx.comment() == null
-                ? null
-                : ((StringLiteral) visit(ctx.comment().string())).getValue());
+            location, columnName, type, null, comment, originalMeasurement, explicitFrom)
+        : new ColumnDefinition(location, columnName, type, columnCategory, null, comment);
   }
 
   private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
@@ -809,6 +889,58 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       final RelationalSqlParser.ShowCreateViewStatementContext ctx) {
     return new DescribeTable(
         getLocation(ctx), getQualifiedName(ctx.qualifiedName()), false, Boolean.TRUE);
+  }
+
+  @Override
+  public Node visitCreateWritableViewStatement(
+      final RelationalSqlParser.CreateWritableViewStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.properties() != null) {
+      properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
+    }
+    final List<WritableViewColumnDefinition> writableViewColumnDefinitions =
+        visit(ctx.writableViewColumnDefinition(), WritableViewColumnDefinition.class);
+    final Map<String, String> sourceColumnToViewColumnMap = new HashMap<>();
+    final Map<String, String> viewColumnToSourceColumnMap = new LinkedHashMap<>();
+    final Map<String, String> viewColumnCommentMap = new LinkedHashMap<>();
+    for (final WritableViewColumnDefinition columnDefinition : writableViewColumnDefinitions) {
+      final String previousValue =
+          sourceColumnToViewColumnMap.put(
+              columnDefinition.getSourceColumnName(), columnDefinition.getViewColumnName());
+      if (Objects.nonNull(previousValue)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN,
+                previousValue,
+                columnDefinition.getViewColumnName(),
+                columnDefinition.getSourceColumnName()));
+      }
+      final String previousSourceColumn =
+          viewColumnToSourceColumnMap.putIfAbsent(
+              columnDefinition.getViewColumnName(), columnDefinition.getSourceColumnName());
+      if (Objects.nonNull(previousSourceColumn)) {
+        throw new SemanticException(
+            String.format(
+                DataNodeQueryMessages.VIEW_COLUMN_CANNOT_MAP_FROM_MULTIPLE_SOURCE_COLUMNS,
+                columnDefinition.getViewColumnName(),
+                previousSourceColumn,
+                columnDefinition.getSourceColumnName()));
+      }
+      if (Objects.nonNull(columnDefinition.getComment())) {
+        viewColumnCommentMap.put(
+            columnDefinition.getViewColumnName(), columnDefinition.getComment());
+      }
+    }
+
+    return new CreateWritableView(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName().get(0)),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue(),
+        properties,
+        getQualifiedName(ctx.qualifiedName().get(1)),
+        Objects.nonNull(ctx.REPLACE()),
+        viewColumnCommentMap.isEmpty() ? null : viewColumnCommentMap,
+        !viewColumnToSourceColumnMap.isEmpty() ? viewColumnToSourceColumnMap : null);
   }
 
   @Override

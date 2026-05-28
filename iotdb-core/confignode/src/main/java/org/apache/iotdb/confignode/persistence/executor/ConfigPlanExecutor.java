@@ -119,9 +119,9 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Al
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
@@ -172,6 +172,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RollbackCreateWritableViewPlan;
 import com.timecho.iotdb.confignode.procedure.consensus.request.write.auth.EnableSeparationOfAdminPowersPlan;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
@@ -589,41 +590,57 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.preCreateTableView((PreCreateTableViewPlan) physicalPlan);
       case RollbackCreateTable:
         return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
+      case RollbackCreateWritableView:
+        return clusterSchemaInfo.rollbackCreateWritableView(
+            (RollbackCreateWritableViewPlan) physicalPlan);
       case CommitCreateTable:
-        return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
+      case CommitCreateWritableView:
+        return clusterSchemaInfo.commitCreateTable((AbstractTablePlan) physicalPlan);
       case AddTableColumn:
       case AddViewColumn:
+      case AddWritableViewColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
       case RenameTableColumn:
       case RenameViewColumn:
+      case RenameWritableViewColumn:
         return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
       case SetViewProperties:
+      case SetWritableViewProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case PreDeleteColumn:
       case PreDeleteViewColumn:
+      case PreDeleteWritableViewColumn:
         return clusterSchemaInfo.preDeleteColumn((PreDeleteColumnPlan) physicalPlan);
       case CommitDeleteColumn:
       case CommitDeleteViewColumn:
+      case CommitDeleteWritableViewColumn:
         return clusterSchemaInfo.commitDeleteColumn((CommitDeleteColumnPlan) physicalPlan);
       case PreDeleteTable:
       case PreDeleteView:
+      case PreDeleteWritableView:
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
       case CommitDeleteTable:
       case CommitDeleteView:
+      case CommitDeleteWritableView:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
       case PreAlterColumnDataType:
+      case PreAlterWritableViewColumnDataType:
         return clusterSchemaInfo.preAlterColumnDataType((PreAlterColumnDataTypePlan) physicalPlan);
       case AlterColumnDataType:
+      case AlterWritableViewColumnDataType:
         return clusterSchemaInfo.commitAlterColumnDataType(
             ((AlterColumnDataTypePlan) physicalPlan));
       case SetTableComment:
       case SetViewComment:
+      case SetWritableViewComment:
         return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
       case SetTableColumnComment:
+      case SetWritableViewColumnComment:
         return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
       case RenameTable:
       case RenameView:
+      case RenameWritableView:
         return clusterSchemaInfo.renameTable((RenameTablePlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);

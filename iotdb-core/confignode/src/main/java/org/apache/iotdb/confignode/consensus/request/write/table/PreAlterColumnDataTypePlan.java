@@ -30,13 +30,22 @@ import java.nio.ByteBuffer;
 public class PreAlterColumnDataTypePlan extends AbstractTableColumnPlan {
   private TSDataType newType;
 
-  public PreAlterColumnDataTypePlan() {
-    super(ConfigPhysicalPlanType.PreAlterColumnDataType);
+  public PreAlterColumnDataTypePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public PreAlterColumnDataTypePlan(
       String database, String tableName, String columnName, TSDataType newType) {
-    super(ConfigPhysicalPlanType.PreAlterColumnDataType, database, tableName, columnName);
+    this(ConfigPhysicalPlanType.PreAlterColumnDataType, database, tableName, columnName, newType);
+  }
+
+  public PreAlterColumnDataTypePlan(
+      final ConfigPhysicalPlanType type,
+      String database,
+      String tableName,
+      String columnName,
+      TSDataType newType) {
+    super(type, database, tableName, columnName);
     this.newType = newType;
   }
 

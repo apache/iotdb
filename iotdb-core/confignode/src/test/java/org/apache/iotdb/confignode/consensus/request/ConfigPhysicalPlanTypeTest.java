@@ -21,9 +21,12 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ConfigPhysicalPlanTypeTest {
@@ -41,5 +44,53 @@ public class ConfigPhysicalPlanTypeTest {
         map.put(value.getPlanType(), value);
       }
     }
+  }
+
+  @Test
+  public void writableViewPlanTypesShouldBeNegative() {
+    Arrays.asList(
+            ConfigPhysicalPlanType.RollbackCreateWritableView,
+            ConfigPhysicalPlanType.CommitCreateWritableView,
+            ConfigPhysicalPlanType.AddWritableViewColumn,
+            ConfigPhysicalPlanType.CommitDeleteWritableViewColumn,
+            ConfigPhysicalPlanType.CommitDeleteWritableView,
+            ConfigPhysicalPlanType.RenameWritableView,
+            ConfigPhysicalPlanType.SetWritableViewProperties,
+            ConfigPhysicalPlanType.PreDeleteWritableViewColumn,
+            ConfigPhysicalPlanType.PreDeleteWritableView,
+            ConfigPhysicalPlanType.RenameWritableViewColumn,
+            ConfigPhysicalPlanType.PreAlterWritableViewColumnDataType,
+            ConfigPhysicalPlanType.AlterWritableViewColumnDataType,
+            ConfigPhysicalPlanType.SetWritableViewColumnComment,
+            ConfigPhysicalPlanType.SetWritableViewComment)
+        .forEach(
+            planType ->
+                assertTrue(
+                    planType + " should use a negative planType id", planType.getPlanType() < 0));
+  }
+
+  @Test
+  public void writableViewPlanTypesShouldBeConvertibleFromNegativeIds() {
+    Arrays.asList(
+            ConfigPhysicalPlanType.RollbackCreateWritableView,
+            ConfigPhysicalPlanType.CommitCreateWritableView,
+            ConfigPhysicalPlanType.AddWritableViewColumn,
+            ConfigPhysicalPlanType.CommitDeleteWritableViewColumn,
+            ConfigPhysicalPlanType.CommitDeleteWritableView,
+            ConfigPhysicalPlanType.RenameWritableView,
+            ConfigPhysicalPlanType.SetWritableViewProperties,
+            ConfigPhysicalPlanType.PreDeleteWritableViewColumn,
+            ConfigPhysicalPlanType.PreDeleteWritableView,
+            ConfigPhysicalPlanType.RenameWritableViewColumn,
+            ConfigPhysicalPlanType.PreAlterWritableViewColumnDataType,
+            ConfigPhysicalPlanType.AlterWritableViewColumnDataType,
+            ConfigPhysicalPlanType.SetWritableViewColumnComment,
+            ConfigPhysicalPlanType.SetWritableViewComment)
+        .forEach(
+            planType ->
+                assertSame(
+                    planType,
+                    ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(
+                        planType.getPlanType())));
   }
 }

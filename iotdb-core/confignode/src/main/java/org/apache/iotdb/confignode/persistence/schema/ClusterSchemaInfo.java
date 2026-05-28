@@ -27,13 +27,19 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
+import org.apache.iotdb.commons.exception.table.DropInvalidCategoryColumnException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -54,9 +60,9 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
@@ -88,6 +94,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.PreDeleteColumnStatus;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
@@ -95,6 +102,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
@@ -106,6 +114,13 @@ import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AddWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitDeleteWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.PreDeleteWritableViewColumnPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.PreDeleteWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.RollbackCreateWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewCommentPlan;
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -126,6 +141,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -160,7 +176,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   private static final String TREE_SNAPSHOT_FILENAME = "cluster_schema.bin";
   private static final String TABLE_SNAPSHOT_FILENAME = "table_cluster_schema.bin";
   private static final String ERROR_NAME = "Error Database name";
-
   private final TemplateTable templateTable;
 
   private final TemplatePreSetTable templatePreSetTable;
@@ -1196,27 +1211,84 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
   }
 
-  public TSStatus commitCreateTable(final CommitCreateTablePlan plan) {
+  public TSStatus rollbackCreateWritableView(final RollbackCreateWritableViewPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.commitCreateTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+        () -> {
+          if (plan.isRestoreView()) {
+            tableModelMTree.preCreateTableView(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTable(),
+                plan.getStatus());
+          } else {
+            tableModelMTree.rollbackCreateTable(
+                getQualifiedDatabasePartialPath(plan.getDatabase()),
+                plan.getTable().getTableName());
+          }
+          if (Objects.nonNull(plan.getOriginalDatabase())
+              && Objects.nonNull(plan.getOriginalTable())) {
+            try {
+              tableModelMTree.replaceOriginalTable(
+                  getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                  plan.getOriginalTable());
+            } catch (final MetadataException e) {
+              if (!isMissingSourceTable(e)) {
+                throw e;
+              }
+              LOGGER.warn(
+                  ProcedureMessages
+                      .SKIP_ROLLBACK_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL,
+                  plan.getDatabase(),
+                  plan.getTable().getTableName(),
+                  plan.getOriginalDatabase(),
+                  plan.getOriginalTable().getTableName(),
+                  e.getMessage());
+            }
+          }
+        });
+  }
+
+  public TSStatus commitCreateTable(final AbstractTablePlan plan) {
+    return executeWithLock(
+        () -> {
+          tableModelMTree.commitCreateTable(
+              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.replaceOriginalTable(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      ((CommitCreateWritableViewPlan) plan).getOriginalTable()));
+        });
   }
 
   public TSStatus preDeleteTable(final PreDeleteTablePlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.preDeleteTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTableName(),
-                plan instanceof PreDeleteViewPlan));
+        () -> {
+          final TableType tableType = getTableType(plan);
+          tableModelMTree.preDeleteTable(
+              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName(), tableType);
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.preDeleteTable(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      TableType.BASE_TABLE));
+        });
   }
 
   public TSStatus dropTable(final CommitDeleteTablePlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.dropTable(
-                getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName()));
+        () -> {
+          tableModelMTree.dropTable(
+              getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.dropTable(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName()));
+        });
   }
 
   public TSStatus renameTable(final RenameTablePlan plan) {
@@ -1230,22 +1302,44 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus setTableComment(final SetTableCommentPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.setTableComment(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTableName(),
-                plan.getComment(),
-                plan instanceof SetViewCommentPlan));
+        () -> {
+          final TableType tableType = getTableType(plan);
+          tableModelMTree.setTableComment(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getComment(),
+              tableType);
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.setTableComment(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      plan.getComment(),
+                      TableType.BASE_TABLE));
+        });
   }
 
   public TSStatus setTableColumnComment(final SetTableColumnCommentPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.setTableColumnComment(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTableName(),
-                plan.getColumnName(),
-                plan.getComment()));
+        () -> {
+          tableModelMTree.setTableColumnComment(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getColumnName(),
+              plan.getComment());
+          executeOriginalIfPresent(
+              plan,
+              () -> {
+                if (Objects.nonNull(plan.getOriginalColumnName())) {
+                  tableModelMTree.setTableColumnComment(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      plan.getOriginalColumnName(),
+                      plan.getComment());
+                }
+              });
+        });
   }
 
   private TSStatus executeWithLock(final ThrowingRunnable runnable) {
@@ -1280,18 +1374,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                   .stream()
                   .map(
                       pair -> {
-                        final TTableInfo info =
-                            new TTableInfo(
-                                pair.getLeft().getTableName(),
-                                pair.getLeft().getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
+                        final TTableInfo info = buildTTableInfo(pair.getLeft(), true);
                         info.setState(pair.getRight().ordinal());
-                        pair.getLeft()
-                            .getPropValue(TsTable.COMMENT_KEY)
-                            .ifPresent(info::setComment);
-                        info.setType(
-                            TreeViewSchema.isTreeViewTable(pair.getLeft())
-                                ? TableType.VIEW_FROM_TREE.ordinal()
-                                : TableType.BASE_TABLE.ordinal());
                         return info;
                       })
                   .collect(Collectors.toList())
@@ -1299,11 +1383,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                   .getAllUsingTablesUnderSpecificDatabase(
                       getQualifiedDatabasePartialPath(plan.getDatabase()))
                   .stream()
-                  .map(
-                      tsTable ->
-                          new TTableInfo(
-                              tsTable.getTableName(),
-                              tsTable.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE)))
+                  .map(tsTable -> buildTTableInfo(tsTable, false))
                   .collect(Collectors.toList()));
     } catch (final MetadataException e) {
       return new ShowTableResp(
@@ -1326,20 +1406,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                           entry.getValue().stream()
                               .map(
                                   pair -> {
-                                    final TTableInfo info =
-                                        new TTableInfo(
-                                            pair.getLeft().getTableName(),
-                                            pair.getLeft()
-                                                .getPropValue(TTL_PROPERTY)
-                                                .orElse(TTL_INFINITE));
+                                    final TTableInfo info = buildTTableInfo(pair.getLeft(), true);
                                     info.setState(pair.getRight().ordinal());
-                                    pair.getLeft()
-                                        .getPropValue(TsTable.COMMENT_KEY)
-                                        .ifPresent(info::setComment);
-                                    info.setType(
-                                        TreeViewSchema.isTreeViewTable(pair.getLeft())
-                                            ? TableType.VIEW_FROM_TREE.ordinal()
-                                            : TableType.BASE_TABLE.ordinal());
                                     return info;
                                   })
                               .collect(Collectors.toList()))));
@@ -1491,51 +1559,264 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
                 plan.getColumnSchemaList());
+            rollbackWritableViewColumnMappings(plan);
           } else {
             tableModelMTree.addTableColumn(
                 getQualifiedDatabasePartialPath(plan.getDatabase()),
                 plan.getTableName(),
                 plan.getColumnSchemaList());
+            addWritableViewColumnMappings(plan);
           }
+          executeOriginalIfPresent(
+              plan,
+              () -> {
+                if (plan.isRollback()) {
+                  tableModelMTree.rollbackAddTableColumn(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      ((AddWritableViewColumnPlan) plan).getOriginalColumnSchemaList());
+                } else {
+                  tableModelMTree.addTableColumn(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      ((AddWritableViewColumnPlan) plan).getOriginalColumnSchemaList());
+                }
+              });
         });
   }
 
   public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.renameTableColumn(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTableName(),
-                plan.getOldName(),
-                plan.getNewName()));
+        () -> {
+          tableModelMTree.renameTableColumn(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getOldName(),
+              plan.getNewName());
+        });
   }
 
   public TSStatus setTableProperties(final SetTablePropertiesPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.setTableProperties(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
+        () -> {
+          tableModelMTree.setTableProperties(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getProperties());
+          executeOriginalIfPresent(
+              plan,
+              () -> {
+                final Map<String, String> copiedProperties = new HashMap<>(plan.getProperties());
+                copiedProperties.remove(WritableView.SCHEMA_CASCADE);
+                tableModelMTree.setTableProperties(
+                    getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                    plan.getOriginalTableName(),
+                    copiedProperties);
+              });
+        });
+  }
+
+  private void executeOriginalIfPresent(
+      final AbstractTablePlan plan, final ThrowingRunnable runnable) throws Throwable {
+    if (Objects.isNull(plan.getOriginalDatabase()) || Objects.isNull(plan.getOriginalTableName())) {
+      return;
+    }
+    try {
+      runnable.run();
+    } catch (final Throwable e) {
+      if (!isIdempotentSourceCascadeFailure(e)) {
+        throw e;
+      }
+      final int errorCode = getSourceCascadeMetadataErrorCode(e);
+      if (isMissingSourceTable(errorCode)) {
+        LOGGER.warn(
+            ProcedureMessages.SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL,
+            plan.getDatabase(),
+            plan.getTableName(),
+            plan.getOriginalDatabase(),
+            plan.getOriginalTableName(),
+            e.getMessage());
+      }
+      // Writable view source-side cascade is best-effort. The view-side DDL is already applied,
+      // while missing source metadata is treated as an idempotent no-op.
+    }
+  }
+
+  private static boolean isIdempotentSourceCascadeFailure(final Throwable throwable) {
+    final int errorCode = getSourceCascadeMetadataErrorCode(throwable);
+    return errorCode == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+        || errorCode == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()
+        || errorCode == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
+  }
+
+  private static int getSourceCascadeMetadataErrorCode(final Throwable throwable) {
+    for (Throwable current = throwable; Objects.nonNull(current); current = current.getCause()) {
+      if (current instanceof MetadataException) {
+        return ((MetadataException) current).getErrorCode();
+      }
+    }
+    return -1;
+  }
+
+  private static boolean isMissingSourceTable(final MetadataException e) {
+    return isMissingSourceTable(e.getErrorCode());
+  }
+
+  private static boolean isMissingSourceTable(final int errorCode) {
+    return errorCode == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()
+        || errorCode == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
+  }
+
+  private static TTableInfo buildTTableInfo(
+      final TsTable table, final boolean includeOriginalTableName) {
+    final TTableInfo info =
+        new TTableInfo(table.getTableName(), table.getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
+    info.setType(table.getType());
+    table.getPropValue(TsTable.COMMENT_KEY).ifPresent(info::setComment);
+    if (includeOriginalTableName && table instanceof WritableView) {
+      info.setOriginalTableName(((WritableView) table).getSourceTableName());
+    }
+    return info;
+  }
+
+  private static TableType getTableType(final Object plan) {
+    if (plan instanceof PreDeleteWritableViewPlan
+        || plan instanceof SetWritableViewCommentPlan
+        || plan instanceof PreDeleteWritableViewColumnPlan) {
+      return TableType.WRITABLE_VIEW;
+    }
+    if (plan instanceof PreDeleteViewPlan
+        || plan instanceof SetViewCommentPlan
+        || plan instanceof PreDeleteViewColumnPlan) {
+      return TableType.VIEW_FROM_TREE;
+    }
+    return TableType.BASE_TABLE;
+  }
+
+  private void cascadePreDeleteColumn(
+      final PreDeleteColumnPlan plan,
+      final PartialPath database,
+      final TsTableColumnCategory viewColumnCategory,
+      final TSStatus status)
+      throws Throwable {
+    if (!(plan instanceof PreDeleteWritableViewColumnPlan)) {
+      logDefensiveAssertion(
+          ProcedureMessages.UNEXPECTED_PLAN_CARRIES_ORIGINAL_TABLE_METADATA_FOR_DROP_COLUMN,
+          plan.getClass().getName(),
+          plan.getDatabase(),
+          plan.getTableName(),
+          plan.getColumnName());
+      return;
+    }
+
+    final PartialPath sourceDatabase = getQualifiedDatabasePartialPath(plan.getOriginalDatabase());
+    final String originalTableName = plan.getOriginalTableName();
+    final String originalColumnName =
+        ((PreDeleteWritableViewColumnPlan) plan).getOriginalColumnName();
+
+    boolean sourceColumnPreDeleted = false;
+    try {
+      final TsTableColumnCategory sourceColumnCategory =
+          getColumnCategory(sourceDatabase, originalTableName, originalColumnName);
+      if (sourceColumnCategory != viewColumnCategory) {
+        throw new MetadataException(
+            String.format(
+                ProcedureMessages.FAILED_TO_DROP_WRITABLE_VIEW_SOURCE_COLUMN_CATEGORY_MISMATCH,
+                sourceDatabase,
+                originalTableName,
+                originalColumnName,
+                sourceColumnCategory,
+                database,
                 plan.getTableName(),
-                plan.getProperties()));
+                plan.getColumnName(),
+                viewColumnCategory));
+      }
+      tableModelMTree.preDeleteColumn(
+          sourceDatabase, originalTableName, originalColumnName, TableType.BASE_TABLE);
+      sourceColumnPreDeleted = true;
+    } catch (final Exception e) {
+      if (isIdempotentSourceCascadeFailure(e)) {
+        return;
+      }
+      if (e instanceof DropInvalidCategoryColumnException
+          && ((DropInvalidCategoryColumnException) e).getInvalidCategory()
+              == TsTableColumnCategory.TAG
+          && viewColumnCategory == TsTableColumnCategory.TAG) {
+        status.setMessage(PreDeleteColumnStatus.ORIGINAL_TAG_COLUMN_CASCADE_SKIPPED.name());
+        return;
+      }
+      rollbackPreDeletedColumns(
+          database,
+          plan.getTableName(),
+          plan.getColumnName(),
+          sourceDatabase,
+          originalTableName,
+          originalColumnName,
+          sourceColumnPreDeleted);
+      throw e;
+    }
+  }
+
+  private TsTableColumnCategory getColumnCategory(
+      final PartialPath database, final String tableName, final String columnName)
+      throws MetadataException {
+    final Optional<Pair<TsTable, TableNodeStatus>> tableOptional =
+        tableModelMTree.getTableAndStatusIfExists(database, tableName);
+    if (!tableOptional.isPresent()) {
+      throw new TableNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName);
+    }
+    final TsTableColumnSchema columnSchema = tableOptional.get().left.getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    return columnSchema.getColumnCategory();
+  }
+
+  private void rollbackPreDeletedColumns(
+      final PartialPath database,
+      final String tableName,
+      final String columnName,
+      final PartialPath sourceDatabase,
+      final String originalTableName,
+      final String originalColumnName,
+      final boolean sourceColumnPreDeleted)
+      throws MetadataException {
+    tableModelMTree.rollbackPreDeleteColumn(database, tableName, columnName);
+    if (sourceColumnPreDeleted) {
+      tableModelMTree.rollbackPreDeleteColumn(
+          sourceDatabase, originalTableName, originalColumnName);
+    }
+  }
+
+  private void logDefensiveAssertion(final String message, final Object... args) {
+    LOGGER.warn(
+        String.format(message, args),
+        new Exception(ProcedureMessages.DEFENSIVE_ASSERTION_STACK_TRACE));
   }
 
   public TSStatus preDeleteColumn(final PreDeleteColumnPlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      if (tableModelMTree.preDeleteColumn(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName(),
-          plan instanceof PreDeleteViewColumnPlan)) {
-        status.setMessage("");
+      final PartialPath database = getQualifiedDatabasePartialPath(plan.getDatabase());
+      final TsTableColumnCategory columnCategory =
+          tableModelMTree.preDeleteColumn(
+              database, plan.getTableName(), plan.getColumnName(), getTableType(plan));
+      if (columnCategory == TsTableColumnCategory.ATTRIBUTE) {
+        status.setMessage(PreDeleteColumnStatus.ATTRIBUTE.name());
       }
+      executeOriginalIfPresent(
+          plan, () -> cascadePreDeleteColumn(plan, database, columnCategory, status));
       return status;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final SemanticException e) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
+    } catch (final Throwable e) {
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }
@@ -1543,48 +1824,125 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TSStatus commitDeleteColumn(final CommitDeleteColumnPlan plan) {
     return executeWithLock(
-        () ->
-            tableModelMTree.commitDeleteColumn(
-                getQualifiedDatabasePartialPath(plan.getDatabase()),
-                plan.getTableName(),
-                plan.getColumnName()));
+        () -> {
+          tableModelMTree.commitDeleteColumn(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getColumnName());
+          rollbackWritableViewColumnMappings(plan);
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.commitDeleteColumn(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      plan.getOriginalColumnName()));
+        });
+  }
+
+  private void addWritableViewColumnMappings(final AddTableColumnPlan plan)
+      throws MetadataException {
+    if (!(plan instanceof AddWritableViewColumnPlan)) {
+      return;
+    }
+
+    final WritableView writableView = getWritableView(plan.getDatabase(), plan.getTableName());
+    if (Objects.isNull(writableView)) {
+      return;
+    }
+
+    for (final TsTableColumnSchema viewColumnSchema : plan.getColumnSchemaList()) {
+      // View-only adds still carry the source column through the shared column-mapping metadata.
+      final String sourceColumnName =
+          Optional.ofNullable(ViewColumnSchemaUtils.getSourceName(viewColumnSchema))
+              .orElse(viewColumnSchema.getColumnName());
+      writableView.putViewColumnSourceColumnMapping(
+          viewColumnSchema.getColumnName(), sourceColumnName);
+    }
+  }
+
+  private void rollbackWritableViewColumnMappings(final AbstractTablePlan plan)
+      throws MetadataException {
+    final boolean expectsWritableViewMappings =
+        plan instanceof AddWritableViewColumnPlan
+            || plan instanceof CommitDeleteWritableViewColumnPlan;
+    final WritableView writableView = getWritableView(plan.getDatabase(), plan.getTableName());
+    if (Objects.isNull(writableView)) {
+      if (expectsWritableViewMappings) {
+        logDefensiveAssertion(
+            ProcedureMessages.EXPECTED_WRITABLE_VIEW_WHEN_ROLLING_BACK_COLUMN_MAPPINGS,
+            plan.getClass().getName(),
+            plan.getDatabase(),
+            plan.getTableName());
+      }
+      return;
+    }
+
+    if (plan instanceof AddWritableViewColumnPlan) {
+      ((AddWritableViewColumnPlan) plan)
+          .getColumnSchemaList()
+          .forEach(
+              columnSchema ->
+                  writableView.removeViewColumnSourceColumnMapping(columnSchema.getColumnName()));
+    } else if (plan instanceof CommitDeleteWritableViewColumnPlan) {
+      writableView.removeViewColumnSourceColumnMapping(
+          ((CommitDeleteWritableViewColumnPlan) plan).getColumnName());
+    } else {
+      logDefensiveAssertion(
+          ProcedureMessages.UNEXPECTED_PLAN_ROLL_BACK_WRITABLE_VIEW_COLUMN_MAPPINGS,
+          plan.getClass().getName(),
+          plan.getDatabase(),
+          plan.getTableName());
+    }
+  }
+
+  private WritableView getWritableView(final String database, final String tableName)
+      throws MetadataException {
+    final Optional<Pair<TsTable, TableNodeStatus>> tableOptional =
+        tableModelMTree.getTableAndStatusIfExists(
+            getQualifiedDatabasePartialPath(database), tableName);
+    if (!tableOptional.isPresent() || !(tableOptional.get().left instanceof WritableView)) {
+      return null;
+    }
+    return (WritableView) tableOptional.get().left;
   }
 
   public TSStatus preAlterColumnDataType(final PreAlterColumnDataTypePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      tableModelMTree.preAlterColumnDataType(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName(),
-          plan.getNewType());
-      return status;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (final SemanticException e) {
-      return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+    return executeWithLock(
+        () -> {
+          tableModelMTree.preAlterColumnDataType(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getColumnName(),
+              plan.getNewType());
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.preAlterColumnDataType(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      plan.getOriginalColumnName(),
+                      plan.getNewType()));
+        });
   }
 
-  public TSStatus commitAlterColumnDataType(AlterColumnDataTypePlan plan) {
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      tableModelMTree.commitAlterColumnDataType(
-          getQualifiedDatabasePartialPath(plan.getDatabase()),
-          plan.getTableName(),
-          plan.getColumnName(),
-          plan.getNewType());
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
-    }
+  public TSStatus commitAlterColumnDataType(final AlterColumnDataTypePlan plan) {
+    return executeWithLock(
+        () -> {
+          tableModelMTree.commitAlterColumnDataType(
+              getQualifiedDatabasePartialPath(plan.getDatabase()),
+              plan.getTableName(),
+              plan.getColumnName(),
+              plan.getNewType());
+          executeOriginalIfPresent(
+              plan,
+              () ->
+                  tableModelMTree.commitAlterColumnDataType(
+                      getQualifiedDatabasePartialPath(plan.getOriginalDatabase()),
+                      plan.getOriginalTableName(),
+                      plan.getOriginalColumnName(),
+                      plan.getNewType()));
+        });
   }
 
   // endregion

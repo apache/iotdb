@@ -189,7 +189,7 @@ public class IoTDBTableIT {
       try {
         statement.execute("alter table test1.nonExist set properties ttl=1000000");
       } catch (final SQLException e) {
-        assertEquals("550: Table 'test1.nonexist' does not exist", e.getMessage());
+        assertEquals("550: Table 'test1.nonexist' does not exist.", e.getMessage());
       }
 
       // If exists
@@ -745,11 +745,11 @@ public class IoTDBTableIT {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,original_table_name,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
-          "database,table_name,column_name,datatype,category,status,comment,",
+          "database,table_name,column_name,datatype,category,status,comment,original_column_name,",
           Collections.emptySet());
     }
 
@@ -863,6 +863,94 @@ public class IoTDBTableIT {
 
       insertThread.join();
       deletionThread.join();
+    }
+  }
+
+  @Test
+  public void testCreateWritableViewWithCommentAndReplace() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database writable_view_replace_db");
+      statement.execute("use writable_view_replace_db");
+      statement.execute(
+          "create table source_table(time timestamp time comment 'source_time', region_id string tag comment 'source_region', model string attribute comment 'source_model', temperature float field comment 'source_temp') comment 'source_table'");
+
+      statement.execute(
+          "create writable view writable_view as select region_id as area comment 'area_v1', model as label, temperature as temp from source_table comment 'view_v1'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select comment from information_schema.tables where database = 'writable_view_replace_db' and table_name = 'writable_view'"),
+          "comment,",
+          Collections.singleton("view_v1,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select column_name, comment from information_schema.columns where database = 'writable_view_replace_db' and table_name = 'writable_view' and column_name in ('area', 'label', 'temp')"),
+          "column_name,comment,",
+          new HashSet<>(
+              Arrays.asList("area,area_v1,", "label,source_model,", "temp,source_temp,")));
+
+      String showCreateViewSql;
+      try (final ResultSet resultSet = statement.executeQuery("show create view writable_view")) {
+        assertTrue(resultSet.next());
+        assertEquals("writable_view", resultSet.getString(1));
+        showCreateViewSql = resultSet.getString(2);
+        assertTrue(showCreateViewSql.contains("\"region_id\" AS \"area\" COMMENT 'area_v1'"));
+        assertTrue(showCreateViewSql.contains("\"model\" AS \"label\" COMMENT 'source_model'"));
+        assertTrue(showCreateViewSql.contains("\"temperature\" AS \"temp\" COMMENT 'source_temp'"));
+        assertTrue(showCreateViewSql.contains("FROM \"source_table\""));
+        assertTrue(showCreateViewSql.contains("COMMENT 'view_v1'"));
+        assertFalse(showCreateViewSql.contains("COMMENT 'source_table'"));
+        assertFalse(resultSet.next());
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show create table writable_view")) {
+        assertTrue(resultSet.next());
+        assertEquals("writable_view", resultSet.getString(1));
+        assertEquals(showCreateViewSql, resultSet.getString(2));
+        assertFalse(resultSet.next());
+      }
+
+      statement.execute(
+          "create or replace writable view writable_view as select region_id as area comment 'area_v2', temperature as temp comment 'temp_v2' from source_table comment 'view_v2'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select comment from information_schema.tables where database = 'writable_view_replace_db' and table_name = 'writable_view'"),
+          "comment,",
+          Collections.singleton("view_v2,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select column_name, comment from information_schema.columns where database = 'writable_view_replace_db' and table_name = 'writable_view' and column_name in ('area', 'temp')"),
+          "column_name,comment,",
+          new HashSet<>(Arrays.asList("area,area_v2,", "temp,temp_v2,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select count(*) from information_schema.columns where database = 'writable_view_replace_db' and table_name = 'writable_view' and column_name = 'label'"),
+          "_col0,",
+          Collections.singleton("0,"));
+
+      String replacedShowCreateViewSql;
+      try (final ResultSet resultSet = statement.executeQuery("show create view writable_view")) {
+        assertTrue(resultSet.next());
+        assertEquals("writable_view", resultSet.getString(1));
+        replacedShowCreateViewSql = resultSet.getString(2);
+        assertTrue(
+            replacedShowCreateViewSql.contains("\"region_id\" AS \"area\" COMMENT 'area_v2'"));
+        assertTrue(
+            replacedShowCreateViewSql.contains("\"temperature\" AS \"temp\" COMMENT 'temp_v2'"));
+        assertTrue(replacedShowCreateViewSql.contains("COMMENT 'view_v2'"));
+        assertFalse(replacedShowCreateViewSql.contains("\"model\" AS \"label\""));
+        assertFalse(resultSet.next());
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show create table writable_view")) {
+        assertTrue(resultSet.next());
+        assertEquals("writable_view", resultSet.getString(1));
+        assertEquals(replacedShowCreateViewSql, resultSet.getString(2));
+        assertFalse(resultSet.next());
+      }
     }
   }
 
@@ -999,6 +1087,81 @@ public class IoTDBTableIT {
       }
 
       statement.execute("drop database db2");
+    }
+  }
+
+  @Test
+  public void testWritableViewCommentCascade() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database writable_view_comment_db");
+      statement.execute("use writable_view_comment_db");
+      statement.execute(
+          "create table source_table("
+              + "region_id tag comment 'source_region', "
+              + "temperature int32 comment 'source_temperature'"
+              + ") comment 'source_table'");
+      statement.execute(
+          "create writable view writable_view as select "
+              + "region_id as area, "
+              + "temperature as temp "
+              + "from source_table with (schema_cascade=true)");
+
+      statement.execute("comment on view writable_view is 'cascaded_view_comment'");
+      statement.execute("comment on column writable_view.area is 'cascaded_area_comment'");
+      statement.execute("comment on column writable_view.temp is 'cascaded_temp_comment'");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select table_name, comment from information_schema.tables "
+                  + "where database = 'writable_view_comment_db' "
+                  + "and table_name in ('source_table', 'writable_view')"),
+          "table_name,comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "source_table,cascaded_view_comment,", "writable_view,cascaded_view_comment,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select table_name, column_name, comment from information_schema.columns "
+                  + "where database = 'writable_view_comment_db' "
+                  + "and table_name in ('source_table', 'writable_view') "
+                  + "and column_name in ('region_id', 'temperature', 'area', 'temp')"),
+          "table_name,column_name,comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "source_table,region_id,cascaded_area_comment,",
+                  "source_table,temperature,cascaded_temp_comment,",
+                  "writable_view,area,cascaded_area_comment,",
+                  "writable_view,temp,cascaded_temp_comment,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("describe source_table details"),
+          "ColumnName,DataType,Category,Status,Comment,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,",
+                  "region_id,STRING,TAG,USING,cascaded_area_comment,",
+                  "temperature,INT32,FIELD,USING,cascaded_temp_comment,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("describe writable_view details"),
+          "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,USING,null,time,",
+                  "area,STRING,TAG,USING,cascaded_area_comment,region_id,",
+                  "temp,INT32,FIELD,USING,cascaded_temp_comment,temperature,")));
+
+      try (final ResultSet resultSet = statement.executeQuery("show create view writable_view")) {
+        assertTrue(resultSet.next());
+        final String sql = resultSet.getString(2);
+        assertTrue(sql.contains("COMMENT 'cascaded_view_comment'"));
+        assertTrue(sql.contains("\"region_id\" AS \"area\" COMMENT 'cascaded_area_comment'"));
+        assertTrue(sql.contains("\"temperature\" AS \"temp\" COMMENT 'cascaded_temp_comment'"));
+        assertFalse(resultSet.next());
+      }
     }
   }
 
@@ -1164,8 +1327,8 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
-          "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
@@ -1318,7 +1481,7 @@ public class IoTDBTableIT {
           Collections.singleton(
               "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
-      statement.execute("create table a ()");
+      statement.execute("create table a (id tag, value int32) with (ttl=200)");
       try {
         statement.execute("show create view a");
         fail();
@@ -1338,6 +1501,23 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         assertEquals("701: The system view does not support show create.", e.getMessage());
       }
+      statement.execute("create writable view writable_view as select * from a with (ttl=300)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tree views"),
+          "TableName,TTL(ms),",
+          Collections.singleton("view_table,100,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show writable views"),
+          "TableName,TTL(ms),",
+          Collections.singleton("writable_view,300,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show views"),
+          "TableName,TTL(ms),",
+          new HashSet<>(Arrays.asList("view_table,100,", "writable_view,300,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show views from tree_view_db"),
+          "TableName,TTL(ms),",
+          new HashSet<>(Arrays.asList("view_table,100,", "writable_view,300,")));
       try {
         statement.execute("create or replace view a () as root.b.**");
         fail();

@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
@@ -34,12 +37,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivil
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DB1;
@@ -204,6 +212,77 @@ public class AuthTest {
 
     // TODO alter database
 
+  }
+
+  @Test
+  public void testCreateWritableViewAuthUsesSourceTableWritePrivileges() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    final String targetView = DB1 + ".target_view";
+    final String sourceTable = DB1 + "." + TABLE1;
+
+    analyzeConfigTask(
+        String.format(
+            "CREATE WRITABLE VIEW %s AS SELECT * FROM %s WITH (schema_cascade=false)",
+            targetView, sourceTable),
+        user1,
+        authChecker);
+
+    final ArgumentCaptor<List<TableModelPrivilege>> noCascadePrivilegesCaptor =
+        ArgumentCaptor.forClass(List.class);
+    Mockito.verify(authChecker)
+        .checkTablePrivileges(
+            eq(user1), eq(testdbTable1), noCascadePrivilegesCaptor.capture(), any());
+    assertEquals(
+        Arrays.asList(
+            TableModelPrivilege.DELETE, TableModelPrivilege.INSERT, TableModelPrivilege.SELECT),
+        noCascadePrivilegesCaptor.getValue());
+
+    Mockito.reset(authChecker);
+
+    analyzeConfigTask(
+        String.format(
+            "CREATE WRITABLE VIEW %s AS SELECT * FROM %s WITH (schema_cascade=true)",
+            targetView, sourceTable),
+        user1,
+        authChecker);
+
+    final ArgumentCaptor<List<TableModelPrivilege>> cascadePrivilegesCaptor =
+        ArgumentCaptor.forClass(List.class);
+    Mockito.verify(authChecker)
+        .checkTablePrivileges(
+            eq(user1), eq(testdbTable1), cascadePrivilegesCaptor.capture(), any());
+    assertEquals(
+        Arrays.asList(
+            TableModelPrivilege.DELETE,
+            TableModelPrivilege.INSERT,
+            TableModelPrivilege.SELECT,
+            TableModelPrivilege.ALTER,
+            TableModelPrivilege.DROP),
+        cascadePrivilegesCaptor.getValue());
+  }
+
+  @Test
+  public void testUpdateRequiresInsertPrivilege() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    cacheTestTable1();
+    try {
+      analyzeSQL("UPDATE table1 SET attr1 = 'value'", user1, authChecker, DB1);
+
+      Mockito.verify(authChecker)
+          .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.INSERT), any());
+      Mockito.verify(authChecker, Mockito.never())
+          .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.DELETE), any());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(DB1);
+    }
+  }
+
+  private void cacheTestTable1() {
+    final TsTable table = new TsTable(TABLE1);
+    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    DataNodeTableCache.getInstance().preUpdateTable(DB1, table, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(DB1, TABLE1, null);
   }
 
   private void analyzeSQL(String sql, String userName, ITableAuthChecker authChecker) {

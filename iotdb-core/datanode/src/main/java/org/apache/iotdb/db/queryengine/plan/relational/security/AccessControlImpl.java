@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -223,6 +224,30 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE, auditEntity);
+  }
+
+  @Override
+  public void checkCanCreateWritableViewFromSourceTable(
+      QualifiedObjectName tableName, IAuditEntity auditEntity, boolean isCascade) {
+    InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
+    checkAuditDatabase(tableName.getDatabaseName());
+    if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.CREATE).setResult(true),
+              tableName::getObjectName);
+      return;
+    }
+    final List<TableModelPrivilege> privilegeTypes = new ArrayList<>();
+    privilegeTypes.add(TableModelPrivilege.DELETE);
+    privilegeTypes.add(TableModelPrivilege.INSERT);
+    privilegeTypes.add(TableModelPrivilege.SELECT);
+    if (isCascade) {
+      privilegeTypes.add(TableModelPrivilege.ALTER);
+      privilegeTypes.add(TableModelPrivilege.DROP);
+    }
+    authChecker.checkTablePrivileges(
+        auditEntity.getUsername(), tableName, privilegeTypes, auditEntity);
   }
 
   @Override

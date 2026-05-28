@@ -22,19 +22,21 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,7 @@ public class AddTableColumnProcedure
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws InterruptedException {
     final long startTime = System.currentTimeMillis();
+    mayInitOriginal();
     try {
       switch (state) {
         case COLUMN_CHECK:
@@ -110,11 +113,25 @@ public class AddTableColumnProcedure
 
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
     try {
+      final TableSchemaObjectType objectType = getTableSchemaObjectType();
+      final TableType tableType = objectType.getClusterSchemaTableType();
+      if (objectType == TableSchemaObjectType.TABLE
+          && addedColumnList.stream()
+              .anyMatch(columnSchema -> columnSchema.getDataType() == TSDataType.UNKNOWN)) {
+        // UNKNOWN is used by view add-column flows as a "resolve later" marker. Base tables must
+        // have a concrete type before reaching metadata extension.
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    "Adding column without data type is only supported for view.",
+                    TSStatusCode.SEMANTIC_ERROR.getStatusCode())));
+        return;
+      }
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
               .tableColumnCheckForColumnExtension(
-                  database, tableName, addedColumnList, this instanceof AddViewColumnProcedure);
+                  database, tableName, addedColumnList, tableType, false);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(new ProcedureException(new IoTDBException(status)));
@@ -133,15 +150,11 @@ public class AddTableColumnProcedure
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 
-  private void addColumn(final ConfigNodeProcedureEnv env) {
+  protected void addColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof AddViewColumnProcedure
-                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, false)
-                    : new AddTableColumnPlan(database, tableName, addedColumnList, false),
-                isGeneratedByPipe);
+            .executePlan(createAddColumnPlan(false), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
@@ -183,21 +196,25 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void rollbackAddColumn(final ConfigNodeProcedureEnv env) {
+  protected void rollbackAddColumn(final ConfigNodeProcedureEnv env) {
     if (table == null) {
       return;
     }
+
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof AddViewColumnProcedure
-                    ? new AddTableViewColumnPlan(database, tableName, addedColumnList, true)
-                    : new AddTableColumnPlan(database, tableName, addedColumnList, true),
-                isGeneratedByPipe);
+            .executePlan(createAddColumnPlan(true), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
+  }
+
+  protected ConfigPhysicalPlan createAddColumnPlan(final boolean isRollback) {
+    if (getTableSchemaObjectType() == TableSchemaObjectType.VIEW) {
+      return new AddTableViewColumnPlan(database, tableName, addedColumnList, isRollback);
+    }
+    return new AddTableColumnPlan(database, tableName, addedColumnList, isRollback);
   }
 
   @Override

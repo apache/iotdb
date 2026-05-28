@@ -28,15 +28,14 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.response.table.PreDeleteColumnStatus;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
@@ -55,12 +54,11 @@ import java.util.Map;
 import java.util.Objects;
 
 public class DropTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
+    extends AbstractAlterOrDropTableColumnProcedure<DropTableColumnState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropTableColumnProcedure.class);
-
-  private String columnName;
   private boolean isAttributeColumn;
+  private boolean skipOriginalTagCascade;
 
   public DropTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -72,8 +70,7 @@ public class DropTableColumnProcedure
       final String queryId,
       final String columnName,
       final boolean isGeneratedByPipe) {
-    super(database, tableName, queryId, isGeneratedByPipe);
-    this.columnName = columnName;
+    super(database, tableName, queryId, columnName, isGeneratedByPipe);
   }
 
   @Override
@@ -85,6 +82,7 @@ public class DropTableColumnProcedure
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DropTableColumnState state)
       throws InterruptedException {
+    mayInitOriginal();
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -116,6 +114,9 @@ public class DropTableColumnProcedure
           LOGGER.info(
               ProcedureMessages.DROPPING_COLUMN_IN_ON_CONFIGNODE, columnName, database, tableName);
           dropColumn(env);
+          if (skipOriginalTagCascade) {
+            setFailure(buildSkipOriginalTagCascadeWarning());
+          }
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -135,28 +136,25 @@ public class DropTableColumnProcedure
 
   private void checkAndPreDeleteColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            this instanceof DropViewColumnProcedure
-                ? new PreDeleteViewColumnPlan(database, tableName, columnName)
-                : new PreDeleteColumnPlan(database, tableName, columnName),
-            env,
-            LOGGER);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      isAttributeColumn = status.isSetMessage();
-      setNextState(DropTableColumnState.INVALIDATE_CACHE);
-    } else {
+        SchemaUtils.executeInConsensusLayer(createPreDeleteColumnPlan(), env, LOGGER);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+      return;
     }
+    handlePreDeleteColumnStatus(status);
+    setNextState(DropTableColumnState.INVALIDATE_CACHE);
   }
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final TInvalidateColumnCacheReq req =
+        new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn);
+
+    appendOriginalColumnForCacheInvalidation(req);
     final DataNodeAsyncRequestContext<TInvalidateColumnCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE,
-            new TInvalidateColumnCacheReq(database, tableName, columnName, isAttributeColumn),
-            dataNodeLocationMap);
+            CnToDnAsyncRequestType.INVALIDATE_COLUMN_CACHE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final TSStatus status : statusMap.values()) {
@@ -181,13 +179,18 @@ public class DropTableColumnProcedure
     }
 
     // View does not need to be executed on regions
-    setNextState(
-        this instanceof DropViewColumnProcedure
-            ? DropTableColumnState.DROP_COLUMN
-            : DropTableColumnState.EXECUTE_ON_REGIONS);
+    setNextState(getStateAfterInvalidateCache());
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
+    if (!shouldExecuteOnRegions()) {
+      setNextState(DropTableColumnState.DROP_COLUMN);
+      return;
+    }
+    final String database = getRegionOperationDatabase();
+    final String tableName = getRegionOperationTableName();
+    final String columnName = getRegionOperationColumnName();
+
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
         isAttributeColumn
             ? env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database)
@@ -215,13 +218,73 @@ public class DropTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof DropViewColumnProcedure
-                    ? new CommitDeleteViewColumnPlan(database, tableName, columnName)
-                    : new CommitDeleteColumnPlan(database, tableName, columnName),
-                isGeneratedByPipe);
+            .executePlan(createCommitDeleteColumnPlan(), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+    }
+  }
+
+  protected ConfigPhysicalPlan createPreDeleteColumnPlan() {
+    return new PreDeleteColumnPlan(database, tableName, columnName);
+  }
+
+  protected DropTableColumnState getStateAfterInvalidateCache() {
+    return DropTableColumnState.EXECUTE_ON_REGIONS;
+  }
+
+  protected void appendOriginalColumnForCacheInvalidation(
+      final TInvalidateColumnCacheReq invalidateColumnCacheReq) {
+    if (!hasOriginalColumn() || !shouldIncludeOriginalColumnInCacheInvalidation()) {
+      return;
+    }
+    invalidateColumnCacheReq.setOriginalDatabase(getOriginalDatabaseForColumn());
+    invalidateColumnCacheReq.setOriginalTableName(getOriginalTableNameForColumn());
+    invalidateColumnCacheReq.setOriginalColumnName(getOriginalColumnName());
+  }
+
+  protected boolean shouldIncludeOriginalColumnInCacheInvalidation() {
+    return true;
+  }
+
+  protected String getRegionOperationDatabase() {
+    return database;
+  }
+
+  protected String getRegionOperationTableName() {
+    return tableName;
+  }
+
+  protected String getRegionOperationColumnName() {
+    return columnName;
+  }
+
+  protected boolean shouldExecuteOnRegions() {
+    return Objects.nonNull(getRegionOperationColumnName());
+  }
+
+  protected ConfigPhysicalPlan createCommitDeleteColumnPlan() {
+    return new CommitDeleteColumnPlan(database, tableName, columnName);
+  }
+
+  protected boolean isOriginalTagCascadeSkipped() {
+    return skipOriginalTagCascade;
+  }
+
+  private void handlePreDeleteColumnStatus(final TSStatus status) {
+    if (!status.isSetMessage()) {
+      return;
+    }
+    final PreDeleteColumnStatus preDeleteColumnStatus =
+        PreDeleteColumnStatus.parse(status.getMessage());
+    if (Objects.isNull(preDeleteColumnStatus)) {
+      return;
+    }
+    if (preDeleteColumnStatus == PreDeleteColumnStatus.ORIGINAL_TAG_COLUMN_CASCADE_SKIPPED) {
+      skipOriginalTagCascade = true;
+      return;
+    }
+    if (preDeleteColumnStatus == PreDeleteColumnStatus.ATTRIBUTE) {
+      isAttributeColumn = true;
     }
   }
 
@@ -263,29 +326,38 @@ public class DropTableColumnProcedure
   }
 
   protected void innerSerialize(final DataOutputStream stream) throws IOException {
-    super.serialize(stream);
+    super.innerSerialize(stream);
 
-    ReadWriteIOUtils.write(columnName, stream);
     ReadWriteIOUtils.write(isAttributeColumn, stream);
+    ReadWriteIOUtils.write(skipOriginalTagCascade, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.columnName = ReadWriteIOUtils.readString(byteBuffer);
     this.isAttributeColumn = ReadWriteIOUtils.readBool(byteBuffer);
+    this.skipOriginalTagCascade = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
-        && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName)
-        && Objects.equals(isAttributeColumn, ((DropTableColumnProcedure) o).isAttributeColumn);
+        && Objects.equals(isAttributeColumn, ((DropTableColumnProcedure) o).isAttributeColumn)
+        && Objects.equals(
+            skipOriginalTagCascade, ((DropTableColumnProcedure) o).skipOriginalTagCascade);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), columnName, isAttributeColumn);
+    return Objects.hash(super.hashCode(), isAttributeColumn, skipOriginalTagCascade);
+  }
+
+  private ProcedureException buildSkipOriginalTagCascadeWarning() {
+    return new ProcedureException(
+        new IoTDBException(
+            new TSStatus(TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode())
+                .setMessage(
+                    "WARNING: The original column to be deleted in a cascade is a tag, which is not allowed to be deleted. The original column remains unchanged.")));
   }
 }

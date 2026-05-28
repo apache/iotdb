@@ -25,15 +25,19 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.schema.table.TableType;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -47,16 +51,44 @@ public class ShowTables extends Statement {
 
   private final boolean isDetails;
 
+  @Nullable private final Set<TableType> tableTypeFilter;
+
   public ShowTables(final NodeLocation location, final boolean isDetails) {
-    super(requireNonNull(location, "location is null"));
-    this.dbName = null;
-    this.isDetails = isDetails;
+    this(location, isDetails, null, null);
   }
 
   public ShowTables(final NodeLocation location, final Identifier dbName, final boolean isDetails) {
+    this(location, isDetails, requireNonNull(dbName, "dbName is null"), null);
+  }
+
+  public ShowTables(
+      final NodeLocation location, final boolean isDetails, final Set<TableType> tableTypeFilter) {
+    this(location, isDetails, null, tableTypeFilter);
+  }
+
+  public ShowTables(
+      final NodeLocation location,
+      final Identifier dbName,
+      final boolean isDetails,
+      final Set<TableType> tableTypeFilter) {
+    this(location, isDetails, requireNonNull(dbName, "dbName is null"), tableTypeFilter);
+  }
+
+  private ShowTables(
+      final NodeLocation location,
+      final boolean isDetails,
+      @Nullable final Identifier dbName,
+      @Nullable final Set<TableType> tableTypeFilter) {
     super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    this.dbName = dbName;
     this.isDetails = isDetails;
+    this.tableTypeFilter =
+        Objects.isNull(tableTypeFilter)
+            ? null
+            : Collections.unmodifiableSet(
+                tableTypeFilter.isEmpty()
+                    ? EnumSet.noneOf(TableType.class)
+                    : EnumSet.copyOf(tableTypeFilter));
   }
 
   public Optional<Identifier> getDbName() {
@@ -65,6 +97,10 @@ public class ShowTables extends Statement {
 
   public boolean isDetails() {
     return isDetails;
+  }
+
+  public Optional<Set<TableType>> getTableTypeFilter() {
+    return Optional.ofNullable(tableTypeFilter);
   }
 
   @Override
@@ -79,7 +115,7 @@ public class ShowTables extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(dbName);
+    return Objects.hash(dbName, isDetails, tableTypeFilter);
   }
 
   @Override
@@ -91,12 +127,18 @@ public class ShowTables extends Statement {
       return false;
     }
     final ShowTables o = (ShowTables) obj;
-    return Objects.equals(dbName, o.dbName);
+    return isDetails == o.isDetails
+        && Objects.equals(dbName, o.dbName)
+        && Objects.equals(tableTypeFilter, o.tableTypeFilter);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("dbName", dbName).toString();
+    return toStringHelper(this)
+        .add("dbName", dbName)
+        .add("isDetails", isDetails)
+        .add("tableTypeFilter", tableTypeFilter)
+        .toString();
   }
 
   @Override

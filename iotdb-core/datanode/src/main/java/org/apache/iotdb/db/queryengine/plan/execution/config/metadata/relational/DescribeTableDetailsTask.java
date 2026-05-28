@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -59,9 +61,10 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
       final Map<String, Byte> preAlteredColumns,
       final SettableFuture<ConfigTaskResult> future) {
     final List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.describeTableDetailsColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
+        (ViewTableUtils.isWritableView(table)
+                ? ColumnHeaderConstant.describeWritableViewDetailsColumnHeaders
+                : ColumnHeaderConstant.describeTableDetailsColumnHeaders)
+            .stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final TsTableColumnSchema columnSchema : table.getColumnList()) {
@@ -92,10 +95,23 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
       } else {
         builder.getColumnBuilder(4).appendNull();
       }
+
+      if (ViewTableUtils.isWritableView(table)) {
+        builder
+            .getColumnBuilder(5)
+            .writeBinary(
+                new Binary(
+                    ((WritableView) table).getOriginalColumnName(columnSchema.getColumnName()),
+                    TSFileConfig.STRING_CHARSET));
+      }
+
       builder.declarePosition();
     }
 
-    final DatasetHeader datasetHeader = DatasetHeaderFactory.getDescribeTableDetailsHeader();
+    final DatasetHeader datasetHeader =
+        ViewTableUtils.isWritableView(table)
+            ? DatasetHeaderFactory.getDescribeWritableViewDetailsHeader()
+            : DatasetHeaderFactory.getDescribeTableDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

@@ -42,8 +42,11 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundExc
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
@@ -65,17 +68,22 @@ import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isIntegerNumber;
@@ -101,6 +109,11 @@ public class TableMetadataImpl implements Metadata {
 
   private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
+  private final Map<QualifiedObjectName, WritableViewMetadataCache> writableViewMetadataCacheMap =
+      new ConcurrentHashMap<>();
+  private final Object writableViewMetadataCacheLock = new Object();
+  private volatile long writableViewMetadataCacheVersion = -1;
+
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
     return tableCache.getTable(name.getDatabaseName(), name.getObjectName(), false) != null;
@@ -116,24 +129,199 @@ public class TableMetadataImpl implements Metadata {
     if (table == null) {
       return Optional.empty();
     }
-    final List<ColumnSchema> columnSchemaList =
-        table.getColumnList().stream()
-            .map(
-                o -> {
-                  final ColumnSchema schema =
-                      new ColumnSchema(
-                          o.getColumnName(),
-                          TypeFactory.getType(o.getDataType()),
-                          false,
-                          o.getColumnCategory());
-                  schema.setProps(o.getProps());
-                  return schema;
-                })
-            .collect(Collectors.toList());
-    return Optional.of(
-        TreeViewSchema.isTreeViewTable(table)
-            ? new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps())
-            : new TableSchema(table.getTableName(), columnSchemaList));
+    final List<TsTableColumnSchema> tableColumns = table.getColumnList();
+    TableSchema tableSchema;
+    if (ViewTableUtils.isWritableView(table)) {
+      final WritableView writableView = (WritableView) table;
+      final WritableViewMetadataCache cachedWritableViewMetadata =
+          resolveWritableViewMetadata(name, tableColumns, writableView);
+      tableSchema = cachedWritableViewMetadata.getWritableViewSchema();
+    } else if (ViewTableUtils.isTreeView(table)) {
+      final List<ColumnSchema> columnSchemaList = toColumnSchemaList(tableColumns);
+      tableSchema =
+          new TreeDeviceViewSchema(table.getTableName(), columnSchemaList, table.getProps());
+    } else {
+      final List<ColumnSchema> columnSchemaList = toColumnSchemaList(tableColumns);
+      tableSchema = new TableSchema(table.getTableName(), columnSchemaList);
+    }
+    return Optional.of(tableSchema);
+  }
+
+  @Override
+  public Optional<WritableViewInsertRewriteSupport> getWritableViewInsertRewriteSupport(
+      final SessionInfo session, final QualifiedObjectName name) {
+    final TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName(), false);
+    if (!ViewTableUtils.isWritableView(table)) {
+      return Optional.empty();
+    }
+
+    final WritableView writableView = (WritableView) table;
+    final WritableViewMetadataCache cachedWritableViewMetadata =
+        resolveWritableViewMetadata(name, table.getColumnList(), writableView);
+    return Optional.of(cachedWritableViewMetadata.getWritableViewInsertRewriteSupport());
+  }
+
+  private WritableViewMetadataCache resolveWritableViewMetadata(
+      final QualifiedObjectName viewName,
+      final List<TsTableColumnSchema> viewColumns,
+      final WritableView writableView) {
+    final long tableCacheVersion = tableCache.getInstanceVersion();
+    final WritableViewMetadataCache cachedWritableViewMetadata =
+        writableViewMetadataCacheMap.get(viewName);
+    if (Objects.nonNull(cachedWritableViewMetadata)
+        && cachedWritableViewMetadata.getTableCacheVersion() == tableCacheVersion) {
+      return cachedWritableViewMetadata;
+    }
+    clearStaleWritableViewMetadataCache(tableCacheVersion);
+
+    final QualifiedObjectName sourceTableName =
+        new QualifiedObjectName(
+            writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+    final TsTable sourceTable =
+        tableCache.getTable(
+            sourceTableName.getDatabaseName(), sourceTableName.getObjectName(), false);
+    final boolean sourceTableKnownToExist = Objects.nonNull(sourceTable);
+    final List<ColumnSchema> viewColumnSchemas = toColumnSchemaList(viewColumns);
+    final Map<String, String> effectiveViewColumnToSourceColumnMap =
+        SourceColumnMappedViewSchema.buildViewColumnToSourceColumnMap(
+            viewColumnSchemas, writableView.getViewColumnToSourceColumnMap());
+    final boolean sourceColumnsIdenticalToView =
+        isSourceColumnsIdenticalToView(
+            viewColumns, sourceTable, effectiveViewColumnToSourceColumnMap);
+    final Map<String, Integer> sourceTagColumnIndexMap =
+        sourceTableKnownToExist
+            ? buildSourceTagColumnIndexMap(sourceTable)
+            : Collections.emptyMap();
+    final Optional<TableSchema> sourceTableSchema =
+        sourceTableKnownToExist && !sourceColumnsIdenticalToView
+            ? Optional.of(TableSchema.of(sourceTable))
+            : Optional.empty();
+    final Predicate<String> sourceColumnExists =
+        sourceTableKnownToExist
+            ? columnName -> Objects.nonNull(sourceTable.getColumnSchema(columnName))
+            : columnName -> false;
+    final WritableViewSchema writableViewSchema =
+        new WritableViewSchema(
+            viewName.getObjectName(),
+            viewColumnSchemas,
+            sourceTableName,
+            effectiveViewColumnToSourceColumnMap,
+            sourceTableSchema.orElse(null),
+            sourceTableKnownToExist,
+            sourceColumnsIdenticalToView,
+            sourceTagColumnIndexMap);
+    final WritableViewMetadataCache resolvedWritableViewMetadata =
+        new WritableViewMetadataCache(
+            tableCacheVersion,
+            writableViewSchema,
+            new WritableViewInsertRewriteSupport(
+                viewName,
+                sourceTableName,
+                effectiveViewColumnToSourceColumnMap,
+                sourceTableKnownToExist,
+                sourceColumnExists));
+    writableViewMetadataCacheMap.put(viewName, resolvedWritableViewMetadata);
+    return resolvedWritableViewMetadata;
+  }
+
+  private void clearStaleWritableViewMetadataCache(final long tableCacheVersion) {
+    if (writableViewMetadataCacheVersion == tableCacheVersion) {
+      return;
+    }
+    synchronized (writableViewMetadataCacheLock) {
+      if (writableViewMetadataCacheVersion != tableCacheVersion) {
+        writableViewMetadataCacheMap.clear();
+        writableViewMetadataCacheVersion = tableCacheVersion;
+      }
+    }
+  }
+
+  private static List<ColumnSchema> toColumnSchemaList(
+      final List<TsTableColumnSchema> tableColumns) {
+    return tableColumns.stream()
+        .map(
+            o -> {
+              final ColumnSchema schema =
+                  new ColumnSchema(
+                      o.getColumnName(),
+                      TypeFactory.getType(o.getDataType()),
+                      false,
+                      o.getColumnCategory());
+              schema.setProps(o.getProps());
+              return schema;
+            })
+        .collect(Collectors.toList());
+  }
+
+  private static boolean isSourceColumnsIdenticalToView(
+      final List<TsTableColumnSchema> viewColumns,
+      final TsTable sourceTable,
+      final Map<String, String> viewColumnToSourceColumnMap) {
+    if (Objects.isNull(sourceTable)
+        || WritableViewUtils.requiresSourceColumnRewrite(viewColumnToSourceColumnMap)) {
+      return false;
+    }
+    final List<TsTableColumnSchema> sourceColumns = sourceTable.getColumnList();
+    if (viewColumns.size() != sourceColumns.size()) {
+      return false;
+    }
+    for (final TsTableColumnSchema viewColumn : viewColumns) {
+      final String sourceColumnName =
+          Optional.ofNullable(
+                  WritableViewUtils.getSourceColumnName(
+                      viewColumn.getColumnName(), viewColumnToSourceColumnMap))
+              .orElse(viewColumn.getColumnName());
+      final TsTableColumnSchema sourceColumn = sourceTable.getColumnSchema(sourceColumnName);
+      if (Objects.isNull(sourceColumn)
+          || viewColumn.getColumnCategory() != sourceColumn.getColumnCategory()
+          || viewColumn.getDataType() != sourceColumn.getDataType()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static Map<String, Integer> buildSourceTagColumnIndexMap(final TsTable sourceTable) {
+    final Map<String, Integer> sourceTagColumnIndexMap = new HashMap<>();
+    int fallbackTagIndex = 0;
+    for (final TsTableColumnSchema sourceColumn : sourceTable.getColumnList()) {
+      if (sourceColumn.getColumnCategory() != TsTableColumnCategory.TAG) {
+        continue;
+      }
+      final int tagColumnOrdinal = sourceTable.getTagColumnOrdinal(sourceColumn.getColumnName());
+      sourceTagColumnIndexMap.put(
+          sourceColumn.getColumnName(),
+          tagColumnOrdinal >= 0 ? tagColumnOrdinal : fallbackTagIndex);
+      fallbackTagIndex++;
+    }
+    return sourceTagColumnIndexMap;
+  }
+
+  private static final class WritableViewMetadataCache {
+    private final long tableCacheVersion;
+    private final WritableViewSchema writableViewSchema;
+    private final WritableViewInsertRewriteSupport writableViewInsertRewriteSupport;
+
+    private WritableViewMetadataCache(
+        final long tableCacheVersion,
+        final WritableViewSchema writableViewSchema,
+        final WritableViewInsertRewriteSupport writableViewInsertRewriteSupport) {
+      this.tableCacheVersion = tableCacheVersion;
+      this.writableViewSchema = writableViewSchema;
+      this.writableViewInsertRewriteSupport = writableViewInsertRewriteSupport;
+    }
+
+    private long getTableCacheVersion() {
+      return tableCacheVersion;
+    }
+
+    private WritableViewSchema getWritableViewSchema() {
+      return writableViewSchema;
+    }
+
+    private WritableViewInsertRewriteSupport getWritableViewInsertRewriteSupport() {
+      return writableViewInsertRewriteSupport;
+    }
   }
 
   @Override

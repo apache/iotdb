@@ -83,6 +83,7 @@ public abstract class AbstractTraverseDevice extends Statement {
   // The "CountDevice"'s column header list is the same as the device's header
   // to help reuse filter operator
   protected List<ColumnHeader> columnHeaderList;
+  private List<ColumnHeader> outputColumnHeaderList;
 
   // If there are no attribute columns, we can skip returning it to save time
   private List<String> attributeColumns;
@@ -206,8 +207,23 @@ public abstract class AbstractTraverseDevice extends Statement {
     return columnHeaderList;
   }
 
+  public List<ColumnHeader> getOutputColumnHeaderList() {
+    return Objects.nonNull(outputColumnHeaderList) ? outputColumnHeaderList : columnHeaderList;
+  }
+
   public void setColumnHeaderList() {
-    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName, attributeColumns);
+    setColumnHeaderList(getDeviceColumnHeaderList(database, tableName, attributeColumns));
+  }
+
+  public void setColumnHeaderList(final List<ColumnHeader> columnHeaderList) {
+    this.columnHeaderList = columnHeaderList;
+    if (Objects.isNull(outputColumnHeaderList)) {
+      this.outputColumnHeaderList = columnHeaderList;
+    }
+  }
+
+  public void setOutputColumnHeaderList(final List<ColumnHeader> outputColumnHeaderList) {
+    this.outputColumnHeaderList = outputColumnHeaderList;
   }
 
   @Override
@@ -284,6 +300,12 @@ public abstract class AbstractTraverseDevice extends Statement {
     if (columnHeaderList != null) {
       size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
       for (ColumnHeader header : columnHeaderList) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(header);
+      }
+    }
+    if (outputColumnHeaderList != null && outputColumnHeaderList != columnHeaderList) {
+      size += RamUsageEstimator.shallowSizeOf(outputColumnHeaderList);
+      for (ColumnHeader header : outputColumnHeaderList) {
         size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(header);
       }
     }

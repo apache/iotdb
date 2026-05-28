@@ -62,6 +62,7 @@ import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -111,6 +112,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
@@ -291,6 +293,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -3035,65 +3039,181 @@ public class ConfigManager implements IManager {
   public TSStatus createTableView(final TCreateTableViewReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      final Pair<String, TsTable> pair =
+      final Pair<String, TsTable> databaseTablePair =
           TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-      if (clusterSchemaManager
-              .getMatchedDatabaseSchemasByPrefix(
-                  new PartialPath(
-                      Arrays.copyOf(
-                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodes(),
-                          TreeViewSchema.getPrefixPattern(pair.getRight()).getNodeLength() - 1)))
-              .size()
-          > 1) {
-        return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-            .setMessage(
-                ManagerMessages.CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE);
-      }
-      return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
+      return databaseTablePair.getRight() instanceof WritableView
+          ? createWritableView(
+              databaseTablePair,
+              req.isReplace(),
+              req.isSetViewColumnCommentMap() ? req.getViewColumnCommentMap() : null)
+          : createTreeView(databaseTablePair, req.isReplace());
     } else {
       return status;
     }
+  }
+
+  private TSStatus createWritableView(
+      final Pair<String, TsTable> databaseTablePair,
+      final boolean isReplace,
+      final Map<String, String> viewColumnCommentMap) {
+    return procedureManager.createWritableView(
+        databaseTablePair.left,
+        (WritableView) databaseTablePair.right,
+        isReplace,
+        viewColumnCommentMap);
+  }
+
+  private TSStatus createTreeView(
+      final Pair<String, TsTable> databaseTablePair, final boolean isReplace) {
+    if (clusterSchemaManager
+            .getMatchedDatabaseSchemasByPrefix(
+                new PartialPath(
+                    Arrays.copyOf(
+                        TreeViewSchema.getPrefixPattern(databaseTablePair.getRight()).getNodes(),
+                        TreeViewSchema.getPrefixPattern(databaseTablePair.getRight())
+                                .getNodeLength()
+                            - 1)))
+            .size()
+        > 1) {
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(
+              ManagerMessages.CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE);
+    }
+    return procedureManager.createTableView(
+        databaseTablePair.left, databaseTablePair.right, isReplace);
   }
 
   @Override
   public TSStatus alterOrDropTable(final TAlterOrDropTableReq req) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // This will return the originalDatabase and the originalTable (if the table is a writable
+      // view) regardless of the cascade settings
+      final Pair<Pair<TSStatus, Boolean>, Pair<String, String>> checkWritableViewResult =
+          checkWritableView(req.database, req.tableName, false, false);
+      if (checkWritableViewResult.left.left.getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return checkWritableViewResult.left.left;
+      }
+      // We will check the overlap of the original database / table's procedures
+      // regardless of the cascade settings checked here, because:
+      // 1. The cascade settings is checked in the procedure, if we do not check the
+      // overlap because the cascade here is false, the cascade may be altered to true and the
+      // procedures may still overlap
+      // 2. If we use the outside cascade, the procedure's execution may be out of order
+      // That is, assume that the original cascade = true, and set property (ttl=10, cascade=false)
+      // set property (ttl=INF), the original table shall be ttl=10, but if the set property
+      // (ttl=INF)
+      // observed the cascade=true but is executed after, the original table shall be ttl=INF,
+      // which is (but shall not) equal to the writable view
       switch (AlterOrDropTableOperationType.getType(req.operationType)) {
         case ADD_COLUMN:
-          return procedureManager.alterTableAddColumn(req);
+          return procedureManager.alterTableAddColumn(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case SET_PROPERTIES:
-          return procedureManager.alterTableSetProperties(req);
+          return procedureManager.alterTableSetProperties(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case RENAME_COLUMN:
-          return procedureManager.alterTableRenameColumn(req);
+          return procedureManager.alterTableRenameColumn(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case DROP_COLUMN:
-          return procedureManager.alterTableDropColumn(req);
+          return procedureManager.alterTableDropColumn(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case DROP_TABLE:
-          return procedureManager.dropTable(req);
+          return procedureManager.dropTable(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case ALTER_COLUMN_DATA_TYPE:
-          return procedureManager.alterTableColumnDataType(req);
+          if (Objects.nonNull(checkWritableViewResult.right.right)
+              && !checkWritableViewResult.left.right) {
+            return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                .setMessage(ProcedureMessages.ALTER_COLUMN_DATA_TYPE_REQUIRES_SCHEMA_CASCADE_TRUE);
+          }
+          return procedureManager.alterTableColumnDataType(
+              req, checkWritableViewResult.right.left, checkWritableViewResult.right.right);
         case COMMENT_TABLE:
           return clusterSchemaManager.setTableComment(
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
               req.isSetIsView() && req.isIsView(),
-              false);
+              false,
+              checkWritableViewResult.left.right,
+              checkWritableViewResult.right.left,
+              checkWritableViewResult.right.right);
         case COMMENT_COLUMN:
           return clusterSchemaManager.setTableColumnComment(
               req.getDatabase(),
               req.getTableName(),
               ReadWriteIOUtils.readString(req.updateInfo),
               ReadWriteIOUtils.readString(req.updateInfo),
-              false);
+              false,
+              checkWritableViewResult.right.left,
+              checkWritableViewResult.right.right);
         case RENAME_TABLE:
-          return procedureManager.renameTable(req);
+          return procedureManager.renameTable(req, checkWritableViewResult.right.right);
         default:
           throw new IllegalArgumentException(
               AlterOrDropTableOperationType.getType(req.operationType).toString());
       }
     } else {
       return status;
+    }
+  }
+
+  /**
+   * @return {@code ((status, isSchemaCascade), (sourceDatabase, sourceTableName))}. The source
+   *     table pair is non-null only when the target table is a writable view.
+   */
+  public Pair<Pair<TSStatus, Boolean>, Pair<String, String>> checkWritableView(
+      final String database,
+      final String tableName,
+      final boolean mustCascade,
+      final boolean forceCheck) {
+    String originalTable = null;
+    String originalDatabase = null;
+    // Check writable view
+    try {
+      final Optional<TsTable> tableOptional =
+          clusterSchemaManager.getTableIfExists(database, tableName);
+      if (!tableOptional.isPresent()) {
+        return new Pair<>(
+            new Pair<>(
+                new TSStatus(TSStatusCode.TABLE_NOT_EXISTS.getStatusCode())
+                    .setMessage(
+                        String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
+                false),
+            null);
+      }
+      boolean isCascade = false;
+      // Only override the default procedure when the target is a writable view.
+      if (tableOptional.get() instanceof WritableView) {
+        final WritableView writableView = (WritableView) tableOptional.get();
+        originalDatabase = writableView.getSourceTableDatabase();
+        originalTable = writableView.getSourceTableName();
+        isCascade = writableView.isSchemaCascade();
+        if (mustCascade && !writableView.isSchemaCascade()) {
+          return new Pair<>(
+              new Pair<>(
+                  new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                      .setMessage(
+                          ProcedureMessages.WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_SCHEMA_CASCADE),
+                  false),
+              null);
+        }
+      } else if (forceCheck) {
+        return new Pair<>(
+            new Pair<>(
+                new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+                    .setMessage(
+                        ProcedureMessages.WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_WRITABLE_VIEW_RECEIVER),
+                false),
+            null);
+      }
+      return new Pair<>(
+          new Pair<>(StatusUtils.OK, isCascade), new Pair<>(originalDatabase, originalTable));
+    } catch (final MetadataException e) {
+      return new Pair<>(
+          new Pair<>(new TSStatus(e.getErrorCode()).setMessage(e.getMessage()), false), null);
     }
   }
 
@@ -3149,7 +3269,7 @@ public class ConfigManager implements IManager {
             value.removeIf(
                 table ->
                     procedureManager
-                        .checkDuplicateTableTask(key, null, table, null, null, null)
+                        .checkDuplicateTableTask(key, null, null, table, null, null, null)
                         .getRight()));
     return clusterSchemaManager.fetchTables(fetchTableMap);
   }

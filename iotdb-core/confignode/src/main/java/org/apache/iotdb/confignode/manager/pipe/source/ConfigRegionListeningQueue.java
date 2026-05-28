@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
@@ -96,22 +96,21 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
           }
           break;
         case CommitCreateTable:
+        case CommitCreateWritableView:
           try {
+            final AbstractTablePlan tablePlan = (AbstractTablePlan) plan;
             final Optional<TsTable> table =
                 ConfigNode.getInstance()
                     .getConfigManager()
                     .getClusterSchemaManager()
-                    .getTableIfExists(
-                        ((CommitCreateTablePlan) plan).getDatabase(),
-                        ((CommitCreateTablePlan) plan).getTableName());
+                    .getTableIfExists(tablePlan.getDatabase(), tablePlan.getTableName());
             if (!table.isPresent()) {
               // Won't reach here
               return;
             }
             event =
                 new PipeConfigRegionWritePlanEvent(
-                    new PipeCreateTableOrViewPlan(
-                        ((CommitCreateTablePlan) plan).getDatabase(), table.get()),
+                    new PipeCreateTableOrViewPlan(tablePlan.getDatabase(), table.get()),
                     isGeneratedByPipe);
           } catch (final MetadataException e) {
             LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_COMMITCREATETABLEPLAN, e);

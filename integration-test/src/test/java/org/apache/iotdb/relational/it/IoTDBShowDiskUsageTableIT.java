@@ -100,6 +100,65 @@ public class IoTDBShowDiskUsageTableIT {
   }
 
   @Test
+  public void testWritableViewDiskUsage() {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("use test");
+      session.executeNonQueryStatement(
+          "create writable view writable_view_disk_usage as select * from t1");
+      try {
+        long sourceTableSize =
+            getTableDiskUsageSize(
+                session,
+                "select * from information_schema.table_disk_usage "
+                    + "where database = 'test' and table_name = 't1'",
+                "t1",
+                "BASE TABLE");
+
+        SessionDataSet sessionDataSet =
+            session.executeQueryStatement(
+                "select * from information_schema.table_disk_usage "
+                    + "where database = 'test' "
+                    + "and table_name = 'writable_view_disk_usage' "
+                    + "and table_type = 'WRITABLE VIEW'");
+        SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+        long writableViewSize = 0;
+        int count = 0;
+        while (iterator.next()) {
+          count++;
+          Assert.assertEquals("writable_view_disk_usage", iterator.getString("table_name"));
+          Assert.assertEquals("WRITABLE VIEW", iterator.getString("table_type"));
+          writableViewSize += iterator.getLong("size_in_bytes");
+        }
+        Assert.assertTrue(count > 0);
+        Assert.assertEquals(sourceTableSize, writableViewSize);
+      } finally {
+        session.executeNonQueryStatement("drop view writable_view_disk_usage");
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private long getTableDiskUsageSize(
+      ITableSession session, String sql, String expectedTableName, String expectedTableType)
+      throws Exception {
+    SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+    SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+    long size = 0;
+    int count = 0;
+    while (iterator.next()) {
+      count++;
+      Assert.assertEquals(expectedTableName, iterator.getString("table_name"));
+      Assert.assertEquals(expectedTableType, iterator.getString("table_type"));
+      size += iterator.getLong("size_in_bytes");
+    }
+    Assert.assertTrue(count > 0);
+    Assert.assertTrue(size > 0);
+    return size;
+  }
+
+  @Test
   public void test2() {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       SessionDataSet sessionDataSet =

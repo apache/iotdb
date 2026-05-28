@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -41,6 +42,7 @@ public class AddColumn extends Statement {
 
   private final QualifiedName tableName;
   private final ColumnDefinition column;
+  private final WritableViewColumnDefinition writableViewColumn;
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
@@ -57,6 +59,24 @@ public class AddColumn extends Statement {
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
+    this.writableViewColumn = null;
+    this.tableIfExists = tableIfExists;
+    this.columnIfNotExists = columnIfNotExists;
+    this.view = view;
+  }
+
+  public AddColumn(
+      final NodeLocation location,
+      final QualifiedName tableName,
+      final WritableViewColumnDefinition writableViewColumn,
+      final boolean tableIfExists,
+      final boolean columnIfNotExists,
+      final boolean view) {
+    super(requireNonNull(location, "location is null"));
+
+    this.tableName = requireNonNull(tableName, "tableName is null");
+    this.column = null;
+    this.writableViewColumn = requireNonNull(writableViewColumn, "writableViewColumn is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
@@ -68,6 +88,10 @@ public class AddColumn extends Statement {
 
   public ColumnDefinition getColumn() {
     return column;
+  }
+
+  public Optional<WritableViewColumnDefinition> getWritableViewColumn() {
+    return Optional.ofNullable(writableViewColumn);
   }
 
   public boolean tableIfExists() {
@@ -89,12 +113,13 @@ public class AddColumn extends Statement {
 
   @Override
   public List<? extends Node> getChildren() {
-    return Collections.singletonList(column);
+    return Collections.singletonList(Objects.nonNull(column) ? column : writableViewColumn);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists, view);
+    return Objects.hash(
+        tableName, column, writableViewColumn, tableIfExists, columnIfNotExists, view);
   }
 
   @Override
@@ -110,6 +135,7 @@ public class AddColumn extends Statement {
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(column, that.column)
+        && Objects.equals(writableViewColumn, that.writableViewColumn)
         && view == that.view;
   }
 
@@ -118,6 +144,7 @@ public class AddColumn extends Statement {
     return toStringHelper(this)
         .add("tableName", tableName)
         .add("column", column)
+        .add("writableViewColumn", writableViewColumn)
         .add("tableIfExists", tableIfExists)
         .add("columnIfNotExists", columnIfNotExists)
         .add("view", view)
@@ -130,6 +157,7 @@ public class AddColumn extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += tableName == null ? 0L : tableName.ramBytesUsed();
     size += column == null ? 0L : column.ramBytesUsed();
+    size += writableViewColumn == null ? 0L : writableViewColumn.ramBytesUsed();
     return size;
   }
 }

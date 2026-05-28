@@ -441,7 +441,8 @@ public class IoTDBDatabaseIT {
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
                   "comment,STRING,ATTRIBUTE,",
-                  "table_type,STRING,ATTRIBUTE,")));
+                  "table_type,STRING,ATTRIBUTE,",
+                  "original_table_name,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -453,7 +454,8 @@ public class IoTDBDatabaseIT {
                   "datatype,STRING,ATTRIBUTE,",
                   "category,STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
-                  "comment,STRING,ATTRIBUTE,")));
+                  "comment,STRING,ATTRIBUTE,",
+                  "original_column_name,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc queries"),
           "ColumnName,DataType,Category,",
@@ -636,6 +638,7 @@ public class IoTDBDatabaseIT {
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
           "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
+      statement.execute("CREATE WRITABLE VIEW test.writable_view as select * from test.test");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -646,60 +649,65 @@ public class IoTDBDatabaseIT {
                   "test,INF,1,1,604800000,0,0,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,original_table_name,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,services,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,views,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,table_disk_usage,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,",
-                  "test,test,INF,USING,test,BASE TABLE,",
-                  "test,view_table,100,USING,null,VIEW FROM TREE,")));
+                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,services,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,views,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,table_disk_usage,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,connections,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,null,",
+                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,null,",
+                  "test,test,INF,USING,test,BASE TABLE,null,",
+                  "test,view_table,100,USING,null,VIEW FROM TREE,null,",
+                  "test,writable_view,INF,USING,test,WRITABLE VIEW,test,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("23,"));
+          Collections.singleton("24,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
-          "database,table_name,column_name,datatype,category,status,comment,",
+          "database,table_name,column_name,datatype,category,status,comment,original_column_name,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,queries,query_id,STRING,TAG,USING,null,",
-                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,user,STRING,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,wait_time_in_server,FLOAT,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,client_ip,STRING,ATTRIBUTE,USING,null,",
-                  "information_schema,queries,timeout,INT64,ATTRIBUTE,USING,null,",
-                  "test,test,time,TIMESTAMP,TIME,USING,null,",
-                  "test,test,a,STRING,TAG,USING,null,",
-                  "test,test,b,STRING,ATTRIBUTE,USING,null,",
-                  "test,test,c,INT32,FIELD,USING,turbine,",
-                  "test,view_table,time,TIMESTAMP,TIME,USING,null,",
-                  "test,view_table,tag1,STRING,TAG,USING,null,",
-                  "test,view_table,tag2,STRING,TAG,USING,null,",
-                  "test,view_table,s11,INT32,FIELD,USING,null,",
-                  "test,view_table,s3,INT32,FIELD,USING,null,")));
+                  "information_schema,queries,query_id,STRING,TAG,USING,null,null,",
+                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,user,STRING,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,wait_time_in_server,FLOAT,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,client_ip,STRING,ATTRIBUTE,USING,null,null,",
+                  "information_schema,queries,timeout,INT64,ATTRIBUTE,USING,null,null,",
+                  "test,test,time,TIMESTAMP,TIME,USING,null,null,",
+                  "test,test,a,STRING,TAG,USING,null,null,",
+                  "test,test,b,STRING,ATTRIBUTE,USING,null,null,",
+                  "test,test,c,INT32,FIELD,USING,turbine,null,",
+                  "test,view_table,time,TIMESTAMP,TIME,USING,null,null,",
+                  "test,view_table,tag1,STRING,TAG,USING,null,null,",
+                  "test,view_table,tag2,STRING,TAG,USING,null,null,",
+                  "test,view_table,s11,INT32,FIELD,USING,null,null,",
+                  "test,view_table,s3,INT32,FIELD,USING,null,null,",
+                  "test,writable_view,time,TIMESTAMP,TIME,USING,null,time,",
+                  "test,writable_view,a,STRING,TAG,USING,null,a,",
+                  "test,writable_view,b,STRING,ATTRIBUTE,USING,null,b,",
+                  "test,writable_view,c,INT32,FIELD,USING,turbine,c,")));
 
       statement.execute(
           "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
@@ -717,8 +725,10 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
-          Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
+          new HashSet<>(
+              Arrays.asList(
+                  "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,",
+                  "test,writable_view,CREATE WRITABLE VIEW \"writable_view\" AS SELECT \"time\" AS \"time\",\"a\" AS \"a\",\"b\" AS \"b\",\"c\" AS \"c\" COMMENT 'turbine' FROM \"test\" COMMENT 'test' WITH (ttl='INF', schema_cascade=true),")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(

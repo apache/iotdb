@@ -33,6 +33,7 @@ import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -212,13 +213,7 @@ public abstract class TableScanNode extends SourceNode {
 
   protected static void serializeMemberVariables(
       TableScanNode node, ByteBuffer byteBuffer, boolean serializeOutputSymbols) {
-    if (node.qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(node.qualifiedObjectName.getDatabaseName(), byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-    ReadWriteIOUtils.write(node.qualifiedObjectName.getObjectName(), byteBuffer);
+    writeQualifiedObjectName(byteBuffer, node.qualifiedObjectName);
 
     if (serializeOutputSymbols) {
       ReadWriteIOUtils.write(node.outputSymbols.size(), byteBuffer);
@@ -242,16 +237,21 @@ public abstract class TableScanNode extends SourceNode {
     ReadWriteIOUtils.write(node.pushDownOffset, byteBuffer);
   }
 
+  protected static void writeQualifiedObjectName(
+      ByteBuffer byteBuffer, QualifiedObjectName qualifiedObjectName) {
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
+  }
+
   protected static void serializeMemberVariables(
       TableScanNode node, DataOutputStream stream, boolean serializeOutputSymbols)
       throws IOException {
-    if (node.qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(node.qualifiedObjectName.getDatabaseName(), stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-    ReadWriteIOUtils.write(node.qualifiedObjectName.getObjectName(), stream);
+    writeQualifiedObjectName(stream, node.qualifiedObjectName);
 
     if (serializeOutputSymbols) {
       ReadWriteIOUtils.write(node.outputSymbols.size(), stream);
@@ -277,15 +277,20 @@ public abstract class TableScanNode extends SourceNode {
     ReadWriteIOUtils.write(node.pushDownOffset, stream);
   }
 
+  protected static void writeQualifiedObjectName(
+      OutputStream stream, QualifiedObjectName qualifiedObjectName) throws IOException {
+    if (qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
+  }
+
   protected static void deserializeMemberVariables(
       ByteBuffer byteBuffer, TableScanNode node, boolean deserializeOutputSymbols) {
-    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
-    String databaseName = null;
-    if (hasDatabaseName) {
-      databaseName = ReadWriteIOUtils.readString(byteBuffer);
-    }
-    String tableName = ReadWriteIOUtils.readString(byteBuffer);
-    node.qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
+    node.qualifiedObjectName = deserializeQualifiedObjectName(byteBuffer);
 
     int size;
 
@@ -312,6 +317,16 @@ public abstract class TableScanNode extends SourceNode {
 
     node.pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
     node.pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
+  }
+
+  protected static QualifiedObjectName deserializeQualifiedObjectName(ByteBuffer byteBuffer) {
+    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
+    String databaseName = null;
+    if (hasDatabaseName) {
+      databaseName = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    String tableName = ReadWriteIOUtils.readString(byteBuffer);
+    return new QualifiedObjectName(databaseName, tableName);
   }
 
   @Override

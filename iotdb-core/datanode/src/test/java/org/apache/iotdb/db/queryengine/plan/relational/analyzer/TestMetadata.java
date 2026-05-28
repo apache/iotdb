@@ -171,7 +171,7 @@ public class TestMetadata implements Metadata {
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
-      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
+      Mockito.when(treeDeviceViewSchema.getViewColumnToSourceColumnMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }

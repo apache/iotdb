@@ -24,15 +24,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -116,12 +119,18 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.PreAlterWritableViewColumnDataTypePlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewColumnCommentPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewCommentPlan;
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -1352,7 +1361,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final List<TsTableColumnSchema> columnSchemaList,
-      final boolean isTableView)
+      final TableType tableType,
+      final boolean detectConflict)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1360,39 +1370,50 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
           null);
     }
 
     final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isTableView);
+        checkTable4View(database, originalTable, tableType);
     if (result.isPresent()) {
       return result.get();
     }
 
-    final TsTable expandedTable = new TsTable(originalTable);
+    final TsTable expandedTable =
+        tableType == TableType.WRITABLE_VIEW
+            ? new WritableView((WritableView) originalTable)
+            : new TsTable(originalTable);
 
-    final String errorMsg =
-        String.format(
-            "Column '%s' already exist",
-            columnSchemaList.stream()
-                .map(TsTableColumnSchema::getColumnName)
-                .collect(Collectors.joining(", ")));
+    final List<TsTableColumnSchema> filteredColumnSchemaList = new ArrayList<>();
 
     final AtomicBoolean hasObject = new AtomicBoolean(false);
+    final AtomicBoolean hasConflict = new AtomicBoolean(false);
     columnSchemaList.removeIf(
         columnSchema -> {
-          if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+          final TsTableColumnSchema existingColumnSchema =
+              originalTable.getColumnSchema(columnSchema.getColumnName());
+          if (Objects.isNull(existingColumnSchema)) {
             if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
               hasObject.set(true);
             }
             expandedTable.addColumnSchema(columnSchema);
             return false;
           }
+          if (detectConflict && !isAddedSchemaIdempotent(existingColumnSchema, columnSchema)) {
+            hasConflict.set(true);
+          }
+          filteredColumnSchemaList.add(columnSchema);
           return true;
         });
 
-    if (columnSchemaList.isEmpty()) {
+    if (detectConflict ? hasConflict.get() : columnSchemaList.isEmpty()) {
+      final String errorMsg =
+          String.format(
+              "Column '%s' already exist",
+              filteredColumnSchemaList.stream()
+                  .map(TsTableColumnSchema::getColumnName)
+                  .collect(Collectors.joining(", ")));
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
 
@@ -1402,12 +1423,42 @@ public class ClusterSchemaManager {
     return new Pair<>(StatusUtils.OK, expandedTable);
   }
 
+  // We assume that schema1.getName().equals(schema2.getName())
+  private static boolean isAddedSchemaIdempotent(
+      final @Nonnull TsTableColumnSchema schema1, final @Nonnull TsTableColumnSchema schema2) {
+    if (schema1.getColumnCategory() != schema2.getColumnCategory()) {
+      return false;
+    }
+    switch (schema1.getColumnCategory()) {
+      case FIELD:
+        return schema1.getDataType().equals(schema2.getDataType())
+            && ((FieldColumnSchema) schema1)
+                .getEncoding()
+                .equals(((FieldColumnSchema) schema2).getEncoding())
+            && ((FieldColumnSchema) schema1)
+                .getCompressor()
+                .equals(((FieldColumnSchema) schema2).getCompressor());
+      case TAG:
+      case ATTRIBUTE:
+        return true;
+      // Never add TIME column
+      case TIME:
+      default:
+        throw new UnsupportedOperationException(
+            "Unexpected column category: " + schema1.getColumnCategory());
+    }
+  }
+
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnAltering(
       final String database,
       final String tableName,
       final String columnName,
       final TSDataType dataType,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final TableType tableType,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName,
+      final @Nullable String originalColumnName)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1415,19 +1466,31 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
           null);
     }
 
     TSStatus tsStatus =
         executePlan(
-            new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
+            tableType == TableType.WRITABLE_VIEW
+                ? new PreAlterWritableViewColumnDataTypePlan(
+                    database,
+                    tableName,
+                    columnName,
+                    dataType,
+                    originalDatabase,
+                    originalTableName,
+                    originalColumnName)
+                : new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
             isGeneratedByPipe);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new Pair<>(tsStatus, null);
     }
 
-    final TsTable alteredTable = new TsTable(originalTable);
+    final TsTable alteredTable =
+        tableType == TableType.WRITABLE_VIEW
+            ? new WritableView((WritableView) originalTable)
+            : new TsTable(originalTable);
     TsTableColumnSchema tsTableColumnSchema = alteredTable.getColumnSchema(columnName);
     tsTableColumnSchema.setDataType(dataType);
     if (tsTableColumnSchema instanceof FieldColumnSchema) {
@@ -1444,7 +1507,7 @@ public class ClusterSchemaManager {
       final String tableName,
       final String oldName,
       final String newName,
-      final boolean isTableView)
+      final TableType tableType)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1452,12 +1515,12 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
           null);
     }
 
     final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isTableView);
+        checkTable4View(database, originalTable, tableType);
     if (result.isPresent()) {
       return result.get();
     }
@@ -1486,7 +1549,10 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = new TsTable(originalTable);
+    final TsTable expandedTable =
+        tableType == TableType.WRITABLE_VIEW
+            ? new WritableView((WritableView) originalTable)
+            : new TsTable(originalTable);
 
     expandedTable.renameColumnSchema(oldName, newName);
 
@@ -1497,7 +1563,7 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String newName,
-      final boolean isTableView)
+      final TableType tableType)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1505,14 +1571,28 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
           null);
     }
 
     final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isTableView);
+        checkTable4View(database, originalTable, tableType);
     if (result.isPresent()) {
       return result.get();
+    }
+
+    if (tableType == TableType.BASE_TABLE) {
+      final Optional<String> dependentWritableView =
+          findDependentWritableView(database, originalTable.getTableName());
+      if (dependentWritableView.isPresent()) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.SEMANTIC_ERROR,
+                String.format(
+                    "Cannot rename table '%s.%s' because writable view '%s' depends on it.",
+                    database, tableName, dependentWritableView.get())),
+            null);
+      }
     }
 
     if (getTableIfExists(database, newName).isPresent()) {
@@ -1523,9 +1603,28 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = new TsTable(originalTable);
+    final TsTable expandedTable =
+        tableType == TableType.WRITABLE_VIEW
+            ? new WritableView((WritableView) originalTable)
+            : new TsTable(originalTable);
     expandedTable.renameTable(newName);
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+  }
+
+  private Optional<String> findDependentWritableView(
+      final String sourceDatabase, final String sourceTableName) {
+    for (final Map.Entry<String, List<TsTable>> databaseEntry :
+        clusterSchemaInfo.getAllUsingTables().entrySet()) {
+      final String viewDatabase = PathUtils.unQualifyDatabaseName(databaseEntry.getKey());
+      for (final TsTable table : databaseEntry.getValue()) {
+        if (table instanceof WritableView
+            && Objects.equals(((WritableView) table).getSourceTableDatabase(), sourceDatabase)
+            && Objects.equals(((WritableView) table).getSourceTableName(), sourceTableName)) {
+          return Optional.of(viewDatabase + "." + table.getTableName());
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   public TSStatus executePlan(final ConfigPhysicalPlan plan, final boolean isGeneratedByPipe) {
@@ -1542,11 +1641,25 @@ public class ClusterSchemaManager {
       final String tableName,
       final String comment,
       final boolean isView,
-      final boolean isGeneratedByPipe) {
-    final SetTableCommentPlan setTableCommentPlan =
-        isView
-            ? new SetViewCommentPlan(database, tableName, comment)
-            : new SetTableCommentPlan(database, tableName, comment);
+      final boolean isGeneratedByPipe,
+      final boolean cascade,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    final SetTableCommentPlan setTableCommentPlan;
+    if (Objects.isNull(originalDatabase)) {
+      setTableCommentPlan =
+          isView
+              ? new SetViewCommentPlan(database, tableName, comment)
+              : new SetTableCommentPlan(database, tableName, comment);
+    } else {
+      setTableCommentPlan =
+          new SetWritableViewCommentPlan(
+              database,
+              tableName,
+              comment,
+              cascade ? originalDatabase : null,
+              cascade ? originalTableName : null);
+    }
     try {
       return getConsensusManager()
           .write(
@@ -1562,9 +1675,42 @@ public class ClusterSchemaManager {
       final String tableName,
       final String columnName,
       final String comment,
-      final boolean isGeneratedByPipe) {
-    final SetTableColumnCommentPlan setTableColumnCommentPlan =
-        new SetTableColumnCommentPlan(database, tableName, columnName, comment);
+      final boolean isGeneratedByPipe,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    final SetTableColumnCommentPlan setTableColumnCommentPlan;
+    if (Objects.isNull(originalDatabase)) {
+      setTableColumnCommentPlan =
+          new SetTableColumnCommentPlan(database, tableName, columnName, comment);
+    } else {
+      String originalColumnName = null;
+      try {
+        final Optional<TsTable> tableOptional = getTableIfExists(database, tableName);
+        if (!tableOptional.isPresent()) {
+          return new TSStatus(TSStatusCode.TABLE_NOT_EXISTS.getStatusCode())
+              .setMessage(
+                  String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName));
+        }
+        if (tableOptional.get() instanceof WritableView) {
+          originalColumnName =
+              ((WritableView) tableOptional.get()).getMappedSourceColumnName(columnName);
+        }
+      } catch (final MetadataException e) {
+        LOGGER.warn(e.getMessage(), e);
+        return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      // Writable views always point to a single source table. Cascading may need to rewrite only
+      // the mapped source column name.
+      setTableColumnCommentPlan =
+          new SetWritableViewColumnCommentPlan(
+              database,
+              tableName,
+              columnName,
+              comment,
+              Objects.nonNull(originalColumnName) ? originalDatabase : null,
+              Objects.nonNull(originalColumnName) ? originalTableName : null,
+              originalColumnName);
+    }
     try {
       return getConsensusManager()
           .write(
@@ -1582,7 +1728,7 @@ public class ClusterSchemaManager {
       final String tableName,
       final Map<String, String> originalProperties,
       final Map<String, String> updatedProperties,
-      final boolean isTableView)
+      final TableType tableType)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1590,12 +1736,21 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_NOT_EXISTS,
-              String.format("Table '%s.%s' does not exist", database, tableName)),
+              String.format(ProcedureMessages.TABLE_DOES_NOT_EXIST, database, tableName)),
+          null);
+    }
+
+    if (tableType != TableType.WRITABLE_VIEW
+        && updatedProperties.containsKey(WritableView.SCHEMA_CASCADE)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              ProcedureMessages.WRITABLE_VIEW_SCHEMA_CASCADE_PROPERTY_ONLY_FOR_WRITABLE_VIEW),
           null);
     }
 
     final Optional<Pair<TSStatus, TsTable>> result =
-        checkTable4View(database, originalTable, isTableView);
+        checkTable4View(database, originalTable, tableType);
     if (result.isPresent()) {
       return result.get();
     }
@@ -1610,45 +1765,74 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
 
-    final TsTable updatedTable = new TsTable(originalTable);
-    updatedProperties.forEach(
-        (k, v) -> {
-          originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
-          if (Objects.nonNull(v)) {
-            updatedTable.addProp(k, v);
-          } else {
-            updatedTable.removeProp(k);
-          }
-        });
+    final TsTable updatedTable =
+        tableType == TableType.WRITABLE_VIEW
+            ? new WritableView((WritableView) originalTable)
+            : new TsTable(originalTable);
+    for (final Map.Entry<String, String> entry : updatedProperties.entrySet()) {
+      final String key = entry.getKey();
+      final String value = entry.getValue();
+      if (key.equals(WritableView.SCHEMA_CASCADE)) {
+        try {
+          ((WritableView) updatedTable).setSchemaCascade(WritableView.parseSchemaCascade(value));
+        } catch (final SemanticException e) {
+          return new Pair<>(RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, e.getMessage()), null);
+        }
+      }
+      originalProperties.put(key, originalTable.getPropValue(key).orElse(null));
+      if (Objects.nonNull(value)) {
+        updatedTable.addProp(key, value);
+      } else {
+        updatedTable.removeProp(key);
+      }
+    }
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
   public static Optional<Pair<TSStatus, TsTable>> checkTable4View(
-      final String database, final TsTable table, final boolean isView) {
-    if (!isView && TreeViewSchema.isTreeViewTable(table)) {
-      return Optional.of(
-          new Pair<>(
-              RpcUtils.getStatus(
-                  TSStatusCode.SEMANTIC_ERROR,
-                  String.format(
-                      "Table '%s.%s' is a tree view table, does not support alter table",
-                      database, table.getTableName())),
-              null));
+      final String database, final TsTable table, final TableType tableType) {
+    switch (Objects.requireNonNull(tableType, "tableType cannot be null")) {
+      case BASE_TABLE:
+        if (TreeViewSchema.isTreeViewTable(table)) {
+          return Optional.of(
+              new Pair<>(
+                  RpcUtils.getStatus(
+                      TSStatusCode.SEMANTIC_ERROR,
+                      String.format(
+                          "Table '%s.%s' is a tree view table, does not support alter table",
+                          database, table.getTableName())),
+                  null));
+        }
+        return Optional.empty();
+      case VIEW_FROM_TREE:
+        if (!TreeViewSchema.isTreeViewTable(table)) {
+          return Optional.of(
+              new Pair<>(
+                  RpcUtils.getStatus(
+                      TSStatusCode.SEMANTIC_ERROR,
+                      String.format(
+                          "Table '%s.%s' is a base table, does not support alter view",
+                          database, table.getTableName())),
+                  null));
+        }
+        return Optional.empty();
+      case WRITABLE_VIEW:
+        if (!(table instanceof WritableView)) {
+          return Optional.of(
+              new Pair<>(
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR,
+                      String.format(
+                          ProcedureMessages.TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION,
+                          database,
+                          table.getTableName())),
+                  null));
+        }
+        return Optional.empty();
+      default:
+        return Optional.empty();
     }
-
-    if (isView && !TreeViewSchema.isTreeViewTable(table)) {
-      return Optional.of(
-          new Pair<>(
-              RpcUtils.getStatus(
-                  TSStatusCode.SEMANTIC_ERROR,
-                  String.format(
-                      "Table '%s.%s' is a base table, does not support alter view",
-                      database, table.getTableName())),
-              null));
-    }
-
-    return Optional.empty();
   }
 
   @TableModel

@@ -24,6 +24,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,6 +36,11 @@ public abstract class AbstractTablePlan extends ConfigPhysicalPlan {
   private String database;
 
   private String tableName;
+
+  // Used for writable views, the cluster may not need this,
+  // This is only for the meta pipe's receiver
+  protected @Nullable String originalDatabase;
+  protected @Nullable String originalTableName;
 
   protected AbstractTablePlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -54,6 +61,20 @@ public abstract class AbstractTablePlan extends ConfigPhysicalPlan {
     return tableName;
   }
 
+  @Nullable
+  public String getOriginalDatabase() {
+    return originalDatabase;
+  }
+
+  @Nullable
+  public String getOriginalTableName() {
+    return originalTableName;
+  }
+
+  protected boolean needOriginal() {
+    return false;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -72,11 +93,21 @@ public abstract class AbstractTablePlan extends ConfigPhysicalPlan {
 
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
+
+    if (needOriginal()) {
+      ReadWriteIOUtils.write(originalDatabase, stream);
+      ReadWriteIOUtils.write(originalTableName, stream);
+    }
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     this.database = ReadWriteIOUtils.readString(buffer);
     this.tableName = ReadWriteIOUtils.readString(buffer);
+
+    if (needOriginal()) {
+      this.originalDatabase = ReadWriteIOUtils.readString(buffer);
+      this.originalTableName = ReadWriteIOUtils.readString(buffer);
+    }
   }
 }

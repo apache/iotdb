@@ -254,7 +254,9 @@ public class ColumnHeaderConstant {
 
   public static final String TABLE_NAME_TABLE_MODEL = "table_name";
   public static final String TABLE_TYPE_TABLE_MODEL = "table_type";
+  public static final String ORIGINAL_TABLE_NAME_TABLE_MODEL = "original_table_name";
   public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
+  public static final String ORIGINAL_COLUMN_NAME_TABLE_MODEL = "original_column_name";
 
   public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
   public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
@@ -352,10 +354,12 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_NAME = "ColumnName";
   public static final String COLUMN_DATA_TYPE = "DataType";
   public static final String COLUMN_CATEGORY = "Category";
+  public static final String ORIGINAL_COLUMN_NAME = "OriginalColumnName";
   public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
   public static final String COMMENT = "Comment";
   public static final String TABLE_TYPE = "TableType";
+  public static final String ORIGINAL_TABLE_NAME = "OriginalTableName";
 
   public static final String VIEW = "View";
   public static final String CREATE_VIEW = "Create View";
@@ -812,6 +816,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> describeWritableViewDetailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(COMMENT, TSDataType.TEXT),
+          new ColumnHeader(ORIGINAL_COLUMN_NAME, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showCreateViewColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(VIEW, TSDataType.TEXT), new ColumnHeader(CREATE_VIEW, TSDataType.TEXT));
@@ -832,7 +845,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT),
-          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(TABLE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(ORIGINAL_TABLE_NAME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
       ImmutableList.of(

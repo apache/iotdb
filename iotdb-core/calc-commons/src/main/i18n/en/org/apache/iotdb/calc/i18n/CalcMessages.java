@@ -150,5 +150,10 @@ public final class CalcMessages {
   public static final String PUSHED_ELEMENT_IS_NULL =
       "pushed element is null";
 
+  public static final String WRITABLE_VIEW_COLUMN_NOT_IN_SOURCE_TABLE =
+      "Column '%s' in writable view '%s.%s' cannot be resolved because it does not exist in source table '%s.%s'.";
+  public static final String WRITABLE_VIEW_SOURCE_COLUMN_NOT_IN_SOURCE_TABLE =
+      "Column '%s' in writable view '%s.%s' cannot be resolved because source column '%s' does not exist in source table '%s.%s'.";
+
   public static final String FAILED_TO_DELETE_TEMP_DIR = "Failed to delete temp dir {}.";
 }

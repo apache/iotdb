@@ -23,16 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewPropertiesPlan;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -55,8 +56,8 @@ public class SetTablePropertiesProcedure
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTablePropertiesProcedure.class);
 
-  private Map<String, String> originalProperties = new HashMap<>();
-  private Map<String, String> updatedProperties;
+  protected Map<String, String> originalProperties = new HashMap<>();
+  protected Map<String, String> updatedProperties;
 
   public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -77,6 +78,7 @@ public class SetTablePropertiesProcedure
       final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
       throws InterruptedException {
     final long startTime = System.currentTimeMillis();
+    mayInitOriginal();
     try {
       switch (state) {
         case VALIDATE_TABLE:
@@ -125,7 +127,7 @@ public class SetTablePropertiesProcedure
     }
   }
 
-  private void validateTable(final ConfigNodeProcedureEnv env) {
+  public void validateTable(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
@@ -135,7 +137,7 @@ public class SetTablePropertiesProcedure
                   tableName,
                   originalProperties,
                   updatedProperties,
-                  this instanceof SetViewPropertiesProcedure);
+                  getTableSchemaObjectType().getClusterSchemaTableType());
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(new ProcedureException(new IoTDBException(status)));
@@ -155,14 +157,12 @@ public class SetTablePropertiesProcedure
   }
 
   private void setProperties(final ConfigNodeProcedureEnv env) {
+    mayInitOriginal();
+
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof SetViewPropertiesProcedure
-                    ? new SetViewPropertiesPlan(database, tableName, updatedProperties)
-                    : new SetTablePropertiesPlan(database, tableName, updatedProperties),
-                isGeneratedByPipe);
+            .executePlan(createSetPropertiesPlan(updatedProperties), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
@@ -206,19 +206,29 @@ public class SetTablePropertiesProcedure
   }
 
   private void rollbackSetProperties(final ConfigNodeProcedureEnv env) {
+    mayInitOriginal();
+
     if (table == null) {
       return;
     }
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof SetViewPropertiesProcedure
-                    ? new SetViewPropertiesPlan(database, tableName, originalProperties)
-                    : new SetTablePropertiesPlan(database, tableName, originalProperties),
-                isGeneratedByPipe);
+            .executePlan(createSetPropertiesPlan(originalProperties), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
+    }
+  }
+
+  private ConfigPhysicalPlan createSetPropertiesPlan(final Map<String, String> properties) {
+    switch (getTableSchemaObjectType()) {
+      case VIEW:
+        return new SetViewPropertiesPlan(database, tableName, properties);
+      case WRITABLE_VIEW:
+        return new SetWritableViewPropertiesPlan(
+            database, tableName, properties, getOriginalDatabase(), getOriginalTableName());
+      default:
+        return new SetTablePropertiesPlan(database, tableName, properties);
     }
   }
 

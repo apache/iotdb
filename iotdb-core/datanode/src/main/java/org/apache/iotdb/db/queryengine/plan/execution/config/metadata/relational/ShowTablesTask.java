@@ -44,9 +44,9 @@ import java.util.stream.Collectors;
 public class ShowTablesTask implements IConfigTask {
 
   private final String database;
-  private final Predicate<String> checkCanShowTable;
+  private final Predicate<TTableInfo> checkCanShowTable;
 
-  public ShowTablesTask(final String database, final Predicate<String> checkCanShowTable) {
+  public ShowTablesTask(final String database, final Predicate<TTableInfo> checkCanShowTable) {
     this.database = database;
     this.checkCanShowTable = checkCanShowTable;
   }
@@ -60,7 +60,7 @@ public class ShowTablesTask implements IConfigTask {
   public static void buildTsBlock(
       final List<TTableInfo> tableInfoList,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> checkCanShowTable) {
+      final Predicate<TTableInfo> checkCanShowTable) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTablesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -69,7 +69,7 @@ public class ShowTablesTask implements IConfigTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
     tableInfoList.stream()
-        .filter(t -> checkCanShowTable.test(t.getTableName()))
+        .filter(checkCanShowTable)
         .sorted(Comparator.comparing(TTableInfo::getTableName))
         .forEach(
             tableInfo -> {

@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
@@ -45,12 +46,17 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -109,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateWritableViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -176,6 +183,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
@@ -249,6 +257,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WritableViewColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
@@ -265,6 +274,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -275,6 +285,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -288,6 +299,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
@@ -648,7 +660,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     final TsTable table = new TsTable(tableName);
 
-    table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    table.setProps(convertPropertiesToMap(node.getProperties(), false, false));
     if (Objects.nonNull(node.getComment())) {
       table.addProp(TsTable.COMMENT_KEY, node.getComment());
     }
@@ -674,7 +686,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     for (final ColumnDefinition columnDefinition : node.getElements()) {
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
-      final TSDataType dataType = getDataType(columnDefinition.getType());
+      final TSDataType dataType =
+          getDataTypeOrDefault(columnDefinition.getType(), category, node instanceof CreateView);
       hasObject |= dataType == TSDataType.OBJECT;
       final String comment = columnDefinition.getComment();
 
@@ -699,11 +712,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
                       && Objects.nonNull(((ViewFieldDefinition) columnDefinition).getFrom())
                   ? ((ViewFieldDefinition) columnDefinition).getFrom().getValue()
                   : null);
-      if (!sourceNameSet.add(TreeViewSchema.getSourceName(schema))) {
+      if (!sourceNameSet.add(ViewColumnSchemaUtils.getSourceName(schema))) {
         throw new SemanticException(
             String.format(
                 "The duplicated source measurement %s is unsupported yet.",
-                TreeViewSchema.getSourceName(schema)));
+                ViewColumnSchemaUtils.getSourceName(schema)));
       }
       table.addColumnSchema(schema);
     }
@@ -734,6 +747,75 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     } else {
       throw new SemanticException(DataNodeQueryMessages.THE_TIME_COLUMN_S_TYPE_SHALL_BE_TIMESTAMP);
     }
+  }
+
+  @Override
+  public IConfigTask visitCreateWritableView(
+      final CreateWritableView node, final MPPQueryContext context) {
+    final Pair<String, WritableView> databaseTablePair =
+        parseTable4CreateWritableView(node, context);
+
+    final Pair<String, String> originalDatabaseTablePair =
+        splitQualifiedName(node.getOriginalName());
+    // Check the write permission of the original table
+    accessControl.checkCanCreateWritableViewFromSourceTable(
+        new QualifiedObjectName(
+            originalDatabaseTablePair.getLeft(), originalDatabaseTablePair.getRight()),
+        context,
+        databaseTablePair.getRight().isSchemaCascade());
+
+    return new CreateWritableViewTask(
+        databaseTablePair.getRight(),
+        databaseTablePair.getLeft(),
+        node.isReplace(),
+        node.getViewColumnCommentMap());
+  }
+
+  private Pair<String, WritableView> parseTable4CreateWritableView(
+      final CreateWritableView node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+    context.setDatabase(database);
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
+
+    final Pair<String, String> originalDatabaseTablePair =
+        splitQualifiedName(node.getOriginalName());
+
+    if (!originalDatabaseTablePair.getLeft().equals(databaseTablePair.getLeft())) {
+      throw new SemanticException(
+          "Currently, the original table shall be in the same database as the view.");
+    }
+
+    final List<Property> properties = new ArrayList<>(node.getProperties());
+    final Map<String, String> props = convertPropertiesToMap(properties, false, true);
+    final String schemaCascadeStr = props.remove(WritableView.SCHEMA_CASCADE);
+    final boolean schemaCascade = WritableView.parseSchemaCascade(schemaCascadeStr);
+
+    final WritableView view =
+        new WritableView(
+            tableName,
+            originalDatabaseTablePair.getLeft(),
+            originalDatabaseTablePair.getRight(),
+            schemaCascade);
+
+    view.setProps(props);
+
+    if (Objects.nonNull(node.getComment())) {
+      view.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
+
+    // If the map is null, it means "*"
+    // Then the map will be filled at configNode
+    if (Objects.nonNull(node.getViewColumnToSourceColumnMap())) {
+      view.setViewColumnToSourceColumnMap(node.getViewColumnToSourceColumnMap());
+    }
+
+    // The columnSchemaMap is not filled until configNode
+
+    return new Pair<>(database, view);
   }
 
   @Override
@@ -793,27 +875,62 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     accessControl.checkCanAlterTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
+    final Optional<WritableViewColumnDefinition> writableViewColumn = node.getWritableViewColumn();
+    if (writableViewColumn.isPresent()) {
+      return new AlterTableAddColumnTask(
+          database,
+          tableName,
+          Collections.singletonList(generateWritableViewColumnSchema(writableViewColumn.get())),
+          context.getQueryId().getId(),
+          node.tableIfExists(),
+          node.columnIfNotExists(),
+          node.isView());
+    }
+
     final ColumnDefinition definition = node.getColumn();
     if (definition.getColumnCategory() == TsTableColumnCategory.TIME) {
       throw new SemanticException(DataNodeQueryMessages.ADDING_TIME_COLUMN_IS_NOT_SUPPORTED);
     }
+    final TsTableColumnSchema columnSchema =
+        TableHeaderSchemaValidator.generateColumnSchema(
+            definition.getColumnCategory(),
+            definition.getName().getValue(),
+            getDataTypeOrDefault(
+                definition.getType(), definition.getColumnCategory(), node.isView()),
+            definition.getComment(),
+            definition instanceof ViewFieldDefinition
+                    && Objects.nonNull(((ViewFieldDefinition) definition).getFrom())
+                ? ((ViewFieldDefinition) definition).getFrom().getValue()
+                : null);
+    if (definition instanceof ViewFieldDefinition
+        && ((ViewFieldDefinition) definition).isExplicitFrom()) {
+      columnSchema.getProps().put(TreeViewSchema.EXPLICIT_FROM, Boolean.TRUE.toString());
+    }
     return new AlterTableAddColumnTask(
         database,
         tableName,
-        Collections.singletonList(
-            TableHeaderSchemaValidator.generateColumnSchema(
-                definition.getColumnCategory(),
-                definition.getName().getValue(),
-                getDataType(definition.getType()),
-                definition.getComment(),
-                definition instanceof ViewFieldDefinition
-                        && Objects.nonNull(((ViewFieldDefinition) definition).getFrom())
-                    ? ((ViewFieldDefinition) definition).getFrom().getValue()
-                    : null)),
+        Collections.singletonList(columnSchema),
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfNotExists(),
         node.isView());
+  }
+
+  private static TsTableColumnSchema generateWritableViewColumnSchema(
+      final WritableViewColumnDefinition definition) {
+    // The real category/type come from the writable view's source column on ConfigNode. UNKNOWN is
+    // only a placeholder carrying the view-column name through the generic add-column RPC path.
+    final FieldColumnSchema schema =
+        new FieldColumnSchema(definition.getViewColumnName(), TSDataType.UNKNOWN);
+    if (!definition.getSourceColumnName().equals(definition.getViewColumnName())) {
+      // Writable view creation only needs the column-level source mapping here. Whether the source
+      // object is allowed as a writable-view origin is validated later on ConfigNode.
+      ViewColumnSchemaUtils.setSourceName(schema, definition.getSourceColumnName());
+    }
+    if (Objects.nonNull(definition.getComment())) {
+      schema.getProps().put(TsTable.COMMENT_KEY, definition.getComment());
+    }
+    return schema;
   }
 
   @Override
@@ -869,14 +986,32 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
     final String tableName = databaseTablePair.getRight();
+    final QualifiedObjectName table = new QualifiedObjectName(database, tableName);
 
-    accessControl.checkCanAlterTable(
-        context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
+    accessControl.checkCanAlterTable(context.getSession().getUserName(), table, context);
+
+    if (!metadata.tableExists(table)) {
+      if (node.ifExists()) {
+        return configTaskExecutor ->
+            immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+      if (!DataNodeTableCache.getInstance().isDatabaseExist(database)) {
+        throw new SemanticException(
+            new org.apache.iotdb.commons.exception.IoTDBException(
+                String.format("Unknown database %s", database),
+                TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+      }
+    }
+
+    final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, tableName);
 
     return new AlterTableSetPropertiesTask(
         database,
         tableName,
-        convertPropertiesToMap(node.getProperties(), true),
+        convertPropertiesToMap(
+            node.getProperties(),
+            true,
+            Objects.isNull(tableInstance) || tableInstance instanceof WritableView),
         context.getQueryId().getId(),
         node.ifExists(),
         node.getType() == SetProperties.Type.TREE_VIEW);
@@ -948,8 +1083,11 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     return new Pair<>(database, name.getSuffix());
   }
 
+  // Writable view can parse the "isSchemaCascade" flag
   private Map<String, String> convertPropertiesToMap(
-      final List<Property> propertyList, final boolean serializeDefault) {
+      final List<Property> propertyList,
+      final boolean serializeDefault,
+      final boolean mayWritableView) {
     final Map<String, String> map = new HashMap<>();
     final Set<String> deduplicate = new HashSet<>();
     for (final Property property : propertyList) {
@@ -974,6 +1112,16 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
         } else if (serializeDefault) {
           map.put(key, null);
         }
+      } else if (mayWritableView && key.equals(WritableView.SCHEMA_CASCADE)) {
+        if (!property.isSetToDefault()) {
+          map.put(
+              key,
+              String.valueOf(
+                  parseBooleanFromLiteral(
+                      property.getNonDefaultValue(), WritableView.SCHEMA_CASCADE)));
+        } else if (serializeDefault) {
+          map.put(key, null);
+        }
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.TABLE_PROPERTY + key + "' is currently not allowed.");
@@ -987,6 +1135,30 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       return getTSDataType(metadata.getType(toTypeSignature(dataType)));
     } catch (final TypeNotFoundException e) {
       throw new SemanticException(String.format(DataNodeQueryMessages.UNKNOWN_TYPE, dataType));
+    }
+  }
+
+  private TSDataType getDataTypeOrDefault(
+      final DataType dataType,
+      final TsTableColumnCategory columnCategory,
+      final boolean viewColumnDefinition) {
+    if (Objects.nonNull(dataType)) {
+      return getDataType(dataType);
+    }
+
+    switch (columnCategory) {
+      case TAG:
+      case ATTRIBUTE:
+        return TSDataType.STRING;
+      case TIME:
+        return TSDataType.TIMESTAMP;
+      case FIELD:
+        if (viewColumnDefinition) {
+          return TSDataType.UNKNOWN;
+        }
+        throw new SemanticException("DataType of FIELD Column should be specified.");
+      default:
+        throw new IllegalArgumentException("Unknown column category: " + columnCategory);
     }
   }
 
@@ -1034,17 +1206,31 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     String finalDatabase = database;
-    final Predicate<String> checkCanShowTable =
-        tableName ->
-            canShowTable(
-                accessControl,
-                context.getSession().getUserName(),
-                finalDatabase,
-                tableName,
-                context);
+    final Predicate<TTableInfo> checkCanShowTable =
+        tableInfo ->
+            node.getTableTypeFilter()
+                    .map(tableTypes -> isExpectedTableType(tableInfo, tableTypes))
+                    .orElse(true)
+                && canShowTable(
+                    accessControl,
+                    context.getSession().getUserName(),
+                    finalDatabase,
+                    tableInfo.getTableName(),
+                    context);
     return node.isDetails()
         ? new ShowTablesDetailsTask(database, checkCanShowTable)
         : new ShowTablesTask(database, checkCanShowTable);
+  }
+
+  private static boolean isExpectedTableType(
+      final TTableInfo tableInfo, final Set<TableType> expectedTypes) {
+    if (!tableInfo.isSetType()) {
+      return false;
+    }
+    final int type = tableInfo.getType();
+    return type >= 0
+        && type < TableType.values().length
+        && expectedTypes.contains(TableType.values()[type]);
   }
 
   public static boolean canShowTable(
@@ -1189,6 +1375,18 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           name + " value must be lower than " + Integer.MAX_VALUE + ", but now is: " + value);
     }
     return (int) parsedValue;
+  }
+
+  private boolean parseBooleanFromLiteral(final Object value, final String name) {
+    if (!(value instanceof BooleanLiteral)) {
+      throw new SemanticException(
+          name
+              + " value must be a BooleanLiteral, but now is "
+              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+              + ", value: "
+              + value);
+    }
+    return ((BooleanLiteral) value).getValue();
   }
 
   @Override

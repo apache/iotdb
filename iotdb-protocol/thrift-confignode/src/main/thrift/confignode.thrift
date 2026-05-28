@@ -1368,11 +1368,13 @@ struct TTableInfo {
    3: optional i32 state
    4: optional string comment
    5: optional i32 type
+   6: optional string originalTableName
 }
 
 struct TCreateTableViewReq {
     1: required binary tableInfo
     2: required bool replace
+    3: optional map<string, string> viewColumnCommentMap
 }
 
 service IConfigNodeRPCService {
@@ -2217,4 +2219,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

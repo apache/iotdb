@@ -136,7 +136,8 @@ public class SeriesScanOptions implements Accountable {
   public void setTTLForTableDevice(long dataTTL) {
     // Devices in the table model share a same table ttl, so it only needs to be set once
     if (timeFilterUpdatedByTtl.compareAndSet(false, true)) {
-      this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
+      this.globalTimeFilter =
+          updateFilterUsingTTL(globalTimeFilter, Math.min(ttlForTableView, dataTTL));
     }
   }
 

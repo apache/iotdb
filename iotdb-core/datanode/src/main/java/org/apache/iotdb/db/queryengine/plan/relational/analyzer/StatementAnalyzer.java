@@ -118,7 +118,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
@@ -138,6 +140,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
@@ -159,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeOutput;
@@ -228,6 +232,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.ObjectType;
@@ -463,6 +468,13 @@ public class StatementAnalyzer {
     }
 
     @Override
+    public Scope visitCreateWritableView(
+        final CreateWritableView node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
     public Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
@@ -539,10 +551,43 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
           queryContext);
-      final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
-      final TsTable table =
+
+      TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
+      Map<String, String> viewColumnToSourceColumnMap = null;
+      QualifiedObjectName originalWritableViewName = null;
+      QualifiedObjectName writableViewSourceTableName = null;
+      final TranslationMap translationMap;
+      if (table instanceof WritableView) {
+        final WritableView writableView = (WritableView) table;
+        originalWritableViewName = new QualifiedObjectName(node.getDatabase(), node.getTableName());
+        writableViewSourceTableName =
+            new QualifiedObjectName(
+                writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+        viewColumnToSourceColumnMap = writableView.getViewColumnToSourceColumnMap();
+        translationMap = analyzeTraverseDevice(node, context, true, false);
+        if (node.getWhere().isPresent()) {
+          node.setWhere(
+              WritableViewUtils.rewriteExpressionToSource(
+                  node.getWhere().get(), viewColumnToSourceColumnMap));
+        }
+        table =
+            DataNodeTableCache.getInstance()
+                .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+        node.setDatabase(writableView.getSourceTableDatabase());
+        node.setTableName(writableView.getSourceTableName());
+        analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+        node.setOutputColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(
+                originalWritableViewName.getDatabaseName(), writableView, false));
+        node.setColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(
+                originalWritableViewName.getDatabaseName(), writableView, true));
+      } else {
+        translationMap = analyzeTraverseDevice(node, context, true);
+      }
+
       if (!node.parseWhere(
           null,
           table,
@@ -557,6 +602,10 @@ public class StatementAnalyzer {
         return null;
       }
 
+      final TsTable finalTable = table;
+      final Map<String, String> finalViewColumnToSourceColumnMap = viewColumnToSourceColumnMap;
+      final QualifiedObjectName finalOriginalWritableViewName = originalWritableViewName;
+      final QualifiedObjectName finalWritableViewSourceTableName = writableViewSourceTableName;
       // If node.location is absent, this is a pipe-transferred update, namely the assignments are
       // already parsed at the sender
       if (node.getLocation().isPresent()) {
@@ -565,15 +614,39 @@ public class StatementAnalyzer {
             node.getAssignments().stream()
                 .map(
                     assignment -> {
-                      final Expression parsedColumn =
+                      final String viewColumnName =
+                          assignment.getName() instanceof Identifier
+                              ? ((Identifier) assignment.getName()).getValue()
+                              : assignment.getName().toString();
+                      Expression parsedColumn =
                           analyzeAndRewriteExpression(
                                   translationMap, translationMap.getScope(), assignment.getName())
                               .getRight();
-                      if (!(parsedColumn instanceof SymbolReference)
-                          || table
-                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                  .getColumnCategory()
-                              != TsTableColumnCategory.ATTRIBUTE) {
+                      if (Objects.nonNull(finalViewColumnToSourceColumnMap)) {
+                        parsedColumn =
+                            WritableViewUtils.rewriteExpressionToSource(
+                                parsedColumn, finalViewColumnToSourceColumnMap);
+                      }
+                      if (!(parsedColumn instanceof SymbolReference)) {
+                        throw new SemanticException(
+                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+                      }
+                      final TsTableColumnSchema targetColumnSchema =
+                          finalTable.getColumnSchema(((SymbolReference) parsedColumn).getName());
+                      if (Objects.isNull(targetColumnSchema)) {
+                        if (Objects.nonNull(finalOriginalWritableViewName)
+                            && Objects.nonNull(finalWritableViewSourceTableName)) {
+                          WritableViewUtils.throwColumnNotExistsException(
+                              finalOriginalWritableViewName,
+                              finalWritableViewSourceTableName,
+                              viewColumnName,
+                              finalViewColumnToSourceColumnMap);
+                        }
+                        throw new SemanticException(
+                            DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
+                      }
+                      if (targetColumnSchema.getColumnCategory()
+                          != TsTableColumnCategory.ATTRIBUTE) {
                         throw new SemanticException(
                             DataNodeQueryMessages.UPDATE_CAN_ONLY_SPECIFY_ATTRIBUTE_COLUMNS);
                       }
@@ -601,13 +674,18 @@ public class StatementAnalyzer {
                         }
                         throw e;
                       }
+                      final Expression rewrittenValueExpression =
+                          Objects.nonNull(finalViewColumnToSourceColumnMap)
+                              ? WritableViewUtils.rewriteExpressionToSource(
+                                  expressionPair.getRight(), finalViewColumnToSourceColumnMap)
+                              : expressionPair.getRight();
                       if (!expressionPair.getLeft().equals(StringType.STRING)
                           && !expressionPair.getLeft().equals(BinaryType.TEXT)
                           && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
                         throw new SemanticException(
                             "Update's attribute value must be STRING, TEXT or null.");
                       }
-                      return new UpdateAssignment(parsedColumn, expressionPair.getRight());
+                      return new UpdateAssignment(parsedColumn, rewrittenValueExpression);
                     })
                 .collect(Collectors.toList()));
       }
@@ -623,12 +701,37 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
           queryContext);
-      final TsTable table =
+      TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       DataNodeTreeViewSchemaUtils.checkTableInWrite(node.getDatabase(), table);
-      node.parseModEntries(table);
-      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
-      node.parseWhere(
+      final Expression originalWhere = node.getWhere().orElse(null);
+      Expression modEntriesWhere = null;
+      if (table instanceof WritableView) {
+        final WritableView writableView = (WritableView) table;
+        final String writableViewDatabase = node.getDatabase();
+        modEntriesWhere =
+            WritableViewUtils.rewriteExpressionToSource(
+                originalWhere, writableView.getViewColumnToSourceColumnMap());
+        if (node.getWhere().isPresent()) {
+          node.setWhere(modEntriesWhere);
+        }
+        table =
+            DataNodeTableCache.getInstance()
+                .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+        node.setDatabase(writableView.getSourceTableDatabase());
+        node.setTableName(writableView.getSourceTableName());
+        analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+        node.setOutputColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, false));
+        node.setColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, true));
+      } else {
+        modEntriesWhere = originalWhere;
+        analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      }
+
+      final Expression analyzedWhere = node.getWhere().orElse(null);
+      if (!node.parseWhere(
           null,
           table,
           table.getColumnList().stream()
@@ -637,7 +740,16 @@ public class StatementAnalyzer {
                       columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
               .map(TsTableColumnSchema::getColumnName)
               .collect(Collectors.toList()),
-          queryContext);
+          queryContext)) {
+        return null;
+      }
+      if (Objects.nonNull(modEntriesWhere) && Objects.isNull(node.getPartitionKeyList())) {
+        node.setWhere(modEntriesWhere);
+        node.parseModEntries(table);
+        node.setWhere(analyzedWhere);
+      } else {
+        node.parseModEntries(table);
+      }
       return null;
     }
 
@@ -667,6 +779,55 @@ public class StatementAnalyzer {
         }
       }
       return false;
+    }
+
+    private ColumnSchema getInsertTargetColumnSchema(
+        final String insertColumn,
+        final Map<String, String> viewColumnToSourceColumnMap,
+        final QualifiedObjectName writableViewName,
+        final QualifiedObjectName sourceTableName,
+        final Map<String, ColumnSchema> physicalColumnSchemaMap) {
+      final String sourceColumnName =
+          WritableViewUtils.getSourceColumnName(insertColumn, viewColumnToSourceColumnMap);
+      final String actualColumnName =
+          Objects.nonNull(sourceColumnName) ? sourceColumnName : insertColumn;
+      final ColumnSchema columnSchema = physicalColumnSchemaMap.get(actualColumnName);
+      if (Objects.isNull(columnSchema)) {
+        if (Objects.nonNull(writableViewName) && Objects.nonNull(sourceTableName)) {
+          WritableViewUtils.throwColumnNotExistsException(
+              writableViewName, sourceTableName, insertColumn, sourceColumnName);
+        }
+        throw new IllegalStateException("Insert target column does not exist: " + actualColumnName);
+      }
+      return columnSchema;
+    }
+
+    private LinkedHashSet<String> getDefaultInsertColumnsForWritableView(
+        final Set<String> tableColumns,
+        final List<ColumnSchema> physicalColumns,
+        final Map<String, String> viewColumnToSourceColumnMap) {
+      if (viewColumnToSourceColumnMap.isEmpty()) {
+        return new LinkedHashSet<>(tableColumns);
+      }
+      final Map<String, String> originalColumn2ViewColumnMap =
+          viewColumnToSourceColumnMap.entrySet().stream()
+              .collect(toImmutableMap(Map.Entry::getValue, Map.Entry::getKey));
+      final LinkedHashSet<String> insertColumns = new LinkedHashSet<>();
+      for (final ColumnSchema column : physicalColumns) {
+        if (column.isHidden()) {
+          continue;
+        }
+        final String viewColumnName = originalColumn2ViewColumnMap.get(column.getName());
+        if (Objects.isNull(viewColumnName)) {
+          throw new SemanticException(
+              String.format(
+                  DataNodeQueryMessages.INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING,
+                  column.getName()));
+        }
+        insertColumns.add(viewColumnName.toLowerCase(ENGLISH));
+      }
+      insertColumns.addAll(tableColumns);
+      return insertColumns;
     }
 
     // Do not consider type coercion at the moment
@@ -707,8 +868,34 @@ public class StatementAnalyzer {
         CommonMetadataUtils.throwTableNotExistsException(
             targetTable.getDatabaseName(), targetTable.getObjectName());
       }
+      final TableSchema logicalTargetSchema = tableSchema.get();
+      TableSchema physicalTargetSchema = logicalTargetSchema;
+      Map<String, String> viewColumnToSourceColumnMap = null;
+      QualifiedObjectName writableViewName = null;
+      QualifiedObjectName sourceWritableViewName = null;
+      if (logicalTargetSchema instanceof WritableViewSchema) {
+        final WritableViewSchema writableViewSchema = (WritableViewSchema) logicalTargetSchema;
+        writableViewName = targetTable;
+        sourceWritableViewName = writableViewSchema.getSourceTableName();
+        viewColumnToSourceColumnMap = writableViewSchema.getViewColumnToSourceColumnMap();
+        if (!writableViewSchema.canUseIdentitySourceFastPath()) {
+          final Optional<TableSchema> resolvedSourceTableSchema =
+              writableViewSchema.getSourceTableSchema();
+          final Optional<TableSchema> sourceTableSchema =
+              resolvedSourceTableSchema.isPresent()
+                  ? resolvedSourceTableSchema
+                  : metadata.getTableSchema(
+                      sessionContext, writableViewSchema.getSourceTableName());
+          if (!sourceTableSchema.isPresent()) {
+            CommonMetadataUtils.throwTableNotExistsException(
+                writableViewSchema.getSourceTableName().getDatabaseName(),
+                writableViewSchema.getSourceTableName().getObjectName());
+          }
+          physicalTargetSchema = sourceTableSchema.get();
+        }
+      }
       List<ColumnSchema> columns =
-          tableSchema.get().getColumns().stream()
+          logicalTargetSchema.getColumns().stream()
               .filter(column -> !column.isHidden())
               .collect(toImmutableList());
       analysis.registerTable(insert.getTable(), tableSchema, targetTable);
@@ -751,7 +938,11 @@ public class StatementAnalyzer {
           }
         }
       } else {
-        insertColumns = tableColumns;
+        insertColumns =
+            logicalTargetSchema instanceof WritableViewSchema
+                ? getDefaultInsertColumnsForWritableView(
+                    tableColumns, physicalTargetSchema.getColumns(), viewColumnToSourceColumnMap)
+                : tableColumns;
       }
 
       // insert columns should contain time
@@ -759,21 +950,33 @@ public class StatementAnalyzer {
         throw new SemanticException(DataNodeQueryMessages.TIME_COLUMN_CAN_NOT_BE_NULL);
       }
       // insert columns should contain at least one field column
-      Map<String, ColumnSchema> columnSchemaMap = tableSchema.get().getColumnSchemaMap();
-      if (!containsAnyFieldColumn(insertColumns, columnSchemaMap)) {
+      final Map<String, ColumnSchema> logicalColumnSchemaMap =
+          logicalTargetSchema.getColumnSchemaMap();
+      if (!containsAnyFieldColumn(insertColumns, logicalColumnSchemaMap)) {
         throw new SemanticException(DataNodeQueryMessages.NO_FIELD_COLUMN_PRESENT);
       }
+      final Map<String, ColumnSchema> physicalColumnSchemaMap =
+          physicalTargetSchema.getColumnSchemaMap();
+      final Map<String, String> finalViewColumnToSourceColumnMap = viewColumnToSourceColumnMap;
+      final QualifiedObjectName finalWritableViewName = writableViewName;
+      final QualifiedObjectName finalSourceWritableViewName = sourceWritableViewName;
+      final List<ColumnSchema> targetColumnSchemas =
+          insertColumns.stream()
+              .map(
+                  insertColumn ->
+                      getInsertTargetColumnSchema(
+                          insertColumn,
+                          finalViewColumnToSourceColumnMap,
+                          finalWritableViewName,
+                          finalSourceWritableViewName,
+                          physicalColumnSchemaMap))
+              .collect(toImmutableList());
 
       // set Insert in analysis
-      analysis.setInsert(
-          new Analysis.Insert(
-              insert.getTable(),
-              insertColumns.stream().map(columnSchemaMap::get).collect(toImmutableList())));
+      analysis.setInsert(new Analysis.Insert(insert.getTable(), targetColumnSchemas));
 
       List<Type> tableTypes =
-          insertColumns.stream()
-              .map(insertColumn -> tableSchema.get().getColumn(insertColumn).getType())
-              .collect(toImmutableList());
+          targetColumnSchemas.stream().map(ColumnSchema::getType).collect(toImmutableList());
       List<Type> queryTypes =
           queryScope.getRelationType().getVisibleFields().stream()
               .map(Field::getType)
@@ -4692,17 +4895,45 @@ public class StatementAnalyzer {
           sessionContext.getUserName(),
           new QualifiedObjectName(node.getDatabase(), node.getTableName()),
           queryContext);
-      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
 
-      final TsTable table =
+      TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (table instanceof WritableView) {
+        final WritableView writableView = (WritableView) table;
+        final String writableViewDatabase = node.getDatabase();
+        if (node.getWhere().isPresent()) {
+          node.setWhere(
+              WritableViewUtils.rewriteExpressionToSource(
+                  node.getWhere().get(), writableView.getViewColumnToSourceColumnMap()));
+        }
+        node.setDatabase(writableView.getSourceTableDatabase());
+        node.setTableName(writableView.getSourceTableName());
+        analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+        node.setOutputColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, false));
+        node.setColumnHeaderList(
+            getWritableViewDeviceColumnHeaders(writableViewDatabase, writableView, true));
+        table =
+            DataNodeTableCache.getInstance()
+                .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+      } else {
+        analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      }
+
+      final TsTable rawExpressionTable = table;
       if (!node.parseRawExpression(
-          table,
-          table.getColumnList().stream()
+          rawExpressionTable,
+          node.getColumnHeaderList().stream()
               .filter(
-                  columnSchema ->
-                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
-              .map(TsTableColumnSchema::getColumnName)
+                  columnHeader -> {
+                    final TsTableColumnSchema columnSchema =
+                        rawExpressionTable.getColumnSchema(columnHeader.getColumnName());
+                    // Internal tree-view show-device queries add synthetic columns such as
+                    // "__aligned" and "__database", which are not stored in the table schema.
+                    return Objects.nonNull(columnSchema)
+                        && columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
+                  })
+              .map(ColumnHeader::getColumnName)
               .collect(Collectors.toList()),
           queryContext)) {
         // Cache hit
@@ -4719,6 +4950,14 @@ public class StatementAnalyzer {
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
+      return analyzeTraverseDevice(node, context, shallCreateTranslationMap, true);
+    }
+
+    private TranslationMap analyzeTraverseDevice(
+        final AbstractTraverseDevice node,
+        final Optional<Scope> context,
+        final boolean shallCreateTranslationMap,
+        final boolean shouldAnalyzeWhere) {
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 
@@ -4772,7 +5011,7 @@ public class StatementAnalyzer {
                     .collect(Collectors.toList()),
                 new PlannerContext(metadata, null));
 
-        if (node.getWhere().isPresent()) {
+        if (shouldAnalyzeWhere && node.getWhere().isPresent()) {
           try {
             analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
           } catch (final Throwable e) {
@@ -4791,6 +5030,56 @@ public class StatementAnalyzer {
       }
 
       return translationMap;
+    }
+
+    private List<ColumnHeader> getWritableViewDeviceColumnHeaders(
+        final String writableViewDatabase,
+        final WritableView writableView,
+        final boolean useSourceColumnName) {
+      final TsTable sourceTable =
+          useSourceColumnName
+              ? DataNodeTableCache.getInstance()
+                  .getTable(
+                      writableView.getSourceTableDatabase(), writableView.getSourceTableName())
+              : null;
+      final Map<String, TsTableColumnSchema> sourceColumnSchemaMap =
+          useSourceColumnName && Objects.nonNull(sourceTable)
+              ? sourceTable.getColumnList().stream()
+                  .collect(
+                      Collectors.toMap(
+                          TsTableColumnSchema::getColumnName,
+                          columnSchema -> columnSchema,
+                          (left, right) -> left))
+              : null;
+      return writableView.getColumnList().stream()
+          .filter(
+              columnSchema ->
+                  columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
+                      || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+          .map(
+              columnSchema -> {
+                final String sourceColumnName =
+                    WritableViewUtils.getSourceColumnName(
+                        columnSchema.getColumnName(),
+                        writableView.getViewColumnToSourceColumnMap());
+                final String actualColumnName =
+                    Objects.nonNull(sourceColumnName)
+                        ? sourceColumnName
+                        : columnSchema.getColumnName();
+                if (useSourceColumnName
+                    && Objects.isNull(sourceColumnSchemaMap.get(actualColumnName))) {
+                  WritableViewUtils.throwColumnNotExistsException(
+                      new QualifiedObjectName(writableViewDatabase, writableView.getTableName()),
+                      new QualifiedObjectName(
+                          writableView.getSourceTableDatabase(), writableView.getSourceTableName()),
+                      columnSchema.getColumnName(),
+                      sourceColumnName);
+                }
+                return new ColumnHeader(
+                    useSourceColumnName ? actualColumnName : columnSchema.getColumnName(),
+                    columnSchema.getDataType());
+              })
+          .collect(Collectors.toList());
     }
 
     private Pair<Type, Expression> analyzeAndRewriteExpression(

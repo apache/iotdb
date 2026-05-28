@@ -20,15 +20,15 @@
 package org.apache.iotdb.db.exception.metadata.view;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 public class InsertNonWritableViewException extends MetadataException {
   public InsertNonWritableViewException(String path) {
     super(
-        String.format(
-            "Can not insert data to a view which is not alias series. (View path: %s)", path));
+        String.format(DataNodeQueryMessages.CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW_WITH_PATH, path));
   }
 
   public InsertNonWritableViewException() {
-    super("Can not insert data to a view which is not alias series.");
+    super(DataNodeQueryMessages.CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW);
   }
 }

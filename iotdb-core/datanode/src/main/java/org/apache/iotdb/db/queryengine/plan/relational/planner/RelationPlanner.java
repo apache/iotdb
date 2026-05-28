@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -114,8 +116,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
@@ -141,6 +144,7 @@ import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ListMultimap;
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -193,6 +197,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   private final QueryId idAllocator;
   private final Optional<TranslationMap> outerContext;
   private final SessionInfo sessionInfo;
+  private final Metadata metadata;
   private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
@@ -205,6 +210,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       final MPPQueryContext queryContext,
       final Optional<TranslationMap> outerContext,
       final SessionInfo sessionInfo,
+      final Metadata metadata,
       final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
@@ -213,6 +219,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     requireNonNull(queryContext, "queryContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(sessionInfo, "session is null");
+    requireNonNull(metadata, "metadata is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
@@ -224,6 +231,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     this.idAllocator = queryContext.getQueryId();
     this.outerContext = outerContext;
     this.sessionInfo = sessionInfo;
+    this.metadata = metadata;
     this.predicateWithUncorrelatedScalarSubqueryReconstructor =
         predicateWithUncorrelatedScalarSubqueryReconstructor;
     this.subqueryPlanner =
@@ -233,6 +241,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             queryContext,
             outerContext,
             sessionInfo,
+            metadata,
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor);
     this.recursiveSubqueries = recursiveSubqueries;
@@ -246,6 +255,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             queryContext,
             outerContext,
             sessionInfo,
+            metadata,
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor)
         .plan(node);
@@ -342,6 +352,13 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     final Collection<Field> fields = scope.getRelationType().getAllFields();
+
+    TableSchema tableSchema = analysis.getTableHandle(table);
+    Map<String, String> viewColumnToSourceColumnMap = null;
+    TableSchema sourceTableSchema = null;
+    boolean useIdentityWritableViewFastPath = false;
+    Map<String, Integer> sourceTagIndexMap = null;
+
     final QualifiedName qualifiedName = analysis.getRelationName(table);
 
     if (!qualifiedName.getPrefix().isPresent()) {
@@ -349,25 +366,84 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
           DataNodeQueryMessages.TABLE + table.getName() + " has no prefix!");
     }
 
-    final QualifiedObjectName qualifiedObjectName =
+    QualifiedObjectName qualifiedObjectName =
         new QualifiedObjectName(
             qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-            qualifiedName.getSuffix());
+            tableSchema.getTableName());
+    boolean isWritableView = tableSchema instanceof WritableViewSchema;
+
+    Optional<QualifiedObjectName> originalWritableViewName = Optional.empty();
+    if (isWritableView) {
+      WritableViewSchema writableViewSchema = (WritableViewSchema) tableSchema;
+      viewColumnToSourceColumnMap = writableViewSchema.getViewColumnToSourceColumnMap();
+      useIdentityWritableViewFastPath = writableViewSchema.canUseIdentitySourceFastPath();
+      sourceTagIndexMap = writableViewSchema.getSourceTagColumnIndexMap();
+      if (!useIdentityWritableViewFastPath) {
+        final Optional<TableSchema> sourceTableSchemaOptional =
+            writableViewSchema.getSourceTableSchema();
+        final Optional<TableSchema> resolvedSourceTableSchema =
+            sourceTableSchemaOptional.isPresent()
+                ? sourceTableSchemaOptional
+                : metadata.getTableSchema(sessionInfo, writableViewSchema.getSourceTableName());
+        if (!resolvedSourceTableSchema.isPresent()) {
+          CommonMetadataUtils.throwTableNotExistsException(
+              writableViewSchema.getSourceTableName().getDatabaseName(),
+              writableViewSchema.getSourceTableName().getObjectName());
+        }
+        sourceTableSchema = resolvedSourceTableSchema.get();
+      }
+      originalWritableViewName = Optional.of(qualifiedObjectName);
+      qualifiedObjectName = writableViewSchema.getSourceTableName();
+    }
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    final Map<String, ColumnSchema> sourceColumnSchemaMap;
+    if (isWritableView && !useIdentityWritableViewFastPath) {
+      int sourceTagIndex = 0;
+      sourceTagIndexMap = new HashMap<>();
+      for (final ColumnSchema columnSchema : sourceTableSchema.getTagColumns()) {
+        sourceTagIndexMap.put(columnSchema.getName(), sourceTagIndex++);
+      }
+      sourceColumnSchemaMap = sourceTableSchema.getColumnSchemaMap();
+    } else {
+      sourceColumnSchemaMap = null;
+    }
     int tagIndex = 0;
     for (final Field field : fields) {
       final TsTableColumnCategory category = field.getColumnCategory();
       final Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
+      String columnName = field.getName().orElse(null);
+      if (isWritableView && !useIdentityWritableViewFastPath) {
+        final String viewColumnName = columnName;
+        columnName =
+            WritableViewUtils.getSourceColumnName(viewColumnName, viewColumnToSourceColumnMap);
+        if (columnName == null || sourceColumnSchemaMap.get(columnName) == null) {
+          WritableViewUtils.throwColumnNotExistsException(
+              originalWritableViewName.get(), qualifiedObjectName, viewColumnName, columnName);
+        }
+      }
       symbolToColumnSchema.put(
-          symbol,
-          new ColumnSchema(
-              field.getName().orElse(null), field.getType(), field.isHidden(), category));
+          symbol, new ColumnSchema(columnName, field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.TAG) {
-        tagAndAttributeIndexMap.put(symbol, tagIndex++);
+        final int fallbackTagIndex = tagIndex++;
+        Integer viewTagIndex =
+            isWritableView ? sourceTagIndexMap.get(columnName) : fallbackTagIndex;
+        if (viewTagIndex == null
+            && useIdentityWritableViewFastPath
+            && sourceTagIndexMap.isEmpty()) {
+          viewTagIndex = fallbackTagIndex;
+        }
+        if (viewTagIndex == null) {
+          WritableViewUtils.throwColumnNotExistsException(
+              originalWritableViewName.get(),
+              qualifiedObjectName,
+              field.getName().orElse(columnName),
+              columnName);
+        }
+        tagAndAttributeIndexMap.put(symbol, viewTagIndex);
       }
     }
 
@@ -375,9 +451,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     final Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
 
-    if (analysis.getTableHandle(table) instanceof TreeDeviceViewSchema) {
-      TreeDeviceViewSchema treeDeviceViewSchema =
-          (TreeDeviceViewSchema) analysis.getTableHandle(table);
+    if (tableSchema instanceof TreeDeviceViewSchema) {
+      TreeDeviceViewSchema treeDeviceViewSchema = (TreeDeviceViewSchema) tableSchema;
       return new RelationPlan(
           new TreeDeviceViewScanNode(
               idAllocator.genPlanNodeId(),
@@ -386,7 +461,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               tableColumnSchema,
               tagAndAttributeIndexMap,
               null,
-              treeDeviceViewSchema.getColumn2OriginalNameMap()),
+              treeDeviceViewSchema.getViewColumnToSourceColumnMap()),
           scope,
           outputSymbols,
           outerContext);
@@ -405,7 +480,8 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               qualifiedObjectName,
               outputSymbols,
               tableColumnSchema,
-              tagAndAttributeIndexMap);
+              tagAndAttributeIndexMap,
+              originalWritableViewName);
     }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
   }
@@ -418,6 +494,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             queryContext,
             outerContext,
             sessionInfo,
+            metadata,
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor)
         .plan(node);
@@ -801,7 +878,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 scope,
                 analysis,
                 outputSymbols,
-                new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()))
+                new PlannerContext(metadata, new InternalTypeManager()))
             .withAdditionalMappings(leftPlanBuilder.getTranslations().getMappings())
             .withAdditionalMappings(rightPlanBuilder.getTranslations().getMappings());
 

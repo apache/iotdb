@@ -89,7 +89,8 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         groupingSets,
         preGroupedSymbols,
         step,
-        groupIdSymbol);
+        groupIdSymbol,
+        Optional.empty());
     this.treeDBName = treeDBName;
     this.measurementColumnNameMap = measurementColumnNameMap;
   }

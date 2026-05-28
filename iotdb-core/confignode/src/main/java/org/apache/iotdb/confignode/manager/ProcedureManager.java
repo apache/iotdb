@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -164,6 +165,14 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.AddWritableViewColumnProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.AlterWritableViewColumnDataTypeProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.CreateWritableViewProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.DropWritableViewColumnProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.DropWritableViewProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.RenameWritableViewColumnProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.RenameWritableViewProcedure;
+import com.timecho.iotdb.confignode.procedure.impl.schema.table.view.writable.SetWritableViewPropertiesProcedure;
 import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -281,7 +290,7 @@ public class ProcedureManager {
             && !hasOverlappedTask) {
           final Pair<Long, Boolean> procedureIdDuplicatePair =
               checkDuplicateTableTask(
-                  database, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
+                  database, null, null, null, null, null, ProcedureType.DELETE_DATABASE_PROCEDURE);
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
@@ -1999,6 +2008,20 @@ public class ProcedureManager {
         new CreateTableProcedure(database, table, false));
   }
 
+  public TSStatus createWritableView(
+      final String database,
+      final WritableView view,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap) {
+    return executeWithoutDuplicate(
+        database,
+        view,
+        view.getTableName(),
+        null,
+        ProcedureType.CREATE_WRITABLE_VIEW_PROCEDURE,
+        new CreateWritableViewProcedure(database, view, replace, false, viewColumnCommentMap));
+  }
+
   public TSStatus createTableView(
       final String database, final TsTable table, final boolean replace) {
     return executeWithoutDuplicate(
@@ -2010,148 +2033,285 @@ public class ProcedureManager {
         new CreateTableViewProcedure(database, table, replace, false));
   }
 
-  public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
+  public TSStatus alterTableAddColumn(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
     final boolean isView = req.isSetIsView() && req.isIsView();
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.ADD_WRITABLE_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new AddWritableViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+              false);
+    } else if (isView) {
+      procedureType = ProcedureType.ADD_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new AddViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+              false);
+    } else {
+      procedureType = ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
+      procedure =
+          new AddTableColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+              false);
+    }
+
     return executeWithoutDuplicate(
         req.database,
+        originalDatabase,
         null,
         req.tableName,
+        originalTableName,
         req.queryId,
-        isView ? ProcedureType.ADD_VIEW_COLUMN_PROCEDURE : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
-        isView
-            ? new AddViewColumnProcedure(
+        procedureType,
+        procedure);
+  }
+
+  public TSStatus alterTableSetProperties(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.SET_WRITABLE_VIEW_PROPERTIES_PROCEDURE;
+      procedure =
+          new SetWritableViewPropertiesProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readMap(req.updateInfo),
+              false);
+    } else if (isView) {
+      procedureType = ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE;
+      procedure =
+          new SetViewPropertiesProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readMap(req.updateInfo),
+              false);
+    } else {
+      procedureType = ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
+      procedure =
+          new SetTablePropertiesProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readMap(req.updateInfo),
+              false);
+    }
+
+    return executeWithoutDuplicate(
+        req.database,
+        originalDatabase,
+        null,
+        req.tableName,
+        originalTableName,
+        req.queryId,
+        procedureType,
+        procedure);
+  }
+
+  public TSStatus alterTableRenameColumn(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.RENAME_WRITABLE_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new RenameWritableViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    } else if (isView) {
+      procedureType = ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new RenameViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    } else {
+      procedureType = ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
+      procedure =
+          new RenameTableColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    }
+
+    return executeWithoutDuplicate(
+        req.database,
+        originalDatabase,
+        null,
+        req.tableName,
+        originalTableName,
+        req.queryId,
+        procedureType,
+        procedure);
+  }
+
+  public TSStatus alterTableDropColumn(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.DROP_WRITABLE_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new DropWritableViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    } else if (isView) {
+      procedureType = ProcedureType.DROP_VIEW_COLUMN_PROCEDURE;
+      procedure =
+          new DropViewColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    } else {
+      procedureType = ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
+      procedure =
+          new DropTableColumnProcedure(
+              req.database,
+              req.tableName,
+              req.queryId,
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
+    }
+
+    return executeWithoutDuplicate(
+        req.database,
+        originalDatabase,
+        null,
+        req.tableName,
+        originalTableName,
+        req.queryId,
+        procedureType,
+        procedure);
+  }
+
+  public TSStatus alterTableColumnDataType(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabase,
+      final @Nullable String originalTableName) {
+    return executeWithoutDuplicate(
+        req.database,
+        originalDatabase,
+        null,
+        req.tableName,
+        originalTableName,
+        req.queryId,
+        Objects.nonNull(originalTableName)
+            ? ProcedureType.ALTER_WRITABLE_VIEW_COLUMN_DATATYPE_PROCEDURE
+            : ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE,
+        Objects.nonNull(originalTableName)
+            ? new AlterWritableViewColumnDataTypeProcedure(
                 req.database,
                 req.tableName,
                 req.queryId,
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+                ReadWriteIOUtils.readVarIntString(req.updateInfo),
+                TSDataType.deserialize(req.updateInfo.get()),
                 false)
-            : new AddTableColumnProcedure(
+            : new AlterTableColumnDataTypeProcedure(
                 req.database,
                 req.tableName,
                 req.queryId,
-                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+                ReadWriteIOUtils.readVarIntString(req.updateInfo),
+                TSDataType.deserialize(req.updateInfo.get()),
                 false));
   }
 
-  public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
+  public TSStatus dropTable(
+      final TAlterOrDropTableReq req,
+      final @Nullable String originalDatabaseName,
+      final @Nullable String originalTableName) {
     final boolean isView = req.isSetIsView() && req.isIsView();
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.DROP_WRITABLE_VIEW_PROCEDURE;
+      procedure = new DropWritableViewProcedure(req.database, req.tableName, req.queryId, false);
+    } else if (isView) {
+      procedureType = ProcedureType.DROP_VIEW_PROCEDURE;
+      procedure = new DropViewProcedure(req.database, req.tableName, req.queryId, false);
+    } else {
+      procedureType = ProcedureType.DROP_TABLE_PROCEDURE;
+      procedure = new DropTableProcedure(req.database, req.tableName, req.queryId, false);
+    }
+
     return executeWithoutDuplicate(
         req.database,
+        originalDatabaseName,
         null,
         req.tableName,
+        originalTableName,
         req.queryId,
-        isView
-            ? ProcedureType.SET_VIEW_PROPERTIES_PROCEDURE
-            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
-        isView
-            ? new SetViewPropertiesProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readMap(req.updateInfo),
-                false)
-            : new SetTablePropertiesProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readMap(req.updateInfo),
-                false));
+        procedureType,
+        procedure);
   }
 
-  public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
-    final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView
-            ? ProcedureType.RENAME_VIEW_COLUMN_PROCEDURE
-            : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
-        isView
-            ? new RenameViewColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false)
-            : new RenameTableColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false));
-  }
-
-  public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
-    final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView
-            ? ProcedureType.DROP_VIEW_COLUMN_PROCEDURE
-            : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
-        isView
-            ? new DropViewColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false)
-            : new DropTableColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false));
-  }
-
-  public TSStatus alterTableColumnDataType(TAlterOrDropTableReq req) {
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE,
-        new AlterTableColumnDataTypeProcedure(
-            req.database,
-            req.tableName,
-            req.queryId,
-            ReadWriteIOUtils.readVarIntString(req.updateInfo),
-            TSDataType.deserialize(req.updateInfo.get()),
-            false));
-  }
-
-  public TSStatus dropTable(final TAlterOrDropTableReq req) {
-    final boolean isView = req.isSetIsView() && req.isIsView();
-    return executeWithoutDuplicate(
-        req.database,
-        null,
-        req.tableName,
-        req.queryId,
-        isView ? ProcedureType.DROP_VIEW_PROCEDURE : ProcedureType.DROP_TABLE_PROCEDURE,
-        isView
-            ? new DropViewProcedure(req.database, req.tableName, req.queryId, false)
-            : new DropTableProcedure(req.database, req.tableName, req.queryId, false));
-  }
-
-  public TSStatus renameTable(final TAlterOrDropTableReq req) {
+  public TSStatus renameTable(final TAlterOrDropTableReq req, final String originalTableName) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     final String newName = ReadWriteIOUtils.readString(req.updateInfo);
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.RENAME_WRITABLE_VIEW_PROCEDURE;
+      procedure =
+          new RenameWritableViewProcedure(req.database, req.tableName, req.queryId, newName, false);
+    } else if (isView) {
+      procedureType = ProcedureType.RENAME_VIEW_PROCEDURE;
+      procedure = new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false);
+    } else {
+      procedureType = ProcedureType.RENAME_TABLE_PROCEDURE;
+      procedure =
+          new RenameTableProcedure(req.database, req.tableName, req.queryId, newName, false);
+    }
+
+    // No need to check originalTable name because cascading renaming is not supported
     return executeWithoutDuplicate(
+        req.database,
         req.database,
         null,
         req.tableName,
         newName,
         req.queryId,
-        isView ? ProcedureType.RENAME_VIEW_PROCEDURE : ProcedureType.RENAME_TABLE_PROCEDURE,
-        isView
-            ? new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false)
-            : new RenameTableProcedure(req.database, req.tableName, req.queryId, newName, false));
+        procedureType,
+        procedure);
   }
 
   public TDeleteTableDeviceResp deleteDevices(
@@ -2163,6 +2323,7 @@ public class ProcedureManager {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
           checkDuplicateTableTask(
               req.database,
+              null,
               null,
               req.tableName,
               null,
@@ -2237,21 +2398,24 @@ public class ProcedureManager {
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
-    return executeWithoutDuplicate(database, table, tableName, null, queryId, thisType, procedure);
+    return executeWithoutDuplicate(
+        database, null, table, tableName, null, queryId, thisType, procedure);
   }
 
   public TSStatus executeWithoutDuplicate(
       final String database,
+      final @Nullable String secondDatabase,
       final TsTable table,
       final String tableName,
-      final @Nullable String newName,
+      final @Nullable String secondTableName,
       final String queryId,
       final ProcedureType thisType,
       final Procedure<ConfigNodeProcedureEnv> procedure) {
     final long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
-          checkDuplicateTableTask(database, table, tableName, newName, queryId, thisType);
+          checkDuplicateTableTask(
+              database, secondDatabase, table, tableName, secondTableName, queryId, thisType);
       procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
@@ -2268,14 +2432,18 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
+  // Some table procedures may match 2 tables
+  // The incoming procedure's table(s) and existing table(s) shall not match
   public Pair<Long, Boolean> checkDuplicateTableTask(
       final @Nonnull String database,
+      final @Nullable String secondDatabase,
       final TsTable table,
       final String tableName,
-      final String newName,
+      final String secondTableName,
       final String queryId,
       final ProcedureType thisType) {
     ProcedureType type;
+    AbstractAlterOrDropTableProcedure<?> alterTableProcedure;
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       type = ProcedureFactory.getProcedureType(procedure);
       if (type == null || procedure.isFinished()) {
@@ -2286,16 +2454,21 @@ public class ProcedureManager {
       switch (type) {
         case CREATE_TABLE_PROCEDURE:
         case CREATE_TABLE_VIEW_PROCEDURE:
+        // We do not check the original table here
+        // Because the writable view creation will not write to(though will read) the original table
+        case CREATE_WRITABLE_VIEW_PROCEDURE:
           final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
           if (type == thisType && Objects.equals(table, createTableProcedure.getTable())) {
             return new Pair<>(procedure.getProcId(), false);
           }
           // tableName == null indicates delete database procedure
           if (database.equals(createTableProcedure.getDatabase())
-              && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, createTableProcedure.getTable().getTableName())
-                  || Objects.nonNull(newName)
-                      && Objects.equals(newName, createTableProcedure.getTable().getTableName()))) {
+                  && (Objects.isNull(tableName)
+                      || Objects.equals(tableName, createTableProcedure.getTable().getTableName()))
+              || Objects.equals(secondDatabase, createTableProcedure.getDatabase())
+                  && Objects.nonNull(secondTableName)
+                  && Objects.equals(
+                      secondTableName, createTableProcedure.getTable().getTableName())) {
             return new Pair<>(-1L, true);
           }
           break;
@@ -2305,47 +2478,77 @@ public class ProcedureManager {
         case SET_VIEW_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case RENAME_VIEW_COLUMN_PROCEDURE:
+        case RENAME_WRITABLE_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
         case DROP_VIEW_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
         case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
-          final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
-              (AbstractAlterOrDropTableProcedure<?>) procedure;
+          alterTableProcedure = (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }
           // tableName == null indicates delete database procedure
           if (database.equals(alterTableProcedure.getDatabase())
-              && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, alterTableProcedure.getTableName())
-                  || Objects.nonNull(newName)
-                      && Objects.equals(newName, alterTableProcedure.getTableName()))) {
+                  && (Objects.isNull(tableName)
+                      || Objects.equals(tableName, alterTableProcedure.getTableName()))
+              || Objects.equals(secondDatabase, alterTableProcedure.getDatabase())
+                  && Objects.nonNull(secondTableName)
+                  && Objects.equals(secondTableName, alterTableProcedure.getTableName())) {
             return new Pair<>(-1L, true);
           }
           break;
         case RENAME_TABLE_PROCEDURE:
         case RENAME_VIEW_PROCEDURE:
+        case RENAME_WRITABLE_VIEW_PROCEDURE:
           final RenameTableProcedure renameTableProcedure = (RenameTableProcedure) procedure;
           if (type == thisType && queryId.equals(renameTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }
           // tableName == null indicates delete database procedure
           if (database.equals(renameTableProcedure.getDatabase())
-              && (Objects.isNull(tableName)
-                  || Objects.equals(tableName, renameTableProcedure.getTableName())
-                  || Objects.equals(tableName, renameTableProcedure.getNewName())
-                  || Objects.nonNull(newName)
-                      && (Objects.equals(newName, renameTableProcedure.getTableName())
-                          || Objects.equals(newName, renameTableProcedure.getNewName())))) {
+                  && (Objects.isNull(tableName)
+                      || Objects.equals(tableName, renameTableProcedure.getTableName())
+                      || Objects.equals(tableName, renameTableProcedure.getNewName()))
+              || Objects.equals(secondDatabase, renameTableProcedure.getDatabase())
+                  && Objects.nonNull(secondTableName)
+                  && (Objects.equals(secondTableName, renameTableProcedure.getTableName())
+                      || Objects.equals(secondTableName, renameTableProcedure.getNewName()))) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case ADD_WRITABLE_VIEW_COLUMN_PROCEDURE:
+        case SET_WRITABLE_VIEW_PROPERTIES_PROCEDURE:
+        case DROP_WRITABLE_VIEW_COLUMN_PROCEDURE:
+        case DROP_WRITABLE_VIEW_PROCEDURE:
+        case ALTER_WRITABLE_VIEW_COLUMN_DATATYPE_PROCEDURE:
+          alterTableProcedure = (AbstractAlterOrDropTableProcedure<?>) procedure;
+          if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          // tableName == null indicates delete database procedure
+          if (database.equals(alterTableProcedure.getDatabase())
+                  && (Objects.isNull(tableName)
+                      || Objects.equals(tableName, alterTableProcedure.getTableName()))
+              || database.equals(alterTableProcedure.getOriginalDatabase())
+                  && (Objects.isNull(tableName)
+                      || Objects.equals(tableName, alterTableProcedure.getOriginalTableName()))
+              || Objects.nonNull(secondDatabase)
+                  && Objects.nonNull(secondTableName)
+                  && (secondDatabase.equals(alterTableProcedure.getDatabase())
+                          && Objects.equals(secondTableName, alterTableProcedure.getTableName())
+                      || secondDatabase.equals(alterTableProcedure.getOriginalDatabase())
+                          && Objects.equals(
+                              secondTableName, alterTableProcedure.getOriginalTableName()))) {
             return new Pair<>(-1L, true);
           }
           break;
         case DELETE_DATABASE_PROCEDURE:
           final DeleteDatabaseProcedure deleteDatabaseProcedure =
               (DeleteDatabaseProcedure) procedure;
-          if (database.equals(deleteDatabaseProcedure.getDatabase())) {
+          if (database.equals(deleteDatabaseProcedure.getDatabase())
+              || Objects.equals(secondDatabase, deleteDatabaseProcedure.getDatabase())) {
             return new Pair<>(-1L, true);
           }
           break;
@@ -2478,7 +2681,7 @@ public class ProcedureManager {
   /**
    * Cancel all running region migration procedures. Iterates over all active procedures, finds
    * unfinished {@link RegionMigrateProcedure} instances, and sets their cancel flag. The actual
-   * cancellation is cooperative — each procedure checks the flag at the entry of its next state
+   * cancellation is cooperative �?each procedure checks the flag at the entry of its next state
    * transition and stops at the earliest safe point.
    *
    * @return the number of migration procedures that were signalled to cancel

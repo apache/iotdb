@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecog
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
+import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
@@ -78,11 +79,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WritableViewColumnDefinition;
 
 import com.google.common.base.Joiner;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static java.util.stream.Collectors.joining;
 
@@ -147,6 +150,24 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
   @Override
   public Void visitShowTables(ShowTables node, Integer indent) {
+    if (node.getTableTypeFilter().isPresent()) {
+      final Set<TableType> tableTypeFilter = node.getTableTypeFilter().get();
+      builder.append("SHOW ");
+      if (tableTypeFilter.size() == 1) {
+        if (tableTypeFilter.contains(TableType.VIEW_FROM_TREE)) {
+          builder.append("TREE ");
+        } else if (tableTypeFilter.contains(TableType.WRITABLE_VIEW)) {
+          builder.append("WRITABLE ");
+        }
+      }
+      builder.append("VIEW");
+
+      node.getDbName()
+          .ifPresent(db -> builder.append(" FROM ").append(CommonQuerySqlFormatter.formatName(db)));
+
+      return null;
+    }
+
     builder.append("SHOW TABLES");
 
     if (node.isDetails()) {
@@ -428,7 +449,11 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
       builder.append("IF NOT EXISTS ");
     }
 
-    builder.append(formatColumnDefinition(node.getColumn()));
+    if (node.getWritableViewColumn().isPresent()) {
+      builder.append(formatWritableViewColumnDefinition(node.getWritableViewColumn().get()));
+    } else {
+      builder.append(formatColumnDefinition(node.getColumn()));
+    }
 
     return null;
   }
@@ -1085,6 +1110,22 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
 
     column.getCharsetName().ifPresent(charset -> stringBuilder.append(" CHARSET ").append(charset));
 
+    if (Objects.nonNull(column.getComment())) {
+      stringBuilder.append(" COMMENT '").append(column.getComment()).append("'");
+    }
+    return stringBuilder.toString();
+  }
+
+  private String formatWritableViewColumnDefinition(WritableViewColumnDefinition column) {
+    final StringBuilder stringBuilder =
+        new StringBuilder()
+            .append(
+                CommonQuerySqlFormatter.formatName(new Identifier(column.getSourceColumnName())));
+    if (!column.getSourceColumnName().equals(column.getViewColumnName())) {
+      stringBuilder
+          .append(" AS ")
+          .append(CommonQuerySqlFormatter.formatName(new Identifier(column.getViewColumnName())));
+    }
     if (Objects.nonNull(column.getComment())) {
       stringBuilder.append(" COMMENT '").append(column.getComment()).append("'");
     }

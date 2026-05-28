@@ -84,6 +84,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -183,6 +184,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -4620,10 +4622,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails) {
+      final String database,
+      final Predicate<TTableInfo> checkCanShowTable,
+      final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    if (InformationSchemaUtils.mayShowTable(database, isDetails, future)) {
+    if (InformationSchemaUtils.mayShowTable(database, isDetails, checkCanShowTable, future)) {
       return future;
     }
     try (final ConfigNodeClient configNodeClient =
@@ -5116,7 +5120,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createTableView(
-      final TsTable table, final String database, final boolean replace) {
+      final TsTable table,
+      final String database,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap) {
+    return createTableViewInternal(table, database, replace, viewColumnCommentMap);
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createWritableView(
+      final WritableView table,
+      final String database,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap) {
+    return createTableViewInternal(table, database, replace, viewColumnCommentMap);
+  }
+
+  private SettableFuture<ConfigTaskResult> createTableViewInternal(
+      final TsTable table,
+      final String database,
+      final boolean replace,
+      final Map<String, String> viewColumnCommentMap) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -5124,13 +5148,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus;
       do {
         try {
-          tsStatus =
-              configNodeClient.createTableView(
-                  new TCreateTableViewReq(
-                      ByteBuffer.wrap(
-                          TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(
-                              database, table)),
-                      replace));
+          final TCreateTableViewReq req =
+              new TCreateTableViewReq(
+                  ByteBuffer.wrap(
+                      TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table)),
+                  replace);
+          if (viewColumnCommentMap != null && !viewColumnCommentMap.isEmpty()) {
+            req.setViewColumnCommentMap(viewColumnCommentMap);
+          }
+          tsStatus = configNodeClient.createTableView(req);
         } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {

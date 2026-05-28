@@ -55,7 +55,13 @@ import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTe
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 
 public abstract class ConfigPhysicalPlanVisitor<R, C> {
+  private final TimechoConfigPhysicalPlanVisitor<R, C> timechoVisitor =
+      new TimechoConfigPhysicalPlanVisitor<>(this);
+
   public R process(final ConfigPhysicalPlan plan, final C context) {
+    if (isTimechoPlan(plan)) {
+      return getTimechoVisitor().process(plan, context);
+    }
     switch (plan.getType()) {
       case CreateDatabase:
         return visitCreateDatabase((DatabaseSchemaPlan) plan, context);
@@ -208,6 +214,14 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       default:
         return visitPlan(plan, context);
     }
+  }
+
+  protected boolean isTimechoPlan(final ConfigPhysicalPlan plan) {
+    return plan.getPlanTypeId() < 0;
+  }
+
+  protected TimechoConfigPhysicalPlanVisitor<R, C> getTimechoVisitor() {
+    return timechoVisitor;
   }
 
   /** Top Level Description */
@@ -479,7 +493,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(renameTableColumnPlan, context);
   }
 
-  // Use commit delete table by default
+  // Use rename table column by default
   public R visitRenameViewColumn(final RenameViewColumnPlan renameViewColumnPlan, final C context) {
     return visitRenameTableColumn(renameViewColumnPlan, context);
   }

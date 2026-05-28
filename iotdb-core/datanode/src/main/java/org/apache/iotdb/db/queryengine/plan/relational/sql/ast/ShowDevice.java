@@ -92,7 +92,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   @Override
   public DatasetHeader getDataSetHeader() {
-    return new DatasetHeader(columnHeaderList, true);
+    return new DatasetHeader(getOutputColumnHeaderList(), true);
   }
 
   @Override

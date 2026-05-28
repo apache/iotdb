@@ -128,6 +128,9 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ORIGINAL_TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(TABLES, tableTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
@@ -150,6 +153,10 @@ public class InformationSchema {
     columnTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    columnTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ORIGINAL_COLUMN_NAME_TABLE_MODEL.toLowerCase(Locale.ENGLISH),
+            TSDataType.STRING));
     schemaTables.put(COLUMNS, columnTable);
 
     final TsTable regionTable = new TsTable(REGIONS);

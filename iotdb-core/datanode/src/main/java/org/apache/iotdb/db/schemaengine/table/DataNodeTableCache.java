@@ -126,76 +126,114 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preUpdateTable(String database, final TsTable table, final String oldName) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  public void preUpdateTable(final String database, final TsTable table, final String oldName) {
     readWriteLock.writeLock().lock();
     try {
+      innerPreUpdateTable(database, table, oldName);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  // We place the original table & writable view in a single lock
+  // to ensure the consistency of read on the dataNode
+  @Override
+  public void preUpdateTable(
+      final String database1, final String database2, final TsTable table1, final TsTable table2) {
+    readWriteLock.writeLock().lock();
+    try {
+      innerPreUpdateTable(database1, table1, null);
+      innerPreUpdateTable(database2, table2, null);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void innerPreUpdateTable(String database, final TsTable table, final String oldName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    preUpdateTableMap
+        .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+        .compute(
+            table.getTableName(),
+            (k, v) -> {
+              if (Objects.isNull(v)) {
+                return new Pair<>(table, 0L);
+              } else {
+                v.setLeft(table);
+                v.setRight(v.getRight() + 1);
+                return v;
+              }
+            });
+    LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
+
+    // If rename table
+    if (Objects.nonNull(oldName)) {
+      final TsTable oldTable = databaseTableMap.get(database).remove(oldName);
       preUpdateTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
           .compute(
-              table.getTableName(),
+              oldName,
               (k, v) -> {
                 if (Objects.isNull(v)) {
-                  return new Pair<>(table, 0L);
+                  return new Pair<>(oldTable, 0L);
                 } else {
-                  v.setLeft(table);
+                  v.setLeft(oldTable);
                   v.setRight(v.getRight() + 1);
                   return v;
                 }
               });
-      LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
+      LOGGER.info(DataNodeSchemaMessages.PRE_RENAME_OLD_TABLE_SUCCESS, database, oldName);
+    }
+  }
 
-      // If rename table
-      if (Objects.nonNull(oldName)) {
-        final TsTable oldTable = databaseTableMap.get(database).remove(oldName);
-        preUpdateTableMap
-            .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-            .compute(
-                oldName,
-                (k, v) -> {
-                  if (Objects.isNull(v)) {
-                    return new Pair<>(oldTable, 0L);
-                  } else {
-                    v.setLeft(oldTable);
-                    v.setRight(v.getRight() + 1);
-                    return v;
-                  }
-                });
-        LOGGER.info(DataNodeSchemaMessages.PRE_RENAME_OLD_TABLE_SUCCESS, database, oldName);
-      }
+  @Override
+  public void rollbackUpdateTable(String database, final String tableName, final String oldName) {
+    readWriteLock.writeLock().lock();
+    try {
+      innerRollbackUpdateTable(database, tableName, oldName);
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
   @Override
-  public void rollbackUpdateTable(String database, final String tableName, final String oldName) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  public void rollbackUpdateTable(
+      final String database1,
+      final String database2,
+      final String tableName1,
+      final String tableName2) {
     readWriteLock.writeLock().lock();
     try {
-      removeTableFromPreUpdateMap(database, tableName);
-      LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
-
-      // If rename table
-      if (Objects.nonNull(oldName)) {
-        // Equals to commit update
-        final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
-        // Cannot be rolled back, consider:
-        // 1. Fetched a written CN table
-        // 2. CN rollback because of timeout
-        // 3. If we roll back here, the flag will be cleared, and it will always be the written
-        // one
-        if (oldTable instanceof NonCommittableTsTable) {
-          return;
-        }
-        databaseTableMap
-            .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-            .put(tableName, oldTable);
-        LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
-        removeTableFromPreUpdateMap(database, oldName);
-      }
+      innerRollbackUpdateTable(database1, tableName1, null);
+      innerRollbackUpdateTable(database2, tableName2, null);
     } finally {
       readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void innerRollbackUpdateTable(
+      String database, final String tableName, final String oldName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    removeTableFromPreUpdateMap(database, tableName);
+    LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
+
+    // If rename table
+    if (Objects.nonNull(oldName)) {
+      // Equals to commit update
+      final TsTable oldTable = preUpdateTableMap.get(database).get(oldName).getLeft();
+      // Cannot be rolled back, consider:
+      // 1. Fetched a written CN table
+      // 2. CN rollback because of timeout
+      // 3. If we roll back here, the flag will be cleared, and it will always be the written
+      // one
+      if (oldTable instanceof NonCommittableTsTable) {
+        return;
+      }
+      databaseTableMap
+          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+          .put(tableName, oldTable);
+      LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
+      removeTableFromPreUpdateMap(database, oldName);
     }
   }
 
@@ -212,41 +250,75 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void commitUpdateTable(
+  public boolean commitUpdateTable(
       String database, final String tableName, final @Nullable String oldName) {
-    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
-      // Cannot be committed, consider:
-      // 1. Fetched a non-changed CN table
-      // 2. CN is changed
-      // 3. If we commit here, it will always be the non-changed one
-      // (And it is not committable because it's not real table)
-      if (newTable instanceof NonCommittableTsTable) {
-        return;
+      if (!canCommitUpdateTable(database, tableName)) {
+        return false;
       }
-      final TsTable oldTable =
-          databaseTableMap
-              .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-              .put(tableName, newTable);
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
-            database,
-            tableName,
-            compareTable(oldTable, newTable));
-      } else if (LOGGER.isInfoEnabled()) {
-        LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
-      }
-      removeTableFromPreUpdateMap(database, tableName);
-      if (Objects.nonNull(oldName)) {
-        removeTableFromPreUpdateMap(database, oldName);
-        LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
-      }
+      innerCommitUpdateTable(database, tableName, oldName);
       instanceVersion.incrementAndGet();
+      return true;
     } finally {
       readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public boolean commitUpdateTable(
+      final String database1,
+      final String database2,
+      final String tableName1,
+      final String tableName2) {
+    readWriteLock.writeLock().lock();
+    try {
+      if (!canCommitUpdateTable(database1, tableName1)
+          || !canCommitUpdateTable(database2, tableName2)) {
+        return false;
+      }
+      innerCommitUpdateTable(database1, tableName1, null);
+      innerCommitUpdateTable(database2, tableName2, null);
+      instanceVersion.incrementAndGet();
+      return true;
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private boolean canCommitUpdateTable(String database, final String tableName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    final Map<String, Pair<TsTable, Long>> databasePreUpdateMap = preUpdateTableMap.get(database);
+    if (Objects.isNull(databasePreUpdateMap)) {
+      return false;
+    }
+    final Pair<TsTable, Long> tableVersionPair = databasePreUpdateMap.get(tableName);
+    return Objects.nonNull(tableVersionPair)
+        && Objects.nonNull(tableVersionPair.getLeft())
+        && !(tableVersionPair.getLeft() instanceof NonCommittableTsTable);
+  }
+
+  private void innerCommitUpdateTable(
+      String database, final String tableName, final @Nullable String oldName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+    final TsTable oldTable =
+        databaseTableMap
+            .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+            .put(tableName, newTable);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
+          database,
+          tableName,
+          compareTable(oldTable, newTable));
+    } else if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
+    }
+    removeTableFromPreUpdateMap(database, tableName);
+    if (Objects.nonNull(oldName)) {
+      removeTableFromPreUpdateMap(database, oldName);
+      LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
     }
   }
 
@@ -265,48 +337,94 @@ public class DataNodeTableCache implements ITableCache {
 
   @GuardedBy("TableDeviceSchemaCache#writeLock")
   @Override
-  public void invalid(String database, final String tableName) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  public void invalid(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)) {
-        databaseTableMap.get(database).remove(tableName);
-      }
-      if (preUpdateTableMap.containsKey(database)) {
-        preUpdateTableMap.get(database).remove(tableName);
-      }
+      innerInvalid(database, tableName);
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  @GuardedBy("TableDeviceSchemaCache#writeLock")
   @Override
-  public void invalid(String database, final String tableName, final String columnName) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  public void invalid(
+      final String database1,
+      final String tableName1,
+      final String database2,
+      final String tableName2) {
     readWriteLock.writeLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)
-          && databaseTableMap.get(database).containsKey(tableName)) {
-        final TsTable copyTable = new TsTable(databaseTableMap.get(database).get(tableName));
-        copyTable.removeColumnSchema(columnName);
-        databaseTableMap.get(database).put(tableName, copyTable);
-      }
-      if (preUpdateTableMap.containsKey(database)
-          && preUpdateTableMap.get(database).containsKey(tableName)) {
-        final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
-        if (Objects.nonNull(tableVersionPair.getLeft())) {
-          final TsTable copyTable = new TsTable(tableVersionPair.getLeft());
-          copyTable.removeColumnSchema(columnName);
-          tableVersionPair.setLeft(copyTable);
-        }
-        tableVersionPair.setRight(tableVersionPair.getRight() + 1);
-      }
+      innerInvalid(database1, tableName1);
+      innerInvalid(database2, tableName2);
       instanceVersion.incrementAndGet();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  private void innerInvalid(String database, final String tableName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    if (databaseTableMap.containsKey(database)) {
+      databaseTableMap.get(database).remove(tableName);
+    }
+    if (preUpdateTableMap.containsKey(database)) {
+      preUpdateTableMap.get(database).remove(tableName);
+    }
+  }
+
+  @GuardedBy("TableDeviceSchemaCache#writeLock")
+  @Override
+  public void invalid(String database, final String tableName, final String columnName) {
+    readWriteLock.writeLock().lock();
+    try {
+      innerInvalid(database, tableName, columnName);
+      instanceVersion.incrementAndGet();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalid(
+      final String database1,
+      final String tableName1,
+      final String columnName1,
+      final String database2,
+      final String tableName2,
+      final String columnName2) {
+    readWriteLock.writeLock().lock();
+    try {
+      innerInvalid(database1, tableName1, columnName1);
+      innerInvalid(database2, tableName2, columnName2);
+      instanceVersion.incrementAndGet();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void innerInvalid(String database, final String tableName, final String columnName) {
+    database = PathUtils.unQualifyDatabaseName(database);
+    if (databaseTableMap.containsKey(database)
+        && databaseTableMap.get(database).containsKey(tableName)) {
+      final TsTable copyTable = copyTable(databaseTableMap.get(database).get(tableName));
+      copyTable.removeColumnSchema(columnName);
+      databaseTableMap.get(database).put(tableName, copyTable);
+    }
+    if (preUpdateTableMap.containsKey(database)
+        && preUpdateTableMap.get(database).containsKey(tableName)) {
+      final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
+      if (Objects.nonNull(tableVersionPair.getLeft())) {
+        final TsTable copyTable = copyTable(tableVersionPair.getLeft());
+        copyTable.removeColumnSchema(columnName);
+        tableVersionPair.setLeft(copyTable);
+      }
+      tableVersionPair.setRight(tableVersionPair.getRight() + 1);
+    }
+  }
+
+  private TsTable copyTable(final TsTable table) {
+    return table.clone();
   }
 
   public long getInstanceVersion() {
@@ -323,8 +441,10 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   /**
-   * The following logic can handle the cases when configNode failed to clear some table in {@link
-   * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
+   * The following logic can recover non-committable placeholders left in {@link
+   * #preUpdateTableMap}, for example when a DataNode starts while the ConfigNode is altering a
+   * table. Ordinary pre-updated tables are not fetched here because they may belong to an active
+   * PRE_UPDATE to COMMIT window.
    */
   public TsTable getTable(String database, final String tableName, final boolean force) {
     database = PathUtils.unQualifyDatabaseName(database);
@@ -344,28 +464,27 @@ public class DataNodeTableCache implements ITableCache {
       final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return preUpdateTableMap.containsKey(database)
-              && preUpdateTableMap.get(database).containsKey(tableName)
-              && Objects.nonNull(preUpdateTableMap.get(database).get(tableName).getLeft())
-          ? preUpdateTableMap.entrySet().stream()
-              .filter(
-                  entry -> {
-                    entry
-                        .getValue()
-                        .entrySet()
-                        .removeIf(tableEntry -> Objects.isNull(tableEntry.getValue().getLeft()));
-                    return !entry.getValue().isEmpty();
-                  })
-              .collect(
-                  Collectors.toMap(
-                      Map.Entry::getKey,
-                      entry ->
-                          entry.getValue().entrySet().stream()
-                              .collect(
-                                  Collectors.toMap(
-                                      Map.Entry::getKey,
-                                      innerEntry -> innerEntry.getValue().getRight()))))
-          : null;
+      if (!preUpdateTableMap.containsKey(database)
+          || !preUpdateTableMap.get(database).containsKey(tableName)
+          || !(preUpdateTableMap.get(database).get(tableName).getLeft()
+              instanceof NonCommittableTsTable)) {
+        return null;
+      }
+      return preUpdateTableMap.entrySet().stream()
+          .map(
+              entry ->
+                  new Pair<>(
+                      entry.getKey(),
+                      entry.getValue().entrySet().stream()
+                          .filter(
+                              tableEntry ->
+                                  tableEntry.getValue().getLeft() instanceof NonCommittableTsTable)
+                          .collect(
+                              Collectors.toMap(
+                                  Map.Entry::getKey,
+                                  innerEntry -> innerEntry.getValue().getRight()))))
+          .filter(entry -> !entry.getRight().isEmpty())
+          .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     } finally {
       readWriteLock.readLock().unlock();
     }

@@ -55,6 +55,8 @@ public final class SchemaMessages {
       "View with measurementID [%s] is broken. It stores illegal path [%s].";
   public static final String UNEXPECTED_VALUE_IN_LIKE_VIEW_EXPRESSION =
       "Unexpected value in LikeViewExpression: %s";
+  public static final String SCHEMA_CASCADE_VALUE_MUST_BE_BOOLEAN =
+      "schema_cascade value must be a BooleanLiteral, but now is %s";
 
   // Filter messages
   public static final String UNSUPPORTED_SCHEMA_FILTER_TYPE =

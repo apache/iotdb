@@ -70,6 +70,9 @@ statement
     | alterViewStatement
     | dropViewStatement
     | showCreateViewStatement
+    | showViewStatement
+
+    | createWritableViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -282,6 +285,8 @@ descQueryStatement
 alterTableStatement
     : ALTER TABLE (IF EXISTS)? from=qualifiedName RENAME TO to=identifier                                #renameTable
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ADD COLUMN (IF NOT EXISTS)? column=columnDefinition                #addColumn
+    // Writable view uses SELECT-style "source AS view" column syntax when adding alias columns.
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ADD COLUMN (IF NOT EXISTS)? column=writableViewColumnDefinition    #addWritableViewColumn
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier    #renameColumn
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
@@ -317,10 +322,18 @@ viewColumnDefinition
 
 alterViewStatement
     : ALTER VIEW (IF EXISTS)? from=qualifiedName RENAME TO to=identifier #renameTableView
-    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? viewColumnDefinition #addViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? alterViewColumnDefinition #addViewColumn
+    // Writable view uses SELECT-style "source AS view" column syntax when adding alias columns.
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? writableViewColumnDefinition #addWritableViewColumnView
     | ALTER VIEW (IF EXISTS)? viewName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier #renameViewColumn
     | ALTER VIEW (IF EXISTS)? viewName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier #dropViewColumn
     | ALTER VIEW (IF EXISTS)? viewName=qualifiedName SET PROPERTIES propertyAssignments #setTableViewProperties
+    ;
+
+alterViewColumnDefinition
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
     ;
 
 dropViewStatement
@@ -329,6 +342,10 @@ dropViewStatement
 
 showCreateViewStatement
     : SHOW CREATE VIEW qualifiedName
+    ;
+
+showViewStatement
+    : SHOW viewType=(TREE | WRITABLE)? VIEWS ((FROM | IN) database=identifier)?
     ;
 
 // IoTDB Objects
@@ -350,6 +367,19 @@ wildcard
     : '*'
     | '**'
     ;
+
+createWritableViewStatement
+    : CREATE (OR REPLACE)? WRITABLE VIEW qualifiedName
+        AS SELECT ((writableViewColumnDefinition (',' writableViewColumnDefinition)*) | '*')
+        FROM qualifiedName
+        comment?
+        (WITH properties)?
+    ;
+
+writableViewColumnDefinition
+    : identifier (AS identifier)? comment?
+    ;
+
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
@@ -1562,8 +1592,8 @@ nonReserved
     | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TAGS | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
-    | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
-    | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
+    | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW | VIEWS
+    | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITABLE | WRITE
     | YEAR
     | ZONE
     ;
@@ -1972,6 +2002,7 @@ VARIATION: 'VARIATION';
 VERBOSE: 'VERBOSE';
 VERSION: 'VERSION';
 VIEW: 'VIEW';
+VIEWS: 'VIEWS';
 WEEK: 'WEEK' | 'W';
 WHEN: 'WHEN';
 WHERE: 'WHERE';
@@ -1982,6 +2013,7 @@ WITHIN: 'WITHIN';
 WITHOUT: 'WITHOUT';
 WORK: 'WORK';
 WRAPPER: 'WRAPPER';
+WRITABLE : 'WRITABLE';
 WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';

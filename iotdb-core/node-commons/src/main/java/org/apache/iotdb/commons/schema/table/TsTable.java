@@ -71,7 +71,7 @@ public class TsTable {
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
 
-  private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  protected final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -89,7 +89,7 @@ public class TsTable {
   private final AtomicReference<Pair<Long, List<TsTableColumnSchema>>> tagColumnSchemas =
       new AtomicReference<>();
 
-  private Map<String, String> props = null;
+  protected Map<String, String> props = null;
 
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
@@ -104,7 +104,7 @@ public class TsTable {
   }
 
   // This interface is used by InformationSchema table, so time column is not necessary
-  public TsTable(String tableName, ImmutableList<TsTableColumnSchema> columnSchemas) {
+  public TsTable(final String tableName, final ImmutableList<TsTableColumnSchema> columnSchemas) {
     this.tableName = tableName;
     columnSchemas.forEach(
         columnSchema -> {
@@ -125,8 +125,19 @@ public class TsTable {
     this.fieldNum = origin.fieldNum;
   }
 
+  @Override
+  public TsTable clone() {
+    return new TsTable(this);
+  }
+
   public String getTableName() {
     return tableName;
+  }
+
+  public int getType() {
+    return TreeViewSchema.isTreeViewTable(this)
+        ? TableType.VIEW_FROM_TREE.ordinal()
+        : TableType.BASE_TABLE.ordinal();
   }
 
   /**
@@ -171,7 +182,7 @@ public class TsTable {
    *
    * @param writeOperation the write operation to execute
    */
-  private void executeWrite(Runnable writeOperation) {
+  protected final void executeWrite(Runnable writeOperation) {
     readWriteLock.writeLock().lock();
     isNotWrite.set(false);
     try {
@@ -250,7 +261,7 @@ public class TsTable {
     }
 
     final Map<String, String> oldProps = schema.getProps();
-    oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+    oldProps.computeIfAbsent(ViewColumnSchemaUtils.SOURCE_NAME, k -> schema.getColumnName());
     schema.setColumnName(newName);
     columnSchemaMap.put(newName, schema);
 
@@ -363,6 +374,11 @@ public class TsTable {
   }
 
   public void addProp(final String key, final String value) {
+    // Never push a null value to the table
+    // Or else "getPropValue()" may result in NPE
+    if (Objects.isNull(value)) {
+      return;
+    }
     executeWrite(
         () -> {
           if (props == null) {
@@ -394,8 +410,11 @@ public class TsTable {
   public static TsTable deserialize(final InputStream inputStream) throws IOException {
     final String name = ReadWriteIOUtils.readString(inputStream);
     final int columnNum = ReadWriteIOUtils.readInt(inputStream);
-    if (columnNum < 0) {
+    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == WritableView.WRITABLE_VIEW) {
+      return WritableView.deserialize(name, inputStream);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {
@@ -408,8 +427,11 @@ public class TsTable {
   public static TsTable deserialize(final ByteBuffer buffer) {
     final String name = ReadWriteIOUtils.readString(buffer);
     final int columnNum = ReadWriteIOUtils.readInt(buffer);
-    if (columnNum < 0) {
+    if (columnNum == NonCommittableTsTable.NON_COMMITTABLE) {
       return new NonCommittableTsTable(name);
+    }
+    if (columnNum == WritableView.WRITABLE_VIEW) {
+      return WritableView.deserialize(name, buffer);
     }
     final TsTable table = new TsTable(name);
     for (int i = 0; i < columnNum; i++) {

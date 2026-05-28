@@ -55,6 +55,8 @@ public final class SchemaMessages {
       "measurementID 为 [%s] 的 view 已损坏，其存储了非法路径 [%s]。";
   public static final String UNEXPECTED_VALUE_IN_LIKE_VIEW_EXPRESSION =
       "LikeViewExpression 中出现了意外的值：%s";
+  public static final String SCHEMA_CASCADE_VALUE_MUST_BE_BOOLEAN =
+      "schema_cascade 的值必须是布尔字面量，当前为 %s";
 
   // Filter 相关消息
   public static final String UNSUPPORTED_SCHEMA_FILTER_TYPE =

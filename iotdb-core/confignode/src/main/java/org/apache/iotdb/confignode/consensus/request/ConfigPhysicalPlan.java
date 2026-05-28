@@ -145,6 +145,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
+import com.timecho.iotdb.confignode.consensus.request.TimechoConfigPhysicalPlanFactory;
 import com.timecho.iotdb.confignode.procedure.consensus.request.write.auth.EnableSeparationOfAdminPowersPlan;
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -163,6 +164,10 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   public ConfigPhysicalPlanType getType() {
     return this.type;
+  }
+
+  public short getPlanTypeId() {
+    return type.getPlanType();
   }
 
   @Override
@@ -199,440 +204,444 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       }
 
       final ConfigPhysicalPlan plan;
-      switch (configPhysicalPlanType) {
-        case RegisterDataNode:
-          plan = new RegisterDataNodePlan();
-          break;
-        case UpdateDataNodeConfiguration:
-          plan = new UpdateDataNodePlan();
-          break;
-        case RemoveDataNode:
-          plan = new RemoveDataNodePlan();
-          break;
-        case RegisterAINode:
-          plan = new RegisterAINodePlan();
-          break;
-        case RemoveAINode:
-          plan = new RemoveAINodePlan();
-          break;
-        case GetAINodeConfiguration:
-          plan = new GetAINodeConfigurationPlan();
-          break;
-        case UpdateAINodeConfiguration:
-          plan = new UpdateAINodePlan();
-          break;
-        case CreateDatabase:
-          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
-          break;
-        case AlterDatabase:
-          plan = new DatabaseSchemaPlan(configPhysicalPlanType);
-          break;
-        case SetTTL:
-          plan = new SetTTLPlan();
-          break;
-        case SetSchemaReplicationFactor:
-          plan = new SetSchemaReplicationFactorPlan();
-          break;
-        case SetDataReplicationFactor:
-          plan = new SetDataReplicationFactorPlan();
-          break;
-        case SetTimePartitionInterval:
-          plan = new SetTimePartitionIntervalPlan();
-          break;
-        case AdjustMaxRegionGroupNum:
-          plan = new AdjustMaxRegionGroupNumPlan();
-          break;
-        case CreateRegionGroups:
-          plan = new CreateRegionGroupsPlan();
-          break;
-        case UpdateRegionLocation:
-          plan = new UpdateRegionLocationPlan();
-          break;
-        case AddRegionLocation:
-          plan = new AddRegionLocationPlan();
-          break;
-        case RemoveRegionLocation:
-          plan = new RemoveRegionLocationPlan();
-          break;
-        case GetRegionGroupsByTime:
-          plan = new GetRegionGroupsByTimePlan();
-          break;
-        case OfferRegionMaintainTasks:
-          plan = new OfferRegionMaintainTasksPlan();
-          break;
-        case PollRegionMaintainTask:
-          plan = new PollRegionMaintainTaskPlan();
-          break;
-        case PollSpecificRegionMaintainTask:
-          plan = new PollSpecificRegionMaintainTaskPlan();
-          break;
-        case CreateSchemaPartition:
-          plan = new CreateSchemaPartitionPlan();
-          break;
-        case CreateDataPartition:
-          plan = new CreateDataPartitionPlan();
-          break;
-        case AutoCleanPartitionTable:
-          plan = new AutoCleanPartitionTablePlan();
-          break;
-        case DeleteProcedure:
-          plan = new DeleteProcedurePlan();
-          break;
-        case UpdateProcedure:
-          plan = new UpdateProcedurePlan();
-          break;
-        case PreDeleteDatabase:
-          plan = new PreDeleteDatabasePlan();
-          break;
-        case DeleteDatabase:
-          plan = new DeleteDatabasePlan();
-          break;
-        case CreateUserDep:
-        case CreateRoleDep:
-        case DropUserDep:
-        case DropRoleDep:
-        case GrantRoleDep:
-        case GrantUserDep:
-        case GrantRoleToUserDep:
-        case RevokeUserDep:
-        case RevokeRoleDep:
-        case RevokeRoleFromUserDep:
-        case UpdateUserDep:
-        case CreateUser:
-        case CreateRole:
-        case DropUser:
-        case DropUserV2:
-        case DropRole:
-        case GrantRole:
-        case GrantUser:
-        case GrantRoleToUser:
-        case RevokeUser:
-        case RevokeRole:
-        case RevokeRoleFromUser:
-        case UpdateUser:
-        case UpdateUserV2:
-        case UpdateUserMaxSession:
-        case UpdateUserMinSession:
-        case CreateUserWithRawPassword:
-        case RenameUser:
-          plan = new AuthorTreePlan(configPhysicalPlanType);
-          break;
-        case RCreateUser:
-        case RCreateRole:
-        case RUpdateUser:
-        case RUpdateUserV2:
-        case RUpdateUserMaxSession:
-        case RUpdateUserMinSession:
-        case RDropRole:
-        case RDropUser:
-        case RDropUserV2:
-        case RGrantUserRole:
-        case RRevokeUserRole:
-        case RGrantRoleAny:
-        case RGrantUserAny:
-        case RGrantUserAll:
-        case RGrantRoleAll:
-        case RGrantUserDBPriv:
-        case RGrantUserTBPriv:
-        case RGrantRoleDBPriv:
-        case RGrantRoleTBPriv:
-        case RRevokeRoleAny:
-        case RRevokeUserAny:
-        case RRevokeUserAll:
-        case RRevokeRoleAll:
-        case RRevokeUserDBPriv:
-        case RRevokeUserTBPriv:
-        case RRevokeRoleDBPriv:
-        case RRevokeRoleTBPriv:
-        case RGrantUserSysPri:
-        case RGrantRoleSysPri:
-        case RRevokeUserSysPri:
-        case RRevokeRoleSysPri:
-        case RRenameUser:
-          plan = new AuthorRelationalPlan(configPhysicalPlanType);
-          break;
-        case EnableSeparationOfAdminPowers:
-          plan = new EnableSeparationOfAdminPowersPlan();
-          break;
-        case ApplyConfigNode:
-          plan = new ApplyConfigNodePlan();
-          break;
-        case RemoveConfigNode:
-          plan = new RemoveConfigNodePlan();
-          break;
-        case UpdateVersionInfo:
-          plan = new UpdateVersionInfoPlan();
-          break;
-        case UpdateClusterId:
-          plan = new UpdateClusterIdPlan();
-          break;
-        case CreateFunction:
-          plan = new CreateFunctionPlan();
-          break;
-        case UpdateFunction:
-          plan = new UpdateFunctionPlan();
-          break;
-        case DropTreeModelFunction:
-          plan = new DropTreeModelFunctionPlan();
-          break;
-        case DropTableModelFunction:
-          plan = new DropTableModelFunctionPlan();
-          break;
-        case AddTriggerInTable:
-          plan = new AddTriggerInTablePlan();
-          break;
-        case DeleteTriggerInTable:
-          plan = new DeleteTriggerInTablePlan();
-          break;
-        case UpdateTriggerStateInTable:
-          plan = new UpdateTriggerStateInTablePlan();
-          break;
-        case CreateSchemaTemplate:
-          plan = new CreateSchemaTemplatePlan();
-          break;
-        case SetSchemaTemplate:
-          plan = new SetSchemaTemplatePlan();
-          break;
-        case PreSetSchemaTemplate:
-          plan = new PreSetSchemaTemplatePlan();
-          break;
-        case CommitSetSchemaTemplate:
-          plan = new CommitSetSchemaTemplatePlan();
-          break;
-        case DropSchemaTemplate:
-          plan = new DropSchemaTemplatePlan();
-          break;
-        case PreUnsetTemplate:
-          plan = new PreUnsetSchemaTemplatePlan();
-          break;
-        case RollbackUnsetTemplate:
-          plan = new RollbackPreUnsetSchemaTemplatePlan();
-          break;
-        case UnsetTemplate:
-          plan = new UnsetSchemaTemplatePlan();
-          break;
-        case ExtendSchemaTemplate:
-          plan = new ExtendSchemaTemplatePlan();
-          break;
-        case PreCreateTable:
-          plan = new PreCreateTablePlan(configPhysicalPlanType);
-          break;
-        case PreCreateTableView:
-          plan = new PreCreateTableViewPlan();
-          break;
-        case RollbackCreateTable:
-          plan = new RollbackCreateTablePlan();
-          break;
-        case CommitCreateTable:
-          plan = new CommitCreateTablePlan();
-          break;
-        case AddTableColumn:
-          plan = new AddTableColumnPlan(configPhysicalPlanType);
-          break;
-        case AddViewColumn:
-          plan = new AddTableViewColumnPlan();
-          break;
-        case SetTableProperties:
-          plan = new SetTablePropertiesPlan(configPhysicalPlanType);
-          break;
-        case SetViewProperties:
-          plan = new SetViewPropertiesPlan();
-          break;
-        case RenameTableColumn:
-          plan = new RenameTableColumnPlan(configPhysicalPlanType);
-          break;
-        case RenameViewColumn:
-          plan = new RenameViewColumnPlan();
-          break;
-        case PreDeleteTable:
-          plan = new PreDeleteTablePlan(configPhysicalPlanType);
-          break;
-        case PreDeleteView:
-          plan = new PreDeleteViewPlan();
-          break;
-        case CommitDeleteTable:
-          plan = new CommitDeleteTablePlan(configPhysicalPlanType);
-          break;
-        case CommitDeleteView:
-          plan = new CommitDeleteViewPlan();
-          break;
-        case PreDeleteColumn:
-          plan = new PreDeleteColumnPlan(configPhysicalPlanType);
-          break;
-        case PreDeleteViewColumn:
-          plan = new PreDeleteViewColumnPlan();
-          break;
-        case PreAlterColumnDataType:
-          plan = new PreAlterColumnDataTypePlan();
-          break;
-        case AlterColumnDataType:
-          plan = new AlterColumnDataTypePlan();
-          break;
-        case CommitDeleteColumn:
-          plan = new CommitDeleteColumnPlan(configPhysicalPlanType);
-          break;
-        case CommitDeleteViewColumn:
-          plan = new CommitDeleteViewColumnPlan();
-          break;
-        case SetTableComment:
-          plan = new SetTableCommentPlan(configPhysicalPlanType);
-          break;
-        case SetViewComment:
-          plan = new SetViewCommentPlan();
-          break;
-        case SetTableColumnComment:
-          plan = new SetTableColumnCommentPlan();
-          break;
-        case RenameTable:
-          plan = new RenameTablePlan(configPhysicalPlanType);
-          break;
-        case RenameView:
-          plan = new RenameViewPlan();
-          break;
-        case CreatePipeSinkV1:
-          plan = new CreatePipeSinkPlanV1();
-          break;
-        case DropPipeSinkV1:
-          plan = new DropPipeSinkPlanV1();
-          break;
-        case GetPipeSinkV1:
-          plan = new GetPipeSinkPlanV1();
-          break;
-        case PreCreatePipeV1:
-          plan = new PreCreatePipePlanV1();
-          break;
-        case SetPipeStatusV1:
-          plan = new SetPipeStatusPlanV1();
-          break;
-        case DropPipeV1:
-          plan = new DropPipePlanV1();
-          break;
-        case RecordPipeMessageV1:
-          plan = new RecordPipeMessagePlan();
-          break;
-        case CreatePipeV2:
-          plan = new CreatePipePlanV2();
-          break;
-        case SetPipeStatusV2:
-          plan = new SetPipeStatusPlanV2();
-          break;
-        case SetPipeStatusWithStoppedByRuntimeExceptionV2:
-          plan = new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2();
-          break;
-        case DropPipeV2:
-          plan = new DropPipePlanV2();
-          break;
-        case AlterPipeV2:
-          plan = new AlterPipePlanV2();
-          break;
-        case OperateMultiplePipesV2:
-          plan = new OperateMultiplePipesPlanV2();
-          break;
-        case PipeHandleLeaderChange:
-          plan = new PipeHandleLeaderChangePlan();
-          break;
-        case PipeHandleMetaChange:
-          plan = new PipeHandleMetaChangePlan();
-          break;
-        case PipeEnriched:
-          plan = new PipeEnrichedPlan();
-          break;
-        case CreateTopic:
-          plan = new CreateTopicPlan();
-          break;
-        case DropTopic:
-          plan = new DropTopicPlan();
-          break;
-        case ShowTopic:
-          plan = new ShowTopicPlan();
-          break;
-        case AlterTopic:
-          plan = new AlterTopicPlan();
-          break;
-        case AlterMultipleTopics:
-          plan = new AlterMultipleTopicsPlan();
-          break;
-        case TopicHandleMetaChange:
-          plan = new TopicHandleMetaChangePlan();
-          break;
-        case AlterConsumerGroup:
-          plan = new AlterConsumerGroupPlan();
-          break;
-        case ConsumerGroupHandleMetaChange:
-          plan = new ConsumerGroupHandleMetaChangePlan();
-          break;
-        case PipeUnsetTemplate:
-          plan = new PipeUnsetSchemaTemplatePlan();
-          break;
-        case PipeDeleteTimeSeries:
-          plan = new PipeDeleteTimeSeriesPlan();
-          break;
-        case PipeDeleteLogicalView:
-          plan = new PipeDeleteLogicalViewPlan();
-          break;
-        case PipeDeactivateTemplate:
-          plan = new PipeDeactivateTemplatePlan();
-          break;
-        case PipeCreateTableOrView:
-          plan = new PipeCreateTableOrViewPlan();
-          break;
-        case PipeDeleteDevices:
-          plan = new PipeDeleteDevicesPlan();
-          break;
-        case PipeAlterEncodingCompressor:
-          plan = new PipeAlterEncodingCompressorPlan();
-          break;
-        case PipeRenameTimeSeries:
-          plan = new PipeRenameTimeSeriesPlan();
-          break;
-        case PipeAlterTimeSeries:
-          plan = new PipeAlterTimeSeriesPlan();
-          break;
-        case UpdateTriggersOnTransferNodes:
-          plan = new UpdateTriggersOnTransferNodesPlan();
-          break;
-        case UpdateTriggerLocation:
-          plan = new UpdateTriggerLocationPlan();
-          break;
-        case ACTIVE_CQ:
-          plan = new ActiveCQPlan();
-          break;
-        case ADD_CQ:
-          plan = new AddCQPlan();
-          break;
-        case DROP_CQ:
-          plan = new DropCQPlan();
-          break;
-        case UPDATE_CQ_LAST_EXEC_TIME:
-          plan = new UpdateCQLastExecTimePlan();
-          break;
-        case CreatePipePlugin:
-          plan = new CreatePipePluginPlan();
-          break;
-        case DropPipePlugin:
-          plan = new DropPipePluginPlan();
-          break;
-        case setSpaceQuota:
-          plan = new SetSpaceQuotaPlan();
-          break;
-        case setThrottleQuota:
-          plan = new SetThrottleQuotaPlan();
-          break;
-        case CreateExternalService:
-          plan = new CreateExternalServicePlan();
-          break;
-        case StartExternalService:
-          plan = new StartExternalServicePlan();
-          break;
-        case StopExternalService:
-          plan = new StopExternalServicePlan();
-          break;
-        case DropExternalService:
-          plan = new DropExternalServicePlan();
-          break;
-        default:
-          throw new IOException(
-              ConfigNodeMessages.UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE + planType);
+      if (TimechoConfigPhysicalPlanFactory.isTimechoPlanType(configPhysicalPlanType)) {
+        plan = TimechoConfigPhysicalPlanFactory.create(configPhysicalPlanType);
+      } else {
+        switch (configPhysicalPlanType) {
+          case RegisterDataNode:
+            plan = new RegisterDataNodePlan();
+            break;
+          case UpdateDataNodeConfiguration:
+            plan = new UpdateDataNodePlan();
+            break;
+          case RemoveDataNode:
+            plan = new RemoveDataNodePlan();
+            break;
+          case RegisterAINode:
+            plan = new RegisterAINodePlan();
+            break;
+          case RemoveAINode:
+            plan = new RemoveAINodePlan();
+            break;
+          case GetAINodeConfiguration:
+            plan = new GetAINodeConfigurationPlan();
+            break;
+          case UpdateAINodeConfiguration:
+            plan = new UpdateAINodePlan();
+            break;
+          case CreateDatabase:
+            plan = new DatabaseSchemaPlan(configPhysicalPlanType);
+            break;
+          case AlterDatabase:
+            plan = new DatabaseSchemaPlan(configPhysicalPlanType);
+            break;
+          case SetTTL:
+            plan = new SetTTLPlan();
+            break;
+          case SetSchemaReplicationFactor:
+            plan = new SetSchemaReplicationFactorPlan();
+            break;
+          case SetDataReplicationFactor:
+            plan = new SetDataReplicationFactorPlan();
+            break;
+          case SetTimePartitionInterval:
+            plan = new SetTimePartitionIntervalPlan();
+            break;
+          case AdjustMaxRegionGroupNum:
+            plan = new AdjustMaxRegionGroupNumPlan();
+            break;
+          case CreateRegionGroups:
+            plan = new CreateRegionGroupsPlan();
+            break;
+          case UpdateRegionLocation:
+            plan = new UpdateRegionLocationPlan();
+            break;
+          case AddRegionLocation:
+            plan = new AddRegionLocationPlan();
+            break;
+          case RemoveRegionLocation:
+            plan = new RemoveRegionLocationPlan();
+            break;
+          case GetRegionGroupsByTime:
+            plan = new GetRegionGroupsByTimePlan();
+            break;
+          case OfferRegionMaintainTasks:
+            plan = new OfferRegionMaintainTasksPlan();
+            break;
+          case PollRegionMaintainTask:
+            plan = new PollRegionMaintainTaskPlan();
+            break;
+          case PollSpecificRegionMaintainTask:
+            plan = new PollSpecificRegionMaintainTaskPlan();
+            break;
+          case CreateSchemaPartition:
+            plan = new CreateSchemaPartitionPlan();
+            break;
+          case CreateDataPartition:
+            plan = new CreateDataPartitionPlan();
+            break;
+          case AutoCleanPartitionTable:
+            plan = new AutoCleanPartitionTablePlan();
+            break;
+          case DeleteProcedure:
+            plan = new DeleteProcedurePlan();
+            break;
+          case UpdateProcedure:
+            plan = new UpdateProcedurePlan();
+            break;
+          case PreDeleteDatabase:
+            plan = new PreDeleteDatabasePlan();
+            break;
+          case DeleteDatabase:
+            plan = new DeleteDatabasePlan();
+            break;
+          case CreateUserDep:
+          case CreateRoleDep:
+          case DropUserDep:
+          case DropRoleDep:
+          case GrantRoleDep:
+          case GrantUserDep:
+          case GrantRoleToUserDep:
+          case RevokeUserDep:
+          case RevokeRoleDep:
+          case RevokeRoleFromUserDep:
+          case UpdateUserDep:
+          case CreateUser:
+          case CreateRole:
+          case DropUser:
+          case DropUserV2:
+          case DropRole:
+          case GrantRole:
+          case GrantUser:
+          case GrantRoleToUser:
+          case RevokeUser:
+          case RevokeRole:
+          case RevokeRoleFromUser:
+          case UpdateUser:
+          case UpdateUserV2:
+          case UpdateUserMaxSession:
+          case UpdateUserMinSession:
+          case CreateUserWithRawPassword:
+          case RenameUser:
+            plan = new AuthorTreePlan(configPhysicalPlanType);
+            break;
+          case RCreateUser:
+          case RCreateRole:
+          case RUpdateUser:
+          case RUpdateUserV2:
+          case RUpdateUserMaxSession:
+          case RUpdateUserMinSession:
+          case RDropRole:
+          case RDropUser:
+          case RDropUserV2:
+          case RGrantUserRole:
+          case RRevokeUserRole:
+          case RGrantRoleAny:
+          case RGrantUserAny:
+          case RGrantUserAll:
+          case RGrantRoleAll:
+          case RGrantUserDBPriv:
+          case RGrantUserTBPriv:
+          case RGrantRoleDBPriv:
+          case RGrantRoleTBPriv:
+          case RRevokeRoleAny:
+          case RRevokeUserAny:
+          case RRevokeUserAll:
+          case RRevokeRoleAll:
+          case RRevokeUserDBPriv:
+          case RRevokeUserTBPriv:
+          case RRevokeRoleDBPriv:
+          case RRevokeRoleTBPriv:
+          case RGrantUserSysPri:
+          case RGrantRoleSysPri:
+          case RRevokeUserSysPri:
+          case RRevokeRoleSysPri:
+          case RRenameUser:
+            plan = new AuthorRelationalPlan(configPhysicalPlanType);
+            break;
+          case EnableSeparationOfAdminPowers:
+            plan = new EnableSeparationOfAdminPowersPlan();
+            break;
+          case ApplyConfigNode:
+            plan = new ApplyConfigNodePlan();
+            break;
+          case RemoveConfigNode:
+            plan = new RemoveConfigNodePlan();
+            break;
+          case UpdateVersionInfo:
+            plan = new UpdateVersionInfoPlan();
+            break;
+          case UpdateClusterId:
+            plan = new UpdateClusterIdPlan();
+            break;
+          case CreateFunction:
+            plan = new CreateFunctionPlan();
+            break;
+          case UpdateFunction:
+            plan = new UpdateFunctionPlan();
+            break;
+          case DropTreeModelFunction:
+            plan = new DropTreeModelFunctionPlan();
+            break;
+          case DropTableModelFunction:
+            plan = new DropTableModelFunctionPlan();
+            break;
+          case AddTriggerInTable:
+            plan = new AddTriggerInTablePlan();
+            break;
+          case DeleteTriggerInTable:
+            plan = new DeleteTriggerInTablePlan();
+            break;
+          case UpdateTriggerStateInTable:
+            plan = new UpdateTriggerStateInTablePlan();
+            break;
+          case CreateSchemaTemplate:
+            plan = new CreateSchemaTemplatePlan();
+            break;
+          case SetSchemaTemplate:
+            plan = new SetSchemaTemplatePlan();
+            break;
+          case PreSetSchemaTemplate:
+            plan = new PreSetSchemaTemplatePlan();
+            break;
+          case CommitSetSchemaTemplate:
+            plan = new CommitSetSchemaTemplatePlan();
+            break;
+          case DropSchemaTemplate:
+            plan = new DropSchemaTemplatePlan();
+            break;
+          case PreUnsetTemplate:
+            plan = new PreUnsetSchemaTemplatePlan();
+            break;
+          case RollbackUnsetTemplate:
+            plan = new RollbackPreUnsetSchemaTemplatePlan();
+            break;
+          case UnsetTemplate:
+            plan = new UnsetSchemaTemplatePlan();
+            break;
+          case ExtendSchemaTemplate:
+            plan = new ExtendSchemaTemplatePlan();
+            break;
+          case PreCreateTable:
+            plan = new PreCreateTablePlan(configPhysicalPlanType);
+            break;
+          case PreCreateTableView:
+            plan = new PreCreateTableViewPlan(configPhysicalPlanType);
+            break;
+          case RollbackCreateTable:
+            plan = new RollbackCreateTablePlan();
+            break;
+          case CommitCreateTable:
+            plan = new CommitCreateTablePlan();
+            break;
+          case AddTableColumn:
+            plan = new AddTableColumnPlan(configPhysicalPlanType);
+            break;
+          case AddViewColumn:
+            plan = new AddTableViewColumnPlan();
+            break;
+          case SetTableProperties:
+            plan = new SetTablePropertiesPlan(configPhysicalPlanType);
+            break;
+          case SetViewProperties:
+            plan = new SetViewPropertiesPlan();
+            break;
+          case RenameTableColumn:
+            plan = new RenameTableColumnPlan(configPhysicalPlanType);
+            break;
+          case RenameViewColumn:
+            plan = new RenameViewColumnPlan();
+            break;
+          case PreDeleteTable:
+            plan = new PreDeleteTablePlan(configPhysicalPlanType);
+            break;
+          case PreDeleteView:
+            plan = new PreDeleteViewPlan();
+            break;
+          case CommitDeleteTable:
+            plan = new CommitDeleteTablePlan(configPhysicalPlanType);
+            break;
+          case CommitDeleteView:
+            plan = new CommitDeleteViewPlan();
+            break;
+          case PreDeleteColumn:
+            plan = new PreDeleteColumnPlan(configPhysicalPlanType);
+            break;
+          case PreDeleteViewColumn:
+            plan = new PreDeleteViewColumnPlan();
+            break;
+          case PreAlterColumnDataType:
+            plan = new PreAlterColumnDataTypePlan(configPhysicalPlanType);
+            break;
+          case AlterColumnDataType:
+            plan = new AlterColumnDataTypePlan(configPhysicalPlanType);
+            break;
+          case CommitDeleteColumn:
+            plan = new CommitDeleteColumnPlan(configPhysicalPlanType);
+            break;
+          case CommitDeleteViewColumn:
+            plan = new CommitDeleteViewColumnPlan();
+            break;
+          case SetTableComment:
+            plan = new SetTableCommentPlan(configPhysicalPlanType);
+            break;
+          case SetViewComment:
+            plan = new SetViewCommentPlan();
+            break;
+          case SetTableColumnComment:
+            plan = new SetTableColumnCommentPlan(configPhysicalPlanType);
+            break;
+          case RenameTable:
+            plan = new RenameTablePlan(configPhysicalPlanType);
+            break;
+          case RenameView:
+            plan = new RenameViewPlan();
+            break;
+          case CreatePipeSinkV1:
+            plan = new CreatePipeSinkPlanV1();
+            break;
+          case DropPipeSinkV1:
+            plan = new DropPipeSinkPlanV1();
+            break;
+          case GetPipeSinkV1:
+            plan = new GetPipeSinkPlanV1();
+            break;
+          case PreCreatePipeV1:
+            plan = new PreCreatePipePlanV1();
+            break;
+          case SetPipeStatusV1:
+            plan = new SetPipeStatusPlanV1();
+            break;
+          case DropPipeV1:
+            plan = new DropPipePlanV1();
+            break;
+          case RecordPipeMessageV1:
+            plan = new RecordPipeMessagePlan();
+            break;
+          case CreatePipeV2:
+            plan = new CreatePipePlanV2();
+            break;
+          case SetPipeStatusV2:
+            plan = new SetPipeStatusPlanV2();
+            break;
+          case SetPipeStatusWithStoppedByRuntimeExceptionV2:
+            plan = new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2();
+            break;
+          case DropPipeV2:
+            plan = new DropPipePlanV2();
+            break;
+          case AlterPipeV2:
+            plan = new AlterPipePlanV2();
+            break;
+          case OperateMultiplePipesV2:
+            plan = new OperateMultiplePipesPlanV2();
+            break;
+          case PipeHandleLeaderChange:
+            plan = new PipeHandleLeaderChangePlan();
+            break;
+          case PipeHandleMetaChange:
+            plan = new PipeHandleMetaChangePlan();
+            break;
+          case PipeEnriched:
+            plan = new PipeEnrichedPlan();
+            break;
+          case CreateTopic:
+            plan = new CreateTopicPlan();
+            break;
+          case DropTopic:
+            plan = new DropTopicPlan();
+            break;
+          case ShowTopic:
+            plan = new ShowTopicPlan();
+            break;
+          case AlterTopic:
+            plan = new AlterTopicPlan();
+            break;
+          case AlterMultipleTopics:
+            plan = new AlterMultipleTopicsPlan();
+            break;
+          case TopicHandleMetaChange:
+            plan = new TopicHandleMetaChangePlan();
+            break;
+          case AlterConsumerGroup:
+            plan = new AlterConsumerGroupPlan();
+            break;
+          case ConsumerGroupHandleMetaChange:
+            plan = new ConsumerGroupHandleMetaChangePlan();
+            break;
+          case PipeUnsetTemplate:
+            plan = new PipeUnsetSchemaTemplatePlan();
+            break;
+          case PipeDeleteTimeSeries:
+            plan = new PipeDeleteTimeSeriesPlan();
+            break;
+          case PipeDeleteLogicalView:
+            plan = new PipeDeleteLogicalViewPlan();
+            break;
+          case PipeDeactivateTemplate:
+            plan = new PipeDeactivateTemplatePlan();
+            break;
+          case PipeCreateTableOrView:
+            plan = new PipeCreateTableOrViewPlan();
+            break;
+          case PipeDeleteDevices:
+            plan = new PipeDeleteDevicesPlan();
+            break;
+          case PipeAlterEncodingCompressor:
+            plan = new PipeAlterEncodingCompressorPlan();
+            break;
+          case PipeRenameTimeSeries:
+            plan = new PipeRenameTimeSeriesPlan();
+            break;
+          case PipeAlterTimeSeries:
+            plan = new PipeAlterTimeSeriesPlan();
+            break;
+          case UpdateTriggersOnTransferNodes:
+            plan = new UpdateTriggersOnTransferNodesPlan();
+            break;
+          case UpdateTriggerLocation:
+            plan = new UpdateTriggerLocationPlan();
+            break;
+          case ACTIVE_CQ:
+            plan = new ActiveCQPlan();
+            break;
+          case ADD_CQ:
+            plan = new AddCQPlan();
+            break;
+          case DROP_CQ:
+            plan = new DropCQPlan();
+            break;
+          case UPDATE_CQ_LAST_EXEC_TIME:
+            plan = new UpdateCQLastExecTimePlan();
+            break;
+          case CreatePipePlugin:
+            plan = new CreatePipePluginPlan();
+            break;
+          case DropPipePlugin:
+            plan = new DropPipePluginPlan();
+            break;
+          case setSpaceQuota:
+            plan = new SetSpaceQuotaPlan();
+            break;
+          case setThrottleQuota:
+            plan = new SetThrottleQuotaPlan();
+            break;
+          case CreateExternalService:
+            plan = new CreateExternalServicePlan();
+            break;
+          case StartExternalService:
+            plan = new StartExternalServicePlan();
+            break;
+          case StopExternalService:
+            plan = new StopExternalServicePlan();
+            break;
+          case DropExternalService:
+            plan = new DropExternalServicePlan();
+            break;
+          default:
+            throw new IOException(
+                ConfigNodeMessages.UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE + planType);
+        }
       }
       plan.deserializeImpl(buffer);
       return plan;

@@ -31,13 +31,21 @@ import java.io.OutputStream;
  * version.
  */
 public class NonCommittableTsTable extends TsTable {
+
+  static final int NON_COMMITTABLE = -1;
+
   public NonCommittableTsTable(final String tableName) {
     super(tableName);
   }
 
   @Override
+  public NonCommittableTsTable clone() {
+    return new NonCommittableTsTable(tableName);
+  }
+
+  @Override
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(-1, stream);
+    ReadWriteIOUtils.write(NON_COMMITTABLE, stream);
   }
 }

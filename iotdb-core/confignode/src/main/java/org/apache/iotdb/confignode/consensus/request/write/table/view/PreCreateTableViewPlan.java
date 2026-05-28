@@ -31,13 +31,21 @@ import java.nio.ByteBuffer;
 public class PreCreateTableViewPlan extends PreCreateTablePlan {
   private TableNodeStatus status;
 
-  public PreCreateTableViewPlan() {
-    super(ConfigPhysicalPlanType.PreCreateTableView);
+  public PreCreateTableViewPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public PreCreateTableViewPlan(
       final String database, final TsTable table, final TableNodeStatus status) {
-    super(ConfigPhysicalPlanType.PreCreateTableView, database, table);
+    this(ConfigPhysicalPlanType.PreCreateTableView, database, table, status);
+  }
+
+  public PreCreateTableViewPlan(
+      final ConfigPhysicalPlanType type,
+      final String database,
+      final TsTable table,
+      final TableNodeStatus status) {
+    super(type, database, table);
     this.status = status;
   }
 

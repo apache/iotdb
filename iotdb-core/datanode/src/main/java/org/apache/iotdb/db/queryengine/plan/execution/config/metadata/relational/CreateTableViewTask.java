@@ -34,6 +34,6 @@ public class CreateTableViewTask extends CreateTableTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTableView(table, database, ifNotExists);
+    return configTaskExecutor.createTableView(table, database, ifNotExists, null);
   }
 }

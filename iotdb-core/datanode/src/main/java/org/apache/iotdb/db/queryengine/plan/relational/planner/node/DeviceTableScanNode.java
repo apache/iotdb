@@ -79,6 +79,8 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected transient boolean containsNonAlignedDevice;
 
+  protected Optional<QualifiedObjectName> originalWritableViewName;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -86,9 +88,11 @@ public class DeviceTableScanNode extends TableScanNode {
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Map<Symbol, Integer> tagAndAttributeIndexMap) {
+      Map<Symbol, Integer> tagAndAttributeIndexMap,
+      Optional<QualifiedObjectName> originalWritableViewName) {
     super(id, qualifiedObjectName, outputSymbols, assignments);
     this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
+    this.originalWritableViewName = originalWritableViewName;
   }
 
   public DeviceTableScanNode(
@@ -104,7 +108,8 @@ public class DeviceTableScanNode extends TableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       boolean pushLimitToEachDevice,
-      boolean containsNonAlignedDevice) {
+      boolean containsNonAlignedDevice,
+      Optional<QualifiedObjectName> originalWritableViewName) {
     super(
         id,
         qualifiedObjectName,
@@ -120,6 +125,7 @@ public class DeviceTableScanNode extends TableScanNode {
     this.pushDownPredicate = pushDownPredicate;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
     this.containsNonAlignedDevice = containsNonAlignedDevice;
+    this.originalWritableViewName = originalWritableViewName;
   }
 
   @Override
@@ -142,7 +148,8 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
-        containsNonAlignedDevice);
+        containsNonAlignedDevice,
+        originalWritableViewName);
   }
 
   protected static void serializeMemberVariables(
@@ -170,6 +177,13 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
+
+    if (node.getOriginalWritableViewName().isPresent()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      writeQualifiedObjectName(byteBuffer, node.getOriginalWritableViewName().get());
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   protected static void serializeMemberVariables(
@@ -198,6 +212,13 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
+
+    if (node.getOriginalWritableViewName().isPresent()) {
+      ReadWriteIOUtils.write(true, stream);
+      writeQualifiedObjectName(stream, node.getOriginalWritableViewName().get());
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   protected static void deserializeMemberVariables(
@@ -227,6 +248,15 @@ public class DeviceTableScanNode extends TableScanNode {
     }
 
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+
+    boolean hasOriginalWritableViewName = ReadWriteIOUtils.readBool(byteBuffer);
+    Optional<QualifiedObjectName> originalWritableViewName;
+    if (hasOriginalWritableViewName) {
+      originalWritableViewName = Optional.of(deserializeQualifiedObjectName(byteBuffer));
+    } else {
+      originalWritableViewName = Optional.empty();
+    }
+    node.originalWritableViewName = originalWritableViewName;
   }
 
   @Override
@@ -305,6 +335,14 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setContainsNonAlignedDevice() {
     this.containsNonAlignedDevice = true;
+  }
+
+  public Optional<QualifiedObjectName> getOriginalWritableViewName() {
+    return originalWritableViewName;
+  }
+
+  public void setOriginalWritableViewName(Optional<QualifiedObjectName> originalWritableViewName) {
+    this.originalWritableViewName = originalWritableViewName;
   }
 
   public String toString() {

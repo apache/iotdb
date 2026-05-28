@@ -34,6 +34,7 @@ import java.util.Objects;
 public class ViewFieldDefinition extends ColumnDefinition {
 
   private final Identifier from;
+  private final boolean explicitFrom;
 
   public ViewFieldDefinition(
       final NodeLocation location,
@@ -41,9 +42,11 @@ public class ViewFieldDefinition extends ColumnDefinition {
       final DataType type,
       final @Nullable String charsetName,
       final @Nullable String comment,
-      final @Nullable Identifier from) {
+      final @Nullable Identifier from,
+      final boolean explicitFrom) {
     super(location, name, type, TsTableColumnCategory.FIELD, charsetName, comment);
     this.from = from;
+    this.explicitFrom = explicitFrom;
   }
 
   @Override
@@ -57,17 +60,23 @@ public class ViewFieldDefinition extends ColumnDefinition {
     return from;
   }
 
+  public boolean isExplicitFrom() {
+    return explicitFrom;
+  }
+
   public <R, C> R accept(final IAstVisitor<R, C> visitor, C context) {
     return ((AstVisitor<R, C>) visitor).visitViewFieldDefinition(this, context);
   }
 
   @Override
   public boolean equals(final Object o) {
-    return super.equals(o) && Objects.equals(from, ((ViewFieldDefinition) o).from);
+    return super.equals(o)
+        && explicitFrom == ((ViewFieldDefinition) o).explicitFrom
+        && Objects.equals(from, ((ViewFieldDefinition) o).from);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), from);
+    return Objects.hash(super.hashCode(), from, explicitFrom);
   }
 }

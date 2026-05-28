@@ -35,7 +35,9 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -88,6 +90,9 @@ public class IoTDBDeviceIT {
           "count(devices),",
           Collections.singleton("0,"));
 
+      statement.execute(
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('2', 'orchid', '4', 'B', 18.5, 22.2)");
+
       // Test show / count with where expression
       // Test AND
       TestUtils.assertResultSetEqual(
@@ -104,7 +109,7 @@ public class IoTDBDeviceIT {
       // Test complicated query
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "show devices from table0 where region_id < plant_id offset 0 limit 1"),
+              "show devices from table0 where region_id < plant_id and model = 'A' offset 0 limit 1"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,木兰,3,A,"));
       TestUtils.assertResultSetEqual(
@@ -114,12 +119,12 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0 where region_id < plant_id"),
           "count(devices),",
-          Collections.singleton("1,"));
+          Collections.singleton("2,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where substring(region_id, cast((cast(device_id as int32) - 2) as int32), 1) < plant_id"),
+              "count devices from table0 where substring(plant_id, cast((cast(device_id as int32) - 2) as int32), 1) in ('木', 'r')"),
           "count(devices),",
-          Collections.singleton("1,"));
+          Collections.singleton("2,"));
       // Test get from cache
       statement.executeQuery(
           "select * from table0 where region_id = '1' and plant_id in ('木兰', '5') and device_id = '3'");
@@ -142,7 +147,7 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table0 where region_id >= '2'"),
           "count(devices),",
-          Collections.singleton("0,"));
+          Collections.singleton("1,"));
       // Test cache with complicated filter
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -177,7 +182,7 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from test.table0"),
           "count(devices),",
-          Collections.singleton("1,"));
+          Collections.singleton("2,"));
 
       // Test update
       statement.execute("use test");
@@ -253,7 +258,7 @@ public class IoTDBDeviceIT {
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,木兰,3,null,"));
+          new HashSet<>(Arrays.asList("1,木兰,3,null,", "2,orchid,4,null,")));
 
       // Test common result column
       statement.execute(
@@ -262,7 +267,7 @@ public class IoTDBDeviceIT {
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,木兰,3,3,"));
+          new HashSet<>(Arrays.asList("1,木兰,3,3,", "2,orchid,4,null,")));
 
       // Test limit / offset from multi regions
       statement.execute(
@@ -275,12 +280,12 @@ public class IoTDBDeviceIT {
 
       // Test delete devices
       statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
-      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
 
       // Test successfully Invalidate cache
       statement.execute(
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
-      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 3);
 
       // Test successfully delete data
       TestUtils.assertResultSetSize(

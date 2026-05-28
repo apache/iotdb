@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class TestPlanBuilder {
 
@@ -101,7 +102,8 @@ public class TestPlanBuilder {
             pushDownLimit,
             pushDownOffset,
             pushLimitToEachDevice,
-            containsNonAlignedDevice);
+            containsNonAlignedDevice,
+            Optional.empty());
     return this;
   }
 }

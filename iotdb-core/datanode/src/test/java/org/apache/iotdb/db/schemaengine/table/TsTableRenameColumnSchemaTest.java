@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
@@ -42,7 +42,7 @@ public class TsTableRenameColumnSchemaTest {
     Assert.assertNotNull(table.getColumnSchema("new_field"));
     Assert.assertEquals("new_field", table.getColumnSchema("new_field").getColumnName());
     Assert.assertEquals(
-        "old_field", TreeViewSchema.getOriginalName(table.getColumnSchema("new_field")));
+        "old_field", ViewColumnSchemaUtils.getMappedSourceName(table.getColumnSchema("new_field")));
   }
 
   @Test

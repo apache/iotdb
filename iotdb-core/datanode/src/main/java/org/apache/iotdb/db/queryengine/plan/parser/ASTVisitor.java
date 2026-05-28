@@ -5145,7 +5145,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             ctx.comment() == null
                 ? null
                 : parseStringLiteral(ctx.comment().STRING_LITERAL().getText()),
-            originalMeasurement)
+            originalMeasurement,
+            Objects.nonNull(ctx.FROM()))
         : new ColumnDefinition(
             null,
             columnName,

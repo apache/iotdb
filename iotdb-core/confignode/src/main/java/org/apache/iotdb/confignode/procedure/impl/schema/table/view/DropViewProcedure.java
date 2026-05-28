@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.TableSchemaObjectType;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
@@ -36,6 +41,26 @@ public class DropViewProcedure extends DropTableProcedure {
       final String queryId,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
+  }
+
+  @Override
+  protected TableSchemaObjectType getTableSchemaObjectType() {
+    return TableSchemaObjectType.VIEW;
+  }
+
+  @Override
+  protected ConfigPhysicalPlan createPreDeleteTablePlan() {
+    return new PreDeleteViewPlan(database, tableName);
+  }
+
+  @Override
+  protected DropTableState getStateAfterInvalidateCache() {
+    return DropTableState.DROP_TABLE;
+  }
+
+  @Override
+  protected ConfigPhysicalPlan createCommitDeleteTablePlan() {
+    return new CommitDeleteViewPlan(database, tableName);
   }
 
   @Override

@@ -19,20 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
@@ -53,6 +66,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeAlignedDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeDeviceViewTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.treeNonAlignedDeviceViewTableScan;
+import static org.junit.Assert.assertEquals;
 
 public class TreeViewTest {
 
@@ -68,6 +82,11 @@ public class TreeViewTest {
     TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
     tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
     tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
+    tsTable.addColumnSchema(new TimeColumnSchema(TsTable.TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.INT64));
     DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
   }
@@ -134,6 +153,37 @@ public class TreeViewTest {
             DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
             ImmutableList.of("tag1", "s1"),
             ImmutableSet.of("tag1", "s1")));
+  }
+
+  @Test
+  public void internalShowDeviceAnalyzeTest() {
+    final ShowDevice statement = new ShowDevice(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE);
+    final Metadata metadata =
+        new TestMetadata() {
+          @Override
+          public boolean tableExists(final QualifiedObjectName name) {
+            return super.tableExists(name)
+                || (TREE_VIEW_DB.equals(name.getDatabaseName())
+                    && DEVICE_VIEW_TEST_TABLE.equals(name.getObjectName()));
+          }
+        };
+    final SessionInfo sessionInfo =
+        new SessionInfo(0, "test", ZoneId.systemDefault(), TREE_VIEW_DB, SqlDialect.TABLE);
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "internal show device for tree view",
+            new QueryId("tree_view_internal_show_device"),
+            sessionInfo,
+            null,
+            null);
+
+    AnalyzerTest.analyzeStatement(statement, metadata, context, new SqlParser(), sessionInfo);
+
+    assertEquals(
+        ImmutableList.of("tag1", "tag2", "__aligned", "__database"),
+        statement.getColumnHeaderList().stream()
+            .map(columnHeader -> columnHeader.getColumnName())
+            .collect(ImmutableList.toImmutableList()));
   }
 
   @Test

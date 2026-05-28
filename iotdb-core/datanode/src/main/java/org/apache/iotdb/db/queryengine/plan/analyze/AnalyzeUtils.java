@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -351,13 +353,22 @@ public class AnalyzeUtils {
     final String databaseName = getDatabaseName(node, queryContext);
     node.setDatabaseName(databaseName);
 
-    final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    Expression rewrittenExpression = node.getWhere().orElse(null);
 
     DataNodeTreeViewSchemaUtils.checkTableInWrite(databaseName, table);
+    if (table instanceof WritableView) {
+      final WritableView writableView = (WritableView) table;
+      rewrittenExpression =
+          WritableViewUtils.rewriteExpressionToSource(
+              rewrittenExpression, writableView.getViewColumnToSourceColumnMap());
+      table =
+          DataNodeTableCache.getInstance()
+              .getTable(writableView.getSourceTableDatabase(), writableView.getSourceTableName());
+    }
     // Maybe set by pipe transfer
     if (Objects.isNull(node.getTableDeletionEntries())) {
-      node.setTableDeletionEntries(
-          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+      node.setTableDeletionEntries(parseExpressions2ModEntries(rewrittenExpression, table));
     }
   }
 

@@ -37,7 +37,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.ratis.util.MemoizedSupplier;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.audit.AbstractAuditLogger.OBJECT_AUTHENTICATION_AUDIT_STR;
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
@@ -469,24 +472,68 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
         () -> AuthorityChecker.ANY_SCOPE, privilege, auditEntity, result);
   }
 
+  @Override
+  public void checkTablePrivileges(
+      final String userName,
+      final QualifiedObjectName tableName,
+      final List<TableModelPrivilege> privileges,
+      final IAuditEntity auditEntity) {
+    auditEntity.setDatabase(tableName.getDatabaseName());
+    final List<PrivilegeType> privilegeTypes =
+        privileges.stream().map(TableModelPrivilege::getPrivilegeType).collect(Collectors.toList());
+    if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          auditEntity
+              .setAuditLogOperation(privileges.get(0).getAuditLogOperation())
+              .setPrivilegeTypes(privilegeTypes)
+              .setResult(true),
+          tableName::getObjectName);
+      return;
+    }
+    final TSStatus result =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkTablePermission(
+                userName, tableName.getDatabaseName(), tableName.getObjectName(), privilegeTypes),
+            privilegeTypes,
+            tableName.getDatabaseName(),
+            tableName.getObjectName());
+    recordAuditLogViaAuthenticationResult(
+        tableName::getObjectName, privileges, auditEntity, result);
+  }
+
   private void recordAuditLogViaAuthenticationResult(
-      Supplier<String> auditObject,
-      TableModelPrivilege privilege,
-      IAuditEntity auditEntity,
-      TSStatus result) {
+      final Supplier<String> auditObject,
+      final TableModelPrivilege privilege,
+      final IAuditEntity auditEntity,
+      final TSStatus result) {
+    recordAuditLogViaAuthenticationResult(
+        auditObject, Collections.singletonList(privilege), auditEntity, result);
+  }
+
+  private void recordAuditLogViaAuthenticationResult(
+      final Supplier<String> auditObject,
+      final List<TableModelPrivilege> privileges,
+      final IAuditEntity auditEntity,
+      final TSStatus result) {
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
-              .setAuditLogOperation(privilege.getAuditLogOperation())
-              .setPrivilegeType(privilege.getPrivilegeType())
+              .setAuditLogOperation(privileges.get(0).getAuditLogOperation())
+              .setPrivilegeTypes(
+                  privileges.stream()
+                      .map(TableModelPrivilege::getPrivilegeType)
+                      .collect(Collectors.toList()))
               .setResult(false),
           auditObject);
       throw new AccessDeniedException(result.getMessage());
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
-            .setAuditLogOperation(privilege.getAuditLogOperation())
-            .setPrivilegeType(privilege.getPrivilegeType())
+            .setAuditLogOperation(privileges.get(0).getAuditLogOperation())
+            .setPrivilegeTypes(
+                privileges.stream()
+                    .map(TableModelPrivilege::getPrivilegeType)
+                    .collect(Collectors.toList()))
             .setResult(true),
         auditObject);
   }

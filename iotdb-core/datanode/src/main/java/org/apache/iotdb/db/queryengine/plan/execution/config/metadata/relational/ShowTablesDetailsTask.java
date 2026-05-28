@@ -46,9 +46,10 @@ import java.util.stream.Collectors;
 public class ShowTablesDetailsTask implements IConfigTask {
 
   private final String database;
-  private final Predicate<String> checkCanShowTable;
+  private final Predicate<TTableInfo> checkCanShowTable;
 
-  public ShowTablesDetailsTask(final String database, final Predicate<String> checkCanShowTable) {
+  public ShowTablesDetailsTask(
+      final String database, final Predicate<TTableInfo> checkCanShowTable) {
     this.database = database;
     this.checkCanShowTable = checkCanShowTable;
   }
@@ -62,7 +63,7 @@ public class ShowTablesDetailsTask implements IConfigTask {
   public static void buildTsBlock(
       final List<TTableInfo> tableInfoList,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> checkCanShowTable) {
+      final Predicate<TTableInfo> checkCanShowTable) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showTablesDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -71,7 +72,7 @@ public class ShowTablesDetailsTask implements IConfigTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
     tableInfoList.stream()
-        .filter(t -> checkCanShowTable.test(t.getTableName()))
+        .filter(checkCanShowTable)
         .sorted(Comparator.comparing(TTableInfo::getTableName))
         .forEach(
             tableInfo -> {
@@ -104,7 +105,14 @@ public class ShowTablesDetailsTask implements IConfigTask {
                               ? TableType.values()[tableInfo.getType()].getName()
                               : TableType.BASE_TABLE.getName(),
                           TSFileConfig.STRING_CHARSET));
-
+              if (tableInfo.isSetOriginalTableName()) {
+                builder
+                    .getColumnBuilder(5)
+                    .writeBinary(
+                        new Binary(tableInfo.getOriginalTableName(), TSFileConfig.STRING_CHARSET));
+              } else {
+                builder.getColumnBuilder(5).appendNull();
+              }
               builder.declarePosition();
             });
 

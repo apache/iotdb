@@ -358,6 +358,10 @@ public class PipeTsFileInsertionEventTest {
         String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 
     @Override
+    public void checkCanCreateWritableViewFromSourceTable(
+        QualifiedObjectName tableName, IAuditEntity auditEntity, boolean isCascade) {}
+
+    @Override
     public void checkCanShowOrDescTable(
         String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {}
 

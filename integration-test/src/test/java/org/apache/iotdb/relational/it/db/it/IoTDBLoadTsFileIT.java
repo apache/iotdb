@@ -71,6 +71,7 @@ public class IoTDBLoadTsFileIT {
     tmpDir = new File(Files.createTempDirectory("load").toUri());
     EnvFactory.getEnv().getConfig().getCommonConfig().setTimePartitionInterval(PARTITION_INTERVAL);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
     EnvFactory.getEnv()
         .getConfig()
         .getDataNodeConfig()
@@ -298,6 +299,281 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadTsFileToWritableViewRedirectsToSourceTable() throws Exception {
+    final File file = new File(tmpDir, "writable-view-target.tsfile");
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(
+          "writable_view",
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32)),
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
+      generator.generateData("writable_view", 10, PARTITION_INTERVAL / 10);
+    }
+
+    final String database = "load_writable_view_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "create table source_table(source_device string tag, source_temperature int32 field)");
+      statement.execute(
+          "create writable view writable_view as select source_device as device_id, "
+              + "source_temperature as temperature from source_table");
+
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s', 'tablet-conversion-threshold'='-1')",
+              file.getAbsolutePath(), database));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from source_table")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(10, resultSet.getLong(1));
+      }
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from writable_view")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(10, resultSet.getLong(1));
+      }
+    }
+  }
+
+  @Test
+  public void testLoadTsFileWithWritableViewAndRegularTableUsesTabletConversion() throws Exception {
+    final File file = new File(tmpDir, "writable-view-and-regular-table.tsfile");
+    try (final TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      final List<IMeasurementSchema> viewSchemas =
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("label", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32));
+      final List<ColumnCategory> viewColumnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+      tsFileWriter.registerTableSchema(
+          new TableSchema("writable_view", viewSchemas, viewColumnCategories));
+
+      final Tablet viewTablet =
+          new Tablet(
+              "writable_view",
+              Arrays.asList("device_id", "label", "temperature"),
+              Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT32),
+              viewColumnCategories);
+      addTabletRow(viewTablet, 1L, "d1", "A", 10);
+      addTabletRow(viewTablet, 2L, "d2", "B", 20);
+      addTabletRow(viewTablet, 3L, "d1", "A", 11);
+      tsFileWriter.writeTable(viewTablet);
+
+      final List<IMeasurementSchema> regularSchemas =
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32));
+      final List<ColumnCategory> regularColumnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+      tsFileWriter.registerTableSchema(
+          new TableSchema("regular_table", regularSchemas, regularColumnCategories));
+
+      final Tablet regularTablet =
+          new Tablet(
+              "regular_table",
+              Arrays.asList("device_id", "temperature"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT32),
+              regularColumnCategories);
+      addTabletRow(regularTablet, 1L, "r1", 100);
+      addTabletRow(regularTablet, 2L, "r2", 200);
+      addTabletRow(regularTablet, 3L, "r1", 101);
+      addTabletRow(regularTablet, 4L, "r2", 201);
+      tsFileWriter.writeTable(regularTablet);
+    }
+
+    final String database = "load_writable_view_mixed_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "create table source_table("
+              + "source_device string tag, "
+              + "source_label string field, "
+              + "source_temperature int32 field)");
+      statement.execute(
+          "create writable view writable_view as select "
+              + "source_device as device_id, "
+              + "source_label as label, "
+              + "source_temperature as temperature "
+              + "from source_table");
+      statement.execute(
+          "create table regular_table(device_id string tag, temperature int32 field)");
+
+      statement.execute(
+          String.format(
+              "load '%s' with ('convert-on-type-mismatch'='false')", file.getAbsolutePath()));
+
+      assertWritableViewLoadedRows(
+          statement, "source_table", "source_device", "source_label", "source_temperature");
+      assertWritableViewLoadedRows(statement, "writable_view", "device_id", "label", "temperature");
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from regular_table")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(4, resultSet.getLong(1));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testLoadMiniTsFileToWritableViewUsesSessionDatabaseForTabletConversion()
+      throws Exception {
+    final File file = new File(tmpDir, "writable-view-mini.tsfile");
+    try (final TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      final List<IMeasurementSchema> schemas =
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32));
+      final List<ColumnCategory> columnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+      tsFileWriter.registerTableSchema(new TableSchema("writable_view", schemas, columnCategories));
+
+      final Tablet tablet =
+          new Tablet(
+              "writable_view",
+              Arrays.asList("device_id", "temperature"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT32),
+              columnCategories);
+      addTabletRow(tablet, 1L, "d1", 10);
+      addTabletRow(tablet, 2L, "d2", 20);
+      tsFileWriter.writeTable(tablet);
+    }
+
+    final String database = "load_writable_view_mini_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "create table source_table(source_device string tag, source_temperature int32 field)");
+      statement.execute(
+          "create writable view writable_view as select source_device as device_id, "
+              + "source_temperature as temperature from source_table");
+
+      statement.execute(
+          String.format(
+              "load '%s' with ('tablet-conversion-threshold'='%d')",
+              file.getAbsolutePath(), Long.MAX_VALUE));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "select time, source_device, source_temperature from source_table order by time")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(1L, resultSet.getLong("time"));
+        Assert.assertEquals("d1", resultSet.getString("source_device"));
+        Assert.assertEquals(10, resultSet.getInt("source_temperature"));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(2L, resultSet.getLong("time"));
+        Assert.assertEquals("d2", resultSet.getString("source_device"));
+        Assert.assertEquals(20, resultSet.getInt("source_temperature"));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testLoadDirectoryWithWritableViewAndRegularTableTsFilesUsesTabletConversion()
+      throws Exception {
+    final File writableViewFile = new File(tmpDir, "1-0-0-0.tsfile");
+    try (final TsFileWriter tsFileWriter = new TsFileWriter(writableViewFile)) {
+      final List<IMeasurementSchema> viewSchemas =
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("label", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32));
+      final List<ColumnCategory> viewColumnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+      tsFileWriter.registerTableSchema(
+          new TableSchema("writable_view", viewSchemas, viewColumnCategories));
+
+      final Tablet viewTablet =
+          new Tablet(
+              "writable_view",
+              Arrays.asList("device_id", "label", "temperature"),
+              Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.INT32),
+              viewColumnCategories);
+      addTabletRow(viewTablet, 1L, "d1", "A", 10);
+      addTabletRow(viewTablet, 2L, "d2", "B", 20);
+      addTabletRow(viewTablet, 3L, "d1", "A", 11);
+      tsFileWriter.writeTable(viewTablet);
+    }
+
+    final File regularTableFile = new File(tmpDir, "2-0-0-0.tsfile");
+    try (final TsFileWriter tsFileWriter = new TsFileWriter(regularTableFile)) {
+      final List<IMeasurementSchema> regularSchemas =
+          Arrays.asList(
+              new MeasurementSchema("device_id", TSDataType.STRING),
+              new MeasurementSchema("temperature", TSDataType.INT32));
+      final List<ColumnCategory> regularColumnCategories =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+      tsFileWriter.registerTableSchema(
+          new TableSchema("regular_table", regularSchemas, regularColumnCategories));
+
+      final Tablet regularTablet =
+          new Tablet(
+              "regular_table",
+              Arrays.asList("device_id", "temperature"),
+              Arrays.asList(TSDataType.STRING, TSDataType.INT32),
+              regularColumnCategories);
+      addTabletRow(regularTablet, 1L, "r1", 100);
+      addTabletRow(regularTablet, 2L, "r2", 200);
+      tsFileWriter.writeTable(regularTablet);
+    }
+
+    final String database = "load_writable_view_directory_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database " + database);
+      statement.execute("use " + database);
+      statement.execute(
+          "create table source_table("
+              + "source_device string tag, "
+              + "source_label string field, "
+              + "source_temperature int32 field)");
+      statement.execute(
+          "create writable view writable_view as select "
+              + "source_device as device_id, "
+              + "source_label as label, "
+              + "source_temperature as temperature "
+              + "from source_table");
+      statement.execute(
+          "create table regular_table(device_id string tag, temperature int32 field)");
+
+      statement.execute(
+          String.format(
+              "load '%s' with ('convert-on-type-mismatch'='false')", tmpDir.getAbsolutePath()));
+
+      assertWritableViewLoadedRows(
+          statement, "source_table", "source_device", "source_label", "source_temperature");
+      assertWritableViewLoadedRows(statement, "writable_view", "device_id", "label", "temperature");
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "select time, device_id, temperature from regular_table order by time")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(1L, resultSet.getLong("time"));
+        Assert.assertEquals("r1", resultSet.getString("device_id"));
+        Assert.assertEquals(100, resultSet.getInt("temperature"));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(2L, resultSet.getLong("time"));
+        Assert.assertEquals("r2", resultSet.getString("device_id"));
+        Assert.assertEquals(200, resultSet.getInt("temperature"));
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testLoadWithTimeColumn() throws Exception {
     final int lineCount = 10000;
 
@@ -447,6 +723,59 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(String.format("drop database %s", SchemaConfig.DATABASE_0));
     }
+  }
+
+  private void addTabletRow(final Tablet tablet, final long time, final Object... values) {
+    final int row = tablet.getRowSize();
+    tablet.addTimestamp(row, time);
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] instanceof String) {
+        tablet.addValue(row, i, (String) values[i]);
+      } else if (values[i] instanceof Integer) {
+        tablet.addValue(row, i, (int) values[i]);
+      } else {
+        throw new IllegalArgumentException("Unsupported tablet test value: " + values[i]);
+      }
+    }
+  }
+
+  private void assertWritableViewLoadedRows(
+      final Statement statement,
+      final String tableName,
+      final String deviceColumn,
+      final String labelColumn,
+      final String temperatureColumn)
+      throws Exception {
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format(
+                "select time, %s, %s, %s from %s order by time, %s",
+                deviceColumn, labelColumn, temperatureColumn, tableName, deviceColumn))) {
+      assertWritableViewLoadedRow(
+          resultSet, 1L, deviceColumn, "d1", labelColumn, "A", temperatureColumn, 10);
+      assertWritableViewLoadedRow(
+          resultSet, 2L, deviceColumn, "d2", labelColumn, "B", temperatureColumn, 20);
+      assertWritableViewLoadedRow(
+          resultSet, 3L, deviceColumn, "d1", labelColumn, "A", temperatureColumn, 11);
+      Assert.assertFalse(resultSet.next());
+    }
+  }
+
+  private void assertWritableViewLoadedRow(
+      final ResultSet resultSet,
+      final long expectedTime,
+      final String deviceColumn,
+      final String expectedDevice,
+      final String labelColumn,
+      final String expectedLabel,
+      final String temperatureColumn,
+      final int expectedTemperature)
+      throws Exception {
+    Assert.assertTrue(resultSet.next());
+    Assert.assertEquals(expectedTime, resultSet.getLong("time"));
+    Assert.assertEquals(expectedDevice, resultSet.getString(deviceColumn));
+    Assert.assertEquals(expectedLabel, resultSet.getString(labelColumn));
+    Assert.assertEquals(expectedTemperature, resultSet.getInt(temperatureColumn));
   }
 
   private List<ColumnCategory> generateTabletColumnCategory(final int fieldNum) {

@@ -2812,21 +2812,53 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case PRE_UPDATE_TABLE:
         final Pair<String, TsTable> pair =
             TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getTableInfo());
-        DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
+        if (!req.isSetOriginalInfo()) {
+          DataNodeTableCache.getInstance().preUpdateTable(pair.left, pair.right, req.oldName);
+        } else {
+          final Pair<String, TsTable> pair2 =
+              TsTableInternalRPCUtil.deserializeSingleTsTableWithDatabase(req.getOriginalInfo());
+          // Original table does not support renaming
+          DataNodeTableCache.getInstance()
+              .preUpdateTable(pair.left, pair2.left, pair.right, pair2.right);
+        }
         break;
       case ROLLBACK_UPDATE_TABLE:
-        DataNodeTableCache.getInstance()
-            .rollbackUpdateTable(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+        if (!req.isSetOriginalInfo()) {
+          DataNodeTableCache.getInstance()
+              .rollbackUpdateTable(
+                  ReadWriteIOUtils.readString(req.tableInfo),
+                  ReadWriteIOUtils.readString(req.tableInfo),
+                  req.oldName);
+        } else {
+          DataNodeTableCache.getInstance()
+              .rollbackUpdateTable(
+                  ReadWriteIOUtils.readString(req.tableInfo),
+                  ReadWriteIOUtils.readString(req.originalInfo),
+                  ReadWriteIOUtils.readString(req.tableInfo),
+                  ReadWriteIOUtils.readString(req.originalInfo));
+        }
         break;
       case COMMIT_UPDATE_TABLE:
-        DataNodeTableCache.getInstance()
-            .commitUpdateTable(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo),
-                req.oldName);
+        final boolean committed;
+        if (!req.isSetOriginalInfo()) {
+          final String database = ReadWriteIOUtils.readString(req.tableInfo);
+          final String tableName = ReadWriteIOUtils.readString(req.tableInfo);
+          committed =
+              DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, req.oldName);
+        } else {
+          final String database = ReadWriteIOUtils.readString(req.tableInfo);
+          final String originalDatabase = ReadWriteIOUtils.readString(req.originalInfo);
+          final String tableName = ReadWriteIOUtils.readString(req.tableInfo);
+          final String originalTableName = ReadWriteIOUtils.readString(req.originalInfo);
+          committed =
+              DataNodeTableCache.getInstance()
+                  .commitUpdateTable(database, originalDatabase, tableName, originalTableName);
+        }
+        if (!committed) {
+          return RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              "Failed to commit table cache because the pre-updated table is not committable");
+        }
         break;
       default:
         LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TABLE, req.type);
@@ -2840,8 +2872,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance()
         .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
-      TableDeviceSchemaCache.getInstance()
-          .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
+      if (!req.isSetOriginalDatabase() || !req.isSetOriginalTableName()) {
+        TableDeviceSchemaCache.getInstance()
+            .invalidate(PathUtils.unQualifyDatabaseName(req.getDatabase()), req.getTableName());
+      } else {
+        TableDeviceSchemaCache.getInstance()
+            .invalidate(
+                PathUtils.unQualifyDatabaseName(req.getDatabase()),
+                req.getTableName(),
+                PathUtils.unQualifyDatabaseName(req.getOriginalDatabase()),
+                req.getOriginalTableName());
+      }
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()
@@ -3031,12 +3072,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance()
         .takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     try {
-      TableDeviceSchemaCache.getInstance()
-          .invalidate(
-              req.getDatabase(),
-              req.getTableName(),
-              req.getColumnName(),
-              req.isIsAttributeColumn());
+      if (!req.isSetOriginalDatabase()) {
+        TableDeviceSchemaCache.getInstance()
+            .invalidate(
+                req.getDatabase(),
+                req.getTableName(),
+                req.getColumnName(),
+                req.isIsAttributeColumn());
+      } else {
+        TableDeviceSchemaCache.getInstance()
+            .invalidate(
+                req.getDatabase(),
+                req.getTableName(),
+                req.getColumnName(),
+                req.isIsAttributeColumn(),
+                req.getOriginalDatabase(),
+                req.getOriginalTableName(),
+                req.getOriginalColumnName());
+      }
       return StatusUtils.OK;
     } finally {
       DataNodeSchemaLockManager.getInstance()

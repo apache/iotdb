@@ -929,6 +929,7 @@ public final class ProcedureMessages {
   public static final String SUCCESSFULLY_STOPPED_AINODE = "Successfully stopped AINode {}";
   public static final String TABLE_ALREADY_EXISTS = "Table '%s.%s' already exists.";
   public static final String TABLE_NOT_EXISTS = "Table '%s.%s' not exists.";
+  public static final String TABLE_DOES_NOT_EXIST = "表 '%s.%s' 不存在";
   public static final String TARGET_DEVICE_TEMPLATE_IS_NOT_ACTIVATED_ON_ANY_PATH_MATCHED =
       "Target Device Template is not activated on any path matched by given path pattern";
   public static final String TASK_CANNOT_GET_TASK_REPORT_FROM_DATANODE_LAST_REPORT_TIME =
@@ -1084,5 +1085,60 @@ public final class ProcedureMessages {
   public static final String THERE_EXIST_DATA_NODE_IN_REQUEST_BUT_NOT_IN_CLUSTER = "请求中存在不在集群中的 DataNode";
 
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE = "在共识层执行写入 API 失败，原因：";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE =
+      "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在。";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+      "跳过可写视图 {}.{} 的 schema 级联，因为源表 {}.{} 不存在：{}";
+  public static final String TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION =
+      "表 '%s.%s' 不是可写视图，请检查实现";
+  public static final String SET_WRITABLE_VIEW_PROPERTIES = "设置可写视图属性";
+  public static final String RENAME_WRITABLE_VIEW = "重命名可写视图";
+  public static final String RENAME_WRITABLE_VIEW_COLUMN = "重命名可写视图列";
+  public static final String DROP_WRITABLE_VIEW = "删除可写视图";
+  public static final String DROP_WRITABLE_VIEW_COLUMN = "删除可写视图列";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_DATA_TYPE_PROCEDURE =
+      "修改可写视图列数据类型流程";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_ON =
+      "修改可写视图 %s.%s 的列：%s";
+  public static final String UNKNOWN_COLUMNS = "未知列";
+  public static final String WRITABLE_VIEW_ADD_COLUMN_UNSUPPORTED_TREE_VIEW_FROM =
+      "可写视图 ADD COLUMN 不支持树视图 FROM 语法。请使用 source AS view 语法。";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST_CANNOT_INFER_SCHEMA =
+      "源列 '%s.%s.%s' 不存在，可写视图列 '%s' 无法推断其 schema";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_EXIST_WHEN_SCHEMA_CASCADE_FALSE =
+      "schema_cascade=false 时，可写视图列 '%s' 必须已存在于源表 '%s.%s'";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST_CANNOT_INFER_SOURCE_COLUMN =
+      "源表 '%s.%s' 不存在，可写视图列 '%s' 无法从源列 '%s' 推断 schema";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_MATCH_SOURCE_COLUMN =
+      "可写视图列 '%s' 的列类别和数据类型必须与源列 '%s.%s.%s' 一致";
+  public static final String VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN =
+      "视图列 %s 和 %s 不能来自同一个源列 %s";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST = "源表 '%s.%s' 不存在。";
+  public static final String SOURCE_TABLE_IS_NOT_BASE_TABLE =
+      "源表 '%s.%s' 不是基础表。";
+  public static final String WRITABLE_VIEW_CANNOT_MAP_MULTIPLE_COLUMNS_FROM_SOURCE_COLUMN =
+      "可写视图不能将多个视图列映射到同一个源列 %s";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST = "源列 '%s.%s.%s' 不存在。";
+  public static final String ALTER_COLUMN_DATA_TYPE_REQUIRES_SCHEMA_CASCADE_TRUE =
+      "ALTER COLUMN DATA TYPE 要求 schema_cascade=true";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_SCHEMA_CASCADE =
+      "可写视图源表同步仅支持 schema 级联";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_WRITABLE_VIEW_RECEIVER =
+      "可写视图的 Alter/Drop 同步在接收端仅支持可写视图";
+  public static final String WRITABLE_VIEW_SCHEMA_CASCADE_PROPERTY_ONLY_FOR_WRITABLE_VIEW =
+      "属性 'schema_cascade' 只能为可写视图设置";
+  public static final String SKIP_ROLLBACK_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+      "跳过可写视图 {}.{} 的 schema 级联回滚，因为源表 {}.{} 不存在：{}";
+  public static final String FAILED_TO_DROP_WRITABLE_VIEW_SOURCE_COLUMN_CATEGORY_MISMATCH =
+      "删除列失败，因为源列 %s.%s.%s 的列类别为 %s，但视图列 %s.%s.%s 的列类别为 %s。";
+  public static final String UNEXPECTED_PLAN_CARRIES_ORIGINAL_TABLE_METADATA_FOR_DROP_COLUMN =
+      "非预期的计划 %s 携带源表元数据用于删除列 %s.%s.%s。";
+  public static final String EXPECTED_WRITABLE_VIEW_WHEN_ROLLING_BACK_COLUMN_MAPPINGS =
+      "回滚计划 %s 在 %s.%s 上的列映射时预期目标为可写视图。";
+  public static final String UNEXPECTED_PLAN_ROLL_BACK_WRITABLE_VIEW_COLUMN_MAPPINGS =
+      "非预期的计划 %s 尝试回滚 %s.%s 的可写视图列映射。";
+  public static final String DEFENSIVE_ASSERTION_STACK_TRACE = "防御性断言堆栈";
+  public static final String UNKNOWN_TIMECHO_WRITABLE_VIEW_PHYSICAL_PLAN_CONFIG_TYPE =
+      "未知的 Timecho 可写视图 PhysicalPlan configPhysicalPlanType：%s";
   private ProcedureMessages() {}
 }

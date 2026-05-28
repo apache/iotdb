@@ -20,30 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class TreeDeviceViewSchema extends TableSchema {
+/**
+ * Relational schema wrapper for tree-device views.
+ *
+ * <p>It reuses the shared column-mapping contract only for column-display metadata; writable-view
+ * source/cascade semantics remain separate.
+ */
+public class TreeDeviceViewSchema extends SourceColumnMappedViewSchema {
   public TreeDeviceViewSchema(
       final String tableName, final List<ColumnSchema> columns, final Map<String, String> props) {
     super(tableName, columns);
     setProps(props);
-  }
-
-  public Map<String, String> getColumn2OriginalNameMap() {
-    return columns.stream()
-        .filter(
-            columnSchema ->
-                Objects.nonNull(columnSchema.getProps())
-                    && columnSchema.getProps().containsKey(TreeViewSchema.ORIGINAL_NAME))
-        .collect(
-            Collectors.toMap(
-                ColumnSchema::getName,
-                columnSchema -> columnSchema.getProps().get(TreeViewSchema.ORIGINAL_NAME)));
   }
 }

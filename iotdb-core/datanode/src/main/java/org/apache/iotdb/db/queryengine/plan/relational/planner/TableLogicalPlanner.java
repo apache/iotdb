@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
@@ -282,6 +283,9 @@ public class TableLogicalPlanner {
       CommonMetadataUtils.throwTableNotExistsException(
           targetTable.getDatabaseName(), targetTable.getObjectName());
     }
+    if (tableSchema.get() instanceof WritableViewSchema) {
+      targetTable = ((WritableViewSchema) tableSchema.get()).getSourceTableName();
+    }
 
     // insert columns
     Analysis.Insert insert = analysis.getInsert();
@@ -319,7 +323,7 @@ public class TableLogicalPlanner {
             queryContext.getQueryId().genPlanNodeId(),
             plan.getRoot(),
             targetTable.getDatabaseName(),
-            table.getName().getSuffix(),
+            targetTable.getObjectName(),
             insertColumns,
             neededInputColumnNames,
             symbolAllocator.newSymbol(Insert.ROWS, Insert.ROWS_TYPE));
@@ -418,6 +422,7 @@ public class TableLogicalPlanner {
         queryContext,
         Optional.empty(),
         sessionInfo,
+        metadata,
         ImmutableMap.of(),
         predicateWithUncorrelatedScalarSubqueryReconstructor);
   }

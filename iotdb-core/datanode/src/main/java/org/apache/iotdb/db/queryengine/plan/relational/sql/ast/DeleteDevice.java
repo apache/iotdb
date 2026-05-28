@@ -44,11 +44,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -95,6 +98,17 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   public void parseModEntries(final TsTable table) {
+    if (Objects.nonNull(getPartitionKeyList())) {
+      modEntries =
+          getPartitionKeyList().stream()
+              .map(
+                  deviceID ->
+                      new TableDeletionEntry(
+                          new DeletionPredicate(table.getTableName(), new FullExactMatch(deviceID)),
+                          new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)))
+              .collect(Collectors.toList());
+      return;
+    }
     modEntries = AnalyzeUtils.parseExpressions2ModEntries(where, table);
   }
 

@@ -28,15 +28,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
@@ -50,6 +48,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
 
 public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTableState> {
 
@@ -76,6 +75,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DropTableState state)
       throws InterruptedException {
+    mayInitOriginal();
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -123,14 +123,9 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
-  private void checkAndPreDeleteTable(final ConfigNodeProcedureEnv env) {
+  protected void checkAndPreDeleteTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            this instanceof DropViewProcedure
-                ? new PreDeleteViewPlan(database, tableName)
-                : new PreDeleteTablePlan(database, tableName),
-            env,
-            LOGGER);
+        SchemaUtils.executeInConsensusLayer(createPreDeleteTablePlan(), env, LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropTableState.INVALIDATE_CACHE);
     } else {
@@ -138,14 +133,17 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     }
   }
 
-  private void invalidateCache(final ConfigNodeProcedureEnv env) {
+  protected void invalidateCache(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+    final TInvalidateTableCacheReq req = new TInvalidateTableCacheReq(database, tableName);
+    if (getOriginalTableName() != null) {
+      req.setOriginalDatabase(getOriginalDatabase());
+      req.setOriginalTableName(getOriginalTableName());
+    }
     final DataNodeAsyncRequestContext<TInvalidateTableCacheReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE,
-            new TInvalidateTableCacheReq(database, tableName),
-            dataNodeLocationMap);
+            CnToDnAsyncRequestType.INVALIDATE_TABLE_CACHE, req, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (final TSStatus status : statusMap.values()) {
@@ -162,11 +160,17 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
       }
     }
 
-    setNextState(
-        this instanceof DropViewProcedure ? DropTableState.DROP_TABLE : DropTableState.DELETE_DATA);
+    setNextState(getStateAfterInvalidateCache());
   }
 
-  private void deleteData(final ConfigNodeProcedureEnv env) {
+  protected void deleteData(final ConfigNodeProcedureEnv env) {
+    final String database = getRegionOperationDatabase();
+    if (Objects.isNull(database)) {
+      setNextState(DropTableState.DROP_TABLE);
+      return;
+    }
+    final String tableName = getRegionOperationTableName();
+
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
@@ -185,7 +189,14 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     setNextState(DropTableState.DELETE_DEVICES);
   }
 
-  private void deleteSchema(final ConfigNodeProcedureEnv env) {
+  protected void deleteSchema(final ConfigNodeProcedureEnv env) {
+    final String database = getRegionOperationDatabase();
+    if (Objects.isNull(database)) {
+      setNextState(DropTableState.DROP_TABLE);
+      return;
+    }
+    final String tableName = getRegionOperationTableName();
+
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
@@ -204,18 +215,34 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     setNextState(DropTableState.DROP_TABLE);
   }
 
-  private void dropTable(final ConfigNodeProcedureEnv env) {
+  protected void dropTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                this instanceof DropViewProcedure
-                    ? new CommitDeleteViewPlan(database, tableName)
-                    : new CommitDeleteTablePlan(database, tableName),
-                isGeneratedByPipe);
+            .executePlan(createCommitDeleteTablePlan(), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
+  }
+
+  protected ConfigPhysicalPlan createPreDeleteTablePlan() {
+    return new PreDeleteTablePlan(database, tableName);
+  }
+
+  protected DropTableState getStateAfterInvalidateCache() {
+    return DropTableState.DELETE_DATA;
+  }
+
+  protected String getRegionOperationDatabase() {
+    return database;
+  }
+
+  protected String getRegionOperationTableName() {
+    return tableName;
+  }
+
+  protected ConfigPhysicalPlan createCommitDeleteTablePlan() {
+    return new CommitDeleteTablePlan(database, tableName);
   }
 
   @Override

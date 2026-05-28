@@ -117,6 +117,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitCreateTable,
+                  ConfigPhysicalPlanType.CommitCreateWritableView,
                   ConfigPhysicalPlanType.PipeCreateTableOrView,
                   ConfigPhysicalPlanType.AddTableColumn,
                   ConfigPhysicalPlanType.AddViewColumn)));
@@ -133,15 +134,24 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RenameView,
                   ConfigPhysicalPlanType.RenameTableColumn,
                   ConfigPhysicalPlanType.RenameViewColumn,
-                  ConfigPhysicalPlanType.AlterColumnDataType)));
+                  ConfigPhysicalPlanType.AlterColumnDataType,
+                  ConfigPhysicalPlanType.AddWritableViewColumn,
+                  ConfigPhysicalPlanType.RenameWritableView,
+                  ConfigPhysicalPlanType.SetWritableViewProperties,
+                  ConfigPhysicalPlanType.RenameWritableViewColumn,
+                  ConfigPhysicalPlanType.AlterWritableViewColumnDataType,
+                  ConfigPhysicalPlanType.SetWritableViewColumnComment,
+                  ConfigPhysicalPlanType.SetWritableViewComment)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.CommitDeleteTable,
                   ConfigPhysicalPlanType.CommitDeleteView,
+                  ConfigPhysicalPlanType.CommitDeleteWritableView,
                   ConfigPhysicalPlanType.CommitDeleteColumn,
                   ConfigPhysicalPlanType.CommitDeleteViewColumn,
+                  ConfigPhysicalPlanType.CommitDeleteWritableViewColumn,
                   ConfigPhysicalPlanType.PipeDeleteDevices)));
 
       OPTION_PLAN_MAP.put(
@@ -285,6 +295,7 @@ public class ConfigRegionListeningFilter {
             .getDatabase()
             .equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
       case CommitCreateTable:
+      case CommitCreateWritableView:
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
@@ -302,6 +313,17 @@ public class ConfigRegionListeningFilter {
       case CommitDeleteColumn:
       case CommitDeleteViewColumn:
       case PipeDeleteDevices:
+      case AddWritableViewColumn:
+      case CommitDeleteWritableViewColumn:
+      case CommitDeleteWritableView:
+      case RenameWritableView:
+      case SetWritableViewProperties:
+      case PreDeleteWritableViewColumn:
+      case PreDeleteWritableView:
+      case RenameWritableViewColumn:
+      case AlterWritableViewColumnDataType:
+      case SetWritableViewColumnComment:
+      case SetWritableViewComment:
         return !((AbstractTablePlan) plan).getDatabase().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
       // PipeEnriched & UnsetTemplate are not listened directly,
       // but their inner plan or converted plan are listened.

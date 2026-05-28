@@ -46,9 +46,10 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TableType;
-import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
@@ -434,6 +435,12 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[5].writeBinary(
             new Binary(TableType.BASE_TABLE.getName(), TSFileConfig.STRING_CHARSET));
       }
+      if (currentTable.isSetOriginalTableName()) {
+        columnBuilders[6].writeBinary(
+            new Binary(currentTable.getOriginalTableName(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[6].appendNull();
+      }
       resultBuilder.declarePosition();
       currentTable = null;
     }
@@ -469,7 +476,7 @@ public class InformationSchemaContentSupplierFactory {
     private Iterator<Map.Entry<String, TableColumnDetailInfo>> tableInfoIterator;
     private Iterator<TsTableColumnSchema> columnSchemaIterator;
     private String dbName;
-    private String tableName;
+    private TsTable table;
     private Set<String> preDeletedColumns;
     private Map<String, Byte> preAlteredColumns;
     private final UserEntity userEntity;
@@ -513,7 +520,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       final TsTableColumnSchema schema = columnSchemaIterator.next();
       columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(
           new Binary(schema.getColumnName(), TSFileConfig.STRING_CHARSET));
       columnBuilders[3].writeBinary(
@@ -533,6 +540,15 @@ public class InformationSchemaContentSupplierFactory {
             new Binary(schema.getProps().get(TsTable.COMMENT_KEY), TSFileConfig.STRING_CHARSET));
       } else {
         columnBuilders[6].appendNull();
+      }
+
+      if (ViewTableUtils.isWritableView(table)) {
+        columnBuilders[7].writeBinary(
+            new Binary(
+                ((WritableView) table).getOriginalColumnName(schema.getColumnName()),
+                TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[7].appendNull();
       }
       resultBuilder.declarePosition();
     }
@@ -557,10 +573,10 @@ public class InformationSchemaContentSupplierFactory {
           tableEntry = tableInfoIterator.next();
           if (canShowTable(
               accessControl, userEntity.getUsername(), dbName, tableEntry.getKey(), userEntity)) {
-            tableName = tableEntry.getKey();
+            table = tableEntry.getValue().getTable();
             preDeletedColumns = tableEntry.getValue().getPreDeletedColumns();
             preAlteredColumns = tableEntry.getValue().getPreAlteredColumns();
-            columnSchemaIterator = tableEntry.getValue().getTable().getColumnList().iterator();
+            columnSchemaIterator = table.getColumnList().iterator();
             break;
           }
         }
@@ -865,7 +881,10 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(currentTable.getTableName(), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(
           new Binary(
-              ShowCreateViewTask.getShowCreateViewSQL(currentTable), TSFileConfig.STRING_CHARSET));
+              ViewTableUtils.isWritableView(currentTable)
+                  ? ShowCreateViewTask.getShowCreateWritableViewSQL((WritableView) currentTable)
+                  : ShowCreateViewTask.getShowCreateViewSQL(currentTable),
+              TSFileConfig.STRING_CHARSET));
       resultBuilder.declarePosition();
       currentTable = null;
     }
@@ -888,7 +907,8 @@ public class InformationSchemaContentSupplierFactory {
 
         while (tableInfoIterator.hasNext()) {
           final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
-          if (!TreeViewSchema.isTreeViewTable(tableEntry.getValue().getLeft())
+          final TsTable table = tableEntry.getValue().getLeft();
+          if (!ViewTableUtils.isView(table)
               || !canShowTable(
                   accessControl,
                   userEntity.getUsername(),
@@ -897,7 +917,7 @@ public class InformationSchemaContentSupplierFactory {
                   userEntity)) {
             continue;
           }
-          currentTable = tableEntry.getValue().getLeft();
+          currentTable = table;
           return true;
         }
       }
@@ -1348,10 +1368,11 @@ public class InformationSchemaContentSupplierFactory {
         while (dataRegionIterator.nextDataRegion()) {
           currentDataRegion = dataRegionIterator.currentDataRegion();
           for (Long timePartition : currentDataRegion.getTsFileManager().getTimePartitions()) {
-            Map<String, Long> tablesToScan = getTablesToScan(currentDataRegion, timePartition);
-            if (!tablesToScan.isEmpty()) {
+            TimePartitionTableSizeQueryContext tableSizeQueryContext =
+                getTablesToScan(currentDataRegion, timePartition);
+            if (!tableSizeQueryContext.getTableSizeResultMap().isEmpty()) {
               currentDataRegionTableSizeQueryContext.addTimePartition(
-                  timePartition, new TimePartitionTableSizeQueryContext(tablesToScan));
+                  timePartition, tableSizeQueryContext);
             }
           }
           if (currentDataRegionTableSizeQueryContext.isEmpty()) {
@@ -1405,17 +1426,20 @@ public class InformationSchemaContentSupplierFactory {
               + RpcUtils.MILLISECOND);
     }
 
-    private Map<String, Long> getTablesToScan(DataRegion dataRegion, long timePartition) {
+    private TimePartitionTableSizeQueryContext getTablesToScan(
+        DataRegion dataRegion, long timePartition) {
       String databaseName = dataRegion.getDatabaseName();
       List<TTableInfo> tTableInfos = databaseTableInfoMap.get(databaseName);
       if (tTableInfos == null || tTableInfos.isEmpty()) {
-        return Collections.emptyMap();
+        return new TimePartitionTableSizeQueryContext(Collections.emptyMap());
       }
 
       Map<String, Long> tablesToScan = new TreeMap<>();
+      Map<String, String> resultTableToScanTableMap = new TreeMap<>();
       int totalValidTableCount = 0;
       for (TTableInfo tTableInfo : tTableInfos) {
-        if (tTableInfo.getType() != TableType.BASE_TABLE.ordinal()) {
+        if (tTableInfo.getType() != TableType.BASE_TABLE.ordinal()
+            && tTableInfo.getType() != TableType.WRITABLE_VIEW.ordinal()) {
           continue;
         }
         totalValidTableCount++;
@@ -1439,10 +1463,15 @@ public class InformationSchemaContentSupplierFactory {
           continue;
         }
         paginationController.consumeLimit();
-        tablesToScan.put(tTableInfo.getTableName(), 0L);
+        String scanTableName =
+            tTableInfo.getType() == TableType.WRITABLE_VIEW.ordinal()
+                ? tTableInfo.getOriginalTableName()
+                : tTableInfo.getTableName();
+        tablesToScan.put(scanTableName, 0L);
+        resultTableToScanTableMap.put(tTableInfo.getTableName(), scanTableName);
       }
       currentDatabaseOnlyHasOneTable = totalValidTableCount == 1;
-      return tablesToScan;
+      return new TimePartitionTableSizeQueryContext(tablesToScan, resultTableToScanTableMap);
     }
 
     private String getTableTypeName(final TTableInfo tableInfo) {
@@ -1542,7 +1571,7 @@ public class InformationSchemaContentSupplierFactory {
               .entrySet()) {
         long timePartition = entry.getKey();
         for (Map.Entry<String, Long> tableSizeEntry :
-            entry.getValue().getTableSizeResultMap().entrySet()) {
+            entry.getValue().getTableSizeResultMapWithWritableView().entrySet()) {
           String tableName = tableSizeEntry.getKey();
           long size = tableSizeEntry.getValue();
           builder.getTimeColumnBuilder().writeLong(0);

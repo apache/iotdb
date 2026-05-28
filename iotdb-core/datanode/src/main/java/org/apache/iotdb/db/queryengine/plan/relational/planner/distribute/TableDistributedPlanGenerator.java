@@ -783,7 +783,8 @@ public class TableDistributedPlanGenerator
                         node.getPushDownLimit(),
                         node.getPushDownOffset(),
                         node.isPushLimitToEachDevice(),
-                        node.containsNonAlignedDevice());
+                        node.containsNonAlignedDevice(),
+                        node.getOriginalWritableViewName());
                 scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
                 return scanNode;
               });
@@ -869,7 +870,8 @@ public class TableDistributedPlanGenerator
                           node.getPushDownLimit(),
                           node.getPushDownOffset(),
                           node.isPushLimitToEachDevice(),
-                          node.containsNonAlignedDevice());
+                          node.containsNonAlignedDevice(),
+                          node.getOriginalWritableViewName());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -1752,7 +1754,8 @@ public class TableDistributedPlanGenerator
                           partialAggTableScanNode.getGroupingSets(),
                           partialAggTableScanNode.getPreGroupedSymbols(),
                           partialAggTableScanNode.getStep(),
-                          partialAggTableScanNode.getGroupIdSymbol());
+                          partialAggTableScanNode.getGroupIdSymbol(),
+                          partialAggTableScanNode.getOriginalWritableViewName());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });

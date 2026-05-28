@@ -931,6 +931,7 @@ public final class ProcedureMessages {
   public static final String SUCCESSFULLY_STOPPED_AINODE = "Successfully stopped AINode {}";
   public static final String TABLE_ALREADY_EXISTS = "Table '%s.%s' already exists.";
   public static final String TABLE_NOT_EXISTS = "Table '%s.%s' not exists.";
+  public static final String TABLE_DOES_NOT_EXIST = "Table '%s.%s' does not exist";
   public static final String TARGET_DEVICE_TEMPLATE_IS_NOT_ACTIVATED_ON_ANY_PATH_MATCHED =
       "Target Device Template is not activated on any path matched by given path pattern";
   public static final String TASK_CANNOT_GET_TASK_REPORT_FROM_DATANODE_LAST_REPORT_TIME =
@@ -1086,5 +1087,60 @@ public final class ProcedureMessages {
   public static final String THERE_EXIST_DATA_NODE_IN_REQUEST_BUT_NOT_IN_CLUSTER = "there exist Data Node in request but not in cluster";
 
   public static final String FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE = "Failed in the write API executing the consensus layer due to: ";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE =
+      "Skip schema cascade for writable view {}.{} because source table {}.{} does not exist.";
+  public static final String SKIP_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+      "Skip schema cascade for writable view {}.{} because source table {}.{} does not exist: {}";
+  public static final String TABLE_IS_NOT_WRITABLE_VIEW_CHECK_IMPLEMENTATION =
+      "Table '%s.%s' is not a writable view, please check the implementation";
+  public static final String SET_WRITABLE_VIEW_PROPERTIES = "set writable view properties";
+  public static final String RENAME_WRITABLE_VIEW = "rename writable view";
+  public static final String RENAME_WRITABLE_VIEW_COLUMN = "rename writable view column";
+  public static final String DROP_WRITABLE_VIEW = "drop writable view";
+  public static final String DROP_WRITABLE_VIEW_COLUMN = "drop writable view column";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_DATA_TYPE_PROCEDURE =
+      "alter writable view column data type procedure";
+  public static final String ALTER_WRITABLE_VIEW_COLUMN_ON =
+      "alter writable view column on %s.%s: %s";
+  public static final String UNKNOWN_COLUMNS = "unknown columns";
+  public static final String WRITABLE_VIEW_ADD_COLUMN_UNSUPPORTED_TREE_VIEW_FROM =
+      "Writable view ADD COLUMN does not support tree view FROM syntax. Use source AS view syntax instead.";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST_CANNOT_INFER_SCHEMA =
+      "Source column '%s.%s.%s' does not exist, and writable view column '%s' cannot infer its schema";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_EXIST_WHEN_SCHEMA_CASCADE_FALSE =
+      "When schema_cascade=false, writable view column '%s' must already exist in source table '%s.%s'";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST_CANNOT_INFER_SOURCE_COLUMN =
+      "Source table '%s.%s' does not exist, and writable view column '%s' cannot infer schema from source column '%s'";
+  public static final String WRITABLE_VIEW_COLUMN_MUST_MATCH_SOURCE_COLUMN =
+      "Writable view column '%s' must match source column '%s.%s.%s' in category and data type";
+  public static final String VIEW_COLUMNS_CANNOT_FROM_SAME_SOURCE_COLUMN =
+      "The view column %s and %s cannot be from the same source column %s";
+  public static final String SOURCE_TABLE_DOES_NOT_EXIST = "Source table '%s.%s' does not exist.";
+  public static final String SOURCE_TABLE_IS_NOT_BASE_TABLE =
+      "Source table '%s.%s' is not a base table.";
+  public static final String WRITABLE_VIEW_CANNOT_MAP_MULTIPLE_COLUMNS_FROM_SOURCE_COLUMN =
+      "The writable view cannot map multiple view columns from the same source column %s";
+  public static final String SOURCE_COLUMN_DOES_NOT_EXIST = "Source column '%s.%s.%s' does not exist.";
+  public static final String ALTER_COLUMN_DATA_TYPE_REQUIRES_SCHEMA_CASCADE_TRUE =
+      "ALTER COLUMN DATA TYPE requires schema_cascade=true";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_SCHEMA_CASCADE =
+      "Writable view source-table synchronization only supports schema cascade";
+  public static final String WRITABLE_VIEW_SYNC_ONLY_SUPPORTS_WRITABLE_VIEW_RECEIVER =
+      "The writable view's Alter/Drop sync only supports writable view at the receiver";
+  public static final String WRITABLE_VIEW_SCHEMA_CASCADE_PROPERTY_ONLY_FOR_WRITABLE_VIEW =
+      "The property 'schema_cascade' can only be set for writable view";
+  public static final String SKIP_ROLLBACK_SCHEMA_CASCADE_FOR_WRITABLE_VIEW_MISSING_SOURCE_DETAIL =
+      "Skip rollback schema cascade for writable view {}.{} because source table {}.{} does not exist: {}";
+  public static final String FAILED_TO_DROP_WRITABLE_VIEW_SOURCE_COLUMN_CATEGORY_MISMATCH =
+      "Failed to drop column because source column %s.%s.%s has category %s, but view column %s.%s.%s has category %s.";
+  public static final String UNEXPECTED_PLAN_CARRIES_ORIGINAL_TABLE_METADATA_FOR_DROP_COLUMN =
+      "Unexpected plan %s carries original table metadata for dropping column %s.%s.%s.";
+  public static final String EXPECTED_WRITABLE_VIEW_WHEN_ROLLING_BACK_COLUMN_MAPPINGS =
+      "Expected writable view when rolling back column mappings for plan %s on %s.%s.";
+  public static final String UNEXPECTED_PLAN_ROLL_BACK_WRITABLE_VIEW_COLUMN_MAPPINGS =
+      "Unexpected plan %s tried to roll back writable view column mappings for %s.%s.";
+  public static final String DEFENSIVE_ASSERTION_STACK_TRACE = "Defensive assertion stack trace";
+  public static final String UNKNOWN_TIMECHO_WRITABLE_VIEW_PHYSICAL_PLAN_CONFIG_TYPE =
+      "unknown Timecho writable view PhysicalPlan configPhysicalPlanType: %s";
   private ProcedureMessages() {}
 }
