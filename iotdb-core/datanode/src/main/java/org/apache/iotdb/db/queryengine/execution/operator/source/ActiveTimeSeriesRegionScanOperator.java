@@ -35,13 +35,16 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // Timeseries which need to be checked.
   private final Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo;
+  private final Set<String> countedLogicalViews;
   private static final Binary VIEW_TYPE = new Binary("BASE".getBytes());
   private final Binary dataBaseName;
   private static final long INSTANCE_SIZE =
@@ -60,6 +63,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
+    this.countedLogicalViews = new HashSet<>();
     this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.dataBaseName =
         new Binary(
@@ -101,7 +105,16 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     if (outputCount) {
       for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
         List<String> timeSeriesList = entry.getValue();
-        count += timeSeriesList.size();
+        Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(entry.getKey());
+        for (String timeSeries : timeSeriesList) {
+          TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
+          count += schemaInfo.getActiveCountMultiplier();
+          for (String logicalView : schemaInfo.getActiveLogicalViewCountSet()) {
+            if (countedLogicalViews.add(logicalView)) {
+              count++;
+            }
+          }
+        }
         removeTimeseriesListFromDevice(entry.getKey(), timeSeriesList);
       }
       return;

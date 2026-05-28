@@ -50,6 +50,7 @@ statement
     | useDatabaseStatement
     | showDatabasesStatement
     | showCreateDatabaseStatement
+    | countDatabasesStatement
     | createDbStatement
     | alterDbStatement
     | dropDbStatement
@@ -208,6 +209,10 @@ showDatabasesStatement
 
 showCreateDatabaseStatement
     : SHOW CREATE DATABASE database=identifier
+    ;
+
+countDatabasesStatement
+    : COUNT DATABASES
     ;
 
 createDbStatement

@@ -460,7 +460,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
         // Filter null value
-        if (tablet.getBitMaps()[columnIndex].isMarked(rowIndex)) {
+        if (tablet.isNull(rowIndex, columnIndex)) {
           continue;
         }
 

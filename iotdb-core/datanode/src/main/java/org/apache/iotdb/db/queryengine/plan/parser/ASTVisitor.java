@@ -362,6 +362,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public static final String INCORRECT_DATA_TYPE_MSG = "Incorrect Data type";
   private ZoneId zoneId;
 
+  public boolean isUseWildcard() {
+    return useWildcard;
+  }
+
   private boolean useWildcard = false;
 
   private boolean lastLevelUseWildcard = false;
@@ -2391,7 +2395,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Common Parsers. */
 
   // IoTDB Objects ========================================================================
-  private MeasurementPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
+  protected MeasurementPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
     String[] path = new String[nodeNamesWithoutStar.size() + 1];
@@ -2422,7 +2426,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  private PartialPath parseFullPathInExpression(
+  protected PartialPath parseFullPathInExpression(
       IoTDBSqlParser.FullPathInExpressionContext ctx, boolean canUseFullPath) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     int size = nodeNames.size();
@@ -2466,7 +2470,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
+  protected PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
@@ -3558,7 +3562,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  private Expression parseConstantOperand(ConstantContext constantContext) {
+  protected Expression parseConstantOperand(ConstantContext constantContext) {
     String text = constantContext.getText();
     if (constantContext.boolean_literal() != null) {
       return new ConstantOperand(TSDataType.BOOLEAN, text);

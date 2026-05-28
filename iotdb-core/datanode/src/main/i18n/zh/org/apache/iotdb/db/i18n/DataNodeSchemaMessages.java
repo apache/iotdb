@@ -30,7 +30,7 @@ public final class DataNodeSchemaMessages {
       "更新模板 {} 在 schemaRegion {} 中的子树测点计数失败";
   public static final String RECOVER_SPEND = "恢复 [{}] 耗时：{} ms";
   public static final String SCHEMA_REGION_FAILED_TO_RECOVER =
-      "StorageGroup [%s] 中的 SchemaRegion [%d] 恢复失败。";
+      "SchemaRegion [%d] 在 StorageGroup [%s] 中恢复失败。";
   public static final String SCHEMA_REGION_ALREADY_DELETED =
       "SchemaRegion(id = {}) 已被删除，已跳过";
   public static final String FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT =
@@ -104,7 +104,7 @@ public final class DataNodeSchemaMessages {
 
   public static final String CANNOT_FORCE_MLOG = "无法将 {} 的 mlog 强制写入 schema region";
   public static final String SPEND_TIME_DESERIALIZE_MTREE =
-      "从 mlog.bin 反序列化 {} 的 mtree 耗时 {} ms";
+      "从 mlog.bin 反序列化 MTree 耗时 {} ms，对应路径 {}";
   public static final String FAILED_TO_PARSE_MLOG = "解析 ";
   public static final String MLOG_BIN_SUFFIX = " mlog.bin 失败";
   public static final String PARSE_MLOG_ERROR = "在行号 {} 处解析 mlog 出错：";
@@ -116,7 +116,7 @@ public final class DataNodeSchemaMessages {
   public static final String MLOG_RECOVERY_CHECK_POINT = "MLog 恢复检查点：{}";
   public static final String CANNOT_GET_MLOG_CHECKPOINT =
       "无法从 MLogDescription 文件获取检查点，原因：{}，使用默认值 0。";
-  public static final String FAILED_TO_SKIP_MLOG = "从 {} 跳过 {} 失败";
+  public static final String FAILED_TO_SKIP_MLOG = "跳过 {} 失败，schemaRegion 目录为 {}";
   public static final String UPDATE_MLOG_DESCRIPTION_FAILED = "更新 {} 失败，原因：{}";
   public static final String DIRECT_BUFFER_MEMORY_EXCEEDED =
       "直接缓冲区的总分配内存将达到 ";
@@ -162,7 +162,7 @@ public final class DataNodeSchemaMessages {
   public static final String ERROR_DURING_INIT_SCHEMA_REGION =
       "初始化 schemaRegion {} 过程中发生错误";
   public static final String FAILED_TO_RECOVER_TAG_INDEX =
-      "在 schemaRegion {} 中恢复 {} 的 tagIndex 失败。";
+      "恢复 {} 的 tagIndex 失败，schemaRegion 为 {}。";
   public static final String FAILED_TO_READ_TAG_ATTRIBUTE =
       "读取 tag 和 attribute 信息失败：{}";
 
@@ -556,7 +556,7 @@ public final class DataNodeSchemaMessages {
   // ======================== CachedMTreeStore / Scheduler 相关消息 ========================
 
   public static final String MTREE_FLUSH_COST =
-      "在 SchemaRegion {} 中刷写 MTree 耗时 {}ms";
+      "MTree 刷写耗时 {}ms，SchemaRegion 为 {}";
 
   // ======================== DataNodeTableCache 相关消息 ========================
 
