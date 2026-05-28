@@ -16,6 +16,7 @@
 # under the License.
 #
 
+import gc
 import threading
 import time
 import traceback
@@ -197,21 +198,9 @@ class InferenceManager:
             )
             outputs = self._process_request(infer_req)
         else:
-            model_info = self._model_manager.get_model_info(model_id)
-            inference_pipeline = load_pipeline(
-                model_info, device=self._backend.torch_device("cpu")
+            outputs = self._run_inference_without_pool(
+                model_id, model_inputs, inference_attrs
             )
-            inputs = inference_pipeline.preprocess(model_inputs, **inference_attrs)
-            if isinstance(inference_pipeline, ForecastPipeline):
-                outputs = inference_pipeline.forecast(inputs, **inference_attrs)
-            elif isinstance(inference_pipeline, ClassificationPipeline):
-                outputs = inference_pipeline.classify(inputs, **inference_attrs)
-            elif isinstance(inference_pipeline, ChatPipeline):
-                outputs = inference_pipeline.chat(inputs, **inference_attrs)
-            else:
-                outputs = None
-                logger.error("[Inference] Unsupported pipeline type.")
-            outputs = inference_pipeline.postprocess(outputs, **inference_attrs)
 
         # DataNode currently exposes inference outputs as DOUBLE, so serialize the
         # physical TsBlock column as double even when model tensors are float32.
@@ -220,6 +209,39 @@ class InferenceManager:
             resp = convert_tensor_to_tsblock(output.to(dtype=torch.float64))
             resp_list.append(resp)
         return resp_list
+
+    def _run_inference_without_pool(
+        self,
+        model_id: str,
+        model_inputs,
+        inference_attrs: dict,
+    ) -> list[torch.Tensor]:
+        inference_pipeline = None
+        inputs = None
+        raw_outputs = None
+        try:
+            model_info = self._model_manager.get_model_info(model_id)
+            inference_pipeline = load_pipeline(
+                model_info, device=self._backend.torch_device("cpu")
+            )
+            inputs = inference_pipeline.preprocess(model_inputs, **inference_attrs)
+            if isinstance(inference_pipeline, ForecastPipeline):
+                raw_outputs = inference_pipeline.forecast(inputs, **inference_attrs)
+            elif isinstance(inference_pipeline, ClassificationPipeline):
+                raw_outputs = inference_pipeline.classify(inputs, **inference_attrs)
+            elif isinstance(inference_pipeline, ChatPipeline):
+                raw_outputs = inference_pipeline.chat(inputs, **inference_attrs)
+            else:
+                logger.error("[Inference] Unsupported pipeline type.")
+            return inference_pipeline.postprocess(raw_outputs, **inference_attrs)
+        finally:
+            del inference_pipeline
+            del inputs
+            del raw_outputs
+            collected = gc.collect()
+            logger.debug(
+                f"[Inference] Collected {collected} objects after non-pool inference for model {model_id}."
+            )
 
     def _run_forecast(
         self,
