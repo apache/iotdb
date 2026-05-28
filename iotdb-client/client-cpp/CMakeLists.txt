@@ -46,6 +46,12 @@ if(NOT MSVC)
     if(IOTDB_EXTRA_CXX_FLAGS)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IOTDB_EXTRA_CXX_FLAGS}")
     endif()
+    # CI/release scripts read this tag; nm-based checks are unreliable on some toolchains.
+    if(IOTDB_LIBSTDCXX_CXX11_ABI)
+        file(WRITE "${CMAKE_BINARY_DIR}/iotdb_libstdcxx_abi_tag" "cxx11\n")
+    else()
+        file(WRITE "${CMAKE_BINARY_DIR}/iotdb_libstdcxx_abi_tag" "legacy\n")
+    endif()
 endif()
 
 if(MSVC)

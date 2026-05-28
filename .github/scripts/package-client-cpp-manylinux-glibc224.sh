@@ -80,24 +80,18 @@ cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
 
-echo "=== libstdc++ ABI check (cxx11: mangled names must contain __cxx11) ==="
-# Use mangled symbol names: "nm -C" demangles std::__cxx11::basic_string to std::string
-# and hides __cxx11 even when the library was built with the new ABI.
-_abi_has_cxx11() {
-  nm -a "$1" 2>/dev/null | grep -q '__cxx11'
-}
-if _abi_has_cxx11 "${SO}"; then
-  echo "ABI check passed (__cxx11 in ${SO})"
-else
-  SESSION_OBJ=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" \
-    -path '*/iotdb_session.dir/src/session/Session.cpp.o' -print -quit 2>/dev/null || true)
-  if [[ -n "${SESSION_OBJ}" ]] && _abi_has_cxx11 "${SESSION_OBJ}"; then
-    echo "ABI check passed (__cxx11 in ${SESSION_OBJ}; .so has minimal symbol table)"
-  else
-    echo "ERROR: cxx11 ABI build must contain __cxx11 symbols in ${SO} (or Session.cpp.o)"
-    exit 1
-  fi
+echo "=== libstdc++ ABI check (cxx11) ==="
+ABI_TAG="${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/build/iotdb_libstdcxx_abi_tag"
+if [[ ! -f "${ABI_TAG}" ]]; then
+  echo "ERROR: missing CMake ABI tag file ${ABI_TAG}"
+  exit 1
 fi
+ABI_TAG_VALUE=$(tr -d '[:space:]' < "${ABI_TAG}")
+if [[ "${ABI_TAG_VALUE}" != "cxx11" ]]; then
+  echo "ERROR: expected iotdb_libstdcxx_abi_tag=cxx11, got '${ABI_TAG_VALUE}'"
+  exit 1
+fi
+echo "ABI check passed (cmake tag=${ABI_TAG_VALUE})"
 
 echo "=== Build host glibc ==="
 ldd --version 2>&1 | sed -n '1p'
