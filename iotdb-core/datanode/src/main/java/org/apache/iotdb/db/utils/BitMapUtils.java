@@ -44,7 +44,7 @@ public final class BitMapUtils {
     return hasMarkedBitMap ? bitMaps : null;
   }
 
-  public static boolean isAllUnmarked(final BitMap bitMap, final int rowCount) {
+  private static boolean isAllUnmarked(final BitMap bitMap, final int rowCount) {
     final int checkedSize = Math.min(rowCount, bitMap.getSize());
     if (checkedSize <= 0) {
       return true;
@@ -60,6 +60,6 @@ public final class BitMapUtils {
 
     final int remainingBitCount = checkedSize % Byte.SIZE;
     return remainingBitCount == 0
-        || (bytes[fullByteCount] & ((1 << remainingBitCount) - 1)) == 0;
+        || (bytes[fullByteCount] & (0xFF << (Byte.SIZE - remainingBitCount))) == 0;
   }
 }

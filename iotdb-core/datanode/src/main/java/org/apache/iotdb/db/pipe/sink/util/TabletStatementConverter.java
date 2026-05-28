@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletString
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -348,7 +347,7 @@ public class TabletStatementConverter {
         final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
         final byte[] byteArray = valueBinary.getValues();
         final BitMap bitMap = new BitMap(size, byteArray);
-        if (BitMapUtils.isAllUnmarked(bitMap, rowSize)) {
+        if (bitMap.isAllUnmarked(Math.min(rowSize, bitMap.getSize()))) {
           continue;
         }
         bitMaps[i] = bitMap;
