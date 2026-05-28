@@ -340,11 +340,26 @@ public class TsFileInsertionEventParserTest {
               false)) {
         final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
         Assert.assertTrue(iterator.hasNext());
-        final Tablet parsedTablet =
-            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
-        assertBitMapExistence(parsedTablet, false, false, true);
-        Assert.assertTrue(parsedTablet.isNull(1, 2));
-        Assert.assertFalse(iterator.hasNext());
+        Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        if (parsedTablet.getSchemas().size() == 3) {
+          assertBitMapExistence(parsedTablet, false, false, true);
+          Assert.assertTrue(parsedTablet.isNull(1, 2));
+          Assert.assertFalse(iterator.hasNext());
+        } else {
+          if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
+            Assert.assertNull(parsedTablet.getBitMaps());
+          } else {
+            Assert.assertTrue(parsedTablet.isNull(1, 1));
+          }
+          while (iterator.hasNext()) {
+            parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+            if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
+              Assert.assertNull(parsedTablet.getBitMaps());
+            } else {
+              Assert.assertTrue(parsedTablet.isNull(1, 1));
+            }
+          }
+        }
       }
     } finally {
       CommonDescriptor.getInstance()
@@ -1095,11 +1110,19 @@ public class TsFileInsertionEventParserTest {
                   false)) {
         final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
         Assert.assertTrue(iterator.hasNext());
-        final Tablet parsedTablet =
-            ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
-        assertBitMapExistence(parsedTablet, false, true);
-        Assert.assertTrue(parsedTablet.isNull(1, 1));
-        Assert.assertFalse(iterator.hasNext());
+        Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        if (parsedTablet.getSchemas().size() > 1) {
+          assertBitMapExistence(parsedTablet, false, true);
+          Assert.assertTrue(parsedTablet.isNull(1, 1));
+          Assert.assertFalse(iterator.hasNext());
+        } else {
+          Assert.assertNull(parsedTablet.getBitMaps());
+          Assert.assertTrue(iterator.hasNext());
+          while (iterator.hasNext()) {
+            parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+            Assert.assertNull(parsedTablet.getBitMaps());
+          }
+        }
       }
     } finally {
       CommonDescriptor.getInstance()
