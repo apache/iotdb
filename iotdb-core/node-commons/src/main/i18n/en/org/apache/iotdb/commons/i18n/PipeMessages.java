@@ -395,6 +395,20 @@ public final class PipeMessages {
           + "because of {}. Will retry forever.";
   public static final String RETRY_EXECUTING_SUBTASK_FOREVER =
       "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH =
+      "Pipe: %s cannot be used together with %s or %s.";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION =
+      "Pipe: %s cannot be used together with %s.";
+  public static final String PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER =
+      "Pipe: %s and %s cannot be used together.";
+  public static final String PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN =
+      "Pipe: The parameter %s only supports a single pattern now.";
+  public static final String FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK =
+      "Pipe: Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].";
+  public static final String EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN =
+      "Pipe: The provided exclusion pattern fully covers the inclusion pattern. This pipe pattern will match nothing. Inclusion: [%s], Exclusion: [%s]";
+  public static final String EXCLUSION_PATTERN_COVERS_PART_OF_INCLUSION_PATHS =
+      "Pipe: The provided exclusion pattern covers {} out of {} inclusion paths. These paths will be excluded. Inclusion: [{}], Exclusion: [{}]";
 
   // ===================== PipeAbstractSinkSubtask =====================
 

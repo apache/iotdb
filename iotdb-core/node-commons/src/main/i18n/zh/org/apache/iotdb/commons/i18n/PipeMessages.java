@@ -379,6 +379,20 @@ public final class PipeMessages {
       "执行子任务 {}（创建时间：{}，类名：{}）失败，原因：{}。将无限重试。";
   public static final String RETRY_EXECUTING_SUBTASK_FOREVER =
       "重试执行子任务 {}（创建时间：{}，类名：{}），重试次数 {}，上次异常：{}";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH =
+      "Pipe：%s 不能与 %s 或 %s 同时使用。";
+  public static final String PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION =
+      "Pipe：%s 不能与 %s 同时使用。";
+  public static final String PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER =
+      "Pipe：%s 和 %s 不能同时使用。";
+  public static final String PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN =
+      "Pipe：参数 %s 当前只支持单个 pattern。";
+  public static final String FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK =
+      "Pipe：对 inclusion [{}] 和 exclusion [{}] 执行 pattern 覆盖检查失败。";
+  public static final String EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN =
+      "Pipe：给定 exclusion pattern 完全覆盖了 inclusion pattern。该 pipe pattern 不会匹配任何内容。Inclusion: [%s], Exclusion: [%s]";
+  public static final String EXCLUSION_PATTERN_COVERS_PART_OF_INCLUSION_PATHS =
+      "Pipe：给定 exclusion pattern 覆盖了 {} / {} 条 inclusion 路径。这些路径将被排除。Inclusion: [{}], Exclusion: [{}]";
 
   // ===================== PipeAbstractSinkSubtask =====================
 

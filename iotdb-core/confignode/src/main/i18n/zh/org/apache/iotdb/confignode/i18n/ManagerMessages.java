@@ -28,11 +28,11 @@ public final class ManagerMessages {
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS =
       "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped";
   public static final String ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA =
-      "Attempt to report pipe exception to a null PipeTaskMeta.";
+      "尝试向空的 PipeTaskMeta 上报 pipe 异常。";
   public static final String AUTH_RUN_AUTH_PLAN = "Auth: run auth plan: {}";
   public static final String CLUSTERID = "clusterID: {}";
   public static final String COLLECTING_PIPE_HEARTBEAT_FROM_DATA_NODES =
-      "Collecting pipe heartbeat {} from data nodes";
+      "正在从 data nodes 收集 pipe 心跳 {}";
   public static final String CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN =
       "Connection from DataNode {} to DataNode {} is broken";
   public static final String CONSENSUSGROUPSTATISTICS = "[ConsensusGroupStatistics]\t {}: {} -> {}";
@@ -128,7 +128,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
-      "Failed to create pipe {}. Result status: {}.";
+      "创建 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME =
       "Failed to create subtask for pipe %s, creation time %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
@@ -143,7 +143,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT =
       "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist";
   public static final String FAILED_TO_DROP_PIPE_RESULT_STATUS =
-      "Failed to drop pipe {}. Result status: {}.";
+      "删除 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_GET_ALL_PIPE_INFO = "Failed to get all pipe info.";
   public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO =
       "Failed to get all subscription info.";
@@ -162,9 +162,9 @@ public final class ManagerMessages {
   public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "Failed to show subscription info.";
   public static final String FAILED_TO_SHOW_TOPIC_INFO = "Failed to show topic info.";
   public static final String FAILED_TO_START_PIPE_RESULT_STATUS =
-      "Failed to start pipe {}. Result status: {}.";
+      "启动 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_STOP_PIPE_RESULT_STATUS =
-      "Failed to stop pipe {}. Result status: {}.";
+      "停止 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_CREATION_FOR =
       "Failed to submit async consensus pipe creation for {}: {}";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_DROP_FOR =
@@ -172,7 +172,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS =
       "Failed to sync consumer group meta. Result status: {}.";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
-      "Failed to sync pipe meta. Result status: {}.";
+      "同步 pipe 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
