@@ -196,6 +196,9 @@ public:
   ColumnEncoding getEncoding() const override;
 
   int32_t getInt(int32_t position) const override;
+  int64_t getLong(int32_t position) const override;
+  float getFloat(int32_t position) const override;
+  double getDouble(int32_t position) const override;
   std::vector<int32_t> getInts() const override;
 
   bool mayHaveNull() const override;
@@ -220,6 +223,7 @@ public:
   ColumnEncoding getEncoding() const override;
 
   float getFloat(int32_t position) const override;
+  double getDouble(int32_t position) const override;
   std::vector<float> getFloats() const override;
 
   bool mayHaveNull() const override;
@@ -244,6 +248,7 @@ public:
   ColumnEncoding getEncoding() const override;
 
   int64_t getLong(int32_t position) const override;
+  double getDouble(int32_t position) const override;
   std::vector<int64_t> getLongs() const override;
 
   bool mayHaveNull() const override;
