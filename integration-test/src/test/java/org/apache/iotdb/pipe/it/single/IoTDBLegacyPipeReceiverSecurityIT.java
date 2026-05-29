@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -102,8 +103,8 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
   private TSOpenSessionReq createOpenSessionReq() {
     final TSOpenSessionReq req = new TSOpenSessionReq();
     req.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-    req.setUsername("root");
-    req.setPassword("root");
+    req.setUsername(SessionConfig.DEFAULT_USER);
+    req.setPassword(SessionConfig.DEFAULT_PASSWORD);
     req.setZoneId(ZoneId.systemDefault().toString());
     req.putToConfiguration("version", IoTDBConstant.ClientVersion.V_1_0.toString());
     req.putToConfiguration("sql_dialect", "tree");
