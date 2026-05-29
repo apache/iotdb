@@ -82,6 +82,11 @@ objdump -T "${SO}" | grep GLIBC_ | sed "s/.*GLIBC_/GLIBC_/" | sort -Vu | tail -1
 max_glibc=$(objdump -T "${SO}" | grep -oE "GLIBC_[0-9.]+" | sed "s/GLIBC_//" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
 echo "max_glibc=${max_glibc}"
 
+if [[ -z "${max_glibc}" ]]; then
+  echo "ERROR: could not determine max GLIBC version from ${SO}"
+  exit 1
+fi
+
 if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.17) }"; then
   echo "ERROR: libiotdb_session.so requires glibc > 2.17 (max=${max_glibc})"
   exit 1

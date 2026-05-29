@@ -12,7 +12,6 @@ on:
       - 'iotdb-client/client-cpp/**'
       - 'example/client-cpp-example/**'
       - '.github/workflows/client-cpp-package.yml'
-      - '.github/workflows/client-cpp-source-build.yml'
       - '.github/scripts/package-client-cpp-*.sh'
       - '.github/workflows/multi-language-client.yml'
   pull_request:
@@ -27,7 +26,6 @@ on:
       - 'iotdb-client/client-cpp/**'
       - 'example/client-cpp-example/**'
       - '.github/workflows/client-cpp-package.yml'
-      - '.github/workflows/client-cpp-source-build.yml'
       - '.github/scripts/package-client-cpp-*.sh'
       - '.github/workflows/multi-language-client.yml'
   # allow manually run the action:

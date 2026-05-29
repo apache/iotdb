@@ -13,7 +13,6 @@ on:
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
-      - '.github/workflows/client-cpp-source-build.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
   pull_request:
@@ -29,7 +28,6 @@ on:
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
-      - '.github/workflows/client-cpp-source-build.yml'
       - '.github/workflows/client-cpp-package.yml'
       - '.github/scripts/package-client-cpp-*.sh'
   # allow manually run the action:
@@ -65,7 +63,6 @@ jobs:
               - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
               - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/multi-language-client.yml'
-              - '.github/workflows/client-cpp-source-build.yml'
               - '.github/workflows/client-cpp-package.yml'
               - '.github/scripts/package-client-cpp-*.sh'
             python:
