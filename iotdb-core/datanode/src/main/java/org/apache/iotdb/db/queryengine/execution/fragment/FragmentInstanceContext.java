@@ -56,6 +56,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
@@ -69,6 +71,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -116,6 +120,8 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
+
+  private List<String> externalTsFilePaths;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -612,6 +618,10 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
+  public void setExternalTsFilePaths(List<String> externalTsFilePaths) {
+    this.externalTsFilePaths = externalTsFilePaths;
+  }
+
   public MemoryReservationManager getMemoryReservationContext() {
     return memoryReservationManager;
   }
@@ -779,6 +789,43 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
+  public boolean initExternalTsFileQueryDataSource(List<String> externalTsFilePaths)
+      throws QueryProcessException {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFilePaths == null || externalTsFilePaths.isEmpty()) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+        return true;
+      }
+
+      List<TsFileResource> externalTsFileResources = new ArrayList<>(externalTsFilePaths.size());
+      for (String externalTsFilePath : externalTsFilePaths) {
+        TsFileResource resource =
+            new TsFileResource(new File(externalTsFilePath), TsFileResourceStatus.NORMAL);
+        if (resource.resourceFileExists()) {
+          try {
+            resource.deserialize();
+          } catch (IOException e) {
+            throw new QueryProcessException(
+                "Failed to deserialize external TsFile resource: "
+                    + externalTsFilePath
+                    + ", "
+                    + e.getMessage());
+          }
+        } else {
+          resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
+        }
+        externalTsFileResources.add(resource);
+      }
+
+      this.sharedQueryDataSource =
+          new QueryDataSource(externalTsFileResources, Collections.emptyList());
+      return true;
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
+    }
+  }
+
   public synchronized IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
       switch (queryDataSourceType) {
@@ -800,6 +847,13 @@ public class FragmentInstanceContext extends QueryContext {
         case TIME_SERIES_REGION_SCAN:
           if (initRegionScanQueryDataSource(sourcePaths)) {
             sourcePaths = null;
+          } else {
+            return getUnfinishedQueryDataSource();
+          }
+          break;
+        case EXTERNAL_TSFILE_SCAN:
+          if (initExternalTsFileQueryDataSource(externalTsFilePaths)) {
+            externalTsFilePaths = null;
           } else {
             return getUnfinishedQueryDataSource();
           }

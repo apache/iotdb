@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -98,6 +99,9 @@ public class ReadTsFileTableFunction implements TableFunction {
             tableName,
             schemaCollection.tsFiles.stream()
                 .map(File::getAbsolutePath)
+                .collect(Collectors.toList()),
+            schemaCollection.mergedTableSchema.getColumnTypes().stream()
+                .map(TsTableColumnCategory::fromTsFileColumnCategory)
                 .collect(Collectors.toList()),
             outputSchema);
 
@@ -352,13 +356,22 @@ public class ReadTsFileTableFunction implements TableFunction {
     private List<String> tsFilePaths;
     private List<String> outputColumnNames;
     private List<Type> outputColumnTypes;
+    private List<TsTableColumnCategory> outputColumnCategories;
 
     public ReadTsFileTableFunctionHandle() {
-      this("", Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+      this(
+          "",
+          Collections.emptyList(),
+          Collections.emptyList(),
+          Collections.emptyList(),
+          Collections.emptyList());
     }
 
     public ReadTsFileTableFunctionHandle(
-        String tableName, List<String> tsFilePaths, DescribedSchema outputSchema) {
+        String tableName,
+        List<String> tsFilePaths,
+        List<TsTableColumnCategory> outputColumnCategories,
+        DescribedSchema outputSchema) {
       this(
           tableName,
           tsFilePaths,
@@ -367,21 +380,28 @@ public class ReadTsFileTableFunction implements TableFunction {
               .collect(Collectors.toList()),
           outputSchema.getFields().stream()
               .map(DescribedSchema.Field::getType)
-              .collect(Collectors.toList()));
+              .collect(Collectors.toList()),
+          outputColumnCategories);
     }
 
     private ReadTsFileTableFunctionHandle(
         String tableName,
         List<String> tsFilePaths,
         List<String> outputColumnNames,
-        List<Type> outputColumnTypes) {
+        List<Type> outputColumnTypes,
+        List<TsTableColumnCategory> outputColumnCategories) {
       if (outputColumnNames.size() != outputColumnTypes.size()) {
         throw new IllegalArgumentException("Output column names and types size mismatch");
+      }
+      if (outputColumnNames.size() != outputColumnCategories.size()) {
+        throw new IllegalArgumentException("Output column names and categories size mismatch");
       }
       this.tableName = tableName;
       this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
       this.outputColumnNames = Collections.unmodifiableList(new ArrayList<>(outputColumnNames));
       this.outputColumnTypes = Collections.unmodifiableList(new ArrayList<>(outputColumnTypes));
+      this.outputColumnCategories =
+          Collections.unmodifiableList(new ArrayList<>(outputColumnCategories));
     }
 
     public String getTableName() {
@@ -400,6 +420,10 @@ public class ReadTsFileTableFunction implements TableFunction {
       return outputColumnTypes;
     }
 
+    public List<TsTableColumnCategory> getOutputColumnCategories() {
+      return outputColumnCategories;
+    }
+
     @Override
     public byte[] serialize() {
       ByteBuffer buffer = ByteBuffer.allocate(calculateSerializeSize());
@@ -410,6 +434,7 @@ public class ReadTsFileTableFunction implements TableFunction {
       for (int i = 0; i < outputColumnNames.size(); i++) {
         writeString(buffer, outputColumnNames.get(i));
         buffer.put(outputColumnTypes.get(i).getType());
+        buffer.put(outputColumnCategories.get(i).getCategory());
       }
       return buffer.array();
     }
@@ -427,12 +452,15 @@ public class ReadTsFileTableFunction implements TableFunction {
       size = buffer.getInt();
       List<String> columnNames = new ArrayList<>(size);
       List<Type> columnTypes = new ArrayList<>(size);
+      List<TsTableColumnCategory> columnCategories = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         columnNames.add(readString(buffer));
         columnTypes.add(Type.valueOf(buffer.get()));
+        columnCategories.add(TsTableColumnCategory.deserialize(buffer.get()));
       }
       outputColumnNames = Collections.unmodifiableList(columnNames);
       outputColumnTypes = Collections.unmodifiableList(columnTypes);
+      outputColumnCategories = Collections.unmodifiableList(columnCategories);
     }
 
     @Override
@@ -447,6 +475,8 @@ public class ReadTsFileTableFunction implements TableFunction {
           + outputColumnNames
           + ", outputColumnTypes="
           + outputColumnTypes
+          + ", outputColumnCategories="
+          + outputColumnCategories
           + '}';
     }
 
@@ -458,7 +488,7 @@ public class ReadTsFileTableFunction implements TableFunction {
       }
       size += Integer.BYTES;
       for (String columnName : outputColumnNames) {
-        size += Integer.BYTES + columnName.getBytes(StandardCharsets.UTF_8).length + Byte.BYTES;
+        size += Integer.BYTES + columnName.getBytes(StandardCharsets.UTF_8).length + 2 * Byte.BYTES;
       }
       return size;
     }

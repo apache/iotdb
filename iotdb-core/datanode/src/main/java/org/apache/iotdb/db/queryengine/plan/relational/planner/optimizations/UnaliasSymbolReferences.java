@@ -296,6 +296,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownPredicate() == null ? null : mapper.map(node.getPushDownPredicate()),
               node.getPushDownLimit(),
               node.getPushDownOffset(),
+              node.getScanOrder(),
+              node.getPushedOrderingScheme().map(mapper::map).orElse(null),
               node.getTsFilePaths()),
           mapping);
     }

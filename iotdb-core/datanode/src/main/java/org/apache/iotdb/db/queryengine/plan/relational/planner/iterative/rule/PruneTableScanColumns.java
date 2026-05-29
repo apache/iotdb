@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
@@ -128,6 +129,20 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.isPushLimitToEachDevice(),
                 deviceTableScanNode.containsNonAlignedDevice()));
       }
+    } else if (node instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) node;
+      return Optional.of(
+          new ExternalTsFileScanNode(
+              externalTsFileScanNode.getPlanNodeId(),
+              externalTsFileScanNode.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              externalTsFileScanNode.getPushDownPredicate(),
+              externalTsFileScanNode.getPushDownLimit(),
+              externalTsFileScanNode.getPushDownOffset(),
+              externalTsFileScanNode.getScanOrder(),
+              externalTsFileScanNode.getPushedOrderingScheme().orElse(null),
+              externalTsFileScanNode.getTsFilePaths()));
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for
       // InformationSchemaTableScanNode is

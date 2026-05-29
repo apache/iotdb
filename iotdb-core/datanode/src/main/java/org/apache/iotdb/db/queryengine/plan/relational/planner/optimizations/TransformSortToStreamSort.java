@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -35,11 +36,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode.isTimeColumn;
+import static org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode.isTimeColumn;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -91,9 +93,13 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
       context.setCanTransform(false);
 
-      DeviceTableScanNode deviceTableScanNode = context.getTableScanNode();
+      TableScanNode tableScanNode = context.getTableScanNode();
+      if (tableScanNode == null) {
+        node.setChild(child);
+        return node;
+      }
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
       int streamSortIndex = -1;
@@ -110,10 +116,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
             isOrderByAllIdsAndTime(
-                tableColumnSchema,
-                deviceTableScanNode.getAssignments(),
-                orderingScheme,
-                streamSortIndex);
+                tableColumnSchema, tableScanNode.getAssignments(), orderingScheme, streamSortIndex);
 
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -140,6 +143,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
+      context.setTableScanNode(node);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitExternalTsFileScan(ExternalTsFileScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
     }
@@ -200,15 +209,15 @@ public class TransformSortToStreamSort implements PlanOptimizer {
   }
 
   private static class Context {
-    private DeviceTableScanNode tableScanNode;
+    private TableScanNode tableScanNode;
 
     private boolean canTransform = true;
 
-    public DeviceTableScanNode getTableScanNode() {
+    public TableScanNode getTableScanNode() {
       return tableScanNode;
     }
 
-    public void setTableScanNode(DeviceTableScanNode tableScanNode) {
+    public void setTableScanNode(TableScanNode tableScanNode) {
       this.tableScanNode = tableScanNode;
     }
 

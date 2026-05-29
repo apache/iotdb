@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-public class TreeAlignedDeviceViewScanOperator extends AbstractTableScanOperator {
+public class TreeAlignedDeviceViewScanOperator extends AbstractDeviceTableScanOperator {
 
   private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
 

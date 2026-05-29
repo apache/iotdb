@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -97,11 +98,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Defa
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.OrderedExternalTsFileTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeNonAlignedDeviceViewAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeToTableViewAdaptorOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.UnorderedExternalTsFileTableScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -136,6 +139,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -445,7 +449,8 @@ public class DataNodeTableOperatorGenerator
           "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
     }
     CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
+        new CommonTableScanOperatorParameters(
+            node, fieldColumnsRenameMap, true, node.getTagAndAttributeIndexMap());
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<Symbol> measurementSchemaIndex2Symbols = commonParameter.measurementSchemaIndex2Symbol;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
@@ -855,9 +860,10 @@ public class DataNodeTableOperatorGenerator
     int idx;
 
     private CommonTableScanOperatorParameters(
-        DeviceTableScanNode node,
+        TableScanNode node,
         Map<String, String> fieldColumnsRenameMap,
-        boolean keepNonOutputMeasurementColumns) {
+        boolean keepNonOutputMeasurementColumns,
+        Map<Symbol, Integer> tagAndAttributeColumnsIndexMap) {
       outputColumnNames = node.getOutputSymbols();
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
@@ -865,7 +871,7 @@ public class DataNodeTableOperatorGenerator
       symbolInputs = new ArrayList<>(outputColumnCount);
       columnsIndexArray = new int[outputColumnCount];
       columnSchemaMap = node.getAssignments();
-      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
+      this.tagAndAttributeColumnsIndexMap = tagAndAttributeColumnsIndexMap;
       measurementColumnNames = new ArrayList<>();
       measurementColumnsIndexMap = new HashMap<>();
       measurementSchemas = new ArrayList<>();
@@ -1022,7 +1028,8 @@ public class DataNodeTableOperatorGenerator
           long viewTTL) {
 
     CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
+        new CommonTableScanOperatorParameters(
+            node, fieldColumnsRenameMap, false, node.getTagAndAttributeIndexMap());
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
     List<String> measurementColumnNames = commonParameter.measurementColumnNames;
     List<ColumnSchema> columnSchemas = commonParameter.columnSchemas;
@@ -1120,8 +1127,89 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitExternalTsFileScan(
       ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
-    throw new UnsupportedOperationException(
-        "ExternalTsFileScanNode physical operator is not implemented yet");
+    AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+        constructExternalTsFileTableScanOperatorParameter(node, context);
+
+    AbstractTableScanOperator externalTsFileTableScanOperator =
+        node.getPushedOrderingScheme().isPresent()
+            ? new OrderedExternalTsFileTableScanOperator(
+                parameter,
+                node.getQualifiedObjectName().getObjectName(),
+                node.getAssignments(),
+                node.getPushedOrderingScheme().get())
+            : new UnorderedExternalTsFileTableScanOperator(
+                parameter, node.getQualifiedObjectName().getObjectName());
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    dataDriverContext.addSourceOperator(externalTsFileTableScanOperator);
+    dataDriverContext.setExternalTsFilePaths(node.getTsFilePaths());
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
+    dataDriverContext.setInputDriver(true);
+
+    return externalTsFileTableScanOperator;
+  }
+
+  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
+      constructExternalTsFileTableScanOperatorParameter(
+          ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(
+            node, Collections.emptyMap(), false, buildTagAndAttributeColumnsIndexMap(node));
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            commonParameter.columnSchemaMap,
+            commonParameter.measurementColumnNames,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
+            Optional.empty(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            false,
+            node.getPushDownPredicate());
+
+    OperatorContext operatorContext =
+        addOperatorContext(
+            context,
+            node.getPlanNodeId(),
+            node.getPushedOrderingScheme().isPresent()
+                ? OrderedExternalTsFileTableScanOperator.class.getSimpleName()
+                : UnorderedExternalTsFileTableScanOperator.class.getSimpleName());
+
+    Set<String> allSensors = new HashSet<>(commonParameter.measurementColumnNames);
+    // for time column
+    allSensors.add("");
+
+    return new AbstractTableScanOperator.AbstractTableScanOperatorParameter(
+        allSensors,
+        operatorContext,
+        node.getPlanNodeId(),
+        commonParameter.columnSchemas,
+        commonParameter.columnsIndexArray,
+        Collections.emptyList(),
+        node.getScanOrder(),
+        seriesScanOptions,
+        commonParameter.measurementColumnNames,
+        commonParameter.measurementSchemas,
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
+  }
+
+  private static Map<Symbol, Integer> buildTagAndAttributeColumnsIndexMap(TableScanNode node) {
+    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap = new HashMap<>();
+    int index = 0;
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      switch (entry.getValue().getColumnCategory()) {
+        case TAG:
+        case ATTRIBUTE:
+          tagAndAttributeColumnsIndexMap.put(entry.getKey(), index++);
+          break;
+        default:
+          break;
+      }
+    }
+    return tagAndAttributeColumnsIndexMap;
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

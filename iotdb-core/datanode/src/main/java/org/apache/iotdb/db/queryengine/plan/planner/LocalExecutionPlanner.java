@@ -124,6 +124,7 @@ public class LocalExecutionPlanner {
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
     instanceContext.setDevicePathsToContext(collectDevicePathsToContext(context));
+    instanceContext.setExternalTsFilePaths(collectExternalTsFilePaths(context));
     instanceContext.setQueryDataSourceType(
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
@@ -262,6 +263,21 @@ public class LocalExecutionPlanner {
               dataDriverContext.clearPaths();
             });
     return sourcePaths;
+  }
+
+  private List<String> collectExternalTsFilePaths(LocalExecutionPlanContext context) {
+    List<String> externalTsFilePaths = new ArrayList<>();
+    context
+        .getPipelineDriverFactories()
+        .forEach(
+            pipeline -> {
+              DataDriverContext dataDriverContext = (DataDriverContext) pipeline.getDriverContext();
+              if (dataDriverContext.getExternalTsFilePaths() != null) {
+                externalTsFilePaths.addAll(dataDriverContext.getExternalTsFilePaths());
+              }
+              dataDriverContext.clearExternalTsFilePaths();
+            });
+    return externalTsFilePaths;
   }
 
   public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {

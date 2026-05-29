@@ -41,6 +41,7 @@ public class DataDriverContext extends DriverContext {
   private List<IFullPath> paths;
   private QueryDataSourceType queryDataSourceType = null;
   private Map<IDeviceID, DeviceContext> deviceIDToContext;
+  private List<String> externalTsFilePaths;
   // it will be set to null, after QueryDataSource being inited
   private List<DataSourceOperator> sourceOperators;
 
@@ -49,6 +50,7 @@ public class DataDriverContext extends DriverContext {
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
     this.deviceIDToContext = null;
+    this.externalTsFilePaths = null;
   }
 
   public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
@@ -56,6 +58,7 @@ public class DataDriverContext extends DriverContext {
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
     this.deviceIDToContext = null;
+    this.externalTsFilePaths = null;
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
@@ -69,6 +72,19 @@ public class DataDriverContext extends DriverContext {
   public void clearDeviceIDToContext() {
     // friendly for gc
     deviceIDToContext = null;
+  }
+
+  public void setExternalTsFilePaths(List<String> externalTsFilePaths) {
+    this.externalTsFilePaths = externalTsFilePaths;
+  }
+
+  public List<String> getExternalTsFilePaths() {
+    return externalTsFilePaths;
+  }
+
+  public void clearExternalTsFilePaths() {
+    // friendly for gc
+    externalTsFilePaths = null;
   }
 
   public void addPath(IFullPath path) {

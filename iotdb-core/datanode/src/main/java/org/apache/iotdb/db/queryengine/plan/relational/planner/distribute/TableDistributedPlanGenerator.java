@@ -735,6 +735,9 @@ public class TableDistributedPlanGenerator
         new TRegionReplicaSet(
             null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation())));
     context.mostUsedRegion = node.getRegionReplicaSet();
+    if (context.hasSortProperty) {
+      processExternalTsFileSortProperty(node, context);
+    }
     return Collections.singletonList(node);
   }
 
@@ -1932,6 +1935,67 @@ public class TableDistributedPlanGenerator
       if (comparator != null) {
         scanNode.getDeviceEntries().sort(comparator);
       }
+    }
+  }
+
+  private void processExternalTsFileSortProperty(
+      final ExternalTsFileScanNode externalTsFileScanNode, final PlanContext context) {
+    final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
+    final List<Symbol> newOrderingSymbols = new ArrayList<>();
+    final List<SortOrder> newSortOrders = new ArrayList<>();
+    boolean lastIsTimeRelated = false;
+
+    for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
+      if (externalTsFileScanNode.isTimeColumn(symbol)) {
+        if (!expectedOrderingScheme.getOrdering(symbol).isAscending()) {
+          externalTsFileScanNode.setScanOrder(Ordering.DESC);
+        }
+        newOrderingSymbols.add(symbol);
+        newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
+        lastIsTimeRelated = true;
+        break;
+      }
+
+      final ColumnSchema columnSchema = externalTsFileScanNode.getAssignments().get(symbol);
+      if (columnSchema == null || columnSchema.getColumnCategory() != TsTableColumnCategory.TAG) {
+        break;
+      }
+
+      newOrderingSymbols.add(symbol);
+      newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
+    }
+
+    if (newOrderingSymbols.isEmpty()) {
+      return;
+    }
+
+    OrderingScheme pushedOrderingScheme =
+        new OrderingScheme(
+            newOrderingSymbols,
+            IntStream.range(0, newOrderingSymbols.size())
+                .boxed()
+                .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
+    externalTsFileScanNode.setPushedOrderingScheme(pushedOrderingScheme);
+
+    if (lastIsTimeRelated) {
+      if (newOrderingSymbols.size() > 1
+          && newOrderingSymbols.size() == expectedOrderingScheme.getOrderBy().size()
+          && isOrderByAllIdsAndTime(
+              analysis.getTableColumnSchema(externalTsFileScanNode.getQualifiedObjectName()),
+              externalTsFileScanNode.getAssignments(),
+              new OrderingScheme(
+                  newOrderingSymbols.subList(0, newOrderingSymbols.size() - 1),
+                  IntStream.range(0, newOrderingSymbols.size() - 1)
+                      .boxed()
+                      .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get))),
+              newOrderingSymbols.size() - 2)) {
+        nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), pushedOrderingScheme);
+      }
+      return;
+    }
+
+    if (newOrderingSymbols.size() == expectedOrderingScheme.getOrderBy().size()) {
+      nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), pushedOrderingScheme);
     }
   }
 

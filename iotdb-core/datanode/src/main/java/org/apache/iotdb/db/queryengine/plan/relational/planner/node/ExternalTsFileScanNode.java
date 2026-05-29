@@ -25,9 +25,11 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -38,9 +40,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class ExternalTsFileScanNode extends TableScanNode {
   private List<String> tsFilePaths;
+  private Ordering scanOrder = Ordering.ASC;
+  private OrderingScheme pushedOrderingScheme;
 
   protected ExternalTsFileScanNode() {}
 
@@ -62,6 +67,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
+      Ordering scanOrder,
+      OrderingScheme pushedOrderingScheme,
       List<String> tsFilePaths) {
     super(
         id,
@@ -71,6 +78,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset);
+    this.scanOrder = scanOrder;
+    this.pushedOrderingScheme = pushedOrderingScheme;
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
   }
 
@@ -89,6 +98,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
+        scanOrder,
+        pushedOrderingScheme,
         tsFilePaths);
   }
 
@@ -96,10 +107,33 @@ public class ExternalTsFileScanNode extends TableScanNode {
     return tsFilePaths;
   }
 
+  public Ordering getScanOrder() {
+    return scanOrder;
+  }
+
+  public void setScanOrder(Ordering scanOrder) {
+    this.scanOrder = scanOrder;
+  }
+
+  public Optional<OrderingScheme> getPushedOrderingScheme() {
+    return Optional.ofNullable(pushedOrderingScheme);
+  }
+
+  public void setPushedOrderingScheme(OrderingScheme pushedOrderingScheme) {
+    this.pushedOrderingScheme = pushedOrderingScheme;
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(byteBuffer);
     TableScanNode.serializeMemberVariables(this, byteBuffer, true);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    if (pushedOrderingScheme == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      pushedOrderingScheme.serialize(byteBuffer);
+    }
     serializeTsFilePaths(byteBuffer);
   }
 
@@ -107,6 +141,13 @@ public class ExternalTsFileScanNode extends TableScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(stream);
     TableScanNode.serializeMemberVariables(this, stream, true);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (pushedOrderingScheme == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      pushedOrderingScheme.serialize(stream);
+    }
     serializeTsFilePaths(stream);
   }
 
@@ -127,6 +168,11 @@ public class ExternalTsFileScanNode extends TableScanNode {
   public static ExternalTsFileScanNode deserialize(ByteBuffer byteBuffer) {
     ExternalTsFileScanNode node = new ExternalTsFileScanNode();
     TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+
+    node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      node.pushedOrderingScheme = OrderingScheme.deserialize(byteBuffer);
+    }
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> tsFilePaths = new ArrayList<>(size);

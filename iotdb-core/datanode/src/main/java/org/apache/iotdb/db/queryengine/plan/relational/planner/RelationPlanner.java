@@ -1617,7 +1617,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               field.getName().orElse(null),
               field.getType(),
               field.isHidden(),
-              field.getColumnCategory()));
+              handle.getOutputColumnCategories().get(i)));
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();

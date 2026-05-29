@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-public class TableScanOperator extends AbstractTableScanOperator {
+public class TableScanOperator extends AbstractDeviceTableScanOperator {
   public TableScanOperator(AbstractTableScanOperatorParameter parameter) {
     super(parameter);
   }
