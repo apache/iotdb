@@ -58,7 +58,6 @@ jobs:
               - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
               - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/client-cpp-package.yml'
-              - '.github/workflows/client-cpp-source-build.yml'
               - '.github/scripts/package-client-cpp-*.sh'
       - id: result
         shell: bash
