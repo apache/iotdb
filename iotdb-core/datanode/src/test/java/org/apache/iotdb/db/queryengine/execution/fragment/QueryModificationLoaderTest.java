@@ -46,7 +46,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class QueryModificationLoaderTest {
@@ -90,12 +89,13 @@ public class QueryModificationLoaderTest {
       assertTrue(fileModCache.containsKey(resource.getTsFileID()));
       assertTrue(cachedModEntriesSize.get() > 0);
       assertTrue(memoryReservationManager.getReservedBytes() >= cachedModEntriesSize.get());
+      assertTrue(memoryReservationManager.getImmediateReservationCount() > 0);
     }
   }
 
   @Test
-  public void testFallbackScansRemainingModsWhenQuotaExceeded() throws Exception {
-    TsFileResource resource = prepareResource("fallback");
+  public void testFallbackScansModsWhenFileSizeExceedsRemainingQuotaBeforeLoad() throws Exception {
+    TsFileResource resource = prepareResource("file-size-precheck-fallback");
     writeMods(
         resource,
         new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 0, 10),
@@ -117,6 +117,40 @@ public class QueryModificationLoaderTest {
       assertEquals(0, cachedModEntriesSize.get());
       assertTrue(memoryReservationManager.getReservedBytes() > 0);
       assertEquals(0, memoryReservationManager.getRemainingImmediateFailures());
+      assertEquals(0, memoryReservationManager.getImmediateReservationCount());
+    }
+  }
+
+  @Test
+  public void testFallbackScansRemainingModsWhenEstimatedTreeExceedsQuota() throws Exception {
+    TsFileResource resource = prepareResource("estimated-tree-quota-fallback");
+    writeMods(
+        resource,
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 0, 10),
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d2.s1"), 20, 30),
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 40, 50));
+
+    Map<TsFileID, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>> fileModCache =
+        new ConcurrentHashMap<>();
+    AtomicLong cachedModEntriesSize = new AtomicLong();
+    CountingMemoryReservationManager memoryReservationManager =
+        new CountingMemoryReservationManager();
+
+    try (QueryModificationLoader loader =
+        newLoader(
+            resource,
+            resource.getTotalModSizeInByte() + 1,
+            fileModCache,
+            cachedModEntriesSize,
+            memoryReservationManager,
+            1)) {
+      List<ModEntry> result = loader.getPathModifications();
+
+      assertEquals(2, result.size());
+      assertFalse(fileModCache.containsKey(resource.getTsFileID()));
+      assertEquals(0, cachedModEntriesSize.get());
+      assertTrue(memoryReservationManager.getReservedBytes() > 0);
+      assertTrue(memoryReservationManager.getCumulativeReleaseCount() > 0);
     }
   }
 
@@ -142,7 +176,7 @@ public class QueryModificationLoaderTest {
             fileModCache,
             cachedModEntriesSize,
             memoryReservationManager,
-            1)) {
+            100)) {
       List<ModEntry> result = loader.getPathModifications();
 
       assertEquals(2, result.size());
@@ -150,12 +184,13 @@ public class QueryModificationLoaderTest {
       assertEquals(0, cachedModEntriesSize.get());
       assertTrue(memoryReservationManager.getReservedBytes() > 0);
       assertEquals(0, memoryReservationManager.getRemainingImmediateFailures());
+      assertEquals(1, memoryReservationManager.getImmediateReservationCount());
     }
   }
 
   @Test
-  public void testFallbackThrowsWhenMatchedModsReservationFailed() throws Exception {
-    TsFileResource resource = prepareResource("fallback-reserve-failed");
+  public void testFallbackReservesMatchedModsCumulativelyWhenQuotaExceeded() throws Exception {
+    TsFileResource resource = prepareResource("fallback-cumulative-reserve");
     writeMods(
         resource,
         new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 0, 10),
@@ -170,12 +205,41 @@ public class QueryModificationLoaderTest {
 
     try (QueryModificationLoader loader =
         newLoader(resource, 1, fileModCache, cachedModEntriesSize, memoryReservationManager, 1)) {
-      assertThrows(MemoryNotEnoughException.class, loader::getPathModifications);
+      List<ModEntry> result = loader.getPathModifications();
 
+      assertEquals(2, result.size());
       assertFalse(fileModCache.containsKey(resource.getTsFileID()));
       assertEquals(0, cachedModEntriesSize.get());
-      assertEquals(0, memoryReservationManager.getReservedBytes());
-      assertEquals(0, memoryReservationManager.getRemainingImmediateFailures());
+      assertTrue(memoryReservationManager.getReservedBytes() > 0);
+      assertEquals(1, memoryReservationManager.getRemainingImmediateFailures());
+      assertEquals(0, memoryReservationManager.getImmediateReservationCount());
+    }
+  }
+
+  @Test
+  public void testFallbackAdjustsReservedMemoryAfterSortAndMerge() throws Exception {
+    TsFileResource resource = prepareResource("fallback-sort-merge-adjust");
+    writeMods(
+        resource,
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 0, 10),
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d1.s1"), 5, 15),
+        new TreeDeletionEntry(new MeasurementPath("root.sg.d2.s1"), 20, 30));
+
+    Map<TsFileID, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>> fileModCache =
+        new ConcurrentHashMap<>();
+    AtomicLong cachedModEntriesSize = new AtomicLong();
+    CountingMemoryReservationManager memoryReservationManager =
+        new CountingMemoryReservationManager();
+
+    try (QueryModificationLoader loader =
+        newLoader(resource, 1, fileModCache, cachedModEntriesSize, memoryReservationManager, 1)) {
+      List<ModEntry> result = loader.getPathModifications();
+
+      assertEquals(1, result.size());
+      assertFalse(fileModCache.containsKey(resource.getTsFileID()));
+      assertEquals(0, cachedModEntriesSize.get());
+      assertTrue(memoryReservationManager.getReservedBytes() > 0);
+      assertTrue(memoryReservationManager.getCumulativeReleaseCount() > 0);
     }
   }
 
@@ -220,6 +284,8 @@ public class QueryModificationLoaderTest {
 
     private long reservedBytes;
     private int remainingImmediateFailures;
+    private int immediateReservationCount;
+    private int cumulativeReleaseCount;
 
     private CountingMemoryReservationManager() {}
 
@@ -234,6 +300,7 @@ public class QueryModificationLoaderTest {
 
     @Override
     public void reserveMemoryImmediately() {
+      immediateReservationCount++;
       if (remainingImmediateFailures > 0) {
         remainingImmediateFailures--;
         throw new MemoryNotEnoughException("Mock memory reservation failure.");
@@ -242,6 +309,7 @@ public class QueryModificationLoaderTest {
 
     @Override
     public void reserveMemoryImmediately(long size) {
+      immediateReservationCount++;
       if (remainingImmediateFailures > 0) {
         remainingImmediateFailures--;
         throw new MemoryNotEnoughException("Mock memory reservation failure.");
@@ -251,6 +319,7 @@ public class QueryModificationLoaderTest {
 
     @Override
     public void releaseMemoryCumulatively(long size) {
+      cumulativeReleaseCount++;
       reservedBytes -= size;
     }
 
@@ -276,6 +345,14 @@ public class QueryModificationLoaderTest {
 
     private int getRemainingImmediateFailures() {
       return remainingImmediateFailures;
+    }
+
+    private int getImmediateReservationCount() {
+      return immediateReservationCount;
+    }
+
+    private int getCumulativeReleaseCount() {
+      return cumulativeReleaseCount;
     }
   }
 }
