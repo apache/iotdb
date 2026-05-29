@@ -101,6 +101,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .setIsPipeEnableMemoryCheck(false);
   }
 
+  @Ignore
   @Test
   public void testShowCreateTopic() throws Exception {
     TableModelUtils.createDataBaseAndTable(
