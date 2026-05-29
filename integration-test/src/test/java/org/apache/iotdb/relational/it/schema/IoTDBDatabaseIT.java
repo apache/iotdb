@@ -297,7 +297,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show create database test_show_create_db"),
           "Database,Create Database,",
           Collections.singleton(
-              "test_show_create_db,CREATE DATABASE \"test_show_create_db\" WITH (ttl=300,time_partition_interval=100000,schema_region_group_num=0,data_region_group_num=0),"));
+              "test_show_create_db,CREATE DATABASE \"test_show_create_db\" WITH (ttl=300,time_partition_interval=100000,schema_region_group_num=1,data_region_group_num=2),"));
     }
   }
 
