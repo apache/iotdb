@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 
 import org.apache.tsfile.block.column.Column;
@@ -129,7 +130,7 @@ public final class FlatHash {
 
   public static long bytesToLong(byte[] bytes, int index) {
     if (bytes.length - 8 < 4) {
-      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 8");
+      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_BYTES_OFFSET_LT_8);
     }
     long num = 0;
     for (int ix = index + 7; ix >= index; ix--) {
@@ -141,7 +142,7 @@ public final class FlatHash {
 
   public static int bytesToInt(byte[] bytes, int index) {
     if (bytes.length - index < 4) {
-      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 4");
+      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_BYTES_OFFSET_LT_4);
     }
 
     int num = 0;
@@ -154,7 +155,7 @@ public final class FlatHash {
 
   public static void intToBytes(byte[] desc, int offset, int i) {
     if (desc.length - offset < 4) {
-      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_DESC_OFFSET_LT_4);
     }
     desc[3 + offset] = (byte) ((i >> 24) & 0xFF);
     desc[2 + offset] = (byte) ((i >> 16) & 0xFF);
@@ -164,7 +165,7 @@ public final class FlatHash {
 
   private static void longToBytes(byte[] desc, int offset, long num) {
     if (desc.length - offset < 8) {
-      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_DESC_LENGTH_LT_8);
     }
     for (int ix = 0; ix < 8; ++ix) {
       int i = ix * 8;
@@ -464,7 +465,7 @@ public final class FlatHash {
       newCapacityLong = multiplyExact(newCapacityLong, 2);
     }
     if (newCapacityLong > Integer.MAX_VALUE) {
-      throw new RuntimeException("Size of hash table cannot exceed 1 billion entries");
+      throw new RuntimeException(QueryMessages.SIZE_OF_HASH_TABLE_CANNOT_EXCEED);
     }
     return toIntExact(newCapacityLong);
   }
@@ -479,7 +480,7 @@ public final class FlatHash {
       // Check the result using the divide operator
       // and check for the special case of Long.MIN_VALUE * -1
       if (((y != 0) && (r / y != x)) || (x == Long.MIN_VALUE && y == -1)) {
-        throw new ArithmeticException("long overflow");
+        throw new ArithmeticException(QueryMessages.LONG_OVERFLOW);
       }
     }
     return r;
@@ -489,7 +490,7 @@ public final class FlatHash {
   public static int multiplyExact(int x, int y) {
     long r = (long) x * (long) y;
     if ((int) r != r) {
-      throw new ArithmeticException("integer overflow");
+      throw new ArithmeticException(QueryMessages.INTEGER_OVERFLOW);
     }
     return (int) r;
   }

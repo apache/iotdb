@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -127,7 +128,7 @@ public class DisruptorQueue {
                 - PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds() * 1000L
             >= lastLogTime) {
       LOGGER.warn(
-          "The assigner queue content has exceeded half, it may be stuck and may block insertion. regionId: {}, capacity: {}, bufferSize: {}",
+          DataNodePipeMessages.THE_ASSIGNER_QUEUE_CONTENT_HAS_EXCEEDED_HALF,
           dataRegionId,
           remainingCapacity,
           bufferSize);

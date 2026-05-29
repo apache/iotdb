@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
 import com.google.common.base.CharMatcher;
 
 import static java.util.Locale.ENGLISH;
@@ -36,15 +38,15 @@ public class BlobUtils {
   public static byte[] parseBlobString(String value) {
     requireNonNull(value, "value is null");
     if (value.length() < 3 || !value.startsWith("X'") || !value.endsWith("'")) {
-      throw new IllegalArgumentException("Binary literal must be in the form X'hexstring'");
+      throw new IllegalArgumentException(UtilMessages.BLOB_MUST_BE_HEX_STRING);
     }
     value = value.substring(2, value.length() - 1);
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
-      throw new IllegalArgumentException("Binary literal can only contain hexadecimal digits");
+      throw new IllegalArgumentException(UtilMessages.BLOB_ONLY_HEX_DIGITS);
     }
     if (hexString.length() % 2 != 0) {
-      throw new IllegalArgumentException("Binary literal must contain an even number of digits");
+      throw new IllegalArgumentException(UtilMessages.BLOB_EVEN_NUMBER_OF_DIGITS);
     }
     int len = hexString.length();
     byte[] values = new byte[len / 2];

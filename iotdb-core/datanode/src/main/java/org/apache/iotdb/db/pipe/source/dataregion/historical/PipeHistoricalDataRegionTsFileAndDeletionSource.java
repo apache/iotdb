@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -167,6 +168,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       new HashMap<>();
   private final Map<PersistentResource, Long> pendingResource2ReplicateIndexForIoTV2 =
       new HashMap<>();
+  private int extractedHistoricalTsFileCount = 0;
+  private int extractedHistoricalDeletionCount = 0;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -404,7 +407,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, username: {}, skip if no privileges: {}, is forwarding pipe requests: {}",
+          DataNodePipeMessages.PIPE_HISTORICAL_DATA_EXTRACTION_TIME_RANGE_START,
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -455,7 +458,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     } else {
       // fallback
       LOGGER.warn(
-          "Pipe {}@{}: unexpected ProgressIndex type {}, fallback to origin {}.",
+          DataNodePipeMessages.PIPE_UNEXPECTED_PROGRESSINDEX_TYPE_FALLBACK_TO_ORIGIN,
           pipeName,
           dataRegionId,
           origin.getType(),
@@ -483,12 +486,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
     if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       LOGGER.info(
-          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
-          pipeName,
-          dataRegionId);
+          DataNodePipeMessages.PIPE_FAILED_TO_START_TO_EXTRACT_HISTORICAL, pipeName, dataRegionId);
       return;
     }
     hasBeenStarted = true;
+    extractedHistoricalTsFileCount = 0;
+    extractedHistoricalDeletionCount = 0;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -514,16 +517,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
       // Sort tsFileResource and deletionResource
       long startTime = System.currentTimeMillis();
-      LOGGER.info("Pipe {}@{}: start to sort all extracted resources", pipeName, dataRegionId);
+      LOGGER.info(
+          DataNodePipeMessages.PIPE_START_TO_SORT_ALL_EXTRACTED_RESOURCES, pipeName, dataRegionId);
       originalResourceList.sort(
           (o1, o2) ->
               startIndex instanceof TimeWindowStateProgressIndex
                   ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                   : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
       pendingQueue = new ArrayDeque<>(originalResourceList);
+      PipeTerminateEvent.initializeHistoricalTransferSummary(
+          pipeName,
+          creationTime,
+          dataRegionId,
+          extractedHistoricalTsFileCount,
+          extractedHistoricalDeletionCount);
 
       LOGGER.info(
-          "Pipe {}@{}: finish to sort all extracted resources, took {} ms",
+          DataNodePipeMessages.PIPE_FINISH_TO_SORT_ALL_EXTRACTED_RESOURCES,
           pipeName,
           dataRegionId,
           System.currentTimeMillis() - startTime);
@@ -533,7 +543,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private void flushTsFilesForExtraction(DataRegion dataRegion) {
-    LOGGER.info("Pipe {}@{}: start to flush data region", pipeName, dataRegionId);
+    LOGGER.info(DataNodePipeMessages.PIPE_START_TO_FLUSH_DATA_REGION, pipeName, dataRegionId);
 
     // Consider the scenario: a consensus pipe comes to the same region, followed by another pipe
     // **immediately**, the latter pipe will skip the flush operation.
@@ -642,10 +652,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                       .pinTsFileResource(resource, shouldTransferModFile, pipeName);
                   return false;
                 } catch (final IOException e) {
-                  LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
+                  LOGGER.warn(
+                      DataNodePipeMessages.PIPE_FAILED_TO_PIN_TSFILERESOURCE,
+                      resource.getTsFilePath(),
+                      e);
                   return true;
                 }
               });
+      extractedHistoricalTsFileCount = filteredTsFileResources2TableNames.size();
 
       LOGGER.info(
           "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
@@ -687,7 +701,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean greaterThanStartIndex(PersistentResource resource, ProgressIndex progressIndex) {
     if (!startIndex.isAfter(progressIndex) && !startIndex.equals(progressIndex)) {
       LOGGER.info(
-          "Pipe {}@{}: resource {} meets mayTsFileContainUnprocessedData condition, extractor progressIndex: {}, resource ProgressIndex: {}",
+          DataNodePipeMessages
+              .PIPE_RESOURCE_MEETS_MAYTSFILECONTAINUNPROCESSEDDATA_CONDITION_EXTRACT,
           pipeName,
           dataRegionId,
           resource,
@@ -712,7 +727,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
     } catch (final IOException e) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to get devices from TsFile {}, extract it anyway",
+          DataNodePipeMessages.PIPE_FAILED_TO_GET_DEVICES_FROM_TSFILE_1,
           pipeName,
           dataRegionId,
           resource.getTsFilePath(),
@@ -765,7 +780,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private void extractDeletions(
       final DeletionResourceManager deletionResourceManager,
       final List<PersistentResource> resourceList) {
-    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+    LOGGER.info(DataNodePipeMessages.PIPE_START_TO_EXTRACT_DELETIONS, pipeName, dataRegionId);
     long startTime = System.currentTimeMillis();
     List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
     final int originalDeletionCount = allDeletionResources.size();
@@ -794,8 +809,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
+    extractedHistoricalDeletionCount = allDeletionResources.size();
     LOGGER.info(
-        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}, took {} ms",
+        DataNodePipeMessages.PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS,
         pipeName,
         dataRegionId,
         allDeletionResources.size(),
@@ -837,6 +853,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private Event supplyTerminateEvent() {
+    final PipeTerminateEvent.HistoricalTransferSummary historicalTransferSummary =
+        PipeTerminateEvent.snapshotHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    if (Objects.nonNull(historicalTransferSummary)) {
+      LOGGER.info(
+          "Pipe {}@{}: historical source has supplied all events, emitting terminate event. {}",
+          pipeName,
+          dataRegionId,
+          historicalTransferSummary.toReportMessage());
+    }
+
     final PipeTerminateEvent terminateEvent =
         new PipeTerminateEvent(
             pipeName,
@@ -847,7 +873,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     if (!terminateEvent.increaseReferenceCount(
         PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName())) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+          DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_2,
           pipeName,
           dataRegionId);
       return null;
@@ -863,8 +889,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     filteredTsFileResources2TableNames.remove(resource);
+    PipeTerminateEvent.markHistoricalTsFileSkipped(pipeName, creationTime, dataRegionId);
     LOGGER.info(
-        "Pipe {}@{}: skip historical tsfile {} because realtime source in current task {} has already captured it.",
+        DataNodePipeMessages.PIPE_SKIP_HISTORICAL_TSFILE_BECAUSE_REALTIME_SOURCE,
         pipeName,
         dataRegionId,
         resource.getTsFilePath(),
@@ -877,7 +904,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
-            "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
+            DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_SKIPPED_HISTORICAL_TSFILERESOURCE,
             pipeName,
             dataRegionId,
             resource.getTsFilePath(),
@@ -895,8 +922,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
     if (!isReferenceCountIncreased) {
       LOGGER.warn(
-          "The reference count of the event {} cannot be increased, skipping it.",
-          progressReportEvent);
+          DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, progressReportEvent);
     }
     return isReferenceCountIncreased ? progressReportEvent : null;
   }
@@ -936,7 +962,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (shouldAssignReplicateIndexForIoTV2(event)) {
         event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(resource));
         LOGGER.debug(
-            "[{}]Set {} for historical event {}",
+            DataNodePipeMessages.SET_FOR_HISTORICAL_EVENT,
             pipeName,
             event.getReplicateIndexForIoTV2(),
             event);
@@ -954,7 +980,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
       if (!isReferenceCountIncreased) {
         LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for historical tsfile event {}, will discard it",
+            DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_1,
             pipeName,
             dataRegionId,
             event);
@@ -973,7 +999,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
         } catch (final IOException e) {
           LOGGER.warn(
-              "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+              DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_CREATING,
               pipeName,
               dataRegionId,
               resource.getTsFilePath());
@@ -1008,7 +1034,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     if (shouldAssignReplicateIndexForIoTV2(event)) {
       event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(deletionResource));
       LOGGER.debug(
-          "[{}]Set {} for historical deletion event {}",
+          DataNodePipeMessages.SET_FOR_HISTORICAL_DELETION_EVENT,
           pipeName,
           event.getReplicateIndexForIoTV2(),
           event);
@@ -1026,7 +1052,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
     if (!isReferenceCountIncreased) {
       LOGGER.warn(
-          "Pipe {}@{}: failed to increase reference count for historical deletion event {}, will discard it",
+          DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR,
           pipeName,
           dataRegionId,
           event);
@@ -1071,6 +1097,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void close() {
+    if (!isTerminateSignalSent) {
+      PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    }
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {
@@ -1081,7 +1110,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                         (TsFileResource) resource, shouldTransferModFile, pipeName);
               } catch (final IOException e) {
                 LOGGER.warn(
-                    "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
+                    DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
                     pipeName,
                     dataRegionId,
                     ((TsFileResource) resource).getTsFilePath());

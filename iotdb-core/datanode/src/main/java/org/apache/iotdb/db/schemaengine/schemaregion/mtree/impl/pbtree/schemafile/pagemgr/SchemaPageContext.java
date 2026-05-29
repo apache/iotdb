@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
@@ -89,24 +90,24 @@ class SchemaPageContext {
     if (lockTraces.contains(page.getPageIndex())) {
       // FIXME rough resolve for reentrant write lock
       if (referredPages.get(page.getPageIndex()) != page) {
-        logger.error("Duplicate page instances with identical index: {}", page.getPageIndex());
+        logger.error(DataNodeSchemaMessages.DUPLICATE_PAGE_INSTANCES, page.getPageIndex());
       }
       // it's exactly twice-locked
       if (((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount() > 1) {
         logger.warn(
-            "Page [{}] had been locked {} times.",
+            DataNodeSchemaMessages.PAGE_LOCKED_TIMES,
             ((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount());
         // had already been locked twice
         page.getLock().writeLock().unlock();
 
         if (lockFaultTrigger) {
           logger.warn(
-              "Reentrant write locks on page {}, content detail:{}",
+              DataNodeSchemaMessages.REENTRANT_WRITE_LOCKS_DETAIL,
               page.getPageIndex(),
               page.inspect());
           lockFaultTrigger = false;
         } else {
-          logger.warn("Reentrant write locks on page:{}", page.getPageIndex());
+          logger.warn(DataNodeSchemaMessages.REENTRANT_WRITE_LOCKS, page.getPageIndex());
         }
         return;
       }

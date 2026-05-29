@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -66,10 +67,10 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       repairLogger = new RepairLogger(logFileDir, isRecoverStorageEngine);
     } catch (Exception e) {
       try {
-        LOGGER.error("[RepairScheduler] Failed to create repair logger", e);
+        LOGGER.error(StorageEngineMessages.REPAIR_FAILED_CREATE_LOGGER, e);
         repairLogger.close();
       } catch (IOException closeException) {
-        LOGGER.error("[RepairScheduler] Failed to close repair logger", closeException);
+        LOGGER.error(StorageEngineMessages.REPAIR_FAILED_CLOSE_LOGGER, closeException);
       }
       return;
     }
@@ -180,20 +181,20 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       if (!checkConditionsToStartRepairTask()) {
         return;
       }
-      LOGGER.info("[RepairScheduler] Wait compaction schedule task finish");
+      LOGGER.info(StorageEngineMessages.REPAIR_WAIT_COMPACTION_FINISH);
       CompactionScheduleTaskManager.getInstance().stopCompactionScheduleTasks();
       try {
-        LOGGER.info("[RepairScheduler] Wait all running compaction task finish");
+        LOGGER.info(StorageEngineMessages.REPAIR_WAIT_ALL_RUNNING_TASK_FINISH);
         CompactionTaskManager.getInstance().waitAllCompactionFinish();
         startTimePartitionScanTasks();
-        LOGGER.info("[RepairScheduler] Repair task finished");
+        LOGGER.info(StorageEngineMessages.REPAIR_TASK_FINISHED);
       } finally {
         CompactionScheduleTaskManager.getInstance().startScheduleTasks();
       }
     } catch (InterruptedException ignored) {
       // ignored the InterruptedException and let the task exit
     } catch (Exception e) {
-      LOGGER.error("[RepairScheduler] Meet error when execute repair schedule task", e);
+      LOGGER.error(StorageEngineMessages.REPAIR_SCHEDULE_TASK_ERROR, e);
     } finally {
       try {
         repairLogger.close();
@@ -212,7 +213,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
       return false;
     }
     if (!initSuccess) {
-      LOGGER.info("[RepairScheduler] Failed to init repair schedule task");
+      LOGGER.info(StorageEngineMessages.REPAIR_FAILED_INIT_SCHEDULE_TASK);
       return false;
     }
     for (RepairTimePartition timePartition : allTimePartitionFiles) {
@@ -220,7 +221,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
         return true;
       }
     }
-    LOGGER.info("[RepairScheduler] All time partitions have been repaired, skip repair task");
+    LOGGER.info(StorageEngineMessages.REPAIR_ALL_PARTITIONS_DONE_SKIP);
     return false;
   }
 

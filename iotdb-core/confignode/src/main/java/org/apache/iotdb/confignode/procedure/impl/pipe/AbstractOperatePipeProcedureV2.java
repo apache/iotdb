@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -112,12 +113,12 @@ public abstract class AbstractOperatePipeProcedureV2
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.debug("ProcedureId {} try to acquire pipe lock.", getProcId());
+    LOGGER.debug(ProcedureMessages.PROCEDUREID_TRY_TO_ACQUIRE_PIPE_LOCK, getProcId());
     pipeTaskInfo = acquireLockInternal(configNodeProcedureEnv);
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
+      LOGGER.warn(ProcedureMessages.PROCEDUREID_FAILED_TO_ACQUIRE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.debug("ProcedureId {} acquired pipe lock.", getProcId());
+      LOGGER.debug(ProcedureMessages.PROCEDUREID_ACQUIRED_PIPE_LOCK, getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -125,19 +126,25 @@ public abstract class AbstractOperatePipeProcedureV2
       case LOCK_ACQUIRED:
         if (pipeTaskInfo == null) {
           LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED,
               getProcId());
         } else {
           LOGGER.debug(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH,
               getProcId());
         }
         break;
       case LOCK_EVENT_WAIT:
         if (pipeTaskInfo == null) {
-          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+          LOGGER.warn(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_PIPE_LOCK,
+              getProcId());
         } else {
-          LOGGER.debug("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          LOGGER.debug(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_PIPE_LOCK_WILL_BE_RELEASED,
+              getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
@@ -149,12 +156,12 @@ public abstract class AbstractOperatePipeProcedureV2
       default:
         if (pipeTaskInfo == null) {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_PIPE_LOCK,
               getProcId(),
               procedureLockState);
         } else {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_PIPE_LOCK_WILL_BE_RELEASED,
               getProcId(),
               procedureLockState);
           configNodeProcedureEnv
@@ -174,9 +181,11 @@ public abstract class AbstractOperatePipeProcedureV2
     super.releaseLock(configNodeProcedureEnv);
 
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+      LOGGER.warn(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.debug("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.debug(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_PIPE_LOCK_WILL_BE_RELEASED, getProcId());
       if (this instanceof PipeMetaSyncProcedure) {
         configNodeProcedureEnv
             .getConfigManager()
@@ -227,7 +236,7 @@ public abstract class AbstractOperatePipeProcedureV2
       throws InterruptedException {
     if (pipeTaskInfo == null) {
       LOGGER.warn(
-          "ProcedureId {}: Pipe lock is not acquired, executeFromState's execution will be skipped.",
+          ProcedureMessages.PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL,
           getProcId());
       return Flow.NO_MORE_STATE;
     }
@@ -236,7 +245,7 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           if (!executeFromValidateTask(env)) {
-            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
+            LOGGER.info(ProcedureMessages.PROCEDUREID, getProcId(), SKIP_PIPE_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the pipe
             // command corresponding to this procedure is "Msg: The statement is executed
             // successfully."
@@ -258,13 +267,14 @@ public abstract class AbstractOperatePipeProcedureV2
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
-              String.format("Unknown state during executing operatePipeProcedure, %s", state));
+              String.format(
+                  ProcedureMessages.UNKNOWN_STATE_DURING_EXECUTING_OPERATEPIPEPROCEDURE, state));
       }
     } catch (Exception e) {
       // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
         LOGGER.warn(
-            "ProcedureId {}: Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            ProcedureMessages.PROCEDUREID_ENCOUNTERED_ERROR_WHEN_TRYING_TO_AT_STATE_RETRY,
             getProcId(),
             getOperation(),
             state,
@@ -276,7 +286,7 @@ public abstract class AbstractOperatePipeProcedureV2
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
         LOGGER.warn(
-            "ProcedureId {}: All {} retries failed when trying to {} at state [{}], will rollback...",
+            ProcedureMessages.PROCEDUREID_ALL_RETRIES_FAILED_WHEN_TRYING_TO_AT_STATE_WILL,
             getProcId(),
             RETRY_THRESHOLD,
             getOperation(),
@@ -285,8 +295,10 @@ public abstract class AbstractOperatePipeProcedureV2
         setFailure(
             new ProcedureException(
                 String.format(
-                    "ProcedureId %s: Fail to %s because %s",
-                    getProcId(), getOperation().name(), e.getMessage())));
+                    ProcedureMessages.PROCEDUREID_FAIL_TO_BECAUSE,
+                    getProcId(),
+                    getOperation().name(),
+                    e.getMessage())));
         return Flow.NO_MORE_STATE;
       }
     }
@@ -303,7 +315,7 @@ public abstract class AbstractOperatePipeProcedureV2
       throws IOException, InterruptedException, ProcedureException {
     if (pipeTaskInfo == null) {
       LOGGER.warn(
-          "ProcedureId {}: Pipe lock is not acquired, rollbackState({})'s execution will be skipped.",
+          ProcedureMessages.PROCEDUREID_PIPE_LOCK_IS_NOT_ACQUIRED_ROLLBACKSTATE_S_EXECUTION_WILL,
           getProcId(),
           state);
       return;
@@ -316,7 +328,10 @@ public abstract class AbstractOperatePipeProcedureV2
             rollbackFromValidateTask(env);
             isRollbackFromValidateTaskSuccessful = true;
           } catch (Exception e) {
-            LOGGER.warn("ProcedureId {}: Failed to rollback from validate task.", getProcId(), e);
+            LOGGER.warn(
+                ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_VALIDATE_TASK,
+                getProcId(),
+                e);
           }
         }
         break;
@@ -325,7 +340,9 @@ public abstract class AbstractOperatePipeProcedureV2
           rollbackFromCalculateInfoForTask(env);
         } catch (Exception e) {
           LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from calculate info for task.", getProcId(), e);
+              ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_CALCULATE_INFO_FOR_TASK,
+              getProcId(),
+              e);
         }
         break;
       case WRITE_CONFIG_NODE_CONSENSUS:
@@ -339,7 +356,7 @@ public abstract class AbstractOperatePipeProcedureV2
           }
         } catch (Exception e) {
           LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from write config node consensus.",
+              ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_WRITE_CONFIG_NODE_CONSENSUS,
               getProcId(),
               e);
         }
@@ -355,11 +372,13 @@ public abstract class AbstractOperatePipeProcedureV2
           isRollbackFromOperateOnDataNodesSuccessful = true;
         } catch (Exception e) {
           LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from operate on data nodes.", getProcId(), e);
+              ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_OPERATE_ON_DATA_NODES,
+              getProcId(),
+              e);
         }
         break;
       default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
+        LOGGER.error(ProcedureMessages.UNSUPPORTED_ROLL_BACK_STATE, state);
     }
   }
 
@@ -515,7 +534,7 @@ public abstract class AbstractOperatePipeProcedureV2
       // Ignore the exceptions reported
       pushPipeMetaToDataNodes(env);
     } catch (Exception e) {
-      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
+      LOGGER.info(ProcedureMessages.FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL, e);
     }
   }
 

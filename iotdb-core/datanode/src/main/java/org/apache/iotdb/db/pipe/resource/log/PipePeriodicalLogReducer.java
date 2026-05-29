@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.log;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
@@ -78,7 +79,8 @@ public class PipePeriodicalLogReducer {
     PipeDataNodeResourceManager.memory()
         .resize(block, PipeConfig.getInstance().getPipeLoggerCacheMaxSizeInBytes(), false);
     LOGGER.info(
-        "PipePeriodicalLogReducer is allocated to {} bytes.", block.getMemoryUsageInBytes());
+        DataNodePipeMessages.PIPEPERIODICALLOGREDUCER_IS_ALLOCATED_TO_BYTES,
+        block.getMemoryUsageInBytes());
     loggerCache
         .policy()
         .eviction()

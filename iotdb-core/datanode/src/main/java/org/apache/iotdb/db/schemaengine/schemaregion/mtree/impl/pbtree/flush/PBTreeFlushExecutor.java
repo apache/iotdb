@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.flush;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.IMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -116,7 +117,7 @@ public class PBTreeFlushExecutor {
       file.updateDatabaseNode(updatedStorageGroupMNode);
     } catch (IOException e) {
       logger.warn(
-          "IOException occurred during updating StorageGroupMNode {}",
+          DataNodeSchemaMessages.IO_EXCEPTION_UPDATING_SG_MNODE,
           updatedStorageGroupMNode.getFullPath(),
           e);
       throw e;
@@ -144,8 +145,7 @@ public class PBTreeFlushExecutor {
         collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
       }
     } catch (MetadataException | IOException e) {
-      logger.warn(
-          "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+      logger.warn(DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH, subtreeRoot.getFullPath(), e);
       memoryManager.updateCacheStatusAfterFlushFailure(subtreeRoot);
       throw e;
     } finally {
@@ -179,8 +179,7 @@ public class PBTreeFlushExecutor {
           collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
         }
       } catch (MetadataException | IOException e) {
-        logger.warn(
-            "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);
+        logger.warn(DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH, subtreeRoot.getFullPath(), e);
         processNotFlushedSubtrees(subtreeRoot, volatileSubtreeStack);
         throw e;
       } finally {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
@@ -49,21 +51,18 @@ public abstract class AbstractOperator implements Operator {
     if (oneTupleSize > maxReturnSize) {
       // make sure at least one-tuple-at-a-time
       this.maxTupleSizeOfTsBlock = 1;
-      LOGGER.warn(
-          "Only one tuple can be sent each time caused by limited memory, oneTupleSize: {}B, maxReturnSize: {}B",
-          oneTupleSize,
-          maxReturnSize);
+      LOGGER.warn(CalcMessages.ONLY_ONE_TUPLE_CAN_BE_SENT_EACH_TIME, oneTupleSize, maxReturnSize);
     } else {
       this.maxTupleSizeOfTsBlock = (int) (maxReturnSize / oneTupleSize);
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("maxTupleSizeOfTsBlock is：{}", maxTupleSizeOfTsBlock);
+      LOGGER.debug(CalcMessages.MAX_TUPLE_SIZE_OF_TS_BLOCK_IS, maxTupleSizeOfTsBlock);
     }
   }
 
   public TsBlock checkTsBlockSizeAndGetResult() {
     if (resultTsBlock == null) {
-      throw new IllegalArgumentException("Result tsBlock cannot be null");
+      throw new IllegalArgumentException(CalcMessages.RESULT_TS_BLOCK_CANNOT_BE_NULL);
     } else if (resultTsBlock.isEmpty()) {
       TsBlock res = resultTsBlock;
       resultTsBlock = null;
@@ -98,7 +97,7 @@ public abstract class AbstractOperator implements Operator {
       startOffset += maxTupleSizeOfTsBlock;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Current tsBlock size is : {}", res.getRetainedSizeInBytes());
+      LOGGER.debug(CalcMessages.CURRENT_TS_BLOCK_SIZE_IS, res.getRetainedSizeInBytes());
     }
     return res;
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -88,7 +89,7 @@ public class NodePathsConvertOperator implements ProcessOperator {
       try {
         partialPath = new PartialPath(path);
       } catch (IllegalPathException e) {
-        LOGGER.warn("Failed to convert node path to PartialPath {}", path);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_TO_CONVERT_NODE_PATH_TO_PARTIALPATH, path);
         continue;
       }
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);

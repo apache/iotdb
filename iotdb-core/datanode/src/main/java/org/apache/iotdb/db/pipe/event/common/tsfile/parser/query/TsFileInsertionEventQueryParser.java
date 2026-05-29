@@ -30,8 +30,10 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -78,6 +80,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
+  private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -206,7 +209,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
         // Check if deviceId is deleted
         if (deviceId == null) {
-          LOGGER.warn("Found null deviceId, removing entry");
+          LOGGER.warn(DataNodePipeMessages.FOUND_NULL_DEVICEID_REMOVING_ENTRY);
           iterator.remove();
           continue;
         }
@@ -236,7 +239,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       currentModifications);
                 } catch (IOException e) {
                   LOGGER.warn(
-                      "Failed to read metadata for deviceId: {}, measurement: {}, removing",
+                      DataNodePipeMessages.FAILED_TO_READ_METADATA_FOR_DEVICEID_MEASUREMENT,
                       deviceId,
                       measurement,
                       e);
@@ -417,11 +420,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               entry.getValue(),
                               timeFilterExpression,
                               allocatedMemoryBlockForTablet,
-                              currentModifications);
+                              currentModifications,
+                              tabletStringInternPool);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(
-                          "failed to create TsFileInsertionDataTabletIterator", e);
+                          DataNodePipeMessages.FAILED_TO_CREATE_TSFILEINSERTIONDATATABLETITERATOR,
+                          e);
                     }
                   }
 
@@ -519,7 +524,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         tsFileReader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close TsFileReader", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TSFILEREADER, e);
     }
 
     super.close();

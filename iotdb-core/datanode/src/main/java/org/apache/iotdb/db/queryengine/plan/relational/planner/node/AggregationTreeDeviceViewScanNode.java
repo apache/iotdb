@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -162,7 +163,7 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
 
   protected PlanNodeType getPlanNodeType() {
     // This node is not supported to serde
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.NOT_SUPPORTED_YET);
   }
 
   @Override

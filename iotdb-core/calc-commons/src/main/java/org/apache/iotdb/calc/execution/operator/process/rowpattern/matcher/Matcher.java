@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.PatternAggregators;
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -186,7 +187,7 @@ public class Matcher {
             runtime.scheduleKill(threadId);
             break;
           default:
-            throw new UnsupportedOperationException("not yet implemented");
+            throw new UnsupportedOperationException(CalcMessages.NOT_YET_IMPLEMENTED);
         }
         if (matched) {
           // do not process the following threads, because they are on less preferred paths than the

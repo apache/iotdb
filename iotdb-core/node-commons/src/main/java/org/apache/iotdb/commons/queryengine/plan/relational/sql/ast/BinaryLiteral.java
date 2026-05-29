@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 
 import com.google.common.base.CharMatcher;
@@ -51,10 +52,10 @@ public class BinaryLiteral extends Literal {
     requireNonNull(value, "value is null");
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
-      throw new ParsingException("Binary literal can only contain hexadecimal digits");
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY);
     }
     if (hexString.length() % 2 != 0) {
-      throw new ParsingException("Binary literal must contain an even number of digits");
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_EVEN_DIGITS);
     }
     this.value = BaseEncoding.base16().decode(hexString);
   }
@@ -70,10 +71,10 @@ public class BinaryLiteral extends Literal {
     requireNonNull(value, "value is null");
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
-      throw new ParsingException("Binary literal can only contain hexadecimal digits", location);
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY, location);
     }
     if (hexString.length() % 2 != 0) {
-      throw new ParsingException("Binary literal must contain an even number of digits", location);
+      throw new ParsingException(QueryMessages.BINARY_LITERAL_EVEN_DIGITS, location);
     }
     this.value = BaseEncoding.base16().decode(hexString);
   }

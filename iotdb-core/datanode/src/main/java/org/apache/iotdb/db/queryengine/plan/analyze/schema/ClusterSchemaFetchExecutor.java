@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -294,8 +296,10 @@ class ClusterSchemaFetchExecutor {
             }
           }
         } else {
-          throw new RuntimeException(
-              String.format("Fetch Schema failed, because queryExecution is null for %s", queryId));
+          throw new IoTDBRuntimeException(
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXECUTION_MISSING, executionResult.queryId.getId()),
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         }
 
         result.setDatabases(databaseSet);

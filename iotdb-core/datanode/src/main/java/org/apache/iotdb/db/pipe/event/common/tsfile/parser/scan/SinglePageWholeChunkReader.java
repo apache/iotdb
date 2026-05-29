@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -105,7 +107,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
     // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          "do not has a complete page body. Expected:"
+          DataNodePipeMessages.DO_NOT_HAS_A_COMPLETE_PAGE_BODY
               + compressedPageBodyLength
               + ". Actual:"
               + chunkBuffer.remaining());
@@ -127,7 +129,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
           compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
-          "Uncompress error! uncompress size: "
+          DataNodePipeMessages.UNCOMPRESS_ERROR_UNCOMPRESS_SIZE
               + pageHeader.getUncompressedSize()
               + "compressed size: "
               + pageHeader.getCompressedSize()

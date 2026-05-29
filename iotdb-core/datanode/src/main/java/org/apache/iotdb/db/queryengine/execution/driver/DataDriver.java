@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -103,7 +104,8 @@ public class DataDriver extends Driver {
           // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
           // for some reasons, we may get null QueryDataSource here.
           // And it's safe for us to throw this exception here in such case.
-          throw new IllegalStateException("QueryDataSource should never be null!");
+          throw new IllegalStateException(
+              DataNodeQueryMessages.QUERYDATASOURCE_SHOULD_NEVER_BE_NULL);
         } else if (dataSource == UNFINISHED_QUERY_DATA_SOURCE) {
           // init query data source timeout. Maybe failed to acquire the read lock within the
           // specified time
