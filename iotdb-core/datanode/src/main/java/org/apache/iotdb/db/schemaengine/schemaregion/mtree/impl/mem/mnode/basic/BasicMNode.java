@@ -62,6 +62,11 @@ public class BasicMNode implements IMemMNode {
   }
 
   @Override
+  public BasicMNode getBasicMNode() {
+    return this;
+  }
+
+  @Override
   public String getName() {
     return basicMNodeInfo.getName();
   }

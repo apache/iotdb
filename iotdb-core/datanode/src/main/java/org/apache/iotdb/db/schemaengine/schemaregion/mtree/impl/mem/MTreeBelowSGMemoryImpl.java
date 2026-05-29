@@ -225,8 +225,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   private boolean hasDeviceDescendantInChildren(final IMemMNode node) {
-    final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
       while (iterator.hasNext()) {
         final IMemMNode child = iterator.next();
         if (child.isDevice() || child.hasDeviceDescendant()) {
@@ -234,8 +233,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
       return false;
-    } finally {
-      iterator.close();
     }
   }
 
@@ -697,14 +694,15 @@ public class MTreeBelowSGMemoryImpl {
       boolean hasMeasurement = false;
       boolean hasNonViewMeasurement = false;
       IMemMNode child;
-      IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          hasMeasurement = true;
-          if (!child.getAsMeasurementMNode().isLogicalView()) {
-            hasNonViewMeasurement = true;
-            break;
+      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          if (child.isMeasurement()) {
+            hasMeasurement = true;
+            if (!child.getAsMeasurementMNode().isLogicalView()) {
+              hasNonViewMeasurement = true;
+              break;
+            }
           }
         }
       }
@@ -1238,8 +1236,7 @@ public class MTreeBelowSGMemoryImpl {
   private long rebuildSubtreeMeasurementCountFromNode(final IMemMNode node) {
     long count = node.isMeasurement() ? 1L : 0L;
     boolean hasDeviceDescendant = false;
-    final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
       while (iterator.hasNext()) {
         final IMemMNode child = iterator.next();
         count += rebuildSubtreeMeasurementCountFromNode(child);
@@ -1247,8 +1244,6 @@ public class MTreeBelowSGMemoryImpl {
           hasDeviceDescendant = true;
         }
       }
-    } finally {
-      iterator.close();
     }
     if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
       count += getTemplateMeasurementCount(node.getAsDeviceMNode().getSchemaTemplateId());

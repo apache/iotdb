@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MTreeBelowSGMemoryImplTest {
 
@@ -82,22 +83,36 @@ public class MTreeBelowSGMemoryImplTest {
         null,
         false,
         null);
+    mtree.createTimeSeries(
+        new MeasurementPath("root.sg.c.d.s2"),
+        TSDataType.BOOLEAN,
+        TSEncoding.PLAIN,
+        CompressionType.SNAPPY,
+        null,
+        null,
+        false,
+        null);
 
     aNode = mtree.getNodeByPath(new PartialPath("root.sg.a"));
+    IMemMNode cNode = mtree.getNodeByPath(new PartialPath("root.sg.c"));
     Assert.assertTrue(aNode.isDevice());
     Assert.assertTrue(aNode.hasDeviceDescendant());
+    Assert.assertTrue(cNode.hasDeviceDescendant());
 
     database.setHasDeviceDescendant(false);
     aNode.setHasDeviceDescendant(false);
     bNode.setHasDeviceDescendant(true);
+    cNode.setHasDeviceDescendant(false);
     mtree.rebuildSubtreeMeasurementCount();
 
     database = mtree.getNodeByPath(new PartialPath("root.sg"));
     aNode = mtree.getNodeByPath(new PartialPath("root.sg.a"));
     bNode = mtree.getNodeByPath(new PartialPath("root.sg.a.b"));
+    cNode = mtree.getNodeByPath(new PartialPath("root.sg.c"));
     Assert.assertTrue(database.hasDeviceDescendant());
     Assert.assertTrue(aNode.hasDeviceDescendant());
     Assert.assertFalse(bNode.hasDeviceDescendant());
+    Assert.assertTrue(cNode.hasDeviceDescendant());
 
     mtree.deleteTimeSeries(new PartialPath("root.sg.a.s0"));
     aNode = mtree.getNodeByPath(new PartialPath("root.sg.a"));
@@ -106,8 +121,40 @@ public class MTreeBelowSGMemoryImplTest {
 
     mtree.deleteTimeSeries(new PartialPath("root.sg.a.b.s1"));
     database = mtree.getNodeByPath(new PartialPath("root.sg"));
-    Assert.assertFalse(database.hasDeviceDescendant());
+    Assert.assertTrue(database.hasDeviceDescendant());
     assertPathNotExist(mtree, new PartialPath("root.sg.a"));
+
+    mtree.deleteTimeSeries(new PartialPath("root.sg.c.d.s2"));
+    database = mtree.getNodeByPath(new PartialPath("root.sg"));
+    Assert.assertFalse(database.hasDeviceDescendant());
+    assertPathNotExist(mtree, new PartialPath("root.sg.c"));
+  }
+
+  @Test
+  public void testDeviceDescendantFlagIsMaintainedAcrossTableDeviceDrop() throws Exception {
+    final MTreeBelowSGMemoryImpl mtree = newMTree();
+    final AtomicInteger attributePointer = new AtomicInteger();
+
+    mtree.createOrUpdateTableDevice(
+        "t",
+        new String[] {"hebei", "p_1", "d_0"},
+        attributePointer::getAndIncrement,
+        ignored -> {});
+
+    IMemMNode database = mtree.getNodeByPath(new PartialPath("root.sg"));
+    final IMemMNode table = mtree.getNodeByPath(new PartialPath("root.sg.t"));
+    final IMemMNode province = mtree.getNodeByPath(new PartialPath("root.sg.t.hebei"));
+    final IMemMNode device = mtree.getNodeByPath(new PartialPath("root.sg.t.hebei.p_1.d_0"));
+    Assert.assertTrue(database.hasDeviceDescendant());
+    Assert.assertTrue(table.hasDeviceDescendant());
+    Assert.assertTrue(province.hasDeviceDescendant());
+    Assert.assertTrue(device.isDevice());
+    Assert.assertFalse(device.hasDeviceDescendant());
+
+    Assert.assertTrue(mtree.deleteTableDevice("t", ignored -> {}));
+    database = mtree.getNodeByPath(new PartialPath("root.sg"));
+    Assert.assertFalse(database.hasDeviceDescendant());
+    assertPathNotExist(mtree, new PartialPath("root.sg.t"));
   }
 
   @Test

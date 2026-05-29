@@ -112,15 +112,22 @@ public class MTreeBelowSGCachedImplTest {
     mtree.unPinMNode(bNode);
 
     createBooleanTimeSeries("root.sg.a.s0");
+    createBooleanTimeSeries("root.sg.c.d.s2");
 
     aNode = mtree.getNodeByPath(new PartialPath("root.sg.a"));
+    ICachedMNode cNode = mtree.getNodeByPath(new PartialPath("root.sg.c"));
     Assert.assertTrue(aNode.isDevice());
     Assert.assertTrue(aNode.hasDeviceDescendant());
     Assert.assertTrue(aNode.isDeviceDescendantComputed());
+    Assert.assertTrue(cNode.hasDeviceDescendant());
+    Assert.assertTrue(cNode.isDeviceDescendantComputed());
 
     aNode.setHasDeviceDescendant(false);
     aNode.setDeviceDescendantComputed(false);
     mtree.unPinMNode(aNode);
+    cNode.setHasDeviceDescendant(false);
+    cNode.setDeviceDescendantComputed(false);
+    mtree.unPinMNode(cNode);
 
     Assert.assertEquals(
         Collections.singletonList("root.sg.a.b.s1"),
@@ -130,6 +137,9 @@ public class MTreeBelowSGCachedImplTest {
     Assert.assertTrue(aNode.hasDeviceDescendant());
     Assert.assertTrue(aNode.isDeviceDescendantComputed());
     mtree.unPinMNode(aNode);
+    cNode = mtree.getNodeByPath(new PartialPath("root.sg.c"));
+    Assert.assertFalse(cNode.isDeviceDescendantComputed());
+    mtree.unPinMNode(cNode);
 
     mtree.deleteTimeseries(new PartialPath("root.sg.a.s0"));
     aNode = mtree.getNodeByPath(new PartialPath("root.sg.a"));
@@ -140,10 +150,17 @@ public class MTreeBelowSGCachedImplTest {
 
     mtree.deleteTimeseries(new PartialPath("root.sg.a.b.s1"));
     database = mtree.getNodeByPath(new PartialPath("root.sg"));
-    Assert.assertFalse(database.hasDeviceDescendant());
+    Assert.assertTrue(database.hasDeviceDescendant());
     Assert.assertTrue(database.isDeviceDescendantComputed());
     mtree.unPinMNode(database);
     assertPathNotExist(new PartialPath("root.sg.a"));
+
+    mtree.deleteTimeseries(new PartialPath("root.sg.c.d.s2"));
+    database = mtree.getNodeByPath(new PartialPath("root.sg"));
+    Assert.assertFalse(database.hasDeviceDescendant());
+    Assert.assertTrue(database.isDeviceDescendantComputed());
+    mtree.unPinMNode(database);
+    assertPathNotExist(new PartialPath("root.sg.c"));
   }
 
   private MTreeBelowSGCachedImpl newMTree() throws Exception {

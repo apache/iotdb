@@ -32,26 +32,6 @@ public class CachedAboveDatabaseMNode
   }
 
   @Override
-  public boolean hasDeviceDescendant() {
-    return basicMNode.hasDeviceDescendant();
-  }
-
-  @Override
-  public void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
-    basicMNode.setHasDeviceDescendant(hasDeviceDescendant);
-  }
-
-  @Override
-  public boolean isDeviceDescendantComputed() {
-    return basicMNode.isDeviceDescendantComputed();
-  }
-
-  @Override
-  public void setDeviceDescendantComputed(final boolean deviceDescendantComputed) {
-    basicMNode.setDeviceDescendantComputed(deviceDescendantComputed);
-  }
-
-  @Override
   public CacheEntry getCacheEntry() {
     return basicMNode.getCacheEntry();
   }

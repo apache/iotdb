@@ -68,6 +68,11 @@ public class CachedBasicMNode implements ICachedMNode {
   }
 
   @Override
+  public CachedBasicMNode getBasicMNode() {
+    return this;
+  }
+
+  @Override
   public String getName() {
     return cacheMNodeInfo.getName();
   }

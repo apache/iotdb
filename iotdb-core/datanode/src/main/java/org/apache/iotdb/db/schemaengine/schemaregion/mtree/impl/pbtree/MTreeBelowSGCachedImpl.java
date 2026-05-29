@@ -161,8 +161,7 @@ public class MTreeBelowSGCachedImpl {
   }
 
   private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
-    final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node)) {
       while (iterator.hasNext()) {
         final ICachedMNode child = iterator.next();
         try {
@@ -174,8 +173,6 @@ public class MTreeBelowSGCachedImpl {
         }
       }
       return false;
-    } finally {
-      iterator.close();
     }
   }
 
@@ -749,8 +746,7 @@ public class MTreeBelowSGCachedImpl {
         boolean hasMeasurement = false;
         boolean hasNonViewMeasurement = false;
         ICachedMNode child;
-        IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode);
-        try {
+        try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(curNode)) {
           while (iterator.hasNext()) {
             child = iterator.next();
             unPinMNode(child);
@@ -762,8 +758,6 @@ public class MTreeBelowSGCachedImpl {
               }
             }
           }
-        } finally {
-          iterator.close();
         }
 
         if (!hasMeasurement) {
@@ -795,14 +789,11 @@ public class MTreeBelowSGCachedImpl {
   }
 
   private boolean isEmptyInternalMNode(ICachedMNode node) throws MetadataException {
-    IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node)) {
       return !IoTDBConstant.PATH_ROOT.equals(node.getName())
           && !node.isMeasurement()
           && !(node.isDevice() && node.getAsDeviceMNode().isUseTemplate())
           && !iterator.hasNext();
-    } finally {
-      iterator.close();
     }
   }
 

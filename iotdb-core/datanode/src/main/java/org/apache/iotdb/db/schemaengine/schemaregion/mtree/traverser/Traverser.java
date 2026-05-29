@@ -338,8 +338,7 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   @SuppressWarnings("unchecked")
   private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
     final IMTreeStore<ICachedMNode> cachedStore = (IMTreeStore<ICachedMNode>) store;
-    final IMNodeIterator<ICachedMNode> iterator = cachedStore.getChildrenIterator(node);
-    try {
+    try (final IMNodeIterator<ICachedMNode> iterator = cachedStore.getChildrenIterator(node)) {
       while (iterator.hasNext()) {
         final ICachedMNode child = iterator.next();
         try {
@@ -351,8 +350,6 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
         }
       }
       return false;
-    } finally {
-      iterator.close();
     }
   }
 
