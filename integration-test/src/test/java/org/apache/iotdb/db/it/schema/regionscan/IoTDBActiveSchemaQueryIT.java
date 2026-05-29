@@ -27,7 +27,6 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -238,7 +237,6 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
   }
 
   @Test
-  @Ignore
   public void testCountTimeSeriesWithTimeConditionIncludesView() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
