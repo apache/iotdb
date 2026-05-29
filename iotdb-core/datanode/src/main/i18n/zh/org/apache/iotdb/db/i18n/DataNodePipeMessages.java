@@ -84,7 +84,7 @@ public final class DataNodePipeMessages {
   // ===================== AGENT =====================
 
   public static final String ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A =
-      "Attempt to report pipe exception to a null PipeTaskMeta.";
+      "尝试向空的 PipeTaskMeta 上报 pipe 异常。";
   public static final String CANNOT_PARSE_REBOOT_TIMES_FROM_FILE_SET =
       "无法解析 reboot times from file {}, set the current time in seconds ({}) as the reboot times";
   public static final String CANNOT_RECORD_REBOOT_TIMES_TO_FILE_THE =
@@ -92,11 +92,11 @@ public final class DataNodePipeMessages {
   public static final String CANNOT_START_SIMPLEPROGRESSINDEXASSIGNER_BECAUSE_OF =
       "无法启动 SimpleProgressIndexAssigner because of {}";
   public static final String CREATE_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS =
-      "创建 pipe DN task {} successfully within {} ms";
+      "创建 pipe DN task {} 成功，耗时 {} ms";
   public static final String DEREGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT =
-      "Deregister subtask {}. runningTaskCount: {}, registeredTaskCount: {}";
+      "注销子任务 {}。runningTaskCount: {}, registeredTaskCount: {}";
   public static final String DROP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS =
-      "Drop pipe DN task {} successfully within {} ms";
+      "删除 pipe DN task {} 成功，耗时 {} ms";
   public static final String ERROR_OCCURRED_WHEN_COLLECTING_EVENTS_FROM_PROCESSOR =
       "collecting events from processor 时发生错误";
   public static final String EXCEPTION_IN_PIPE_EVENT_PROCESSING_IGNORED_BECAUSE =
@@ -132,9 +132,19 @@ public final class DataNodePipeMessages {
       "获取 pipe task meta from config node. Ignore the exception 失败，原因：config node may not be "
           + "ready yet, and meta will be pushed by config node later.";
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
-      "persist progress index to configNode, status: {} 失败";
+      "持久化 progress index 到 configNode 失败，状态：{}";
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
-      "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
+      "注册 pipe plugin {} 失败。将跳过该插件并继续启动。";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN =
+          "注册 PipePlugin %s 失败，因为给定的 PipePlugin 名称与内置 PipePlugin 名称重复。";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_INSTANCE_CONSTRUCTION_FAILED =
+          "注册 PipePlugin %s(%s) 失败，因为其实例无法成功构造。异常：%s";
+  public static final String FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_JAR_MD5_MISMATCH =
+      "注册 PipePlugin %s 失败，因为 pipe plugin %s 已存在的 jar 文件 MD5 与新的 jar 文件不同。";
+  public static final String FAILED_TO_DEREGISTER_BUILTIN_PIPE_PLUGIN =
+      "注销内置 PipePlugin %s 失败。";
   public static final String PIPECONNECTOR = "PipeConnector: ";
   public static final String PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION =
       "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}";
@@ -157,51 +167,51 @@ public final class DataNodePipeMessages {
       "PipeDataNodeTaskBuilder: When the realtime sync is enabled, we enable rate limiter in "
           + "sending tsfile by default to reserve disk and network IO for realtime sending.";
   public static final String PIPEEVENTCOLLECTOR_THE_EVENT_IS_ALREADY_RELEASED_SKIPPING =
-      "PipeEventCollector: The event {} is already released, skipping it.";
+      "PipeEventCollector：事件 {} 已被释放，跳过处理。";
   public static final String PIPE_CONNECTOR_SUBTASK_WAS_CLOSED_WITHIN_MS =
       "Pipe：connector subtask {} ({}) 已关闭 within {} ms";
-  public static final String PIPE_META_NOT_FOUND = "Pipe meta not found: ";
+  public static final String PIPE_META_NOT_FOUND = "未找到 pipe 元数据：";
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
       "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
           + "callbackExecutor {}.";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
-      "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
+      "Pipe 跳过不应传输的临时 TsFile：{}";
   public static final String PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING =
-      "Pulled pipe meta from config node: {}, recovering ...";
+      "已从 config node 拉取 pipe 元数据：{}，正在恢复 ...";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE =
-      "Received pipe heartbeat request {} from config node.";
+      "收到来自 config node 的 pipe 心跳请求 {}。";
   public static final String REGION_NO_TSFILEINSERTIONEVENTS_TO_REPLACE_FOR_SOURCE =
       "Region {}: No TsFileInsertionEvents to replace for source files {}";
   public static final String REGION_REPLACED_TSFILEINSERTIONEVENTS_WITH =
       "Region {}: Replaced TsFileInsertionEvents {} with {}";
-  public static final String REGISTEREDTASKCOUNT_0 = "registeredTaskCount < 0";
-  public static final String REGISTEREDTASKCOUNT_0_1 = "registeredTaskCount <= 0";
+  public static final String REGISTEREDTASKCOUNT_0 = "registeredTaskCount 小于 0";
+  public static final String REGISTEREDTASKCOUNT_0_1 = "registeredTaskCount 小于等于 0";
   public static final String REGISTER_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT =
-      "Register subtask {}. runningTaskCount: {}, registeredTaskCount: {}";
+      "注册子任务 {}。runningTaskCount: {}, registeredTaskCount: {}";
   public static final String REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE =
-      "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}";
-  public static final String RUNNINGTASKCOUNT_0 = "runningTaskCount < 0";
-  public static final String RUNNINGTASKCOUNT_0_1 = "runningTaskCount <= 0";
+      "向本地 PipeTaskMeta({}) 上报 PipeRuntimeException，异常信息：{}";
+  public static final String RUNNINGTASKCOUNT_0 = "runningTaskCount 小于 0";
+  public static final String RUNNINGTASKCOUNT_0_1 = "runningTaskCount 小于等于 0";
   public static final String SIMPLEPROGRESSINDEXASSIGNER_STARTED_SUCCESSFULLY_ISSIMPLECONSENSUSENABLE_R =
-      "SimpleProgressIndexAssigner started successfully. isSimpleConsensusEnable: {}, "
+      "SimpleProgressIndexAssigner 启动成功。isSimpleConsensusEnable: {}, "
           + "rebootTimes: {}";
   public static final String STARTING_SIMPLEPROGRESSINDEXASSIGNER =
-      "Starting SimpleProgressIndexAssigner ...";
+      "正在启动 SimpleProgressIndexAssigner ...";
   public static final String START_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS =
-      "Start pipe DN task {} successfully within {} ms";
+      "启动 pipe DN task {} 成功，耗时 {} ms";
   public static final String START_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT =
-      "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}";
+      "启动子任务 {}。runningTaskCount: {}, registeredTaskCount: {}";
   public static final String STOP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS =
-      "Stop pipe DN task {} successfully within {} ms";
+      "停止 pipe DN task {} 成功，耗时 {} ms";
   public static final String STOP_SUBTASK_RUNNINGTASKCOUNT_REGISTEREDTASKCOUNT =
-      "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}";
+      "停止子任务 {}。runningTaskCount: {}, registeredTaskCount: {}";
   public static final String SUBTASK_IS_CLOSED_IGNORE_EXCEPTION =
       "subtask {} 已关闭, ignore exception";
-  public static final String SUBTASK_WORKER_IS_INTERRUPTED = "subtask worker is interrupted";
+  public static final String SUBTASK_WORKER_IS_INTERRUPTED = "子任务工作线程被中断";
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "成功 persisted all pipe's info to configNode。";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
-      "The executor {} and {} has been successfully shutdown.";
+      "执行器 {} 和 {} 已成功关闭。";
 
   // ===================== EVENT =====================
 
@@ -422,9 +432,16 @@ public final class DataNodePipeMessages {
       "加载 snapshot from byteBuffer {} 失败。";
   public static final String FAILED_TO_START_SOURCES = "启动 sources 失败。";
   public static final String HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE =
-      "Heartbeat Event {} can not be supplied because the reference count can not be increased";
+      "Heartbeat Event {} 无法被提供，因为其引用计数无法增加";
+  public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
+      "Event %s 无法被提供，因为其引用计数无法增加，事件代表的数据已经丢失";
   public static final String INTERRUPTED_WAITING_FOR_PROCESSOR_TO_STOP =
-      "Interrupted waiting for processor to stop";
+      "等待 processor 停止时被中断";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE =
+      "等待解析 TsFile %s 的权限信息时被中断。";
+  public static final String PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR =
+      "检查权限时解析 TsFile %s 失败。原因：%s";
+  public static final String READ_TSFILE_ERROR = "读取 TsFile %s 失败。";
   public static final String IOTDBSCHEMAREGIONSOURCE_DOES_NOT_SUPPORT_TRANSFERRING_EVENTS_UNDER =
       "IoTDBSchemaRegionSource 不支持 transferring events under simple consensus";
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT = "没有权限 transfer event: ";
@@ -829,6 +846,8 @@ public final class DataNodePipeMessages {
           + "Peeked event: {}, polled event: {}.";
   public static final String THE_FILE_IS_NOT_FOUND_MAY_ALREADY =
       "The file {} is not found, may already be deleted.";
+  public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
+      "网络接收 TsFile %s 失败，状态：%s";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT =
       "The pipe {} was dropped so the event ack {} will be ignored.";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1 =
@@ -1243,8 +1262,8 @@ public final class DataNodePipeMessages {
       "注销 pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE =
       "注销 pipe schema region source metrics, IoTDBSchemaRegionSource({}) does not exist 失败";
-  public static final String FAILED_TO_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
-      "注销 pipe tsfile to tablets metrics, pipeID({}) does not exist 失败";
+  public static final String SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
+      "跳过注销 pipe tsfile to tablets metrics，因为 pipeID({}) 未注册";
   public static final String FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS =
       "注销 schema region listener metrics, SchemaRegionListeningQueue({}) does not exist 失败";
   public static final String FAILED_TO_MARK_PIPE_DATA_REGION_EXTRACTOR =

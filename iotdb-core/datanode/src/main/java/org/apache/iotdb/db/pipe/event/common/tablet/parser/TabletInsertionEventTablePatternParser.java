@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -141,7 +142,10 @@ public class TabletInsertionEventTablePatternParser extends TabletInsertionEvent
             Arrays.asList(valueColumnTypes),
             timestampColumn,
             valueColumns,
-            nullValueColumnBitmaps,
+            nullValueColumnBitmaps == null
+                ? null
+                : PipeTabletUtils.compactBitMaps(
+                    Arrays.copyOf(nullValueColumnBitmaps, nullValueColumnBitmaps.length), rowCount),
             rowCount);
 
     tablet = newTablet;

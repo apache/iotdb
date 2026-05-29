@@ -199,11 +199,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         return client;
       }
     } catch (final Exception e) {
-      LOGGER.warn(
-          DataNodePipeMessages.FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER,
+      PipeLogger.log(
+          ignored ->
+              LOGGER.warn(
+                  DataNodePipeMessages.FAILED_TO_BORROW_CLIENT_FOR_CACHED_LEADER,
+                  endPoint.getIp(),
+                  endPoint.getPort(),
+                  e),
+          e,
+          "Failed to borrow client %s:%s for cached leader.",
           endPoint.getIp(),
-          endPoint.getPort(),
-          e);
+          endPoint.getPort());
     }
 
     return borrowClient();
@@ -357,11 +363,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           client.close();
           client.invalidateAll();
         } catch (final Exception e) {
-          LOGGER.warn(
-              DataNodePipeMessages.FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE,
+          PipeLogger.log(
+              ignored ->
+                  LOGGER.warn(
+                      DataNodePipeMessages.FAILED_TO_CLOSE_CLIENT_AFTER_HANDSHAKE_FAILURE,
+                      targetNodeUrl.getIp(),
+                      targetNodeUrl.getPort(),
+                      e),
+              e,
+              "Failed to close client %s:%s after handshake failure when the manager is closed.",
               targetNodeUrl.getIp(),
-              targetNodeUrl.getPort(),
-              e);
+              targetNodeUrl.getPort());
         }
       }
       client.setShouldReturnSelf(true);

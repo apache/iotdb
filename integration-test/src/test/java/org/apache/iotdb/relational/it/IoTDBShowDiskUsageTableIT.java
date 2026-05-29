@@ -80,6 +80,7 @@ public class IoTDBShowDiskUsageTableIT {
       Map<String, Long> tableSizes = new HashMap<>();
       while (iterator.next()) {
         String table = iterator.getString("table_name");
+        Assert.assertEquals("BASE TABLE", iterator.getString("table_type"));
         long timePartition = iterator.getLong("time_partition");
         long size = iterator.getLong("size_in_bytes");
         timePartitionSizes.compute(timePartition, (k, v) -> v == null ? size : v + size);

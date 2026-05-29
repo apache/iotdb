@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -202,7 +203,7 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
               .map(schema -> (MeasurementSchema) schema)
               .toArray(MeasurementSchema[]::new);
       Object[] values = Arrays.copyOf(tablet.getValues(), tablet.getValues().length);
-      BitMap[] bitMaps = Arrays.copyOf(tablet.getBitMaps(), tablet.getBitMaps().length);
+      BitMap[] bitMaps = PipeTabletUtils.copyBitMapsOrCreateEmpty(tablet);
       ColumnCategory[] columnCategory = tablet.getColumnTypes().toArray(new ColumnCategory[0]);
 
       // convert date value to int refer to

@@ -45,12 +45,15 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
     public int dataNodeId;
     public int regionCount;
+    public int databaseRegionCount;
     public double freeDiskSpace;
     public int randomWeight;
 
-    public DataNodeEntry(int dataNodeId, int regionCount, double freeDiskSpace) {
+    public DataNodeEntry(
+        int dataNodeId, int regionCount, int databaseRegionCount, double freeDiskSpace) {
       this.dataNodeId = dataNodeId;
       this.regionCount = regionCount;
+      this.databaseRegionCount = databaseRegionCount;
       this.freeDiskSpace = freeDiskSpace;
       this.randomWeight = RANDOM.nextInt();
     }
@@ -58,12 +61,15 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
     @Override
     public int compareTo(DataNodeEntry other) {
       if (this.regionCount != other.regionCount) {
-        return this.regionCount - other.regionCount;
-      } else if (this.freeDiskSpace != other.freeDiskSpace) {
-        return (int) (other.freeDiskSpace - this.freeDiskSpace);
-      } else {
-        return this.randomWeight - other.randomWeight;
+        return Integer.compare(this.regionCount, other.regionCount);
       }
+      if (this.databaseRegionCount != other.databaseRegionCount) {
+        return Integer.compare(this.databaseRegionCount, other.databaseRegionCount);
+      }
+      if (this.freeDiskSpace != other.freeDiskSpace) {
+        return Double.compare(other.freeDiskSpace, this.freeDiskSpace);
+      }
+      return Integer.compare(this.randomWeight, other.randomWeight);
     }
   }
 
@@ -75,9 +81,13 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
-    // Build weightList order by number of regions allocated asc
+    // Build weightList ordered by (regionCount asc, databaseRegionCount asc, freeDiskSpace desc)
     List<TDataNodeLocation> weightList =
-        buildWeightList(availableDataNodeMap, freeDiskSpaceMap, allocatedRegionGroups);
+        buildWeightList(
+            availableDataNodeMap,
+            freeDiskSpaceMap,
+            allocatedRegionGroups,
+            databaseAllocatedRegionGroups);
     return new TRegionReplicaSet(
         consensusGroupId,
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
@@ -99,7 +109,8 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
   private List<TDataNodeLocation> buildWeightList(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
-      List<TRegionReplicaSet> allocatedRegionGroups) {
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups) {
 
     // Map<DataNodeId, Region count>
     Map<Integer, Integer> regionCounter = new HashMap<>(availableDataNodeMap.size());
@@ -111,6 +122,19 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                     dataNodeLocation ->
                         regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
 
+    // Map<DataNodeId, Region count within the same Database>
+    Map<Integer, Integer> databaseRegionCounter = new HashMap<>(availableDataNodeMap.size());
+    if (databaseAllocatedRegionGroups != null) {
+      databaseAllocatedRegionGroups.forEach(
+          regionReplicaSet ->
+              regionReplicaSet
+                  .getDataNodeLocations()
+                  .forEach(
+                      dataNodeLocation ->
+                          databaseRegionCounter.merge(
+                              dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
+    }
+
     /* Construct priority map */
     List<DataNodeEntry> entryList = new ArrayList<>();
     availableDataNodeMap.forEach(
@@ -119,6 +143,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                 new DataNodeEntry(
                     datanodeId,
                     regionCounter.getOrDefault(datanodeId, 0),
+                    databaseRegionCounter.getOrDefault(datanodeId, 0),
                     freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
 
     // Sort weightList
