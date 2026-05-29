@@ -151,19 +151,38 @@ public class FragmentInstanceManager {
                 DataNodeQueryContext dataNodeQueryContext =
                     getOrCreateDataNodeQueryContext(instanceId.getQueryId(), dataNodeFINum);
 
+                boolean[] contextCreated = new boolean[] {false};
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
-                        fragmentInstanceId ->
-                            createFragmentInstanceContext(
-                                fragmentInstanceId,
-                                stateMachine,
-                                instance.getSessionInfo(),
-                                dataRegion,
-                                instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap,
-                                instance.isDebug(),
-                                instance.isVerbose()));
+                        fragmentInstanceId -> {
+                          contextCreated[0] = true;
+                          return createFragmentInstanceContext(
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              dataRegion,
+                              instance.getGlobalTimePredicate(),
+                              dataNodeQueryContextMap,
+                              instance.isDebug(),
+                              instance.isVerbose());
+                        });
+                if (!contextCreated[0]) {
+                  // The instanceContext already holds a FragmentInstanceContext for this
+                  // instanceId, which means the same FragmentInstance has been dispatched before
+                  // (e.g. an RPC retry in FragmentInstanceDispatcherImpl#dispatchRemote). The
+                  // previous execution may have already released its resources (dataRegion ==
+                  // null), so reusing this cached context would run a fresh driver against a
+                  // released context and trigger an NPE. Reject the duplicated dispatch with
+                  // REPEATED_RPC_CALL instead of reusing it. This is thrown before the planning
+                  // try block on purpose, so it propagates up (RegionReadExecutor carries the
+                  // status code) without touching the first execution's cached resources.
+                  throw new IoTDBRuntimeException(
+                      String.format(
+                          "Repeated RPC call detected for FragmentInstance %s, reject the duplicated dispatch.",
+                          instanceId.getFullId()),
+                      TSStatusCode.REPEATED_RPC_CALL.getStatusCode());
+                }
                 context.setHighestPriority(instance.isHighestPriority());
 
                 try {
@@ -270,16 +289,30 @@ public class FragmentInstanceManager {
               FragmentInstanceStateMachine stateMachine =
                   new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+              boolean[] contextCreated = new boolean[] {false};
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId ->
-                          createFragmentInstanceContext(
-                              fragmentInstanceId,
-                              stateMachine,
-                              instance.getSessionInfo(),
-                              instance.isDebug(),
-                              instance.isVerbose()));
+                      fragmentInstanceId -> {
+                        contextCreated[0] = true;
+                        return createFragmentInstanceContext(
+                            fragmentInstanceId,
+                            stateMachine,
+                            instance.getSessionInfo(),
+                            instance.isDebug(),
+                            instance.isVerbose());
+                      });
+              if (!contextCreated[0]) {
+                // See execDataQueryFragmentInstance: reject reuse of an already-cached (possibly
+                // released) FragmentInstanceContext caused by a repeated RPC dispatch of the same
+                // instanceId. Thrown before the planning try block so it propagates up without
+                // touching the first execution's cached resources.
+                throw new IoTDBRuntimeException(
+                    String.format(
+                        "Repeated RPC call detected for FragmentInstance %s, reject the duplicated dispatch.",
+                        instanceId.getFullId()),
+                    TSStatusCode.REPEATED_RPC_CALL.getStatusCode());
+              }
               context.setHighestPriority(instance.isHighestPriority());
 
               try {
