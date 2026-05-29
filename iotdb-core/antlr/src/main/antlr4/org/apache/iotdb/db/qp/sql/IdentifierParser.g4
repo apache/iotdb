@@ -56,6 +56,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALCULATION
     | CALL
     | CASE
     | CAST
