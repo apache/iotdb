@@ -126,6 +126,41 @@ public class LockQueueSemaphoreTest {
   }
 
   @Test
+  public void testWaitProcedureIfLockUnavailableDoesNotMissReleasedLock() {
+    LockQueue queue = new LockQueue(1);
+    SimpleProcedureScheduler scheduler = new SimpleProcedureScheduler();
+
+    Procedure<TestProcEnv> proc1 = createProcedureWithId(1);
+    Procedure<TestProcEnv> proc2 = createProcedureWithId(2);
+
+    Assert.assertTrue(queue.tryLock(proc1));
+    Assert.assertFalse(queue.tryLock(proc2));
+
+    Assert.assertTrue(queue.releaseLock(proc1));
+    Assert.assertFalse(queue.waitProcedureIfLockUnavailable(proc2));
+    Assert.assertEquals(0, queue.wakeWaitingProcedures(scheduler));
+    Assert.assertEquals(0, scheduler.queueSize());
+    Assert.assertTrue(queue.tryLock(proc2));
+  }
+
+  @Test
+  public void testWaitProcedureIfLockUnavailableQueuesWhenStillLocked() {
+    LockQueue queue = new LockQueue(1);
+    SimpleProcedureScheduler scheduler = new SimpleProcedureScheduler();
+
+    Procedure<TestProcEnv> proc1 = createProcedureWithId(1);
+    Procedure<TestProcEnv> proc2 = createProcedureWithId(2);
+
+    Assert.assertTrue(queue.tryLock(proc1));
+    Assert.assertFalse(queue.tryLock(proc2));
+
+    Assert.assertTrue(queue.waitProcedureIfLockUnavailable(proc2));
+    Assert.assertTrue(queue.releaseLock(proc1));
+    Assert.assertEquals(1, queue.wakeWaitingProcedures(scheduler));
+    Assert.assertEquals(1, scheduler.queueSize());
+  }
+
+  @Test
   public void testDynamicPermitAdjustment() {
     LockQueue queue = new LockQueue(2);
     Procedure<TestProcEnv> proc1 = createProcedureWithId(1);

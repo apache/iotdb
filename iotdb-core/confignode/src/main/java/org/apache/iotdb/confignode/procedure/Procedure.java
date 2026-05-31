@@ -256,8 +256,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env environment
    */
   protected void onLockEventWait(Env env) {
-    // Default: delegate to nodeLock for backward compatibility
-    ((ConfigNodeProcedureEnv) env).getNodeLock().waitProcedure(this);
+    ConfigNodeProcedureEnv procedureEnv = (ConfigNodeProcedureEnv) env;
+    // Default: delegate to nodeLock for backward compatibility.
+    procedureEnv.getSchedulerLock().lock();
+    try {
+      if (!procedureEnv.getNodeLock().waitProcedureIfLockUnavailable(this)) {
+        procedureEnv.getScheduler().addFront(this);
+      }
+    } finally {
+      procedureEnv.getSchedulerLock().unlock();
+    }
   }
 
   /**

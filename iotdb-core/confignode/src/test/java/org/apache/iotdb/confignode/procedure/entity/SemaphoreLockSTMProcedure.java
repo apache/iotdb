@@ -133,7 +133,9 @@ public class SemaphoreLockSTMProcedure
 
   @Override
   protected void onLockEventWait(TestProcEnv env) {
-    semaphore.waitProcedure(this);
+    if (!semaphore.waitProcedureIfLockUnavailable(this)) {
+      env.getScheduler().addFront(this);
+    }
   }
 
   @Override

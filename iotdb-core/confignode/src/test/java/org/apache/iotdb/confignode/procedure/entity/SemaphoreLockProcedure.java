@@ -83,6 +83,8 @@ public class SemaphoreLockProcedure extends Procedure<TestProcEnv> {
 
   @Override
   protected void onLockEventWait(TestProcEnv testProcEnv) {
-    semaphore.waitProcedure(this);
+    if (!semaphore.waitProcedureIfLockUnavailable(this)) {
+      testProcEnv.getScheduler().addFront(this);
+    }
   }
 }

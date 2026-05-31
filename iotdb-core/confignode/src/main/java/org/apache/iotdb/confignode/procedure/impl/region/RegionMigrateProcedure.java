@@ -114,7 +114,14 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
 
   @Override
   protected void onLockEventWait(ConfigNodeProcedureEnv env) {
-    env.getRegionMigrateSemaphore().waitProcedure(this);
+    env.getSchedulerLock().lock();
+    try {
+      if (!env.getRegionMigrateSemaphore().waitProcedureIfLockUnavailable(this)) {
+        env.getScheduler().addFront(this);
+      }
+    } finally {
+      env.getSchedulerLock().unlock();
+    }
   }
 
   @Override
