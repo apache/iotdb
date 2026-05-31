@@ -365,8 +365,7 @@ Non-interactive mode reads CSV from standard input until EOF, then submits once:
 
 ```bash
 printf 'time,key,value\n1,spricoder,2.0\n' | \
-  start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root \
-  --sql_dialect table --access_mode filesystem --fs_write_mode enabled \
+  ./start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root --sql_dialect table --access_mode filesystem --fs_write_mode enabled \
   -e 'tee -a /db/table.csv'
 ```
 
