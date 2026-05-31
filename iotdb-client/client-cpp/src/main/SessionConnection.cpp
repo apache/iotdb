@@ -39,6 +39,9 @@ SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endp
       retryIntervalMs(retryInterval), connectionTimeoutInMs(connectionTimeout),
       sqlDialect(std::move(dialect)), database(std::move(db)) {
   this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
+  // Inherit the compression setting negotiated by the owning Session so the
+  // chosen Thrift protocol (compact when compression is on) is consistent.
+  this->enableRPCCompression = session->enableRPCCompression_;
   endPointList.push_back(endpoint);
   init(endPoint, session->useSSL_, session->trustCertFilePath_);
 }
