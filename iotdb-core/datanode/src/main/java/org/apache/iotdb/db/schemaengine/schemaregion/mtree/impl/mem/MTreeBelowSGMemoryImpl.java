@@ -174,6 +174,59 @@ public class MTreeBelowSGMemoryImpl {
     return store.createSnapshot(snapshotDir);
   }
 
+  private void applySubtreeMeasurementDelta(IMemMNode startNode, final long delta) {
+    if (delta == 0 || startNode == null) {
+      return;
+    }
+    IMemMNode current = startNode;
+    while (current != null) {
+      current.setSubtreeMeasurementCount(current.getSubtreeMeasurementCount() + delta);
+      current = current.getParent();
+    }
+  }
+
+  private IDeviceMNode<IMemMNode> setToEntityAndUpdateFlags(final IMemMNode node) {
+    final boolean wasDevice = node.isDevice();
+    final IDeviceMNode<IMemMNode> deviceMNode = store.setToEntity(node);
+    if (!wasDevice) {
+      markAncestorsHavingDeviceDescendant(node);
+    }
+    return deviceMNode;
+  }
+
+  private void markAncestorsHavingDeviceDescendant(final IMemMNode deviceNode) {
+    IMemMNode current = deviceNode.getParent();
+    while (current != null && !current.hasDeviceDescendant()) {
+      current.setHasDeviceDescendant(true);
+      current = current.getParent();
+    }
+  }
+
+  private boolean hasDeviceDescendantInChildren(final IMemMNode node) {
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private void refreshAncestorsHavingDeviceDescendant(IMemMNode startNode) {
+    IMemMNode current = startNode;
+    while (current != null) {
+      current.setHasDeviceDescendant(hasDeviceDescendantInChildren(current));
+      current = current.getParent();
+    }
+  }
+
+  private long getTemplateMeasurementCount(final int templateId) {
+    final Template template = ClusterTemplateManager.getInstance().getTemplate(templateId);
+    return template == null ? 0L : template.getMeasurementNumber();
+  }
+
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
       File snapshotDir,
       String storageGroupFullPath,
@@ -184,13 +237,16 @@ public class MTreeBelowSGMemoryImpl {
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
-    return new MTreeBelowSGMemoryImpl(
-        new PartialPath(storageGroupFullPath),
-        MemMTreeStore.loadFromSnapshot(
-            snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
-        tagGetter,
-        attributeGetter,
-        regionStatistics);
+    final MTreeBelowSGMemoryImpl mtree =
+        new MTreeBelowSGMemoryImpl(
+            new PartialPath(storageGroupFullPath),
+            MemMTreeStore.loadFromSnapshot(
+                snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
+            tagGetter,
+            attributeGetter,
+            regionStatistics);
+    mtree.rebuildSubtreeMeasurementCount();
+    return mtree;
   }
 
   // endregion
@@ -268,7 +324,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
       }
 
       // create a non-aligned time series
@@ -290,6 +346,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.addAlias(alias, measurementMNode);
       }
 
+      applySubtreeMeasurementDelta(measurementMNode.getAsMNode(), 1L);
       return measurementMNode;
     }
   }
@@ -360,7 +417,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         entityMNode.setAligned(true);
       }
 
@@ -386,6 +443,7 @@ public class MTreeBelowSGMemoryImpl {
         if (aliasList != null && aliasList.get(i) != null) {
           entityMNode.addAlias(aliasList.get(i), measurementMNode);
         }
+        applySubtreeMeasurementDelta(measurementMNode.getAsMNode(), 1L);
         measurementMNodeList.add(measurementMNode);
       }
       return measurementMNodeList;
@@ -539,6 +597,7 @@ public class MTreeBelowSGMemoryImpl {
       if (deletedNode.getAlias() != null) {
         parent.getAsDeviceMNode().deleteAliasChild(deletedNode.getAlias());
       }
+      applySubtreeMeasurementDelta(parent, -1L);
     }
     deleteEmptyInternalMNode(parent.getAsDeviceMNode());
     return deletedNode;
@@ -551,14 +610,15 @@ public class MTreeBelowSGMemoryImpl {
       boolean hasMeasurement = false;
       boolean hasNonViewMeasurement = false;
       IMemMNode child;
-      IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          hasMeasurement = true;
-          if (!child.getAsMeasurementMNode().isLogicalView()) {
-            hasNonViewMeasurement = true;
-            break;
+      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          if (child.isMeasurement()) {
+            hasMeasurement = true;
+            if (!child.getAsMeasurementMNode().isLogicalView()) {
+              hasNonViewMeasurement = true;
+              break;
+            }
           }
         }
       }
@@ -567,6 +627,7 @@ public class MTreeBelowSGMemoryImpl {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
+        refreshAncestorsHavingDeviceDescendant(curNode.getParent());
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
@@ -889,7 +950,7 @@ public class MTreeBelowSGMemoryImpl {
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
       }
     }
 
@@ -907,6 +968,7 @@ public class MTreeBelowSGMemoryImpl {
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(template.getId());
     regionStatistics.activateTemplate(template.getId());
+    applySubtreeMeasurementDelta(entityMNode.getAsMNode(), (long) template.getMeasurementNumber());
   }
 
   public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
@@ -968,6 +1030,8 @@ public class MTreeBelowSGMemoryImpl {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
                 regionStatistics.deactivateTemplate(node.getSchemaTemplateId());
+                applySubtreeMeasurementDelta(
+                    node.getAsMNode(), -getTemplateMeasurementCount(node.getSchemaTemplateId()));
                 node.deactivateTemplate();
                 deleteEmptyInternalMNode(node);
               }
@@ -991,7 +1055,7 @@ public class MTreeBelowSGMemoryImpl {
     if (cur.isDevice()) {
       entityMNode = cur.getAsDeviceMNode();
     } else {
-      entityMNode = store.setToEntity(cur);
+      entityMNode = setToEntityAndUpdateFlags(cur);
     }
 
     if (!entityMNode.isAligned()) {
@@ -1000,6 +1064,7 @@ public class MTreeBelowSGMemoryImpl {
     entityMNode.setUseTemplate(true);
     entityMNode.setSchemaTemplateId(templateId);
     regionStatistics.activateTemplate(templateId);
+    applySubtreeMeasurementDelta(entityMNode.getAsMNode(), getTemplateMeasurementCount(templateId));
   }
 
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
@@ -1009,6 +1074,30 @@ public class MTreeBelowSGMemoryImpl {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
     }
+  }
+
+  public void rebuildSubtreeMeasurementCount() {
+    rebuildSubtreeMeasurementCountFromNode(rootNode);
+  }
+
+  private long rebuildSubtreeMeasurementCountFromNode(final IMemMNode node) {
+    long count = node.isMeasurement() ? 1L : 0L;
+    boolean hasDeviceDescendant = false;
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        count += rebuildSubtreeMeasurementCountFromNode(child);
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          hasDeviceDescendant = true;
+        }
+      }
+    }
+    if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
+      count += getTemplateMeasurementCount(node.getAsDeviceMNode().getSchemaTemplateId());
+    }
+    node.setSubtreeMeasurementCount(count);
+    node.setHasDeviceDescendant(hasDeviceDescendant);
+    return count;
   }
 
   // endregion
@@ -1278,7 +1367,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         // this parent has no measurement before. The leafName is his first child who is a logical
         // view.
         entityMNode.setAligned(null);
@@ -1287,6 +1376,7 @@ public class MTreeBelowSGMemoryImpl {
       measurementMNode.setParent(entityMNode.getAsMNode());
       store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
 
+      applySubtreeMeasurementDelta(measurementMNode.getAsMNode(), 1L);
       return measurementMNode;
     }
   }
