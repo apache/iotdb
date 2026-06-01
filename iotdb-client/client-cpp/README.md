@@ -18,133 +18,357 @@
     under the License.
 
 -->
-# Building C++ Client
+# Apache IoTDB C++ Client
 
-## Compile and Test:
+The C++ client is built by a single top-level `CMakeLists.txt` in this
+directory. The outer Maven POM is a thin wrapper that invokes CMake; you can
+also build the client standalone with just `cmake` if you don't have Maven
+available.
 
-### Compile
-
-#### Unix
-To compile the cpp client, use the following command:
-`mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests`
-
-#### Windows
-To compile on Windows, please install Boost first and add following Maven
-settings:
-```
--Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
-```
-
-The thrift dependency that the cpp client uses is incompatible with MinGW, please use Visual 
-Studio. It is highly recommended to use Visual Studio 2022 or later.
-
-##### Visual Studio 2022
-If you are using Visual Studio 2022, you can compile the cpp client with the following command:
+## Build layout at a glance
 
 ```
-mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
--D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+iotdb-client/client-cpp/
+├── CMakeLists.txt            # single entry point - manages everything
+├── cmake/                    # helpers (FetchBoost / FetchThrift / ...)
+├── third-party/              # local tarball cache (one sub-dir per OS)
+│   ├── linux/  mac/  windows/
+├── src/include/              # public API headers (installed to include/)
+├── src/session/              # Session / Table / C API implementation (.cpp)
+├── src/rpc/                  # Thrift RPC layer (private, not installed)
+├── test/                     # Catch2-based integration tests
+└── pom.xml                   # Maven wrapper (cmake-maven-plugin)
 ```
 
-#### Visual Studio 2019 or older
-If you are using Visual Studio 2019 or older, the pre-built Thrift library is incompatible. You 
-will have to compile the thrift library manually:
+During configure CMake will, in order:
 
-1. Install the dependencies of Thrift:
-* flex http://gnuwin32.sourceforge.net/packages/flex.htm
-* bison http://gnuwin32.sourceforge.net/packages/bison.htm
-* openssl https://slproweb.com/products/Win32OpenSSL.html
+1. Resolve Boost headers (`find_package` → local `third-party/<os>/` tarball →
+   download from `archives.boost.io` when not in offline mode).
+2. On Linux/macOS, ensure `m4` / `flex` / `bison` are available; if not,
+   build them from local tarballs into `build/tools/bin` (no `sudo`
+   required).
+3. Build a static Apache Thrift from source (tarball cache → download fallback).
+4. Run the produced `thrift` compiler on
+   `iotdb-protocol/thrift-{commons,datanode}/src/main/thrift/*.thrift`.
+5. Compile `iotdb_session` (the C/C++ session library) and, optionally,
+   the Catch2 integration test binaries.
+6. `cmake --install` lays out the SDK under `target/install/{include,lib}`,
+   which Maven's assembly step packages into a zip.
 
-2. Clone the repository: https://github.com/apache/iotdb-bin-resources.
+## Build matrix
 
-3. Enter the "iotdb-tools-thrift" folder in the cloned repository; use the following command to 
-   compile the thrift library:
+| Goal                          | Command                                                                                                |
+|-------------------------------|--------------------------------------------------------------------------------------------------------|
+| Library only (Linux/macOS)    | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package`                                  |
+| Library only (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
+| Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
+| Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
-`mvn install`
+The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
+land at `iotdb-client/client-cpp/target/client-cpp-<version>-<classifier>.zip`
+(with `include/` and `lib/` at the zip root; a `.sha512` checksum is generated alongside),
+where `<classifier>` defaults to the OS name (for example `linux-x86_64`) and
+can be overridden with `-Dclient.cpp.package.classifier=...` when building
+multiple toolchains on the same platform.
 
-4. If you encounter a problem like "cannot find 'unistd.h'", please open the file
-"iotdb-bin-resources\iotdb-tools-thrift\target\build\compiler\cpp\thrift\thriftl.cc" and replace
-"#include <unistd.h>" with "#include <io.h>" and "#include <process.h>"; then, rerun the command 
-   in the third step;
+### Release packages (CI)
 
-5. Return to the cpp client repository and compile it with:
+The [C++ Client package](../../.github/workflows/client-cpp-package.yml) workflow
+builds one zip per platform/toolchain. Pick the artifact that matches your
+deployment environment:
+
+| Target environment | Zip classifier (suffix) |
+|--------------------|-------------------------|
+| Linux x86_64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-x86_64-glibc224` |
+| Linux aarch64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-aarch64-glibc224` |
+| Linux x86_64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-x86_64-glibc217` |
+| Linux aarch64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-aarch64-glibc217` |
+| macOS x86_64 | `mac-x86_64` |
+| macOS arm64 | `mac-aarch64` |
+| Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |
+| Windows + Visual Studio 2019 | `windows-x86_64-vs2019` |
+| Windows + Visual Studio 2022 | `windows-x86_64-vs2022` |
+| Windows + Visual Studio 2026 | `windows-x86_64-vs2026` |
+
+Example file name:
+`client-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc224.zip`.
+
+**Linux package choice:** Prefer **`glibc224`** when the deployment host has
+**glibc ≥ 2.24** and you build your application with the system default `g++`
+(Ubuntu 18.04+, recent Kylin, etc.)—no extra ABI macros needed. Use **`glibc217`**
+only when the host is stuck on **glibc 2.17** (e.g. CentOS 7) or you must match
+the **legacy** libstdc++ ABI; on a modern dev machine linking against `glibc217`
+often requires `-D_GLIBCXX_USE_CXX11_ABI=0`. The `glibc224` zip is built in CI
+with `-D_GLIBCXX_USE_CXX11_ABI=1` (Session + Thrift); `glibc217` uses the
+manylinux2014 default toolchain (legacy ABI). The `manylinux_2_24` image series
+is EOL but remains a common PEP 600 baseline for glibc 2.24.
+
+Thrift **0.21.0** is compiled from source during the CMake configure step (see
+`cmake/FetchThrift.cmake`). Older releases that used pre-built
+`iotdb-tools-thrift` Maven artifacts and `-Diotdb-tools-thrift.version=...`
+for glibc/MSVC compatibility apply only to the **legacy** client-cpp build;
+with the current CMake build, compatibility is determined by the **compiler
+and OS used to build** the SDK, not by that Maven property.
+
+### Local build for a specific classifier
+
+Linux x86_64 (glibc 2.24 + CXX11 ABI — match `manylinux_2_24` release builds):
+
+```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc224 \
+  -Diotdb.libstdcxx.cxx11.abi=ON package
+```
+
+Linux x86_64 (glibc 2.17 + legacy ABI — CentOS 7 / manylinux2014):
+
+```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc217 package
+```
+
+Windows (match the Visual Studio version you use to build your application):
+
+```powershell
+# Visual Studio 2022 (default on recent Windows)
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
+
+# Visual Studio 2019
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
+  -Dcmake.generator="Visual Studio 16 2019" `
+  -Dclient.cpp.package.classifier=windows-x86_64-vs2019 package
+
+# Visual Studio 2017 (CMake uses -A x64 on Windows automatically)
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
+  -Dcmake.generator="Visual Studio 15 2017" `
+  -Dclient.cpp.package.classifier=windows-x86_64-vs2017 package
+```
+
+On Windows, the build passes `-DCMAKE_GENERATOR_PLATFORM=x64` so Visual Studio
+generators target **x64** (VS2017 otherwise defaults to Win32).
+
+## CMake options
+
+The table below lists CMake cache variables. When building through **Maven**,
+pass them as Maven properties (the POM maps them to `-D` options for CMake):
+
+| CMake variable | Maven property (`-D...`) |
+|----------------|--------------------------|
+| `WITH_SSL` | `with.ssl` (e.g. `-Dwith.ssl=ON`) |
+| `IOTDB_OFFLINE` | `iotdb.offline` |
+| `BUILD_TESTING` | `build.tests` |
+| `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
+| `BOOST_INCLUDEDIR` | `boost.include.dir` (legacy alias) |
+
+For a **standalone** `cmake` configure, pass `-DWITH_SSL=ON`, `-DIOTDB_OFFLINE=ON`,
+etc. directly.
+
+| Option                | Default                          | Purpose                                                                                                  |
+|-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
+| `WITH_SSL`            | `OFF`                            | Link against OpenSSL. See *SSL* below.                                                                   |
+| `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables.                                                                           |
+| `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
+| `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
+| `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
+| `THRIFT_VERSION`      | `0.21.0`                         | Apache Thrift version to build from source.                                                              |
+| `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
+| `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
+| `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
+
+## Online build (default)
+
+CMake will download any missing tarball at configure time. The first run is
+slow (≈100 MB download + a Thrift build); subsequent runs reuse the
+extracted artifacts under `build/_deps/`.
+
+```bash
+# Linux / macOS
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
+
+# Windows (Developer Command Prompt for VS, PowerShell, or cmd)
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package
+```
+
+## Offline build
+
+1. Pre-populate the platform-specific sub-directory under `third-party/`:
+
+   | Platform   | Required files                                                                                                                                                       |
+   |------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+   | `linux/`   | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz`, `m4-1.4.19.tar.gz`, `flex-2.6.4.tar.gz`, `bison-3.8.tar.gz` (and `openssl-3.5.0.tar.gz` when `WITH_SSL=ON`)            |
+   | `mac/`     | `thrift-0.21.0.tar.gz`, `boost_1_84_0.tar.gz` (newer Boost for Xcode/Clang; Apple ships m4/flex/bison; `openssl-3.5.0.tar.gz` optional)                               |
+   | `windows/` | `thrift-0.21.0.tar.gz`, `boost_1_60_0.tar.gz` (Boost headers only - no `b2` build required for `iotdb_session`)                                                      |
+
+   Reference URLs (the configure step uses the same):
+   - Apache Thrift 0.21.0: <https://archive.apache.org/dist/thrift/0.21.0/thrift-0.21.0.tar.gz>
+   - Boost 1.60.0:        <https://archives.boost.io/release/1.60.0/source/boost_1_60_0.tar.gz>
+   - GNU m4 1.4.19:       <https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.gz>
+   - GNU flex 2.6.4:      <https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz>
+   - GNU bison 3.8:       <https://ftp.gnu.org/gnu/bison/bison-3.8.tar.gz>
+   - OpenSSL 3.5.0:       <https://www.openssl.org/source/openssl-3.5.0.tar.gz>
+
+2. Run the build with offline mode enabled:
+
+   ```bash
+   mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+       -Diotdb.offline=ON package
+   ```
+
+   or, going straight through CMake:
+
+   ```bash
+   cmake -S iotdb-client/client-cpp -B build -DIOTDB_OFFLINE=ON
+   cmake --build build --config Release --target install
+   ```
+
+CI environments can share a single cache by setting
+`-DIOTDB_DEPS_DIR=/path/to/cache` instead of copying tarballs around.
+
+## Platform-specific notes
+
+### Linux
+
+- Tested with GCC 7+ and Clang 9+. Anything that can compile Apache Thrift
+  0.21.0 works.
+- Build deps that must already exist on the host (only required when
+  CMake auto-builds m4/flex/bison from tarball): `make`, `autoconf`,
+  `gcc`, plus the standard C/C++ toolchain. `sudo` is **not** required;
+  the helper tools install under `build/tools/`.
+- If you would rather use distro-provided tools (`apt install m4 flex
+  bison`), CMake will pick them up first.
+
+### macOS
+
+- Xcode Command Line Tools provide `m4`, `flex`, `bison`, and `make`,
+  so the auto-build path normally skips them.
+- Homebrew users can `brew install boost` to short-circuit `FetchBoost`.
+
+### Windows
+
+Visual Studio **2017, 2019, 2022, or 2026** is supported for building the SDK.
+Link your application against the zip built with the **same VS generation** you
+use for your project.
+
+Prerequisites:
+
+1. **Boost.** Download and extract
+   <https://archives.boost.io/release/1.88.0/source/boost_1_88_0.zip>
+   (any 1.60+ release will work). `iotdb_session` only needs Boost
+   headers, so running `bootstrap.bat` / `b2` is optional. Pass the
+   location with either `-Dboost.include.dir="C:\boost_1_88_0"` (Maven)
+   or `-DBOOST_ROOT="C:\boost_1_88_0"` (raw CMake).
+2. **flex / bison.** Install <https://sourceforge.net/projects/winflexbison/>
+   and rename `win_flex.exe`→`flex.exe`, `win_bison.exe`→`bison.exe` on
+   `PATH`.
+3. **OpenSSL** *(only when `WITH_SSL=ON`)*: run the Win64 OpenSSL
+   installer from <https://slproweb.com/products/Win32OpenSSL.html>, then
+   pass `-DOPENSSL_ROOT_DIR=...` to CMake.
+
+On Windows the SDK ships as **`iotdb_session.dll`** plus an import library
+**`iotdb_session.lib`**, built with **`/MD`** (dynamic CRT, same as a
+default Visual Studio application). Thrift is linked into the DLL; users
+do not install separate Thrift headers or libraries. Place
+`iotdb_session.dll` next to your `.exe` or on `PATH`.
+
+Auto-building m4/flex/bison from tarball is **not** supported on Windows;
+the GNU autotools tarballs assume a POSIX shell environment.
+
+## SSL
+
+Both Thrift and `iotdb_session` build without OpenSSL by default. Enable
+SSL with `-Dwith.ssl=ON` (Maven) or `-DWITH_SSL=ON` (standalone CMake).
+CMake first calls `find_package(OpenSSL)`;
+if nothing is found, it falls back to:
+
+- **Linux / macOS** – use a local `openssl-<ver>.tar.gz` (or download it
+  when not in offline mode), configure with `no-shared`, install into
+  `build/_deps/openssl/install`, and link statically.
+- **Windows** – fail with a friendly message that points at the Win64
+  OpenSSL installer. Building OpenSSL from source via MSVC is out of scope.
+
+## Tests
+
+Maven binds `cmake-maven-plugin`'s `test` goal to the `integration-test`
+phase and runs `ctest`. `pre-integration-test` spawns a local IoTDB server
+from `distribution/target/.../sbin/start-standalone.{sh,bat}`, so make sure
+the distribution module is built first:
+
+```bash
+mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am -DskipTests
+mvn -P with-cpp -pl iotdb-client/client-cpp -am verify
+```
+
+Running ctest directly (after a `mvn ... package` build) is also supported:
+
+```bash
+cd iotdb-client/client-cpp/target/build/test
+ctest --output-on-failure
+```
+
+## Code formatting
+
+We use `clang-format` (pinned by the root POM as `clang.format.version`)
+through Maven Spotless. **clang-format 17.0.6** is the version CI runs.
+
+```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp spotless:check
+mvn -P with-cpp -pl iotdb-client/client-cpp spotless:apply
+```
+
+On JDK 8 the C++ Spotless profile is skipped automatically (Spotless's
+clang-format integration requires Spotless 2.44+, which itself requires
+JDK 11+).
+
+## Package layout
+
+A successful `mvn ... package` produces
+`target/client-cpp-<version>-<classifier>.zip` with this layout:
 
 ```
-mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
--D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+include/
+├── Session.h
+├── SessionC.h
+└── ...  (public API headers only; no Thrift/Boost)
+lib/
+├── libiotdb_session.{so,dylib}     (Linux / macOS)
+├── iotdb_session.dll               (Windows – runtime)
+└── iotdb_session.lib               (Windows – import library for linking)
 ```
 
+Thrift is embedded inside `iotdb_session` on all platforms; it is not shipped
+as a separate install artifact.
 
-### Test
-First build IoTDB server together with the cpp client.
+## Using the C++ client
 
-Explicitly using "install" instead of package in order to be sure we're using libs built on this 
-machine.
-
-`mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am -DskipTests`
-
-After run verify
-
-`mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am`
-
-## Package Hierarchy
-
-If the compilation finishes successfully, the packaged zip file will be placed under
-"client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip". 
-
-On macOS, the hierarchy of the package should look like this:
-```
-.
-+-- client
-|   +-- include
-|       +-- Session.h
-|       +-- IClientRPCService.h
-|       +-- client_types.h
-|       +-- common_types.h
-|       +-- thrift
-|           +-- thrift_headers...
-|   +-- lib
-|       +-- Release
-|          +-- libiotdb_session.dylib
-|          +-- parser.dylib
-|          +-- thriftmd.dylib
-|          +-- tutorialgencpp.dylib
-```
-
-## Using C++ Client:
-```
-1. Put the zip file "client-cpp-${project.version}-cpp-${os}.zip" wherever you want;
-
-2. Unzip the archive using the following command, and then you can get the two directories 
-mentioned above, the header file and the dynamic library:
-    unzip client-cpp-${project.version}-cpp-${os}.zip
-
-3. Write C++ code to call the operation interface of the cpp client to operate IoTDB,
-    for detail interface information, please refer to the link: https://iotdb.apache.org/zh/UserGuide/Master/API/Programming-Cpp-Native-API.html
-
-   E.g:
-    #include "include/Session.h"
+```cpp
+#include "Session.h"
     #include <memory>
     #include <iostream>
 
     int main() {
-        std::cout << "open session" << std::endl;
-        std::shared_ptr<Session> session(new Session("127.0.0.1", 6667, "root", "root"));
+    auto session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
         session->open(false);
-
-        std::cout << "setStorageGroup: root.test01" << std::endl;
         session->setStorageGroup("root.test01");
-
         if (!session->checkTimeseriesExists("root.test01.d0.s0")) {
-            session->createTimeseries("root.test01.d0.s0", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-            std::cout << "create Timeseries: root.test01.d0.s0" << std::endl;
-        }
-
-        std::cout << "session close" << std::endl;
+        session->createTimeseries(
+            "root.test01.d0.s0",
+            TSDataType::INT64,
+            TSEncoding::RLE,
+            CompressionType::SNAPPY);
+    }
         session->close();
     }
-
-4. Compile and execute
-    clang++ -O2 user-cpp-code.cpp -liotdb_session -L/user-unzip-absolute-path/lib -Wl,-rpath /user-unzip-absolute-path/lib -std=c++11
-    ./a.out
 ```
+
+Compile against the produced SDK:
+
+```bash
+clang++ -O2 user-cpp-code.cpp \
+    -I/path/to/sdk/include \
+    -L/path/to/sdk/lib \
+    -liotdb_session -lpthread \
+    -Wl,-rpath,/path/to/sdk/lib \
+    -std=c++11
+```
+
+For full API documentation see the [C++ Native API guide](https://iotdb.apache.org/UserGuide/latest/API/Programming-Cpp-Native-API.html).

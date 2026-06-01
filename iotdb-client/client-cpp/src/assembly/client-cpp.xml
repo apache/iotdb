@@ -17,8 +17,13 @@
   specific language governing permissions and limitations
   under the License.
   -->
+<!--
+  The CMake build installs everything (headers + libs) into
+  ${cmake.install.prefix} = target/install. Package layout:
+  client-cpp-<version>-<classifier>.zip -> {include,lib} at zip root.
+-->
 <assembly>
-    <id>cpp-${os.classifier}</id>
+    <id>${client.cpp.package.classifier}</id>
     <formats>
         <format>zip</format>
         <format>dir</format>
@@ -26,40 +31,16 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/build/main/generated-sources-cpp</directory>
-            <includes>
-                <include>**/*.h</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${project.build.directory}/thrift/include</directory>
+            <directory>${project.build.directory}/install/include</directory>
             <includes>
                 <include>**</include>
             </includes>
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.build.directory}/thrift/lib</directory>
+            <directory>${project.build.directory}/install/lib</directory>
             <includes>
                 <include>**</include>
-            </includes>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${project.build.directory}/build/main</directory>
-            <includes>
-                <include>*.so</include>
-                <include>*.dylib</include>
-                <include>**/*.dll</include>
-                <include>**/*.lib</include>
-            </includes>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${project.basedir}/../compile-tools/thrift/target/build/lib/Release</directory>
-            <includes>
-                <include>**/*.lib</include>
             </includes>
             <outputDirectory>lib</outputDirectory>
         </fileSet>
