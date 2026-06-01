@@ -161,6 +161,14 @@ std::shared_ptr<Session> SessionPool::acquire(int64_t timeoutMs) {
         cv_.notify_one();
         throw;
       }
+      lock.lock();
+      if (closed_) {
+        // The pool was closed while this session was being built; do not hand it
+        // out. Release its slot and let it be torn down outside the lock.
+        --size_;
+        lock.unlock();
+        throw IoTDBException("SessionPool is closed.");
+      }
       return session;
     }
 
