@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -67,14 +68,16 @@ public class CreateCQProcedureRecoveryTest {
     Mockito.when(env.getConfigManager()).thenReturn(configManager);
     Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
     Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
-    Mockito.when(cqManager.markCQLocallyScheduled(Mockito.anyString(), Mockito.anyString()))
+    Mockito.when(
+            cqManager.markCQLocallyScheduled(
+                Mockito.anyString(), Mockito.anyString(), Mockito.any(CQScheduleTask.class)))
         .thenReturn(true);
 
     TCreateCQReq req = newCreateCQReq();
     CreateCQProcedure procedure = new CreateCQProcedure(req, executor);
 
     CQInfo cqInfo = new CQInfo();
-    cqInfo.addCQ(new AddCQPlan(req, procedure.getMd5(), System.currentTimeMillis() + 10_000));
+    cqInfo.addCQ(new AddCQPlan(req, procedure.getCqToken(), System.currentTimeMillis() + 10_000));
     Mockito.when(consensusManager.read(Mockito.any(ShowCQPlan.class))).thenReturn(cqInfo.showCQ());
 
     procedure.recoverScheduledTask(env);
@@ -94,14 +97,16 @@ public class CreateCQProcedureRecoveryTest {
     Mockito.when(env.getConfigManager()).thenReturn(configManager);
     Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
     Mockito.when(configManager.getCQManager()).thenReturn(cqManager);
-    Mockito.when(cqManager.markCQLocallyScheduled(Mockito.anyString(), Mockito.anyString()))
+    Mockito.when(
+            cqManager.markCQLocallyScheduled(
+                Mockito.anyString(), Mockito.anyString(), Mockito.any(CQScheduleTask.class)))
         .thenReturn(false);
 
     TCreateCQReq req = newCreateCQReq();
     CreateCQProcedure procedure = new CreateCQProcedure(req, executor);
 
     CQInfo cqInfo = new CQInfo();
-    cqInfo.addCQ(new AddCQPlan(req, procedure.getMd5(), System.currentTimeMillis() + 10_000));
+    cqInfo.addCQ(new AddCQPlan(req, procedure.getCqToken(), System.currentTimeMillis() + 10_000));
     Mockito.when(consensusManager.read(Mockito.any(ShowCQPlan.class))).thenReturn(cqInfo.showCQ());
 
     procedure.recoverScheduledTask(env);

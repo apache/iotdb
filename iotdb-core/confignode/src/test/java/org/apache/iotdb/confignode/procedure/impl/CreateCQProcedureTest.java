@@ -60,7 +60,7 @@ public class CreateCQProcedureTest {
       CreateCQProcedure createCQProcedure1 = new CreateCQProcedure(req, executor);
       CreateCQProcedure createCQProcedure2 = new CreateCQProcedure(req, executor);
 
-      assertNotEquals(createCQProcedure1.getMd5(), createCQProcedure2.getMd5());
+      assertNotEquals(createCQProcedure1.getCqToken(), createCQProcedure2.getCqToken());
     } finally {
       executor.shutdown();
     }

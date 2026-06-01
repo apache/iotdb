@@ -60,7 +60,8 @@ public class CQManager {
 
   private final ReadWriteLock lock;
 
-  private final ConcurrentMap<String, String> locallyScheduledCQs;
+  // Key: CQ id. Value: the local task and the metadata token it owns.
+  private final ConcurrentMap<String, LocallyScheduledCQ> locallyScheduledCQs;
 
   private ScheduledExecutorService executor;
 
@@ -84,10 +85,11 @@ public class CQManager {
   }
 
   public TSStatus dropCQ(TDropCQReq req) {
+    lock.readLock().lock();
     try {
       TSStatus status = configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        locallyScheduledCQs.remove(req.cqId);
+        cancelLocallyScheduledCQ(req.cqId);
       }
       return status;
     } catch (ConsensusException e) {
@@ -96,6 +98,8 @@ public class CQManager {
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
+    } finally {
+      lock.readLock().unlock();
     }
   }
 
@@ -128,6 +132,7 @@ public class CQManager {
     try {
       // 1. shutdown previous cq schedule thread pool
       try {
+        cancelAllLocallyScheduledCQs();
         if (executor != null) {
           executor.shutdown();
         }
@@ -142,7 +147,6 @@ public class CQManager {
       executor =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
-      locallyScheduledCQs.clear();
 
       // 3. get all CQs
       List<CQInfo.CQEntry> allCQs = null;
@@ -166,14 +170,14 @@ public class CQManager {
       if (allCQs != null) {
         for (CQInfo.CQEntry entry : allCQs) {
           if (entry.getState() == CQState.ACTIVE) {
-            if (!markCQLocallyScheduled(entry.getCqId(), entry.getMd5())) {
+            CQScheduleTask cqScheduleTask = new CQScheduleTask(entry, executor, configManager);
+            if (!markCQLocallyScheduled(entry.getCqId(), entry.getCqToken(), cqScheduleTask)) {
               continue;
             }
-            CQScheduleTask cqScheduleTask = new CQScheduleTask(entry, executor, configManager);
             try {
               cqScheduleTask.submitSelf();
             } catch (RuntimeException e) {
-              unmarkCQLocallyScheduled(entry.getCqId(), entry.getMd5());
+              unmarkCQLocallyScheduled(entry.getCqId(), entry.getCqToken());
               throw e;
             }
           }
@@ -195,7 +199,7 @@ public class CQManager {
     try {
       previous = executor;
       executor = null;
-      locallyScheduledCQs.clear();
+      cancelAllLocallyScheduledCQs();
     } finally {
       lock.writeLock().unlock();
     }
@@ -204,21 +208,77 @@ public class CQManager {
     }
   }
 
-  public boolean markCQLocallyScheduled(String cqId, String md5) {
+  public boolean markCQLocallyScheduled(String cqId, String cqToken, CQScheduleTask task) {
     AtomicBoolean shouldSchedule = new AtomicBoolean(false);
-    locallyScheduledCQs.compute(
-        cqId,
-        (ignored, previousMd5) -> {
-          if (!md5.equals(previousMd5)) {
+    LocallyScheduledCQ schedule = new LocallyScheduledCQ(cqToken, task);
+    lock.readLock().lock();
+    try {
+      locallyScheduledCQs.compute(
+          cqId,
+          (ignored, previousSchedule) -> {
+            if (previousSchedule != null && previousSchedule.hasToken(cqToken)) {
+              return previousSchedule;
+            }
+            if (previousSchedule != null) {
+              previousSchedule.cancel();
+            }
             shouldSchedule.set(true);
-            return md5;
-          }
-          return previousMd5;
-        });
-    return shouldSchedule.get();
+            return schedule;
+          });
+      if (!shouldSchedule.get()) {
+        task.cancel();
+      }
+      return shouldSchedule.get();
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
-  public void unmarkCQLocallyScheduled(String cqId, String md5) {
-    locallyScheduledCQs.remove(cqId, md5);
+  public void unmarkCQLocallyScheduled(String cqId, String cqToken) {
+    lock.readLock().lock();
+    try {
+      locallyScheduledCQs.computeIfPresent(
+          cqId,
+          (ignored, schedule) -> {
+            if (schedule.hasToken(cqToken)) {
+              schedule.cancel();
+              return null;
+            }
+            return schedule;
+          });
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  private void cancelLocallyScheduledCQ(String cqId) {
+    LocallyScheduledCQ schedule = locallyScheduledCQs.remove(cqId);
+    if (schedule != null) {
+      schedule.cancel();
+    }
+  }
+
+  private void cancelAllLocallyScheduledCQs() {
+    locallyScheduledCQs.values().forEach(LocallyScheduledCQ::cancel);
+    locallyScheduledCQs.clear();
+  }
+
+  private static class LocallyScheduledCQ {
+
+    private final String cqToken;
+    private final CQScheduleTask task;
+
+    private LocallyScheduledCQ(String cqToken, CQScheduleTask task) {
+      this.cqToken = cqToken;
+      this.task = task;
+    }
+
+    private boolean hasToken(String cqToken) {
+      return this.cqToken.equals(cqToken);
+    }
+
+    private void cancel() {
+      task.cancel();
+    }
   }
 }
