@@ -41,6 +41,7 @@
         bootstrap, OpenSSL discovery - lives in CMake modules under cmake/.
     -->
     <properties>
+        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
         <cmake.build.type>Release</cmake.build.type>
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.source.dir>${project.basedir}</cmake.source.dir>
@@ -72,6 +73,25 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>get-catch2</id>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <url>${catch2.url}</url>
+                            <unpack>false</unpack>
+                            <outputDirectory>${project.build.directory}/test/catch2</outputDirectory>
+                            <skip>${ctest.skip.tests}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
@@ -97,6 +117,7 @@
                                 <option>-DCMAKE_POLICY_DEFAULT_CMP0091=NEW</option>
                                 <option>-DIOTDB_LIBSTDCXX_CXX11_ABI=${iotdb.libstdcxx.cxx11.abi}</option>
                                 <option>-DIOTDB_EXTRA_CXX_FLAGS=${iotdb.extra.cxx.flags}</option>
+                                <option>-DCATCH2_INCLUDE_DIR=${project.build.directory}/test/catch2</option>
                             </options>
                         </configuration>
                     </execution>

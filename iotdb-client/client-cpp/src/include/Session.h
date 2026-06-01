@@ -43,8 +43,6 @@
 #define LONG_LONG_MIN 0x8000000000000000
 #endif
 
-using namespace std;
-
 template <typename T, typename Target>
 void safe_cast(const T &value, Target &target) {
   /*
@@ -58,9 +56,10 @@ void safe_cast(const T &value, Target &target) {
     */
   if (std::is_same<Target, T>::value) {
     target = *(Target *)&value;
-  } else if (std::is_same<Target, string>::value && std::is_array<T>::value &&
+  } else if (std::is_same<Target, std::string>::value &&
+             std::is_array<T>::value &&
              std::is_same<char, typename std::remove_extent<T>::type>::value) {
-    string tmp((const char *)&value);
+    std::string tmp((const char *)&value);
     target = *(Target *)&tmp;
   } else if (std::is_same<Target, int64_t>::value &&
              std::is_same<T, int32_t>::value) {
@@ -243,8 +242,8 @@ public:
   ~Tablet() {
     try {
       deleteColumns();
-    } catch (exception &e) {
-      log_debug(string("Tablet::~Tablet(), ") + e.what());
+    } catch (std::exception &e) {
+      log_debug(std::string("Tablet::~Tablet(), ") + e.what());
     }
   }
 
@@ -307,12 +306,14 @@ public:
     case TSDataType::BLOB:
     case TSDataType::STRING:
     case TSDataType::TEXT: {
-      safe_cast<T, string>(value, ((string *)values[schemaId])[rowIndex]);
+      safe_cast<T, std::string>(value,
+                                ((std::string *)values[schemaId])[rowIndex]);
       break;
     }
     default:
       throw UnSupportedDataTypeException(
-          string("Data type ") + to_string(dataType) + " is not supported.");
+          std::string("Data type ") + std::to_string(dataType) +
+              " is not supported.");
     }
   }
 
@@ -364,14 +365,14 @@ public:
     // Cast the value array and assign the Binary data (stored as string)
     std::string valEncoded =
         std::string(reinterpret_cast<char *>(val.data()), val.size());
-    safe_cast<string, string>(valEncoded,
-                              ((string *)values[schemaId])[rowIndex]);
+    safe_cast<std::string, std::string>(
+        valEncoded, ((std::string *)values[schemaId])[rowIndex]);
   }
 
-  void addValue(const string &schemaName, size_t rowIndex, bool isEOF,
+  void addValue(const std::string &schemaName, size_t rowIndex, bool isEOF,
                 int64_t offset, const std::vector<uint8_t> &content) {
     if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
-      throw SchemaNotFoundException(string("Schema ") + schemaName +
+      throw SchemaNotFoundException(std::string("Schema ") + schemaName +
                                     " not found.");
     }
     size_t schemaId = schemaNameIndex[schemaName];
@@ -379,9 +380,9 @@ public:
   }
 
   template <typename T>
-  void addValue(const string &schemaName, size_t rowIndex, const T &value) {
+  void addValue(const std::string &schemaName, size_t rowIndex, const T &value) {
     if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
-      throw SchemaNotFoundException(string("Schema ") + schemaName +
+      throw SchemaNotFoundException(std::string("Schema ") + schemaName +
                                     " not found.");
     }
     size_t schemaId = schemaNameIndex[schemaName];

@@ -32,8 +32,6 @@
 #include "Optional.h"
 #include "Status.h"
 
-using namespace std;
-
 std::string getTimePrecision(int32_t timeFactor);
 
 std::string formatDatetime(const std::string &format,
@@ -353,15 +351,16 @@ public:
       : IoTDBException(m), endPoint(endPoint) {}
 
   RedirectException(const std::string &m,
-                    const map<string, Endpoint> &deviceEndPointMap)
+                    const std::map<std::string, Endpoint> &deviceEndPointMap)
       : IoTDBException(m), deviceEndPointMap(deviceEndPointMap) {}
 
-  RedirectException(const std::string &m, const vector<Endpoint> &endPointList)
+  RedirectException(const std::string &m,
+                    const std::vector<Endpoint> &endPointList)
       : IoTDBException(m), endPointList(endPointList) {}
 
   Endpoint endPoint;
-  map<string, Endpoint> deviceEndPointMap;
-  vector<Endpoint> endPointList;
+  std::map<std::string, Endpoint> deviceEndPointMap;
+  std::vector<Endpoint> endPointList;
 };
 
 class UnSupportedDataTypeException : public IoTDBException {
@@ -400,28 +399,28 @@ extern IOTDB_SESSION_API LogLevelType LOG_LEVEL;
 #define log_debug(fmt, ...)                                                    \
   do {                                                                         \
     if (LOG_LEVEL <= LEVEL_DEBUG) {                                            \
-      string s = string("[DEBUG] %s:%d (%s) - ") + fmt + "\n";                 \
+      std::string s = std::string("[DEBUG] %s:%d (%s) - ") + fmt + "\n";       \
       printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
     }                                                                          \
   } while (0)
 #define log_info(fmt, ...)                                                     \
   do {                                                                         \
     if (LOG_LEVEL <= LEVEL_INFO) {                                             \
-      string s = string("[INFO]  %s:%d (%s) - ") + fmt + "\n";                 \
+      std::string s = std::string("[INFO]  %s:%d (%s) - ") + fmt + "\n";       \
       printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
     }                                                                          \
   } while (0)
 #define log_warn(fmt, ...)                                                     \
   do {                                                                         \
     if (LOG_LEVEL <= LEVEL_WARN) {                                             \
-      string s = string("[WARN]  %s:%d (%s) - ") + fmt + "\n";                 \
+      std::string s = std::string("[WARN]  %s:%d (%s) - ") + fmt + "\n";       \
       printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
     }                                                                          \
   } while (0)
 #define log_error(fmt, ...)                                                    \
   do {                                                                         \
     if (LOG_LEVEL <= LEVEL_ERROR) {                                            \
-      string s = string("[ERROR] %s:%d (%s) - ") + fmt + "\n";                 \
+      std::string s = std::string("[ERROR] %s:%d (%s) - ") + fmt + "\n";       \
       printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
     }                                                                          \
   } while (0)
