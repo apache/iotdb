@@ -597,7 +597,6 @@ private:
   std::string database_;
   bool enableAutoFetch_ = true;
   bool enableRedirection_ = true;
-  bool enableRPCCompression_ = false;
   std::shared_ptr<INodesSupplier> nodesSupplier_;
   friend class SessionConnection;
   friend class TableSession;
@@ -775,7 +774,6 @@ public:
     this->database_ = builder->database;
     this->enableAutoFetch_ = builder->enableAutoFetch;
     this->enableRedirection_ = builder->enableRedirections;
-    this->enableRPCCompression_ = builder->enableRPCCompression;
     this->connectTimeoutMs_ = builder->connectTimeoutMs;
     this->nodeUrls_ = builder->nodeUrls;
     this->useSSL_ = builder->useSSL;

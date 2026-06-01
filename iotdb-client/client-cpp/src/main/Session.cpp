@@ -768,14 +768,8 @@ void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
   }
 
   if (enableAutoFetch_) {
-    // Propagate the compression setting to the node-discovery client too, so the
-    // background "show cluster" refresh uses the same protocol as data sessions.
-    // Other parameters keep their library defaults to preserve existing behavior.
-    nodesSupplier_ = NodesSupplier::create(
-        endPoints, username_, password_, useSSL_, trustCertFilePath_, /*zoneId=*/"",
-        ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE, ThriftConnection::THRIFT_MAX_FRAME_SIZE,
-        ThriftConnection::CONNECTION_TIMEOUT_IN_MS, enableRPCCompression_,
-        getVersionString(version));
+    nodesSupplier_ =
+        NodesSupplier::create(endPoints, username_, password_, useSSL_, trustCertFilePath_);
   } else {
     nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
   }
@@ -949,10 +943,6 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
   if (!isClosed_) {
     return;
   }
-
-  // Honor compression requested either via the builder or this open() call, so
-  // the negotiated protocol (compact vs binary) actually reflects the setting.
-  enableRPCCompression_ = enableRPCCompression_ || enableRPCCompression;
 
   try {
     initDefaultSessionConnection();
