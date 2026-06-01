@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -20,80 +20,84 @@
 #define IOTDB_SESSIONCONNECTION_H
 
 #include <memory>
-#include <vector>
 #include <string>
 #include <thrift/transport/TTransport.h>
+#include <vector>
 #if WITH_SSL
 #include <thrift/transport/TSSLSocket.h>
 #endif
 
-#include "IClientRPCService.h"
-#include "common_types.h"
-#include "NodesSupplier.h"
 #include "Common.h"
+#include "IClientRPCService.h"
+#include "NodesSupplier.h"
 #include "RpcCommon.h"
 #include "Session.h"
 #include "SessionConfig.h"
+#include "common_types.h"
 
 class SessionDataSet;
 
-class SessionConnection : public std::enable_shared_from_this<SessionConnection> {
+class SessionConnection
+    : public std::enable_shared_from_this<SessionConnection> {
 public:
-  SessionConnection(Session::Impl* session_ptr, const TEndPoint& endpoint,
-                    const std::string& zoneId, std::shared_ptr<INodesSupplier> nodeSupplier,
-                    int fetchSize = iotdb::session::DEFAULT_FETCH_SIZE,
-                    int maxRetries = iotdb::session::DEFAULT_MAX_RETRIES,
-                    int64_t retryInterval = iotdb::session::DEFAULT_RETRY_DELAY_MS,
-                    int64_t connectionTimeoutMs = iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS,
-                    std::string dialect = "tree", std::string db = "");
+  SessionConnection(
+      Session::Impl *session_ptr, const TEndPoint &endpoint,
+      const std::string &zoneId, std::shared_ptr<INodesSupplier> nodeSupplier,
+      int fetchSize = iotdb::session::DEFAULT_FETCH_SIZE,
+      int maxRetries = iotdb::session::DEFAULT_MAX_RETRIES,
+      int64_t retryInterval = iotdb::session::DEFAULT_RETRY_DELAY_MS,
+      int64_t connectionTimeoutMs = iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS,
+      std::string dialect = "tree", std::string db = "");
 
   ~SessionConnection();
 
-  void setTimeZone(const std::string& newZoneId);
+  void setTimeZone(const std::string &newZoneId);
 
-  const TEndPoint& getEndPoint();
+  const TEndPoint &getEndPoint();
 
-  void init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath);
+  void init(const TEndPoint &endpoint, bool useSSL,
+            const std::string &trustCertFilePath);
 
-  void insertStringRecord(const TSInsertStringRecordReq& request);
+  void insertStringRecord(const TSInsertStringRecordReq &request);
 
-  void insertRecord(const TSInsertRecordReq& request);
+  void insertRecord(const TSInsertRecordReq &request);
 
-  void insertStringRecords(const TSInsertStringRecordsReq& request);
+  void insertStringRecords(const TSInsertStringRecordsReq &request);
 
-  void insertRecords(const TSInsertRecordsReq& request);
+  void insertRecords(const TSInsertRecordsReq &request);
 
   void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request);
 
-  void insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request);
+  void
+  insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request);
 
   void insertTablet(TSInsertTabletReq request);
 
   void insertTablets(TSInsertTabletsReq request);
 
-  void testInsertStringRecord(TSInsertStringRecordReq& request);
+  void testInsertStringRecord(TSInsertStringRecordReq &request);
 
-  void testInsertTablet(TSInsertTabletReq& request);
+  void testInsertTablet(TSInsertTabletReq &request);
 
-  void testInsertRecords(TSInsertRecordsReq& request);
+  void testInsertRecords(TSInsertRecordsReq &request);
 
-  void deleteTimeseries(const vector<string>& paths);
+  void deleteTimeseries(const vector<string> &paths);
 
-  void deleteData(const TSDeleteDataReq& request);
+  void deleteData(const TSDeleteDataReq &request);
 
-  void setStorageGroup(const string& storageGroupId);
+  void setStorageGroup(const string &storageGroupId);
 
-  void deleteStorageGroups(const vector<string>& storageGroups);
+  void deleteStorageGroups(const vector<string> &storageGroups);
 
-  void createTimeseries(TSCreateTimeseriesReq& req);
+  void createTimeseries(TSCreateTimeseriesReq &req);
 
-  void createMultiTimeseries(TSCreateMultiTimeseriesReq& req);
+  void createMultiTimeseries(TSCreateMultiTimeseriesReq &req);
 
-  void createAlignedTimeseries(TSCreateAlignedTimeseriesReq& req);
+  void createAlignedTimeseries(TSCreateAlignedTimeseriesReq &req);
 
   TSGetTimeZoneResp getTimeZone();
 
-  void setTimeZone(TSSetTimeZoneReq& req);
+  void setTimeZone(TSSetTimeZoneReq &req);
 
   void createSchemaTemplate(TSCreateSchemaTemplateReq req);
 
@@ -107,20 +111,19 @@ public:
 
   TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req);
 
-  std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string>& paths,
-                                                      int64_t startTime, int64_t endTime);
+  std::unique_ptr<SessionDataSet>
+  executeRawDataQuery(const std::vector<std::string> &paths, int64_t startTime,
+                      int64_t endTime);
 
-  std::unique_ptr<SessionDataSet> executeLastDataQuery(const std::vector<std::string>& paths,
-                                                       int64_t lastTime);
+  std::unique_ptr<SessionDataSet>
+  executeLastDataQuery(const std::vector<std::string> &paths, int64_t lastTime);
 
-  void executeNonQueryStatement(const std::string& sql);
+  void executeNonQueryStatement(const std::string &sql);
 
-  std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql,
-                                                        int64_t timeoutInMs = -1);
+  std::unique_ptr<SessionDataSet>
+  executeQueryStatement(const std::string &sql, int64_t timeoutInMs = -1);
 
-  std::shared_ptr<IClientRPCServiceClient> getSessionClient() {
-    return client;
-  }
+  std::shared_ptr<IClientRPCServiceClient> getSessionClient() { return client; }
 
   friend class Session;
 
@@ -134,35 +137,35 @@ private:
     std::exception_ptr exception;
     int retryAttempts;
 
-    RetryResult(T r, std::exception_ptr e, int a) : result(r), exception(e), retryAttempts(a) {}
+    RetryResult(T r, std::exception_ptr e, int a)
+        : result(r), exception(e), retryAttempts(a) {}
 
-    int getRetryAttempts() const {
-      return retryAttempts;
-    }
-    T getResult() const {
-      return result;
-    }
-    std::exception_ptr getException() const {
-      return exception;
-    }
+    int getRetryAttempts() const { return retryAttempts; }
+    T getResult() const { return result; }
+    std::exception_ptr getException() const { return exception; }
   };
 
-  template <typename T> void callWithRetryAndVerifyWithRedirection(std::function<T()> rpc);
+  template <typename T>
+  void callWithRetryAndVerifyWithRedirection(std::function<T()> rpc);
 
   template <typename T>
-  void callWithRetryAndVerifyWithRedirectionForMultipleDevices(std::function<T()> rpc,
-                                                               const vector<string>& deviceIds);
+  void callWithRetryAndVerifyWithRedirectionForMultipleDevices(
+      std::function<T()> rpc, const vector<string> &deviceIds);
 
-  template <typename T> RetryResult<T> callWithRetryAndVerify(std::function<T()> rpc);
+  template <typename T>
+  RetryResult<T> callWithRetryAndVerify(std::function<T()> rpc);
 
   template <typename T> RetryResult<T> callWithRetry(std::function<T()> rpc);
 
-  template <typename T, typename RpcFunc> RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc);
+  template <typename T, typename RpcFunc>
+  RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc);
 
   template <typename T, typename RpcFunc, typename StatusGetter>
-  RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc, StatusGetter statusGetter);
+  RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc,
+                                           StatusGetter statusGetter);
 
-  template <typename T, typename RpcFunc, typename ShouldRetry, typename ForceReconnect>
+  template <typename T, typename RpcFunc, typename ShouldRetry,
+            typename ForceReconnect>
   RetryResult<T> callWithRetryAndReconnect(RpcFunc rpc, ShouldRetry shouldRetry,
                                            ForceReconnect forceReconnect);
 
@@ -174,9 +177,11 @@ private:
 
   TSStatus insertRecordsInternal(TSInsertRecordsReq request);
 
-  TSStatus insertRecordsOfOneDeviceInternal(TSInsertRecordsOfOneDeviceReq request);
+  TSStatus
+  insertRecordsOfOneDeviceInternal(TSInsertRecordsOfOneDeviceReq request);
 
-  TSStatus insertStringRecordsOfOneDeviceInternal(TSInsertStringRecordsOfOneDeviceReq request);
+  TSStatus insertStringRecordsOfOneDeviceInternal(
+      TSInsertStringRecordsOfOneDeviceReq request);
 
   TSStatus insertTabletInternal(TSInsertTabletReq request);
 
@@ -189,7 +194,7 @@ private:
 #endif
   std::shared_ptr<apache::thrift::transport::TTransport> transport;
   std::shared_ptr<IClientRPCServiceClient> client;
-  Session::Impl* session;
+  Session::Impl *session;
   int64_t sessionId;
   int64_t statementId;
   int64_t connectionTimeoutInMs;
@@ -207,7 +212,8 @@ private:
 };
 
 template <typename T>
-SessionConnection::RetryResult<T> SessionConnection::callWithRetry(std::function<T()> rpc) {
+SessionConnection::RetryResult<T>
+SessionConnection::callWithRetry(std::function<T()> rpc) {
   std::exception_ptr lastException = nullptr;
   TSStatus status;
   int i;
@@ -217,7 +223,7 @@ SessionConnection::RetryResult<T> SessionConnection::callWithRetry(std::function
       status = TSStatus();
       try {
         std::this_thread::sleep_for(std::chrono::milliseconds(retryIntervalMs));
-      } catch (const std::exception& e) {
+      } catch (const std::exception &e) {
         break;
       }
       if (!reconnect()) {
@@ -239,7 +245,8 @@ SessionConnection::RetryResult<T> SessionConnection::callWithRetry(std::function
 }
 
 template <typename T>
-void SessionConnection::callWithRetryAndVerifyWithRedirection(std::function<T()> rpc) {
+void SessionConnection::callWithRetryAndVerifyWithRedirection(
+    std::function<T()> rpc) {
   auto result = callWithRetry<T>(rpc);
 
   auto status = result.getResult();
@@ -250,13 +257,14 @@ void SessionConnection::callWithRetryAndVerifyWithRedirection(std::function<T()>
   }
 
   if (result.getException()) {
-    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
+    throw IoTDBConnectionException(
+        extractExceptionMessage(result.getException()));
   }
 }
 
 template <typename T>
 void SessionConnection::callWithRetryAndVerifyWithRedirectionForMultipleDevices(
-    std::function<T()> rpc, const vector<string>& deviceIds) {
+    std::function<T()> rpc, const vector<string> &deviceIds) {
   auto result = callWithRetry<T>(rpc);
   auto status = result.getResult();
   if (result.getRetryAttempts() == 0) {
@@ -265,7 +273,8 @@ void SessionConnection::callWithRetryAndVerifyWithRedirectionForMultipleDevices(
     RpcUtils::verifySuccess(status);
   }
   if (result.getException()) {
-    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
+    throw IoTDBConnectionException(
+        extractExceptionMessage(result.getException()));
   }
   result.exception = nullptr;
 }
@@ -276,28 +285,34 @@ SessionConnection::callWithRetryAndVerify(std::function<T()> rpc) {
   auto result = callWithRetry<T>(rpc);
   RpcUtils::verifySuccess(result.getResult());
   if (result.getException()) {
-    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
+    throw IoTDBConnectionException(
+        extractExceptionMessage(result.getException()));
   }
   return result;
 }
 
 template <typename T, typename RpcFunc>
-SessionConnection::RetryResult<T> SessionConnection::callWithRetryAndReconnect(RpcFunc rpc) {
+SessionConnection::RetryResult<T>
+SessionConnection::callWithRetryAndReconnect(RpcFunc rpc) {
   return callWithRetryAndReconnect<T>(
-      rpc, [](const TSStatus& status) { return status.__isset.needRetry && status.needRetry; },
-      [](const TSStatus& status) {
+      rpc,
+      [](const TSStatus &status) {
+        return status.__isset.needRetry && status.needRetry;
+      },
+      [](const TSStatus &status) {
         return status.code == TSStatusCode::PLAN_FAILED_NETWORK_PARTITION;
       });
 }
 
 template <typename T, typename RpcFunc, typename StatusGetter>
 SessionConnection::RetryResult<T>
-SessionConnection::callWithRetryAndReconnect(RpcFunc rpc, StatusGetter statusGetter) {
-  auto shouldRetry = [&statusGetter](const T& t) {
+SessionConnection::callWithRetryAndReconnect(RpcFunc rpc,
+                                             StatusGetter statusGetter) {
+  auto shouldRetry = [&statusGetter](const T &t) {
     auto status = statusGetter(t);
     return status.__isset.needRetry && status.needRetry;
   };
-  auto forceReconnect = [&statusGetter](const T& t) {
+  auto forceReconnect = [&statusGetter](const T &t) {
     auto status = statusGetter(t);
     return status.code == TSStatusCode::PLAN_FAILED_NETWORK_PARTITION;
     ;
@@ -305,10 +320,10 @@ SessionConnection::callWithRetryAndReconnect(RpcFunc rpc, StatusGetter statusGet
   return callWithRetryAndReconnect<T>(rpc, shouldRetry, forceReconnect);
 }
 
-template <typename T, typename RpcFunc, typename ShouldRetry, typename ForceReconnect>
-SessionConnection::RetryResult<T>
-SessionConnection::callWithRetryAndReconnect(RpcFunc rpc, ShouldRetry shouldRetry,
-                                             ForceReconnect forceReconnect) {
+template <typename T, typename RpcFunc, typename ShouldRetry,
+          typename ForceReconnect>
+SessionConnection::RetryResult<T> SessionConnection::callWithRetryAndReconnect(
+    RpcFunc rpc, ShouldRetry shouldRetry, ForceReconnect forceReconnect) {
   std::exception_ptr lastException = nullptr;
   T result;
   int retryAttempt;
@@ -335,9 +350,10 @@ SessionConnection::callWithRetryAndReconnect(RpcFunc rpc, ShouldRetry shouldRetr
 
     try {
       std::this_thread::sleep_for(std::chrono::milliseconds(retryIntervalMs));
-    } catch (const std::exception& e) {
-      log_debug("Thread was interrupted during retry " + std::to_string(retryAttempt) +
-                " with wait time " + std::to_string(retryIntervalMs) + " ms. Exiting retry loop.");
+    } catch (const std::exception &e) {
+      log_debug("Thread was interrupted during retry " +
+                std::to_string(retryAttempt) + " with wait time " +
+                std::to_string(retryIntervalMs) + " ms. Exiting retry loop.");
       break;
     }
   }

@@ -26,15 +26,18 @@
 
 class AbstractSessionBuilder {
 public:
-  static constexpr const char* DEFAULT_HOST = "localhost";
+  static constexpr const char *DEFAULT_HOST = "localhost";
   static constexpr int DEFAULT_RPC_PORT = 6667;
-  static constexpr const char* DEFAULT_USERNAME = "root";
-  static constexpr const char* DEFAULT_PASSWORD = "root";
+  static constexpr const char *DEFAULT_USERNAME = "root";
+  static constexpr const char *DEFAULT_PASSWORD = "root";
   static constexpr int DEFAULT_FETCH_SIZE = iotdb::session::DEFAULT_FETCH_SIZE;
-  static constexpr int DEFAULT_CONNECT_TIMEOUT_MS = iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS;
-  static constexpr int DEFAULT_MAX_RETRIES = iotdb::session::DEFAULT_MAX_RETRIES;
-  static constexpr int DEFAULT_RETRY_DELAY_MS = iotdb::session::DEFAULT_RETRY_DELAY_MS;
-  static constexpr const char* DEFAULT_SQL_DIALECT = "tree";
+  static constexpr int DEFAULT_CONNECT_TIMEOUT_MS =
+      iotdb::session::DEFAULT_CONNECT_TIMEOUT_MS;
+  static constexpr int DEFAULT_MAX_RETRIES =
+      iotdb::session::DEFAULT_MAX_RETRIES;
+  static constexpr int DEFAULT_RETRY_DELAY_MS =
+      iotdb::session::DEFAULT_RETRY_DELAY_MS;
+  static constexpr const char *DEFAULT_SQL_DIALECT = "tree";
   static constexpr bool DEFAULT_ENABLE_AUTO_FETCH = true;
   static constexpr bool DEFAULT_ENABLE_REDIRECTIONS = true;
   static constexpr bool DEFAULT_ENABLE_RPC_COMPRESSION = false;

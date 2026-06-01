@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -30,39 +30,35 @@ struct SessionDataSet::Impl {
   std::shared_ptr<IoTDBRpcDataSet> iotdbRpcDataSet_;
 };
 
-std::unique_ptr<SessionDataSet>
-createSessionDataSet(const std::string& sql, const std::vector<std::string>& columnNameList,
-                     const std::vector<std::string>& columnTypeList,
-                     const std::map<std::string, int32_t>& columnNameIndex, int64_t queryId,
-                     int64_t statementId, std::shared_ptr<IClientRPCServiceClient> client,
-                     int64_t sessionId, const std::vector<std::string>& queryResult,
-                     bool ignoreTimestamp, int64_t timeout, bool moreData, int32_t fetchSize,
-                     const std::string& zoneId) {
+std::unique_ptr<SessionDataSet> createSessionDataSet(
+    const std::string &sql, const std::vector<std::string> &columnNameList,
+    const std::vector<std::string> &columnTypeList,
+    const std::map<std::string, int32_t> &columnNameIndex, int64_t queryId,
+    int64_t statementId, std::shared_ptr<IClientRPCServiceClient> client,
+    int64_t sessionId, const std::vector<std::string> &queryResult,
+    bool ignoreTimestamp, int64_t timeout, bool moreData, int32_t fetchSize,
+    const std::string &zoneId) {
   auto dataSet = std::unique_ptr<SessionDataSet>(new SessionDataSet());
-  dataSet->impl_ = std::unique_ptr<SessionDataSet::Impl>(new SessionDataSet::Impl());
+  dataSet->impl_ =
+      std::unique_ptr<SessionDataSet::Impl>(new SessionDataSet::Impl());
   dataSet->impl_->iotdbRpcDataSet_ = std::make_shared<IoTDBRpcDataSet>(
-      sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp, moreData, queryId,
-      statementId, client, sessionId, queryResult, fetchSize, timeout, zoneId,
-      IoTDBRpcDataSet::DEFAULT_TIME_FORMAT);
+      sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp,
+      moreData, queryId, statementId, client, sessionId, queryResult, fetchSize,
+      timeout, zoneId, IoTDBRpcDataSet::DEFAULT_TIME_FORMAT);
   return dataSet;
 }
 
-RowRecord::RowRecord(int64_t timestamp) {
-  this->timestamp = timestamp;
-}
+RowRecord::RowRecord(int64_t timestamp) { this->timestamp = timestamp; }
 
-RowRecord::RowRecord(int64_t timestamp, const std::vector<Field>& fields)
+RowRecord::RowRecord(int64_t timestamp, const std::vector<Field> &fields)
     : timestamp(timestamp), fields(fields) {}
 
-RowRecord::RowRecord(const std::vector<Field>& fields) : timestamp(-1), fields(fields) {}
+RowRecord::RowRecord(const std::vector<Field> &fields)
+    : timestamp(-1), fields(fields) {}
 
-RowRecord::RowRecord() {
-  this->timestamp = -1;
-}
+RowRecord::RowRecord() { this->timestamp = -1; }
 
-void RowRecord::addField(const Field& f) {
-  this->fields.push_back(f);
-}
+void RowRecord::addField(const Field &f) { this->fields.push_back(f); }
 
 std::string RowRecord::toString() {
   std::string ret;
@@ -74,7 +70,7 @@ std::string RowRecord::toString() {
     if (i != 0) {
       ret.append("\t");
     }
-    const Field& f = fields[i];
+    const Field &f = fields[i];
     switch (f.dataType) {
     case TSDataType::BOOLEAN:
       if (f.isNull()) {
@@ -168,11 +164,11 @@ void SessionDataSet::setFetchSize(int fetchSize) {
   impl_->iotdbRpcDataSet_->setFetchSize(fetchSize);
 }
 
-const std::vector<std::string>& SessionDataSet::getColumnNames() const {
+const std::vector<std::string> &SessionDataSet::getColumnNames() const {
   return impl_->iotdbRpcDataSet_->getColumnNameList();
 }
 
-const std::vector<std::string>& SessionDataSet::getColumnTypeList() const {
+const std::vector<std::string> &SessionDataSet::getColumnTypeList() const {
   return impl_->iotdbRpcDataSet_->getColumnTypeList();
 }
 
@@ -180,13 +176,14 @@ void SessionDataSet::closeOperationHandle(bool forceClose) {
   impl_->iotdbRpcDataSet_->close(forceClose);
 }
 
-SessionDataSet::DataIterator::DataIterator(std::shared_ptr<Impl> impl) : impl_(std::move(impl)) {}
+SessionDataSet::DataIterator::DataIterator(std::shared_ptr<Impl> impl)
+    : impl_(std::move(impl)) {}
 
 bool SessionDataSet::DataIterator::next() {
   return impl_->iotdbRpcDataSet_->next();
 }
 
-bool SessionDataSet::DataIterator::isNull(const std::string& columnName) {
+bool SessionDataSet::DataIterator::isNull(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->isNullByColumnName(columnName);
 }
 
@@ -194,84 +191,103 @@ bool SessionDataSet::DataIterator::isNullByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->isNullByIndex(columnIndex);
 }
 
-Optional<bool> SessionDataSet::DataIterator::getBooleanByIndex(int32_t columnIndex) {
+Optional<bool>
+SessionDataSet::DataIterator::getBooleanByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getBooleanByIndex(columnIndex);
 }
 
-Optional<bool> SessionDataSet::DataIterator::getBoolean(const std::string& columnName) {
+Optional<bool>
+SessionDataSet::DataIterator::getBoolean(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getBoolean(columnName);
 }
 
-Optional<double> SessionDataSet::DataIterator::getDoubleByIndex(int32_t columnIndex) {
+Optional<double>
+SessionDataSet::DataIterator::getDoubleByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getDoubleByIndex(columnIndex);
 }
 
-Optional<double> SessionDataSet::DataIterator::getDouble(const std::string& columnName) {
+Optional<double>
+SessionDataSet::DataIterator::getDouble(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getDouble(columnName);
 }
 
-Optional<float> SessionDataSet::DataIterator::getFloatByIndex(int32_t columnIndex) {
+Optional<float>
+SessionDataSet::DataIterator::getFloatByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getFloatByIndex(columnIndex);
 }
 
-Optional<float> SessionDataSet::DataIterator::getFloat(const std::string& columnName) {
+Optional<float>
+SessionDataSet::DataIterator::getFloat(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getFloat(columnName);
 }
 
-Optional<int32_t> SessionDataSet::DataIterator::getIntByIndex(int32_t columnIndex) {
+Optional<int32_t>
+SessionDataSet::DataIterator::getIntByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getIntByIndex(columnIndex);
 }
 
-Optional<int32_t> SessionDataSet::DataIterator::getInt(const std::string& columnName) {
+Optional<int32_t>
+SessionDataSet::DataIterator::getInt(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getInt(columnName);
 }
 
-Optional<int64_t> SessionDataSet::DataIterator::getLongByIndex(int32_t columnIndex) {
+Optional<int64_t>
+SessionDataSet::DataIterator::getLongByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getLongByIndex(columnIndex);
 }
 
-Optional<int64_t> SessionDataSet::DataIterator::getLong(const std::string& columnName) {
+Optional<int64_t>
+SessionDataSet::DataIterator::getLong(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getLong(columnName);
 }
 
-Optional<std::string> SessionDataSet::DataIterator::getStringByIndex(int32_t columnIndex) {
+Optional<std::string>
+SessionDataSet::DataIterator::getStringByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getStringByIndex(columnIndex);
 }
 
-Optional<std::string> SessionDataSet::DataIterator::getString(const std::string& columnName) {
+Optional<std::string>
+SessionDataSet::DataIterator::getString(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getString(columnName);
 }
 
-Optional<int64_t> SessionDataSet::DataIterator::getTimestampByIndex(int32_t columnIndex) {
+Optional<int64_t>
+SessionDataSet::DataIterator::getTimestampByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getTimestampByIndex(columnIndex);
 }
 
-Optional<int64_t> SessionDataSet::DataIterator::getTimestamp(const std::string& columnName) {
+Optional<int64_t>
+SessionDataSet::DataIterator::getTimestamp(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getTimestamp(columnName);
 }
 
-Optional<IoTDBDate> SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
+Optional<IoTDBDate>
+SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
   return impl_->iotdbRpcDataSet_->getDateByIndex(columnIndex);
 }
 
-Optional<IoTDBDate> SessionDataSet::DataIterator::getDate(const std::string& columnName) {
+Optional<IoTDBDate>
+SessionDataSet::DataIterator::getDate(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->getDate(columnName);
 }
 
-int32_t SessionDataSet::DataIterator::findColumn(const std::string& columnName) {
+int32_t
+SessionDataSet::DataIterator::findColumn(const std::string &columnName) {
   return impl_->iotdbRpcDataSet_->findColumn(columnName);
 }
 
-const std::vector<std::string>& SessionDataSet::DataIterator::getColumnNames() const {
+const std::vector<std::string> &
+SessionDataSet::DataIterator::getColumnNames() const {
   return impl_->iotdbRpcDataSet_->getColumnNameList();
 }
 
-const std::vector<std::string>& SessionDataSet::DataIterator::getColumnTypeList() const {
+const std::vector<std::string> &
+SessionDataSet::DataIterator::getColumnTypeList() const {
   return impl_->iotdbRpcDataSet_->getColumnTypeList();
 }
 
 SessionDataSet::DataIterator SessionDataSet::getIterator() {
-  return DataIterator(std::shared_ptr<Impl>(impl_.get(), [](Impl*) {}));
+  return DataIterator(std::shared_ptr<Impl>(impl_.get(), [](Impl *) {}));
 }
 
 shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
@@ -281,7 +297,8 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
     Field field;
     std::string columnName = impl_->iotdbRpcDataSet_->getColumnNameList().at(i);
     if (!impl_->iotdbRpcDataSet_->isNullByColumnName(columnName)) {
-      TSDataType::TSDataType dataType = impl_->iotdbRpcDataSet_->getDataType(columnName);
+      TSDataType::TSDataType dataType =
+          impl_->iotdbRpcDataSet_->getDataType(columnName);
       field.dataType = dataType;
       switch (dataType) {
       case TSDataType::BOOLEAN:
@@ -307,7 +324,8 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
       case TSDataType::BLOB:
       case TSDataType::STRING:
       case TSDataType::OBJECT:
-        field.stringV = impl_->iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
+        field.stringV =
+            impl_->iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
         break;
       default:
         throw UnSupportedDataTypeException("Data type is not supported.");
@@ -315,5 +333,6 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
     }
     outFields.emplace_back(field);
   }
-  return std::make_shared<RowRecord>(impl_->iotdbRpcDataSet_->getCurrentRowTime(), outFields);
+  return std::make_shared<RowRecord>(
+      impl_->iotdbRpcDataSet_->getCurrentRowTime(), outFields);
 }

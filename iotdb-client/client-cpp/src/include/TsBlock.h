@@ -20,16 +20,17 @@
 #ifndef IOTDB_TS_BLOCK_H
 #define IOTDB_TS_BLOCK_H
 
-#include <vector>
-#include <memory>
 #include "Column.h"
+#include <memory>
+#include <vector>
 
 class TsBlock {
 public:
-  static std::shared_ptr<TsBlock> create(int32_t positionCount, std::shared_ptr<Column> timeColumn,
-                                         std::vector<std::shared_ptr<Column>> valueColumns);
+  static std::shared_ptr<TsBlock>
+  create(int32_t positionCount, std::shared_ptr<Column> timeColumn,
+         std::vector<std::shared_ptr<Column>> valueColumns);
 
-  static std::shared_ptr<TsBlock> deserialize(const std::string& data);
+  static std::shared_ptr<TsBlock> deserialize(const std::string &data);
 
   int32_t getPositionCount() const;
   int64_t getStartTime() const;
@@ -38,7 +39,7 @@ public:
   int64_t getTimeByIndex(int32_t index) const;
   int32_t getValueColumnCount() const;
   const std::shared_ptr<Column> getTimeColumn() const;
-  const std::vector<std::shared_ptr<Column>>& getValueColumns() const;
+  const std::vector<std::shared_ptr<Column>> &getValueColumns() const;
   const std::shared_ptr<Column> getColumn(int32_t columnIndex) const;
 
 private:

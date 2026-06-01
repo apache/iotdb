@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -37,11 +37,13 @@ const int ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE = 4096;
 const int ThriftConnection::THRIFT_MAX_FRAME_SIZE = 1048576;
 const int ThriftConnection::CONNECTION_TIMEOUT_IN_MS = 1000;
 
-ThriftConnection::ThriftConnection(const TEndPoint& endPoint, int thriftDefaultBufferSize,
-                                   int thriftMaxFrameSize, int connectionTimeoutInMs, int fetchSize)
+ThriftConnection::ThriftConnection(const TEndPoint &endPoint,
+                                   int thriftDefaultBufferSize,
+                                   int thriftMaxFrameSize,
+                                   int connectionTimeoutInMs, int fetchSize)
     : endPoint_(endPoint), thriftDefaultBufferSize_(thriftDefaultBufferSize),
-      thriftMaxFrameSize_(thriftMaxFrameSize), connectionTimeoutInMs_(connectionTimeoutInMs),
-      fetchSize_(fetchSize) {}
+      thriftMaxFrameSize_(thriftMaxFrameSize),
+      connectionTimeoutInMs_(connectionTimeoutInMs), fetchSize_(fetchSize) {}
 
 ThriftConnection::~ThriftConnection() = default;
 
@@ -63,10 +65,12 @@ void ThriftConnection::initZoneId() {
   zoneId_ = zoneStr;
 }
 
-void ThriftConnection::init(const std::string& username, const std::string& password,
+void ThriftConnection::init(const std::string &username,
+                            const std::string &password,
                             bool enableRPCCompression, bool useSSL,
-                            const std::string& trustCertFilePath, const std::string& zoneId,
-                            const std::string& version) {
+                            const std::string &trustCertFilePath,
+                            const std::string &zoneId,
+                            const std::string &version) {
   if (useSSL) {
 #if WITH_SSL
     socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
@@ -87,7 +91,7 @@ void ThriftConnection::init(const std::string& username, const std::string& pass
   if (!transport_->isOpen()) {
     try {
       transport_->open();
-    } catch (TTransportException& e) {
+    } catch (TTransportException &e) {
       throw IoTDBConnectionException(e.what());
     }
   }
@@ -98,7 +102,8 @@ void ThriftConnection::init(const std::string& username, const std::string& pass
   }
 
   if (enableRPCCompression) {
-    std::shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport_));
+    std::shared_ptr<TCompactProtocol> protocol(
+        new TCompactProtocol(transport_));
     client_ = std::make_shared<IClientRPCServiceClient>(protocol);
   } else {
     std::shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport_));
@@ -118,20 +123,21 @@ void ThriftConnection::init(const std::string& username, const std::string& pass
     RpcUtils::verifySuccess(openResp.status);
     sessionId_ = openResp.sessionId;
     statementId_ = client_->requestStatementId(sessionId_);
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     transport_->close();
     throw IoTDBConnectionException(e.what());
-  } catch (const IoTDBException& e) {
+  } catch (const IoTDBException &e) {
     transport_->close();
     throw IoTDBException(e.what());
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     transport_->close();
     throw IoTDBException(e.what());
   }
 }
 
-std::unique_ptr<SessionDataSet> ThriftConnection::executeQueryStatement(const std::string& sql,
-                                                                        int64_t timeoutInMs) {
+std::unique_ptr<SessionDataSet>
+ThriftConnection::executeQueryStatement(const std::string &sql,
+                                        int64_t timeoutInMs) {
   TSExecuteStatementReq req;
   req.__set_sessionId(sessionId_);
   req.__set_statementId(statementId_);
@@ -141,18 +147,20 @@ std::unique_ptr<SessionDataSet> ThriftConnection::executeQueryStatement(const st
   try {
     client_->executeQueryStatementV2(resp, req);
     RpcUtils::verifySuccess(resp.status);
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     throw IoTDBConnectionException(e.what());
-  } catch (const IoTDBException& e) {
+  } catch (const IoTDBException &e) {
     throw IoTDBConnectionException(e.what());
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     throw IoTDBException(e.what());
   }
-  std::shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp.queryDataSet));
+  std::shared_ptr<TSQueryDataSet> queryDataSet(
+      new TSQueryDataSet(resp.queryDataSet));
   return createSessionDataSet(
-      "", resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId_,
-      client_, sessionId_, resp.queryResult, resp.ignoreTimeStamp, connectionTimeoutInMs_,
-      resp.moreData, fetchSize_, zoneId_);
+      "", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+      resp.queryId, statementId_, client_, sessionId_, resp.queryResult,
+      resp.ignoreTimeStamp, connectionTimeoutInMs_, resp.moreData, fetchSize_,
+      zoneId_);
 }
 
 void ThriftConnection::close() {
@@ -163,9 +171,9 @@ void ThriftConnection::close() {
       TSStatus tsStatus;
       client_->closeSession(tsStatus, req);
     }
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     throw IoTDBConnectionException(e.what());
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     throw IoTDBConnectionException(e.what());
   }
 
@@ -173,7 +181,7 @@ void ThriftConnection::close() {
     if (transport_->isOpen()) {
       transport_->close();
     }
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     throw IoTDBConnectionException(e.what());
   }
 }

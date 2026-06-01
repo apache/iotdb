@@ -25,49 +25,29 @@ template <typename T> class Optional {
 public:
   Optional() : hasValue_(false) {}
 
-  Optional(const T& value) : hasValue_(true), value_(value) {}
+  Optional(const T &value) : hasValue_(true), value_(value) {}
 
-  Optional(T&& value) : hasValue_(true), value_(std::move(value)) {}
+  Optional(T &&value) : hasValue_(true), value_(std::move(value)) {}
 
-  static Optional<T> of(const T& value) {
-    return Optional<T>(value);
-  }
+  static Optional<T> of(const T &value) { return Optional<T>(value); }
 
-  static Optional<T> of(T&& value) {
-    return Optional<T>(std::move(value));
-  }
+  static Optional<T> of(T &&value) { return Optional<T>(std::move(value)); }
 
-  static Optional<T> none() {
-    return Optional<T>();
-  }
+  static Optional<T> none() { return Optional<T>(); }
 
-  bool is_initialized() const {
-    return hasValue_;
-  }
+  bool is_initialized() const { return hasValue_; }
 
-  bool has_value() const {
-    return hasValue_;
-  }
+  bool has_value() const { return hasValue_; }
 
-  const T& value() const {
-    return value_;
-  }
+  const T &value() const { return value_; }
 
-  T& value() {
-    return value_;
-  }
+  T &value() { return value_; }
 
-  const T& get() const {
-    return value_;
-  }
+  const T &get() const { return value_; }
 
-  T& get() {
-    return value_;
-  }
+  T &get() { return value_; }
 
-  explicit operator bool() const {
-    return hasValue_;
-  }
+  explicit operator bool() const { return hasValue_; }
 
 private:
   bool hasValue_;

@@ -19,15 +19,15 @@
 #ifndef IOTDB_NODES_SUPPLIER_H
 #define IOTDB_NODES_SUPPLIER_H
 
-#include <vector>
-#include <atomic>
 #include "Optional.h"
-#include <mutex>
-#include <chrono>
-#include <thread>
-#include <functional>
-#include <condition_variable>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 #include "ThriftConnection.h"
 
@@ -35,7 +35,7 @@ class TEndPoint;
 
 class RoundRobinPolicy {
 public:
-  static TEndPoint select(const std::vector<TEndPoint>& nodes);
+  static TEndPoint select(const std::vector<TEndPoint> &nodes);
 };
 
 class INodesSupplier {
@@ -43,13 +43,15 @@ public:
   virtual ~INodesSupplier() = default;
   virtual Optional<TEndPoint> getQueryEndPoint() = 0;
   virtual std::vector<TEndPoint> getEndPointList() = 0;
-  using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
+  using NodeSelectionPolicy =
+      std::function<TEndPoint(const std::vector<TEndPoint> &)>;
 };
 
 class StaticNodesSupplier : public INodesSupplier {
 public:
-  explicit StaticNodesSupplier(const std::vector<TEndPoint>& nodes,
-                               NodeSelectionPolicy policy = RoundRobinPolicy::select);
+  explicit StaticNodesSupplier(
+      const std::vector<TEndPoint> &nodes,
+      NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
   Optional<TEndPoint> getQueryEndPoint() override;
 
@@ -76,22 +78,26 @@ public:
   static const int THRIFT_MAX_FRAME_SIZE;
   static const int CONNECTION_TIMEOUT_IN_MS;
 
-  static std::shared_ptr<NodesSupplier>
-  create(const std::vector<TEndPoint>& endpoints, const std::string& userName,
-         const std::string& password, bool useSSL = false,
-         const std::string& trustCertFilePath = "", const std::string& zoneId = "",
-         int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
-         int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
-         int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
-         bool enableRPCCompression = false, const std::string& version = "V_1_0",
-         std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
-         NodeSelectionPolicy policy = RoundRobinPolicy::select);
+  static std::shared_ptr<NodesSupplier> create(
+      const std::vector<TEndPoint> &endpoints, const std::string &userName,
+      const std::string &password, bool useSSL = false,
+      const std::string &trustCertFilePath = "", const std::string &zoneId = "",
+      int32_t thriftDefaultBufferSize =
+          ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
+      int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
+      int32_t connectionTimeoutInMs =
+          ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
+      bool enableRPCCompression = false, const std::string &version = "V_1_0",
+      std::chrono::milliseconds refreshInterval =
+          std::chrono::milliseconds(TIMEOUT_IN_MS),
+      NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-  NodesSupplier(const std::string& userName, const std::string& password, bool useSSL,
-                const std::string& trustCertFilePath, const std::string& zoneId,
-                int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-                int32_t connectionTimeoutInMs, bool enableRPCCompression,
-                const std::string& version, const std::vector<TEndPoint>& endpoints,
+  NodesSupplier(const std::string &userName, const std::string &password,
+                bool useSSL, const std::string &trustCertFilePath,
+                const std::string &zoneId, int32_t thriftDefaultBufferSize,
+                int32_t thriftMaxFrameSize, int32_t connectionTimeoutInMs,
+                bool enableRPCCompression, const std::string &version,
+                const std::vector<TEndPoint> &endpoints,
                 NodeSelectionPolicy policy);
 
   std::vector<TEndPoint> getEndPointList() override;

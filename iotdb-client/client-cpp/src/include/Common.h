@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -36,8 +36,9 @@ using namespace std;
 
 std::string getTimePrecision(int32_t timeFactor);
 
-std::string formatDatetime(const std::string& format, const std::string& precision,
-                           int64_t timestamp, const std::string& zoneId);
+std::string formatDatetime(const std::string &format,
+                           const std::string &precision, int64_t timestamp,
+                           const std::string &zoneId);
 
 std::tm convertToTimestamp(int64_t value, int32_t timeFactor);
 std::tm int32ToDate(int32_t value);
@@ -79,7 +80,7 @@ enum TSDataType {
 };
 }
 
-TSDataType::TSDataType getDataTypeByStr(const std::string& typeStr);
+TSDataType::TSDataType getDataTypeByStr(const std::string &typeStr);
 
 namespace TSEncoding {
 enum TSEncoding {
@@ -161,9 +162,7 @@ public:
   Optional<double> doubleV;
   Optional<std::string> stringV;
 
-  explicit Field(TSDataType::TSDataType a) {
-    dataType = a;
-  }
+  explicit Field(TSDataType::TSDataType a) { dataType = a; }
 
   Field() = default;
 
@@ -197,7 +196,7 @@ enum class ColumnCategory { TAG, FIELD, ATTRIBUTE };
 class MyStringBuffer {
 public:
   MyStringBuffer();
-  explicit MyStringBuffer(const std::string& str);
+  explicit MyStringBuffer(const std::string &str);
 
   void reserve(size_t n);
   void clear();
@@ -218,8 +217,8 @@ public:
   void putDouble(double ins);
   void putChar(char ins);
   void putBool(bool ins);
-  void putString(const std::string& ins);
-  void concat(const std::string& ins);
+  void putString(const std::string &ins);
+  void concat(const std::string &ins);
 
 public:
   std::string str;
@@ -227,8 +226,8 @@ public:
 
 private:
   void checkBigEndian();
-  const char* getOrderedByte(size_t len);
-  void putOrderedByte(char* buf, int len);
+  const char *getOrderedByte(size_t len);
+  void putOrderedByte(char *buf, int len);
 
 private:
   bool isBigEndian{};
@@ -246,7 +245,7 @@ public:
   bool isMarked(size_t position) const;
   bool isAllUnmarked() const;
   bool isAllMarked() const;
-  const std::vector<char>& getByteArray() const;
+  const std::vector<char> &getByteArray() const;
   size_t getSize() const;
 
 private:
@@ -258,20 +257,18 @@ class IoTDBException : public std::exception {
 public:
   IoTDBException() = default;
 
-  explicit IoTDBException(const std::string& m) : message(m) {}
+  explicit IoTDBException(const std::string &m) : message(m) {}
 
-  explicit IoTDBException(const char* m) : message(m) {}
+  explicit IoTDBException(const char *m) : message(m) {}
 
-  virtual const char* what() const noexcept override {
-    return message.c_str();
-  }
+  virtual const char *what() const noexcept override { return message.c_str(); }
 
 private:
   std::string message;
 };
 
-std::string extractExceptionMessage(const std::exception& exception);
-std::string extractExceptionMessage(const std::exception_ptr& exceptionPtr);
+std::string extractExceptionMessage(const std::exception &exception);
+std::string extractExceptionMessage(const std::exception_ptr &exceptionPtr);
 
 class DateTimeParseException : public IoTDBException {
 private:
@@ -279,26 +276,25 @@ private:
   int errorIndex;
 
 public:
-  explicit DateTimeParseException(const std::string& message, std::string parsedData,
-                                  int errorIndex)
-      : IoTDBException(message), parsedString(std::move(parsedData)), errorIndex(errorIndex) {}
+  explicit DateTimeParseException(const std::string &message,
+                                  std::string parsedData, int errorIndex)
+      : IoTDBException(message), parsedString(std::move(parsedData)),
+        errorIndex(errorIndex) {}
 
-  explicit DateTimeParseException(const std::string& message, std::string parsedData,
-                                  int errorIndex, const std::exception& cause)
+  explicit DateTimeParseException(const std::string &message,
+                                  std::string parsedData, int errorIndex,
+                                  const std::exception &cause)
       : IoTDBException(message + " [Caused by: " + cause.what() + "]"),
         parsedString(std::move(parsedData)), errorIndex(errorIndex) {}
 
-  const std::string& getParsedString() const noexcept {
-    return parsedString;
-  }
+  const std::string &getParsedString() const noexcept { return parsedString; }
 
-  int getErrorIndex() const noexcept {
-    return errorIndex;
-  }
+  int getErrorIndex() const noexcept { return errorIndex; }
 
-  const char* what() const noexcept override {
+  const char *what() const noexcept override {
     static std::string fullMsg;
-    fullMsg = std::string(IoTDBException::what()) + "\nParsed data: " + parsedString +
+    fullMsg = std::string(IoTDBException::what()) +
+              "\nParsed data: " + parsedString +
               "\nError index: " + std::to_string(errorIndex);
     return fullMsg.c_str();
   }
@@ -308,20 +304,20 @@ class IoTDBConnectionException : public IoTDBException {
 public:
   IoTDBConnectionException() {}
 
-  explicit IoTDBConnectionException(const char* m) : IoTDBException(m) {}
+  explicit IoTDBConnectionException(const char *m) : IoTDBException(m) {}
 
-  explicit IoTDBConnectionException(const std::string& m) : IoTDBException(m) {}
+  explicit IoTDBConnectionException(const std::string &m) : IoTDBException(m) {}
 };
 
 class ExecutionException : public IoTDBException {
 public:
   ExecutionException() {}
 
-  explicit ExecutionException(const char* m) : IoTDBException(m) {}
+  explicit ExecutionException(const char *m) : IoTDBException(m) {}
 
-  explicit ExecutionException(const std::string& m) : IoTDBException(m) {}
+  explicit ExecutionException(const std::string &m) : IoTDBException(m) {}
 
-  explicit ExecutionException(const std::string& m, const Status& tsStatus)
+  explicit ExecutionException(const std::string &m, const Status &tsStatus)
       : IoTDBException(m), status(tsStatus) {}
 
   Status status;
@@ -331,14 +327,15 @@ class BatchExecutionException : public IoTDBException {
 public:
   BatchExecutionException() {}
 
-  explicit BatchExecutionException(const char* m) : IoTDBException(m) {}
+  explicit BatchExecutionException(const char *m) : IoTDBException(m) {}
 
-  explicit BatchExecutionException(const std::string& m) : IoTDBException(m) {}
+  explicit BatchExecutionException(const std::string &m) : IoTDBException(m) {}
 
-  explicit BatchExecutionException(const std::vector<Status>& statusList)
+  explicit BatchExecutionException(const std::vector<Status> &statusList)
       : statusList(statusList) {}
 
-  BatchExecutionException(const std::string& m, const std::vector<Status>& statusList)
+  BatchExecutionException(const std::string &m,
+                          const std::vector<Status> &statusList)
       : IoTDBException(m), statusList(statusList) {}
 
   std::vector<Status> statusList;
@@ -348,17 +345,18 @@ class RedirectException : public IoTDBException {
 public:
   RedirectException() {}
 
-  explicit RedirectException(const char* m) : IoTDBException(m) {}
+  explicit RedirectException(const char *m) : IoTDBException(m) {}
 
-  explicit RedirectException(const std::string& m) : IoTDBException(m) {}
+  explicit RedirectException(const std::string &m) : IoTDBException(m) {}
 
-  RedirectException(const std::string& m, const Endpoint& endPoint)
+  RedirectException(const std::string &m, const Endpoint &endPoint)
       : IoTDBException(m), endPoint(endPoint) {}
 
-  RedirectException(const std::string& m, const map<string, Endpoint>& deviceEndPointMap)
+  RedirectException(const std::string &m,
+                    const map<string, Endpoint> &deviceEndPointMap)
       : IoTDBException(m), deviceEndPointMap(deviceEndPointMap) {}
 
-  RedirectException(const std::string& m, const vector<Endpoint>& endPointList)
+  RedirectException(const std::string &m, const vector<Endpoint> &endPointList)
       : IoTDBException(m), endPointList(endPointList) {}
 
   Endpoint endPoint;
@@ -370,9 +368,9 @@ class UnSupportedDataTypeException : public IoTDBException {
 public:
   UnSupportedDataTypeException() {}
 
-  explicit UnSupportedDataTypeException(const char* m) : IoTDBException(m) {}
+  explicit UnSupportedDataTypeException(const char *m) : IoTDBException(m) {}
 
-  explicit UnSupportedDataTypeException(const std::string& m)
+  explicit UnSupportedDataTypeException(const std::string &m)
       : IoTDBException("UnSupported dataType: " + m) {}
 };
 
@@ -380,51 +378,52 @@ class SchemaNotFoundException : public IoTDBException {
 public:
   SchemaNotFoundException() {}
 
-  explicit SchemaNotFoundException(const char* m) : IoTDBException(m) {}
+  explicit SchemaNotFoundException(const char *m) : IoTDBException(m) {}
 
-  explicit SchemaNotFoundException(const std::string& m) : IoTDBException(m) {}
+  explicit SchemaNotFoundException(const std::string &m) : IoTDBException(m) {}
 };
 
 class StatementExecutionException : public IoTDBException {
 public:
   StatementExecutionException() {}
 
-  explicit StatementExecutionException(const char* m) : IoTDBException(m) {}
+  explicit StatementExecutionException(const char *m) : IoTDBException(m) {}
 
-  explicit StatementExecutionException(const std::string& m) : IoTDBException(m) {}
+  explicit StatementExecutionException(const std::string &m)
+      : IoTDBException(m) {}
 };
 
 enum LogLevelType { LEVEL_DEBUG = 0, LEVEL_INFO, LEVEL_WARN, LEVEL_ERROR };
 
 extern IOTDB_SESSION_API LogLevelType LOG_LEVEL;
 
-#define log_debug(fmt, ...)                                                                        \
-  do {                                                                                             \
-    if (LOG_LEVEL <= LEVEL_DEBUG) {                                                                \
-      string s = string("[DEBUG] %s:%d (%s) - ") + fmt + "\n";                                     \
-      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);                          \
-    }                                                                                              \
+#define log_debug(fmt, ...)                                                    \
+  do {                                                                         \
+    if (LOG_LEVEL <= LEVEL_DEBUG) {                                            \
+      string s = string("[DEBUG] %s:%d (%s) - ") + fmt + "\n";                 \
+      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
+    }                                                                          \
   } while (0)
-#define log_info(fmt, ...)                                                                         \
-  do {                                                                                             \
-    if (LOG_LEVEL <= LEVEL_INFO) {                                                                 \
-      string s = string("[INFO]  %s:%d (%s) - ") + fmt + "\n";                                     \
-      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);                          \
-    }                                                                                              \
+#define log_info(fmt, ...)                                                     \
+  do {                                                                         \
+    if (LOG_LEVEL <= LEVEL_INFO) {                                             \
+      string s = string("[INFO]  %s:%d (%s) - ") + fmt + "\n";                 \
+      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
+    }                                                                          \
   } while (0)
-#define log_warn(fmt, ...)                                                                         \
-  do {                                                                                             \
-    if (LOG_LEVEL <= LEVEL_WARN) {                                                                 \
-      string s = string("[WARN]  %s:%d (%s) - ") + fmt + "\n";                                     \
-      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);                          \
-    }                                                                                              \
+#define log_warn(fmt, ...)                                                     \
+  do {                                                                         \
+    if (LOG_LEVEL <= LEVEL_WARN) {                                             \
+      string s = string("[WARN]  %s:%d (%s) - ") + fmt + "\n";                 \
+      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
+    }                                                                          \
   } while (0)
-#define log_error(fmt, ...)                                                                        \
-  do {                                                                                             \
-    if (LOG_LEVEL <= LEVEL_ERROR) {                                                                \
-      string s = string("[ERROR] %s:%d (%s) - ") + fmt + "\n";                                     \
-      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);                          \
-    }                                                                                              \
+#define log_error(fmt, ...)                                                    \
+  do {                                                                         \
+    if (LOG_LEVEL <= LEVEL_ERROR) {                                            \
+      string s = string("[ERROR] %s:%d (%s) - ") + fmt + "\n";                 \
+      printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);      \
+    }                                                                          \
   } while (0)
 
 #endif

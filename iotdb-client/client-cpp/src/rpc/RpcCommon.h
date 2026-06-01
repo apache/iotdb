@@ -36,34 +36,39 @@ public:
 
   RpcUtils();
 
-  static void verifySuccess(const TSStatus& status);
+  static void verifySuccess(const TSStatus &status);
 
-  static void verifySuccessWithRedirection(const TSStatus& status);
+  static void verifySuccessWithRedirection(const TSStatus &status);
 
-  static void verifySuccessWithRedirectionForMultiDevices(const TSStatus& status,
-                                                          std::vector<std::string> devices);
+  static void
+  verifySuccessWithRedirectionForMultiDevices(const TSStatus &status,
+                                              std::vector<std::string> devices);
 
-  static void verifySuccess(const std::vector<TSStatus>& statuses);
+  static void verifySuccess(const std::vector<TSStatus> &statuses);
 
   static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
 
-  static TSStatus getStatus(int code, const std::string& message);
+  static TSStatus getStatus(int code, const std::string &message);
 
   static std::shared_ptr<TSExecuteStatementResp>
   getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
 
   static std::shared_ptr<TSExecuteStatementResp>
-  getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string& message);
+  getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode,
+                            const std::string &message);
 
-  static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus& status);
+  static std::shared_ptr<TSExecuteStatementResp>
+  getTSExecuteStatementResp(const TSStatus &status);
 
   static std::shared_ptr<TSFetchResultsResp>
   getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
 
   static std::shared_ptr<TSFetchResultsResp>
-  getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string& appendMessage);
+  getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode,
+                        const std::string &appendMessage);
 
-  static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus& status);
+  static std::shared_ptr<TSFetchResultsResp>
+  getTSFetchResultsResp(const TSStatus &status);
 };
 
 class UrlUtils {
@@ -75,7 +80,7 @@ private:
   ~UrlUtils() = delete;
 
 public:
-  static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl);
+  static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string &endPointUrl);
 };
 
 #endif

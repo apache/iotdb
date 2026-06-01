@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -19,46 +19,54 @@
 #ifndef IOTDB_COLUMN_H
 #define IOTDB_COLUMN_H
 
-#include <vector>
-#include <memory>
 #include <map>
+#include <memory>
 #include <stdexcept>
+#include <vector>
 
-#include "Common.h"
 #include "ColumnDecoder.h"
+#include "Common.h"
 
-enum class ColumnEncoding : uint8_t { ByteArray, Int32Array, Int64Array, BinaryArray, Rle };
+enum class ColumnEncoding : uint8_t {
+  ByteArray,
+  Int32Array,
+  Int64Array,
+  BinaryArray,
+  Rle
+};
 
 class Binary {
 public:
   explicit Binary(std::vector<uint8_t> data) : data_(std::move(data)) {}
 
-  const std::vector<uint8_t>& getData() const {
-    return data_;
-  }
+  const std::vector<uint8_t> &getData() const { return data_; }
 
-  std::string getStringValue() const {
-    return {data_.begin(), data_.end()};
-  }
+  std::string getStringValue() const { return {data_.begin(), data_.end()}; }
 
 private:
   std::vector<uint8_t> data_;
 };
 
-const std::map<ColumnEncoding, std::shared_ptr<ColumnDecoder>> kEncodingToDecoder = {
-    {ColumnEncoding::Int32Array, std::make_shared<Int32ArrayColumnDecoder>()},
-    {ColumnEncoding::Int64Array, std::make_shared<Int64ArrayColumnDecoder>()},
-    {ColumnEncoding::ByteArray, std::make_shared<ByteArrayColumnDecoder>()},
-    {ColumnEncoding::BinaryArray, std::make_shared<BinaryArrayColumnDecoder>()},
-    {ColumnEncoding::Rle, std::make_shared<RunLengthColumnDecoder>()}};
+const std::map<ColumnEncoding, std::shared_ptr<ColumnDecoder>>
+    kEncodingToDecoder = {
+        {ColumnEncoding::Int32Array,
+         std::make_shared<Int32ArrayColumnDecoder>()},
+        {ColumnEncoding::Int64Array,
+         std::make_shared<Int64ArrayColumnDecoder>()},
+        {ColumnEncoding::ByteArray, std::make_shared<ByteArrayColumnDecoder>()},
+        {ColumnEncoding::BinaryArray,
+         std::make_shared<BinaryArrayColumnDecoder>()},
+        {ColumnEncoding::Rle, std::make_shared<RunLengthColumnDecoder>()}};
 
-const std::map<uint8_t, ColumnEncoding> kByteToEncoding = {{0, ColumnEncoding::ByteArray},
-                                                           {1, ColumnEncoding::Int32Array},
-                                                           {2, ColumnEncoding::Int64Array},
-                                                           {3, ColumnEncoding::BinaryArray},
-                                                           {4, ColumnEncoding::Rle}};
+const std::map<uint8_t, ColumnEncoding> kByteToEncoding = {
+    {0, ColumnEncoding::ByteArray},
+    {1, ColumnEncoding::Int32Array},
+    {2, ColumnEncoding::Int64Array},
+    {3, ColumnEncoding::BinaryArray},
+    {4, ColumnEncoding::Rle}};
 
-inline std::shared_ptr<ColumnDecoder> getColumnDecoder(ColumnEncoding encoding) {
+inline std::shared_ptr<ColumnDecoder>
+getColumnDecoder(ColumnEncoding encoding) {
   auto it = kEncodingToDecoder.find(encoding);
   if (it == kEncodingToDecoder.end()) {
     throw IoTDBException("Unsupported column encoding");
@@ -138,7 +146,8 @@ public:
 
 class TimeColumn : public Column {
 public:
-  TimeColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<int64_t>& values);
+  TimeColumn(int32_t arrayOffset, int32_t positionCount,
+             const std::vector<int64_t> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -154,7 +163,7 @@ public:
   int64_t getStartTime() const;
   int64_t getEndTime() const;
 
-  const std::vector<int64_t>& getTimes() const;
+  const std::vector<int64_t> &getTimes() const;
   std::vector<int64_t> getLongs() const override;
 
 private:
@@ -165,8 +174,9 @@ private:
 
 class BinaryColumn : public Column {
 public:
-  BinaryColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-               const std::vector<std::shared_ptr<Binary>>& values);
+  BinaryColumn(int32_t arrayOffset, int32_t positionCount,
+               const std::vector<bool> &valueIsNull,
+               const std::vector<std::shared_ptr<Binary>> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -189,8 +199,9 @@ private:
 
 class IntColumn : public Column {
 public:
-  IntColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-            const std::vector<int32_t>& values);
+  IntColumn(int32_t arrayOffset, int32_t positionCount,
+            const std::vector<bool> &valueIsNull,
+            const std::vector<int32_t> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -216,8 +227,9 @@ private:
 
 class FloatColumn : public Column {
 public:
-  FloatColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-              const std::vector<float>& values);
+  FloatColumn(int32_t arrayOffset, int32_t positionCount,
+              const std::vector<bool> &valueIsNull,
+              const std::vector<float> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -241,8 +253,9 @@ private:
 
 class LongColumn : public Column {
 public:
-  LongColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-             const std::vector<int64_t>& values);
+  LongColumn(int32_t arrayOffset, int32_t positionCount,
+             const std::vector<bool> &valueIsNull,
+             const std::vector<int64_t> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -266,8 +279,9 @@ private:
 
 class DoubleColumn : public Column {
 public:
-  DoubleColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-               const std::vector<double>& values);
+  DoubleColumn(int32_t arrayOffset, int32_t positionCount,
+               const std::vector<bool> &valueIsNull,
+               const std::vector<double> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;
@@ -290,8 +304,9 @@ private:
 
 class BooleanColumn : public Column {
 public:
-  BooleanColumn(int32_t arrayOffset, int32_t positionCount, const std::vector<bool>& valueIsNull,
-                const std::vector<bool>& values);
+  BooleanColumn(int32_t arrayOffset, int32_t positionCount,
+                const std::vector<bool> &valueIsNull,
+                const std::vector<bool> &values);
 
   TSDataType::TSDataType getDataType() const override;
   ColumnEncoding getEncoding() const override;

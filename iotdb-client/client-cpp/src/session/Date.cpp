@@ -34,20 +34,22 @@ std::string IoTDBDate::toIsoExtendedString() const {
   return std::string(buf);
 }
 
-int32_t parseDateExpressionToInt(const IoTDBDate& date) {
+int32_t parseDateExpressionToInt(const IoTDBDate &date) {
   if (date.is_not_a_date()) {
     throw IoTDBException("Date expression is null or empty.");
   }
 
   const int year = date.year();
   if (year < 1000 || year > 9999) {
-    throw DateTimeParseException("Year must be between 1000 and 9999.", date.toIsoExtendedString(),
-                                 0);
+    throw DateTimeParseException("Year must be between 1000 and 9999.",
+                                 date.toIsoExtendedString(), 0);
   }
 
-  const int64_t result = static_cast<int64_t>(year) * 10000 + date.month() * 100 + date.day();
+  const int64_t result =
+      static_cast<int64_t>(year) * 10000 + date.month() * 100 + date.day();
   if (result > INT32_MAX || result < INT32_MIN) {
-    throw DateTimeParseException("Date value overflow. ", date.toIsoExtendedString(), 0);
+    throw DateTimeParseException("Date value overflow. ",
+                                 date.toIsoExtendedString(), 0);
   }
   return static_cast<int32_t>(result);
 }

@@ -21,27 +21,29 @@
 
 using namespace std;
 
-Session* session;
+Session *session;
 
 #define DEFAULT_ROW_NUMBER 1000000
 
 void createAlignedTimeseries() {
   string alignedDeviceId = "root.sg1.d1";
   vector<string> measurements = {"s1", "s2", "s3"};
-  vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
-  vector<TSDataType::TSDataType> dataTypes = {TSDataType::INT32, TSDataType::DOUBLE,
-                                              TSDataType::BOOLEAN};
-  vector<TSEncoding::TSEncoding> encodings = {TSEncoding::PLAIN, TSEncoding::GORILLA,
-                                              TSEncoding::RLE};
+  vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2",
+                                      "root.sg1.d1.s3"};
+  vector<TSDataType::TSDataType> dataTypes = {
+      TSDataType::INT32, TSDataType::DOUBLE, TSDataType::BOOLEAN};
+  vector<TSEncoding::TSEncoding> encodings = {
+      TSEncoding::PLAIN, TSEncoding::GORILLA, TSEncoding::RLE};
   vector<CompressionType::CompressionType> compressors = {
-      CompressionType::SNAPPY, CompressionType::UNCOMPRESSED, CompressionType::SNAPPY};
-  for (const string& timeseries : alignedTimeseries) {
+      CompressionType::SNAPPY, CompressionType::UNCOMPRESSED,
+      CompressionType::SNAPPY};
+  for (const string &timeseries : alignedTimeseries) {
     if (session->checkTimeseriesExists(timeseries)) {
       session->deleteTimeseries(timeseries);
     }
   }
-  session->createAlignedTimeseries(alignedDeviceId, measurements, dataTypes, encodings,
-                                   compressors);
+  session->createAlignedTimeseries(alignedDeviceId, measurements, dataTypes,
+                                   encodings, compressors);
 }
 
 void createSchemaTemplate() {
@@ -50,10 +52,14 @@ void createSchemaTemplate() {
 
     InternalNode iNodeD99("d99", true);
 
-    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE,
+                            CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE,
+                            CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE,
+                               CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE,
+                               CompressionType::SNAPPY);
 
     iNodeD99.addChild(mNodeD99S1);
     iNodeD99.addChild(mNodeD99S2);
@@ -68,12 +74,14 @@ void createSchemaTemplate() {
 }
 
 void ActivateTemplate() {
-  session->executeNonQueryStatement("insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
+  session->executeNonQueryStatement(
+      "insert into root.sg3.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showDevices() {
-  unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with database");
-  for (const string& name : dataSet->getColumnNames()) {
+  unique_ptr<SessionDataSet> dataSet =
+      session->executeQueryStatement("show devices with database");
+  for (const string &name : dataSet->getColumnNames()) {
     cout << name << "  ";
   }
   cout << endl;
@@ -88,8 +96,9 @@ void showDevices() {
 }
 
 void showTimeseries() {
-  unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
-  for (const string& name : dataSet->getColumnNames()) {
+  unique_ptr<SessionDataSet> dataSet =
+      session->executeQueryStatement("show timeseries");
+  for (const string &name : dataSet->getColumnNames()) {
     cout << name << "  ";
   }
   cout << endl;
@@ -142,7 +151,8 @@ void insertAlignedRecords() {
     valuesList.push_back(values);
     timestamps.push_back(time);
     if (time != 10 && time % 10 == 0) {
-      session->insertAlignedRecords(deviceIds, timestamps, measurementsList, valuesList);
+      session->insertAlignedRecords(deviceIds, timestamps, measurementsList,
+                                    valuesList);
       deviceIds.clear();
       measurementsList.clear();
       valuesList.clear();
@@ -150,7 +160,8 @@ void insertAlignedRecords() {
     }
   }
 
-  session->insertAlignedRecords(deviceIds, timestamps, measurementsList, valuesList);
+  session->insertAlignedRecords(deviceIds, timestamps, measurementsList,
+                                valuesList);
 }
 
 void insertAlignedTablet() {
@@ -199,7 +210,7 @@ void insertAlignedTablets() {
   Tablet tablet2("root.sg1.d2", schemas, 100);
   Tablet tablet3("root.sg1.d3", schemas, 100);
 
-  unordered_map<string, Tablet*> tabletMap;
+  unordered_map<string, Tablet *> tabletMap;
   tabletMap["root.sg1.d1"] = &tablet1;
   tabletMap["root.sg1.d2"] = &tablet2;
   tabletMap["root.sg1.d3"] = &tablet3;
@@ -294,10 +305,11 @@ void insertNullableTabletWithAlignedTimeseries() {
 }
 
 void query() {
-  unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.**");
+  unique_ptr<SessionDataSet> dataSet =
+      session->executeQueryStatement("select * from root.sg1.**");
   cout << "timestamp"
        << "  ";
-  for (const string& name : dataSet->getColumnNames()) {
+  for (const string &name : dataSet->getColumnNames()) {
     cout << name << "  ";
   }
   cout << endl;
@@ -325,7 +337,7 @@ void deleteTimeseries() {
       "root.sg1.d3.s2", "root.sg1.d3.s3", "root.sg1.d4.s1", "root.sg1.d4.s2",
       "root.sg1.d4.s3", "root.sg2.d2.s1", "root.sg2.d2.s2", "root.sg2.d2.s3",
   };
-  for (const string& timeseries : alignedTimeseries) {
+  for (const string &timeseries : alignedTimeseries) {
     if (session->checkTimeseriesExists(timeseries)) {
       paths.push_back(timeseries);
     }
@@ -351,11 +363,11 @@ int main() {
   cout << "setStorageGroup\n" << endl;
   try {
     session->setStorageGroup("root.sg1");
-  } catch (IoTDBException& e) {
+  } catch (IoTDBException &e) {
     string errorMessage(e.what());
     if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
       cout << errorMessage << endl;
-      //throw e;
+      // throw e;
     }
   }
 

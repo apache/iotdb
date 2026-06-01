@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -32,20 +32,23 @@ namespace {
 
 void RunTreeExample() {
   try {
-    std::vector<std::string> node_urls = {"127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"};
+    std::vector<std::string> node_urls = {"127.0.0.1:6667", "127.0.0.1:6668",
+                                          "127.0.0.1:6669"};
 
     auto builder = std::make_shared<SessionBuilder>();
-    auto session = std::shared_ptr<Session>(
-        builder->username("root")->password("root")->nodeUrls(node_urls)->build());
+    auto session = std::shared_ptr<Session>(builder->username("root")
+                                                ->password("root")
+                                                ->nodeUrls(node_urls)
+                                                ->build());
 
     session->open();
     if (!session->checkTimeseriesExists("root.test.d1.s1")) {
-      session->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE,
-                                CompressionType::SNAPPY);
+      session->createTimeseries("root.test.d1.s1", TSDataType::INT64,
+                                TSEncoding::RLE, CompressionType::SNAPPY);
     }
     session->deleteTimeseries("root.test.d1.s1");
     session->close();
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cout << "Caught exception: " << e.what() << std::endl;
   }
 }
@@ -54,17 +57,20 @@ void RunTreeExample() {
 // to test client failover behavior.
 void RunResilienceExample() {
   try {
-    std::vector<std::string> node_urls = {"127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"};
+    std::vector<std::string> node_urls = {"127.0.0.1:6667", "127.0.0.1:6668",
+                                          "127.0.0.1:6669"};
 
     auto builder = std::make_shared<SessionBuilder>();
-    auto session = std::shared_ptr<Session>(
-        builder->username("root")->password("root")->nodeUrls(node_urls)->build());
+    auto session = std::shared_ptr<Session>(builder->username("root")
+                                                ->password("root")
+                                                ->nodeUrls(node_urls)
+                                                ->build());
 
     session->open();
 
     if (!session->checkTimeseriesExists("root.resilience.d1.s1")) {
-      session->createTimeseries("root.resilience.d1.s1", TSDataType::INT64, TSEncoding::RLE,
-                                CompressionType::SNAPPY);
+      session->createTimeseries("root.resilience.d1.s1", TSDataType::INT64,
+                                TSEncoding::RLE, CompressionType::SNAPPY);
     }
 
     std::cout << "Starting resilience test. "
@@ -72,34 +78,39 @@ void RunResilienceExample() {
               << std::endl;
 
     for (int i = 0; i < 60; ++i) { // run ~60 seconds
-      int64_t timestamp =
-          std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+      int64_t timestamp = std::chrono::system_clock::now().time_since_epoch() /
+                          std::chrono::milliseconds(1);
       std::string value = std::to_string(i);
 
       try {
         session->insertRecord("root.resilience.d1", timestamp, {"s1"}, {value});
-        std::cout << "[Insert] ts=" << timestamp << ", value=" << value << std::endl;
+        std::cout << "[Insert] ts=" << timestamp << ", value=" << value
+                  << std::endl;
 
-        auto dataset = session->executeQueryStatement("SELECT s1 FROM root.resilience.d1 LIMIT 1");
-        std::cout << "[Query] Got dataset: " << (dataset ? "Success" : "Null") << std::endl;
+        auto dataset = session->executeQueryStatement(
+            "SELECT s1 FROM root.resilience.d1 LIMIT 1");
+        std::cout << "[Query] Got dataset: " << (dataset ? "Success" : "Null")
+                  << std::endl;
 
-      } catch (const std::exception& e) {
-        std::cout << "Caught exception during resilience loop: " << e.what() << std::endl;
+      } catch (const std::exception &e) {
+        std::cout << "Caught exception during resilience loop: " << e.what()
+                  << std::endl;
       }
 
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     session->close();
-  } catch (const std::exception& e) {
-    std::cout << "Caught exception in RunResilienceExample: " << e.what() << std::endl;
+  } catch (const std::exception &e) {
+    std::cout << "Caught exception in RunResilienceExample: " << e.what()
+              << std::endl;
   }
 }
 
 } // namespace
 
 int main() {
-  //RunTreeExample();
+  // RunTreeExample();
   RunResilienceExample();
   return 0;
 }

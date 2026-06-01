@@ -29,12 +29,13 @@
 class TEndPoint;
 class TSStatus;
 
-Status statusFromThrift(const TSStatus& tsStatus);
-Endpoint endpointFromThrift(const TEndPoint& endPoint);
-TEndPoint endpointToThrift(const Endpoint& endpoint);
+Status statusFromThrift(const TSStatus &tsStatus);
+Endpoint endpointFromThrift(const TEndPoint &endPoint);
+TEndPoint endpointToThrift(const Endpoint &endpoint);
 
-std::map<std::string, Endpoint>
-endpointMapFromThrift(const std::map<std::string, TEndPoint>& deviceEndPointMap);
-std::vector<Endpoint> endpointListFromThrift(const std::vector<TEndPoint>& endPointList);
+std::map<std::string, Endpoint> endpointMapFromThrift(
+    const std::map<std::string, TEndPoint> &deviceEndPointMap);
+std::vector<Endpoint>
+endpointListFromThrift(const std::vector<TEndPoint> &endPointList);
 
 #endif

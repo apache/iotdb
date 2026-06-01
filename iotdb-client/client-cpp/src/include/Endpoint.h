@@ -29,13 +29,14 @@ struct Endpoint {
 };
 
 struct EndpointHash {
-  size_t operator()(const Endpoint& endpoint) const {
-    return std::hash<std::string>()(endpoint.host) ^ std::hash<int>()(endpoint.port);
+  size_t operator()(const Endpoint &endpoint) const {
+    return std::hash<std::string>()(endpoint.host) ^
+           std::hash<int>()(endpoint.port);
   }
 };
 
 struct EndpointEqual {
-  bool operator()(const Endpoint& lhs, const Endpoint& rhs) const {
+  bool operator()(const Endpoint &lhs, const Endpoint &rhs) const {
     return lhs.host == rhs.host && lhs.port == rhs.port;
   }
 };

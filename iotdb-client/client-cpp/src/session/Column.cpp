@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -21,8 +21,9 @@
 #include "ColumnDecoder.h"
 
 TimeColumn::TimeColumn(int32_t arrayOffset, int32_t positionCount,
-                       const std::vector<int64_t>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), values_(values) {
+                       const std::vector<int64_t> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -43,39 +44,25 @@ int64_t TimeColumn::getLong(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-bool TimeColumn::mayHaveNull() const {
-  return false;
-}
-bool TimeColumn::isNull(int32_t position) const {
-  return false;
-}
-std::vector<bool> TimeColumn::isNulls() const {
-  return {};
-}
+bool TimeColumn::mayHaveNull() const { return false; }
+bool TimeColumn::isNull(int32_t position) const { return false; }
+std::vector<bool> TimeColumn::isNulls() const { return {}; }
 
-int32_t TimeColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t TimeColumn::getPositionCount() const { return positionCount_; }
 
-int64_t TimeColumn::getStartTime() const {
-  return values_[arrayOffset_];
-}
+int64_t TimeColumn::getStartTime() const { return values_[arrayOffset_]; }
 int64_t TimeColumn::getEndTime() const {
   return values_[positionCount_ + arrayOffset_ - 1];
 }
 
-const std::vector<int64_t>& TimeColumn::getTimes() const {
-  return values_;
-}
-std::vector<int64_t> TimeColumn::getLongs() const {
-  return getTimes();
-}
+const std::vector<int64_t> &TimeColumn::getTimes() const { return values_; }
+std::vector<int64_t> TimeColumn::getLongs() const { return getTimes(); }
 
 BinaryColumn::BinaryColumn(int32_t arrayOffset, int32_t positionCount,
-                           const std::vector<bool>& valueIsNull,
-                           const std::vector<std::shared_ptr<Binary>>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueIsNull_(valueIsNull),
-      values_(values) {
+                           const std::vector<bool> &valueIsNull,
+                           const std::vector<std::shared_ptr<Binary>> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueIsNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -104,9 +91,7 @@ std::vector<std::shared_ptr<Binary>> BinaryColumn::getBinaries() const {
   return values_;
 }
 
-bool BinaryColumn::mayHaveNull() const {
-  return !valueIsNull_.empty();
-}
+bool BinaryColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool BinaryColumn::isNull(int32_t position) const {
   return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
@@ -120,14 +105,13 @@ std::vector<bool> BinaryColumn::isNulls() const {
   return result;
 }
 
-int32_t BinaryColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t BinaryColumn::getPositionCount() const { return positionCount_; }
 
 IntColumn::IntColumn(int32_t arrayOffset, int32_t positionCount,
-                     const std::vector<bool>& valueIsNull, const std::vector<int32_t>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueNull_(valueIsNull),
-      values_(values) {
+                     const std::vector<bool> &valueIsNull,
+                     const std::vector<int32_t> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -164,13 +148,9 @@ double IntColumn::getDouble(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-std::vector<int32_t> IntColumn::getInts() const {
-  return values_;
-}
+std::vector<int32_t> IntColumn::getInts() const { return values_; }
 
-bool IntColumn::mayHaveNull() const {
-  return !valueNull_.empty();
-}
+bool IntColumn::mayHaveNull() const { return !valueNull_.empty(); }
 
 bool IntColumn::isNull(int32_t position) const {
   return !valueNull_.empty() && valueNull_[position + arrayOffset_];
@@ -184,14 +164,13 @@ std::vector<bool> IntColumn::isNulls() const {
   return result;
 }
 
-int32_t IntColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t IntColumn::getPositionCount() const { return positionCount_; }
 
 FloatColumn::FloatColumn(int32_t arrayOffset, int32_t positionCount,
-                         const std::vector<bool>& valueIsNull, const std::vector<float>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueIsNull_(valueIsNull),
-      values_(values) {
+                         const std::vector<bool> &valueIsNull,
+                         const std::vector<float> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueIsNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -220,13 +199,9 @@ double FloatColumn::getDouble(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-std::vector<float> FloatColumn::getFloats() const {
-  return values_;
-}
+std::vector<float> FloatColumn::getFloats() const { return values_; }
 
-bool FloatColumn::mayHaveNull() const {
-  return !valueIsNull_.empty();
-}
+bool FloatColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool FloatColumn::isNull(int32_t position) const {
   return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
@@ -240,14 +215,13 @@ std::vector<bool> FloatColumn::isNulls() const {
   return result;
 }
 
-int32_t FloatColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t FloatColumn::getPositionCount() const { return positionCount_; }
 
 LongColumn::LongColumn(int32_t arrayOffset, int32_t positionCount,
-                       const std::vector<bool>& valueIsNull, const std::vector<int64_t>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueIsNull_(valueIsNull),
-      values_(values) {
+                       const std::vector<bool> &valueIsNull,
+                       const std::vector<int64_t> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueIsNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -276,13 +250,9 @@ double LongColumn::getDouble(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-std::vector<int64_t> LongColumn::getLongs() const {
-  return values_;
-}
+std::vector<int64_t> LongColumn::getLongs() const { return values_; }
 
-bool LongColumn::mayHaveNull() const {
-  return !valueIsNull_.empty();
-}
+bool LongColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool LongColumn::isNull(int32_t position) const {
   return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
@@ -296,14 +266,13 @@ std::vector<bool> LongColumn::isNulls() const {
   return result;
 }
 
-int32_t LongColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t LongColumn::getPositionCount() const { return positionCount_; }
 
 DoubleColumn::DoubleColumn(int32_t arrayOffset, int32_t positionCount,
-                           const std::vector<bool>& valueIsNull, const std::vector<double>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueIsNull_(valueIsNull),
-      values_(values) {
+                           const std::vector<bool> &valueIsNull,
+                           const std::vector<double> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueIsNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -328,13 +297,9 @@ double DoubleColumn::getDouble(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-std::vector<double> DoubleColumn::getDoubles() const {
-  return values_;
-}
+std::vector<double> DoubleColumn::getDoubles() const { return values_; }
 
-bool DoubleColumn::mayHaveNull() const {
-  return !valueIsNull_.empty();
-}
+bool DoubleColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool DoubleColumn::isNull(int32_t position) const {
   return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
@@ -348,14 +313,13 @@ std::vector<bool> DoubleColumn::isNulls() const {
   return result;
 }
 
-int32_t DoubleColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t DoubleColumn::getPositionCount() const { return positionCount_; }
 
 BooleanColumn::BooleanColumn(int32_t arrayOffset, int32_t positionCount,
-                             const std::vector<bool>& valueIsNull, const std::vector<bool>& values)
-    : arrayOffset_(arrayOffset), positionCount_(positionCount), valueIsNull_(valueIsNull),
-      values_(values) {
+                             const std::vector<bool> &valueIsNull,
+                             const std::vector<bool> &values)
+    : arrayOffset_(arrayOffset), positionCount_(positionCount),
+      valueIsNull_(valueIsNull), values_(values) {
   if (arrayOffset < 0)
     throw IoTDBException("arrayOffset is negative");
   if (positionCount < 0)
@@ -380,13 +344,9 @@ bool BooleanColumn::getBoolean(int32_t position) const {
   return values_[position + arrayOffset_];
 }
 
-std::vector<bool> BooleanColumn::getBooleans() const {
-  return values_;
-}
+std::vector<bool> BooleanColumn::getBooleans() const { return values_; }
 
-bool BooleanColumn::mayHaveNull() const {
-  return !valueIsNull_.empty();
-}
+bool BooleanColumn::mayHaveNull() const { return !valueIsNull_.empty(); }
 
 bool BooleanColumn::isNull(int32_t position) const {
   return !valueIsNull_.empty() && valueIsNull_[position + arrayOffset_];
@@ -400,11 +360,10 @@ std::vector<bool> BooleanColumn::isNulls() const {
   return result;
 }
 
-int32_t BooleanColumn::getPositionCount() const {
-  return positionCount_;
-}
+int32_t BooleanColumn::getPositionCount() const { return positionCount_; }
 
-RunLengthEncodedColumn::RunLengthEncodedColumn(std::shared_ptr<Column> value, int32_t positionCount)
+RunLengthEncodedColumn::RunLengthEncodedColumn(std::shared_ptr<Column> value,
+                                               int32_t positionCount)
     : value_(value), positionCount_(positionCount) {
   if (!value)
     throw IoTDBException("value is null");
@@ -446,7 +405,8 @@ double RunLengthEncodedColumn::getDouble(int32_t position) const {
   return value_->getDouble(0);
 }
 
-std::shared_ptr<Binary> RunLengthEncodedColumn::getBinary(int32_t position) const {
+std::shared_ptr<Binary>
+RunLengthEncodedColumn::getBinary(int32_t position) const {
   return value_->getBinary(0);
 }
 
@@ -475,7 +435,8 @@ std::vector<double> RunLengthEncodedColumn::getDoubles() const {
   return std::vector<double>(positionCount_, v);
 }
 
-std::vector<std::shared_ptr<Binary>> RunLengthEncodedColumn::getBinaries() const {
+std::vector<std::shared_ptr<Binary>>
+RunLengthEncodedColumn::getBinaries() const {
   auto v = value_->getBinary(0);
   return std::vector<std::shared_ptr<Binary>>(positionCount_, v);
 }

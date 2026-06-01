@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -17,8 +17,8 @@
  * under the License.
  */
 #include "SessionConnection.h"
-#include "SessionImpl.h"
 #include "RpcCommon.h"
+#include "SessionImpl.h"
 #include "common_types.h"
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
@@ -35,15 +35,16 @@ using namespace apache::thrift;
 using namespace apache::thrift::protocol;
 using namespace apache::thrift::transport;
 
-SessionConnection::SessionConnection(Session::Impl* session_ptr, const TEndPoint& endpoint,
-                                     const std::string& zoneId,
-                                     std::shared_ptr<INodesSupplier> nodeSupplier, int fetchSize,
-                                     int maxRetries, int64_t retryInterval,
-                                     int64_t connectionTimeout, std::string dialect, std::string db)
+SessionConnection::SessionConnection(
+    Session::Impl *session_ptr, const TEndPoint &endpoint,
+    const std::string &zoneId, std::shared_ptr<INodesSupplier> nodeSupplier,
+    int fetchSize, int maxRetries, int64_t retryInterval,
+    int64_t connectionTimeout, std::string dialect, std::string db)
     : session(session_ptr), zoneId(zoneId), endPoint(endpoint),
-      availableNodes(std::move(nodeSupplier)), fetchSize(fetchSize), maxRetryCount(maxRetries),
-      retryIntervalMs(retryInterval), connectionTimeoutInMs(connectionTimeout),
-      sqlDialect(std::move(dialect)), database(std::move(db)) {
+      availableNodes(std::move(nodeSupplier)), fetchSize(fetchSize),
+      maxRetryCount(maxRetries), retryIntervalMs(retryInterval),
+      connectionTimeoutInMs(connectionTimeout), sqlDialect(std::move(dialect)),
+      database(std::move(db)) {
   this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
   endPointList.push_back(endpoint);
   init(endPoint, session->useSSL_, session->trustCertFilePath_);
@@ -58,13 +59,14 @@ void SessionConnection::close() {
     req.__set_sessionId(sessionId);
     TSStatus tsStatus;
     client->closeSession(tsStatus, req);
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     log_debug(e.what());
     throw IoTDBConnectionException(e.what());
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     log_debug(e.what());
     errMsg = errMsg +
-             "Session::close() client->closeSession() error, maybe remote server is down. " +
+             "Session::close() client->closeSession() error, maybe remote "
+             "server is down. " +
              e.what() + "\n";
     needThrowException = true;
   }
@@ -73,9 +75,10 @@ void SessionConnection::close() {
     if (transport->isOpen()) {
       transport->close();
     }
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     log_debug(e.what());
-    errMsg = errMsg + "Session::close() transport->close() error. " + e.what() + "\n";
+    errMsg = errMsg + "Session::close() transport->close() error. " + e.what() +
+             "\n";
     needThrowException = true;
   }
 
@@ -87,13 +90,13 @@ void SessionConnection::close() {
 SessionConnection::~SessionConnection() {
   try {
     close();
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     log_debug(e.what());
   }
 }
 
-void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
-                             const std::string& trustCertFilePath) {
+void SessionConnection::init(const TEndPoint &endpoint, bool useSSL,
+                             const std::string &trustCertFilePath) {
   if (useSSL) {
 #if WITH_SSL
     socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
@@ -114,7 +117,7 @@ void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
   if (!transport->isOpen()) {
     try {
       transport->open();
-    } catch (TTransportException& e) {
+    } catch (TTransportException &e) {
       log_debug(e.what());
       throw IoTDBConnectionException(e.what());
     }
@@ -146,7 +149,8 @@ void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
       if (openResp.serverProtocolVersion == 0) {
         // less than 0.10
         throw logic_error(string("Protocol not supported, Client version is ") +
-                          to_string(session->protocolVersion_) + ", but Server version is " +
+                          to_string(session->protocolVersion_) +
+                          ", but Server version is " +
                           to_string(openResp.serverProtocolVersion));
       }
     }
@@ -157,23 +161,24 @@ void SessionConnection::init(const TEndPoint& endpoint, bool useSSL,
     if (!zoneId.empty()) {
       setTimeZone(zoneId);
     }
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     log_debug(e.what());
     transport->close();
     throw IoTDBConnectionException(e.what());
-  } catch (const IoTDBException& e) {
+  } catch (const IoTDBException &e) {
     log_debug(e.what());
     transport->close();
     throw;
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     log_debug(e.what());
     transport->close();
     throw;
   }
 }
 
-std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const std::string& sql,
-                                                                         int64_t timeoutInMs) {
+std::unique_ptr<SessionDataSet>
+SessionConnection::executeQueryStatement(const std::string &sql,
+                                         int64_t timeoutInMs) {
   TSExecuteStatementReq req;
   req.__set_sessionId(sessionId);
   req.__set_statementId(statementId);
@@ -187,7 +192,7 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
         client->executeQueryStatementV2(resp, req);
         return resp;
       },
-      [](const TSExecuteStatementResp& resp) { return resp.status; });
+      [](const TSExecuteStatementResp &resp) { return resp.status; });
   TSExecuteStatementResp resp = result.getResult();
   if (result.getRetryAttempts() == 0) {
     RpcUtils::verifySuccessWithRedirection(resp.status);
@@ -195,14 +200,15 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
     RpcUtils::verifySuccess(resp.status);
   }
 
-  return createSessionDataSet(sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
-                              resp.queryId, statementId, client, sessionId, resp.queryResult,
-                              resp.ignoreTimeStamp, timeoutInMs, resp.moreData, fetchSize, zoneId);
+  return createSessionDataSet(
+      sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
+      resp.queryId, statementId, client, sessionId, resp.queryResult,
+      resp.ignoreTimeStamp, timeoutInMs, resp.moreData, fetchSize, zoneId);
 }
 
 std::unique_ptr<SessionDataSet>
-SessionConnection::executeRawDataQuery(const std::vector<std::string>& paths, int64_t startTime,
-                                       int64_t endTime) {
+SessionConnection::executeRawDataQuery(const std::vector<std::string> &paths,
+                                       int64_t startTime, int64_t endTime) {
   TSRawDataQueryReq req;
   req.__set_sessionId(sessionId);
   req.__set_statementId(statementId);
@@ -216,21 +222,23 @@ SessionConnection::executeRawDataQuery(const std::vector<std::string>& paths, in
         client->executeRawDataQueryV2(resp, req);
         return resp;
       },
-      [](const TSExecuteStatementResp& resp) { return resp.status; });
+      [](const TSExecuteStatementResp &resp) { return resp.status; });
   TSExecuteStatementResp resp = result.getResult();
   if (result.getRetryAttempts() == 0) {
     RpcUtils::verifySuccessWithRedirection(resp.status);
   } else {
     RpcUtils::verifySuccess(resp.status);
   }
-  return createSessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
-                              resp.queryId, statementId, client, sessionId, resp.queryResult,
-                              resp.ignoreTimeStamp, connectionTimeoutInMs, resp.moreData, fetchSize,
-                              zoneId);
+  return createSessionDataSet("", resp.columns, resp.dataTypeList,
+                              resp.columnNameIndexMap, resp.queryId,
+                              statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, connectionTimeoutInMs,
+                              resp.moreData, fetchSize, zoneId);
 }
 
 std::unique_ptr<SessionDataSet>
-SessionConnection::executeLastDataQuery(const std::vector<std::string>& paths, int64_t lastTime) {
+SessionConnection::executeLastDataQuery(const std::vector<std::string> &paths,
+                                        int64_t lastTime) {
   TSLastDataQueryReq req;
   req.__set_sessionId(sessionId);
   req.__set_statementId(statementId);
@@ -244,45 +252,45 @@ SessionConnection::executeLastDataQuery(const std::vector<std::string>& paths, i
         client->executeLastDataQuery(resp, req);
         return resp;
       },
-      [](const TSExecuteStatementResp& resp) { return resp.status; });
+      [](const TSExecuteStatementResp &resp) { return resp.status; });
   TSExecuteStatementResp resp = result.getResult();
   if (result.getRetryAttempts() == 0) {
     RpcUtils::verifySuccessWithRedirection(resp.status);
   } else {
     RpcUtils::verifySuccess(resp.status);
   }
-  return createSessionDataSet("", resp.columns, resp.dataTypeList, resp.columnNameIndexMap,
-                              resp.queryId, statementId, client, sessionId, resp.queryResult,
-                              resp.ignoreTimeStamp, connectionTimeoutInMs, resp.moreData, fetchSize,
-                              zoneId);
+  return createSessionDataSet("", resp.columns, resp.dataTypeList,
+                              resp.columnNameIndexMap, resp.queryId,
+                              statementId, client, sessionId, resp.queryResult,
+                              resp.ignoreTimeStamp, connectionTimeoutInMs,
+                              resp.moreData, fetchSize, zoneId);
 }
 
-void SessionConnection::executeNonQueryStatement(const string& sql) {
+void SessionConnection::executeNonQueryStatement(const string &sql) {
   TSExecuteStatementReq req;
   req.__set_sessionId(sessionId);
   req.__set_statementId(statementId);
   req.__set_statement(sql);
-  req.__set_timeout(0); //0 means no timeout. This value keep consistent to JAVA SDK.
+  req.__set_timeout(
+      0); // 0 means no timeout. This value keep consistent to JAVA SDK.
   TSExecuteStatementResp resp;
   try {
     client->executeUpdateStatementV2(resp, req);
     RpcUtils::verifySuccess(resp.status);
-  } catch (const TTransportException& e) {
+  } catch (const TTransportException &e) {
     log_debug(e.what());
     throw IoTDBConnectionException(e.what());
-  } catch (const IoTDBException& e) {
+  } catch (const IoTDBException &e) {
     log_debug(e.what());
     throw;
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     throw IoTDBException(e.what());
   }
 }
 
-const TEndPoint& SessionConnection::getEndPoint() {
-  return endPoint;
-}
+const TEndPoint &SessionConnection::getEndPoint() { return endPoint; }
 
-void SessionConnection::setTimeZone(const std::string& newZoneId) {
+void SessionConnection::setTimeZone(const std::string &newZoneId) {
   TSSetTimeZoneReq req;
   req.__set_sessionId(sessionId);
   req.__set_timeZone(newZoneId);
@@ -291,7 +299,7 @@ void SessionConnection::setTimeZone(const std::string& newZoneId) {
     TSStatus tsStatus;
     client->setTimeZone(tsStatus, req);
     zoneId = newZoneId;
-  } catch (const TException& e) {
+  } catch (const TException &e) {
     throw IoTDBConnectionException(e.what());
   }
 }
@@ -327,12 +335,15 @@ bool SessionConnection::reconnect() {
         }
         tryHostNum++;
         try {
-          init(this->endPoint, this->session->useSSL_, this->session->trustCertFilePath_);
+          init(this->endPoint, this->session->useSSL_,
+               this->session->trustCertFilePath_);
           reconnect = true;
-        } catch (const IoTDBConnectionException& e) {
-          log_warn("The current node may have been down, connection exception: %s", e.what());
+        } catch (const IoTDBConnectionException &e) {
+          log_warn(
+              "The current node may have been down, connection exception: %s",
+              e.what());
           continue;
-        } catch (exception& e) {
+        } catch (exception &e) {
           log_warn("login in failed, because  %s", e.what());
         }
         break;
@@ -342,40 +353,52 @@ bool SessionConnection::reconnect() {
       session->removeBrokenSessionConnection(shared_from_this());
       session->defaultEndPoint_ = this->endPoint;
       session->defaultSessionConnection_ = shared_from_this();
-      session->endPointToSessionConnection.insert(make_pair(this->endPoint, shared_from_this()));
+      session->endPointToSessionConnection.insert(
+          make_pair(this->endPoint, shared_from_this()));
     }
   }
   return reconnect;
 }
 
-void SessionConnection::insertStringRecord(const TSInsertStringRecordReq& request) {
-  auto rpc = [this, request]() { return this->insertStringRecordInternal(request); };
+void SessionConnection::insertStringRecord(
+    const TSInsertStringRecordReq &request) {
+  auto rpc = [this, request]() {
+    return this->insertStringRecordInternal(request);
+  };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
-void SessionConnection::insertRecord(const TSInsertRecordReq& request) {
+void SessionConnection::insertRecord(const TSInsertRecordReq &request) {
   auto rpc = [this, request]() { return this->insertRecordInternal(request); };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
-void SessionConnection::insertStringRecords(const TSInsertStringRecordsReq& request) {
-  auto rpc = [this, request]() { return this->insertStringRecordsInternal(request); };
+void SessionConnection::insertStringRecords(
+    const TSInsertStringRecordsReq &request) {
+  auto rpc = [this, request]() {
+    return this->insertStringRecordsInternal(request);
+  };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
-void SessionConnection::insertRecords(const TSInsertRecordsReq& request) {
+void SessionConnection::insertRecords(const TSInsertRecordsReq &request) {
   auto rpc = [this, request]() { return this->insertRecordsInternal(request); };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
-void SessionConnection::insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request) {
-  auto rpc = [this, request]() { return this->insertRecordsOfOneDeviceInternal(request); };
+void SessionConnection::insertRecordsOfOneDevice(
+    TSInsertRecordsOfOneDeviceReq request) {
+  auto rpc = [this, request]() {
+    return this->insertRecordsOfOneDeviceInternal(request);
+  };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
 void SessionConnection::insertStringRecordsOfOneDevice(
     TSInsertStringRecordsOfOneDeviceReq request) {
-  auto rpc = [this, request]() { return this->insertStringRecordsOfOneDeviceInternal(request); };
+  auto rpc = [this, request]() {
+    return this->insertStringRecordsOfOneDeviceInternal(request);
+  };
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
@@ -389,7 +412,8 @@ void SessionConnection::insertTablets(TSInsertTabletsReq request) {
   callWithRetryAndVerifyWithRedirection<TSStatus>(rpc);
 }
 
-void SessionConnection::testInsertStringRecord(TSInsertStringRecordReq& request) {
+void SessionConnection::testInsertStringRecord(
+    TSInsertStringRecordReq &request) {
   auto rpc = [this, &request]() {
     request.sessionId = sessionId;
     TSStatus ret;
@@ -400,7 +424,7 @@ void SessionConnection::testInsertStringRecord(TSInsertStringRecordReq& request)
   RpcUtils::verifySuccess(status);
 }
 
-void SessionConnection::testInsertTablet(TSInsertTabletReq& request) {
+void SessionConnection::testInsertTablet(TSInsertTabletReq &request) {
   auto rpc = [this, &request]() {
     request.sessionId = sessionId;
     TSStatus ret;
@@ -411,7 +435,7 @@ void SessionConnection::testInsertTablet(TSInsertTabletReq& request) {
   RpcUtils::verifySuccess(status);
 }
 
-void SessionConnection::testInsertRecords(TSInsertRecordsReq& request) {
+void SessionConnection::testInsertRecords(TSInsertRecordsReq &request) {
   auto rpc = [this, &request]() {
     request.sessionId = sessionId;
     TSStatus ret;
@@ -422,7 +446,7 @@ void SessionConnection::testInsertRecords(TSInsertRecordsReq& request) {
   RpcUtils::verifySuccess(status);
 }
 
-void SessionConnection::deleteTimeseries(const vector<string>& paths) {
+void SessionConnection::deleteTimeseries(const vector<string> &paths) {
   auto rpc = [this, &paths]() {
     TSStatus ret;
     client->deleteTimeseries(ret, sessionId, paths);
@@ -431,12 +455,12 @@ void SessionConnection::deleteTimeseries(const vector<string>& paths) {
   callWithRetryAndVerify<TSStatus>(rpc);
 }
 
-void SessionConnection::deleteData(const TSDeleteDataReq& request) {
+void SessionConnection::deleteData(const TSDeleteDataReq &request) {
   auto rpc = [this, request]() { return this->deleteDataInternal(request); };
   callWithRetryAndVerify<TSStatus>(rpc);
 }
 
-void SessionConnection::setStorageGroup(const string& storageGroupId) {
+void SessionConnection::setStorageGroup(const string &storageGroupId) {
   auto rpc = [this, &storageGroupId]() {
     TSStatus ret;
     client->setStorageGroup(ret, sessionId, storageGroupId);
@@ -446,7 +470,8 @@ void SessionConnection::setStorageGroup(const string& storageGroupId) {
   RpcUtils::verifySuccess(ret.getResult());
 }
 
-void SessionConnection::deleteStorageGroups(const vector<string>& storageGroups) {
+void SessionConnection::deleteStorageGroups(
+    const vector<string> &storageGroups) {
   auto rpc = [this, &storageGroups]() {
     TSStatus ret;
     client->deleteStorageGroups(ret, sessionId, storageGroups);
@@ -456,7 +481,7 @@ void SessionConnection::deleteStorageGroups(const vector<string>& storageGroups)
   RpcUtils::verifySuccess(ret.getResult());
 }
 
-void SessionConnection::createTimeseries(TSCreateTimeseriesReq& req) {
+void SessionConnection::createTimeseries(TSCreateTimeseriesReq &req) {
   auto rpc = [this, &req]() {
     TSStatus ret;
     req.sessionId = sessionId;
@@ -467,7 +492,7 @@ void SessionConnection::createTimeseries(TSCreateTimeseriesReq& req) {
   RpcUtils::verifySuccess(ret.getResult());
 }
 
-void SessionConnection::createMultiTimeseries(TSCreateMultiTimeseriesReq& req) {
+void SessionConnection::createMultiTimeseries(TSCreateMultiTimeseriesReq &req) {
   auto rpc = [this, &req]() {
     TSStatus ret;
     req.sessionId = sessionId;
@@ -478,7 +503,8 @@ void SessionConnection::createMultiTimeseries(TSCreateMultiTimeseriesReq& req) {
   RpcUtils::verifySuccess(ret.getResult());
 }
 
-void SessionConnection::createAlignedTimeseries(TSCreateAlignedTimeseriesReq& req) {
+void SessionConnection::createAlignedTimeseries(
+    TSCreateAlignedTimeseriesReq &req) {
   auto rpc = [this, &req]() {
     TSStatus ret;
     req.sessionId = sessionId;
@@ -497,12 +523,12 @@ TSGetTimeZoneResp SessionConnection::getTimeZone() {
     return resp;
   };
   auto ret = callWithRetryAndReconnect<TSGetTimeZoneResp>(
-      rpc, [](const TSGetTimeZoneResp& resp) { return resp.status; });
+      rpc, [](const TSGetTimeZoneResp &resp) { return resp.status; });
   RpcUtils::verifySuccess(ret.getResult().status);
   return ret.result;
 }
 
-void SessionConnection::setTimeZone(TSSetTimeZoneReq& req) {
+void SessionConnection::setTimeZone(TSSetTimeZoneReq &req) {
   auto rpc = [this, &req]() {
     TSStatus ret;
     req.sessionId = sessionId;
@@ -569,7 +595,8 @@ void SessionConnection::pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
   RpcUtils::verifySuccess(ret.getResult());
 }
 
-TSQueryTemplateResp SessionConnection::querySchemaTemplate(TSQueryTemplateReq req) {
+TSQueryTemplateResp
+SessionConnection::querySchemaTemplate(TSQueryTemplateReq req) {
   auto rpc = [this, &req]() {
     TSQueryTemplateResp ret;
     req.sessionId = sessionId;
@@ -577,12 +604,13 @@ TSQueryTemplateResp SessionConnection::querySchemaTemplate(TSQueryTemplateReq re
     return ret;
   };
   auto ret = callWithRetryAndReconnect<TSQueryTemplateResp>(
-      rpc, [](const TSQueryTemplateResp& resp) { return resp.status; });
+      rpc, [](const TSQueryTemplateResp &resp) { return resp.status; });
   RpcUtils::verifySuccess(ret.getResult().status);
   return ret.getResult();
 }
 
-TSStatus SessionConnection::insertStringRecordInternal(TSInsertStringRecordReq request) {
+TSStatus
+SessionConnection::insertStringRecordInternal(TSInsertStringRecordReq request) {
   request.sessionId = sessionId;
   TSStatus ret;
   client->insertStringRecord(ret, request);
@@ -596,7 +624,8 @@ TSStatus SessionConnection::insertRecordInternal(TSInsertRecordReq request) {
   return ret;
 }
 
-TSStatus SessionConnection::insertStringRecordsInternal(TSInsertStringRecordsReq request) {
+TSStatus SessionConnection::insertStringRecordsInternal(
+    TSInsertStringRecordsReq request) {
   request.sessionId = sessionId;
   TSStatus ret;
   client->insertStringRecords(ret, request);
@@ -610,8 +639,8 @@ TSStatus SessionConnection::insertRecordsInternal(TSInsertRecordsReq request) {
   return ret;
 }
 
-TSStatus
-SessionConnection::insertRecordsOfOneDeviceInternal(TSInsertRecordsOfOneDeviceReq request) {
+TSStatus SessionConnection::insertRecordsOfOneDeviceInternal(
+    TSInsertRecordsOfOneDeviceReq request) {
   request.sessionId = sessionId;
   TSStatus ret;
   client->insertRecordsOfOneDevice(ret, request);

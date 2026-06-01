@@ -29,13 +29,13 @@
 
 class SessionDataSet;
 
-std::unique_ptr<SessionDataSet>
-createSessionDataSet(const std::string& sql, const std::vector<std::string>& columnNameList,
-                     const std::vector<std::string>& columnTypeList,
-                     const std::map<std::string, int32_t>& columnNameIndex, int64_t queryId,
-                     int64_t statementId, std::shared_ptr<IClientRPCServiceClient> client,
-                     int64_t sessionId, const std::vector<std::string>& queryResult,
-                     bool ignoreTimestamp, int64_t timeout, bool moreData, int32_t fetchSize,
-                     const std::string& zoneId);
+std::unique_ptr<SessionDataSet> createSessionDataSet(
+    const std::string &sql, const std::vector<std::string> &columnNameList,
+    const std::vector<std::string> &columnTypeList,
+    const std::map<std::string, int32_t> &columnNameIndex, int64_t queryId,
+    int64_t statementId, std::shared_ptr<IClientRPCServiceClient> client,
+    int64_t sessionId, const std::vector<std::string> &queryResult,
+    bool ignoreTimestamp, int64_t timeout, bool moreData, int32_t fetchSize,
+    const std::string &zoneId);
 
 #endif

@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -16,21 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include "TsBlock.h"
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
-#include <algorithm>
-#include "TsBlock.h"
 
-std::shared_ptr<TsBlock> TsBlock::create(int32_t positionCount, std::shared_ptr<Column> timeColumn,
-                                         std::vector<std::shared_ptr<Column>> valueColumns) {
+std::shared_ptr<TsBlock>
+TsBlock::create(int32_t positionCount, std::shared_ptr<Column> timeColumn,
+                std::vector<std::shared_ptr<Column>> valueColumns) {
   if (valueColumns.empty()) {
     throw std::invalid_argument("valueColumns cannot be empty");
   }
-  return std::shared_ptr<TsBlock>(
-      new TsBlock(positionCount, std::move(timeColumn), std::move(valueColumns)));
+  return std::shared_ptr<TsBlock>(new TsBlock(
+      positionCount, std::move(timeColumn), std::move(valueColumns)));
 }
 
-std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
+std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string &data) {
   MyStringBuffer buffer(data);
 
   // Read value column count
@@ -38,7 +39,8 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
   if (valueColumnCount < 0) {
     throw IoTDBException("TsBlock::deserialize: negative valueColumnCount");
   }
-  const int64_t minHeaderBytes = 9LL + 2LL * static_cast<int64_t>(valueColumnCount);
+  const int64_t minHeaderBytes =
+      9LL + 2LL * static_cast<int64_t>(valueColumnCount);
   if (minHeaderBytes > static_cast<int64_t>(data.size())) {
     throw IoTDBException("TsBlock::deserialize: truncated header");
   }
@@ -46,7 +48,8 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
   // Read value column data types
   std::vector<TSDataType::TSDataType> valueColumnDataTypes(valueColumnCount);
   for (int32_t i = 0; i < valueColumnCount; i++) {
-    valueColumnDataTypes[i] = static_cast<TSDataType::TSDataType>(buffer.getChar());
+    valueColumnDataTypes[i] =
+        static_cast<TSDataType::TSDataType>(buffer.getChar());
   }
 
   // Read position count
@@ -63,14 +66,15 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
 
   // Read time column
   auto timeColumnDecoder = getColumnDecoder(columnEncodings[0]);
-  auto timeColumn = timeColumnDecoder->readColumn(buffer, TSDataType::INT64, positionCount);
+  auto timeColumn =
+      timeColumnDecoder->readColumn(buffer, TSDataType::INT64, positionCount);
 
   // Read value columns
   std::vector<std::shared_ptr<Column>> valueColumns(valueColumnCount);
   for (int32_t i = 0; i < valueColumnCount; i++) {
     auto valueColumnDecoder = getColumnDecoder(columnEncodings[i + 1]);
-    valueColumns[i] =
-        valueColumnDecoder->readColumn(buffer, valueColumnDataTypes[i], positionCount);
+    valueColumns[i] = valueColumnDecoder->readColumn(
+        buffer, valueColumnDataTypes[i], positionCount);
   }
 
   return create(positionCount, std::move(timeColumn), std::move(valueColumns));
@@ -81,21 +85,15 @@ TsBlock::TsBlock(int32_t positionCount, std::shared_ptr<Column> timeColumn,
     : positionCount_(positionCount), timeColumn_(std::move(timeColumn)),
       valueColumns_(std::move(valueColumns)) {}
 
-int32_t TsBlock::getPositionCount() const {
-  return positionCount_;
-}
+int32_t TsBlock::getPositionCount() const { return positionCount_; }
 
-int64_t TsBlock::getStartTime() const {
-  return timeColumn_->getLong(0);
-}
+int64_t TsBlock::getStartTime() const { return timeColumn_->getLong(0); }
 
 int64_t TsBlock::getEndTime() const {
   return timeColumn_->getLong(positionCount_ - 1);
 }
 
-bool TsBlock::isEmpty() const {
-  return positionCount_ == 0;
-}
+bool TsBlock::isEmpty() const { return positionCount_ == 0; }
 
 int64_t TsBlock::getTimeByIndex(int32_t index) const {
   return timeColumn_->getLong(index);
@@ -109,7 +107,7 @@ const std::shared_ptr<Column> TsBlock::getTimeColumn() const {
   return timeColumn_;
 }
 
-const std::vector<std::shared_ptr<Column>>& TsBlock::getValueColumns() const {
+const std::vector<std::shared_ptr<Column>> &TsBlock::getValueColumns() const {
   return valueColumns_;
 }
 

@@ -34,7 +34,7 @@ RpcUtils::RpcUtils() {
   SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
 }
 
-void RpcUtils::verifySuccess(const TSStatus& status) {
+void RpcUtils::verifySuccess(const TSStatus &status) {
   if (status.code == TSStatusCode::MULTIPLE_ERROR) {
     verifySuccess(status.subStatus);
     return;
@@ -46,7 +46,7 @@ void RpcUtils::verifySuccess(const TSStatus& status) {
   }
 }
 
-void RpcUtils::verifySuccessWithRedirection(const TSStatus& status) {
+void RpcUtils::verifySuccessWithRedirection(const TSStatus &status) {
   verifySuccess(status);
   if (status.__isset.redirectNode) {
     throw RedirectException(to_string(status.code) + ": " + status.message,
@@ -56,7 +56,7 @@ void RpcUtils::verifySuccessWithRedirection(const TSStatus& status) {
     auto statusSubStatus = status.subStatus;
     vector<TEndPoint> endPointList(statusSubStatus.size());
     int count = 0;
-    for (const TSStatus& subStatus : statusSubStatus) {
+    for (const TSStatus &subStatus : statusSubStatus) {
       if (subStatus.__isset.redirectNode) {
         endPointList[count++] = subStatus.redirectNode;
       } else {
@@ -71,16 +71,16 @@ void RpcUtils::verifySuccessWithRedirection(const TSStatus& status) {
   }
 }
 
-void RpcUtils::verifySuccessWithRedirectionForMultiDevices(const TSStatus& status,
-                                                           vector<string> devices) {
+void RpcUtils::verifySuccessWithRedirectionForMultiDevices(
+    const TSStatus &status, vector<string> devices) {
   verifySuccess(status);
 
   if (status.code == TSStatusCode::MULTIPLE_ERROR ||
       status.code == TSStatusCode::REDIRECTION_RECOMMEND) {
     map<string, TEndPoint> deviceEndPointMap;
-    const vector<TSStatus>& statusSubStatus = status.subStatus;
+    const vector<TSStatus> &statusSubStatus = status.subStatus;
     for (size_t i = 0; i < statusSubStatus.size() && i < devices.size(); i++) {
-      const TSStatus& subStatus = statusSubStatus[i];
+      const TSStatus &subStatus = statusSubStatus[i];
       if (subStatus.__isset.redirectNode) {
         deviceEndPointMap.insert(make_pair(devices[i], subStatus.redirectNode));
       }
@@ -97,7 +97,7 @@ void RpcUtils::verifySuccessWithRedirectionForMultiDevices(const TSStatus& statu
     auto statusSubStatus = status.subStatus;
     vector<TEndPoint> endPointList(statusSubStatus.size());
     int count = 0;
-    for (const TSStatus& subStatus : statusSubStatus) {
+    for (const TSStatus &subStatus : statusSubStatus) {
       if (subStatus.__isset.redirectNode) {
         endPointList[count++] = subStatus.redirectNode;
       } else {
@@ -112,12 +112,12 @@ void RpcUtils::verifySuccessWithRedirectionForMultiDevices(const TSStatus& statu
   }
 }
 
-void RpcUtils::verifySuccess(const vector<TSStatus>& statuses) {
-  for (const TSStatus& status : statuses) {
+void RpcUtils::verifySuccess(const vector<TSStatus> &statuses) {
+  for (const TSStatus &status : statuses) {
     if (status.code != TSStatusCode::SUCCESS_STATUS) {
       vector<Status> publicStatuses;
       publicStatuses.reserve(statuses.size());
-      for (const TSStatus& s : statuses) {
+      for (const TSStatus &s : statuses) {
         publicStatuses.push_back(statusFromThrift(s));
       }
       throw BatchExecutionException(status.message, publicStatuses);
@@ -131,7 +131,7 @@ TSStatus RpcUtils::getStatus(TSStatusCode::TSStatusCode tsStatusCode) {
   return status;
 }
 
-TSStatus RpcUtils::getStatus(int code, const string& message) {
+TSStatus RpcUtils::getStatus(int code, const string &message) {
   TSStatus status;
   status.__set_code(code);
   status.__set_message(message);
@@ -146,12 +146,13 @@ RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode) {
 
 shared_ptr<TSExecuteStatementResp>
 RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode,
-                                    const string& message) {
+                                    const string &message) {
   TSStatus status = getStatus(tsStatusCode, message);
   return getTSExecuteStatementResp(status);
 }
 
-shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus& status) {
+shared_ptr<TSExecuteStatementResp>
+RpcUtils::getTSExecuteStatementResp(const TSStatus &status) {
   shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
   resp->__set_status(status);
   return resp;
@@ -165,12 +166,13 @@ RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode) {
 
 shared_ptr<TSFetchResultsResp>
 RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode,
-                                const string& appendMessage) {
+                                const string &appendMessage) {
   TSStatus status = getStatus(tsStatusCode, appendMessage);
   return getTSFetchResultsResp(status);
 }
 
-shared_ptr<TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus& status) {
+shared_ptr<TSFetchResultsResp>
+RpcUtils::getTSFetchResultsResp(const TSStatus &status) {
   shared_ptr<TSFetchResultsResp> resp(new TSFetchResultsResp());
   resp->__set_status(status);
   return resp;
@@ -179,7 +181,7 @@ shared_ptr<TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus& s
 const string UrlUtils::PORT_SEPARATOR = ":";
 const string UrlUtils::ABB_COLON = "[";
 
-TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const string& endPointUrl) {
+TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const string &endPointUrl) {
   TEndPoint endPoint;
 
   if (endPointUrl.empty()) {
@@ -206,7 +208,7 @@ TEndPoint UrlUtils::parseTEndPointIpv4AndIpv6Url(const string& endPointUrl) {
     int port = stoi(portStr);
     endPoint.__set_ip(ip);
     endPoint.__set_port(port);
-  } catch (const exception&) {
+  } catch (const exception &) {
     endPoint.__set_ip(endPointUrl);
   }
 

@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -20,15 +20,15 @@
 #ifndef IOTDB_RPC_DATA_SET_H
 #define IOTDB_RPC_DATA_SET_H
 
-#include <vector>
-#include <string>
-#include <map>
-#include <memory>
-#include <cstdint>
-#include "IClientRPCService.h"
 #include "Date.h"
+#include "IClientRPCService.h"
 #include "Optional.h"
 #include "TsBlock.h"
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 class IoTDBRpcDataSet {
 public:
@@ -41,13 +41,17 @@ public:
   static const std::string MICROSECOND;
   static const std::string NANOSECOND;
 
-  IoTDBRpcDataSet(const std::string& sql, const std::vector<std::string>& columnNameList,
-                  const std::vector<std::string>& columnTypeList,
-                  const std::map<std::string, int32_t>& columnNameIndex, bool ignoreTimestamp,
-                  bool moreData, int64_t queryId, int64_t statementId,
-                  std::shared_ptr<IClientRPCServiceClient> client, int64_t sessionId,
-                  const std::vector<std::string>& queryResult, int32_t fetchSize, int64_t timeout,
-                  const std::string& zoneId, const std::string& timeFormat);
+  IoTDBRpcDataSet(const std::string &sql,
+                  const std::vector<std::string> &columnNameList,
+                  const std::vector<std::string> &columnTypeList,
+                  const std::map<std::string, int32_t> &columnNameIndex,
+                  bool ignoreTimestamp, bool moreData, int64_t queryId,
+                  int64_t statementId,
+                  std::shared_ptr<IClientRPCServiceClient> client,
+                  int64_t sessionId,
+                  const std::vector<std::string> &queryResult,
+                  int32_t fetchSize, int64_t timeout, const std::string &zoneId,
+                  const std::string &timeFormat);
 
   ~IoTDBRpcDataSet();
 
@@ -59,34 +63,34 @@ public:
 
   bool isNull(int32_t index, int32_t rowNum);
   bool isNullByIndex(int32_t columnIndex);
-  bool isNullByColumnName(const std::string& columnName);
+  bool isNullByColumnName(const std::string &columnName);
   Optional<bool> getBooleanByIndex(int32_t columnIndex);
-  Optional<bool> getBoolean(const std::string& columnName);
+  Optional<bool> getBoolean(const std::string &columnName);
   Optional<double> getDoubleByIndex(int32_t columnIndex);
-  Optional<double> getDouble(const std::string& columnName);
+  Optional<double> getDouble(const std::string &columnName);
   Optional<float> getFloatByIndex(int32_t columnIndex);
-  Optional<float> getFloat(const std::string& columnName);
+  Optional<float> getFloat(const std::string &columnName);
   Optional<int32_t> getIntByIndex(int32_t columnIndex);
-  Optional<int32_t> getInt(const std::string& columnName);
+  Optional<int32_t> getInt(const std::string &columnName);
   Optional<int64_t> getLongByIndex(int32_t columnIndex);
-  Optional<int64_t> getLong(const std::string& columnName);
+  Optional<int64_t> getLong(const std::string &columnName);
   std::shared_ptr<Binary> getBinaryByIndex(int32_t columnIndex);
-  std::shared_ptr<Binary> getBinary(const std::string& columnName);
+  std::shared_ptr<Binary> getBinary(const std::string &columnName);
   Optional<std::string> getStringByIndex(int32_t columnIndex);
-  Optional<std::string> getString(const std::string& columnName);
+  Optional<std::string> getString(const std::string &columnName);
   Optional<int64_t> getTimestampByIndex(int32_t columnIndex);
-  Optional<int64_t> getTimestamp(const std::string& columnName);
+  Optional<int64_t> getTimestamp(const std::string &columnName);
   Optional<IoTDBDate> getDateByIndex(int32_t columnIndex);
-  Optional<IoTDBDate> getDate(const std::string& columnName);
+  Optional<IoTDBDate> getDate(const std::string &columnName);
 
   TSDataType::TSDataType getDataTypeByIndex(int32_t columnIndex);
-  TSDataType::TSDataType getDataType(const std::string& columnName);
-  int32_t findColumn(const std::string& columnName);
+  TSDataType::TSDataType getDataType(const std::string &columnName);
+  int32_t findColumn(const std::string &columnName);
   std::string findColumnNameByIndex(int32_t columnIndex);
   int32_t getValueColumnStartIndex() const;
   int32_t getColumnSize() const;
-  const std::vector<std::string>& getColumnTypeList() const;
-  const std::vector<std::string>& getColumnNameList() const;
+  const std::vector<std::string> &getColumnTypeList() const;
+  const std::vector<std::string> &getColumnNameList() const;
   bool isClosed() const;
   int32_t getFetchSize() const;
   void setFetchSize(int32_t fetchSize);
@@ -100,21 +104,26 @@ private:
   bool fetchResults();
   void constructOneRow();
   void constructOneTsBlock();
-  int32_t getTsBlockColumnIndexForColumnName(const std::string& columnName);
+  int32_t getTsBlockColumnIndexForColumnName(const std::string &columnName);
   int32_t getTsBlockColumnIndexForColumnIndex(int32_t columnIndex);
   void checkRecord();
-  TSDataType::TSDataType getDataTypeByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+  TSDataType::TSDataType
+  getDataTypeByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<bool> getBooleanByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-  std::string getStringByTsBlockColumnIndexAndDataType(int32_t index,
-                                                       TSDataType::TSDataType tsDataType);
+  std::string
+  getStringByTsBlockColumnIndexAndDataType(int32_t index,
+                                           TSDataType::TSDataType tsDataType);
   Optional<double> getDoubleByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<float> getFloatByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<int32_t> getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<int64_t> getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-  std::shared_ptr<Binary> getBinaryByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-  Optional<std::string> getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+  std::shared_ptr<Binary>
+  getBinaryByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+  Optional<std::string>
+  getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
   Optional<IoTDBDate> getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
-  Optional<int64_t> getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
+  Optional<int64_t>
+  getTimestampByTsBlockColumnIndex(int32_t tsBlockColumnIndex);
 
   std::string sql_;
   bool isClosed_;

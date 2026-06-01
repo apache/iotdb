@@ -21,40 +21,41 @@
 
 #include "common_types.h"
 
-Status statusFromThrift(const TSStatus& tsStatus) {
+Status statusFromThrift(const TSStatus &tsStatus) {
   Status status;
   status.code = tsStatus.code;
   status.message = tsStatus.message;
   return status;
 }
 
-Endpoint endpointFromThrift(const TEndPoint& endPoint) {
+Endpoint endpointFromThrift(const TEndPoint &endPoint) {
   Endpoint endpoint;
   endpoint.host = endPoint.ip;
   endpoint.port = endPoint.port;
   return endpoint;
 }
 
-TEndPoint endpointToThrift(const Endpoint& endpoint) {
+TEndPoint endpointToThrift(const Endpoint &endpoint) {
   TEndPoint endPoint;
   endPoint.__set_ip(endpoint.host);
   endPoint.__set_port(endpoint.port);
   return endPoint;
 }
 
-std::map<std::string, Endpoint>
-endpointMapFromThrift(const std::map<std::string, TEndPoint>& deviceEndPointMap) {
+std::map<std::string, Endpoint> endpointMapFromThrift(
+    const std::map<std::string, TEndPoint> &deviceEndPointMap) {
   std::map<std::string, Endpoint> result;
-  for (const auto& entry : deviceEndPointMap) {
+  for (const auto &entry : deviceEndPointMap) {
     result.emplace(entry.first, endpointFromThrift(entry.second));
   }
   return result;
 }
 
-std::vector<Endpoint> endpointListFromThrift(const std::vector<TEndPoint>& endPointList) {
+std::vector<Endpoint>
+endpointListFromThrift(const std::vector<TEndPoint> &endPointList) {
   std::vector<Endpoint> result;
   result.reserve(endPointList.size());
-  for (const auto& endPoint : endPointList) {
+  for (const auto &endPoint : endPointList) {
     result.push_back(endpointFromThrift(endPoint));
   }
   return result;

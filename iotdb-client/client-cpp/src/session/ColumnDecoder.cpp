@@ -1,5 +1,5 @@
 /**
-* Licensed to the Apache Software Foundation (ASF) under one
+ * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
@@ -21,7 +21,8 @@
 
 #include "Column.h"
 
-std::vector<bool> deserializeNullIndicators(MyStringBuffer& buffer, int32_t positionCount) {
+std::vector<bool> deserializeNullIndicators(MyStringBuffer &buffer,
+                                            int32_t positionCount) {
   uint8_t mayHaveNullByte = buffer.getChar();
 
   bool mayHaveNull = mayHaveNullByte != 0;
@@ -32,7 +33,8 @@ std::vector<bool> deserializeNullIndicators(MyStringBuffer& buffer, int32_t posi
   return deserializeBooleanArray(buffer, positionCount);
 }
 
-std::vector<bool> deserializeBooleanArray(MyStringBuffer& buffer, int32_t size) {
+std::vector<bool> deserializeBooleanArray(MyStringBuffer &buffer,
+                                          int32_t size) {
   const int32_t packedSize = (size + 7) / 8;
   std::vector<uint8_t> packedBytes(packedSize);
   for (int i = 0; i < packedSize; i++) {
@@ -68,15 +70,17 @@ std::vector<bool> deserializeBooleanArray(MyStringBuffer& buffer, int32_t size) 
   return output;
 }
 
-std::unique_ptr<Column> BaseColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                      TSDataType::TSDataType dataType,
-                                                      int32_t positionCount) {
+std::unique_ptr<Column>
+BaseColumnDecoder::readColumn(MyStringBuffer &buffer,
+                              TSDataType::TSDataType dataType,
+                              int32_t positionCount) {
   return nullptr;
 }
 
-std::unique_ptr<Column> Int32ArrayColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                            TSDataType::TSDataType dataType,
-                                                            int32_t positionCount) {
+std::unique_ptr<Column>
+Int32ArrayColumnDecoder::readColumn(MyStringBuffer &buffer,
+                                    TSDataType::TSDataType dataType,
+                                    int32_t positionCount) {
   auto nullIndicators = deserializeNullIndicators(buffer, positionCount);
 
   switch (dataType) {
@@ -88,7 +92,8 @@ std::unique_ptr<Column> Int32ArrayColumnDecoder::readColumn(MyStringBuffer& buff
         continue;
       intValues[i] = buffer.getInt();
     }
-    return std::unique_ptr<IntColumn>(new IntColumn(0, positionCount, nullIndicators, intValues));
+    return std::unique_ptr<IntColumn>(
+        new IntColumn(0, positionCount, nullIndicators, intValues));
   }
   case TSDataType::FLOAT: {
     std::vector<float> floatValues(positionCount);
@@ -105,9 +110,10 @@ std::unique_ptr<Column> Int32ArrayColumnDecoder::readColumn(MyStringBuffer& buff
   }
 }
 
-std::unique_ptr<Column> Int64ArrayColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                            TSDataType::TSDataType dataType,
-                                                            int32_t positionCount) {
+std::unique_ptr<Column>
+Int64ArrayColumnDecoder::readColumn(MyStringBuffer &buffer,
+                                    TSDataType::TSDataType dataType,
+                                    int32_t positionCount) {
   auto nullIndicators = deserializeNullIndicators(buffer, positionCount);
 
   switch (dataType) {
@@ -119,7 +125,8 @@ std::unique_ptr<Column> Int64ArrayColumnDecoder::readColumn(MyStringBuffer& buff
         continue;
       values[i] = buffer.getInt64();
     }
-    return std::unique_ptr<LongColumn>(new LongColumn(0, positionCount, nullIndicators, values));
+    return std::unique_ptr<LongColumn>(
+        new LongColumn(0, positionCount, nullIndicators, values));
   }
   case TSDataType::DOUBLE: {
     std::vector<double> values(positionCount);
@@ -136,9 +143,10 @@ std::unique_ptr<Column> Int64ArrayColumnDecoder::readColumn(MyStringBuffer& buff
   }
 }
 
-std::unique_ptr<Column> ByteArrayColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                           TSDataType::TSDataType dataType,
-                                                           int32_t positionCount) {
+std::unique_ptr<Column>
+ByteArrayColumnDecoder::readColumn(MyStringBuffer &buffer,
+                                   TSDataType::TSDataType dataType,
+                                   int32_t positionCount) {
   if (dataType != TSDataType::BOOLEAN) {
     throw IoTDBException("Invalid data type for ByteArrayColumnDecoder");
   }
@@ -149,9 +157,10 @@ std::unique_ptr<Column> ByteArrayColumnDecoder::readColumn(MyStringBuffer& buffe
       new BooleanColumn(0, positionCount, nullIndicators, values));
 }
 
-std::unique_ptr<Column> BinaryArrayColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                             TSDataType::TSDataType dataType,
-                                                             int32_t positionCount) {
+std::unique_ptr<Column>
+BinaryArrayColumnDecoder::readColumn(MyStringBuffer &buffer,
+                                     TSDataType::TSDataType dataType,
+                                     int32_t positionCount) {
   if (dataType != TSDataType::TEXT) {
     throw IoTDBException("Invalid data type for BinaryArrayColumnDecoder");
   }
@@ -176,12 +185,14 @@ std::unique_ptr<Column> BinaryArrayColumnDecoder::readColumn(MyStringBuffer& buf
     values[i] = std::make_shared<Binary>(value);
   }
 
-  return std::unique_ptr<BinaryColumn>(new BinaryColumn(0, positionCount, nullIndicators, values));
+  return std::unique_ptr<BinaryColumn>(
+      new BinaryColumn(0, positionCount, nullIndicators, values));
 }
 
-std::unique_ptr<Column> RunLengthColumnDecoder::readColumn(MyStringBuffer& buffer,
-                                                           TSDataType::TSDataType dataType,
-                                                           int32_t positionCount) {
+std::unique_ptr<Column>
+RunLengthColumnDecoder::readColumn(MyStringBuffer &buffer,
+                                   TSDataType::TSDataType dataType,
+                                   int32_t positionCount) {
   uint8_t encodingByte = buffer.getChar();
 
   auto columnEncoding = static_cast<ColumnEncoding>(encodingByte);

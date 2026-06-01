@@ -28,36 +28,27 @@ class IoTDBDate {
 public:
   IoTDBDate() : valid_(false), year_(0), month_(0), day_(0) {}
 
-  IoTDBDate(int year, int month, int day) : valid_(true), year_(year), month_(month), day_(day) {}
+  IoTDBDate(int year, int month, int day)
+      : valid_(true), year_(year), month_(month), day_(day) {}
 
-  static IoTDBDate notADate() {
-    return IoTDBDate();
-  }
+  static IoTDBDate notADate() { return IoTDBDate(); }
 
-  bool is_not_a_date() const {
-    return !valid_;
-  }
+  bool is_not_a_date() const { return !valid_; }
 
-  int year() const {
-    return year_;
-  }
+  int year() const { return year_; }
 
-  int month() const {
-    return month_;
-  }
+  int month() const { return month_; }
 
-  int day() const {
-    return day_;
-  }
+  int day() const { return day_; }
 
   std::string toIsoExtendedString() const;
 
-  friend bool operator==(const IoTDBDate& lhs, const IoTDBDate& rhs) {
-    return lhs.valid_ == rhs.valid_ && lhs.year_ == rhs.year_ && lhs.month_ == rhs.month_ &&
-           lhs.day_ == rhs.day_;
+  friend bool operator==(const IoTDBDate &lhs, const IoTDBDate &rhs) {
+    return lhs.valid_ == rhs.valid_ && lhs.year_ == rhs.year_ &&
+           lhs.month_ == rhs.month_ && lhs.day_ == rhs.day_;
   }
 
-  friend bool operator!=(const IoTDBDate& lhs, const IoTDBDate& rhs) {
+  friend bool operator!=(const IoTDBDate &lhs, const IoTDBDate &rhs) {
     return !(lhs == rhs);
   }
 
@@ -68,7 +59,7 @@ private:
   int day_;
 };
 
-int32_t parseDateExpressionToInt(const IoTDBDate& date);
+int32_t parseDateExpressionToInt(const IoTDBDate &date);
 IoTDBDate parseIntToDate(int32_t dateInt);
 
 #endif
