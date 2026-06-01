@@ -85,9 +85,13 @@ public:
 
   TSDataType::TSDataType getDataTypeByIndex(int32_t columnIndex);
   TSDataType::TSDataType getDataType(const std::string &columnName);
+  TSDataType::TSDataType
+  getColumnPhysicalDataType(const std::string &columnName);
   int32_t findColumn(const std::string &columnName);
   std::string findColumnNameByIndex(int32_t columnIndex);
   int32_t getValueColumnStartIndex() const;
+  int32_t getServerColumnCount() const;
+  int32_t getValueColumnNameListIndex(int32_t valueColumnOrdinal) const;
   int32_t getColumnSize() const;
   const std::vector<std::string> &getColumnTypeList() const;
   const std::vector<std::string> &getColumnNameList() const;

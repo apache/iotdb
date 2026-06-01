@@ -54,10 +54,10 @@
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
         <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
-        <boost.include.dir></boost.include.dir>
+        <boost.include.dir/>
         <!-- Release Linux glibc224: -Diotdb.libstdcxx.cxx11.abi=ON -->
         <iotdb.libstdcxx.cxx11.abi>OFF</iotdb.libstdcxx.cxx11.abi>
-        <iotdb.extra.cxx.flags></iotdb.extra.cxx.flags>
+        <iotdb.extra.cxx.flags/>
         <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
     </properties>

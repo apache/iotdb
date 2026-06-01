@@ -215,8 +215,10 @@ std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
       continue;        // try next endpoint
     }
   }
-  throw IoTDBException(
-      "NodesSupplier::fetchLatestEndpoints failed: all nodes unreachable.");
+  log_warn(
+      "NodesSupplier::fetchLatestEndpoints: SHOW AVAILABLE URLS unavailable, "
+      "keeping configured endpoints");
+  return endpoints_;
 }
 
 void NodesSupplier::refreshEndpointList() {

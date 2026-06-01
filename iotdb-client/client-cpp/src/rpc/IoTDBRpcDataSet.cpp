@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <cstdio>
 #include <ctime>
 #include <stdexcept>
 
@@ -66,9 +67,11 @@ IoTDBRpcDataSet::IoTDBRpcDataSet(
   // startIndexForColumnIndex2TsBlockColumnIndexList to adjust the mapping
   // relation
   int startIndexForColumnIndex2TsBlockColumnIndexList = 0;
+  const bool serverIncludesTime =
+      !columnNameList.empty() && columnNameList[0] == TimestampColumnName;
   // for Time Column in tree model which should always be the first column and
   // its index for TsBlockColumn is -1
-  if (!ignoreTimestamp) {
+  if (!ignoreTimestamp && !serverIncludesTime) {
     columnNameList_.push_back(TimestampColumnName);
     columnTypeList_.push_back("INT64");
     columnName2TsBlockColumnIndexMap_[TimestampColumnName] = -1;
@@ -84,12 +87,18 @@ IoTDBRpcDataSet::IoTDBRpcDataSet(
 
   if (columnIndex2TsBlockColumnIndexList.empty()) {
     columnIndex2TsBlockColumnIndexList.reserve(resultSetColumnSize);
-    if (!ignoreTimestamp) {
+    if (!ignoreTimestamp && !serverIncludesTime) {
       startIndexForColumnIndex2TsBlockColumnIndexList = 1;
       columnIndex2TsBlockColumnIndexList.push_back(-1);
     }
     for (size_t i = 0; i < columnNameList.size(); ++i) {
-      columnIndex2TsBlockColumnIndexList.push_back(i);
+      if (!columnNameIndex.empty()) {
+        auto it = columnNameIndex.find(columnNameList[i]);
+        columnIndex2TsBlockColumnIndexList.push_back(
+            it != columnNameIndex.end() ? it->second : static_cast<int32_t>(i));
+      } else {
+        columnIndex2TsBlockColumnIndexList.push_back(static_cast<int32_t>(i));
+      }
     }
   }
 
@@ -111,9 +120,20 @@ IoTDBRpcDataSet::IoTDBRpcDataSet(
   // Populate data types and maps
   for (size_t i = 0; i < columnNameList.size(); i++) {
     auto columnName = columnNameList[i];
-    int32_t tsBlockColumnIndex = columnIndex2TsBlockColumnIndexList
-        [i + startIndexForColumnIndex2TsBlockColumnIndexList];
+    int32_t tsBlockColumnIndex;
+    if (!columnNameIndex.empty()) {
+      auto it = columnNameIndex.find(columnName);
+      tsBlockColumnIndex =
+          it != columnNameIndex.end() ? it->second : static_cast<int32_t>(i);
+    } else {
+      tsBlockColumnIndex = columnIndex2TsBlockColumnIndexList
+          [i + startIndexForColumnIndex2TsBlockColumnIndexList];
+    }
     if (tsBlockColumnIndex != -1) {
+      if (static_cast<size_t>(tsBlockColumnIndex) >=
+          dataTypeForTsBlockColumn_.size()) {
+        dataTypeForTsBlockColumn_.resize(tsBlockColumnIndex + 1);
+      }
       dataTypeForTsBlockColumn_[tsBlockColumnIndex] =
           getDataTypeByStr(columnTypeList[i]);
     }
@@ -127,6 +147,10 @@ IoTDBRpcDataSet::IoTDBRpcDataSet(
 
   timePrecision_ = getTimePrecision(timeFactor_);
   columnIndex2TsBlockColumnIndexList_ = columnIndex2TsBlockColumnIndexList;
+
+  if (serverIncludesTime) {
+    columnSize_--;
+  }
 }
 
 IoTDBRpcDataSet::~IoTDBRpcDataSet() {
@@ -346,13 +370,19 @@ IoTDBRpcDataSet::getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
   }
   if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
     lastReadWasNull_ = false;
-    TSDataType::TSDataType dataType =
-        curTsBlock_->getColumn(tsBlockColumnIndex)->getDataType();
-    if (dataType == TSDataType::INT64) {
-      return static_cast<int32_t>(
-          curTsBlock_->getColumn(tsBlockColumnIndex)->getLong(tsBlockIndex_));
+    const auto column = curTsBlock_->getColumn(tsBlockColumnIndex);
+    switch (column->getDataType()) {
+    case TSDataType::INT64:
+      return static_cast<int32_t>(column->getLong(tsBlockIndex_));
+    case TSDataType::DOUBLE:
+      return static_cast<int32_t>(column->getDouble(tsBlockIndex_));
+    case TSDataType::FLOAT:
+      return static_cast<int32_t>(column->getFloat(tsBlockIndex_));
+    case TSDataType::INT32:
+      return column->getInt(tsBlockIndex_);
+    default:
+      return column->getInt(tsBlockIndex_);
     }
-    return curTsBlock_->getColumn(tsBlockColumnIndex)->getInt(tsBlockIndex_);
   } else {
     lastReadWasNull_ = true;
     return Optional<int32_t>::none();
@@ -378,13 +408,19 @@ IoTDBRpcDataSet::getLongByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
   }
   if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
     lastReadWasNull_ = false;
-    TSDataType::TSDataType dataType =
-        curTsBlock_->getColumn(tsBlockColumnIndex)->getDataType();
-    if (dataType == TSDataType::INT32) {
-      return static_cast<int64_t>(
-          curTsBlock_->getColumn(tsBlockColumnIndex)->getInt(tsBlockIndex_));
+    const auto column = curTsBlock_->getColumn(tsBlockColumnIndex);
+    switch (column->getDataType()) {
+    case TSDataType::INT32:
+      return static_cast<int64_t>(column->getInt(tsBlockIndex_));
+    case TSDataType::FLOAT:
+      return static_cast<int64_t>(column->getFloat(tsBlockIndex_));
+    case TSDataType::DOUBLE:
+      return static_cast<int64_t>(column->getDouble(tsBlockIndex_));
+    case TSDataType::INT64:
+      return column->getLong(tsBlockIndex_);
+    default:
+      return column->getLong(tsBlockIndex_);
     }
-    return curTsBlock_->getColumn(tsBlockColumnIndex)->getLong(tsBlockIndex_);
   } else {
     lastReadWasNull_ = true;
     return Optional<int64_t>::none();
@@ -446,39 +482,41 @@ IoTDBRpcDataSet::getStringByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
 
 std::string IoTDBRpcDataSet::getStringByTsBlockColumnIndexAndDataType(
     int32_t index, TSDataType::TSDataType tsDataType) {
-  switch (tsDataType) {
+  const auto column = curTsBlock_->getColumn(index);
+  const TSDataType::TSDataType physicalType = column->getDataType();
+  switch (physicalType) {
   case TSDataType::BOOLEAN:
-    return std::to_string(
-        curTsBlock_->getColumn(index)->getBoolean(tsBlockIndex_));
+    return std::to_string(column->getBoolean(tsBlockIndex_));
   case TSDataType::INT32:
-    return std::to_string(curTsBlock_->getColumn(index)->getInt(tsBlockIndex_));
+    return std::to_string(column->getInt(tsBlockIndex_));
   case TSDataType::INT64:
-    return std::to_string(
-        curTsBlock_->getColumn(index)->getLong(tsBlockIndex_));
+    return std::to_string(column->getLong(tsBlockIndex_));
   case TSDataType::TIMESTAMP: {
-    int64_t value = curTsBlock_->getColumn(index)->getLong(tsBlockIndex_);
+    int64_t value = column->getLong(tsBlockIndex_);
     return formatDatetime(timeFormat_, timePrecision_, value, timeZoneId_);
   }
   case TSDataType::FLOAT:
-    return std::to_string(
-        curTsBlock_->getColumn(index)->getFloat(tsBlockIndex_));
+    return std::to_string(column->getFloat(tsBlockIndex_));
   case TSDataType::DOUBLE:
-    return std::to_string(
-        curTsBlock_->getColumn(index)->getDouble(tsBlockIndex_));
+    return std::to_string(column->getDouble(tsBlockIndex_));
   case TSDataType::TEXT:
   case TSDataType::STRING:
   case TSDataType::OBJECT:
-  case TSDataType::BLOB: {
-    auto binary = curTsBlock_->getColumn(index)->getBinary(tsBlockIndex_);
-    return binary->getStringValue();
-  }
+  case TSDataType::BLOB:
+    return column->getBinary(tsBlockIndex_)->getStringValue();
   case TSDataType::DATE: {
-    int32_t value = curTsBlock_->getColumn(index)->getInt(tsBlockIndex_);
-    auto date = parseIntToDate(value);
-    return date.toIsoExtendedString();
+    int32_t value = column->getInt(tsBlockIndex_);
+    return parseIntToDate(value).toIsoExtendedString();
   }
-  default:
+  default: {
+    if (tsDataType == TSDataType::DATE) {
+      auto date = getDateByTsBlockColumnIndex(index);
+      if (date.is_initialized()) {
+        return date.value().toIsoExtendedString();
+      }
+    }
     return "";
+  }
   }
 }
 
@@ -509,11 +547,51 @@ Optional<IoTDBDate> IoTDBRpcDataSet::getDate(const std::string &columnName) {
 
 Optional<IoTDBDate>
 IoTDBRpcDataSet::getDateByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
-  auto value = getIntByTsBlockColumnIndex(tsBlockColumnIndex);
-  if (!value.is_initialized()) {
+  checkRecord();
+  if (tsBlockColumnIndex < 0) {
+    throw IoTDBException("Cannot read date from time column");
+  }
+  if (isNull(tsBlockColumnIndex, tsBlockIndex_)) {
+    lastReadWasNull_ = true;
     return Optional<IoTDBDate>::none();
   }
-  return parseIntToDate(value.value());
+  lastReadWasNull_ = false;
+  const auto column = curTsBlock_->getColumn(tsBlockColumnIndex);
+  switch (column->getDataType()) {
+  case TSDataType::INT32:
+    return parseIntToDate(column->getInt(tsBlockIndex_));
+  case TSDataType::INT64:
+    return parseIntToDate(static_cast<int32_t>(column->getLong(tsBlockIndex_)));
+  case TSDataType::DOUBLE:
+    return parseIntToDate(
+        static_cast<int32_t>(column->getDouble(tsBlockIndex_)));
+  case TSDataType::FLOAT:
+    return parseIntToDate(
+        static_cast<int32_t>(column->getFloat(tsBlockIndex_)));
+  case TSDataType::TEXT:
+  case TSDataType::STRING:
+  case TSDataType::BLOB:
+  case TSDataType::OBJECT: {
+    const auto binary = column->getBinary(tsBlockIndex_);
+    const std::string &text = binary->getStringValue();
+    if (text.empty()) {
+      return IoTDBDate::notADate();
+    }
+    // Server may return DATE as packed int in text or ISO-8601 string.
+    try {
+      return parseIntToDate(static_cast<int32_t>(std::stol(text)));
+    } catch (const std::exception &) {
+      int year = 0, month = 0, day = 0;
+      if (std::sscanf(text.c_str(), "%d-%d-%d", &year, &month, &day) == 3) {
+        return IoTDBDate(year, month, day);
+      }
+      throw IoTDBException("Cannot parse DATE value: " + text);
+    }
+  }
+  default:
+    return parseIntToDate(
+        getIntByTsBlockColumnIndex(tsBlockColumnIndex).value());
+  }
 }
 
 TSDataType::TSDataType
@@ -526,6 +604,16 @@ TSDataType::TSDataType
 IoTDBRpcDataSet::getDataType(const std::string &columnName) {
   int32_t index = getTsBlockColumnIndexForColumnName(columnName);
   return getDataTypeByTsBlockColumnIndex(index);
+}
+
+TSDataType::TSDataType
+IoTDBRpcDataSet::getColumnPhysicalDataType(const std::string &columnName) {
+  int32_t index = getTsBlockColumnIndexForColumnName(columnName);
+  if (index < 0) {
+    return TSDataType::TIMESTAMP;
+  }
+  checkRecord();
+  return curTsBlock_->getColumn(index)->getDataType();
 }
 
 int32_t
@@ -587,7 +675,22 @@ void IoTDBRpcDataSet::checkRecord() {
 }
 
 int32_t IoTDBRpcDataSet::getValueColumnStartIndex() const {
-  return ignoreTimestamp_ ? 0 : 1;
+  return getValueColumnNameListIndex(0);
+}
+
+int32_t IoTDBRpcDataSet::getServerColumnCount() const { return columnSize_; }
+
+int32_t
+IoTDBRpcDataSet::getValueColumnNameListIndex(int32_t valueColumnOrdinal) const {
+  if (valueColumnOrdinal < 0 || valueColumnOrdinal >= columnSize_) {
+    throw std::out_of_range(
+        "value column ordinal " + std::to_string(valueColumnOrdinal) +
+        " out of range [0, " + std::to_string(columnSize_) + ")");
+  }
+  if (!columnNameList_.empty() && columnNameList_[0] == TimestampColumnName) {
+    return valueColumnOrdinal + 1;
+  }
+  return valueColumnOrdinal;
 }
 
 int32_t IoTDBRpcDataSet::getColumnSize() const {

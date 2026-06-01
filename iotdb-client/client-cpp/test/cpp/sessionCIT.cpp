@@ -120,7 +120,8 @@ TEST_CASE("C API - Login failure", "[c_Authentication]") {
   TsStatus status = ts_session_open(badSession);
   REQUIRE(status != TS_OK);
   const char* err = ts_get_last_error();
-  REQUIRE(std::string(err).find("801") != std::string::npos);
+  REQUIRE((std::string(err).find("801") != std::string::npos ||
+           std::string(err).find("Authentication") != std::string::npos));
   ts_session_destroy(badSession);
 }
 

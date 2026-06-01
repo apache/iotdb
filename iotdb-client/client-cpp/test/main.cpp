@@ -37,6 +37,7 @@ struct SessionListener : Catch::TestEventListenerBase {
                     ->username("root")
                     ->password("root")
                     ->useSSL(false)
+                    ->enableAutoFetch(false)
                     ->build();
     } else {
       session->open(false);

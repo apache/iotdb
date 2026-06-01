@@ -229,9 +229,13 @@ CSession *ts_session_new(const char *host, int rpcPort, const char *username,
                          const char *password) {
   clearError();
   try {
-    auto cpp =
-        std::make_shared<Session>(std::string(host), rpcPort,
-                                  std::string(username), std::string(password));
+    SessionBuilder builder;
+    builder.host(host)
+        ->rpcPort(rpcPort)
+        ->username(username)
+        ->password(password)
+        ->enableAutoFetch(false);
+    auto cpp = std::make_shared<Session>(&builder);
     auto *cs = new CSession_();
     cs->cpp = std::move(cpp);
     return cs;
@@ -246,9 +250,15 @@ CSession *ts_session_new_with_zone(const char *host, int rpcPort,
                                    const char *zoneId, int fetchSize) {
   clearError();
   try {
-    auto cpp = std::make_shared<Session>(
-        std::string(host), rpcPort, std::string(username),
-        std::string(password), std::string(zoneId), fetchSize);
+    SessionBuilder builder;
+    builder.host(host)
+        ->rpcPort(rpcPort)
+        ->username(username)
+        ->password(password)
+        ->zoneId(zoneId)
+        ->fetchSize(fetchSize)
+        ->enableAutoFetch(false);
+    auto cpp = std::make_shared<Session>(&builder);
     auto *cs = new CSession_();
     cs->cpp = std::move(cpp);
     return cs;
@@ -264,8 +274,12 @@ CSession *ts_session_new_multi_node(const char *const *nodeUrls, int urlCount,
   clearError();
   try {
     auto urls = toStringVec(nodeUrls, urlCount);
-    auto cpp = std::make_shared<Session>(urls, std::string(username),
-                                         std::string(password));
+    SessionBuilder builder;
+    builder.nodeUrls(urls)
+        ->username(username)
+        ->password(password)
+        ->enableAutoFetch(false);
+    auto cpp = std::make_shared<Session>(&builder);
     auto *cs = new CSession_();
     cs->cpp = std::move(cpp);
     return cs;
@@ -1321,7 +1335,13 @@ int64_t ts_row_record_get_int64(CRowRecord *record, int index) {
   if (index < 0 || index >= (int)record->cpp->fields.size())
     return 0;
   const Field &f = record->cpp->fields[index];
-  return f.longV.is_initialized() ? f.longV.value() : 0;
+  if (f.longV.is_initialized())
+    return f.longV.value();
+  if (f.intV.is_initialized())
+    return f.intV.value();
+  if (f.doubleV.is_initialized())
+    return static_cast<int64_t>(f.doubleV.value());
+  return 0;
 }
 
 float ts_row_record_get_float(CRowRecord *record, int index) {
