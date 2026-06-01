@@ -197,8 +197,7 @@ public:
 
   // Generic helper: borrow a Session, run func(Session&), return/evict it, and
   // forward the result. Evicts the Session on IoTDBConnectionException.
-  template <typename Func>
-  auto execute(Func&& func) -> decltype(func(std::declval<Session&>()));
+  template <typename Func> auto execute(Func&& func) -> decltype(func(std::declval<Session&>()));
 
   // ---- convenience wrappers for common operations (with eviction on failure) ----
   void insertTablet(Tablet& tablet, bool sorted = false);
@@ -207,8 +206,7 @@ public:
   void insertRecord(const std::string& deviceId, int64_t time,
                     const std::vector<std::string>& measurements,
                     const std::vector<std::string>& values);
-  void insertRecords(const std::vector<std::string>& deviceIds,
-                     const std::vector<int64_t>& times,
+  void insertRecords(const std::vector<std::string>& deviceIds, const std::vector<int64_t>& times,
                      const std::vector<std::vector<std::string>>& measurementsList,
                      const std::vector<std::vector<std::string>>& valuesList);
   void executeNonQueryStatement(const std::string& sql);

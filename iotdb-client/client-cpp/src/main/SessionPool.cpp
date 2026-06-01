@@ -170,9 +170,9 @@ std::shared_ptr<Session> SessionPool::acquire(int64_t timeoutMs) {
     } else {
       if (cv_.wait_until(lock, deadline) == std::cv_status::timeout && idleQueue_.empty() &&
           size_ >= maxSize_ && !closed_) {
-        throw IoTDBException("Wait to get session timeout in SessionPool, maxSize=" +
-                             std::to_string(maxSize_) + ", waitTimeoutMs=" +
-                             std::to_string(effectiveTimeout) + ".");
+        throw IoTDBException(
+            "Wait to get session timeout in SessionPool, maxSize=" + std::to_string(maxSize_) +
+            ", waitTimeoutMs=" + std::to_string(effectiveTimeout) + ".");
       }
     }
   }
