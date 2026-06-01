@@ -20,7 +20,7 @@
 <!--
   The CMake build installs everything (headers + libs) into
   ${cmake.install.prefix} = target/install. Package layout:
-  client-cpp-<version>-<classifier>/{include,lib}
+  client-cpp-<version>-<classifier>.zip -> {include,lib} at zip root.
 -->
 <assembly>
     <id>${client.cpp.package.classifier}</id>
@@ -28,8 +28,7 @@
         <format>zip</format>
         <format>dir</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
-    <baseDirectory>${project.artifactId}-${project.version}-${client.cpp.package.classifier}</baseDirectory>
+    <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}/install/include</directory>

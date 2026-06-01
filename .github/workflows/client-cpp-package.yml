@@ -199,11 +199,19 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-linux-aarch64-glibc217:
@@ -249,11 +257,19 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-linux-glibc224:
@@ -299,11 +315,19 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-linux-aarch64-glibc224:
@@ -349,11 +373,19 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-macos:
@@ -414,11 +446,19 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
   package-windows:
@@ -517,9 +557,17 @@ jobs:
           fi
           echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
+          sha512="${zips[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
-          path: ${{ steps.pkg.outputs.path }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error

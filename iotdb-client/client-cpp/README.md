@@ -66,7 +66,7 @@ During configure CMake will, in order:
 
 The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
 land at `iotdb-client/client-cpp/target/client-cpp-<version>-<classifier>.zip`
-(with `include/` and `lib/` under `client-cpp-<version>-<classifier>/` inside the zip),
+(with `include/` and `lib/` at the zip root; a `.sha512` checksum is generated alongside),
 where `<classifier>` defaults to the OS name (for example `linux-x86_64`) and
 can be overridden with `-Dclient.cpp.package.classifier=...` when building
 multiple toolchains on the same platform.
@@ -325,15 +325,14 @@ A successful `mvn ... package` produces
 `target/client-cpp-<version>-<classifier>.zip` with this layout:
 
 ```
-client-cpp-<version>-<classifier>/
-├── include/
-│   ├── Session.h
-│   ├── SessionC.h
-│   └── ...  (public API headers only; no Thrift/Boost)
-└── lib/
-    ├── libiotdb_session.{so,dylib}     (Linux / macOS)
-    ├── iotdb_session.dll               (Windows – runtime)
-    └── iotdb_session.lib               (Windows – import library for linking)
+include/
+├── Session.h
+├── SessionC.h
+└── ...  (public API headers only; no Thrift/Boost)
+lib/
+├── libiotdb_session.{so,dylib}     (Linux / macOS)
+├── iotdb_session.dll               (Windows – runtime)
+└── iotdb_session.lib               (Windows – import library for linking)
 ```
 
 Thrift is embedded inside `iotdb_session` on all platforms; it is not shipped
