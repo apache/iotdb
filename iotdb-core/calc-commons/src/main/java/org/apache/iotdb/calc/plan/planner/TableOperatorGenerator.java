@@ -34,6 +34,8 @@ import org.apache.iotdb.calc.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableNextFillOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableNextFillWithGroupOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableTopKOperator;
@@ -134,6 +136,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearF
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -215,6 +218,7 @@ import static org.apache.iotdb.calc.execution.operator.source.relational.aggrega
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.IDENTITY_FILL;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getLinearFill;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getNextFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getPreviousFill;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
@@ -601,6 +605,46 @@ public abstract class TableOperatorGenerator<
           addOperatorContext(
               context, node.getPlanNodeId(), TableLinearFillOperator.class.getSimpleName());
       return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
+    }
+  }
+
+  @Override
+  public Operator visitNextFill(NextFillNode node, C context) {
+    Operator child = node.getChild().accept(this, context);
+
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = -1;
+    if (node.getHelperColumn().isPresent()) {
+      helperColumnIndex = getColumnIndex(node.getHelperColumn().get(), node.getChild());
+    }
+    ILinearFill[] fillArray =
+        getNextFill(
+            inputColumnCount,
+            inputDataTypes,
+            node.getTimeBound().orElse(null),
+            context.getZoneId());
+
+    if (node.getGroupingKeys().isPresent()) {
+      CommonOperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), TableNextFillWithGroupOperator.class.getSimpleName());
+      return new TableNextFillWithGroupOperator(
+          operatorContext,
+          fillArray,
+          child,
+          helperColumnIndex,
+          node.getTimeBound().isPresent(),
+          genFillGroupKeyComparator(
+              node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
+          inputDataTypes);
+    } else {
+      CommonOperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), TableNextFillOperator.class.getSimpleName());
+      return new TableNextFillOperator(
+          operatorContext, fillArray, child, helperColumnIndex, node.getTimeBound().isPresent());
     }
   }
 
