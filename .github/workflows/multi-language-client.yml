@@ -55,14 +55,32 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
+          set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install libboost-all-dev
+          sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
+          # Pin clang-format 17 to match pom.xml clang.format.version (ubuntu-latest ships 18.x)
+          . /etc/os-release
+          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
+            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            chmod +x /tmp/llvm.sh
+            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
+            sudo apt-get install -y clang-format-17
+          else
+            sudo apt-get install -y clang-format-17
+          fi
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
+          clang-format --version
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
-          brew install boost
+          brew install boost openssl llvm@17 bison
+          ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          clang-format --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -71,10 +89,16 @@ jobs:
       - name: Install CPP Dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install winflexbison3
-          choco install boost-msvc-14.3
+          choco install winflexbison3 -y
+          choco install boost-msvc-14.3 -y
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
+          choco install openssl -y
+          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          echo "$sslPath\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
+          choco install llvm --version=17.0.6 --force -y
+          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
