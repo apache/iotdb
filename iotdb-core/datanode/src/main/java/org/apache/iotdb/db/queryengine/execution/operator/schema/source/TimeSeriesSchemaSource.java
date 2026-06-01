@@ -56,7 +56,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
-  private final boolean excludeInternalDatabase;
+  private final boolean includeSystemDatabase;
+  private final boolean includeAuditDatabase;
   private final Ordering timeseriesOrdering;
 
   TimeSeriesSchemaSource(
@@ -67,7 +68,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
       boolean needViewDetail,
-      boolean excludeInternalDatabase,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase,
       PathPatternTree scope,
       Ordering timeseriesOrdering) {
     this.pathPattern = pathPattern;
@@ -77,7 +79,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
-    this.excludeInternalDatabase = excludeInternalDatabase;
+    this.includeSystemDatabase = includeSystemDatabase;
+    this.includeAuditDatabase = includeAuditDatabase;
     this.scope = scope;
     this.timeseriesOrdering = timeseriesOrdering;
   }
@@ -147,21 +150,15 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean shouldSkipSchemaRegion(final ISchemaRegion schemaRegion) {
-    if (!excludeInternalDatabase) {
-      return false;
-    }
-
     final String database = schemaRegion.getDatabaseFullPath();
-    if (!SchemaConstant.SYSTEM_DATABASE.equals(database)
-        && !SchemaConstant.AUDIT_DATABASE.equals(database)
-        && !Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
-      return false;
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)) {
+      return !includeSystemDatabase;
     }
-
-    final String[] nodes = pathPattern.getNodes();
-    return nodes.length < 2
-        || !SchemaConstant.ROOT.equals(nodes[0])
-        || !database.endsWith("." + nodes[1]);
+    if (SchemaConstant.AUDIT_DATABASE.equals(database)
+        || Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+      return !includeAuditDatabase;
+    }
+    return false;
   }
 
   public static String mapToString(Map<String, String> map) {
