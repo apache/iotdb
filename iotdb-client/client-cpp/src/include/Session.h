@@ -311,9 +311,9 @@ public:
       break;
     }
     default:
-      throw UnSupportedDataTypeException(
-          std::string("Data type ") + std::to_string(dataType) +
-              " is not supported.");
+      throw UnSupportedDataTypeException(std::string("Data type ") +
+                                         std::to_string(dataType) +
+                                         " is not supported.");
     }
   }
 
@@ -380,7 +380,8 @@ public:
   }
 
   template <typename T>
-  void addValue(const std::string &schemaName, size_t rowIndex, const T &value) {
+  void addValue(const std::string &schemaName, size_t rowIndex,
+                const T &value) {
     if (schemaNameIndex.find(schemaName) == schemaNameIndex.end()) {
       throw SchemaNotFoundException(std::string("Schema ") + schemaName +
                                     " not found.");
