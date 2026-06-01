@@ -31,13 +31,20 @@ void PooledSession::reset() {
 SessionPool::SessionPool(std::string host, int rpcPort, std::string username, std::string password,
                          size_t maxSize)
     : host_(std::move(host)), rpcPort_(rpcPort), username_(std::move(username)),
-      password_(std::move(password)), maxSize_(maxSize == 0 ? 1 : maxSize) {}
+      password_(std::move(password)), maxSize_(maxSize) {
+  if (maxSize_ == 0) {
+    throw IoTDBException("SessionPool maxSize must be greater than 0.");
+  }
+}
 
 SessionPool::SessionPool(std::vector<std::string> nodeUrls, std::string username,
                          std::string password, size_t maxSize)
     : rpcPort_(AbstractSessionBuilder::DEFAULT_RPC_PORT), nodeUrls_(std::move(nodeUrls)),
-      username_(std::move(username)), password_(std::move(password)),
-      maxSize_(maxSize == 0 ? 1 : maxSize) {}
+      username_(std::move(username)), password_(std::move(password)), maxSize_(maxSize) {
+  if (maxSize_ == 0) {
+    throw IoTDBException("SessionPool maxSize must be greater than 0.");
+  }
+}
 
 SessionPool::~SessionPool() {
   try {
