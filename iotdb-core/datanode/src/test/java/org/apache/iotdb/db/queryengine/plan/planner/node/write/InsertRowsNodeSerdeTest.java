@@ -129,6 +129,7 @@ public class InsertRowsNodeSerdeTest {
             new Object[] {2.0, false},
             false),
         1);
+    insertRowsNode.setLastFragment(true);
 
     int serializedSize = insertRowsNode.serializedSize();
 
@@ -145,6 +146,70 @@ public class InsertRowsNodeSerdeTest {
     InsertRowsNode tmpNode = InsertRowsNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
     Assert.assertEquals(insertRowsNode, tmpNode);
+    Assert.assertTrue(tmpNode.isLastFragment());
+  }
+
+  @Test
+  public void testDeserializeLegacyWAL() throws IllegalPathException, IOException {
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 1"));
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new TSDataType[] {
+              TSDataType.DOUBLE,
+              TSDataType.FLOAT,
+              TSDataType.INT64,
+              TSDataType.TEXT,
+              TSDataType.STRING
+            },
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s2", TSDataType.FLOAT),
+              new MeasurementSchema("s3", TSDataType.INT64),
+              new MeasurementSchema("s4", TSDataType.TEXT),
+              new MeasurementSchema("s5", TSDataType.STRING)
+            },
+            1000L,
+            new Object[] {1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null},
+            false),
+        0);
+
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("root.sg.d2"),
+            false,
+            new String[] {"s1", "s4"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s4", TSDataType.BOOLEAN),
+            },
+            2000L,
+            new Object[] {2.0, false},
+            false),
+        1);
+    insertRowsNode.setSearchIndex(123L);
+
+    byte[] bytes = new byte[insertRowsNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowsNode.serializeToWAL(walBuffer);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    Assert.assertEquals(PlanNodeType.INSERT_ROWS.getNodeType(), byteBuffer.getShort());
+    Assert.assertEquals(123L, byteBuffer.getLong());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    dataInputStream.readShort();
+
+    InsertRowsNode tmpNode = InsertRowsNode.deserializeFromWAL(dataInputStream);
+    tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
+    Assert.assertEquals(insertRowsNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertFalse(tmpNode.isLastFragment());
   }
 
   @Test
@@ -262,6 +327,7 @@ public class InsertRowsNodeSerdeTest {
                 TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE
               }),
           1);
+      insertRowsNode.setLastFragment(true);
 
       int serializedSize = insertRowsNode.serializedSize();
 
@@ -280,6 +346,81 @@ public class InsertRowsNodeSerdeTest {
           RelationalInsertRowsNode.deserializeFromWAL(dataInputStream);
       tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
       Assert.assertEquals(insertRowsNode, tmpNode);
+      Assert.assertTrue(tmpNode.isLastFragment());
     }
+  }
+
+  @Test
+  public void testDeserializeLegacyWALRelational() throws IOException {
+    RelationalInsertRowsNode insertRowsNode =
+        new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
+    insertRowsNode.addOneInsertRowNode(
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new TSDataType[] {
+              TSDataType.DOUBLE,
+              TSDataType.FLOAT,
+              TSDataType.INT64,
+              TSDataType.TEXT,
+              TSDataType.STRING
+            },
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s2", TSDataType.FLOAT),
+              new MeasurementSchema("s3", TSDataType.INT64),
+              new MeasurementSchema("s4", TSDataType.TEXT),
+              new MeasurementSchema("s5", TSDataType.STRING)
+            },
+            1000L,
+            new Object[] {1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG,
+              TsTableColumnCategory.ATTRIBUTE,
+              TsTableColumnCategory.FIELD,
+              TsTableColumnCategory.FIELD,
+              TsTableColumnCategory.FIELD
+            }),
+        0);
+
+    insertRowsNode.addOneInsertRowNode(
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"s1", "s4"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s4", TSDataType.BOOLEAN),
+            },
+            2000L,
+            new Object[] {2.0, false},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE
+            }),
+        1);
+    insertRowsNode.setSearchIndex(123L);
+
+    byte[] bytes = new byte[insertRowsNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowsNode.serializeToWAL(walBuffer);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_ROWS.getNodeType(), byteBuffer.getShort());
+    Assert.assertEquals(123L, byteBuffer.getLong());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    dataInputStream.readShort();
+
+    RelationalInsertRowsNode tmpNode = RelationalInsertRowsNode.deserializeFromWAL(dataInputStream);
+    tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
+    Assert.assertEquals(insertRowsNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertFalse(tmpNode.isLastFragment());
   }
 }
