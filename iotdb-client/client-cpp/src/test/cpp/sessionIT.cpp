@@ -915,7 +915,11 @@ TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]
 
   {
     PooledSession s = pool->getSession();
-    s->executeNonQueryStatement("delete timeseries root.test.pool.d1.*");
+    try {
+      s->executeNonQueryStatement("delete timeseries root.test.pool.d1.*");
+    } catch (const std::exception&) {
+      // Ignore: the timeseries may not exist yet on a fresh database.
+    }
   }
 
   const int rows = 50;
@@ -953,7 +957,11 @@ TEST_CASE("SessionPool is safe under concurrent writers", "[sessionPool]") {
 
   {
     PooledSession s = pool->getSession();
-    s->executeNonQueryStatement("delete timeseries root.test.pool.d2.*");
+    try {
+      s->executeNonQueryStatement("delete timeseries root.test.pool.d2.*");
+    } catch (const std::exception&) {
+      // Ignore: the timeseries may not exist yet on a fresh database.
+    }
   }
 
   const int threadCount = 8;
