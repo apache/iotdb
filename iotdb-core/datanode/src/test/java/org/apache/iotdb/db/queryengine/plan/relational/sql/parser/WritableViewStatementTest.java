@@ -27,6 +27,8 @@ import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableView;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 
@@ -123,6 +125,32 @@ public class WritableViewStatementTest {
                 clientSession);
     assertTrue(alterViewStatement.isView());
     assertTrue(alterViewStatement.getWritableViewColumn().isPresent());
+  }
+
+  @Test
+  public void testAlterTableRenameStatementsParseBeforeTypeCheck() {
+    clientSession.setDatabaseName("test");
+
+    final RenameTable renameTable =
+        (RenameTable)
+            parser.createStatement(
+                "alter table target_view rename to target_view_renamed",
+                ZonedDateTime.now().getOffset(),
+                clientSession);
+    assertFalse(renameTable.isView());
+    assertEquals("target_view", renameTable.getSource().getSuffix());
+    assertEquals("target_view_renamed", renameTable.getTarget().getValue());
+
+    final RenameColumn renameColumn =
+        (RenameColumn)
+            parser.createStatement(
+                "alter table target_view rename column old_col to new_col",
+                ZonedDateTime.now().getOffset(),
+                clientSession);
+    assertFalse(renameColumn.isView());
+    assertEquals("target_view", renameColumn.getTable().getSuffix());
+    assertEquals("old_col", renameColumn.getSource().getValue());
+    assertEquals("new_col", renameColumn.getTarget().getValue());
   }
 
   @Test

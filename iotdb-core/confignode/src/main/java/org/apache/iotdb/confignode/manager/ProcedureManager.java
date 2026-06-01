@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -109,7 +110,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProced
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
@@ -2155,15 +2155,8 @@ public class ProcedureManager {
               ReadWriteIOUtils.readString(req.updateInfo),
               false);
     } else {
-      procedureType = ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE;
-      procedure =
-          new RenameTableColumnProcedure(
-              req.database,
-              req.tableName,
-              req.queryId,
-              ReadWriteIOUtils.readString(req.updateInfo),
-              ReadWriteIOUtils.readString(req.updateInfo),
-              false);
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ProcedureMessages.THE_RENAMING_FOR_BASE_TABLE_COLUMN_IS_CURRENTLY);
     }
 
     return executeWithoutDuplicate(
@@ -2297,9 +2290,8 @@ public class ProcedureManager {
       procedureType = ProcedureType.RENAME_VIEW_PROCEDURE;
       procedure = new RenameViewProcedure(req.database, req.tableName, req.queryId, newName, false);
     } else {
-      procedureType = ProcedureType.RENAME_TABLE_PROCEDURE;
-      procedure =
-          new RenameTableProcedure(req.database, req.tableName, req.queryId, newName, false);
+      return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
+          .setMessage(ProcedureMessages.THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED);
     }
 
     // No need to check originalTable name because cascading renaming is not supported

@@ -1021,6 +1021,57 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testTreeViewRejectsWritableViewAddColumnSyntax() throws Exception {
+    final String database = "tree_view_reject_writable_add_column_syntax_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create view tree_view(device_id string tag, temperature int32 field) "
+                + "as root."
+                + database
+                + ".**");
+
+        try {
+          statement.execute("alter view tree_view add column humidity");
+          fail("tree view should reject writable view single-column source syntax");
+        } catch (final SQLException e) {
+          assertTrue(e.getMessage(), e.getMessage().contains("writable view source-column syntax"));
+        }
+
+        try {
+          statement.execute("alter view tree_view add column temperature as temp");
+          fail("tree view should reject writable view source AS view syntax");
+        } catch (final SQLException e) {
+          assertTrue(e.getMessage(), e.getMessage().contains("writable view source-column syntax"));
+        }
+
+        statement.execute("alter view tree_view add column humidity double field");
+
+        statement.execute(
+            "create table source_table(device_id string tag, temperature int32 field)");
+        statement.execute(
+            "create writable view writable_view as select device_id as dev from source_table");
+        statement.execute("alter view writable_view add column temperature as temp");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("describe writable_view details"),
+            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+            new HashSet<>(
+                Arrays.asList(
+                    "time,TIMESTAMP,TIME,USING,null,time,",
+                    "dev,STRING,TAG,USING,null,device_id,",
+                    "temp,INT32,FIELD,USING,null,temperature,")));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testRenameSourceTableReferencedByWritableViewFails() throws Exception {
     final String database = "writable_view_rename_source_db";
     try (final Connection connection =
@@ -1056,6 +1107,49 @@ public class IoTDBWritableViewIT {
             statement.executeQuery("show tables"),
             "TableName,TTL(ms),",
             new HashSet<>(Arrays.asList("source_table,INF,", "writable_view,INF,")));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
+  public void testAlterTableRenameWritableView() throws Exception {
+    final String database = "writable_view_alter_table_rename_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table source_table(device_id string tag, temperature int32 field)");
+        statement.execute(
+            "create writable view writable_view as select device_id as dev, "
+                + "temperature as temp from source_table with (schema_cascade=false)");
+
+        statement.execute("alter table writable_view rename column temp to temp_alias");
+        statement.execute("alter table writable_view rename to writable_view_renamed");
+        statement.execute(
+            "insert into writable_view_renamed(time, dev, temp_alias) values (1, 'd1', 10)");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("describe writable_view_renamed details"),
+            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+            new HashSet<>(
+                Arrays.asList(
+                    "time,TIMESTAMP,TIME,USING,null,time,",
+                    "dev,STRING,TAG,USING,null,device_id,",
+                    "temp_alias,INT32,FIELD,USING,null,temperature,")));
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("show tables"),
+            "TableName,TTL(ms),",
+            new HashSet<>(Arrays.asList("source_table,INF,", "writable_view_renamed,INF,")));
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery(
+                "select time, device_id, temperature from source_table order by time"),
+            "time,device_id,temperature,",
+            Collections.singleton("1970-01-01T00:00:00.001Z,d1,10,"));
       } finally {
         dropDatabaseQuietly(statement, database);
       }

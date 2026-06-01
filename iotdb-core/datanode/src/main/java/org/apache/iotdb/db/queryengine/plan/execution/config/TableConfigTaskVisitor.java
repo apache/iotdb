@@ -930,6 +930,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     if (Objects.nonNull(definition.getComment())) {
       schema.getProps().put(TsTable.COMMENT_KEY, definition.getComment());
     }
+    schema.getProps().put(WritableView.ADD_COLUMN_SOURCE_SYNTAX, Boolean.TRUE.toString());
     return schema;
   }
 

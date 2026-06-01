@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table.view;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -101,5 +103,23 @@ public class AddViewColumnProcedureTest {
 
     Assert.assertTrue(addViewColumnProcedure.isFailed());
     Assert.assertTrue(addViewColumnProcedure.getException().getMessage().contains("ATTRIBUTE"));
+  }
+
+  @Test
+  public void rejectWritableViewSourceSyntaxTest() {
+    final FieldColumnSchema columnSchema = new FieldColumnSchema("view_col", TSDataType.UNKNOWN);
+    columnSchema.getProps().put(WritableView.ADD_COLUMN_SOURCE_SYNTAX, Boolean.TRUE.toString());
+    final AddViewColumnProcedure addViewColumnProcedure =
+        new AddViewColumnProcedure(
+            "database1", "tree_view", "0", Collections.singletonList(columnSchema), false);
+
+    addViewColumnProcedure.columnCheck(mock(ConfigNodeProcedureEnv.class));
+
+    Assert.assertTrue(addViewColumnProcedure.isFailed());
+    Assert.assertTrue(
+        addViewColumnProcedure
+            .getException()
+            .getMessage()
+            .contains("writable view source-column syntax"));
   }
 }

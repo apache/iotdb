@@ -36,6 +36,9 @@ import java.util.Objects;
 
 public class WritableView extends TsTable {
   public static final String SCHEMA_CASCADE = "schema_cascade";
+  // Transient marker used only by ALTER VIEW/TABLE ADD COLUMN requests to keep writable-view
+  // source-column syntax separate from tree-view column syntax.
+  public static final String ADD_COLUMN_SOURCE_SYNTAX = "__writable_view_add_column_source_syntax";
 
   static final int WRITABLE_VIEW = -2;
 

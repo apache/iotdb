@@ -258,6 +258,10 @@ public class AddWritableViewColumnProcedure extends AddTableColumnProcedure {
     return Objects.nonNull(schema.getProps().remove(TreeViewSchema.EXPLICIT_FROM));
   }
 
+  private static void removeWritableViewSourceSyntaxMarker(final TsTableColumnSchema schema) {
+    schema.getProps().remove(WritableView.ADD_COLUMN_SOURCE_SYNTAX);
+  }
+
   private void setTreeViewFromSyntaxFailure() {
     setFailure(
         new ProcedureException(
@@ -341,6 +345,7 @@ public class AddWritableViewColumnProcedure extends AddTableColumnProcedure {
         sourceColumn.copy().setColumnName(requestedViewColumn.getColumnName());
     setViewColumnSourceName(viewColumn, sourceColumnName);
     applyExplicitComment(requestedViewColumn, viewColumn);
+    removeWritableViewSourceSyntaxMarker(viewColumn);
     return viewColumn;
   }
 
@@ -348,6 +353,7 @@ public class AddWritableViewColumnProcedure extends AddTableColumnProcedure {
       final TsTableColumnSchema viewColumn, final String sourceColumnName) {
     final TsTableColumnSchema schema = viewColumn.copy();
     setViewColumnSourceName(schema, sourceColumnName);
+    removeWritableViewSourceSyntaxMarker(schema);
     return schema;
   }
 
@@ -357,6 +363,7 @@ public class AddWritableViewColumnProcedure extends AddTableColumnProcedure {
     // The source table stores its own column name; the temporary view-side source marker must not
     // be written into the source table schema.
     sourceColumn.getProps().remove(ViewColumnSchemaUtils.SOURCE_NAME);
+    removeWritableViewSourceSyntaxMarker(sourceColumn);
     return sourceColumn;
   }
 

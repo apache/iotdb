@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
@@ -27,7 +26,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -59,10 +57,6 @@ public class RenameTable extends Statement {
     this.target = requireNonNull(target, "target name is null");
     this.tableIfExists = tableIfExists;
     this.view = view;
-    if (!view) {
-      throw new SemanticException(
-          DataNodeQueryMessages.THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED);
-    }
   }
 
   public QualifiedName getSource() {

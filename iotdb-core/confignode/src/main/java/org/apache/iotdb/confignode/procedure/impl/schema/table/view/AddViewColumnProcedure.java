@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.ViewColumnSchemaUtils;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -66,6 +67,16 @@ public class AddViewColumnProcedure extends AddTableColumnProcedure {
 
   @Override
   protected void columnCheck(final ConfigNodeProcedureEnv env) {
+    for (final TsTableColumnSchema schema : addedColumnList) {
+      if (schema.getProps().containsKey(WritableView.ADD_COLUMN_SOURCE_SYNTAX)) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    "Tree view ADD COLUMN does not support writable view source-column syntax.",
+                    TSStatusCode.SEMANTIC_ERROR.getStatusCode())));
+        return;
+      }
+    }
     addedColumnList.forEach(schema -> schema.getProps().remove(TreeViewSchema.EXPLICIT_FROM));
     super.columnCheck(env);
     // Check failure

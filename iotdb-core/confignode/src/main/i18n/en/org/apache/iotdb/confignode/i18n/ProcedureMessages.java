@@ -936,6 +936,10 @@ public final class ProcedureMessages {
       "Target Device Template is not activated on any path matched by given path pattern";
   public static final String TASK_CANNOT_GET_TASK_REPORT_FROM_DATANODE_LAST_REPORT_TIME =
       "{} task {} cannot get task report from DataNode {}, last report time is {} ago";
+  public static final String THE_RENAMING_FOR_BASE_TABLE_COLUMN_IS_CURRENTLY =
+      "The renaming for base table column is currently unsupported";
+  public static final String THE_RENAMING_FOR_BASE_TABLE_IS_CURRENTLY_UNSUPPORTED =
+      "The renaming for base table is currently unsupported";
   public static final String THE_UPDATED_TABLE_HAS_THE_SAME_PROPERTIES_WITH_THE_ORIGINAL =
       "The updated table has the same properties with the original one. Skip the procedure.";
   public static final String TOPICMETASYNCPROCEDURE_ACQUIRELOCK_SKIP_THE_PROCEDURE_DUE_TO_THE_LAST_EXECUTION =
