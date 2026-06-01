@@ -197,7 +197,7 @@ public class IoTDBLoadTsFileWithModIT {
           IllegalPathException {
     try {
       generateFileWithModFile();
-      final String databaseName = "root.test";
+      final String databaseName = "root.test.d1";
 
       try (final Connection connection = EnvFactory.getEnv().getConnection();
           final Statement statement = connection.createStatement()) {
@@ -238,7 +238,7 @@ public class IoTDBLoadTsFileWithModIT {
           }
         }
         Assert.assertTrue(
-            "The `database-level` parameter is not working; the generated database does not contain 'root.test'.",
+            "The `database-level` parameter is not working; the generated database does not contain 'root.test.d1'.",
             databaseFound);
       }
     } finally {
