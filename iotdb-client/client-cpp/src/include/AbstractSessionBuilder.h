@@ -21,6 +21,7 @@
 #define IOTDB_ABSTRACTSESSIONBUILDER_H
 
 #include <string>
+#include <vector>
 
 #include "SessionConfig.h"
 
