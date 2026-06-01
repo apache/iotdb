@@ -20,6 +20,7 @@
 #include "catch.hpp"
 #include "Column.h"
 #include "Date.h"
+#include "RpcCommon.h"
 #include "Session.h"
 #include "SessionBuilder.h"
 #include "TsBlock.h"
