@@ -84,4 +84,9 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
   }
+
+  @Override
+  protected boolean shouldUseLeafDeviceMeasurementOptimization() {
+    return true;
+  }
 }

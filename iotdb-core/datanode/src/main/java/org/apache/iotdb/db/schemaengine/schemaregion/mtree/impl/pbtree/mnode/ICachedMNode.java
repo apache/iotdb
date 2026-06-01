@@ -22,8 +22,27 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
 
 public interface ICachedMNode extends IMNode<ICachedMNode> {
+  CachedBasicMNode getBasicMNode();
+
+  default boolean hasDeviceDescendant() {
+    return getBasicMNode().hasDeviceDescendant();
+  }
+
+  default void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
+    getBasicMNode().setHasDeviceDescendant(hasDeviceDescendant);
+  }
+
+  default boolean isDeviceDescendantComputed() {
+    return getBasicMNode().isDeviceDescendantComputed();
+  }
+
+  default void setDeviceDescendantComputed(final boolean deviceDescendantComputed) {
+    getBasicMNode().setDeviceDescendantComputed(deviceDescendantComputed);
+  }
+
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);
