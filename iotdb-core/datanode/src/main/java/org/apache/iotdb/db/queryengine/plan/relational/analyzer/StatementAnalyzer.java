@@ -184,6 +184,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
@@ -446,6 +448,11 @@ public class StatementAnalyzer {
     public Scope visitShowDB(ShowDB node, Optional<Scope> context) {
       throw new SemanticException(
           DataNodeQueryMessages.SHOW_DATABASE_STATEMENT_IS_NOT_SUPPORTED_YET);
+    }
+
+    @Override
+    public Scope visitShowCreateDatabase(ShowCreateDatabase node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
     }
 
     @Override
@@ -4814,6 +4821,11 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitShowPipes(ShowPipes node, Optional<Scope> context) {
+      return createAndAssignScope(node, context);
+    }
+
+    @Override
+    public Scope visitShowCreatePipe(ShowCreatePipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 

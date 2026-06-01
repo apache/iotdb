@@ -29,20 +29,30 @@ import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class CountDB extends Statement {
+public class ShowCreateDatabase extends Statement {
 
-  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(CountDB.class);
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowCreateDatabase.class);
 
-  public CountDB(final NodeLocation location) {
+  private final String database;
+
+  public ShowCreateDatabase(final NodeLocation location, final String database) {
     super(requireNonNull(location, "location is null"));
+    this.database = requireNonNull(database, "database is null").toLowerCase(Locale.ENGLISH);
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
   public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
-    return ((AstVisitor<R, C>) visitor).visitCountDB(this, context);
+    return ((AstVisitor<R, C>) visitor).visitShowCreateDatabase(this, context);
   }
 
   @Override
@@ -52,7 +62,7 @@ public class CountDB extends Statement {
 
   @Override
   public int hashCode() {
-    return getClass().hashCode();
+    return Objects.hash(database);
   }
 
   @Override
@@ -60,18 +70,23 @@ public class CountDB extends Statement {
     if (this == obj) {
       return true;
     }
-    return (obj != null) && (getClass() == obj.getClass());
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final ShowCreateDatabase that = (ShowCreateDatabase) obj;
+    return Objects.equals(database, that.database);
   }
 
   @Override
   public String toString() {
-    return "COUNT DATABASES";
+    return "SHOW CREATE DATABASE " + database;
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(database);
     return size;
   }
 }

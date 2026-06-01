@@ -263,6 +263,14 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showCreateTableColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowCreatePipeColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreatePipeColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowCreateDatabaseColumnHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showCreateDatabaseColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowTablesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showTablesColumnHeaders, true);
   }
