@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -1399,6 +1401,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
       return SUCCEED;
     }
+    TSStatus internalDatabaseStatus = checkExplicitInternalDatabaseCount(statement, context);
+    if (internalDatabaseStatus != null) {
+      return internalDatabaseStatus;
+    }
     setCanSeeAuditDB(statement, context);
     if (statement.hasTimeCondition()) {
       try {
@@ -1426,6 +1432,9 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitCountLevelTimeSeries(
       CountLevelTimeSeriesStatement countStatement, TreeAccessCheckContext context) {
+    context
+        .setAuditLogOperation(AuditLogOperation.QUERY)
+        .setPrivilegeType(PrivilegeType.READ_SCHEMA);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
       countStatement.setCanSeeAuditDB(true);
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
@@ -1437,8 +1446,52 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   .toString());
       return SUCCEED;
     }
+    TSStatus internalDatabaseStatus = checkExplicitInternalDatabaseCount(countStatement, context);
+    if (internalDatabaseStatus != null) {
+      return internalDatabaseStatus;
+    }
     setCanSeeAuditDB(countStatement, context);
     return visitAuthorityInformation(countStatement, context);
+  }
+
+  private TSStatus checkExplicitInternalDatabaseCount(
+      CountStatement statement, TreeAccessCheckContext context) {
+    String internalDatabase = getExplicitInternalDatabase(statement.getPathPattern());
+    if (internalDatabase == null) {
+      return null;
+    }
+
+    PrivilegeType requiredPrivilege =
+        SchemaConstant.SYSTEM_DATABASE.equals(internalDatabase)
+            ? PrivilegeType.SYSTEM
+            : PrivilegeType.AUDIT;
+    TSStatus status = checkGlobalAuth(context, requiredPrivilege, () -> internalDatabase);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    statement.setCanSeeAuditDB(SchemaConstant.AUDIT_DATABASE.equals(internalDatabase));
+    statement.setAuthorityScope(createAuthorityScope(statement.getPathPattern()));
+    return SUCCEED;
+  }
+
+  private String getExplicitInternalDatabase(PartialPath pathPattern) {
+    String[] nodes = pathPattern.getNodes();
+    if (nodes.length < 2 || !SchemaConstant.ROOT.equals(nodes[0])) {
+      return null;
+    }
+    String database = SchemaConstant.ROOT + "." + nodes[1];
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)
+        || SchemaConstant.AUDIT_DATABASE.equals(database)) {
+      return database;
+    }
+    return null;
+  }
+
+  private PathPatternTree createAuthorityScope(PartialPath pathPattern) {
+    PathPatternTree authorityScope = new PathPatternTree();
+    authorityScope.appendPathPattern(pathPattern);
+    authorityScope.constructTree();
+    return authorityScope;
   }
 
   @Override
