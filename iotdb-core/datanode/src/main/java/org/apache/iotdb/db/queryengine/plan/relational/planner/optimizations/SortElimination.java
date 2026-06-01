@@ -25,14 +25,21 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning.
@@ -42,6 +49,8 @@ import java.util.Collections;
  *     SortNode can be eliminated.
  * <li>When order by all IDColumns and time, the SortNode can be eliminated.
  * <li>When StreamSortIndex==OrderBy size()-1, remove this StreamSortNode
+ * <li>After SortNode elimination, visitProject will remove redundant identity ProjectNodes above
+ *     TableScan and pushes column pruning into the scan.
  */
 public class SortElimination implements PlanOptimizer {
 
@@ -65,6 +74,43 @@ public class SortElimination implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitProject(ProjectNode node, Context context) {
+      Context newContext = new Context();
+      PlanNode child = node.getChild().accept(this, newContext);
+      context.setCannotEliminateSort(newContext.cannotEliminateSort);
+
+      // Remove useless ProjectNode and prune columns of TableScanNode
+      return eliminateProjectOverTableScan(node, child)
+          .orElseGet(() -> node.replaceChildren(Collections.singletonList(child)));
+    }
+
+    private static Optional<PlanNode> eliminateProjectOverTableScan(
+        ProjectNode project, PlanNode child) {
+      if (!(child instanceof DeviceTableScanNode) || !project.isIdentity()) {
+        return Optional.empty();
+      }
+
+      // Notice that SortNode may have been eliminated in TableDistributedPlanGenerator
+      DeviceTableScanNode tableScan = (DeviceTableScanNode) child;
+      int projectOutputsSize = project.getOutputSymbols().size();
+      int scanOutputsSize = tableScan.getOutputSymbols().size();
+      if (projectOutputsSize > scanOutputsSize) {
+        return Optional.empty();
+      }
+
+      List<Symbol> projectOutputs = project.getOutputSymbols();
+      Set<Symbol> scanOutputs = ImmutableSet.copyOf(tableScan.getOutputSymbols());
+      if (!scanOutputs.containsAll(projectOutputs)) {
+        return Optional.empty();
+      }
+
+      if (projectOutputsSize == scanOutputsSize) {
+        return Optional.of(tableScan);
+      }
+      return PruneTableScanColumns.pruneColumns(tableScan, ImmutableSet.copyOf(projectOutputs));
+    }
+
+    @Override
     public PlanNode visitSort(SortNode node, Context context) {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
@@ -75,9 +121,7 @@ public class SortElimination implements PlanOptimizer {
           && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
         return child;
       }
-      return context.canEliminateSort() && node.isOrderByAllIdsAndTime()
-          ? child
-          : node.replaceChildren(Collections.singletonList(child));
+      return node.replaceChildren(Collections.singletonList(child));
     }
 
     @Override
@@ -152,6 +196,8 @@ public class SortElimination implements PlanOptimizer {
 
     private String timeColumnName = null;
 
+    private boolean sortEliminated = false;
+
     Context() {}
 
     public void addDeviceEntrySize(int deviceEntrySize) {
@@ -176,6 +222,14 @@ public class SortElimination implements PlanOptimizer {
 
     public void setTimeColumnName(String timeColumnName) {
       this.timeColumnName = timeColumnName;
+    }
+
+    public boolean isSortEliminated() {
+      return sortEliminated;
+    }
+
+    public void markSortEliminated() {
+      this.sortEliminated = true;
     }
   }
 }
