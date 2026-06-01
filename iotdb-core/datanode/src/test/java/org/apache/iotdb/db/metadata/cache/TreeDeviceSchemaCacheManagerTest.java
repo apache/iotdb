@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.schema.utils.MeasurementPropsUtils;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
@@ -280,6 +281,43 @@ public class TreeDeviceSchemaCacheManagerTest {
   }
 
   @Test
+  public void testLastCacheMaterializesQueryGeneratedPhysicalSeriesToInvalidSchema()
+      throws IllegalPathException {
+    final String database = "root.alias";
+    final PartialPath device = new PartialPath("root.alias.d1");
+    final PartialPath physicalPath = device.concatNode("s1");
+    final PartialPath aliasPath = new PartialPath("root.view.d1.s1");
+
+    final MeasurementSchema queryGeneratedSchema =
+        createQueryGeneratedPhysicalSchema(physicalPath, aliasPath);
+    final MeasurementPath queryGeneratedPath =
+        new MeasurementPath(physicalPath, queryGeneratedSchema);
+
+    treeDeviceSchemaCacheManager.declareLastCache(database, queryGeneratedPath);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        device.getIDeviceID(),
+        new String[] {"s1"},
+        new TimeValuePair[] {new TimeValuePair(1L, new TsPrimitiveType.TsLong(1L))},
+        false,
+        new MeasurementSchema[] {queryGeneratedSchema});
+
+    final TimeValuePair lastCache = treeDeviceSchemaCacheManager.getLastCache(queryGeneratedPath);
+    Assert.assertNotNull(lastCache);
+    Assert.assertEquals(1L, lastCache.getTimestamp());
+    Assert.assertEquals(1L, lastCache.getValue().getLong());
+
+    final ClusterSchemaTree cachedSchemaTree =
+        treeDeviceSchemaCacheManager.getMatchedNormalSchema(queryGeneratedPath);
+    final List<MeasurementPath> cachedPaths =
+        cachedSchemaTree.searchMeasurementPaths(queryGeneratedPath).left;
+    Assert.assertEquals(1, cachedPaths.size());
+    assertCachedInvalidPhysicalSeriesProps(cachedPaths.get(0), aliasPath.getFullPath());
+
+    assertQueryGeneratedPhysicalSeriesProps(queryGeneratedPath, aliasPath.getFullPath());
+  }
+
+  @Test
   public void testPut() throws Exception {
     final ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
     final Template template1 =
@@ -338,5 +376,42 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     TableDeviceSchemaCache.getInstance().invalidateAll();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
+  }
+
+  private MeasurementSchema createQueryGeneratedPhysicalSchema(
+      final PartialPath physicalPath, final PartialPath aliasPath) {
+    final MeasurementSchema schema =
+        new MeasurementSchema(physicalPath.getMeasurement(), TSDataType.INT64);
+    final Map<String, String> aliasProps = new HashMap<>();
+    aliasProps.put("encoding_hint", "kept");
+    MeasurementPropsUtils.setOriginalPathIsAligned(aliasProps, false);
+    schema.setProps(
+        MeasurementPropsUtils.buildQueryGeneratedPhysicalSeriesProps(
+            MeasurementPropsUtils.buildAliasSeriesProps(aliasProps, physicalPath), aliasPath));
+    return schema;
+  }
+
+  private void assertQueryGeneratedPhysicalSeriesProps(
+      final MeasurementPath path, final String aliasPath) {
+    final Map<String, String> props = path.getMeasurementSchema().getProps();
+    Assert.assertNotNull(props);
+    Assert.assertEquals("kept", props.get("encoding_hint"));
+    Assert.assertFalse(MeasurementPropsUtils.isInvalid(props));
+    Assert.assertFalse(MeasurementPropsUtils.isRenamed(props));
+    Assert.assertNull(MeasurementPropsUtils.getOriginalPath(props));
+    Assert.assertEquals(aliasPath, MeasurementPropsUtils.getAliasPathString(props));
+    Assert.assertTrue(MeasurementPropsUtils.isQueryGeneratedInvalidSeries(props));
+  }
+
+  private void assertCachedInvalidPhysicalSeriesProps(
+      final MeasurementPath path, final String aliasPath) {
+    final Map<String, String> props = path.getMeasurementSchema().getProps();
+    Assert.assertNotNull(props);
+    Assert.assertEquals("kept", props.get("encoding_hint"));
+    Assert.assertTrue(MeasurementPropsUtils.isInvalid(props));
+    Assert.assertFalse(MeasurementPropsUtils.isRenamed(props));
+    Assert.assertNull(MeasurementPropsUtils.getOriginalPath(props));
+    Assert.assertEquals(aliasPath, MeasurementPropsUtils.getAliasPathString(props));
+    Assert.assertFalse(MeasurementPropsUtils.isQueryGeneratedInvalidSeries(props));
   }
 }

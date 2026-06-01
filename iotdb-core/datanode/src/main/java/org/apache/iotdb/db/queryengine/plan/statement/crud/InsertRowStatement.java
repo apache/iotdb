@@ -498,18 +498,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
                           schema.getType(),
                           schema.getEncodingType(),
                           schema.getCompressor());
-                  // Copy props but filter out alias series specific properties
-                  Map<String, String> physicalProps = new HashMap<>();
-                  for (Map.Entry<String, String> entry : props.entrySet()) {
-                    String key = entry.getKey();
-                    // Filter out alias series specific properties
-                    if (!MeasurementPropsUtils.isInternalPropertyKey(key)) {
-                      physicalProps.put(key, entry.getValue());
-                    }
-                  }
-                  if (!physicalProps.isEmpty()) {
-                    physicalSchema.setProps(physicalProps);
-                  }
+                  physicalSchema.setProps(
+                      MeasurementPropsUtils.buildQueryGeneratedPhysicalSeriesProps(
+                          props, devicePath.concatAsMeasurementPath(measurements[index])));
                   // Use MeasurementPath to properly extract device path later
                   MeasurementPath path =
                       new MeasurementPath(originalPath.getNodes(), physicalSchema);

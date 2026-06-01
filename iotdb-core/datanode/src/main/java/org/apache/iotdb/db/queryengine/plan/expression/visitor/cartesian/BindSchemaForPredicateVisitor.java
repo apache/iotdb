@@ -158,7 +158,8 @@ public class BindSchemaForPredicateVisitor
       if (physicalPath != null) {
         // Search for the physical path in schema tree
         List<MeasurementPath> physicalPaths =
-            context.getSchemaTree().searchMeasurementPaths(physicalPath).left;
+            BindSchemaForExpressionVisitor.materializeQueryGeneratedPhysicalPaths(
+                context.getSchemaTree().searchMeasurementPaths(physicalPath).left, aliasPath);
         List<Expression> physicalExpressions =
             reconstructTimeSeriesOperandsWithMemoryCheck(
                 new TimeSeriesOperand(physicalPath), physicalPaths, context.getQueryContext());

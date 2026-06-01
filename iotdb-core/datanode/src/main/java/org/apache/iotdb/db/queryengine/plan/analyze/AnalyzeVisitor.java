@@ -933,13 +933,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (aliasSchema instanceof MeasurementSchema) {
       MeasurementSchema aliasMeasurementSchema = (MeasurementSchema) aliasSchema;
       String physicalMeasurementName = originalPath.getMeasurement();
+      Map<String, String> physicalProps =
+          MeasurementPropsUtils.buildQueryGeneratedPhysicalSeriesProps(
+              aliasMeasurementSchema.getProps(), aliasPath);
       updatedSchema =
           new MeasurementSchema(
               physicalMeasurementName,
               aliasMeasurementSchema.getType(),
               aliasMeasurementSchema.getEncodingType(),
               aliasMeasurementSchema.getCompressor(),
-              aliasMeasurementSchema.getProps());
+              physicalProps);
     }
 
     MeasurementPath replacedPath = new MeasurementPath(originalPath.getNodes(), updatedSchema);

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.schema.utils.MeasurementPropsUtils;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -413,8 +414,15 @@ public class TreeDeviceSchemaCacheManager {
       final @Nonnull TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas) {
+    final int firstQueryGeneratedIndex = findFirstQueryGeneratedIndex(measurementSchemas);
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+        database,
+        deviceID,
+        measurements,
+        timeValuePairs,
+        isAligned,
+        materializeMeasurementSchemasForCache(measurementSchemas, firstQueryGeneratedIndex),
+        false);
   }
 
   /**
@@ -444,7 +452,9 @@ public class TreeDeviceSchemaCacheManager {
         new String[] {measurementPath.getMeasurement()},
         null,
         measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        new IMeasurementSchema[] {
+          materializeMeasurementSchemaForCache(measurementPath.getMeasurementSchema())
+        },
         true);
   }
 
@@ -464,8 +474,59 @@ public class TreeDeviceSchemaCacheManager {
         new String[] {measurementPath.getMeasurement()},
         new TimeValuePair[] {null},
         measurementPath.isUnderAlignedEntity(),
-        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        new IMeasurementSchema[] {
+          materializeMeasurementSchemaForCache(measurementPath.getMeasurementSchema())
+        },
         true);
+  }
+
+  private boolean isQueryGeneratedPhysicalSeries(final IMeasurementSchema measurementSchema) {
+    return measurementSchema != null
+        && MeasurementPropsUtils.isQueryGeneratedInvalidSeries(measurementSchema.getProps());
+  }
+
+  private int findFirstQueryGeneratedIndex(final IMeasurementSchema[] measurementSchemas) {
+    if (measurementSchemas == null) {
+      return -1;
+    }
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      if (isQueryGeneratedPhysicalSeries(measurementSchemas[i])) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  private IMeasurementSchema[] materializeMeasurementSchemasForCache(
+      final IMeasurementSchema[] measurementSchemas, final int firstQueryGeneratedIndex) {
+    if (measurementSchemas == null || firstQueryGeneratedIndex < 0) {
+      return measurementSchemas;
+    }
+
+    final IMeasurementSchema[] materializedMeasurementSchemas = measurementSchemas.clone();
+    materializedMeasurementSchemas[firstQueryGeneratedIndex] =
+        materializeMeasurementSchemaForCache(
+            materializedMeasurementSchemas[firstQueryGeneratedIndex]);
+    for (int i = firstQueryGeneratedIndex + 1; i < materializedMeasurementSchemas.length; i++) {
+      if (isQueryGeneratedPhysicalSeries(materializedMeasurementSchemas[i])) {
+        materializedMeasurementSchemas[i] =
+            materializeMeasurementSchemaForCache(materializedMeasurementSchemas[i]);
+      }
+    }
+    return materializedMeasurementSchemas;
+  }
+
+  private IMeasurementSchema materializeMeasurementSchemaForCache(
+      final IMeasurementSchema measurementSchema) {
+    if (!isQueryGeneratedPhysicalSeries(measurementSchema)) {
+      return measurementSchema;
+    }
+    return new MeasurementSchema(
+        measurementSchema.getMeasurementName(),
+        measurementSchema.getType(),
+        measurementSchema.getEncodingType(),
+        measurementSchema.getCompressor(),
+        MeasurementPropsUtils.buildCachedInvalidPhysicalSeriesProps(measurementSchema.getProps()));
   }
 
   public void invalidate(final List<MeasurementPath> partialPathList) {

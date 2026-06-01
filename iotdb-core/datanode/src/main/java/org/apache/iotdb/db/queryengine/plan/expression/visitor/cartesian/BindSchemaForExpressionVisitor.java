@@ -144,7 +144,8 @@ public class BindSchemaForExpressionVisitor
       if (physicalPath != null) {
         // Search for the physical path in schema tree
         List<MeasurementPath> physicalPaths =
-            context.getSchemaTree().searchMeasurementPaths(physicalPath).left;
+            materializeQueryGeneratedPhysicalPaths(
+                context.getSchemaTree().searchMeasurementPaths(physicalPath).left, aliasPath);
         List<Expression> physicalExpressions =
             ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck(
                 new TimeSeriesOperand(physicalPath), physicalPaths, context.getQueryContext());
@@ -251,6 +252,39 @@ public class BindSchemaForExpressionVisitor
       logger.warn("Failed to parse original path from alias series: {}", originalPathStr, e);
       return null;
     }
+  }
+
+  public static List<MeasurementPath> materializeQueryGeneratedPhysicalPaths(
+      final List<MeasurementPath> physicalPaths, final MeasurementPath aliasPath) {
+    final List<MeasurementPath> materializedPaths = new ArrayList<>(physicalPaths.size());
+    for (final MeasurementPath physicalPath : physicalPaths) {
+      materializedPaths.add(materializeQueryGeneratedPhysicalPath(physicalPath, aliasPath));
+    }
+    return materializedPaths;
+  }
+
+  public static MeasurementPath materializeQueryGeneratedPhysicalPath(
+      final MeasurementPath physicalPath, final MeasurementPath aliasPath) {
+    final IMeasurementSchema physicalSchema = physicalPath.getMeasurementSchema();
+    if (!(physicalSchema instanceof MeasurementSchema)) {
+      return physicalPath;
+    }
+
+    final MeasurementSchema queryGeneratedPhysicalSchema =
+        new MeasurementSchema(
+            physicalPath.getMeasurement(),
+            physicalSchema.getType(),
+            physicalSchema.getEncodingType(),
+            physicalSchema.getCompressor(),
+            MeasurementPropsUtils.buildQueryGeneratedPhysicalSeriesProps(
+                aliasPath.getMeasurementSchema() == null
+                    ? null
+                    : aliasPath.getMeasurementSchema().getProps(),
+                aliasPath));
+
+    final MeasurementPath materializedPath = physicalPath.clone();
+    materializedPath.setMeasurementSchema(queryGeneratedPhysicalSchema);
+    return materializedPath;
   }
 
   public static class Context implements QueryContextProvider {
