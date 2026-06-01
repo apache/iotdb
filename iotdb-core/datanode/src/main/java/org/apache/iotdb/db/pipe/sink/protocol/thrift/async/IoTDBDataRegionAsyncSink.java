@@ -258,7 +258,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   false));
         }
       } catch (final Exception e) {
-        LOGGER.warn("Failed to transfer tsfile batch ({}).", sealedFiles, e);
+        PipeLogger.log(LOGGER::warn, e, "Failed to transfer tsfile batch (%s).", sealedFiles);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
         }
@@ -437,17 +437,19 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       } catch (final Exception e) {
         if (e instanceof InterruptedException) {
           Thread.currentThread().interrupt();
-          LOGGER.warn(
-              "Transfer tsfile event {} asynchronously was interrupted.",
-              pipeTransferTsFileHandler.getTsFile(),
-              e);
+          PipeLogger.log(
+              LOGGER::warn,
+              e,
+              "Transfer tsfile event %s asynchronously was interrupted.",
+              pipeTransferTsFileHandler.getTsFile());
         }
 
         pipeTransferTsFileHandler.onError(e);
-        LOGGER.warn(
-            "Failed to transfer tsfile event {} asynchronously.",
-            pipeTransferTsFileHandler.getTsFile(),
-            e);
+        PipeLogger.log(
+            LOGGER::warn,
+            e,
+            "Failed to transfer tsfile event %s asynchronously.",
+            pipeTransferTsFileHandler.getTsFile());
       }
     }
   }

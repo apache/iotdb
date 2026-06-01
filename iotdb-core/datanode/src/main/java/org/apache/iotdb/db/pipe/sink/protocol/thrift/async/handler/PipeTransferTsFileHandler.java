@@ -157,8 +157,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.client = client;
 
     if (client == null) {
-      LOGGER.warn(
-          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Client has been returned to the pool. Current handler status is %s. Will not transfer %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
@@ -420,7 +421,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.returnSelf(
         (e) -> {
           if (e instanceof IllegalStateException) {
-            LOGGER.info(
+            PipeLogger.log(
+                LOGGER::info,
                 "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
             return true;
           }
@@ -434,8 +436,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
     if (client == null) {
-      LOGGER.warn(
-          "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Client has been returned to the pool. Current handler status is %s. Will not transfer %s.",
           sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;

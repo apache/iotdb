@@ -193,11 +193,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         return client;
       }
     } catch (final Exception e) {
-      LOGGER.warn(
-          "failed to borrow client {}:{} for cached leader.",
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          "Failed to borrow client %s:%s for cached leader.",
           endPoint.getIp(),
-          endPoint.getPort(),
-          e);
+          endPoint.getPort());
     }
 
     return borrowClient();
@@ -342,11 +343,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           client.close();
           client.invalidateAll();
         } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to close client {}:{} after handshake failure when the manager is closed.",
+          PipeLogger.log(
+              LOGGER::warn,
+              e,
+              "Failed to close client %s:%s after handshake failure when the manager is closed.",
               targetNodeUrl.getIp(),
-              targetNodeUrl.getPort(),
-              e);
+              targetNodeUrl.getPort());
         }
       }
       client.setShouldReturnSelf(true);

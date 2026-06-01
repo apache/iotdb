@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
@@ -273,12 +274,13 @@ public class PipeConsensusTsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+    PipeLogger.log(
+        LOGGER::warn,
+        exception,
+        "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
         tsFile,
         event.getCommitterKey(),
-        event.getCommitId(),
-        exception);
+        event.getCommitId());
 
     try {
       if (reader != null) {
