@@ -24,6 +24,21 @@
 
 include(CTest)
 
+set(CATCH2_URL
+        "https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp")
+if(CATCH2_INCLUDE_DIR)
+    set(_catch2_include_dir "${CATCH2_INCLUDE_DIR}")
+else()
+    set(_catch2_include_dir "${CMAKE_CURRENT_BINARY_DIR}/catch2")
+    set(_catch2_header "${_catch2_include_dir}/catch.hpp")
+    if(NOT EXISTS "${_catch2_header}")
+        file(MAKE_DIRECTORY "${_catch2_include_dir}")
+        message(STATUS "Downloading Catch2 from ${CATCH2_URL}")
+        file(DOWNLOAD "${CATCH2_URL}" "${_catch2_header}" SHOW_PROGRESS
+                TLS_VERIFY ON)
+    endif()
+endif()
+
 set(_test_targets
         session_tests
         session_relational_tests
@@ -37,7 +52,7 @@ add_executable(session_c_relational_tests main_c_Relational.cpp cpp/sessionCRela
 
 foreach(_t IN LISTS _test_targets)
     target_include_directories(${_t} PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/catch2"
+            "${_catch2_include_dir}"
             "${CMAKE_CURRENT_SOURCE_DIR}/../src/rpc"
             "${THRIFT_GEN_CPP_DIR}"
             "${THRIFT_INCLUDE_DIR}")

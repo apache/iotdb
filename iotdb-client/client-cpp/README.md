@@ -166,7 +166,8 @@ etc. directly.
 | Option                | Default                          | Purpose                                                                                                  |
 |-----------------------|----------------------------------|----------------------------------------------------------------------------------------------------------|
 | `WITH_SSL`            | `OFF`                            | Link against OpenSSL. See *SSL* below.                                                                   |
-| `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables.                                                                           |
+| `BUILD_TESTING`       | `OFF` (Maven sets `ON` for verify) | Build Catch2 IT executables (Catch2 v2.13.7 header downloaded at configure time).                        |
+| `CATCH2_INCLUDE_DIR`  | (unset)                          | Pre-downloaded Catch2 include dir (Maven sets this under `target/test/catch2`).                          |
 | `IOTDB_OFFLINE`       | `OFF`                            | Disallow any network access during configure.                                                            |
 | `IOTDB_DEPS_DIR`      | `<client-cpp>/third-party`       | Override the local tarball cache directory.                                                              |
 | `BOOST_VERSION`       | `1.60.0` (`1.84.0` on macOS)     | Boost version that CMake will look for / download.                                                       |
