@@ -1071,6 +1071,7 @@ public class DataRegion implements IDataRegionForQuery {
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
       initFlushTimeMap(timePartitionId);
+      insertRowNode.setLastFragment(true);
       boolean isSequence =
           config.isEnableSeparateData()
               && insertRowNode.getTime()
@@ -1105,6 +1106,11 @@ public class DataRegion implements IDataRegionForQuery {
    */
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
+      throws BatchProcessException, WriteProcessException {
+    insertTablet(insertTabletNode, true);
+  }
+
+  private void insertTablet(InsertTabletNode insertTabletNode, boolean markLastFragmentOnFinalWrite)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject();
     long startTime = System.nanoTime();
@@ -1171,6 +1177,7 @@ public class DataRegion implements IDataRegionForQuery {
         // judge if we should insert sequence
         if (!isSequence && time > lastFlushTime) {
           // insert into unsequence and then start sequence
+          insertTabletNode.setLastFragment(false);
           noFailure =
               insertTabletToTsFileProcessor(
                       insertTabletNode, before, loc, false, results, beforeTimePartition)
@@ -1183,6 +1190,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       // do not forget last part
       if (before < loc) {
+        insertTabletNode.setLastFragment(markLastFragmentOnFinalWrite);
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
@@ -1214,6 +1222,23 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  }
+
+  private int findLastInsertTabletIndexToMark(final InsertMultiTabletsNode insertMultiTabletsNode) {
+    for (int i = insertMultiTabletsNode.getInsertTabletNodeList().size() - 1; i >= 0; i--) {
+      final InsertTabletNode insertTabletNode =
+          insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+      if (insertTabletNode.getRowCount() <= 0 || insertTabletNode.allMeasurementFailed()) {
+        continue;
+      }
+      final long[] times = insertTabletNode.getTimes();
+      final long deviceTTL =
+          DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getNodes());
+      if (times.length > 0 && isAlive(times[times.length - 1], deviceTTL)) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   private void initFlushTimeMap(long timePartitionId) {
@@ -1343,8 +1368,10 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+    int remainingFragments = tsFileProcessorMap.size();
     for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       InsertRowsNode subInsertRowsNode = entry.getValue();
+      subInsertRowsNode.setLastFragment(--remainingFragments == 0);
       try {
         List<TsFileProcessor> insertedProcessors =
             insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, costsForMetrics);
@@ -1452,9 +1479,13 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
+    int remainingRetriedFragments = retriedProcessorMap.size();
     for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
-      retriedProcessor.insert(retriedEntry.getValue(), costsForMetrics);
+      final InsertRowsNode retriedInsertRowsNode = retriedEntry.getValue();
+      retriedInsertRowsNode.setLastFragment(
+          subInsertRowsNode.isLastFragment() && --remainingRetriedFragments == 0);
+      retriedProcessor.insert(retriedInsertRowsNode, costsForMetrics);
       insertedProcessors.add(retriedProcessor);
     }
     return insertedProcessors;
@@ -3789,8 +3820,10 @@ public class DataRegion implements IDataRegionForQuery {
             });
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+      int remainingFragments = tsFileProcessorMap.size();
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         InsertRowsNode subInsertRowsNode = entry.getValue();
+        subInsertRowsNode.setLastFragment(--remainingFragments == 0);
         try {
           List<TsFileProcessor> insertedProcessors =
               insertRowsWithTypeConsistencyCheck(
@@ -3897,10 +3930,11 @@ public class DataRegion implements IDataRegionForQuery {
    */
   public void insertTablets(InsertMultiTabletsNode insertMultiTabletsNode)
       throws BatchProcessException {
+    final int lastTabletIndexToMark = findLastInsertTabletIndexToMark(insertMultiTabletsNode);
     for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
-        insertTablet(insertTabletNode);
+        insertTablet(insertTabletNode, i == lastTabletIndexToMark);
       } catch (WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()

@@ -25,7 +25,6 @@ import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -183,9 +182,8 @@ public class WALNodeWaitForRollFileTest {
     // write data with search index
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
+    insertTabletNode.setLastFragment(true);
     walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
-    walNode.log(
-        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 
@@ -299,12 +297,11 @@ public class WALNodeWaitForRollFileTest {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode.onMemTableCreated(memTable, logDirectory + File.separator + "test.tsfile");
 
-    // write data with search index — stays in the current (active) WAL file
+    // write data with search index - stays in the current (active) WAL file
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
+    insertTabletNode.setLastFragment(true);
     walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
-    walNode.log(
-        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 

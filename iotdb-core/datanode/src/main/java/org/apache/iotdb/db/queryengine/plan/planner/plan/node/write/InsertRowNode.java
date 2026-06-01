@@ -585,7 +585,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(getEncodedSearchIndex());
     subSerialize(buffer);
   }
 
@@ -661,7 +661,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     long searchIndex = stream.readLong();
     InsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -747,7 +747,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     InsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 

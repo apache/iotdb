@@ -821,7 +821,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
-    buffer.putLong(searchIndex);
+    buffer.putLong(getEncodedSearchIndex());
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -940,7 +940,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserializeFromWAL(DataInputStream stream) throws IOException {
-    searchIndex = stream.readLong();
+    setSearchIndexFromWAL(stream.readLong());
     try {
       devicePath =
           DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream));
@@ -976,7 +976,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserializeFromWAL(ByteBuffer buffer) {
-    searchIndex = buffer.getLong();
+    setSearchIndexFromWAL(buffer.getLong());
     try {
       devicePath =
           DataNodeDevicePathCache.getInstance()

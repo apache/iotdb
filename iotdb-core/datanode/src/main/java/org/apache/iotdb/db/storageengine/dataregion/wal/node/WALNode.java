@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -663,7 +664,9 @@ public class WALNode implements IWALNode {
             if (type.needSearch()) {
               // see WALInfoEntry#serialize, entry type + memtable id + plan node type
               buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
-              final long currentWalEntryIndex = buffer.getLong();
+              final long encodedSearchIndex = buffer.getLong();
+              final long currentWalEntryIndex = SearchNode.extractSearchIndex(encodedSearchIndex);
+              final boolean isLastFragment = SearchNode.isLastFragment(encodedSearchIndex);
               buffer.clear();
               if (currentWalEntryIndex == -1) {
                 // WAL entry of targetIndex has been fully collected, so put them into insertNodes
@@ -672,6 +675,9 @@ public class WALNode implements IWALNode {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
                 tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                if (isLastFragment) {
+                  tryToCollectInsertNodeAndBumpIndex.run();
+                }
               } else {
                 // currentWalEntryIndex > targetIndex
                 // WAL entry of targetIndex has been fully collected, put them into insertNodes
@@ -684,6 +690,9 @@ public class WALNode implements IWALNode {
                   nextSearchIndex = currentWalEntryIndex;
                 }
                 tmpNodes.get().add(new IoTConsensusRequest(buffer));
+                if (isLastFragment) {
+                  tryToCollectInsertNodeAndBumpIndex.run();
+                }
               }
             } else {
               tryToCollectInsertNodeAndBumpIndex.run();

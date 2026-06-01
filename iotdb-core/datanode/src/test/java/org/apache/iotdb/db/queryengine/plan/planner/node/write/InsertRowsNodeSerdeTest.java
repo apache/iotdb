@@ -78,6 +78,8 @@ public class InsertRowsNodeSerdeTest {
   @Test
   public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 1"));
+    insertRowsNode.setSearchIndex(123L);
+    insertRowsNode.setLastFragment(true);
     insertRowsNode.addOneInsertRowNode(
         new InsertRowNode(
             new PlanNodeId(""),
@@ -126,5 +128,7 @@ public class InsertRowsNodeSerdeTest {
     InsertRowsNode tmpNode = InsertRowsNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
     Assert.assertEquals(insertRowsNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertTrue(tmpNode.isLastFragment());
   }
 }

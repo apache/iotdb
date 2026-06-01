@@ -66,6 +66,8 @@ public class InsertTabletNodeSerdeTest {
   @Test
   public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
     InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.setSearchIndex(123L);
+    insertTabletNode.setLastFragment(true);
 
     int serializedSize = insertTabletNode.serializedSize();
 
@@ -91,6 +93,8 @@ public class InsertTabletNodeSerdeTest {
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
         });
     Assert.assertEquals(insertTabletNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertTrue(tmpNode.isLastFragment());
   }
 
   @Test

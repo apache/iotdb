@@ -27,14 +27,21 @@ import java.util.List;
 
 public abstract class SearchNode extends WritePlanNode {
 
+  private static final long LAST_FRAGMENT_MASK = Long.MIN_VALUE;
+
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+
+  // Preserve last-fragment state for WAL entries that do not have a consensus search index.
+  private static final long NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT = Long.MIN_VALUE;
 
   /**
    * this index is used by wal search, its order should be protected by the upper layer, and the
    * value should start from 1
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
+
+  protected boolean isLastFragment = false;
 
   protected SearchNode(PlanNodeId id) {
     super(id);
@@ -48,6 +55,44 @@ public abstract class SearchNode extends WritePlanNode {
   public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
     return this;
+  }
+
+  public boolean isLastFragment() {
+    return isLastFragment;
+  }
+
+  public SearchNode setLastFragment(boolean lastFragment) {
+    isLastFragment = lastFragment;
+    return this;
+  }
+
+  protected long getEncodedSearchIndex() {
+    if (!isLastFragment) {
+      return searchIndex;
+    }
+    if (searchIndex == NO_CONSENSUS_INDEX) {
+      return NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT;
+    }
+    return searchIndex | LAST_FRAGMENT_MASK;
+  }
+
+  public static long extractSearchIndex(long encodedSearchIndex) {
+    if (encodedSearchIndex == NO_CONSENSUS_INDEX
+        || encodedSearchIndex == NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT) {
+      return NO_CONSENSUS_INDEX;
+    }
+    return encodedSearchIndex & ~LAST_FRAGMENT_MASK;
+  }
+
+  public static boolean isLastFragment(long encodedSearchIndex) {
+    return encodedSearchIndex == NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT
+        || (encodedSearchIndex != NO_CONSENSUS_INDEX
+            && (encodedSearchIndex & LAST_FRAGMENT_MASK) != 0);
+  }
+
+  protected void setSearchIndexFromWAL(long encodedSearchIndex) {
+    this.searchIndex = extractSearchIndex(encodedSearchIndex);
+    this.isLastFragment = isLastFragment(encodedSearchIndex);
   }
 
   public abstract SearchNode merge(List<SearchNode> searchNodes);
