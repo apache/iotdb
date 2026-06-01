@@ -44,6 +44,8 @@ import java.util.Optional;
 
 public class ExternalTsFileScanNode extends TableScanNode {
   private List<String> tsFilePaths;
+  private Expression tagPredicate;
+  private Expression timePredicate;
   private Ordering scanOrder = Ordering.ASC;
   private OrderingScheme pushedOrderingScheme;
 
@@ -70,6 +72,34 @@ public class ExternalTsFileScanNode extends TableScanNode {
       Ordering scanOrder,
       OrderingScheme pushedOrderingScheme,
       List<String> tsFilePaths) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        null,
+        null,
+        scanOrder,
+        pushedOrderingScheme,
+        tsFilePaths);
+  }
+
+  public ExternalTsFileScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      Expression tagPredicate,
+      Expression timePredicate,
+      Ordering scanOrder,
+      OrderingScheme pushedOrderingScheme,
+      List<String> tsFilePaths) {
     super(
         id,
         qualifiedObjectName,
@@ -78,6 +108,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset);
+    this.tagPredicate = tagPredicate;
+    this.timePredicate = timePredicate;
     this.scanOrder = scanOrder;
     this.pushedOrderingScheme = pushedOrderingScheme;
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
@@ -98,6 +130,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
+        tagPredicate,
+        timePredicate,
         scanOrder,
         pushedOrderingScheme,
         tsFilePaths);
@@ -105,6 +139,22 @@ public class ExternalTsFileScanNode extends TableScanNode {
 
   public List<String> getTsFilePaths() {
     return tsFilePaths;
+  }
+
+  public Optional<Expression> getTagPredicate() {
+    return Optional.ofNullable(tagPredicate);
+  }
+
+  public void setTagPredicate(Expression tagPredicate) {
+    this.tagPredicate = tagPredicate;
+  }
+
+  public Optional<Expression> getTimePredicate() {
+    return Optional.ofNullable(timePredicate);
+  }
+
+  public void setTimePredicate(Expression timePredicate) {
+    this.timePredicate = timePredicate;
   }
 
   public Ordering getScanOrder() {
@@ -127,6 +177,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(byteBuffer);
     TableScanNode.serializeMemberVariables(this, byteBuffer, true);
+    serializePredicate(tagPredicate, byteBuffer);
+    serializePredicate(timePredicate, byteBuffer);
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     if (pushedOrderingScheme == null) {
       ReadWriteIOUtils.write(false, byteBuffer);
@@ -141,6 +193,8 @@ public class ExternalTsFileScanNode extends TableScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(stream);
     TableScanNode.serializeMemberVariables(this, stream, true);
+    serializePredicate(tagPredicate, stream);
+    serializePredicate(timePredicate, stream);
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
     if (pushedOrderingScheme == null) {
       ReadWriteIOUtils.write(false, stream);
@@ -165,9 +219,35 @@ public class ExternalTsFileScanNode extends TableScanNode {
     }
   }
 
+  private void serializePredicate(Expression predicate, ByteBuffer byteBuffer) {
+    if (predicate == null) {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(predicate, byteBuffer);
+    }
+  }
+
+  private void serializePredicate(Expression predicate, DataOutputStream stream)
+      throws IOException {
+    if (predicate == null) {
+      ReadWriteIOUtils.write(false, stream);
+    } else {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(predicate, stream);
+    }
+  }
+
   public static ExternalTsFileScanNode deserialize(ByteBuffer byteBuffer) {
     ExternalTsFileScanNode node = new ExternalTsFileScanNode();
     TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      node.tagPredicate = Expression.deserialize(byteBuffer);
+    }
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      node.timePredicate = Expression.deserialize(byteBuffer);
+    }
 
     node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     if (ReadWriteIOUtils.readBool(byteBuffer)) {

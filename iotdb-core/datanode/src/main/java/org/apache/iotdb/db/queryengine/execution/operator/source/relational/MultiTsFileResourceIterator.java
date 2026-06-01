@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.FileLoaderUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -42,6 +43,9 @@ public class MultiTsFileResourceIterator {
   private final String tableName;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final SeriesScanOptions seriesScanOptions;
+  private final SchemaFilter deviceFilter;
+  private final ExternalTsFileDeviceFilterVisitor deviceFilterVisitor =
+      new ExternalTsFileDeviceFilterVisitor();
   private final Map<TsFileResource, TsFileResourceDeviceIterator> deviceIteratorMap =
       new HashMap<>();
 
@@ -53,10 +57,12 @@ public class MultiTsFileResourceIterator {
       List<TsFileResource> unseqResources,
       Map<TsFileResource, TsFileSequenceReader> resourceReaderMap,
       FragmentInstanceContext fragmentInstanceContext,
-      SeriesScanOptions seriesScanOptions) {
+      SeriesScanOptions seriesScanOptions,
+      SchemaFilter deviceFilter) {
     this.tableName = tableName;
     this.fragmentInstanceContext = fragmentInstanceContext;
     this.seriesScanOptions = seriesScanOptions;
+    this.deviceFilter = deviceFilter;
     initDeviceIterators(seqResources, resourceReaderMap);
     initDeviceIterators(unseqResources, resourceReaderMap);
   }
@@ -145,7 +151,9 @@ public class MultiTsFileResourceIterator {
   }
 
   private boolean isDeviceMatched(IDeviceID deviceID) {
-    return tableName.equalsIgnoreCase(deviceID.getTableName());
+    return tableName.equalsIgnoreCase(deviceID.getTableName())
+        && (deviceFilter == null
+            || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID)));
   }
 
   private class TsFileResourceDeviceIterator {

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.FileLoaderUtils;
@@ -60,6 +61,9 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
   private final String tableName;
   private final Map<Symbol, ColumnSchema> assignments;
   private final OrderingScheme pushedOrderingScheme;
+  private final SchemaFilter deviceFilter;
+  private final ExternalTsFileDeviceFilterVisitor deviceFilterVisitor =
+      new ExternalTsFileDeviceFilterVisitor();
   private final Map<TsFileResource, Map<IDeviceID, long[]>> deviceMeasurementNodeOffsetMap =
       new HashMap<>();
 
@@ -71,11 +75,13 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
       AbstractTableScanOperatorParameter parameter,
       String tableName,
       Map<Symbol, ColumnSchema> assignments,
-      OrderingScheme pushedOrderingScheme) {
+      OrderingScheme pushedOrderingScheme,
+      SchemaFilter deviceFilter) {
     super(parameter);
     this.tableName = tableName;
     this.assignments = assignments;
     this.pushedOrderingScheme = pushedOrderingScheme;
+    this.deviceFilter = deviceFilter;
     this.currentDeviceIndex = 0;
   }
 
@@ -138,6 +144,9 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
         if (!isDeviceMatched(deviceID)) {
           continue;
         }
+        if (!isDeviceFilterMatched(deviceID)) {
+          continue;
+        }
         deviceInfos.add(
             new ExternalTsFileDeviceInfo(
                 deviceID, resource, deviceIterator.getCurrentDeviceMeasurementNodeOffset()));
@@ -159,6 +168,11 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
 
   private boolean isDeviceMatched(IDeviceID deviceID) {
     return tableName.equalsIgnoreCase(deviceID.getTableName());
+  }
+
+  private boolean isDeviceFilterMatched(IDeviceID deviceID) {
+    return deviceFilter == null
+        || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID));
   }
 
   private Comparator<ExternalTsFileDeviceInfo> createDeviceInfoComparator() {

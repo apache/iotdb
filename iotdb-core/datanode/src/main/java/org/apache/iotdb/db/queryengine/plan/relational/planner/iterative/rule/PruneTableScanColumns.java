@@ -140,6 +140,8 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               externalTsFileScanNode.getPushDownPredicate(),
               externalTsFileScanNode.getPushDownLimit(),
               externalTsFileScanNode.getPushDownOffset(),
+              externalTsFileScanNode.getTagPredicate().orElse(null),
+              externalTsFileScanNode.getTimePredicate().orElse(null),
               externalTsFileScanNode.getScanOrder(),
               externalTsFileScanNode.getPushedOrderingScheme().orElse(null),
               externalTsFileScanNode.getTsFilePaths()));

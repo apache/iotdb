@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
@@ -471,12 +472,22 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
+    @Override
+    public PlanNode visitExternalTsFileScan(
+        ExternalTsFileScanNode tableScanNode, RewriteContext context) {
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        return tableScanNode;
+      }
+
+      return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
+    }
+
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
       SplitExpression splitExpression =
           tableScanNode instanceof InformationSchemaTableScanNode
               ? splitPredicateForInformationSchemaTable(
                   (InformationSchemaTableScanNode) tableScanNode, predicate)
-              : splitPredicate((DeviceTableScanNode) tableScanNode, predicate);
+              : splitPredicate(tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
       if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
@@ -492,6 +503,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         Boolean hasValueFilter = resultPair.getRight();
         if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
           ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
+        } else if (tableScanNode instanceof ExternalTsFileScanNode && resultPair.left != null) {
+          ((ExternalTsFileScanNode) tableScanNode).setTimePredicate(resultPair.left);
         }
         if (Boolean.TRUE.equals(hasValueFilter)) {
           if (pushDownPredicate instanceof LogicalExpression
@@ -510,6 +523,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (tableScanNode instanceof DeviceTableScanNode) {
         getDeviceEntriesWithDataPartitions(
             (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      } else if (tableScanNode instanceof ExternalTsFileScanNode) {
+        ((ExternalTsFileScanNode) tableScanNode)
+            .setTagPredicate(
+                splitExpression.getMetadataExpressions().isEmpty()
+                    ? null
+                    : combineConjuncts(splitExpression.getMetadataExpressions()));
       }
 
       // exist expressions can not push down to scan operator
@@ -621,7 +640,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
     }
 
-    private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
+    private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
       Set<String> timeOrMeasurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;

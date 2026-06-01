@@ -819,7 +819,7 @@ public class FragmentInstanceContext extends QueryContext {
       }
 
       this.sharedQueryDataSource =
-          new QueryDataSource(externalTsFileResources, Collections.emptyList());
+          new QueryDataSource(Collections.emptyList(), externalTsFileResources);
       return true;
     } finally {
       addInitQueryDataSourceCost(System.nanoTime() - startTime);

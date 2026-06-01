@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -70,6 +71,11 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
   protected AbstractAlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource, boolean isSeq) throws IOException {
     return metadataLoader.loadTimeSeriesMetadata(resource, (AlignedFullPath) seriesPath);
+  }
+
+  @Override
+  protected void updateFilterUsingTTL(QueryDataSource dataSource) {
+    // External TsFiles are not managed by IoTDB metadata, so no table/tree TTL applies here.
   }
 
   @FunctionalInterface

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -46,6 +47,7 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
       RamUsageEstimator.shallowSizeOfInstance(UnorderedExternalTsFileTableScanOperator.class);
 
   private final String tableName;
+  private final SchemaFilter deviceFilter;
 
   private MultiTsFileResourceIterator deviceIterator;
   private Map<TsFileResource, TsFileSequenceReader> resourceReaderMap = Collections.emptyMap();
@@ -53,9 +55,10 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
   private int currentDeviceIndex;
 
   public UnorderedExternalTsFileTableScanOperator(
-      AbstractTableScanOperatorParameter parameter, String tableName) {
+      AbstractTableScanOperatorParameter parameter, String tableName, SchemaFilter deviceFilter) {
     super(parameter);
     this.tableName = tableName;
+    this.deviceFilter = deviceFilter;
     this.currentDeviceIndex = 0;
   }
 
@@ -93,7 +96,8 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
             queryDataSource.getUnseqResources(),
             resourceReaderMap,
             ((OperatorContext) operatorContext).getInstanceContext(),
-            seriesScanOptions);
+            seriesScanOptions,
+            deviceFilter);
   }
 
   private Map<TsFileResource, TsFileSequenceReader> createResourceReaderMap(

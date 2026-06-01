@@ -51,7 +51,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -111,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Coun
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
@@ -1129,6 +1132,7 @@ public class DataNodeTableOperatorGenerator
       ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructExternalTsFileTableScanOperatorParameter(node, context);
+    SchemaFilter deviceFilter = constructExternalTsFileDeviceFilter(node);
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
         node.getPushedOrderingScheme().isPresent()
@@ -1136,9 +1140,10 @@ public class DataNodeTableOperatorGenerator
                 parameter,
                 node.getQualifiedObjectName().getObjectName(),
                 node.getAssignments(),
-                node.getPushedOrderingScheme().get())
+                node.getPushedOrderingScheme().get(),
+                deviceFilter)
             : new UnorderedExternalTsFileTableScanOperator(
-                parameter, node.getQualifiedObjectName().getObjectName());
+                parameter, node.getQualifiedObjectName().getObjectName(), deviceFilter);
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
 
@@ -1149,6 +1154,31 @@ public class DataNodeTableOperatorGenerator
     dataDriverContext.setInputDriver(true);
 
     return externalTsFileTableScanOperator;
+  }
+
+  private SchemaFilter constructExternalTsFileDeviceFilter(ExternalTsFileScanNode node) {
+    if (!node.getTagPredicate().isPresent()) {
+      return null;
+    }
+    TsTable table = new TsTable(node.getQualifiedObjectName().getObjectName());
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      ColumnSchema columnSchema = entry.getValue();
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        table.addColumnSchema(
+            new TagColumnSchema(entry.getKey().getName(), getTSDataType(columnSchema.getType())));
+      }
+    }
+    SchemaFilter deviceFilter =
+        node.getTagPredicate()
+            .get()
+            .accept(
+                new ConvertSchemaPredicateToFilterVisitor(),
+                new ConvertSchemaPredicateToFilterVisitor.Context(table));
+    if (deviceFilter == null) {
+      throw new UnsupportedOperationException(
+          "Unsupported external TsFile device filter: " + node.getTagPredicate().get());
+    }
+    return deviceFilter;
   }
 
   private AbstractTableScanOperator.AbstractTableScanOperatorParameter
@@ -1164,7 +1194,7 @@ public class DataNodeTableOperatorGenerator
             commonParameter.measurementColumnNames,
             commonParameter.measurementColumnsIndexMap,
             commonParameter.timeColumnName,
-            Optional.empty(),
+            node.getTimePredicate(),
             node.getPushDownLimit(),
             node.getPushDownOffset(),
             false,
