@@ -2930,7 +2930,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (timeValuePair.getValue() == TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
+      } else if (timeValuePair.getValue() == TableDeviceLastCache.PLACEHOLDER_NO_VALUE) {
         // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(filter, timeValuePair)) {
         // cached last value is not satisfied
@@ -3745,13 +3745,20 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     for (Map.Entry<PartialPath, List<TimeseriesContext>> entry : entryMap.getValue().entrySet()) {
       PartialPath path = entry.getKey();
       if (path instanceof MeasurementPath) {
-        timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
-        context.addPath(
-            new NonAlignedFullPath(
-                path.getIDeviceID(),
-                new MeasurementSchema(
-                    path.getMeasurement(),
-                    TSDataType.valueOf(entry.getValue().get(0).getDataType()))));
+        String measurement = path.getMeasurement();
+        TimeseriesContext timeseriesContext = entry.getValue().get(0);
+        TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+        if (existingContext == null) {
+          timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+          context.addPath(
+              new NonAlignedFullPath(
+                  path.getIDeviceID(),
+                  new MeasurementSchema(
+                      measurement, TSDataType.valueOf(timeseriesContext.getDataType()))));
+        } else {
+          timeseriesSchemaInfoMap.put(
+              measurement, existingContext.mergeActiveCount(timeseriesContext));
+        }
       } else if (path instanceof AlignedPath) {
         AlignedPath alignedPath = (AlignedPath) path;
         List<String> measurementList = alignedPath.getMeasurementList();
@@ -3761,14 +3768,25 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         }
         int size = measurementList.size();
         List<IMeasurementSchema> schemaList = new ArrayList<>(size);
+        List<String> newMeasurementList = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-          timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
-          schemaList.add(
-              new MeasurementSchema(
-                  measurementList.get(i),
-                  TSDataType.valueOf(entry.getValue().get(i).getDataType())));
+          String measurement = measurementList.get(i);
+          TimeseriesContext timeseriesContext = entry.getValue().get(i);
+          TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+          if (existingContext == null) {
+            timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+            newMeasurementList.add(measurement);
+            schemaList.add(
+                new MeasurementSchema(
+                    measurement, TSDataType.valueOf(timeseriesContext.getDataType())));
+          } else {
+            timeseriesSchemaInfoMap.put(
+                measurement, existingContext.mergeActiveCount(timeseriesContext));
+          }
         }
-        context.addPath(new AlignedFullPath(path.getIDeviceID(), measurementList, schemaList));
+        if (!newMeasurementList.isEmpty()) {
+          context.addPath(new AlignedFullPath(path.getIDeviceID(), newMeasurementList, schemaList));
+        }
       }
     }
     return timeseriesSchemaInfoMap;

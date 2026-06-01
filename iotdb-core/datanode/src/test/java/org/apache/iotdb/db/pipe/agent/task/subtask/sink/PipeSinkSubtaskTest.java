@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
@@ -51,9 +52,10 @@ public class PipeSinkSubtaskTest {
                 connector));
 
     try {
-      subtask.discardEventsOfPipe("pipe", 1L, 1);
+      final CommitterKey committerKey = new CommitterKey("pipe", 1L, 1, -1);
+      subtask.discardEventsOfPipe(committerKey);
 
-      verify((PipeConnectorWithEventDiscard) connector).discardEventsOfPipe("pipe", 1L, 1);
+      verify((PipeConnectorWithEventDiscard) connector).discardEventsOfPipe(committerKey);
     } finally {
       subtask.close();
     }

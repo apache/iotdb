@@ -466,7 +466,7 @@ public final class ConfigNodeMessages {
   public static final String UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP =
       "Unknown host when checking seed configNode IP {}";
   public static final String UNKNOWN_LEADER_DISTRIBUTION_POLICY =
-      "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"CFD\" or \"HASH\"";
+      "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"CFS\" or \"HASH\"";
   public static final String UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE =
       "unknown PhysicalPlan configPhysicalPlanType: ";
   public static final String UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO =

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -127,6 +128,13 @@ public class RegionReadExecutor {
           || t instanceof InterruptedException) {
         resp.setReadNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
+      } else if (t instanceof IoTDBRuntimeException) {
+        // Carry the original status code (e.g. REPEATED_RPC_CALL) back to the dispatcher so it is
+        // not downgraded to EXECUTE_STATEMENT_ERROR; needRetryHelper decides retryability.
+        TSStatus status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
+        status.setMessage(t.getMessage());
+        resp.setStatus(status);
+        resp.setReadNeedRetry(StatusUtils.needRetryHelper(status));
       }
       return resp;
     }
@@ -156,8 +164,19 @@ public class RegionReadExecutor {
       }
     } catch (Throwable t) {
       LOGGER.warn(DataNodeQueryMessages.EXECUTE_FRAGMENTINSTANCE_IN_QUERYEXECUTOR_FAILED, t);
-      return RegionExecutionResult.create(
-          false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
+      RegionExecutionResult resp =
+          RegionExecutionResult.create(
+              false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(t);
+      if (rootCause instanceof IoTDBRuntimeException) {
+        // Carry the original status code (e.g. REPEATED_RPC_CALL) back to the dispatcher so it is
+        // not downgraded to EXECUTE_STATEMENT_ERROR; needRetryHelper decides retryability.
+        TSStatus status = new TSStatus(((IoTDBRuntimeException) rootCause).getErrorCode());
+        status.setMessage(rootCause.getMessage());
+        resp.setStatus(status);
+        resp.setReadNeedRetry(StatusUtils.needRetryHelper(status));
+      }
+      return resp;
     }
   }
 }

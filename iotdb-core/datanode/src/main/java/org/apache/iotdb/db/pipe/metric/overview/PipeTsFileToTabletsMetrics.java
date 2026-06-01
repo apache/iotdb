@@ -157,7 +157,7 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   public void deregister(final String pipeID) {
     if (!pipe.contains(pipeID)) {
-      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_TSFILE_TO_TABLETS, pipeID);
+      LOGGER.info(DataNodePipeMessages.SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS, pipeID);
       return;
     }
     try {

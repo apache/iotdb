@@ -511,4 +511,8 @@ public final class StorageEngineMessages {
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "String '%s' is not a legal repair log";
 
   public static final String WRONG_LOAD_COMMAND_S = "Wrong load command %s.";
+
+  public static final String FAILED_TO_FIND_DATA_REGION = "Failed to create state machine for consensus group %s, because data region does not exist";
+
+  public static final String DATA_REGION_IS_NULL = "Data region is null";
 }

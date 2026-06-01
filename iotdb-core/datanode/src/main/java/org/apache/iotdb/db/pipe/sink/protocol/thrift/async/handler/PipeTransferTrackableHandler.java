@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
@@ -106,7 +107,10 @@ public abstract class PipeTransferTrackableHandler
       client.returnSelf(
           (e) -> {
             if (e instanceof IllegalStateException) {
-              LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
+              PipeLogger.log(
+                  ignored ->
+                      LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO),
+                  "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
               return true;
             }
             return false;
@@ -139,9 +143,9 @@ public abstract class PipeTransferTrackableHandler
       return;
     }
 
-    LOGGER.warn(
-        "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
-            + "Request body size: {}, threshold: {}",
+    PipeLogger.log(
+        LOGGER::warn,
+        "The body size of the request is too large. The request will be sliced. Origin req: %s-%s. Request body size: %s, threshold: %s",
         req.getVersion(),
         req.getType(),
         req.body.limit(),
@@ -242,11 +246,12 @@ public abstract class PipeTransferTrackableHandler
       final TPipeTransferReq originalReq,
       final boolean shouldReturnSelf,
       final Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer slice. Origin req: {}-{}. Retry the whole transfer.",
+    PipeLogger.log(
+        LOGGER::warn,
+        exception,
+        "Failed to transfer slice. Origin req: %s-%s. Retry the whole transfer.",
         originalReq.getVersion(),
-        originalReq.getType(),
-        exception);
+        originalReq.getType());
 
     try {
       client.setShouldReturnSelf(shouldReturnSelf);
