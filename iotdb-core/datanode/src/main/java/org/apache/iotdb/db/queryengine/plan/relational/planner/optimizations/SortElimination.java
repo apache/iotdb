@@ -121,7 +121,9 @@ public class SortElimination implements PlanOptimizer {
           && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
         return child;
       }
-      return node.replaceChildren(Collections.singletonList(child));
+      return context.canEliminateSort() && node.isOrderByAllIdsAndTime()
+          ? child
+          : node.replaceChildren(Collections.singletonList(child));
     }
 
     @Override
@@ -196,8 +198,6 @@ public class SortElimination implements PlanOptimizer {
 
     private String timeColumnName = null;
 
-    private boolean sortEliminated = false;
-
     Context() {}
 
     public void addDeviceEntrySize(int deviceEntrySize) {
@@ -222,14 +222,6 @@ public class SortElimination implements PlanOptimizer {
 
     public void setTimeColumnName(String timeColumnName) {
       this.timeColumnName = timeColumnName;
-    }
-
-    public boolean isSortEliminated() {
-      return sortEliminated;
-    }
-
-    public void markSortEliminated() {
-      this.sortEliminated = true;
     }
   }
 }
