@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -70,7 +71,7 @@ public class IoTDBLegacyPipeReceiverAgentTest {
     }
     CommonDescriptor.getInstance().getConfig().setSyncDir(originalSyncDir);
     if (syncDir != null) {
-      org.apache.tsfile.external.commons.io.FileUtils.deleteDirectory(syncDir.toFile());
+      FileUtils.deleteDirectory(syncDir.toFile());
     }
   }
 
