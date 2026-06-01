@@ -203,7 +203,7 @@ void IoTDBRpcDataSet::close(bool forceClose) {
   } catch (const IoTDBException &e) {
     log_debug(e.what());
     throw;
-  } catch (exception &e) {
+  } catch (std::exception &e) {
     log_debug(e.what());
     throw IoTDBException(e.what());
   }

@@ -26,6 +26,7 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportException.h>
 
+#include <stdexcept>
 #include <utility>
 
 #include "SessionDataSet.h"
@@ -52,7 +53,7 @@ SessionConnection::SessionConnection(
 
 void SessionConnection::close() {
   bool needThrowException = false;
-  string errMsg;
+  std::string errMsg;
   session = nullptr;
   try {
     TSCloseSessionReq req;
@@ -62,7 +63,7 @@ void SessionConnection::close() {
   } catch (const TTransportException &e) {
     log_debug(e.what());
     throw IoTDBConnectionException(e.what());
-  } catch (const exception &e) {
+  } catch (const std::exception &e) {
     log_debug(e.what());
     errMsg = errMsg +
              "Session::close() client->closeSession() error, maybe remote "
@@ -75,7 +76,7 @@ void SessionConnection::close() {
     if (transport->isOpen()) {
       transport->close();
     }
-  } catch (const exception &e) {
+  } catch (const std::exception &e) {
     log_debug(e.what());
     errMsg = errMsg + "Session::close() transport->close() error. " + e.what() +
              "\n";
@@ -90,7 +91,7 @@ void SessionConnection::close() {
 SessionConnection::~SessionConnection() {
   try {
     close();
-  } catch (const exception &e) {
+  } catch (const std::exception &e) {
     log_debug(e.what());
   }
 }
@@ -123,10 +124,10 @@ void SessionConnection::init(const TEndPoint &endpoint, bool useSSL,
     }
   }
   if (enableRPCCompression) {
-    shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
+    std::shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
     client = std::make_shared<IClientRPCServiceClient>(protocol);
   } else {
-    shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
+    std::shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
     client = std::make_shared<IClientRPCServiceClient>(protocol);
   }
 
@@ -148,10 +149,11 @@ void SessionConnection::init(const TEndPoint &endpoint, bool useSSL,
     if (session->protocolVersion_ != openResp.serverProtocolVersion) {
       if (openResp.serverProtocolVersion == 0) {
         // less than 0.10
-        throw logic_error(string("Protocol not supported, Client version is ") +
-                          to_string(session->protocolVersion_) +
-                          ", but Server version is " +
-                          to_string(openResp.serverProtocolVersion));
+        throw std::logic_error(
+            std::string("Protocol not supported, Client version is ") +
+            std::to_string(session->protocolVersion_) +
+            ", but Server version is " +
+            std::to_string(openResp.serverProtocolVersion));
       }
     }
 
@@ -169,7 +171,7 @@ void SessionConnection::init(const TEndPoint &endpoint, bool useSSL,
     log_debug(e.what());
     transport->close();
     throw;
-  } catch (const exception &e) {
+  } catch (const std::exception &e) {
     log_debug(e.what());
     transport->close();
     throw;
@@ -266,7 +268,7 @@ SessionConnection::executeLastDataQuery(const std::vector<std::string> &paths,
                               resp.moreData, fetchSize, zoneId);
 }
 
-void SessionConnection::executeNonQueryStatement(const string &sql) {
+void SessionConnection::executeNonQueryStatement(const std::string &sql) {
   TSExecuteStatementReq req;
   req.__set_sessionId(sessionId);
   req.__set_statementId(statementId);
@@ -283,7 +285,7 @@ void SessionConnection::executeNonQueryStatement(const string &sql) {
   } catch (const IoTDBException &e) {
     log_debug(e.what());
     throw;
-  } catch (const exception &e) {
+  } catch (const std::exception &e) {
     throw IoTDBException(e.what());
   }
 }
@@ -343,7 +345,7 @@ bool SessionConnection::reconnect() {
               "The current node may have been down, connection exception: %s",
               e.what());
           continue;
-        } catch (exception &e) {
+        } catch (std::exception &e) {
           log_warn("login in failed, because  %s", e.what());
         }
         break;
@@ -354,7 +356,7 @@ bool SessionConnection::reconnect() {
       session->defaultEndPoint_ = this->endPoint;
       session->defaultSessionConnection_ = shared_from_this();
       session->endPointToSessionConnection.insert(
-          make_pair(this->endPoint, shared_from_this()));
+          std::make_pair(this->endPoint, shared_from_this()));
     }
   }
   return reconnect;
@@ -446,7 +448,8 @@ void SessionConnection::testInsertRecords(TSInsertRecordsReq &request) {
   RpcUtils::verifySuccess(status);
 }
 
-void SessionConnection::deleteTimeseries(const vector<string> &paths) {
+void SessionConnection::deleteTimeseries(
+    const std::vector<std::string> &paths) {
   auto rpc = [this, &paths]() {
     TSStatus ret;
     client->deleteTimeseries(ret, sessionId, paths);
@@ -460,7 +463,7 @@ void SessionConnection::deleteData(const TSDeleteDataReq &request) {
   callWithRetryAndVerify<TSStatus>(rpc);
 }
 
-void SessionConnection::setStorageGroup(const string &storageGroupId) {
+void SessionConnection::setStorageGroup(const std::string &storageGroupId) {
   auto rpc = [this, &storageGroupId]() {
     TSStatus ret;
     client->setStorageGroup(ret, sessionId, storageGroupId);
@@ -471,7 +474,7 @@ void SessionConnection::setStorageGroup(const string &storageGroupId) {
 }
 
 void SessionConnection::deleteStorageGroups(
-    const vector<string> &storageGroups) {
+    const std::vector<std::string> &storageGroups) {
   auto rpc = [this, &storageGroups]() {
     TSStatus ret;
     client->deleteStorageGroups(ret, sessionId, storageGroups);

@@ -249,7 +249,7 @@ public:
 
   void addTimestamp(size_t rowIndex, int64_t timestamp) {
     timestamps[rowIndex] = timestamp;
-    rowSize = max(rowSize, rowIndex + 1);
+    rowSize = (std::max)(rowSize, rowIndex + 1);
   }
 
   static void deepCopyTabletColValue(void *const *srcPtr, void **destPtr,

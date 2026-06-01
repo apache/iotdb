@@ -81,13 +81,13 @@ public:
 
   void testInsertRecords(TSInsertRecordsReq &request);
 
-  void deleteTimeseries(const vector<string> &paths);
+  void deleteTimeseries(const std::vector<std::string> &paths);
 
   void deleteData(const TSDeleteDataReq &request);
 
-  void setStorageGroup(const string &storageGroupId);
+  void setStorageGroup(const std::string &storageGroupId);
 
-  void deleteStorageGroups(const vector<string> &storageGroups);
+  void deleteStorageGroups(const std::vector<std::string> &storageGroups);
 
   void createTimeseries(TSCreateTimeseriesReq &req);
 
@@ -150,7 +150,7 @@ private:
 
   template <typename T>
   void callWithRetryAndVerifyWithRedirectionForMultipleDevices(
-      std::function<T()> rpc, const vector<string> &deviceIds);
+      std::function<T()> rpc, const std::vector<std::string> &deviceIds);
 
   template <typename T>
   RetryResult<T> callWithRetryAndVerify(std::function<T()> rpc);
@@ -264,7 +264,7 @@ void SessionConnection::callWithRetryAndVerifyWithRedirection(
 
 template <typename T>
 void SessionConnection::callWithRetryAndVerifyWithRedirectionForMultipleDevices(
-    std::function<T()> rpc, const vector<string> &deviceIds) {
+    std::function<T()> rpc, const std::vector<std::string> &deviceIds) {
   auto result = callWithRetry<T>(rpc);
   auto status = result.getResult();
   if (result.getRetryAttempts() == 0) {
