@@ -208,6 +208,43 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  private IDeviceMNode<IMemMNode> setToEntityAndUpdateFlags(final IMemMNode node) {
+    final boolean wasDevice = node.isDevice();
+    final IDeviceMNode<IMemMNode> deviceMNode = store.setToEntity(node);
+    if (!wasDevice) {
+      markAncestorsHavingDeviceDescendant(node);
+    }
+    return deviceMNode;
+  }
+
+  private void markAncestorsHavingDeviceDescendant(final IMemMNode deviceNode) {
+    IMemMNode current = deviceNode.getParent();
+    while (current != null && !current.hasDeviceDescendant()) {
+      current.setHasDeviceDescendant(true);
+      current = current.getParent();
+    }
+  }
+
+  private boolean hasDeviceDescendantInChildren(final IMemMNode node) {
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private void refreshAncestorsHavingDeviceDescendant(IMemMNode startNode) {
+    IMemMNode current = startNode;
+    while (current != null) {
+      current.setHasDeviceDescendant(hasDeviceDescendantInChildren(current));
+      current = current.getParent();
+    }
+  }
+
   private long getTemplateMeasurementCount(final int templateId) {
     final Template template = ClusterTemplateManager.getInstance().getTemplate(templateId);
     return template == null ? 0L : template.getMeasurementNumber();
@@ -316,7 +353,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
       }
 
       // create a non-aligned time series
@@ -410,7 +447,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         entityMNode.setAligned(true);
       }
 
@@ -658,14 +695,15 @@ public class MTreeBelowSGMemoryImpl {
       boolean hasMeasurement = false;
       boolean hasNonViewMeasurement = false;
       IMemMNode child;
-      IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          hasMeasurement = true;
-          if (!child.getAsMeasurementMNode().isLogicalView()) {
-            hasNonViewMeasurement = true;
-            break;
+      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          if (child.isMeasurement()) {
+            hasMeasurement = true;
+            if (!child.getAsMeasurementMNode().isLogicalView()) {
+              hasNonViewMeasurement = true;
+              break;
+            }
           }
         }
       }
@@ -674,6 +712,7 @@ public class MTreeBelowSGMemoryImpl {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
+        refreshAncestorsHavingDeviceDescendant(curNode.getParent());
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
@@ -1034,7 +1073,7 @@ public class MTreeBelowSGMemoryImpl {
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
       }
     }
 
@@ -1142,7 +1181,7 @@ public class MTreeBelowSGMemoryImpl {
     if (cur.isDevice()) {
       entityMNode = cur.getAsDeviceMNode();
     } else {
-      entityMNode = store.setToEntity(cur);
+      entityMNode = setToEntityAndUpdateFlags(cur);
     }
 
     if (!entityMNode.isAligned()) {
@@ -1197,14 +1236,21 @@ public class MTreeBelowSGMemoryImpl {
 
   private long rebuildSubtreeMeasurementCountFromNode(final IMemMNode node) {
     long count = node.isMeasurement() ? 1L : 0L;
-    final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      count += rebuildSubtreeMeasurementCountFromNode(iterator.next());
+    boolean hasDeviceDescendant = false;
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        count += rebuildSubtreeMeasurementCountFromNode(child);
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          hasDeviceDescendant = true;
+        }
+      }
     }
     if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
       count += getTemplateMeasurementCount(node.getAsDeviceMNode().getSchemaTemplateId());
     }
     node.setSubtreeMeasurementCount(count);
+    node.setHasDeviceDescendant(hasDeviceDescendant);
     return count;
   }
 
@@ -1787,7 +1833,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         // this parent has no measurement before. The leafName is his first child who is a logical
         // view.
         entityMNode.setAligned(null);
@@ -1928,7 +1974,7 @@ public class MTreeBelowSGMemoryImpl {
             (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();
         attributeUpdater.accept(deviceInfo.getAttributePointer());
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
@@ -2046,6 +2092,7 @@ public class MTreeBelowSGMemoryImpl {
       collector.traverse();
     }
     databaseMNode.deleteChild(tableName);
+    refreshAncestorsHavingDeviceDescendant(databaseMNode);
     regionStatistics.resetTableDevice(tableName);
     store.releaseMemory(memoryReleased.get());
     return true;
