@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.Await;
 import org.apache.iotdb.commons.concurrent.AwaitTimeoutException;
@@ -213,6 +214,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -2424,29 +2426,36 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 SYSTEM)
             .getValue();
 
+    // Derive the disk status: an ABNORMAL data folder observed by any FolderManager wins over
+    // a full-disk reading, and a low free-space ratio still drives DISK_FULL when nothing is
+    // crashed. DiskChecker.apply then performs the actual NodeStatus transition (including the
+    // "ReadOnly(DiskFull|DiskCrash) -> Running" recovery for the DiskFull path).
+    DiskChecker.DiskStatus diskStatus = DiskChecker.DiskStatus.NORMAL;
+    if (FolderManager.hasAnyAbnormalFolder()) {
+      diskStatus = DiskChecker.DiskStatus.DISK_CRASH;
+    }
     if (availableDisk != 0 && totalDisk != 0) {
       double freeDiskRatio = availableDisk / totalDisk;
       loadSample.setFreeDiskSpace(availableDisk);
       loadSample.setDiskUsageRate(1d - freeDiskRatio);
-      // Reset NodeStatus if necessary
-      if (freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
+      if (diskStatus == DiskChecker.DiskStatus.NORMAL
+          && freeDiskRatio < commonConfig.getDiskSpaceWarningThreshold()) {
         LOGGER.warn(
             "The available disk space is : {}, "
                 + "the total disk space is : {}, "
                 + "and the remaining disk usage ratio: {} is "
-                + "less than disk_space_warning_threshold: {}, set system to readonly!",
+                + "less than disk_space_warning_threshold: {}.",
             RamUsageEstimator.humanReadableUnits((long) availableDisk),
             RamUsageEstimator.humanReadableUnits((long) totalDisk),
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        commonConfig.setNodeStatus(NodeStatus.ReadOnly);
-        commonConfig.setStatusReason(NodeStatus.DISK_FULL);
-      } else if (NodeStatus.ReadOnly.equals(commonConfig.getNodeStatus())
-          && NodeStatus.DISK_FULL.equals(commonConfig.getStatusReason())) {
-        commonConfig.setNodeStatus(NodeStatus.Running);
-        commonConfig.setStatusReason(null);
+        diskStatus = DiskChecker.DiskStatus.DISK_FULL;
       }
+    } else if (diskStatus == DiskChecker.DiskStatus.NORMAL) {
+      // Metrics not available yet — fall back to no-op so we don't churn the status.
+      return;
     }
+    DiskChecker.apply(diskStatus);
   }
 
   @Override

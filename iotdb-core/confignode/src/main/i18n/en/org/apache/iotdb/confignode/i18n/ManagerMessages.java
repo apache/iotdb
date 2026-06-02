@@ -216,6 +216,8 @@ public final class ManagerMessages {
       "Heartbeat service is started successfully.";
   public static final String HEARTBEAT_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "Heartbeat service is stopped successfully.";
+  public static final String RECONFIGURE_PEER_PRIORITIES_FAILED =
+      "Failed to reconfigure ConfigNode peer priorities to {}.";
   public static final String INCORRECT_VERSION_OF = "Incorrect version of ";
   public static final String INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED =
       "Init ConsensusManager successfully when restarted";

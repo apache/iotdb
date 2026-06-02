@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.List;
 
 public class ConfigNodeConfig {
 
@@ -504,6 +505,15 @@ public class ConfigNodeConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
+  }
+
+  /**
+   * Directories whose loss would render this ConfigNode unable to serve. Used by the periodic
+   * disk-health check on both leader (in HeartbeatService loop) and followers (in the
+   * heartbeat-receive path).
+   */
+  public List<String> getCriticalDirs() {
+    return Arrays.asList(systemDir, consensusDir);
   }
 
   public String getConfigNodeConsensusProtocolClass() {

@@ -24,9 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.cluster.DiskChecker;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncAINodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -81,6 +83,15 @@ public class HeartbeatService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
+
+  /**
+   * Sampling cadence for cluster-wide load and disk-health probes: one in every {@code N}
+   * heartbeats triggers the probe path on DataNodes, AINodes, the ConfigNode leader (itself), and
+   * ConfigNode followers (on receive). Keeping every probe site on the same cadence is what makes
+   * the cluster-wide view temporally consistent.
+   */
+  public static final int LOAD_SAMPLING_INTERVAL = 10;
+
   private static final int configNodeListPeriodicallySyncInterval = 100;
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -134,6 +145,13 @@ public class HeartbeatService {
                     genHeartbeatReq(), getNodeManager().getRegisteredDataNodes());
                 // Send heartbeat requests to all the registered AINodes
                 pingRegisteredAINodes(genAIHeartbeatReq(), getNodeManager().getRegisteredAINodes());
+                // Self-check free-space after the async fanout so the OS call doesn't delay it.
+                if (heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0) {
+                  DiskChecker.checkFreeRatioAndApply(
+                      ConfigNodeDescriptor.getInstance().getConf().getCriticalDirs(),
+                      CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+                }
+                heartbeatCounter.getAndIncrement();
               }
             });
   }
@@ -149,8 +167,7 @@ public class HeartbeatService {
             .getLogicalClock(ConfigNodeInfo.CONFIG_REGION_ID));
     // Always sample RegionGroups' leadership as the Region heartbeat
     heartbeatReq.setNeedJudgeLeader(true);
-    // We sample DataNode's load in every 10 heartbeat loop
-    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
     Pair<Long, Long> schemaQuotaRemain =
         configManager.getClusterSchemaManager().getSchemaQuotaRemain();
     heartbeatReq.setTimeSeriesQuotaRemain(schemaQuotaRemain.left);
@@ -173,9 +190,6 @@ public class HeartbeatService {
       heartbeatReq.setCurrentRegionOperations(
           configManager.getProcedureManager().getRegionOperationConsensusIds());
     }
-
-    /* Update heartbeat counter */
-    heartbeatCounter.getAndIncrement();
 
     return heartbeatReq;
   }
@@ -203,6 +217,7 @@ public class HeartbeatService {
   protected TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
     req.setTimestamp(System.nanoTime());
+    req.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
     return req;
   }
 
@@ -210,9 +225,7 @@ public class HeartbeatService {
     /* Generate heartbeat request */
     TAIHeartbeatReq heartbeatReq = new TAIHeartbeatReq();
     heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
-
-    // We sample AINode's load in every 10 heartbeat loop
-    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
+    heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % LOAD_SAMPLING_INTERVAL == 0);
 
     return heartbeatReq;
   }

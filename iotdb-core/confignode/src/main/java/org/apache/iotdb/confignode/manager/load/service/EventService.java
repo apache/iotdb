@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.confignode.manager.load.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
@@ -34,6 +38,7 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -42,13 +47,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * EventService periodically check statistics and broadcast corresponding change event if necessary.
@@ -68,6 +77,7 @@ public class EventService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_EVENT_SERVICE.getName());
 
+  private final IManager configManager;
   private final LoadCache loadCache;
   private final Map<Integer, NodeStatistics> previousNodeStatisticsMap;
   private final Map<TConsensusGroupId, RegionGroupStatistics> previousRegionGroupStatisticsMap;
@@ -75,7 +85,8 @@ public class EventService {
       previousConsensusGroupStatisticsMap;
   private final EventBus eventPublisher;
 
-  public EventService(LoadCache loadCache) {
+  public EventService(IManager configManager, LoadCache loadCache) {
+    this.configManager = configManager;
     this.loadCache = loadCache;
     this.previousNodeStatisticsMap = new TreeMap<>();
     this.previousRegionGroupStatisticsMap = new TreeMap<>();
@@ -154,6 +165,55 @@ public class EventService {
     if (!differentNodeStatisticsMap.isEmpty()) {
       eventPublisher.post(new NodeStatisticsChangeEvent(differentNodeStatisticsMap));
       recordNodeStatistics(differentNodeStatisticsMap);
+      reconcileConfigNodePriorities(differentNodeStatisticsMap);
+    }
+  }
+
+  /**
+   * Demote a ConfigNode's ConfigRegion election priority when its {@link NodeStatus} degrades (see
+   * {@link NodeStatus#priorityForStatus}). Runs only on the leader and only pushes peers whose
+   * priority bucket actually moved.
+   */
+  private void reconcileConfigNodePriorities(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
+    ConsensusManager consensusManager = configManager.getConsensusManager();
+    if (consensusManager == null || !consensusManager.isLeader()) {
+      return;
+    }
+    Set<Integer> configNodeIds =
+        configManager.getNodeManager().getRegisteredConfigNodes().stream()
+            .map(TConfigNodeLocation::getConfigNodeId)
+            .collect(Collectors.toSet());
+    Map<Integer, Integer> desired = new HashMap<>();
+    differentNodeStatisticsMap.forEach(
+        (nodeId, change) -> {
+          NodeStatistics current = change.getRight();
+          if (!configNodeIds.contains(nodeId) || current == null) {
+            return;
+          }
+          OptionalInt newPriority =
+              NodeStatus.priorityForStatus(current.getStatus(), current.getStatusReason());
+          if (!newPriority.isPresent()) {
+            return;
+          }
+          NodeStatistics previous = change.getLeft();
+          OptionalInt oldPriority =
+              previous == null
+                  ? OptionalInt.empty()
+                  : NodeStatus.priorityForStatus(previous.getStatus(), previous.getStatusReason());
+          if (!oldPriority.isPresent() || oldPriority.getAsInt() != newPriority.getAsInt()) {
+            desired.put(nodeId, newPriority.getAsInt());
+          }
+        });
+    if (desired.isEmpty()) {
+      return;
+    }
+    try {
+      consensusManager
+          .getConsensusImpl()
+          .reconfigurePeerPriorities(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID, desired);
+    } catch (ConsensusException e) {
+      LOGGER.warn(ManagerMessages.RECONFIGURE_PEER_PRIORITIES_FAILED, desired, e);
     }
   }
 

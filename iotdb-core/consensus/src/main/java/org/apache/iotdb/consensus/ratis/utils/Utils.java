@@ -230,7 +230,10 @@ public class Utils {
   }
 
   public static boolean rejectWrite(TConsensusGroupType type) {
-    return type == TConsensusGroupType.DataRegion && config.isReadOnly();
+    // SchemaRegion writes are gated by RegionWriteExecutor at a higher level, so we only need
+    // to short-circuit DataRegion and ConfigRegion Ratis writes here.
+    return (type == TConsensusGroupType.DataRegion || type == TConsensusGroupType.ConfigRegion)
+        && config.isReadOnly();
   }
 
   /**
@@ -240,7 +243,30 @@ public class Utils {
    * still allow statemachine to apply while rejecting new client write requests.
    */
   public static boolean stallApply(TConsensusGroupType type) {
-    return type == TConsensusGroupType.DataRegion && config.isReadOnly() && !config.isStopping();
+    return (type == TConsensusGroupType.DataRegion || type == TConsensusGroupType.ConfigRegion)
+        && config.isReadOnly()
+        && !config.isStopping();
+  }
+
+  /**
+   * Treat a throwable (including any wrapped cause) as a disk-level failure when it carries an
+   * {@link java.io.IOError} or a {@link java.nio.file.FileSystemException}. Both are concrete
+   * filesystem-layer signals: {@code IOError} is thrown by the JVM for unrecoverable storage
+   * errors, and {@code FileSystemException} surfaces I/O syscalls failing on a specific file. Plain
+   * {@link java.io.IOException} is intentionally excluded — it is also raised by network code and
+   * would otherwise misclassify transient connectivity failures as disk crashes.
+   */
+  public static boolean isDiskFailure(Throwable t) {
+    for (Throwable cur = t; cur != null; cur = cur.getCause()) {
+      if (cur instanceof java.io.IOError || cur instanceof java.nio.file.FileSystemException) {
+        return true;
+      }
+      // Guard against pathological self-referencing cause chains
+      if (cur.getCause() == cur) {
+        break;
+      }
+    }
+    return false;
   }
 
   /** return the max wait duration for retry */

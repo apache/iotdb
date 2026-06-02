@@ -74,8 +74,11 @@ public class NodeHeartbeatSample extends AbstractHeartbeatSample {
   /** Constructor for ConfigNode sample. */
   public NodeHeartbeatSample(TConfigNodeHeartbeatResp heartbeatResp) {
     super(heartbeatResp.getTimestamp());
-    this.status = NodeStatus.Running;
-    this.statusReason = null;
+    this.status =
+        heartbeatResp.isSetStatus()
+            ? NodeStatus.parse(heartbeatResp.getStatus())
+            : NodeStatus.Running;
+    this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
     this.loadSample = null;
   }
 

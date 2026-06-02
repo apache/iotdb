@@ -518,12 +518,21 @@ struct TConfigNodeHeartbeatReq {
     1: required i64 timestamp
     2: optional common.TLicense licence
     3: optional TActivationControl activationControl
+    // Mirrors TDataNodeHeartbeatReq.needSamplingLoad — the leader sets this flag once every
+    // sampling interval so the receiver runs its disk-health check at the same cadence.
+    4: optional bool needSamplingLoad
 }
 
 struct TConfigNodeHeartbeatResp {
     1: required i64 timestamp
     2: optional string activateStatus
     3: optional common.TLicense license
+    // Reported ConfigNode status (e.g. Running, ReadOnly). Unset means the
+    // sender does not report this field and the leader treats it as Running.
+    4: optional string status
+    // Machine-readable reason accompanying ReadOnly status,
+    // e.g. NodeStatus.DISK_FULL or NodeStatus.DISK_CRASH.
+    5: optional string statusReason
 }
 
 struct TAddConsensusGroupReq {

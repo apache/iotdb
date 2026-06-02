@@ -69,17 +69,20 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final RaftGroupId groupId;
   private final TConsensusGroupType consensusGroupType;
   private final BiConsumer<RaftGroupMemberId, RaftPeerId> leaderChangeListener;
+  private final BiConsumer<RaftGroupId, Throwable> diskFailureListener;
 
   ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
-    this(stateMachine, id, null);
+    this(stateMachine, id, null, null);
   }
 
   ApplicationStateMachineProxy(
       IStateMachine stateMachine,
       RaftGroupId id,
-      BiConsumer<RaftGroupMemberId, RaftPeerId> onLeaderChanged) {
+      BiConsumer<RaftGroupMemberId, RaftPeerId> onLeaderChanged,
+      BiConsumer<RaftGroupId, Throwable> onDiskFailure) {
     this.applicationStateMachine = stateMachine;
     this.leaderChangeListener = onLeaderChanged;
+    this.diskFailureListener = onDiskFailure;
     this.groupId = id;
     snapshotStorage = new SnapshotStorage(applicationStateMachine, groupId);
     consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
@@ -156,6 +159,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         break;
       } catch (Throwable rte) {
         logger.error(RatisMessages.STATEMACHINE_RUNTIME_EXCEPTION, rte);
+        if (Utils.isDiskFailure(rte) && diskFailureListener != null) {
+          diskFailureListener.accept(groupId, rte);
+        }
         ret =
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
