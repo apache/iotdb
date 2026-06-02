@@ -544,6 +544,8 @@ public final class DataNodePipeMessages {
   public static final String PIPE_UNSUPPORTED_SOURCE_REALTIME_MODE_CREATE_A =
       "Pipe: Unsupported source realtime mode: {}, create a hybrid source.";
   public static final String PROCESSOR_INTERRUPTED = "Processor interrupted";
+  public static final String PROCESSOR_INTERRUPTED_UNEXPECTEDLY =
+      "Processor interrupted unexpectedly, continue running";
   public static final String PROCESSOR_STOPPED = "Processor stopped";
   public static final String SET_FOR_HISTORICAL_DELETION_EVENT =
       "[{}]Set {} for historical deletion event {}";
