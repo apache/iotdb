@@ -620,8 +620,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(getEncodedSearchIndex());
+    buffer.putLong(encodedSearchIndex);
     subSerialize(buffer);
   }
 
