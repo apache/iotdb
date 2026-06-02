@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import com.google.common.util.concurrent.RateLimiter;
-import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelExec;
 import org.apache.sshd.client.channel.ClientChannelEvent;
 import org.apache.sshd.client.session.ClientSession;
@@ -45,13 +44,11 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -114,9 +111,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   private final long objectUploadThreadKeepAliveSeconds;
   private final RateLimiter transferRateLimiter;
   private final ExecutorService objectUploadExecutor;
-  private final BlockingQueue<PooledWorkerSession> idleWorkerSessions;
-
-  private ClientSession session;
+  private final ScpSshClientManager.ScpSessionPool sessionPool;
 
   ScpRemoteFileTransfer(PipeParameters params) {
     this.host = params.getStringByKeys(CONNECTOR_SCP_HOST_KEY, SINK_SCP_HOST_KEY);
@@ -138,7 +133,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
             ? configuredObjectUploadBatchBytes
             : DEFAULT_OBJECT_UPLOAD_BATCH_BYTES;
     if (configuredObjectUploadBatchBytes <= 0) {
-      LOGGER.warn(
+      LOGGER.info(
           "Invalid object upload batch size {} bytes, fallback to default {} bytes",
           configuredObjectUploadBatchBytes,
           DEFAULT_OBJECT_UPLOAD_BATCH_BYTES);
@@ -152,10 +147,17 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
             ? configuredObjectUploadParallelism
             : DEFAULT_OBJECT_UPLOAD_PARALLELISM;
     if (configuredObjectUploadParallelism <= 0) {
-      LOGGER.warn(
+      LOGGER.info(
           "Invalid object upload parallelism {}, fallback to default {}",
           configuredObjectUploadParallelism,
           DEFAULT_OBJECT_UPLOAD_PARALLELISM);
+    }
+    if (objectUploadParallelism + 1 > ScpSshClientManager.DEFAULT_MAX_SESSIONS_PER_KEY) {
+      LOGGER.info(
+          "Object upload parallelism {} plus the control session may exceed the SCP session pool "
+              + "limit {} for each target. Upload tasks may wait for idle SSH sessions.",
+          objectUploadParallelism,
+          ScpSshClientManager.DEFAULT_MAX_SESSIONS_PER_KEY);
     }
     final int configuredObjectUploadWaitingQueueSize =
         params.getIntOrDefault(
@@ -168,7 +170,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
             ? configuredObjectUploadWaitingQueueSize
             : objectUploadParallelism;
     if (configuredObjectUploadWaitingQueueSize < 0) {
-      LOGGER.warn(
+      LOGGER.info(
           "Invalid object upload waiting queue size {}, fallback to default {}",
           configuredObjectUploadWaitingQueueSize,
           objectUploadParallelism);
@@ -184,13 +186,11 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
             ? configuredObjectUploadThreadKeepAliveSeconds
             : DEFAULT_OBJECT_UPLOAD_THREAD_KEEP_ALIVE_SECONDS;
     if (configuredObjectUploadThreadKeepAliveSeconds <= 0) {
-      LOGGER.warn(
+      LOGGER.info(
           "Invalid object upload thread keep alive seconds {}, fallback to default {}",
           configuredObjectUploadThreadKeepAliveSeconds,
           DEFAULT_OBJECT_UPLOAD_THREAD_KEEP_ALIVE_SECONDS);
     }
-    this.idleWorkerSessions = new LinkedBlockingQueue<>(objectUploadParallelism);
-    this.objectUploadExecutor = createObjectUploadExecutor(objectUploadParallelism);
 
     final double bytesPerSecond =
         params.getDoubleOrDefault(
@@ -202,6 +202,12 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     } else {
       this.transferRateLimiter = null;
     }
+
+    this.objectUploadExecutor = createObjectUploadExecutor(objectUploadParallelism);
+    this.sessionPool =
+        ScpSshClientManager.acquireSessionPool(
+            host, port, user, password, objectUploadThreadKeepAliveSeconds);
+
     LOGGER.info(
         "SCP sink object upload batch size: {} bytes, max parallelism: {}, "
             + "waiting queue size: {}, keep alive seconds: {}",
@@ -220,8 +226,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       syncModFile(modFile, finalTsName);
       syncTsFile(tsFile, finalTsName);
     } catch (final Exception e) {
-      invalidateMainSession();
-      invalidateIdleWorkerSessions();
+      invalidateSession();
       throw new IOException("Scp transfer failed: " + targetName, e);
     }
   }
@@ -231,14 +236,12 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       return;
     }
 
-    final ClientSession s = getSession();
     final Path sourcePath = sourceDir.toPath();
     final String remoteTargetRoot = remoteBaseDir + UNIX_SEPARATOR + targetName;
-    uploadObjectChildrenInBatches(s, sourcePath, remoteTargetRoot);
+    uploadObjectChildrenInBatches(sourcePath, remoteTargetRoot);
   }
 
-  private void uploadObjectChildrenInBatches(
-      final ClientSession session, final Path sourcePath, final String remoteTargetRoot)
+  private void uploadObjectChildrenInBatches(final Path sourcePath, final String remoteTargetRoot)
       throws IOException {
     final ExecutorCompletionService<Void> completionService =
         new ExecutorCompletionService<>(objectUploadExecutor);
@@ -262,7 +265,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
                   ? remoteTargetRoot
                   : remoteTargetRoot + UNIX_SEPARATOR + relativeDirStr;
           if (!preparedDirs.contains(remoteDir)) {
-            ensureRemoteDirExists(session, remoteDir);
+            ensureRemoteDirExists(remoteDir);
             preparedDirs.add(remoteDir);
           }
           continue;
@@ -309,17 +312,21 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       return;
     }
 
-    if (!currentBatchFiles.isEmpty()) {
-      submitBatchUpload(
-          completionService,
-          pendingUploads,
-          new ArrayList<>(currentBatchFiles),
-          currentRemoteDir,
-          currentBatchBytes,
-          maxPendingUploadTasks);
-    }
+    try {
+      if (!currentBatchFiles.isEmpty()) {
+        submitBatchUpload(
+            completionService,
+            pendingUploads,
+            new ArrayList<>(currentBatchFiles),
+            currentRemoteDir,
+            currentBatchBytes,
+            maxPendingUploadTasks);
+      }
 
-    waitForAllBatchUploads(completionService, pendingUploads);
+      waitForAllBatchUploads(completionService, pendingUploads);
+    } catch (final IOException e) {
+      abortBatchUploads(completionService, pendingUploads, e);
+    }
   }
 
   private void submitBatchUpload(
@@ -405,7 +412,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       Thread.currentThread().interrupt();
       throw new IOException("Interrupted while uploading object files via SCP", e);
     } catch (final CancellationException e) {
-      throw new IOException("Cancelled while uploading object files via SCP", e);
+      LOGGER.debug("An object file upload task was cancelled", e);
     } catch (final ExecutionException e) {
       final Throwable cause = e.getCause();
       if (cause instanceof IOException) {
@@ -425,7 +432,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       final List<Path> batchFiles, final String remoteDir, final long batchBytes)
       throws IOException {
     acquireTransferBytes(batchBytes);
-    final ClientSession workerSession = borrowWorkerSession();
+    final ClientSession workerSession = borrowSession();
     boolean reusable = false;
     try {
       ScpClientCreator.instance()
@@ -436,7 +443,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
               EnumSet.of(ScpClient.Option.TargetIsDirectory));
       reusable = true;
     } finally {
-      recycleWorkerSession(workerSession, reusable);
+      recycleSession(workerSession, reusable);
     }
   }
 
@@ -445,26 +452,22 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
         maximumParallelism, "pipe-scp-object-transfer");
   }
 
-  private static final class PooledWorkerSession {
-
-    private final ClientSession session;
-    private final long idleSinceNanos;
-
-    private PooledWorkerSession(final ClientSession session, final long idleSinceNanos) {
-      this.session = session;
-      this.idleSinceNanos = idleSinceNanos;
-    }
-  }
-
   private static String computeFinalTsName(final String targetName) {
     return targetName.endsWith(TSFILE_EXTENSION) ? targetName : targetName + TSFILE_EXTENSION;
   }
 
   private void syncTsFile(final File tsFile, final String finalTsName) throws IOException {
     acquireTransferBytes(tsFile.length());
-    ScpClientCreator.instance()
-        .createScpClient(getSession())
-        .upload(tsFile.toPath(), remoteBaseDir + UNIX_SEPARATOR + finalTsName);
+    final ClientSession session = getSession();
+    boolean reusable = false;
+    try {
+      ScpClientCreator.instance()
+          .createScpClient(session)
+          .upload(tsFile.toPath(), remoteBaseDir + UNIX_SEPARATOR + finalTsName);
+      reusable = true;
+    } finally {
+      recycleSession(session, reusable);
+    }
   }
 
   private void syncModFile(final File modFile, final String finalTsName) throws IOException {
@@ -474,14 +477,30 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     final String remoteModPath =
         remoteBaseDir + UNIX_SEPARATOR + finalTsName + ModificationFile.FILE_SUFFIX;
     acquireTransferBytes(modFile.length());
-    ScpClientCreator.instance()
-        .createScpClient(getSession())
-        .upload(modFile.toPath(), remoteModPath);
+    final ClientSession session = getSession();
+    boolean reusable = false;
+    try {
+      ScpClientCreator.instance().createScpClient(session).upload(modFile.toPath(), remoteModPath);
+      reusable = true;
+    } finally {
+      recycleSession(session, reusable);
+    }
     LOGGER.info("Successfully transferred TsFile mod to {}", remoteModPath);
   }
 
   private void ensureRemoteDirExists(ClientSession s, String dir) throws IOException {
     executeRemoteCommand(s, "mkdir -p " + shellQuote(dir));
+  }
+
+  private void ensureRemoteDirExists(String dir) throws IOException {
+    final ClientSession session = getSession();
+    boolean reusable = false;
+    try {
+      ensureRemoteDirExists(session, dir);
+      reusable = true;
+    } finally {
+      recycleSession(session, reusable);
+    }
   }
 
   private static String normalizeRemotePath(String path) {
@@ -515,63 +534,23 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private SshClient getSharedClient() throws IOException {
-    return ScpSshClientManager.getClient();
+  private ClientSession getSession() throws IOException {
+    return borrowSession();
   }
 
-  private ClientSession createAuthenticatedSession() throws IOException {
-    final ClientSession createdSession =
-        getSharedClient().connect(user, host, port).verify(CONNECT_TIMEOUT_MS).getSession();
-    createdSession.addPasswordIdentity(password != null ? password : "");
-    createdSession.auth().verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-    return createdSession;
+  private ClientSession borrowSession() throws IOException {
+    return sessionPool.borrowSession();
   }
 
-  private synchronized ClientSession getSession() throws IOException {
-    if (session == null || !session.isOpen()) {
-      synchronized (this) {
-        if (session == null || !session.isOpen()) {
-          session = createAuthenticatedSession();
-        }
-      }
-    }
-    return session;
-  }
-
-  private ClientSession borrowWorkerSession() throws IOException {
-    while (true) {
-      final PooledWorkerSession pooledWorkerSession = idleWorkerSessions.poll();
-      if (pooledWorkerSession == null) {
-        return createAuthenticatedSession();
-      }
-      if (!pooledWorkerSession.session.isOpen()) {
-        closeSessionQuietly(pooledWorkerSession.session);
-        continue;
-      }
-      if (hasWorkerSessionExpired(pooledWorkerSession)) {
-        closeSessionQuietly(pooledWorkerSession.session);
-        continue;
-      }
-      return pooledWorkerSession.session;
-    }
-  }
-
-  private boolean hasWorkerSessionExpired(final PooledWorkerSession pooledWorkerSession) {
-    return System.nanoTime() - pooledWorkerSession.idleSinceNanos
-        >= TimeUnit.SECONDS.toNanos(objectUploadThreadKeepAliveSeconds);
-  }
-
-  private void recycleWorkerSession(final ClientSession workerSession, final boolean reusable) {
-    if (workerSession == null) {
+  private void recycleSession(final ClientSession session, final boolean reusable) {
+    if (session == null) {
       return;
     }
-    if (!reusable || !workerSession.isOpen() || objectUploadExecutor.isShutdown()) {
-      closeSessionQuietly(workerSession);
+    if (!reusable || !session.isOpen() || objectUploadExecutor.isShutdown()) {
+      sessionPool.invalidateSession(session);
       return;
     }
-    if (!idleWorkerSessions.offer(new PooledWorkerSession(workerSession, System.nanoTime()))) {
-      closeSessionQuietly(workerSession);
-    }
+    sessionPool.recycleSession(session);
   }
 
   private void acquireTransferBytes(long bytes) {
@@ -586,38 +565,22 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private synchronized void invalidateMainSession() {
-    if (session != null) {
-      session.close(false);
-      session = null;
-    }
-  }
-
   private synchronized void invalidateSession() {
-    invalidateMainSession();
-    invalidateIdleWorkerSessions();
-  }
-
-  private void invalidateIdleWorkerSessions() {
-    PooledWorkerSession pooledWorkerSession;
-    while ((pooledWorkerSession = idleWorkerSessions.poll()) != null) {
-      closeSessionQuietly(pooledWorkerSession.session);
-    }
-  }
-
-  private static void closeSessionQuietly(final ClientSession session) {
-    if (session != null) {
-      session.close(false);
-    }
+    sessionPool.invalidate();
   }
 
   @Override
   public void handshake() throws IOException {
+    final ClientSession session = getSession();
+    boolean reusable = false;
     try {
-      ensureRemoteDirExists(getSession(), remoteBaseDir);
+      ensureRemoteDirExists(session, remoteBaseDir);
+      reusable = true;
       LOGGER.info("SCP handshake OK, remote base: {}", remoteBaseDir);
     } catch (IOException e) {
       throw new IOException("Handshake failed: cannot create or access remote base directory", e);
+    } finally {
+      recycleSession(session, reusable);
     }
   }
 
@@ -628,11 +591,16 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
       if (!objectUploadExecutor.awaitTermination(
           EXECUTOR_CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
         objectUploadExecutor.shutdownNow();
+        if (!objectUploadExecutor.awaitTermination(
+            EXECUTOR_CLOSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+          LOGGER.info("SCP object upload executor did not terminate after forced shutdown");
+        }
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       objectUploadExecutor.shutdownNow();
     }
     invalidateSession();
+    sessionPool.release();
   }
 }

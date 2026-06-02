@@ -76,6 +76,7 @@ public final class TsFileBackup {
     static final String SCP_USER = "root";
     static final String SSH_PORT = "22";
     static final String FALLBACK_IP = "127.0.0.1";
+    static final int SINK_PARALLEL_TASKS = 1;
   }
 
   /** Pipe attribute keys (source side). */
@@ -104,6 +105,7 @@ public final class TsFileBackup {
     static final String SINK_SCP_USER = "sink.scp.user";
     static final String SINK_SCP_PASSWORD = "sink.scp.password";
     static final String SINK_SCP_REMOTE_PATH = "sink.scp.remote-path";
+    static final String SINK_PARALLEL_TASKS = "sink.parallel.tasks";
     static final String SINK_RATE_LIMIT = "sink.rate-limit-bytes-per-second";
     static final String SINK_SCP_OBJECT_BATCH_SIZE_BYTES = "sink.scp.object-batch-size-bytes";
     static final String SINK_SCP_OBJECT_PARALLELISM = "sink.scp.object-parallelism";
@@ -198,6 +200,11 @@ public final class TsFileBackup {
     static final String RATE_LIMIT_ARG = "bytes/s";
     static final String RATE_LIMIT_DESC = "Sink rate limit in bytes/s; omit for unlimited.";
 
+    static final String SINK_PARALLEL_TASKS_LONG = "sink_parallel_tasks";
+    static final String SINK_PARALLEL_TASKS_ARG = "sink_parallel_tasks";
+    static final String SINK_PARALLEL_TASKS_DESC =
+        "Parallel sink tasks for the backup pipe, default 1.";
+
     static final String OBJECT_BATCH_SIZE_LONG = "object_batch_size";
     static final String OBJECT_BATCH_SIZE_ARG = "bytes";
     static final String OBJECT_BATCH_SIZE_DESC =
@@ -265,6 +272,7 @@ public final class TsFileBackup {
     final int sshPort;
     final String scpUser;
     final String scpPassword;
+    final int sinkParallelTasks;
     final Double rateLimitBytesPerSecond;
     final Long objectBatchSizeBytes;
     final Integer objectParallelism;
@@ -300,6 +308,15 @@ public final class TsFileBackup {
       this.scpPassword =
           resolveRemotePassword(
               line, String.format("Remote Host (%s, user %s) Password: ", scpHost, this.scpUser));
+
+      String sinkParallelTasksStr = line.getOptionValue(CliOptions.SINK_PARALLEL_TASKS_LONG);
+      this.sinkParallelTasks =
+          StringUtils.isNotBlank(sinkParallelTasksStr)
+              ? Integer.parseInt(sinkParallelTasksStr.trim())
+              : DefaultValues.SINK_PARALLEL_TASKS;
+      if (this.sinkParallelTasks <= 0) {
+        throw new IllegalArgumentException("sink_parallel_tasks must be a positive integer.");
+      }
 
       String rateStr = line.getOptionValue(CliOptions.RATE_LIMIT_LONG);
       this.rateLimitBytesPerSecond =
@@ -537,6 +554,13 @@ public final class TsFileBackup {
               .build());
       o.addOption(
           Option.builder()
+              .longOpt(CliOptions.SINK_PARALLEL_TASKS_LONG)
+              .hasArg()
+              .argName(CliOptions.SINK_PARALLEL_TASKS_ARG)
+              .desc(CliOptions.SINK_PARALLEL_TASKS_DESC)
+              .build());
+      o.addOption(
+          Option.builder()
               .longOpt(CliOptions.OBJECT_BATCH_SIZE_LONG)
               .hasArg()
               .argName(CliOptions.OBJECT_BATCH_SIZE_ARG)
@@ -695,6 +719,7 @@ public final class TsFileBackup {
       sink.add(formatKv(PipeKeys.SINK_SCP_USER, config.scpUser));
       sink.add(formatKv(PipeKeys.SINK_SCP_PASSWORD, config.scpPassword));
       sink.add(formatKv(PipeKeys.SINK_SCP_REMOTE_PATH, config.targetDir));
+      sink.add(formatKv(PipeKeys.SINK_PARALLEL_TASKS, String.valueOf(config.sinkParallelTasks)));
 
       if (config.rateLimitBytesPerSecond != null
           && config.rateLimitBytesPerSecond > 0
