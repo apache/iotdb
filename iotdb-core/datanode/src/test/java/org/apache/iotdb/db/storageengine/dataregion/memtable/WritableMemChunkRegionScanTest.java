@@ -32,6 +32,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -49,9 +50,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 @RunWith(Parameterized.class)
 public class WritableMemChunkRegionScanTest {
+
+  private static final int LAZY_ALIGNED_TEST_ROW_COUNT = ARRAY_SIZE * 8 + 123;
+  private static final int LAZY_ALIGNED_S1_INTERVAL = 17;
+  private static final int LAZY_ALIGNED_S2_INTERVAL = 19;
 
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> data() {
@@ -286,6 +295,306 @@ public class WritableMemChunkRegionScanTest {
     } finally {
       memTable.release();
     }
+  }
+
+  @Test
+  public void testLazyAlignedRegionScanWithSortedIndex() {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    for (int i = rowCount - 1; i >= 0; i--) {
+      Object[] values = new Object[] {null, null, null};
+      if (i % LAZY_ALIGNED_S1_INTERVAL == 0) {
+        values[0] = i;
+      }
+      if (i % LAZY_ALIGNED_S2_INTERVAL == 0) {
+        values[1] = i;
+      }
+      writableMemChunk.writeAlignedPoints(i, values, measurementSchemas);
+    }
+    writableMemChunk.sortTvListForFlush();
+
+    List<BitMap> bitMaps = new ArrayList<>();
+    long[] timestamps =
+        writableMemChunk.getAnySatisfiedTimestamp(
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+            bitMaps,
+            true,
+            null);
+
+    assertLazyAlignedQueryResult(timestamps, bitMaps);
+  }
+
+  @Test
+  public void testLazyAlignedFlushSkipsUnallocatedAllNullRows() throws InterruptedException {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    int s1Count = 0;
+    int s2Count = 0;
+    int expectedTimestampCount = countExpectedLazyAlignedTimestamps(rowCount);
+    for (int i = rowCount - 1; i >= 0; i--) {
+      Object[] values = new Object[] {null, null, null};
+      if (i % LAZY_ALIGNED_S1_INTERVAL == 0) {
+        values[0] = i;
+        s1Count++;
+      }
+      if (i % LAZY_ALIGNED_S2_INTERVAL == 0) {
+        values[1] = i;
+        s2Count++;
+      }
+      writableMemChunk.writeAlignedPoints(i, values, measurementSchemas);
+    }
+    writableMemChunk.sortTvListForFlush();
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    writableMemChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, rowCount);
+
+    Assert.assertEquals(1, ioTaskQueue.size());
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) ioTaskQueue.take();
+    Assert.assertEquals(
+        expectedTimestampCount, chunkWriter.getTimeChunkWriter().getStatistics().getCount());
+    Assert.assertEquals(
+        s1Count, chunkWriter.getValueChunkWriterByIndex(0).getStatistics().getCount());
+    Assert.assertEquals(
+        s2Count, chunkWriter.getValueChunkWriterByIndex(1).getStatistics().getCount());
+    Assert.assertEquals(0, chunkWriter.getValueChunkWriterByIndex(2).getStatistics().getCount());
+  }
+
+  @Test
+  public void testLazyAlignedFlushWithMultipleChunksAndPages() throws InterruptedException {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    int s1Count = 0;
+    int s2Count = 0;
+    int expectedTimestampCount = countExpectedLazyAlignedTimestamps(rowCount);
+    for (int i = rowCount - 1; i >= 0; i--) {
+      Object[] values = new Object[] {null, null, null};
+      if (i % LAZY_ALIGNED_S1_INTERVAL == 0) {
+        values[0] = i;
+        s1Count++;
+      }
+      if (i % LAZY_ALIGNED_S2_INTERVAL == 0) {
+        values[1] = i;
+        s2Count++;
+      }
+      writableMemChunk.writeAlignedPoints(i, values, measurementSchemas);
+    }
+    writableMemChunk.sortTvListForFlush();
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    writableMemChunk.encodeWorkingAlignedTVList(ioTaskQueue, 37, 11);
+
+    Assert.assertTrue(ioTaskQueue.size() > 1);
+    long actualTimeCount = 0;
+    long actualS1Count = 0;
+    long actualS2Count = 0;
+    long actualS3Count = 0;
+    while (!ioTaskQueue.isEmpty()) {
+      AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) ioTaskQueue.take();
+      actualTimeCount += chunkWriter.getTimeChunkWriter().getStatistics().getCount();
+      actualS1Count += chunkWriter.getValueChunkWriterByIndex(0).getStatistics().getCount();
+      actualS2Count += chunkWriter.getValueChunkWriterByIndex(1).getStatistics().getCount();
+      actualS3Count += chunkWriter.getValueChunkWriterByIndex(2).getStatistics().getCount();
+    }
+    Assert.assertEquals(expectedTimestampCount, actualTimeCount);
+    Assert.assertEquals(s1Count, actualS1Count);
+    Assert.assertEquals(s2Count, actualS2Count);
+    Assert.assertEquals(0, actualS3Count);
+  }
+
+  @Test
+  public void testLazyAlignedInsertTabletRegionScanAndFlush() throws InterruptedException {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    long[] times = new long[rowCount];
+    Object[] columns = new Object[] {new int[rowCount], new int[rowCount], new int[rowCount]};
+    BitMap[] bitMaps =
+        new BitMap[] {new BitMap(rowCount), new BitMap(rowCount), new BitMap(rowCount)};
+    int s1Count = 0;
+    int s2Count = 0;
+    for (int i = 0; i < rowCount; i++) {
+      times[i] = rowCount - i - 1;
+      ((int[]) columns[0])[i] = (int) times[i];
+      ((int[]) columns[1])[i] = (int) times[i];
+      ((int[]) columns[2])[i] = (int) times[i];
+      bitMaps[0].mark(i);
+      bitMaps[1].mark(i);
+      bitMaps[2].mark(i);
+      if (times[i] % LAZY_ALIGNED_S1_INTERVAL == 0) {
+        bitMaps[0].unmark(i);
+        s1Count++;
+      }
+      if (times[i] % LAZY_ALIGNED_S2_INTERVAL == 0) {
+        bitMaps[1].unmark(i);
+        s2Count++;
+      }
+    }
+
+    writableMemChunk.writeAlignedTablet(
+        times, columns, bitMaps, measurementSchemas, 0, rowCount, null);
+    writableMemChunk.sortTvListForFlush();
+
+    List<BitMap> resultBitMaps = new ArrayList<>();
+    long[] timestamps =
+        writableMemChunk.getAnySatisfiedTimestamp(
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+            resultBitMaps,
+            true,
+            null);
+    assertLazyAlignedQueryResult(timestamps, resultBitMaps);
+
+    int expectedTimestampCount = countExpectedLazyAlignedTimestamps(rowCount);
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    writableMemChunk.encodeWorkingAlignedTVList(ioTaskQueue, rowCount, rowCount);
+
+    Assert.assertEquals(1, ioTaskQueue.size());
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) ioTaskQueue.take();
+    Assert.assertEquals(
+        expectedTimestampCount, chunkWriter.getTimeChunkWriter().getStatistics().getCount());
+    Assert.assertEquals(
+        s1Count, chunkWriter.getValueChunkWriterByIndex(0).getStatistics().getCount());
+    Assert.assertEquals(
+        s2Count, chunkWriter.getValueChunkWriterByIndex(1).getStatistics().getCount());
+    Assert.assertEquals(0, chunkWriter.getValueChunkWriterByIndex(2).getStatistics().getCount());
+  }
+
+  @Test
+  public void testLazyAlignedAllNullRowsRegionScanAndFlush() {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    for (int i = rowCount - 1; i >= 0; i--) {
+      writableMemChunk.writeAlignedPoints(i, new Object[] {null, null, null}, measurementSchemas);
+    }
+    writableMemChunk.sortTvListForFlush();
+
+    List<BitMap> bitMaps = new ArrayList<>();
+    long[] timestamps =
+        writableMemChunk.getAnySatisfiedTimestamp(
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+            bitMaps,
+            true,
+            null);
+    Assert.assertEquals(0, timestamps.length);
+    Assert.assertTrue(bitMaps.isEmpty());
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    writableMemChunk.encodeWorkingAlignedTVList(ioTaskQueue, 37, 11);
+    Assert.assertTrue(ioTaskQueue.isEmpty());
+  }
+
+  @Test
+  public void testLazyAlignedAllNullInsertTabletRegionScanAndFlush() {
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    AlignedWritableMemChunk writableMemChunk =
+        new AlignedWritableMemChunk(measurementSchemas, false);
+    IoTDBDescriptor.getInstance().getConfig().setTVListSortThreshold(0);
+
+    int rowCount = LAZY_ALIGNED_TEST_ROW_COUNT;
+    long[] times = new long[rowCount];
+    Object[] columns = new Object[] {new int[rowCount], new int[rowCount], new int[rowCount]};
+    BitMap[] bitMaps =
+        new BitMap[] {new BitMap(rowCount), new BitMap(rowCount), new BitMap(rowCount)};
+    for (int i = 0; i < rowCount; i++) {
+      times[i] = rowCount - i - 1;
+      bitMaps[0].mark(i);
+      bitMaps[1].mark(i);
+      bitMaps[2].mark(i);
+    }
+
+    writableMemChunk.writeAlignedTablet(
+        times, columns, bitMaps, measurementSchemas, 0, rowCount, null);
+    writableMemChunk.sortTvListForFlush();
+
+    List<BitMap> resultBitMaps = new ArrayList<>();
+    long[] timestamps =
+        writableMemChunk.getAnySatisfiedTimestamp(
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()),
+            resultBitMaps,
+            true,
+            null);
+    Assert.assertEquals(0, timestamps.length);
+    Assert.assertTrue(resultBitMaps.isEmpty());
+
+    BlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+    writableMemChunk.encodeWorkingAlignedTVList(ioTaskQueue, 37, 11);
+    Assert.assertTrue(ioTaskQueue.isEmpty());
+  }
+
+  private void assertLazyAlignedQueryResult(long[] timestamps, List<BitMap> bitMaps) {
+    Assert.assertTrue(timestamps.length > 0);
+    Assert.assertEquals(timestamps.length, bitMaps.size());
+    long previousTimestamp = Long.MIN_VALUE;
+    for (int i = 0; i < timestamps.length; i++) {
+      long timestamp = timestamps[i];
+      Assert.assertTrue(timestamp > previousTimestamp);
+      Assert.assertTrue(isExpectedLazyAlignedTimestamp(timestamp));
+      Assert.assertEquals(timestamp % LAZY_ALIGNED_S1_INTERVAL != 0, bitMaps.get(i).isMarked(0));
+      Assert.assertEquals(timestamp % LAZY_ALIGNED_S2_INTERVAL != 0, bitMaps.get(i).isMarked(1));
+      Assert.assertTrue(bitMaps.get(i).isMarked(2));
+      previousTimestamp = timestamp;
+    }
+  }
+
+  private int countExpectedLazyAlignedTimestamps(int rowCount) {
+    int expectedTimestampCount = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (isExpectedLazyAlignedTimestamp(i)) {
+        expectedTimestampCount++;
+      }
+    }
+    return expectedTimestampCount;
+  }
+
+  private boolean isExpectedLazyAlignedTimestamp(long timestamp) {
+    return timestamp % LAZY_ALIGNED_S1_INTERVAL == 0 || timestamp % LAZY_ALIGNED_S2_INTERVAL == 0;
   }
 
   @Test

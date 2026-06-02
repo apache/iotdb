@@ -350,6 +350,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             alignedTVList.getMinTime(), alignedTVList.getMaxTime())) {
       return;
     }
+    BitMap allValueColDeletedMap =
+        ignoreAllNullRows ? alignedTVList.getAllValueColDeletedMap() : null;
     int rowCount = alignedTVList.rowCount();
     List<int[]> valueColumnDeleteCursor = new ArrayList<>();
     if (valueColumnsDeletionList != null) {
@@ -370,17 +372,13 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     // timestamp: 2 bitmap: 101
     // timestamp: 4 bitmap: 110
     List<long[]> timestampsList = alignedTVList.getTimestamps();
-    List<int[]> indicesList = alignedTVList.getIndices();
-    int row = -1;
     for (int i = 0; i < timestampsList.size(); i++) {
       long[] timestamps = timestampsList.get(i);
-      int[] indices = indicesList == null ? null : indicesList.get(i);
       int limit = (i == timestampsList.size() - 1) ? rowCount - i * ARRAY_SIZE : ARRAY_SIZE;
       for (int j = 0; j < limit; j++) {
-        row++;
         // the row is deleted or has no value columns (unwritten columns count as null)
-        int valueIndex = indices == null ? row : indices[j];
-        if (ignoreAllNullRows && alignedTVList.isEmptyValueRowAtValueIndex(valueIndex)) {
+        int valueIndex = alignedTVList.getValueIndex(i, j);
+        if (allValueColDeletedMap != null && allValueColDeletedMap.isMarked(valueIndex)) {
           continue;
         }
         long timestamp = timestamps[j];
@@ -392,7 +390,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         // non-null value in multiple timestamps for the same column.
         BitMap currentRowNullValueBitmap = null;
         for (int column = 0; column < schemaList.size(); column++) {
-          if (alignedTVList.isNullValue(indices == null ? row : indices[j], column)) {
+          if (alignedTVList.isNullValue(valueIndex, column)) {
             continue;
           }
 
@@ -551,7 +549,9 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       BlockingQueue<Object> ioTaskQueue,
       long maxNumberOfPointsInChunk,
       int maxNumberOfPointsInPage) {
-    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
+    AlignedTVList alignedWorkingListForFlush = ((AlignedTVList) workingListForFlush);
+    BitMap allValueColDeletedMap =
+        ignoreAllNullRows ? alignedWorkingListForFlush.getAllValueColDeletedMap() : null;
 
     boolean[] timeDuplicateInfo = null;
 
@@ -566,6 +566,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     for (int sortedRowIndex = 0;
         sortedRowIndex < alignedWorkingListForFlush.rowCount();
         sortedRowIndex++) {
+      if (isEmptyRowForFlush(alignedWorkingListForFlush, allValueColDeletedMap, sortedRowIndex)
+          || alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
+        continue;
+      }
       long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
       if (pointNumInPage == 0) {
         pageRange.add(sortedRowIndex);
@@ -588,9 +592,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
       int nextRowIndex = sortedRowIndex + 1;
       while (nextRowIndex < alignedWorkingListForFlush.rowCount()
-          && ((ignoreAllNullRows
-                  && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
-                      alignedWorkingListForFlush.getValueIndex(nextRowIndex)))
+          && (isEmptyRowForFlush(alignedWorkingListForFlush, allValueColDeletedMap, nextRowIndex)
               || alignedWorkingListForFlush.isTimeDeleted(nextRowIndex))) {
         nextRowIndex++;
       }
@@ -611,13 +613,15 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       chunkRange.add(pageRange);
     }
 
-    handleEncoding(ioTaskQueue, chunkRange, timeDuplicateInfo, maxNumberOfPointsInPage);
+    handleEncoding(
+        ioTaskQueue, chunkRange, timeDuplicateInfo, allValueColDeletedMap, maxNumberOfPointsInPage);
   }
 
   private void handleEncoding(
       BlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
       boolean[] timeDuplicateInfo,
+      BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
     AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
     List<TSDataType> dataTypes = alignedWorkingListForFlush.getTsDataTypes();
@@ -637,9 +641,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
               sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
               sortedRowIndex++) {
             // skip empty row
-            if (ignoreAllNullRows
-                && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
-                    alignedWorkingListForFlush.getValueIndex(sortedRowIndex))) {
+            if (isEmptyRowForFlush(
+                alignedWorkingListForFlush, allValueColDeletedMap, sortedRowIndex)) {
               continue;
             }
             // skip time duplicated rows
@@ -747,10 +750,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             sortedRowIndex <= pageRange.get(pageNum * 2 + 1);
             sortedRowIndex++) {
           // skip empty row
-          if (((ignoreAllNullRows
-                  && alignedWorkingListForFlush.isEmptyValueRowAtValueIndex(
-                      alignedWorkingListForFlush.getValueIndex(sortedRowIndex)))
-              || (alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)))) {
+          if (isEmptyRowForFlush(alignedWorkingListForFlush, allValueColDeletedMap, sortedRowIndex)
+              || alignedWorkingListForFlush.isTimeDeleted(sortedRowIndex)) {
             continue;
           }
           if (Objects.isNull(timeDuplicateInfo) || !timeDuplicateInfo[sortedRowIndex]) {
@@ -767,6 +768,12 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
         Thread.currentThread().interrupt();
       }
     }
+  }
+
+  private boolean isEmptyRowForFlush(
+      AlignedTVList alignedTVList, BitMap allValueColDeletedMap, int sortedRowIndex) {
+    return allValueColDeletedMap != null
+        && allValueColDeletedMap.isMarked(alignedTVList.getValueIndex(sortedRowIndex));
   }
 
   @Override

@@ -636,8 +636,10 @@ public abstract class AlignedTVList extends TVList {
     return dataTypes;
   }
 
-  public List<int[]> getIndices() {
-    return indices;
+  public int getValueIndex(int arrayIndex, int elementIndex) {
+    return indices == null
+        ? arrayIndex * ARRAY_SIZE + elementIndex
+        : indices.get(arrayIndex)[elementIndex];
   }
 
   @Override
@@ -899,7 +901,7 @@ public abstract class AlignedTVList extends TVList {
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
+        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
@@ -912,7 +914,7 @@ public abstract class AlignedTVList extends TVList {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
+        arrayCopy(value, bitMaps, results, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
           if (indices != null) {
             indices.get(arrayIdx)[elementIdx + i] = rowCount;
@@ -978,9 +980,17 @@ public abstract class AlignedTVList extends TVList {
     return bitmap.getByteArray();
   }
 
-  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
+  private void arrayCopy(
+      Object[] value,
+      BitMap[] inputBitMaps,
+      TSStatus[] results,
+      int idx,
+      int arrayIndex,
+      int elementIndex,
+      int remaining) {
     for (int i = 0; i < values.size(); i++) {
-      if (value[i] == null) {
+      if (!hasNonNullValueInRange(
+          value[i], inputBitMaps == null ? null : inputBitMaps[i], results, idx, remaining)) {
         continue;
       }
       List<Object> columnValues = values.get(i);
@@ -1024,6 +1034,25 @@ public abstract class AlignedTVList extends TVList {
           break;
       }
     }
+  }
+
+  private boolean hasNonNullValueInRange(
+      Object value, BitMap inputBitMap, TSStatus[] results, int idx, int length) {
+    if (value == null) {
+      return false;
+    }
+    for (int i = 0; i < length; i++) {
+      if (inputBitMap != null && inputBitMap.isMarked(idx + i)) {
+        continue;
+      }
+      if (results != null
+          && results[idx + i] != null
+          && results[idx + i].code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        continue;
+      }
+      return true;
+    }
+    return false;
   }
 
   private BitMap getBitMap(int columnIndex, int arrayIndex) {
@@ -1089,12 +1118,6 @@ public abstract class AlignedTVList extends TVList {
         timestamps.size(), alignedTvListArrayMemCost(), rowCount, new ArrayList<>(dataTypes));
   }
 
-  /**
-   * Get the single alignedTVList array mem cost by give types.
-   *
-   * @param types the types in the vector
-   * @return AlignedTvListArrayMemSize
-   */
   /** Memory cost of one timestamp primitive array chunk and list overhead. */
   public static long alignedTimestampArrayMemCost(int fieldColumnCount) {
     long size = PrimitiveArrayManager.ARRAY_SIZE * 8L;
