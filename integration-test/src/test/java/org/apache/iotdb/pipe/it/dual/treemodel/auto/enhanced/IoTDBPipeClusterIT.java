@@ -38,6 +38,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -328,6 +329,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           senderEnv,
           Arrays.asList("insert into root.db.d1(time, s1) values (1, 1)", "flush"),
           null);
+      flushTreeDataRegionReplicasAfterReplicationComplete(
+          senderEnv, Collections.singletonList("root.db"));
 
       final int leaderIndex = restartTreeDataRegionLeader(client, "root.db");
       if (leaderIndex == -1) { // ensure the leader is stopped
@@ -344,7 +347,10 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
           "select count(*) from root.db.d1",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"));
-      waitForTreeDataRegionReplicationComplete(Collections.singletonList("root.db"));
+      flushTreeDataRegionReplicasAfterReplicationComplete(
+          senderEnv, Collections.singletonList("root.db"));
+      flushTreeDataRegionReplicasAfterReplicationComplete(
+          receiverEnv, Collections.singletonList("root.db"));
     }
 
     try {
@@ -441,14 +447,22 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     return -1;
   }
 
-  private void waitForTreeDataRegionReplicationComplete(final List<String> databases) {
+  private void flushTreeDataRegionReplicasAfterReplicationComplete(
+      final BaseEnv env, final List<String> databases) {
+    waitForTreeDataRegionReplicationComplete(env, databases);
+    TestUtils.executeNonQueryWithRetry(env, "flush");
+    waitForTreeDataRegionReplicationComplete(env, databases);
+  }
+
+  private void waitForTreeDataRegionReplicationComplete(
+      final BaseEnv env, final List<String> databases) {
     await()
         .pollInterval(500, TimeUnit.MILLISECONDS)
         .atMost(2, TimeUnit.MINUTES)
         .untilAsserted(
             () -> {
               try (final SyncConfigNodeIServiceClient client =
-                  (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
                 final List<TRegionInfo> leaderRegionInfoList =
                     showTreeDataRegionLeaders(databases, client);
                 Assert.assertFalse(
@@ -457,14 +471,14 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
 
                 for (final TRegionInfo regionInfo : leaderRegionInfoList) {
                   final DataNodeWrapper leaderNode =
-                      findDataNodeWrapperByPort(regionInfo.getClientRpcPort());
+                      findDataNodeWrapperByPort(env, regionInfo.getClientRpcPort());
                   final String metricsUrl =
                       "http://"
                           + leaderNode.getIp()
                           + ":"
                           + leaderNode.getMetricPort()
                           + "/metrics";
-                  final String metricsContent = senderEnv.getUrlContent(metricsUrl, null);
+                  final String metricsContent = env.getUrlContent(metricsUrl, null);
                   Assert.assertNotNull(
                       "Failed to fetch metrics from leader DataNode at " + metricsUrl,
                       metricsContent);
@@ -492,8 +506,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualTreeModelAutoIT {
     return result;
   }
 
-  private DataNodeWrapper findDataNodeWrapperByPort(final int port) {
-    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+  private DataNodeWrapper findDataNodeWrapperByPort(final BaseEnv env, final int port) {
+    for (final DataNodeWrapper dataNodeWrapper : env.getDataNodeWrapperList()) {
       if (dataNodeWrapper.getPort() == port) {
         return dataNodeWrapper;
       }
