@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -236,7 +237,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     IDeviceID deviceID = currentDevice.left;
     boolean isAligned = currentDevice.right;
     ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
-    if (!ignoreAllNullRows) {
+    if (MetadataLeaseManager.getInstance().isFenced()) {
+      // Metadata lease fenced: this DataNode may hold a stale TTL (it could have missed a
+      // ConfigNode
+      // TTL update while partitioned). A too-short stale TTL would make compaction permanently
+      // delete data that a missed TTL-increase says to keep, so use an infinite TTL: compaction
+      // deletes nothing by TTL while fenced, and real TTL deletion resumes once the lease recovers
+      // and the cache resyncs. (Checked first so the table path also avoids the fenced cache.)
+      ttlForCurrentDevice = Long.MAX_VALUE;
+    } else if (!ignoreAllNullRows) {
       ttlForCurrentDevice =
           DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
     } else {
