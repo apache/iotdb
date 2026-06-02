@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -29,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -73,7 +75,10 @@ public class DataNodeTableCache implements ITableCache {
           IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
 
   private DataNodeTableCache() {
-    // Do nothing
+    // On lease recovery (a ConfigNode heartbeat after this DataNode was fenced), this cache may
+    // have
+    // missed ConfigNode pushes, so drop everything and let subsequent lookups re-fetch fresh state.
+    MetadataLeaseManager.getInstance().addLeaseRecoveryListener(this::invalidateAll);
   }
 
   private static final class DataNodeTableCacheHolder {
@@ -263,6 +268,22 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  /**
+   * Drop the entire cache. Used on metadata-lease recovery: after the DataNode was fenced it may
+   * have missed ConfigNode pushes, so the cached schema is no longer trustworthy and must be
+   * re-fetched lazily on the next lookup.
+   */
+  public void invalidateAll() {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.clear();
+      preUpdateTableMap.clear();
+      instanceVersion.incrementAndGet();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   @GuardedBy("TableDeviceSchemaCache#writeLock")
   @Override
   public void invalid(String database, final String tableName) {
@@ -313,7 +334,27 @@ public class DataNodeTableCache implements ITableCache {
     return instanceVersion.get();
   }
 
+  /**
+   * Fail closed when the metadata lease has expired: a fenced DataNode may hold a stale
+   * table-schema cache (it could have missed a ConfigNode invalidation while partitioned), so
+   * refuse to serve it rather than risk validating writes/queries against stale schema and
+   * producing dirty data. The error is retryable; the operation succeeds again once the lease
+   * recovers and the cache resyncs.
+   */
+  private void failIfMetadataLeaseFenced() {
+    final MetadataLeaseManager lease = MetadataLeaseManager.getInstance();
+    if (lease.isFenced()) {
+      throw new IoTDBRuntimeException(
+          String.format(
+              "DataNode metadata lease expired (%d ms since last ConfigNode heartbeat); refusing to "
+                  + "serve table schema from a possibly-stale cache, please retry.",
+              lease.getMillisSinceLastConfigNodeHeartbeat()),
+          TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode());
+    }
+  }
+
   public TsTable getTableInWrite(final String database, final String tableName) {
+    failIfMetadataLeaseFenced();
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName, false);
   }
@@ -327,6 +368,7 @@ public class DataNodeTableCache implements ITableCache {
    * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
    */
   public TsTable getTable(String database, final String tableName, final boolean force) {
+    failIfMetadataLeaseFenced();
     database = PathUtils.unQualifyDatabaseName(database);
     final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
