@@ -109,6 +109,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -2451,7 +2452,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
+    if (req.isSetNeedDisconnect() && req.isNeedDisconnect()) {
+      return unlockAccountAndInvalidateCache(req);
+    }
     if (AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
+  }
+
+  private TSStatus unlockAccountAndInvalidateCache(TInvalidatePermissionCacheReq req) {
+    // For account-unlock broadcasts, roleName carries the optional login address.
+    AuthorityChecker.getUserId(req.getUsername())
+        .ifPresent(userId -> LoginLockManager.getInstance().unlock(userId, req.getRoleName()));
+    if (AuthorityChecker.invalidateCache(req.getUsername(), null)) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
     return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);

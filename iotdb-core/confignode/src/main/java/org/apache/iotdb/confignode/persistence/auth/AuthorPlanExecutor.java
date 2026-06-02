@@ -124,6 +124,9 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case RenameUser:
           authorizer.renameUser(userName, newUsername);
           break;
+        case AccountUnlock:
+          authorizer.getUser(userName);
+          break;
         case CreateUser:
           authorizer.createUser(userName, password);
           break;
@@ -241,6 +244,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           authorizer.renameUser(userName, newUsername);
           break;
         case RAccountUnlock:
+          authorizer.getUser(userName);
           break;
         case RDropRole:
           authorizer.deleteRole(roleName);
