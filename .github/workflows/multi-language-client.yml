@@ -46,19 +46,19 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-2025-vs2026, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
       - uses: actions/checkout@v4
       - name: Install CPP Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
-          # Pin clang-format 17 to match pom.xml clang.format.version (ubuntu-latest ships 18.x)
+          # jammy (22.04): no clang-format-17 in default repos — use apt.llvm.org
           . /etc/os-release
           if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
             wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
@@ -73,7 +73,7 @@ jobs:
           clang-format --version
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
-        if: matrix.os == 'macos-latest'
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost openssl llvm@17 bison
@@ -81,6 +81,7 @@ jobs:
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
           clang-format --version
+          bison --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -88,7 +89,6 @@ jobs:
           sudo rm -rf /Applications/Xcode_15.3.app
       - name: Install CPP Dependencies (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
         run: |
           choco install winflexbison3 -y
           choco install boost-msvc-14.3 -y
@@ -100,26 +100,17 @@ jobs:
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
           choco install llvm --version=17.0.6 --force -y
           clang-format --version
-          # windows-latest now ships VS 2026; root pom.xml defaults to VS 2022.
-          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          if (-not (Test-Path $vswhere)) {
-            throw "vswhere not found; Visual Studio Build Tools are required"
-          }
-          $catalogVersion = & $vswhere -latest -property catalog_productLineVersion
-          $generator = switch ($catalogVersion) {
-            '2026' { 'Visual Studio 18 2026' }
-            '2022' { 'Visual Studio 17 2022' }
-            '2019' { 'Visual Studio 16 2019' }
-            default { throw "Unsupported Visual Studio version: $catalogVersion" }
-          }
-          "CMAKE_GENERATOR=$generator" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "Using CMake generator: $generator (Visual Studio $catalogVersion)"
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Check C++ format (Spotless)
+        shell: bash
+        run: |
+          ./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check
+          ./mvnw -P with-cpp -pl example/client-cpp-example spotless:check
       - name: Build IoTDB server
         shell: bash
         run: ./mvnw clean install -pl distribution -am -DskipTests
@@ -129,12 +120,11 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          set -euo pipefail
-          MVN_ARGS=()
-          if [ -n "${CMAKE_GENERATOR:-}" ]; then
-            MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
+          if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026"
+          else
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
-          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am "${MVN_ARGS[@]}"
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
