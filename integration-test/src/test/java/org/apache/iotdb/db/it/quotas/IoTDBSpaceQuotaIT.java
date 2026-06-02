@@ -26,6 +26,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -40,6 +41,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -297,8 +299,6 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt02.status0 with datatype=BOOLEAN,encoding=PLAIN;");
       adminStmt.execute(
           "create timeseries root.sg0.wf01.wt02.status1 with datatype=BOOLEAN,encoding=PLAIN;");
-      Thread.sleep(2000);
-      ResultSet resultSet1 = adminStmt.executeQuery("show space quota root.sg0;");
       String ans1 =
           "root.sg0,diskSize,0.09765625G,0.0G"
               + ",\n"
@@ -306,8 +306,8 @@ public class IoTDBSpaceQuotaIT {
               + ",\n"
               + "root.sg0,timeSeriesNum,5,3"
               + ",\n";
-      validateResultSet(resultSet1, ans1);
-    } catch (InterruptedException | SQLException e) {
+      validateResultSetEventually(adminStmt, "show space quota root.sg0;", ans1);
+    } catch (SQLException e) {
       Assert.fail(e.getMessage());
     }
   }
@@ -509,6 +509,22 @@ public class IoTDBSpaceQuotaIT {
     }
   }
 
+  private void validateResultSetEventually(Statement statement, String sql, String ans) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              try {
+                validateResultSet(statement.executeQuery(sql), ans);
+              } catch (SQLException e) {
+                Assert.fail(e.getMessage());
+              }
+            });
+  }
+
   private void validateResultSet(ResultSet set, String ans) throws SQLException {
     try {
       StringBuilder builder = new StringBuilder();
@@ -521,12 +537,12 @@ public class IoTDBSpaceQuotaIT {
         builder.append("\n");
       }
       String result = builder.toString();
-      assertEquals(ans.length(), result.length());
+      assertEquals(result, ans.length(), result.length());
       List<String> ansLines = Arrays.asList(ans.split("\n"));
       List<String> resultLines = Arrays.asList(result.split("\n"));
-      assertEquals(ansLines.size(), resultLines.size());
+      assertEquals(result, ansLines.size(), resultLines.size());
       for (String resultLine : resultLines) {
-        assertTrue(ansLines.contains(resultLine));
+        assertTrue(result, ansLines.contains(resultLine));
       }
     } finally {
       set.close();
