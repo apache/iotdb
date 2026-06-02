@@ -47,6 +47,17 @@ public class CachedBasicMNode implements ICachedMNode {
   private ICachedMNode parent;
   private final CacheMNodeInfo cacheMNodeInfo;
 
+  /** Cached flag showing whether there is any device in the subtree below this node. */
+  private boolean hasDeviceDescendant = false;
+
+  /**
+   * Whether {@link #hasDeviceDescendant} is trusted for the current in-memory node instance.
+   *
+   * <p>This state is intentionally not persisted. A node reloaded from PBTree can lazily recompute
+   * it when the wildcard-suffix optimization needs it.
+   */
+  private boolean deviceDescendantComputed = false;
+
   /** from root to this node, only be set when used once for InternalMNode */
   private String fullPath;
 
@@ -54,6 +65,11 @@ public class CachedBasicMNode implements ICachedMNode {
   public CachedBasicMNode(ICachedMNode parent, String name) {
     this.parent = parent;
     this.cacheMNodeInfo = new CacheMNodeInfo(name);
+  }
+
+  @Override
+  public CachedBasicMNode getBasicMNode() {
+    return this;
   }
 
   @Override
@@ -97,6 +113,26 @@ public class CachedBasicMNode implements ICachedMNode {
   @Override
   public void setFullPath(String fullPath) {
     this.fullPath = fullPath;
+  }
+
+  @Override
+  public boolean hasDeviceDescendant() {
+    return hasDeviceDescendant;
+  }
+
+  @Override
+  public void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
+    this.hasDeviceDescendant = hasDeviceDescendant;
+  }
+
+  @Override
+  public boolean isDeviceDescendantComputed() {
+    return deviceDescendantComputed;
+  }
+
+  @Override
+  public void setDeviceDescendantComputed(final boolean deviceDescendantComputed) {
+    this.deviceDescendantComputed = deviceDescendantComputed;
   }
 
   @Override
@@ -245,6 +281,8 @@ public class CachedBasicMNode implements ICachedMNode {
    *         <li>basicMNodeInfo reference, 8B
    *         <li>parent reference, 8B
    *         <li>fullPath reference, 8B
+   *         <li>hasDeviceDescendant, 1B
+   *         <li>deviceDescendantComputed, 1B
    *       </ol>
    *   <li>MapEntry in parent
    *       <ol>
@@ -256,7 +294,7 @@ public class CachedBasicMNode implements ICachedMNode {
    */
   @Override
   public int estimateSize() {
-    return 8 + 8 + 8 + 8 + 8 + 8 + 28 + cacheMNodeInfo.estimateSize();
+    return 8 + 8 + 8 + 8 + 1 + 1 + 8 + 8 + 28 + cacheMNodeInfo.estimateSize();
   }
 
   @Override
