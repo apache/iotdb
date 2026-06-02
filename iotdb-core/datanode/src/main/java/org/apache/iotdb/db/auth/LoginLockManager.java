@@ -323,11 +323,13 @@ public class LoginLockManager {
               // Remove outdated failures
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
-                String[] parts = entry.getKey().split("@");
-                LOGGER.info("IP '{}' for user ID '{}' unlocked (expired)", parts[1], parts[0]);
-                long uid = Long.parseLong(parts[0]);
-                String uname = userIdToUsername.getOrDefault(uid, parts[0]);
-                logUnlockAuditEvent(uid, uname, parts[1], "expired");
+                final String[] parts = entry.getKey().split("@", 2);
+                final String ip = parts.length == 2 ? parts[1] : "";
+                final String userId = parts.length >= 1 ? parts[0] : "";
+                LOGGER.info(DataNodeMiscMessages.IP_UNLOCKED_EXPIRED, ip, userId);
+                long uid = Long.parseLong(userId);
+                String uname = userIdToUsername.getOrDefault(uid, userId);
+                logUnlockAuditEvent(uid, uname, ip, "expired");
                 return true;
               }
               return false;

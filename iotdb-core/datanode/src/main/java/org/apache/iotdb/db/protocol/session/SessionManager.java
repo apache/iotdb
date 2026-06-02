@@ -55,6 +55,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
+import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -173,7 +174,11 @@ public class SessionManager implements SessionManagerMBean {
           .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
       return openSessionResp;
     }
-    boolean enableLoginLock = userId != -1;
+
+    // Pipe/CQ/Select-Into use InternalClientSession for password validation and should not
+    // participate in user@ip login lock (empty client address shares one lock bucket).
+    final boolean enableLoginLock =
+        userId != -1 && session.getConnectionType() != TSConnectionType.INTERNAL;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
       // Generic authentication error
