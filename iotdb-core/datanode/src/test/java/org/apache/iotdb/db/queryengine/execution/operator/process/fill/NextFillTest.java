@@ -46,6 +46,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class NextFillTest {
@@ -149,6 +150,51 @@ public class NextFillTest {
     assertTrue(secondBlock.getColumn(1).isNull(0));
     assertEquals("b", secondBlock.getColumn(0).getBinary(1).toString());
     assertEquals(9, secondBlock.getColumn(1).getInt(1));
+  }
+
+  @Test
+  public void testNextFillWithGroupUsesNextSameGroupAcrossTsBlocks() throws Exception {
+    List<TSDataType> dataTypes = ImmutableList.of(TSDataType.TEXT, TSDataType.INT32);
+    CommonOperatorContext operatorContext = new TestOperatorContext();
+    TableNextFillWithGroupOperator operator =
+        new TableNextFillWithGroupOperator(
+            operatorContext,
+            CommonOperatorUtils.getNextFill(2, dataTypes, null, ZoneId.systemDefault()),
+            new TsBlockSourceOperator(
+                operatorContext,
+                ImmutableList.of(
+                    buildBlock(new String[] {"a"}, new Integer[] {null}),
+                    buildBlock(new String[] {"a"}, new Integer[] {7}))),
+            -1,
+            false,
+            (left, right) ->
+                left.tsBlock
+                    .getColumn(0)
+                    .getBinary(left.rowIndex)
+                    .toString()
+                    .compareTo(right.tsBlock.getColumn(0).getBinary(right.rowIndex).toString()),
+            dataTypes);
+
+    TsBlock result = nextNonNull(operator);
+    assertNotNull(result);
+    assertEquals(2, result.getPositionCount());
+    assertEquals("a", result.getColumn(0).getBinary(0).toString());
+    assertFalse(result.getColumn(1).isNull(0));
+    assertEquals(7, result.getColumn(1).getInt(0));
+    assertEquals("a", result.getColumn(0).getBinary(1).toString());
+    assertFalse(result.getColumn(1).isNull(1));
+    assertEquals(7, result.getColumn(1).getInt(1));
+    assertFalse(operator.hasNext());
+  }
+
+  private static TsBlock nextNonNull(TableNextFillWithGroupOperator operator) throws Exception {
+    while (operator.hasNext()) {
+      TsBlock result = operator.next();
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
   }
 
   private static TsBlock buildBlock(String[] groups, Integer[] values) {

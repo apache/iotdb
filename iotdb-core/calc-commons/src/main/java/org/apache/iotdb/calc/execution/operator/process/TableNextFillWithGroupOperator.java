@@ -101,13 +101,11 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
 
   @Override
   void resetFill() {
-    boolean isNewGroup = Boolean.TRUE.equals(groupSplitter.remove(0));
+    groupSplitter.remove(0);
     boolean isNoMoreTsBlockForCurrentGroup =
         Boolean.TRUE.equals(noMoreTsBlockForCurrentGroup.remove(0));
-    if (isNewGroup || isNoMoreTsBlockForCurrentGroup) {
-      for (ILinearFill fill : fillArray) {
-        fill.reset();
-      }
+    if (isNoMoreTsBlockForCurrentGroup) {
+      resetFillState();
     }
   }
 
@@ -135,6 +133,8 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
           boolean isNewGroup = isNewGroup(currentGroupKey);
           if (isNewGroup && !noMoreTsBlockForCurrentGroup.isEmpty()) {
             noMoreTsBlockForCurrentGroup.set(noMoreTsBlockForCurrentGroup.size() - 1, true);
+          } else if (isNewGroup) {
+            resetFillState();
           }
           groupSplitter.add(isNewGroup);
         } else {
@@ -152,6 +152,8 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
       boolean isNewGroup = isNewGroup(currentGroupKey);
       if (isNewGroup && !noMoreTsBlockForCurrentGroup.isEmpty()) {
         noMoreTsBlockForCurrentGroup.set(noMoreTsBlockForCurrentGroup.size() - 1, true);
+      } else if (isNewGroup) {
+        resetFillState();
       }
       groupSplitter.add(isNewGroup);
     } else {
@@ -163,5 +165,11 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
 
   private boolean isNewGroup(SortKey currentGroupKey) {
     return lastRow == null || groupKeyComparator.compare(lastRow, currentGroupKey) != 0;
+  }
+
+  private void resetFillState() {
+    for (ILinearFill fill : fillArray) {
+      fill.reset();
+    }
   }
 }

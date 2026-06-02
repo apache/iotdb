@@ -26,6 +26,8 @@ import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class TableNextFillOperator extends AbstractLinearFillOperator {
 
   // start from 0; -1 means plain NEXT has no helper column.
@@ -40,6 +42,9 @@ public class TableNextFillOperator extends AbstractLinearFillOperator {
       int helperColumnIndex,
       boolean hasTimeBound) {
     super(operatorContext, fillArray, child);
+    checkArgument(
+        !hasTimeBound || helperColumnIndex != -1,
+        "helperColumnIndex should be resolved when timeBound exists");
     this.helperColumnIndex = helperColumnIndex;
     this.hasTimeBound = hasTimeBound;
   }
