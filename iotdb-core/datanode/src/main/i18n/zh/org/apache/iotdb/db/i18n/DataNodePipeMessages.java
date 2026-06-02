@@ -134,6 +134,16 @@ public final class DataNodePipeMessages {
       "向 ConfigNode 持久化进度索引失败，状态：{}";
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "注册 pipe 插件 {} 失败。跳过该插件并继续启动。";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN =
+          "注册 PipePlugin %s 失败，因为给定的 PipePlugin 名称与内置 PipePlugin 名称重复。";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_INSTANCE_CONSTRUCTION_FAILED =
+          "注册 PipePlugin %s(%s) 失败，因为其实例无法成功构造。异常：%s";
+  public static final String FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_JAR_MD5_MISMATCH =
+      "注册 PipePlugin %s 失败，因为 pipe 插件 %s 已存在的 jar 文件 MD5 与新 jar 文件不同。";
+  public static final String FAILED_TO_DEREGISTER_BUILTIN_PIPE_PLUGIN =
+      "注销内置 PipePlugin %s 失败。";
   public static final String PIPECONNECTOR = "PipeConnector: ";
   public static final String PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION =
       "PipeDataNodeTaskBuilder 解析 'inclusion' 和 'exclusion' 参数失败：{}";
@@ -407,8 +417,15 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_START_SOURCES = "启动 source 失败。";
   public static final String HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE =
       "无法提供心跳事件 {}，因为无法增加引用计数";
+  public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
+      "事件 %s 无法提供，因为无法增加引用计数，事件代表的数据已经丢失";
   public static final String INTERRUPTED_WAITING_FOR_PROCESSOR_TO_STOP =
       "等待 processor 停止时被中断";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE =
+      "等待解析 TsFile %s 的权限信息时被中断。";
+  public static final String PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR =
+      "检查权限时解析 TsFile %s 失败。原因：%s";
+  public static final String READ_TSFILE_ERROR = "读取 TsFile %s 失败。";
   public static final String IOTDBSCHEMAREGIONSOURCE_DOES_NOT_SUPPORT_TRANSFERRING_EVENTS_UNDER =
       "IoTDBSchemaRegionSource 不支持在 simple consensus 下传输事件";
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT = "没有权限传输事件：";
@@ -795,6 +812,8 @@ public final class DataNodePipeMessages {
       "从队列 poll 出的事件与 peek 到的事件不一致。peek 事件：{}，poll 事件：{}。";
   public static final String THE_FILE_IS_NOT_FOUND_MAY_ALREADY =
       "未找到文件 {}，可能已被删除。";
+  public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
+      "网络接收 TsFile %s 失败，状态：%s";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT =
       "pipe {} 已被删除，事件 ack {} 将被忽略。";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1 =

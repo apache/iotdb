@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -87,19 +88,17 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
    * Otherwise, the {@link PipeSinkSubtaskLifeCycle#runningTaskCount} might be inconsistent with the
    * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel connector scheduling.
    *
-   * @param pipeNameToDeregister pipe name
-   * @param regionId region id
+   * @param committerKey committer key of the pipe task to deregister
    * @return {@code true} if the {@link PipeSinkSubtask} is out of life cycle, indicating that the
    *     {@link PipeSinkSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  public synchronized boolean deregister(
-      final String pipeNameToDeregister, final long creationTimeToDeregister, final int regionId) {
+  public synchronized boolean deregister(final CommitterKey committerKey) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException(DataNodePipeMessages.REGISTEREDTASKCOUNT_0_1);
     }
 
-    subtask.discardEventsOfPipe(pipeNameToDeregister, creationTimeToDeregister, regionId);
+    subtask.discardEventsOfPipe(committerKey);
 
     try {
       if (registeredTaskCount > 1) {

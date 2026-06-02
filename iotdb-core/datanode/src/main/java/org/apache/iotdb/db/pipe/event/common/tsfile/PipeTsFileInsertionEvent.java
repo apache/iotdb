@@ -610,11 +610,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String errorMsg =
           e instanceof InterruptedException
               ? String.format(
-                  "Interrupted when waiting for parsing privilege for TsFile %s.",
+                  DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE,
                   resource.getTsFilePath())
               : String.format(
-                  "Parse TsFile %s when checking privilege error. Because: %s",
-                  resource.getTsFilePath(), e.getMessage());
+                  DataNodePipeMessages.PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR,
+                  resource.getTsFilePath(),
+                  e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
     } finally {
@@ -861,7 +862,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } catch (final Exception e) {
       close();
 
-      final String errorMsg = String.format("Read TsFile %s error.", tsFile.getPath());
+      final String errorMsg =
+          String.format(DataNodePipeMessages.READ_TSFILE_ERROR, tsFile.getPath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
     }

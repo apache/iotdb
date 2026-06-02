@@ -1519,5 +1519,11 @@ public final class DataNodeQueryMessages {
 
   public static final String CANT_CONNECT_TO_NODE_PREFIX = "无法连接到节点 ";
   public static final String REMOVE_AINODE_FAILED = "移除 AINode 失败：";
+
+  public static final String QUERY_TIMEOUT_IN_FETCH_SCHEMA = "查询在拉取元数据时，执行超时";
+
+  public static final String QUERY_EXECUTION_MISSING = "查询执行实体 %s 在拉取元数据期间丢失";
+
+
   private DataNodeQueryMessages() {}
 }

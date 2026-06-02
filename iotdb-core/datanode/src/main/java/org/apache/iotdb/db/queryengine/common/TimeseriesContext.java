@@ -28,7 +28,10 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
@@ -42,8 +45,17 @@ public class TimeseriesContext {
 
   private final String deadband;
   private final String deadbandParameters;
+  private final int activeCountMultiplier;
+  private final Set<String> activeLogicalViewCountSet;
 
   public TimeseriesContext(IMeasurementSchemaInfo schemaInfo) {
+    this(schemaInfo, 1, Collections.emptySet());
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
@@ -54,6 +66,8 @@ public class TimeseriesContext {
         MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
     this.deadband = deadbandInfo.left;
     this.deadbandParameters = deadbandInfo.right;
+    this.activeCountMultiplier = activeCountMultiplier;
+    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
   }
 
   public String getDataType() {
@@ -88,6 +102,14 @@ public class TimeseriesContext {
     return deadband;
   }
 
+  public int getActiveCountMultiplier() {
+    return activeCountMultiplier;
+  }
+
+  public Set<String> getActiveLogicalViewCountSet() {
+    return activeLogicalViewCountSet;
+  }
+
   public TimeseriesContext(
       String dataType,
       String alias,
@@ -97,6 +119,30 @@ public class TimeseriesContext {
       String attributes,
       String deadband,
       String deadbandParameters) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        1,
+        Collections.emptySet());
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      int activeCountMultiplier,
+      Set<String> activeLogicalViewCountSet) {
     this.dataType = dataType;
     this.alias = alias;
     this.encoding = encoding;
@@ -105,6 +151,24 @@ public class TimeseriesContext {
     this.attributes = attributes;
     this.deadband = deadband;
     this.deadbandParameters = deadbandParameters;
+    this.activeCountMultiplier = activeCountMultiplier;
+    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+  }
+
+  public TimeseriesContext mergeActiveCount(TimeseriesContext that) {
+    Set<String> mergedActiveLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+    mergedActiveLogicalViewCountSet.addAll(that.activeLogicalViewCountSet);
+    return new TimeseriesContext(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        activeCountMultiplier + that.activeCountMultiplier,
+        mergedActiveLogicalViewCountSet);
   }
 
   public void serializeAttributes(ByteBuffer byteBuffer) {
@@ -116,6 +180,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(attributes, byteBuffer);
     ReadWriteIOUtils.write(deadband, byteBuffer);
     ReadWriteIOUtils.write(deadbandParameters, byteBuffer);
+    ReadWriteIOUtils.write(activeCountMultiplier, byteBuffer);
+    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), byteBuffer);
+    for (String logicalView : activeLogicalViewCountSet) {
+      ReadWriteIOUtils.write(logicalView, byteBuffer);
+    }
   }
 
   public void serializeAttributes(DataOutputStream stream) throws IOException {
@@ -127,6 +196,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(attributes, stream);
     ReadWriteIOUtils.write(deadband, stream);
     ReadWriteIOUtils.write(deadbandParameters, stream);
+    ReadWriteIOUtils.write(activeCountMultiplier, stream);
+    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), stream);
+    for (String logicalView : activeLogicalViewCountSet) {
+      ReadWriteIOUtils.write(logicalView, stream);
+    }
   }
 
   public static TimeseriesContext deserialize(ByteBuffer buffer) {
@@ -138,8 +212,23 @@ public class TimeseriesContext {
     String attributes = ReadWriteIOUtils.readString(buffer);
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
+    int activeCountMultiplier = ReadWriteIOUtils.readInt(buffer);
+    int activeLogicalViewCountSetSize = ReadWriteIOUtils.readInt(buffer);
+    Set<String> activeLogicalViewCountSet = new HashSet<>();
+    for (int i = 0; i < activeLogicalViewCountSetSize; i++) {
+      activeLogicalViewCountSet.add(ReadWriteIOUtils.readString(buffer));
+    }
     return new TimeseriesContext(
-        dataType, alias, encoding, compression, tags, attributes, deadband, deadbandParameters);
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        activeCountMultiplier,
+        activeLogicalViewCountSet);
   }
 
   @Override
@@ -159,13 +248,24 @@ public class TimeseriesContext {
             && Objects.equals(tags, that.tags)
             && Objects.equals(attributes, that.attributes)
             && Objects.equals(deadband, that.deadband)
-            && Objects.equals(deadbandParameters, that.deadbandParameters);
+            && Objects.equals(deadbandParameters, that.deadbandParameters)
+            && activeCountMultiplier == that.activeCountMultiplier
+            && Objects.equals(activeLogicalViewCountSet, that.activeLogicalViewCountSet);
     return res;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        dataType, alias, encoding, compression, tags, attributes, deadband, deadbandParameters);
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        activeCountMultiplier,
+        activeLogicalViewCountSet);
   }
 }
