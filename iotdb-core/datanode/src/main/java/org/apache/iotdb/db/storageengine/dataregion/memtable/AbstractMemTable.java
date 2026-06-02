@@ -183,7 +183,8 @@ public abstract class AbstractMemTable implements IMemTable {
               seriesNumber += schemaList.size();
               return new AlignedWritableMemChunkGroup(
                   schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()),
-                  k.isTableModel());
+                  k.isTableModel(),
+                  EncryptDBUtils.getSecondEncryptParamFromDatabase(database));
             });
     for (IMeasurementSchema schema : schemaList) {
       if (schema != null && !memChunkGroup.contains(schema.getMeasurementName())) {

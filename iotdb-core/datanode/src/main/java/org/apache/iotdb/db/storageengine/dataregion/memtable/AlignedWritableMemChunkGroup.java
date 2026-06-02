@@ -44,10 +44,15 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private AlignedWritableMemChunk memChunk;
 
-  private EncryptParameter encryptParameter;
-
   public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
+  }
+
+  public AlignedWritableMemChunkGroup(
+      List<IMeasurementSchema> schemaList,
+      boolean isTableModel,
+      EncryptParameter encryptParameter) {
+    memChunk = new AlignedWritableMemChunk(schemaList, isTableModel, encryptParameter);
   }
 
   @TestOnly
@@ -168,7 +173,6 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public void setEncryptParameter(EncryptParameter encryptParameter) {
-    this.encryptParameter = encryptParameter;
     memChunk.setEncryptParameter(encryptParameter);
   }
 
