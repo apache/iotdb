@@ -246,38 +246,39 @@ const std::vector<std::string>& SessionDataSet::DataIterator::getColumnTypeList(
 
 shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
   std::vector<Field> outFields;
-  for (int i = iotdbRpcDataSet_->getValueColumnStartIndex(); i < iotdbRpcDataSet_->getColumnSize();
-       i++) {
+  const int32_t valueColumnStartIndex = iotdbRpcDataSet_->getValueColumnStartIndex();
+  const int32_t columnSize = iotdbRpcDataSet_->getColumnSize();
+  outFields.reserve(columnSize - valueColumnStartIndex);
+  for (int32_t columnIndex = valueColumnStartIndex + 1; columnIndex <= columnSize; ++columnIndex) {
     Field field;
-    std::string columnName = iotdbRpcDataSet_->getColumnNameList().at(i);
-    if (!iotdbRpcDataSet_->isNullByColumnName(columnName)) {
-      TSDataType::TSDataType dataType = iotdbRpcDataSet_->getDataType(columnName);
+    if (!iotdbRpcDataSet_->isNullByIndex(columnIndex)) {
+      TSDataType::TSDataType dataType = iotdbRpcDataSet_->getDataTypeByIndex(columnIndex);
       field.dataType = dataType;
       switch (dataType) {
       case TSDataType::BOOLEAN:
-        field.boolV = iotdbRpcDataSet_->getBoolean(columnName);
+        field.boolV = iotdbRpcDataSet_->getBooleanByIndex(columnIndex).value();
         break;
       case TSDataType::INT32:
-        field.intV = iotdbRpcDataSet_->getInt(columnName);
+        field.intV = iotdbRpcDataSet_->getIntByIndex(columnIndex).value();
         break;
       case TSDataType::DATE:
-        field.dateV = iotdbRpcDataSet_->getDate(columnName);
+        field.dateV = iotdbRpcDataSet_->getDateByIndex(columnIndex).value();
         break;
       case TSDataType::INT64:
       case TSDataType::TIMESTAMP:
-        field.longV = iotdbRpcDataSet_->getLong(columnName);
+        field.longV = iotdbRpcDataSet_->getLongByIndex(columnIndex).value();
         break;
       case TSDataType::FLOAT:
-        field.floatV = iotdbRpcDataSet_->getFloat(columnName);
+        field.floatV = iotdbRpcDataSet_->getFloatByIndex(columnIndex).value();
         break;
       case TSDataType::DOUBLE:
-        field.doubleV = iotdbRpcDataSet_->getDouble(columnName);
+        field.doubleV = iotdbRpcDataSet_->getDoubleByIndex(columnIndex).value();
         break;
       case TSDataType::TEXT:
       case TSDataType::BLOB:
       case TSDataType::STRING:
       case TSDataType::OBJECT:
-        field.stringV = iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
+        field.stringV = iotdbRpcDataSet_->getBinaryByIndex(columnIndex)->getStringValue();
         break;
       default:
         throw UnSupportedDataTypeException("Data type %s is not supported." + dataType);

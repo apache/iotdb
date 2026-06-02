@@ -82,7 +82,11 @@ public class ModificationUtils {
               if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
                 return true;
               } else {
-                if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                if (overlap(
+                    metaData.getStartTime(),
+                    metaData.getEndTime(),
+                    range.getMin(),
+                    range.getMax())) {
                   metaData.setModified(true);
                 }
               }
@@ -144,9 +148,11 @@ public class ModificationUtils {
             currentRemoved = true;
             break;
           } else {
-            if (range.overlaps(
-                new TimeRange(
-                    valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
+            if (overlap(
+                valueChunkMetadata.getStartTime(),
+                valueChunkMetadata.getEndTime(),
+                range.getMin(),
+                range.getMax())) {
               valueChunkMetadata.setModified(true);
               modified = true;
             }
@@ -194,10 +200,11 @@ public class ModificationUtils {
                 // all rows are deleted
                 return true;
               } else {
-                if (range.overlaps(
-                    new TimeRange(
-                        timeColumnChunkMetadata.getStartTime(),
-                        timeColumnChunkMetadata.getEndTime()))) {
+                if (overlap(
+                    timeColumnChunkMetadata.getStartTime(),
+                    timeColumnChunkMetadata.getEndTime(),
+                    range.getMin(),
+                    range.getMax())) {
                   timeColumnChunkMetadata.setModified(true);
                   modified = true;
                 }
@@ -329,16 +336,17 @@ public class ModificationUtils {
     if (measurementList.isEmpty()) {
       return Collections.emptyList();
     }
-    List<ModEntry> modifications =
-        ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable);
-    List<List<TimeRange>> deletionList = new ArrayList<>();
+    List<ModEntry> deviceModifications =
+        filterDeviceModifications(
+            deviceID,
+            ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable),
+            timeLowerBound);
+    List<List<TimeRange>> deletionList = new ArrayList<>(measurementList.size());
     for (String measurement : measurementList) {
       List<TimeRange> columnDeletionList = new ArrayList<>();
       columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (ModEntry modification : modifications) {
-        if (modification.affects(deviceID)
-            && modification.affects(measurement)
-            && modification.getEndTime() > timeLowerBound) {
+      for (ModEntry modification : deviceModifications) {
+        if (modification.affects(measurement)) {
           long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
           columnDeletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
         }
@@ -362,10 +370,10 @@ public class ModificationUtils {
       long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (ModEntry modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification.affects(deviceID)
-          && modification.affects(measurement)
-          && modification.getEndTime() > timeLowerBound) {
+    for (ModEntry modification :
+        filterDeviceModifications(
+            deviceID, getModificationsForMemtable(memTable, modsToMemtable), timeLowerBound)) {
+      if (modification.affects(measurement)) {
         long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
         deletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
       }
@@ -384,6 +392,17 @@ public class ModificationUtils {
       }
     }
     return modifications;
+  }
+
+  private static List<ModEntry> filterDeviceModifications(
+      IDeviceID deviceID, List<ModEntry> modifications, long timeLowerBound) {
+    List<ModEntry> deviceModifications = new ArrayList<>();
+    for (ModEntry modification : modifications) {
+      if (modification.affects(deviceID) && modification.getEndTime() > timeLowerBound) {
+        deviceModifications.add(modification);
+      }
+    }
+    return deviceModifications;
   }
 
   public static boolean canMerge(TimeRange left, TimeRange right) {
