@@ -264,7 +264,7 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader
       pageEstimatedMemoryUsageInBytesList.add(
           SinglePageWholeChunkReader.estimatePageMemoryUsageInBytesWithBatchData(
               pageUncompressedSizeInBytes,
-              (int) Math.min(Integer.MAX_VALUE, timePageHeader.getNumOfValues()),
+              SinglePageWholeChunkReader.getPageRowCount(timePageHeader, timeChunk),
               valueDataTypeList));
     }
     return SinglePageWholeChunkReader.toSuffixMaxList(pageEstimatedMemoryUsageInBytesList);

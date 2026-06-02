@@ -133,7 +133,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
       final PageHeader pageHeader = deserializePageHeader(chunkDataBuffer, chunk.getHeader());
       pageEstimatedMemoryUsageInBytesList.add(
           estimatePageMemoryUsageInBytesWithBatchData(
-              pageHeader, Collections.singletonList(chunk.getHeader().getDataType())));
+              pageHeader, chunk, Collections.singletonList(chunk.getHeader().getDataType())));
       skipCompressedPageData(chunkDataBuffer, pageHeader);
     }
     return toSuffixMaxList(pageEstimatedMemoryUsageInBytesList);
@@ -167,10 +167,26 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader
   }
 
   static long estimatePageMemoryUsageInBytesWithBatchData(
-      final PageHeader timePageHeader, final List<TSDataType> valueDataTypeList) {
-    final int rowCount = (int) Math.min(Integer.MAX_VALUE, timePageHeader.getNumOfValues());
+      final PageHeader timePageHeader,
+      final Chunk timeChunk,
+      final List<TSDataType> valueDataTypeList) {
     return estimatePageMemoryUsageInBytesWithBatchData(
-        timePageHeader.getUncompressedSize(), rowCount, valueDataTypeList);
+        timePageHeader.getUncompressedSize(),
+        getPageRowCount(timePageHeader, timeChunk),
+        valueDataTypeList);
+  }
+
+  static int getPageRowCount(final PageHeader pageHeader, final Chunk chunk) {
+    if (isSinglePageChunk(chunk.getHeader())) {
+      return Objects.isNull(chunk.getChunkStatistic())
+          ? 0
+          : saturateToInt(chunk.getChunkStatistic().getCount());
+    }
+    return saturateToInt(pageHeader.getNumOfValues());
+  }
+
+  private static int saturateToInt(final long value) {
+    return (int) Math.min(Integer.MAX_VALUE, value);
   }
 
   static long estimatePageMemoryUsageInBytesWithBatchData(
