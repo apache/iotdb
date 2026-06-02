@@ -21,7 +21,11 @@
 #include "Column.h"
 #include "Session.h"
 #include "SessionBuilder.h"
+#include "SessionPool.h"
 #include "TsBlock.h"
+
+#include <atomic>
+#include <thread>
 
 using namespace std;
 
@@ -898,4 +902,135 @@ TEST_CASE("Numeric column widening getters align with Java TsFile", "[column]") 
   std::vector<int64_t> longValues = {1000};
   auto longColumn = std::make_shared<LongColumn>(0, 1, valueIsNull, longValues);
   REQUIRE(longColumn->getDouble(0) == Approx(1000.0));
+}
+TEST_CASE("SessionPool basic borrow/insert/query via RAII lease", "[sessionPool]") {
+  CaseReporter cr("SessionPool basic");
+  auto pool = SessionPoolBuilder()
+                  .host("127.0.0.1")
+                  ->rpcPort(6667)
+                  ->username("root")
+                  ->password("root")
+                  ->maxSize(3)
+                  ->build();
+
+  {
+    PooledSession s = pool->getSession();
+    try {
+      s->executeNonQueryStatement("delete timeseries root.test.pool.d1.*");
+    } catch (const std::exception&) {
+      // Ignore: the timeseries may not exist yet on a fresh database.
+    }
+  }
+
+  const int rows = 50;
+  for (int i = 0; i < rows; i++) {
+    PooledSession s = pool->getSession();
+    s->insertRecord("root.test.pool.d1", i, {"s1"}, {to_string(i)});
+  }
+
+  int count = 0;
+  {
+    PooledSessionDataSet ds = pool->executeQueryStatement("select s1 from root.test.pool.d1");
+    while (ds->hasNext()) {
+      ds->next();
+      count++;
+    }
+  }
+  REQUIRE(count == rows);
+
+  {
+    PooledSession s = pool->getSession();
+    s->executeNonQueryStatement("delete timeseries root.test.pool.d1.*");
+  }
+  pool->close();
+}
+
+TEST_CASE("SessionPool is safe under concurrent writers", "[sessionPool]") {
+  CaseReporter cr("SessionPool concurrency");
+  auto pool = SessionPoolBuilder()
+                  .host("127.0.0.1")
+                  ->rpcPort(6667)
+                  ->username("root")
+                  ->password("root")
+                  ->maxSize(4)
+                  ->build();
+
+  {
+    PooledSession s = pool->getSession();
+    try {
+      s->executeNonQueryStatement("delete timeseries root.test.pool.d2.*");
+    } catch (const std::exception&) {
+      // Ignore: the timeseries may not exist yet on a fresh database.
+    }
+  }
+
+  const int threadCount = 8;
+  const int rowsPerThread = 100;
+  std::atomic<int> failures(0);
+  std::vector<std::thread> threads;
+  for (int t = 0; t < threadCount; t++) {
+    threads.emplace_back([&pool, t, rowsPerThread, &failures]() {
+      try {
+        for (int i = 0; i < rowsPerThread; i++) {
+          int64_t ts = static_cast<int64_t>(t) * rowsPerThread + i;
+          // Mix RAII and convenience APIs to exercise both borrow paths.
+          if (i % 2 == 0) {
+            pool->insertRecord("root.test.pool.d2", ts, {"s1"}, {to_string(ts)});
+          } else {
+            PooledSession s = pool->getSession();
+            s->insertRecord("root.test.pool.d2", ts, {"s1"}, {to_string(ts)});
+          }
+        }
+      } catch (const std::exception& e) {
+        std::cerr << "writer thread failed: " << e.what() << std::endl;
+        failures++;
+      }
+    });
+  }
+  for (auto& th : threads) {
+    th.join();
+  }
+  REQUIRE(failures.load() == 0);
+  REQUIRE(pool->getMaxSize() == 4);
+
+  int count = 0;
+  {
+    PooledSessionDataSet ds = pool->executeQueryStatement("select s1 from root.test.pool.d2");
+    while (ds->hasNext()) {
+      ds->next();
+      count++;
+    }
+  }
+  REQUIRE(count == threadCount * rowsPerThread);
+
+  {
+    PooledSession s = pool->getSession();
+    s->executeNonQueryStatement("delete timeseries root.test.pool.d2.*");
+  }
+  pool->close();
+}
+
+TEST_CASE("SessionPool getSession times out when exhausted", "[sessionPool]") {
+  CaseReporter cr("SessionPool exhaustion timeout");
+  auto pool = SessionPoolBuilder()
+                  .host("127.0.0.1")
+                  ->rpcPort(6667)
+                  ->username("root")
+                  ->password("root")
+                  ->maxSize(1)
+                  ->waitToGetSessionTimeoutMs(200)
+                  ->build();
+
+  PooledSession held = pool->getSession();
+  REQUIRE(static_cast<bool>(held));
+  REQUIRE(pool->activeCount() == 1);
+  // The only Session is checked out, so a second borrow must time out.
+  REQUIRE_THROWS_AS(pool->getSession(), IoTDBException);
+
+  held.release();
+  // After returning it, a borrow succeeds again.
+  PooledSession reused = pool->getSession();
+  REQUIRE(static_cast<bool>(reused));
+  reused.release();
+  pool->close();
 }
