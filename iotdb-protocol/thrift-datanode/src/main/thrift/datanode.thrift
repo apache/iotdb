@@ -316,6 +316,9 @@ struct TDataNodeHeartbeatResp {
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
   17: optional map<i32, i64> dataRegionRawDataSize
+  // Whether this DataNode supports metadata-lease self-fencing. Used by the ConfigNode during
+  // rolling upgrade: an unreachable DataNode that does not report this cannot be assumed fenced.
+  18: optional bool supportsMetadataLeaseFencing
 }
 
 struct TPipeHeartbeatReq {

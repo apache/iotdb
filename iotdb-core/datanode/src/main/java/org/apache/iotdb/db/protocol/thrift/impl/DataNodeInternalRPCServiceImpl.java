@@ -2278,6 +2278,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     AuthorityChecker.getAuthorityFetcher().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(commonConfig.getNodeStatus().getStatus());
+    // Advertise that this DataNode supports metadata-lease self-fencing, so the ConfigNode may
+    // treat
+    // it as safely fenced when unreachable (older DataNodes that omit this are handled strictly).
+    resp.setSupportsMetadataLeaseFencing(true);
     if (commonConfig.getStatusReason() != null) {
       resp.setStatusReason(commonConfig.getStatusReason());
     }

@@ -86,7 +86,12 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
     // A successful response confirms ConfigNode->DataNode contact; stamp it on the ConfigNode clock
     // for the metadata-lease verdict. Kept separate from the load-cache samples (which record the
     // echoed send-time) and deliberately not touched in onError, so failures never advance it.
-    DataNodeContactTracker.getInstance().recordSuccessfulResponse(nodeId);
+    final DataNodeContactTracker contactTracker = DataNodeContactTracker.getInstance();
+    contactTracker.recordSuccessfulResponse(nodeId);
+    contactTracker.recordCapability(
+        nodeId,
+        heartbeatResp.isSetSupportsMetadataLeaseFencing()
+            && heartbeatResp.isSupportsMetadataLeaseFencing());
 
     // Update NodeCache
     loadManager

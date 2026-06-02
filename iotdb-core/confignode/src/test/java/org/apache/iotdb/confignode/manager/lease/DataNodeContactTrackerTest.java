@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class DataNodeContactTrackerTest {
 
@@ -69,5 +71,28 @@ public class DataNodeContactTrackerTest {
     final AtomicLong nowNanos = new AtomicLong(TimeUnit.SECONDS.toNanos(100));
     final DataNodeContactTracker tracker = new DataNodeContactTracker(nowNanos::get);
     assertEquals(0L, tracker.getMillisSinceLastSuccessfulResponse(999));
+  }
+
+  @Test
+  public void unknownDataNodeIsNotFencingCapable() {
+    final DataNodeContactTracker tracker = new DataNodeContactTracker(new AtomicLong()::get);
+    assertFalse(tracker.supportsFencing(DN));
+  }
+
+  @Test
+  public void recordsAndUpdatesFencingCapability() {
+    final DataNodeContactTracker tracker = new DataNodeContactTracker(new AtomicLong()::get);
+    tracker.recordCapability(DN, true);
+    assertTrue(tracker.supportsFencing(DN));
+    tracker.recordCapability(DN, false);
+    assertFalse(tracker.supportsFencing(DN));
+  }
+
+  @Test
+  public void removeDataNodeClearsCapability() {
+    final DataNodeContactTracker tracker = new DataNodeContactTracker(new AtomicLong()::get);
+    tracker.recordCapability(DN, true);
+    tracker.removeDataNode(DN);
+    assertFalse(tracker.supportsFencing(DN));
   }
 }

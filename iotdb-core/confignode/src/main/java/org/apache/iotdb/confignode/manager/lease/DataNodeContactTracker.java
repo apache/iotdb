@@ -46,6 +46,11 @@ public class DataNodeContactTracker {
 
   private final Map<Integer, Long> lastSuccessfulResponseNanos = new ConcurrentHashMap<>();
 
+  // Whether each DataNode reports that it supports metadata-lease self-fencing. Defaults to false
+  // for not-yet-reported / not-yet-upgraded DataNodes, so the verdict treats them conservatively
+  // (never FENCED-SAFE) until they prove capability.
+  private final Map<Integer, Boolean> supportsFencing = new ConcurrentHashMap<>();
+
   private DataNodeContactTracker() {
     this(System::nanoTime);
   }
@@ -84,8 +89,22 @@ public class DataNodeContactTracker {
     }
   }
 
+  /** Record whether a DataNode reports support for metadata-lease self-fencing. */
+  public void recordCapability(final int dataNodeId, final boolean dnSupportsFencing) {
+    supportsFencing.put(dataNodeId, dnSupportsFencing);
+  }
+
+  /**
+   * Whether the DataNode is known to support self-fencing. Defaults to false (conservative): an
+   * unknown/old DataNode is never treated as fenced by the verdict.
+   */
+  public boolean supportsFencing(final int dataNodeId) {
+    return supportsFencing.getOrDefault(dataNodeId, false);
+  }
+
   public void removeDataNode(final int dataNodeId) {
     lastSuccessfulResponseNanos.remove(dataNodeId);
+    supportsFencing.remove(dataNodeId);
   }
 
   public static DataNodeContactTracker getInstance() {
