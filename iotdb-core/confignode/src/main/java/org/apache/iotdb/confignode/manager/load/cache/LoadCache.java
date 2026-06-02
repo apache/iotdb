@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCa
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -82,6 +83,7 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+  private static final int MAX_UNREADY_ENTITY_PRINT = 10;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -98,6 +100,8 @@ public class LoadCache {
   private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
+  // Map<RegionGroupId, Set<DataNodeId that has reported leader judgment>>
+  private final Map<TConsensusGroupId, Set<Integer>> consensusGroupHeartbeatSampledNodeMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
   private Map<Integer, Set<Integer>> topologyGraph;
@@ -110,6 +114,7 @@ public class LoadCache {
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.regionRawSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
+    this.consensusGroupHeartbeatSampledNodeMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
     this.topologyGraph = new HashMap<>();
     this.topologyUpdated = new AtomicBoolean(false);
@@ -175,6 +180,7 @@ public class LoadCache {
       Map<String, List<TRegionReplicaSet>> regionReplicaMap) {
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
+    consensusGroupHeartbeatSampledNodeMap.clear();
     regionReplicaMap.forEach(
         (database, regionReplicaSets) ->
             regionReplicaSets.forEach(
@@ -192,6 +198,8 @@ public class LoadCache {
                               .collect(Collectors.toSet()),
                           isStrongConsistency));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
+                  consensusGroupHeartbeatSampledNodeMap.put(
+                      regionGroupId, ConcurrentHashMap.newKeySet());
                 }));
   }
 
@@ -200,6 +208,7 @@ public class LoadCache {
     nodeCacheMap.clear();
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
+    consensusGroupHeartbeatSampledNodeMap.clear();
   }
 
   /**
@@ -302,6 +311,7 @@ public class LoadCache {
         regionGroupId,
         new RegionGroupCache(database, regionGroupId, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
+    consensusGroupHeartbeatSampledNodeMap.put(regionGroupId, ConcurrentHashMap.newKeySet());
   }
 
   /**
@@ -362,6 +372,69 @@ public class LoadCache {
     // Only cache sample when the corresponding loadCache exists
     Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
         .ifPresent(group -> group.cacheHeartbeatSample(sample));
+  }
+
+  public void cacheConsensusGroupHeartbeatSample(
+      TConsensusGroupId regionGroupId,
+      int nodeId,
+      boolean isLeader,
+      long logicalTimestamp,
+      boolean cacheLeader) {
+    consensusGroupHeartbeatSampledNodeMap
+        .computeIfAbsent(regionGroupId, empty -> ConcurrentHashMap.newKeySet())
+        .add(nodeId);
+    if (cacheLeader && isLeader) {
+      cacheConsensusSample(
+          regionGroupId, new ConsensusGroupHeartbeatSample(logicalTimestamp, nodeId));
+    } else if (isConsensusGroupHeartbeatFullySampled(regionGroupId)
+        && !Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
+            .map(AbstractLoadCache::hasHeartbeatSample)
+            .orElse(false)) {
+      cacheConsensusSample(
+          regionGroupId,
+          new ConsensusGroupHeartbeatSample(
+              logicalTimestamp, ConsensusGroupCache.UN_READY_LEADER_ID));
+    }
+  }
+
+  private boolean isConsensusGroupHeartbeatFullySampled(TConsensusGroupId regionGroupId) {
+    return Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .map(RegionGroupCache::getRegionLocations)
+        .map(
+            regionLocations ->
+                consensusGroupHeartbeatSampledNodeMap
+                    .getOrDefault(regionGroupId, Collections.emptySet())
+                    .containsAll(regionLocations))
+        .orElse(false);
+  }
+
+  public void cacheDataNodeHeartbeatFailureSample(int nodeId, long sampleTimestamp) {
+    cacheUnreportedDataNodeRegionHeartbeatSamples(nodeId, Collections.emptySet(), sampleTimestamp);
+  }
+
+  public void cacheUnreportedDataNodeRegionHeartbeatSamples(
+      int nodeId, Set<TConsensusGroupId> reportedRegionGroupIds, long sampleTimestamp) {
+    getRegionGroupIdsByDataNodeId(nodeId)
+        .forEach(
+            regionGroupId -> {
+              if (reportedRegionGroupIds.contains(regionGroupId)) {
+                return;
+              }
+              cacheRegionHeartbeatSample(
+                  regionGroupId,
+                  nodeId,
+                  new RegionHeartbeatSample(sampleTimestamp, RegionStatus.Unknown),
+                  false);
+              cacheConsensusGroupHeartbeatSample(
+                  regionGroupId, nodeId, false, sampleTimestamp, false);
+            });
+  }
+
+  private List<TConsensusGroupId> getRegionGroupIdsByDataNodeId(int nodeId) {
+    return regionGroupCacheMap.entrySet().stream()
+        .filter(entry -> entry.getValue().getRegionLocations().contains(nodeId))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toList());
   }
 
   /** Update the NodeStatistics of all Nodes. */
@@ -450,6 +523,10 @@ public class LoadCache {
     return regionGroupIdsMap;
   }
 
+  public List<TConsensusGroupId> getAllRegionGroupIds() {
+    return new ArrayList<>(regionGroupCacheMap.keySet());
+  }
+
   /**
    * Get the RegionGroupStatistics of all RegionGroups.
    *
@@ -494,6 +571,74 @@ public class LoadCache {
             consensusGroupStatisticsMap.put(
                 regionGroupId, consensusGroupCache.getCurrentStatistics()));
     return consensusGroupStatisticsMap;
+  }
+
+  public boolean isLoadWarmUpReady() {
+    return getLoadWarmUpUnreadyReasons().isEmpty();
+  }
+
+  public List<String> getLoadWarmUpUnreadyReasons() {
+    List<String> unreadyReasons = new ArrayList<>();
+    List<Integer> unreadyNodes = new ArrayList<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
+            return;
+          }
+          if (!nodeCache.hasHeartbeatSample()
+              || nodeCache.getCurrentStatistics().getStatisticsNanoTimestamp() == Long.MIN_VALUE) {
+            unreadyNodes.add(nodeId);
+          }
+        });
+    addUnreadyReason(unreadyReasons, "nodes", unreadyNodes);
+
+    List<String> unreadyRegions = new ArrayList<>();
+    List<TConsensusGroupId> unreadyRegionGroups = new ArrayList<>();
+    regionGroupCacheMap.forEach(
+        (regionGroupId, regionGroupCache) -> {
+          regionGroupCache
+              .getRegionLocations()
+              .forEach(
+                  dataNodeId -> {
+                    RegionCache regionCache = regionGroupCache.getRegionCache(dataNodeId);
+                    if (regionCache == null || !regionCache.hasHeartbeatSample()) {
+                      unreadyRegions.add(regionGroupId + "@" + dataNodeId);
+                    }
+                  });
+          if (!regionGroupCache
+              .getCurrentStatistics()
+              .getRegionStatisticsMap()
+              .keySet()
+              .containsAll(regionGroupCache.getRegionLocations())) {
+            unreadyRegionGroups.add(regionGroupId);
+          }
+        });
+    addUnreadyReason(unreadyReasons, "regions", unreadyRegions);
+    addUnreadyReason(unreadyReasons, "regionGroups", unreadyRegionGroups);
+
+    List<TConsensusGroupId> unreadyConsensusGroups = new ArrayList<>();
+    consensusGroupCacheMap.forEach(
+        (consensusGroupId, consensusGroupCache) -> {
+          if (!consensusGroupCache.hasHeartbeatSample()
+              || consensusGroupCache.getCurrentStatistics().getStatisticsNanoTimestamp() == 0) {
+            unreadyConsensusGroups.add(consensusGroupId);
+          }
+        });
+    addUnreadyReason(unreadyReasons, "consensusGroups", unreadyConsensusGroups);
+    return unreadyReasons;
+  }
+
+  private void addUnreadyReason(List<String> reasons, String entityName, List<?> unreadyEntities) {
+    if (unreadyEntities.isEmpty()) {
+      return;
+    }
+    List<?> entitiesToPrint =
+        unreadyEntities.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyEntities.size()));
+    String suffix =
+        unreadyEntities.size() > MAX_UNREADY_ENTITY_PRINT
+            ? "...(" + (unreadyEntities.size() - MAX_UNREADY_ENTITY_PRINT) + " more)"
+            : "";
+    reasons.add(entityName + "=" + entitiesToPrint + suffix);
   }
 
   /**
@@ -714,6 +859,7 @@ public class LoadCache {
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     regionGroupCacheMap.remove(consensusGroupId);
     consensusGroupCacheMap.remove(consensusGroupId);
+    consensusGroupHeartbeatSampledNodeMap.remove(consensusGroupId);
   }
 
   /**

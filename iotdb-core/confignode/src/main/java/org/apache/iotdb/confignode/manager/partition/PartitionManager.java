@@ -300,7 +300,7 @@ public class PartitionManager {
         assignedSchemaPartition =
             getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
       } catch (final NoAvailableRegionGroupException e) {
-        status = getConsensusManager().confirmLeader();
+        status = confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
           resp.setStatus(status);
@@ -445,7 +445,7 @@ public class PartitionManager {
         assignedDataPartition =
             getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
       } catch (DatabaseNotExistsException | NoAvailableRegionGroupException e) {
-        status = getConsensusManager().confirmLeader();
+        status = confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
           resp.setStatus(status);
@@ -543,7 +543,7 @@ public class PartitionManager {
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
-    TSStatus status = getConsensusManager().confirmLeader();
+    TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Here we check the leadership second time
       // since the RegionGroup creating process might take some time
@@ -1595,6 +1595,16 @@ public class PartitionManager {
 
   public ScheduledExecutorService getRegionMaintainer() {
     return regionMaintainer;
+  }
+
+  private TSStatus confirmLeader() {
+    TSStatus status = getConsensusManager().confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !getLoadManager().isLoadReady()) {
+      return new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode())
+          .setMessage(getLoadManager().getLoadReadyReason());
+    }
+    return status;
   }
 
   private ConsensusManager getConsensusManager() {

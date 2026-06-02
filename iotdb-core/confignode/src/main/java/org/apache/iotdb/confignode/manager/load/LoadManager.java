@@ -48,16 +48,25 @@ import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
  * cluster dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
 public class LoadManager {
+
+  private static final long LOAD_READY_CHECK_INTERVAL_MS =
+      Math.max(10, Math.min(100, StatisticsService.STATISTICS_UPDATE_INTERVAL / 10));
 
   protected final IManager configManager;
 
@@ -74,6 +83,10 @@ public class LoadManager {
   private final StatisticsService statisticsService;
   private final EventService eventService;
   private final TopologyService topologyService;
+  private final AtomicBoolean loadServicesStarted;
+  private final AtomicLong loadReadyEpoch;
+  private final AtomicBoolean loadReady;
+  private volatile String loadReadyReason;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -92,6 +105,10 @@ public class LoadManager {
         configManager.getSubscriptionManager().getSubscriptionLeaderChangeHandler());
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);
+    this.loadServicesStarted = new AtomicBoolean(false);
+    this.loadReadyEpoch = new AtomicLong(0);
+    this.loadReady = new AtomicBoolean(false);
+    this.loadReadyReason = "ConfigNode leader load services are not started.";
   }
 
   protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
@@ -148,21 +165,112 @@ public class LoadManager {
     partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
 
-  public void startLoadServices() {
+  public long startLoadServices() {
+    long epoch = loadReadyEpoch.incrementAndGet();
+    loadReady.set(false);
+    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
     loadCache.initHeartbeatCache(configManager);
+    loadServicesStarted.set(true);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
+    return epoch;
   }
 
   public void stopLoadServices() {
+    loadReadyEpoch.incrementAndGet();
+    loadServicesStarted.set(false);
+    loadReady.set(false);
+    loadReadyReason = "ConfigNode leader load services are stopped.";
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+  }
+
+  public boolean waitForLoadReady(long epoch) {
+    while (epoch == loadReadyEpoch.get() && !Thread.currentThread().isInterrupted()) {
+      if (tryUpdateLoadReady()) {
+        return true;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(LOAD_READY_CHECK_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    }
+    return false;
+  }
+
+  public boolean isLoadReady() {
+    return loadReady.get() || tryUpdateLoadReady();
+  }
+
+  public String getLoadReadyReason() {
+    return loadReadyReason;
+  }
+
+  private synchronized boolean tryUpdateLoadReady() {
+    if (loadReady.get()) {
+      return true;
+    }
+    if (!loadServicesStarted.get()) {
+      loadReadyReason = "ConfigNode leader load services are not started.";
+      return false;
+    }
+
+    loadCache.updateNodeStatistics(false);
+    loadCache.updateRegionGroupStatistics();
+    loadCache.updateConsensusGroupStatistics();
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
+    eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
+
+    List<String> unreadyReasons = loadCache.getLoadWarmUpUnreadyReasons();
+    if (!unreadyReasons.isEmpty()
+        && unreadyReasons.stream().anyMatch(reason -> !reason.startsWith("consensusGroups="))) {
+      loadReadyReason = "ConfigNode leader is warming up LoadCache: " + unreadyReasons;
+      return false;
+    }
+
+    routeBalancer.balanceRegionLeaderAndPriority();
+
+    unreadyReasons = loadCache.getLoadWarmUpUnreadyReasons();
+    if (!unreadyReasons.isEmpty()) {
+      loadReadyReason = "ConfigNode leader is warming up LoadCache: " + unreadyReasons;
+      return false;
+    }
+
+    List<TConsensusGroupId> unreadyRegionPriorities = getUnreadyRegionPriorities();
+    if (!unreadyRegionPriorities.isEmpty()) {
+      loadReadyReason =
+          "ConfigNode leader is warming up region priority: "
+              + unreadyRegionPriorities.subList(0, Math.min(10, unreadyRegionPriorities.size()))
+              + (unreadyRegionPriorities.size() > 10
+                  ? "...(" + (unreadyRegionPriorities.size() - 10) + " more)"
+                  : "");
+      return false;
+    }
+
+    loadReadyReason = "ConfigNode leader load services are ready.";
+    loadReady.set(true);
+    return true;
+  }
+
+  private List<TConsensusGroupId> getUnreadyRegionPriorities() {
+    List<TConsensusGroupId> regionGroupIds = loadCache.getAllRegionGroupIds();
+    if (regionGroupIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
+        routeBalancer.getRegionPriorityMap();
+    return regionGroupIds.stream()
+        .filter(regionGroupId -> !regionPriorityMap.containsKey(regionGroupId))
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   public void startTopologyService() {

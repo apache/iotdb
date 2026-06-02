@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -27,7 +28,6 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
@@ -36,6 +36,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -89,46 +90,55 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
     RegionStatus regionStatus = RegionStatus.valueOf(heartbeatResp.getStatus());
 
-    heartbeatResp
-        .getJudgedLeaders()
-        .forEach(
-            (regionGroupId, isLeader) -> {
+    Map<TConsensusGroupId, Boolean> judgedLeaders =
+        heartbeatResp.isSetJudgedLeaders()
+            ? heartbeatResp.getJudgedLeaders()
+            : Collections.emptyMap();
+    judgedLeaders.forEach(
+        (regionGroupId, isLeader) -> {
 
-              // Do not allow regions to inherit the Removing state from datanode
-              RegionStatus nextRegionStatus = regionStatus;
-              if (nextRegionStatus == RegionStatus.Removing) {
-                nextRegionStatus =
-                    loadManager
-                        .getLoadCache()
-                        .getRegionCacheLastSampleStatus(regionGroupId, nodeId);
-              }
+          // Do not allow regions to inherit the Removing state from datanode
+          RegionStatus nextRegionStatus = regionStatus;
+          if (nextRegionStatus == RegionStatus.Removing) {
+            nextRegionStatus =
+                loadManager.getLoadCache().getRegionCacheLastSampleStatus(regionGroupId, nodeId);
+          }
 
-              // Update RegionGroupCache
-              loadManager
-                  .getLoadCache()
-                  .cacheRegionHeartbeatSample(
-                      regionGroupId,
-                      nodeId,
-                      new RegionHeartbeatSample(
-                          heartbeatResp.getHeartbeatTimestamp(),
-                          // Region will inherit DataNode's status
-                          nextRegionStatus),
-                      false);
+          // Update RegionGroupCache
+          loadManager
+              .getLoadCache()
+              .cacheRegionHeartbeatSample(
+                  regionGroupId,
+                  nodeId,
+                  new RegionHeartbeatSample(
+                      heartbeatResp.getHeartbeatTimestamp(),
+                      // Region will inherit DataNode's status
+                      nextRegionStatus),
+                  false);
 
-              if (((TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
-                          && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
-                      || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-                          && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE))
-                  && Boolean.TRUE.equals(isLeader)) {
-                // Update ConsensusGroupCache when necessary
-                loadManager
-                    .getLoadCache()
-                    .cacheConsensusSample(
-                        regionGroupId,
-                        new ConsensusGroupHeartbeatSample(
-                            heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
-              }
-            });
+          boolean shouldCacheConsensusSample =
+              (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+                      && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
+                  || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+                      && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE);
+          long logicalTimestamp =
+              heartbeatResp.isSetConsensusLogicalTimeMap()
+                      && heartbeatResp.getConsensusLogicalTimeMap().containsKey(regionGroupId)
+                  ? heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId)
+                  : heartbeatResp.getHeartbeatTimestamp();
+          loadManager
+              .getLoadCache()
+              .cacheConsensusGroupHeartbeatSample(
+                  regionGroupId,
+                  nodeId,
+                  Boolean.TRUE.equals(isLeader),
+                  logicalTimestamp,
+                  shouldCacheConsensusSample);
+        });
+    loadManager
+        .getLoadCache()
+        .cacheUnreportedDataNodeRegionHeartbeatSamples(
+            nodeId, judgedLeaders.keySet(), heartbeatResp.getHeartbeatTimestamp());
 
     if (heartbeatResp.getRegionDeviceUsageMap() != null) {
       deviceNum.putAll(heartbeatResp.getRegionDeviceUsageMap());
@@ -170,6 +180,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
     if (ThriftClient.isConnectionBroken(e)) {
       loadManager.forceUpdateNodeCache(
           NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+      loadManager.getLoadCache().cacheDataNodeHeartbeatFailureSample(nodeId, System.nanoTime());
     }
     loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }

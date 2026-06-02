@@ -403,6 +403,23 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         return true;
       }
+      if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
+        if (!isFirstInitiated) {
+          logger.info(
+              "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry."
+                  + " Reason: {}",
+              configNode,
+              config.getAddressAndPort(),
+              status.getMessage());
+        }
+        try {
+          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn(DataNodeMiscMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK);
+        }
+        return true;
+      }
       return false;
     } finally {
       isFirstInitiated = false;

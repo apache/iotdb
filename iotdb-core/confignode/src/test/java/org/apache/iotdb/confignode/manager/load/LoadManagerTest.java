@@ -292,4 +292,66 @@ public class LoadManagerTest {
         new Pair<>(new ConsensusGroupStatistics(newLeaderId), null),
         differentConsensusGroupStatisticsMap.get(regionGroupId));
   }
+
+  @Test
+  public void testLoadWarmUpRequiresAllEntitySamples() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 100);
+    Set<Integer> dataNodeIds = Stream.of(11, 12).collect(Collectors.toSet());
+
+    dataNodeIds.forEach(
+        dataNodeId -> loadCache.createNodeHeartbeatCache(NodeType.DataNode, dataNodeId));
+    loadCache.createRegionGroupHeartbeatCache("root.warmup", regionGroupId, dataNodeIds);
+
+    Assert.assertFalse(loadCache.isLoadWarmUpReady());
+
+    dataNodeIds.forEach(
+        dataNodeId ->
+            loadCache.cacheDataNodeHeartbeatSample(
+                dataNodeId, new NodeHeartbeatSample(NodeStatus.Running)));
+    loadCache.updateNodeStatistics(false);
+    loadCache.cacheRegionHeartbeatSample(
+        regionGroupId, 11, new RegionHeartbeatSample(RegionStatus.Running), false);
+    loadCache.cacheConsensusGroupHeartbeatSample(regionGroupId, 11, true, 1, true);
+    loadCache.updateRegionGroupStatistics();
+    loadCache.updateConsensusGroupStatistics();
+
+    Assert.assertFalse(loadCache.isLoadWarmUpReady());
+    Assert.assertTrue(loadCache.getLoadWarmUpUnreadyReasons().toString().contains("regions="));
+
+    loadCache.cacheRegionHeartbeatSample(
+        regionGroupId, 12, new RegionHeartbeatSample(RegionStatus.Running), false);
+    loadCache.updateRegionGroupStatistics();
+
+    Assert.assertTrue(
+        loadCache.getLoadWarmUpUnreadyReasons().toString(), loadCache.isLoadWarmUpReady());
+  }
+
+  @Test
+  public void testConsensusGroupWarmUpAcceptsFullySampledWithoutLeader() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 101);
+    Set<Integer> dataNodeIds = Stream.of(21, 22).collect(Collectors.toSet());
+
+    dataNodeIds.forEach(
+        dataNodeId -> loadCache.createNodeHeartbeatCache(NodeType.DataNode, dataNodeId));
+    loadCache.createRegionGroupHeartbeatCache("root.warmup", regionGroupId, dataNodeIds);
+    dataNodeIds.forEach(
+        dataNodeId -> {
+          loadCache.cacheDataNodeHeartbeatSample(
+              dataNodeId, new NodeHeartbeatSample(NodeStatus.Running));
+          loadCache.cacheRegionHeartbeatSample(
+              regionGroupId, dataNodeId, new RegionHeartbeatSample(RegionStatus.Running), false);
+          loadCache.cacheConsensusGroupHeartbeatSample(regionGroupId, dataNodeId, false, 1, true);
+        });
+    loadCache.updateNodeStatistics(false);
+    loadCache.updateRegionGroupStatistics();
+    loadCache.updateConsensusGroupStatistics();
+
+    Assert.assertTrue(
+        loadCache.getLoadWarmUpUnreadyReasons().toString(), loadCache.isLoadWarmUpReady());
+    Assert.assertEquals(
+        ConsensusGroupStatistics.generateDefaultConsensusGroupStatistics(),
+        loadCache.getCurrentConsensusGroupStatisticsMap().get(regionGroupId));
+  }
 }

@@ -288,11 +288,32 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Always start load services first
-    configManager.getLoadManager().startLoadServices();
+    // Always start load services first and wait for its first full warm-up before serving.
+    long loadReadyEpoch = configManager.getLoadManager().startLoadServices();
 
     if (CONF.isEnableTopologyProbing()) {
       configManager.getLoadManager().startTopologyService();
+    }
+
+    threadPool.submit(() -> startLeaderServicesAfterLoadReady(loadReadyEpoch));
+  }
+
+  private void startLeaderServicesAfterLoadReady(long loadReadyEpoch) {
+    if (!configManager.getLoadManager().waitForLoadReady(loadReadyEpoch)) {
+      LOGGER.info(
+          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
+              + "skip starting leader services because load warm-up is interrupted",
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          currentNodeTEndPoint);
+      return;
+    }
+    if (!configManager.getConsensusManager().isLeaderReady()) {
+      LOGGER.info(
+          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
+              + "skip starting leader services because consensus leader is no longer ready",
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          currentNodeTEndPoint);
+      return;
     }
 
     // Start leader scheduling services
