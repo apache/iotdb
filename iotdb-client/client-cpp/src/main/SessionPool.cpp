@@ -37,15 +37,6 @@ SessionPool::SessionPool(std::string host, int rpcPort, std::string username, st
   }
 }
 
-SessionPool::SessionPool(std::vector<std::string> nodeUrls, std::string username,
-                         std::string password, size_t maxSize)
-    : rpcPort_(AbstractSessionBuilder::DEFAULT_RPC_PORT), nodeUrls_(std::move(nodeUrls)),
-      username_(std::move(username)), password_(std::move(password)), maxSize_(maxSize) {
-  if (maxSize_ == 0) {
-    throw IoTDBException("SessionPool maxSize must be greater than 0.");
-  }
-}
-
 SessionPool::~SessionPool() {
   try {
     close();
@@ -99,21 +90,10 @@ SessionPool& SessionPool::setWaitToGetSessionTimeoutMs(int64_t timeoutMs) {
   return *this;
 }
 
-SessionPool& SessionPool::setUseSSL(bool useSSL) {
-  useSSL_ = useSSL;
-  return *this;
-}
-
-SessionPool& SessionPool::setTrustCertFilePath(std::string path) {
-  trustCertFilePath_ = std::move(path);
-  return *this;
-}
-
 std::shared_ptr<Session> SessionPool::constructNewSession() {
   AbstractSessionBuilder builder;
   builder.host = host_;
   builder.rpcPort = rpcPort_;
-  builder.nodeUrls = nodeUrls_;
   builder.username = username_;
   builder.password = password_;
   builder.zoneId = zoneId_;
@@ -123,9 +103,6 @@ std::shared_ptr<Session> SessionPool::constructNewSession() {
   builder.enableAutoFetch = enableAutoFetch_;
   builder.enableRedirections = enableRedirection_;
   builder.enableRPCCompression = enableRPCCompression_;
-  builder.connectTimeoutMs = connectTimeoutMs_;
-  builder.useSSL = useSSL_;
-  builder.trustCertFilePath = trustCertFilePath_;
 
   auto session = std::make_shared<Session>(&builder);
   session->open(enableRPCCompression_, connectTimeoutMs_);

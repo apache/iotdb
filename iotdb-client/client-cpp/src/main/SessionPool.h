@@ -166,10 +166,6 @@ public:
   SessionPool(std::string host, int rpcPort, std::string username, std::string password,
               size_t maxSize = DEFAULT_MAX_SIZE);
 
-  // Multi-node constructor.
-  SessionPool(std::vector<std::string> nodeUrls, std::string username, std::string password,
-              size_t maxSize = DEFAULT_MAX_SIZE);
-
   ~SessionPool();
 
   // Non-copyable, non-movable: the pool owns mutex/condition state.
@@ -186,8 +182,6 @@ public:
   SessionPool& setEnableRPCCompression(bool enable);
   SessionPool& setConnectTimeoutMs(int connectTimeoutMs);
   SessionPool& setWaitToGetSessionTimeoutMs(int64_t timeoutMs);
-  SessionPool& setUseSSL(bool useSSL);
-  SessionPool& setTrustCertFilePath(std::string path);
 
   // Borrow a Session. Blocks until one is free or a new one can be created,
   // up to timeoutMs (<= 0 means use the pool default). Throws IoTDBException on
@@ -236,19 +230,16 @@ private:
   // connection parameters
   std::string host_;
   int rpcPort_;
-  std::vector<std::string> nodeUrls_;
   std::string username_;
   std::string password_;
   std::string zoneId_;
-  int fetchSize_ = AbstractSessionBuilder::DEFAULT_FETCH_SIZE;
-  std::string sqlDialect_ = AbstractSessionBuilder::DEFAULT_SQL_DIALECT;
+  int fetchSize_ = 10000;
+  std::string sqlDialect_ = "tree";
   std::string database_;
-  bool enableRedirection_ = AbstractSessionBuilder::DEFAULT_ENABLE_REDIRECTIONS;
-  bool enableAutoFetch_ = AbstractSessionBuilder::DEFAULT_ENABLE_AUTO_FETCH;
-  bool enableRPCCompression_ = AbstractSessionBuilder::DEFAULT_ENABLE_RPC_COMPRESSION;
-  int connectTimeoutMs_ = AbstractSessionBuilder::DEFAULT_CONNECT_TIMEOUT_MS;
-  bool useSSL_ = false;
-  std::string trustCertFilePath_;
+  bool enableRedirection_ = true;
+  bool enableAutoFetch_ = true;
+  bool enableRPCCompression_ = false;
+  int connectTimeoutMs_ = 3000;
 
   // pool sizing / waiting policy
   size_t maxSize_;
@@ -291,10 +282,6 @@ public:
     AbstractSessionBuilder::rpcPort = v;
     return this;
   }
-  SessionPoolBuilder* nodeUrls(const std::vector<std::string>& v) {
-    AbstractSessionBuilder::nodeUrls = v;
-    return this;
-  }
   SessionPoolBuilder* username(const std::string& v) {
     AbstractSessionBuilder::username = v;
     return this;
@@ -328,15 +315,7 @@ public:
     return this;
   }
   SessionPoolBuilder* connectTimeoutMs(int v) {
-    AbstractSessionBuilder::connectTimeoutMs = v;
-    return this;
-  }
-  SessionPoolBuilder* useSSL(bool v) {
-    AbstractSessionBuilder::useSSL = v;
-    return this;
-  }
-  SessionPoolBuilder* trustCertFilePath(const std::string& v) {
-    AbstractSessionBuilder::trustCertFilePath = v;
+    connectTimeoutMs_ = v;
     return this;
   }
   SessionPoolBuilder* maxSize(size_t v) {
@@ -353,23 +332,9 @@ public:
   }
 
   std::shared_ptr<SessionPool> build() {
-    if (!AbstractSessionBuilder::nodeUrls.empty() &&
-        (AbstractSessionBuilder::host != DEFAULT_HOST ||
-         AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
-      throw IoTDBException(
-          "SessionPool builder does not support setting node urls and host/rpcPort at the same "
-          "time.");
-    }
-    std::shared_ptr<SessionPool> pool;
-    if (!AbstractSessionBuilder::nodeUrls.empty()) {
-      pool = std::make_shared<SessionPool>(AbstractSessionBuilder::nodeUrls,
-                                           AbstractSessionBuilder::username,
-                                           AbstractSessionBuilder::password, maxSize_);
-    } else {
-      pool = std::make_shared<SessionPool>(
-          AbstractSessionBuilder::host, AbstractSessionBuilder::rpcPort,
-          AbstractSessionBuilder::username, AbstractSessionBuilder::password, maxSize_);
-    }
+    auto pool = std::make_shared<SessionPool>(
+        AbstractSessionBuilder::host, AbstractSessionBuilder::rpcPort,
+        AbstractSessionBuilder::username, AbstractSessionBuilder::password, maxSize_);
     pool->setFetchSize(AbstractSessionBuilder::fetchSize)
         .setZoneId(AbstractSessionBuilder::zoneId)
         .setSqlDialect(AbstractSessionBuilder::sqlDialect)
@@ -377,16 +342,15 @@ public:
         .setEnableRedirection(AbstractSessionBuilder::enableRedirections)
         .setEnableAutoFetch(AbstractSessionBuilder::enableAutoFetch)
         .setEnableRPCCompression(AbstractSessionBuilder::enableRPCCompression)
-        .setConnectTimeoutMs(AbstractSessionBuilder::connectTimeoutMs)
-        .setWaitToGetSessionTimeoutMs(waitTimeoutMs_)
-        .setUseSSL(AbstractSessionBuilder::useSSL)
-        .setTrustCertFilePath(AbstractSessionBuilder::trustCertFilePath);
+        .setConnectTimeoutMs(connectTimeoutMs_)
+        .setWaitToGetSessionTimeoutMs(waitTimeoutMs_);
     return pool;
   }
 
 private:
   size_t maxSize_ = SessionPool::DEFAULT_MAX_SIZE;
   int64_t waitTimeoutMs_ = SessionPool::DEFAULT_WAIT_TIMEOUT_MS;
+  int connectTimeoutMs_ = 3000;
 };
 
 #endif // IOTDB_SESSIONPOOL_H
