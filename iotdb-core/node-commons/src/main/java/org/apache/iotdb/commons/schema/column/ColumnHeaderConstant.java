@@ -340,6 +340,9 @@ public class ColumnHeaderConstant {
   public static final String CREATE_VIEW = "Create View";
   public static final String TABLE = "Table";
   public static final String CREATE_TABLE = "Create Table";
+  public static final String PIPE = "Pipe";
+  public static final String CREATE_PIPE = "Create Pipe";
+  public static final String CREATE_DATABASE = "Create Database";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -754,6 +757,15 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TABLE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreatePipeColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(PIPE, TSDataType.TEXT), new ColumnHeader(CREATE_PIPE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showCreateDatabaseColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(CREATE_DATABASE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_COLUMN_HEADERS =
       ImmutableList.of(

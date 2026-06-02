@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -61,6 +61,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateDatabase;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -140,8 +142,10 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   }
 
   @Override
-  public Void visitCountDB(CountDB node, Integer indent) {
-    builder.append("COUNT DATABASES");
+  public Void visitShowCreateDatabase(ShowCreateDatabase node, Integer indent) {
+    builder
+        .append("SHOW CREATE DATABASE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getDatabase()));
     return null;
   }
 
@@ -701,6 +705,14 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
   @Override
   public Void visitShowPipes(ShowPipes node, Integer context) {
     builder.append("SHOW PIPES");
+    return null;
+  }
+
+  @Override
+  public Void visitShowCreatePipe(ShowCreatePipe node, Integer context) {
+    builder
+        .append("SHOW CREATE PIPE ")
+        .append(ShowCreateTableTask.getIdentifier(node.getPipeName()));
     return null;
   }
 
