@@ -165,7 +165,7 @@ public class DeviceSchemaCache {
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.update(
-          cachedDeviceID -> cachedDeviceID.matchFullPath(devicePath), updateFunction);
+          cachedDeviceID -> devicePath.matchFullPath(cachedDeviceID), updateFunction);
     }
   }
 

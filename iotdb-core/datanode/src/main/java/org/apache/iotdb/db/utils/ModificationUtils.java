@@ -79,7 +79,11 @@ public class ModificationUtils {
               if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
                 return true;
               } else {
-                if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+                if (overlap(
+                    metaData.getStartTime(),
+                    metaData.getEndTime(),
+                    range.getMin(),
+                    range.getMax())) {
                   metaData.setModified(true);
                 }
               }
@@ -135,9 +139,11 @@ public class ModificationUtils {
                   currentRemoved = true;
                   break;
                 } else {
-                  if (range.overlaps(
-                      new TimeRange(
-                          valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
+                  if (overlap(
+                      valueChunkMetadata.getStartTime(),
+                      valueChunkMetadata.getEndTime(),
+                      range.getMin(),
+                      range.getMax())) {
                     valueChunkMetadata.setModified(true);
                     modified = true;
                   }
@@ -207,6 +213,11 @@ public class ModificationUtils {
   public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     return isPointDeleted(timestamp, deletionList, deleteCursor);
+  }
+
+  // Both ranges are closed.
+  public static boolean overlap(long startA, long endA, long startB, long endB) {
+    return endB >= startA && startB <= endA;
   }
 
   /**
