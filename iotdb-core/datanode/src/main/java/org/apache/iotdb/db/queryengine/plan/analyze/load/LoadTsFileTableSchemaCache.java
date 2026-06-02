@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -28,16 +32,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -68,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.schema.MemUsageUtil.computeStringMemUsage;
@@ -111,6 +113,7 @@ public class LoadTsFileTableSchemaCache {
   private long currentTimeIndexMemoryUsageSizeInBytes = 0;
 
   private int currentBatchDevicesCount = 0;
+  private final AtomicBoolean needDecode4DifferentTimeColumn = new AtomicBoolean(false);
 
   public LoadTsFileTableSchemaCache(
       final Metadata metadata, final MPPQueryContext context, final boolean needToCreateDatabase)
@@ -135,15 +138,8 @@ public class LoadTsFileTableSchemaCache {
   }
 
   public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
-    try {
-      if (ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device)) {
-        return;
-      }
-    } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
-          device,
-          e);
+    if (isDeviceDeletedByMods(device)) {
+      return;
     }
 
     try {
@@ -162,6 +158,19 @@ public class LoadTsFileTableSchemaCache {
     addDevice(device);
     if (shouldFlushDevices()) {
       flush();
+    }
+  }
+
+  public boolean isDeviceDeletedByMods(final IDeviceID device) {
+    try {
+      return ModificationUtils.isDeviceDeletedByMods(
+          currentModifications, currentTimeIndex, device);
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+          device,
+          e);
+      return false;
     }
   }
 
@@ -200,7 +209,7 @@ public class LoadTsFileTableSchemaCache {
       getTableSchemaValidationIterator()
           .forEachRemaining(o -> metadata.validateDeviceSchema(o, context));
     } catch (Exception e) {
-      LOGGER.warn("Auto create or verify schema error.", e);
+      LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
       throw new SemanticException(
           String.format("Auto create or verify schema error.  Detail: %s.", e.getMessage()));
     }
@@ -232,7 +241,7 @@ public class LoadTsFileTableSchemaCache {
             tableTagColumnMapper.get(tableName);
         if (Objects.isNull(tagColumnCountAndMapper)) {
           // This should not happen
-          LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
+          LOGGER.warn(DataNodeQueryMessages.FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE, tableName);
         }
 
         for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
@@ -294,11 +303,12 @@ public class LoadTsFileTableSchemaCache {
       autoCreateTableDatabaseIfAbsent(database);
       needToCreateDatabase = false;
     }
-    final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
-        org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
-            tableName, schema);
+    final TableSchema fileSchema = TableSchema.fromTsFileTableSchema(tableName, schema);
     final TableSchema realSchema =
-        metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
+        metadata
+            .validateTableHeaderSchema4TsFile(
+                database, fileSchema, context, true, true, needDecode4DifferentTimeColumn)
+            .orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new LoadAnalyzeException(
           String.format(
@@ -306,6 +316,10 @@ public class LoadTsFileTableSchemaCache {
               fileSchema.getTableName(), fileSchema));
     }
     verifyTableDataTypeAndGenerateTagColumnMapper(fileSchema, realSchema);
+  }
+
+  public boolean isNeedDecode4DifferentTimeColumn() {
+    return needDecode4DifferentTimeColumn.get();
   }
 
   private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
@@ -336,7 +350,8 @@ public class LoadTsFileTableSchemaCache {
                 database, result.getStatusCode()));
       }
     } catch (final Exception e) {
-      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
+      throw new LoadAnalyzeException(
+          DataNodeQueryMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
   }
 
@@ -378,10 +393,10 @@ public class LoadTsFileTableSchemaCache {
             && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
           LOGGER.debug(
               "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
-              realColumn.getName(),
+              fileColumn.getName(),
               realSchema.getTableName(),
               fileColumn.getType(),
-              realColumn.getType());
+              Objects.nonNull(realColumn) ? realColumn.getType() : null);
         }
       }
     }
@@ -449,6 +464,7 @@ public class LoadTsFileTableSchemaCache {
 
     currentBatchTable2Devices = null;
     tableTagColumnMapper = null;
+    needDecode4DifferentTimeColumn.set(false);
   }
 
   private void clearDevices() {

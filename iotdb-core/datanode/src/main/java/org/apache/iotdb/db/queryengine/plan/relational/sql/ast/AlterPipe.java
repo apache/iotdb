@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,6 +31,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AlterPipe extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlterPipe.class);
 
   private final String pipeName;
   private final boolean ifExistsCondition;
@@ -88,8 +95,8 @@ public class AlterPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitAlterPipe(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitAlterPipe(this, context);
   }
 
   @Override
@@ -139,5 +146,16 @@ public class AlterPipe extends PipeStatement {
         .add("isReplaceAllProcessorAttributes", isReplaceAllProcessorAttributes)
         .add("isReplaceAllConnectorAttributes", isReplaceAllConnectorAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pipeName);
+    size += RamUsageEstimator.sizeOfMap(extractorAttributes);
+    size += RamUsageEstimator.sizeOfMap(processorAttributes);
+    size += RamUsageEstimator.sizeOfMap(connectorAttributes);
+    return size;
   }
 }

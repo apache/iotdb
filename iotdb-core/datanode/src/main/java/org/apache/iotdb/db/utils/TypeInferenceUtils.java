@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -30,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.StringUtils;
@@ -125,7 +126,7 @@ public class TypeInferenceUtils {
   public static TSDataType getBuiltinAggregationDataType(
       String aggregationFunctionName, TSDataType dataType) {
     if (aggregationFunctionName == null) {
-      throw new IllegalArgumentException("AggregateFunction Name must not be null");
+      throw new IllegalArgumentException(DataNodeMiscMessages.AGGREGATE_FUNCTION_NAME_NULL);
     }
     verifyIsAggregationDataTypeMatched(aggregationFunctionName, dataType);
 
@@ -157,7 +158,7 @@ public class TypeInferenceUtils {
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException(
-            "Invalid Aggregation function: " + aggregationFunctionName);
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggregationFunctionName);
     }
   }
 
@@ -211,7 +212,8 @@ public class TypeInferenceUtils {
         }
         return;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+        throw new IllegalArgumentException(
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggrFuncName);
     }
   }
 
@@ -282,7 +284,8 @@ public class TypeInferenceUtils {
                   functionName));
         }
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
+        throw new IllegalArgumentException(
+            DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + functionName);
     }
   }
 
@@ -290,7 +293,7 @@ public class TypeInferenceUtils {
       FunctionExpression functionExpression, TSDataType dataType) {
     String functionName = functionExpression.getFunctionName();
     if (functionName == null) {
-      throw new IllegalArgumentException("ScalarFunction Name must not be null.");
+      throw new IllegalArgumentException(DataNodeMiscMessages.SCALAR_FUNCTION_NAME_NULL);
     }
     BuiltInScalarFunctionHelper helper =
         BuiltInScalarFunctionHelperFactory.createHelper(functionName);
@@ -325,10 +328,11 @@ public class TypeInferenceUtils {
       case DATE:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case STRING:
         return false;
       default:
-        throw new IllegalArgumentException("Unknown data type: " + fromType);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
     }
   }
 }

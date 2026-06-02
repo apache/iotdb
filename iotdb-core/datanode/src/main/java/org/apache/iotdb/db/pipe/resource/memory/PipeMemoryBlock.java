@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -62,6 +64,7 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   public PipeMemoryBlock setShrinkMethod(final LongUnaryOperator shrinkMethod) {
     this.shrinkMethod.set(shrinkMethod);
+    pipeMemoryManager.addShrinkableBlock(this);
     return this;
   }
 
@@ -72,6 +75,7 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   public PipeMemoryBlock setExpandMethod(final LongUnaryOperator extendMethod) {
     this.expandMethod.set(extendMethod);
+    pipeMemoryManager.addExpandableBlock(this);
     return this;
   }
 
@@ -109,7 +113,7 @@ public class PipeMemoryBlock implements AutoCloseable {
       try {
         shrinkCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
       } catch (Exception e) {
-        LOGGER.warn("Failed to execute the shrink callback.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_THE_SHRINK_CALLBACK, e);
       }
     }
     return true;
@@ -144,7 +148,7 @@ public class PipeMemoryBlock implements AutoCloseable {
       try {
         expandCallback.get().accept(oldMemorySizeInBytes, newMemorySizeInBytes);
       } catch (Exception e) {
-        LOGGER.warn("Failed to execute the expand callback.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_THE_EXPAND_CALLBACK, e);
       }
     }
     return true;
@@ -177,8 +181,14 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
+            if (Objects.nonNull(shrinkMethod.get())) {
+              pipeMemoryManager.removeShrinkableBlock(this);
+            }
+            if (Objects.nonNull(expandMethod.get())) {
+              pipeMemoryManager.removeExpandableBlock(this);
+            }
             if (isInterrupted) {
-              LOGGER.warn("{} is released after thread interruption.", this);
+              LOGGER.warn(DataNodePipeMessages.IS_RELEASED_AFTER_THREAD_INTERRUPTION, this);
             }
             break;
           } finally {
@@ -189,7 +199,7 @@ public class PipeMemoryBlock implements AutoCloseable {
         // Each time the close task is run, it means that the interrupt status left by the previous
         // tryLock does not need to be retained. Otherwise, it will lead to an infinite loop.
         isInterrupted = true;
-        LOGGER.warn("Interrupted while waiting for the lock.", e);
+        LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHILE_WAITING_FOR_THE_LOCK, e);
       }
     }
 

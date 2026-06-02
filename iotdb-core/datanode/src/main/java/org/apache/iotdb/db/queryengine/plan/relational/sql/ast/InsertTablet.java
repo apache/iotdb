@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
@@ -30,6 +33,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertTablet extends WrappedInsertStatement {
 
@@ -40,8 +44,8 @@ public class InsertTablet extends WrappedInsertStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertTablet(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitInsertTablet(this, context);
   }
 
   @Override
@@ -65,6 +69,12 @@ public class InsertTablet extends WrappedInsertStatement {
     List<Object[]> deviceIdList = new ArrayList<>();
     for (IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
       Object[] segments = deviceID.getSegments();
+      if (Objects.nonNull(super.getInnerTreeStatement().getMeasurementSchemas())
+          && Arrays.stream(super.getInnerTreeStatement().getMeasurementSchemas())
+              .anyMatch(
+                  schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+        TableDeviceSchemaValidator.checkObject4DeviceId(segments);
+      }
       deviceIdList.add(Arrays.copyOfRange(segments, 1, segments.length));
     }
     return deviceIdList;
@@ -80,10 +90,17 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     prepareDeviceID2LastIdxMap();
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    for (Integer rowIndex : deviceID2LastIdxMap.values()) {
-      Object[] attrValues = new Object[attrColumnIndices.size()];
+
+    final Map<IDeviceID, Object[]> deviceID2AttributeValues =
+        new LinkedHashMap<>(deviceID2LastIdxMap.size());
+    for (final IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
+      deviceID2AttributeValues.put(deviceID, new Object[attrColumnIndices.size()]);
+    }
+
+    for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
+      final Object[] attrValues =
+          deviceID2AttributeValues.get(insertTabletStatement.getTableDeviceID(rowIndex));
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
         if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
@@ -91,9 +108,9 @@ public class InsertTablet extends WrappedInsertStatement {
               ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
         }
       }
-      result.add(attrValues);
     }
-    return result;
+
+    return new ArrayList<>(deviceID2AttributeValues.values());
   }
 
   // The map cannot be maintained during construction because the IDeviceID may be reset later.

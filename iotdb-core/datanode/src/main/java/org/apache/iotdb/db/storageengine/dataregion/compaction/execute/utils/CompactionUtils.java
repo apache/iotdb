@@ -24,10 +24,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -51,6 +57,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +82,14 @@ public class CompactionUtils {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String SYSTEM = "system";
 
+  private static ISchemaFetcher schemaFetcherForTest = null;
+
   private CompactionUtils() {}
+
+  @TestOnly
+  public static void setSchemaFetcher(ISchemaFetcher schemaFetcher) {
+    CompactionUtils.schemaFetcherForTest = schemaFetcher;
+  }
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
@@ -105,7 +119,7 @@ public class CompactionUtils {
       case SETTLE:
         return IoTDBConstant.SETTLE_SUFFIX;
       default:
-        logger.error("Current task type {} does not have tmp file suffix.", type);
+        logger.error(StorageEngineMessages.TASK_TYPE_NO_TMP_FILE_SUFFIX, type);
         return "";
     }
   }
@@ -183,7 +197,7 @@ public class CompactionUtils {
                     try {
                       return tsFileResource.getModFileForWrite();
                     } catch (IOException e) {
-                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      logger.error(StorageEngineMessages.CANNOT_GET_MOD_FILE, tsFileResource, e);
                       return null;
                     }
                   })
@@ -287,7 +301,7 @@ public class CompactionUtils {
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_REAL_FILE, storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       if (!mergeTsFile.remove()) {
@@ -307,7 +321,7 @@ public class CompactionUtils {
   @TestOnly
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_SOURCE_MODS, storageGroupName);
     for (TsFileResource tsFileResource : sourceFiles) {
       tsFileResource.removeModFile();
     }
@@ -337,22 +351,22 @@ public class CompactionUtils {
     for (TsFileResource targetResource : targetResources) {
       // Initial value
       targetResource.setGeneratedByPipe(true);
-      targetResource.setGeneratedByPipeConsensus(true);
+      targetResource.setGeneratedByIoTConsensusV2(true);
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            unseqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            unseqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            seqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            seqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
     }
   }
@@ -397,7 +411,8 @@ public class CompactionUtils {
           "[Compaction] delete file failed, file path is {}",
           resource.getTsFile().getAbsolutePath());
     } else {
-      logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+      logger.info(
+          StorageEngineMessages.COMPACTION_DELETE_FILE, resource.getTsFile().getAbsolutePath());
     }
   }
 
@@ -472,6 +487,11 @@ public class CompactionUtils {
 
   public static ArrayDeviceTimeIndex buildDeviceTimeIndex(TsFileResource resource)
       throws IOException {
+    return buildDeviceTimeIndex(resource, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
+  }
+
+  public static ArrayDeviceTimeIndex buildDeviceTimeIndex(
+      TsFileResource resource, IDeviceID.Deserializer deserializer) throws IOException {
     long resourceFileSize =
         new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
@@ -496,5 +516,30 @@ public class CompactionUtils {
           new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
           new TimeRange(Long.MIN_VALUE, timeLowerBound));
     }
+  }
+
+  public static List<IMeasurementSchema> getLatestMeasurementSchemasForTreeModel(
+      IDeviceID deviceID, List<String> measurements) {
+    if (measurements.isEmpty()) {
+      return Collections.emptyList();
+    }
+    ISchemaFetcher schemaFetcher =
+        schemaFetcherForTest == null ? ClusterSchemaFetcher.getInstance() : schemaFetcherForTest;
+    PartialPath devicePath;
+    PathPatternTree patternTree = new PathPatternTree();
+    try {
+      devicePath = CompactionPathUtils.getPath(deviceID);
+      for (String measurement : measurements) {
+        patternTree.appendFullPath(devicePath, measurement);
+      }
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, false, null, true);
+    DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+    if (deviceSchemaInfo == null) {
+      return Collections.nCopies(measurements.size(), null);
+    }
+    return deviceSchemaInfo.getMeasurementSchemaList();
   }
 }

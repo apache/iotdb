@@ -23,5 +23,6 @@ public enum CacheClearOptions {
   TABLE_ATTRIBUTE,
   TREE_SCHEMA,
   QUERY,
+  AUTH,
   DEFAULT,
 }

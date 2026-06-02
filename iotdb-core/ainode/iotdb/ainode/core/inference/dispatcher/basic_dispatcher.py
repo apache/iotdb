@@ -16,7 +16,7 @@
 # under the License.
 #
 
-from iotdb.ainode.core.exception import InferenceModelInternalError
+from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.dispatcher.abstract_dispatcher import (
     AbstractDispatcher,
 )
@@ -41,7 +41,7 @@ class BasicDispatcher(AbstractDispatcher):
         """
         model_id = req.model_id
         if not pool_ids:
-            raise InferenceModelInternalError(
+            raise InferenceModelInternalException(
                 f"No available pools for model {model_id}"
             )
         start_idx = hash(req.req_id) % len(pool_ids)
@@ -51,7 +51,7 @@ class BasicDispatcher(AbstractDispatcher):
             state = self.pool_states[pool_id]
             if state == PoolState.RUNNING:
                 return pool_id
-        raise InferenceModelInternalError(
+        raise InferenceModelInternalException(
             f"No RUNNING pools available for model {model_id}"
         )
 

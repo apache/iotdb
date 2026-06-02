@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -68,6 +68,7 @@ public class InsertTabletNodeSerdeTest {
   @Test
   public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
     InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.setLastFragment(true);
 
     int serializedSize = insertTabletNode.serializedSize();
 
@@ -93,6 +94,38 @@ public class InsertTabletNodeSerdeTest {
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
         });
     Assert.assertEquals(insertTabletNode, tmpNode);
+    Assert.assertTrue(tmpNode.isLastFragment());
+  }
+
+  @Test
+  public void testDeserializeLegacyWAL() throws IllegalPathException, IOException {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    insertTabletNode.setSearchIndex(123L);
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), byteBuffer.getShort());
+    Assert.assertEquals(123L, byteBuffer.getLong());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    dataInputStream.readShort();
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
+    tmpNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN)
+        });
+    Assert.assertEquals(insertTabletNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertFalse(tmpNode.isLastFragment());
   }
 
   @Test
@@ -126,6 +159,7 @@ public class InsertTabletNodeSerdeTest {
     for (String tableName : new String[] {"table1", "ta`ble1", "root.table1"}) {
       RelationalInsertTabletNode insertTabletNode =
           getRelationalInsertTabletNodeWithSchema(tableName);
+      insertTabletNode.setLastFragment(true);
 
       int serializedSize = insertTabletNode.serializedSize();
 
@@ -153,7 +187,40 @@ public class InsertTabletNodeSerdeTest {
             new MeasurementSchema("s5", TSDataType.BOOLEAN)
           });
       Assert.assertEquals(insertTabletNode, tmpNode);
+      Assert.assertTrue(tmpNode.isLastFragment());
     }
+  }
+
+  @Test
+  public void testDeserializeLegacyWALRelational() throws IOException {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.setSearchIndex(123L);
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+
+    ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+    Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), byteBuffer.getShort());
+    Assert.assertEquals(123L, byteBuffer.getLong());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    dataInputStream.readShort();
+
+    RelationalInsertTabletNode tmpNode =
+        RelationalInsertTabletNode.deserializeFromWAL(dataInputStream);
+    tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
+    tmpNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN)
+        });
+    Assert.assertEquals(insertTabletNode, tmpNode);
+    Assert.assertEquals(123L, tmpNode.getSearchIndex());
+    Assert.assertFalse(tmpNode.isLastFragment());
   }
 
   @Test

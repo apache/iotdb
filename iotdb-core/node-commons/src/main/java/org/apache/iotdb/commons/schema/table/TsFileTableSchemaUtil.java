@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+
 /** Utility class for converting between TsTable and TSFile TableSchema */
 public class TsFileTableSchemaUtil {
 
@@ -43,9 +45,8 @@ public class TsFileTableSchemaUtil {
 
   /** Column category filter for efficient parsing */
   public enum ColumnCategoryFilter {
-    /** Include TAG and FIELD only (exclude TIME and ATTRIBUTE) - for TsFile writing */
-    NO_ATTRIBUTE(
-        cat -> cat != TsTableColumnCategory.TIME && cat != TsTableColumnCategory.ATTRIBUTE);
+    /** Include TAG, time, and FIELD only (exclude ATTRIBUTE) - for TsFile writing */
+    NO_ATTRIBUTE(cat -> cat != TsTableColumnCategory.ATTRIBUTE);
 
     private final java.util.function.Predicate<TsTableColumnCategory> predicate;
 
@@ -88,6 +89,14 @@ public class TsFileTableSchemaUtil {
       // Only parse data for columns we need
       final String columnName = ReadWriteIOUtils.readString(tsTableBuffer);
       final TSDataType dataType = ReadWriteIOUtils.readDataType(tsTableBuffer);
+
+      // if the time column position in first column and named as "time", skip it
+      if (i == 0
+          && category == TsTableColumnCategory.TIME
+          && columnName.equalsIgnoreCase(TIME_COLUMN_NAME)) {
+        skipMap(tsTableBuffer);
+        continue;
+      }
 
       if (category == TsTableColumnCategory.FIELD) {
         ReadWriteIOUtils.readEncoding(tsTableBuffer);
@@ -157,11 +166,20 @@ public class TsFileTableSchemaUtil {
 
     // Directly iterate through columns and filter out TIME and ATTRIBUTE columns
     int columnIndex = 0;
-    for (final TsTableColumnSchema columnSchema : tsTableColumnSchemas) {
+
+    for (int i = 0; i < tsTableColumnSchemas.size(); i++) {
+      TsTableColumnSchema columnSchema = tsTableColumnSchemas.get(i);
       final TsTableColumnCategory category = columnSchema.getColumnCategory();
 
-      // Skip TIME and ATTRIBUTE columns (only include TAG and FIELD)
-      if (category == TsTableColumnCategory.TIME || category == TsTableColumnCategory.ATTRIBUTE) {
+      // if the time columns is named as "time" and in first position, drop it
+      if (i == 0
+          && category == TsTableColumnCategory.TIME
+          && columnSchema.getColumnName().equalsIgnoreCase(TIME_COLUMN_NAME)) {
+        continue;
+      }
+
+      // Skip ATTRIBUTE columns (only include TIME, TAG and FIELD)
+      if (category == TsTableColumnCategory.ATTRIBUTE) {
         continue;
       }
 

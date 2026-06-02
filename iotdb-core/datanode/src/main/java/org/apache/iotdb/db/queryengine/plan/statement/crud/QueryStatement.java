@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -55,7 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * Base class of SELECT statement.
@@ -594,22 +595,25 @@ public class QueryStatement extends AuthorityInformationStatement {
 
     if (hasModelInference) {
       if (isAlignByDevice()) {
-        throw new SemanticException("Model inference does not support align by device now.");
+        throw new SemanticException(
+            DataNodeQueryMessages.MODEL_INFERENCE_DOES_NOT_SUPPORT_ALIGN_BY_DEVICE);
       }
       if (isSelectInto()) {
-        throw new SemanticException("Model inference does not support select into now.");
+        throw new SemanticException(
+            DataNodeQueryMessages.MODEL_INFERENCE_DOES_NOT_SUPPORT_SELECT_INTO_NOW);
       }
     }
 
     if (isAggregationQuery()) {
       if (groupByComponent != null && isGroupByLevel()) {
-        throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
+        throw new SemanticException(
+            DataNodeQueryMessages.GROUP_BY_CLAUSES_DOESN_T_SUPPORT_GROUP_BY);
       }
       if (isGroupByLevel() && isAlignByDevice()) {
-        throw new SemanticException("GROUP BY LEVEL does not support align by device now.");
+        throw new SemanticException(DataNodeQueryMessages.GROUP_BY_LEVEL_DOES_NOT_SUPPORT_ALIGN_BY);
       }
       if (isGroupByTag() && isAlignByDevice()) {
-        throw new SemanticException("GROUP BY TAGS does not support align by device now.");
+        throw new SemanticException(DataNodeQueryMessages.GROUP_BY_TAGS_DOES_NOT_SUPPORT_ALIGN_BY);
       }
       Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
@@ -634,15 +638,18 @@ public class QueryStatement extends AuthorityInformationStatement {
 
       if (isGroupByTag()) {
         if (hasHaving()) {
-          throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
+          throw new SemanticException(
+              DataNodeQueryMessages.HAVING_CLAUSE_IS_NOT_SUPPORTED_YET_IN_GROUP);
         }
         for (String s : getGroupByTagComponent().getTagKeys()) {
           if (outputColumn.contains(s)) {
-            throw new SemanticException("Output column is duplicated with the tag key: " + s);
+            throw new SemanticException(
+                DataNodeQueryMessages.OUTPUT_COLUMN_IS_DUPLICATED_WITH_THE_TAG_KEY + s);
           }
         }
         if (rowLimit > 0 || rowOffset > 0 || seriesLimit > 0 || seriesOffset > 0) {
-          throw new SemanticException("Limit or slimit are not supported yet in GROUP BY TAGS");
+          throw new SemanticException(
+              DataNodeQueryMessages.LIMIT_OR_SLIMIT_ARE_NOT_SUPPORTED_YET_IN);
         }
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           Expression expression = resultColumn.getExpression();
@@ -660,7 +667,8 @@ public class QueryStatement extends AuthorityInformationStatement {
             ExpressionAnalyzer.searchAggregationExpressions(
                 groupByComponent.getControlColumnExpression());
         if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
-          throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
+          throw new SemanticException(
+              DataNodeQueryMessages.AGGREGATION_EXPRESSION_SHOULDN_T_EXIST_IN_GROUP_BY);
         }
       }
     } else {
@@ -679,7 +687,8 @@ public class QueryStatement extends AuthorityInformationStatement {
       Expression whereExpression = getWhereCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(whereExpression, true)
           == ResultColumn.ColumnType.AGGREGATION) {
-        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+        throw new SemanticException(
+            DataNodeQueryMessages.AGGREGATE_FUNCTIONS_ARE_NOT_SUPPORTED_IN_WHERE_CLAUSE);
       }
     }
 
@@ -687,7 +696,8 @@ public class QueryStatement extends AuthorityInformationStatement {
       Expression havingExpression = getHavingCondition().getPredicate();
       if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
           != ResultColumn.ColumnType.AGGREGATION) {
-        throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
+        throw new SemanticException(
+            DataNodeQueryMessages.EXPRESSION_OF_HAVING_CLAUSE_MUST_TO_BE_AN);
       }
       if (!isAggregationQuery()) {
         throw new SemanticException(
@@ -706,7 +716,8 @@ public class QueryStatement extends AuthorityInformationStatement {
           ExpressionAnalyzer.checkIsAllMeasurement(havingExpression);
         }
       } catch (SemanticException e) {
-        throw new SemanticException("When Having used with GroupByLevel: " + e.getMessage());
+        throw new SemanticException(
+            DataNodeQueryMessages.WHEN_HAVING_USED_WITH_GROUPBYLEVEL + e.getMessage());
       }
     }
 
@@ -732,22 +743,25 @@ public class QueryStatement extends AuthorityInformationStatement {
           ExpressionAnalyzer.checkIsAllMeasurement(getHavingCondition().getPredicate());
         }
       } catch (SemanticException e) {
-        throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());
+        throw new SemanticException(DataNodeQueryMessages.ALIGN_BY_DEVICE + e.getMessage());
       }
 
       if (isOrderByTimeseries()) {
-        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+        throw new SemanticException(
+            DataNodeQueryMessages.SORTING_BY_TIMESERIES_IS_ONLY_SUPPORTED_IN_LAST);
       }
     }
 
     if (isLastQuery()) {
       if (isAlignByDevice()) {
-        throw new SemanticException("Last query doesn't support align by device.");
+        throw new SemanticException(
+            DataNodeQueryMessages.LAST_QUERY_DOESN_T_SUPPORT_ALIGN_BY_DEVICE);
       }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if (!(expression instanceof TimeSeriesOperand)) {
-          throw new SemanticException("Last queries can only be applied on raw time series.");
+          throw new SemanticException(
+              DataNodeQueryMessages.LAST_QUERIES_CAN_ONLY_BE_APPLIED_ON_RAW);
         }
       }
       if (isOrderByDevice()) {
@@ -755,13 +769,14 @@ public class QueryStatement extends AuthorityInformationStatement {
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
-        throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
+        throw new SemanticException(DataNodeQueryMessages.SLIMIT_AND_SOFFSET_CAN_NOT_BE_USED_IN);
       }
     }
 
     if (!isAlignByDevice() && !isLastQuery()) {
       if (isOrderByTimeseries()) {
-        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+        throw new SemanticException(
+            DataNodeQueryMessages.SORTING_BY_TIMESERIES_IS_ONLY_SUPPORTED_IN_LAST);
       }
       if (isOrderByDevice()) {
         throw new SemanticException(
@@ -771,16 +786,19 @@ public class QueryStatement extends AuthorityInformationStatement {
 
     if (isSelectInto()) {
       if (getSeriesLimit() > 0) {
-        throw new SemanticException("select into: slimit clauses are not supported.");
+        throw new SemanticException(
+            DataNodeQueryMessages.SELECT_INTO_SLIMIT_CLAUSES_ARE_NOT_SUPPORTED);
       }
       if (getSeriesOffset() > 0) {
-        throw new SemanticException("select into: soffset clauses are not supported.");
+        throw new SemanticException(
+            DataNodeQueryMessages.SELECT_INTO_SOFFSET_CLAUSES_ARE_NOT_SUPPORTED);
       }
       if (isLastQuery()) {
-        throw new SemanticException("select into: last clauses are not supported.");
+        throw new SemanticException(
+            DataNodeQueryMessages.SELECT_INTO_LAST_CLAUSES_ARE_NOT_SUPPORTED);
       }
       if (isGroupByTag()) {
-        throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
+        throw new SemanticException(DataNodeQueryMessages.SELECT_INTO_GROUP_BY_TAGS_CLAUSE_ARE_NOT);
       }
     }
   }

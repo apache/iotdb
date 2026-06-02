@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -71,8 +72,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
@@ -146,11 +150,13 @@ public class ConsumerGroupMeta {
 
   public void removeConsumer(final String consumerId) {
     consumerIdToConsumerMeta.remove(consumerId);
-    for (final Map.Entry<String, Set<String>> entry :
-        topicNameToSubscribedConsumerIdSet.entrySet()) {
+    final Iterator<Map.Entry<String, Set<String>>> iterator =
+        topicNameToSubscribedConsumerIdSet.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<String, Set<String>> entry = iterator.next();
       entry.getValue().remove(consumerId);
       if (entry.getValue().isEmpty()) {
-        topicNameToSubscribedConsumerIdSet.remove(entry.getKey());
+        iterator.remove();
       }
     }
   }

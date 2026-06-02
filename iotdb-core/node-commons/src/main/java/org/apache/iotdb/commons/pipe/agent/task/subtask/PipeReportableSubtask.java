@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,15 +47,16 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   @Override
   public synchronized void onFailure(final Throwable throwable) {
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.", throwable);
+      LOGGER.info(PipeMessages.ON_FAILURE_IGNORED_PIPE_DROPPED, throwable);
       clearReferenceCountAndReleaseLastEvent(null);
       return;
     }
 
-    if (lastEvent instanceof EnrichedEvent) {
-      onEnrichedEventFailure(throwable);
+    if (lastEvent instanceof EnrichedEvent
+        && !(throwable instanceof PipeRuntimeSinkNonReportTimeConfigurableException)) {
+      onReportEventFailure(throwable);
     } else {
-      onNonEnrichedEventFailure(throwable);
+      onNonReportEventFailure(throwable);
     }
 
     // Although the pipe task will be stopped, we still don't release the last event here
@@ -65,7 +69,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
     // if receiver is read-only/internal-error/write-reject, connector will retry with
     // power-increasing interval
-    if (throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
+    if (throwable instanceof IoTConsensusV2RetryWithIncreasingIntervalException) {
       if (retryCount.get() >= 5) {
         sleepInterval = 1000L * 20;
       } else {
@@ -75,7 +79,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     return sleepInterval;
   }
 
-  private void onEnrichedEventFailure(final Throwable throwable) {
+  private void onReportEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeSinkRetryTimesConfigurableException
             ? ((PipeRuntimeSinkRetryTimesConfigurableException) throwable).getRetryTimes()
@@ -83,7 +87,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     if (retryCount.get() == 0) {
       LOGGER.warn(
-          "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
+          PipeMessages.FAILED_TO_EXECUTE_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -94,20 +98,21 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     retryCount.incrementAndGet();
     if (retryCount.get() <= maxRetryTimes) {
-      LOGGER.warn(
-          "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
+      PipeLogger.log(
+          LOGGER::warn,
+          throwable,
+          PipeMessages.RETRY_EXECUTING_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
           maxRetryTimes,
-          throwable.getMessage(),
-          throwable);
+          throwable.getMessage());
       try {
         sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
-            "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
+            PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
             taskID,
             creationTime,
             this.getClass().getSimpleName(),
@@ -119,8 +124,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     } else {
       final String errorMessage =
           String.format(
-              "Failed to execute subtask %s (creation time: %s, simple class: %s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s, root cause: %s",
+              PipeMessages.SUBTASK_RETRY_EXCEEDED_FORMAT,
               taskID,
               creationTime,
               this.getClass().getSimpleName(),
@@ -134,10 +138,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
               ? (PipeRuntimeException) throwable
               : new PipeRuntimeCriticalException(errorMessage));
       LOGGER.warn(
-          "The last event is an instance of EnrichedEvent, so the exception is reported. "
-              + "Stopping current pipe subtask {} (creation time: {}, simple class: {}) locally... "
-              + "Status shown when query the pipe will be 'STOPPED'. "
-              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          PipeMessages.SUBTASK_EXCEPTION_REPORTED,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -149,11 +150,10 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
   protected abstract void report(final EnrichedEvent event, final PipeRuntimeException exception);
 
-  private void onNonEnrichedEventFailure(final Throwable throwable) {
+  private void onNonReportEventFailure(final Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
-          "Failed to execute subtask {} (creation time: {}, simple class: {}), "
-              + "because of {}. Will retry forever.",
+          PipeMessages.FAILED_TO_EXECUTE_SUBTASK_RETRY_FOREVER,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -162,8 +162,9 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     retryCount.incrementAndGet();
-    LOGGER.warn(
-        "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}",
+    PipeLogger.log(
+        LOGGER::warn,
+        PipeMessages.RETRY_EXECUTING_SUBTASK_FOREVER,
         taskID,
         creationTime,
         this.getClass().getSimpleName(),
@@ -174,7 +175,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
-          "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
+          PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName());
@@ -191,7 +192,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         Thread.sleep(10);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_HIGH_PRIORITY, e);
         break;
       }
     }

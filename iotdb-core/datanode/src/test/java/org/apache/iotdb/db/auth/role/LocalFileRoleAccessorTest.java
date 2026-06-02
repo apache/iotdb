@@ -49,7 +49,7 @@ public class LocalFileRoleAccessorTest {
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
+    testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test-LocalFileRoleAccessorTest"));
     testFolder.mkdirs();
     accessor = new LocalFileRoleAccessor(testFolder.getPath());
   }

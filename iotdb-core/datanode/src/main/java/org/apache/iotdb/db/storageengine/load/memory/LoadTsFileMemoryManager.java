@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
 import org.slf4j.Logger;
@@ -58,7 +59,7 @@ public class LoadTsFileMemoryManager {
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn(StorageEngineMessages.FORCE_ALLOCATE_INTERRUPTED, e);
       }
     }
 
@@ -82,6 +83,10 @@ public class LoadTsFileMemoryManager {
   }
 
   public synchronized void releaseToQuery(final long sizeInBytes) {
+    if (sizeInBytes <= 0) {
+      throw new IllegalArgumentException(
+          String.format("Load: Invalid memory size %d bytes, must be positive", sizeInBytes));
+    }
     if (usedMemorySizeInBytes.get() < sizeInBytes) {
       LOGGER.error(
           "Load: Attempting to release more memory ({}) than allocated ({})",
@@ -96,10 +101,14 @@ public class LoadTsFileMemoryManager {
 
   public synchronized LoadTsFileMemoryBlock allocateMemoryBlock(long sizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
+    if (sizeInBytes <= 0) {
+      throw new IllegalArgumentException(
+          String.format("Load: Invalid memory size %d bytes, must be positive", sizeInBytes));
+    }
     try {
       forceAllocateFromQuery(sizeInBytes);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Load: Allocated MemoryBlock from query engine, size: {}", sizeInBytes);
+        LOGGER.debug(StorageEngineMessages.LOAD_ALLOCATED_MEMORY_BLOCK, sizeInBytes);
       }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
@@ -120,7 +129,16 @@ public class LoadTsFileMemoryManager {
    */
   synchronized void forceResize(LoadTsFileMemoryBlock memoryBlock, long newSizeInBytes)
       throws LoadRuntimeOutOfMemoryException {
-    if (memoryBlock.getTotalMemorySizeInBytes() >= newSizeInBytes) {
+    if (newSizeInBytes < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Load: Invalid memory size %d bytes, must be non-negative", newSizeInBytes));
+    }
+    if (memoryBlock.getTotalMemorySizeInBytes() == newSizeInBytes) {
+      return;
+    }
+
+    if (memoryBlock.getTotalMemorySizeInBytes() > newSizeInBytes) {
 
       if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
         LOGGER.error(
@@ -139,7 +157,7 @@ public class LoadTsFileMemoryManager {
     try {
       forceAllocateFromQuery(bytesNeeded);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}",
             bytesNeeded,
             newSizeInBytes);
@@ -162,8 +180,18 @@ public class LoadTsFileMemoryManager {
     if (dataCacheMemoryBlock == null) {
       final long actuallyAllocateMemoryInBytes =
           tryAllocateFromQuery(MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES >> 2);
-      dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
-      usedMemorySizeInBytes.addAndGet(actuallyAllocateMemoryInBytes);
+      try {
+        dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
+      } catch (RuntimeException e) {
+        if (actuallyAllocateMemoryInBytes > 0) {
+          try {
+            releaseToQuery(actuallyAllocateMemoryInBytes);
+          } catch (RuntimeException releaseException) {
+            e.addSuppressed(releaseException);
+          }
+        }
+        throw e;
+      }
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",
           dataCacheMemoryBlock,
@@ -176,7 +204,7 @@ public class LoadTsFileMemoryManager {
   public synchronized void releaseDataCacheMemoryBlock() {
     dataCacheMemoryBlock.updateReferenceCount(-1);
     if (dataCacheMemoryBlock.getReferenceCount() == 0) {
-      LOGGER.info("Release Data Cache Memory Block {}", dataCacheMemoryBlock);
+      LOGGER.info(StorageEngineMessages.RELEASE_DATA_CACHE_MEMORY_BLOCK, dataCacheMemoryBlock);
       dataCacheMemoryBlock.close();
       dataCacheMemoryBlock = null;
     }

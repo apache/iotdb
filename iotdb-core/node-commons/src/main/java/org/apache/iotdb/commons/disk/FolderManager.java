@@ -142,7 +142,7 @@ public class FolderManager {
         return folderConsumer.apply(folder);
       } catch (Exception e) {
         updateFolderState(folder, FolderState.ABNORMAL);
-        logger.warn("Failed to process folder '" + folder);
+        logger.warn("Failed to process folder {}", folder);
       }
     }
     throw new DiskSpaceInsufficientException(folders);

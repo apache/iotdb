@@ -19,51 +19,47 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;
 import org.apache.iotdb.db.queryengine.plan.function.Repeat;
 import org.apache.iotdb.db.queryengine.plan.function.Split;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
-import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -84,8 +80,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
@@ -100,9 +100,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTable
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
@@ -322,11 +319,6 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return getFakePartitionFetcher();
-  }
-
-  @Override
   public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
@@ -485,12 +477,13 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn) {
     throw new UnsupportedOperationException();
   }
 
@@ -558,21 +551,6 @@ public class TestMetadata implements Metadata {
         throw new SemanticException("Unknown function: " + functionName);
       }
     }
-  }
-
-  @Override
-  public IModelFetcher getModelFetcher() {
-    String modelId = "timer_xl";
-    IModelFetcher fetcher = Mockito.mock(IModelFetcher.class);
-    ModelInferenceDescriptor descriptor = Mockito.mock(ModelInferenceDescriptor.class);
-    Mockito.when(descriptor.getTargetAINode()).thenReturn(new TEndPoint("127.0.0.1", 10810));
-    ModelInformation modelInformation = Mockito.mock(ModelInformation.class);
-    Mockito.when(modelInformation.available()).thenReturn(true);
-    Mockito.when(modelInformation.getInputShape()).thenReturn(new int[] {1440, 96});
-    Mockito.when(descriptor.getModelInformation()).thenReturn(modelInformation);
-    Mockito.when(descriptor.getModelName()).thenReturn(modelId);
-    Mockito.when(fetcher.fetchModel(modelId)).thenReturn(descriptor);
-    return fetcher;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

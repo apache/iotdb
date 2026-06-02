@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.model.ModelInformation;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowParameter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,19 +34,15 @@ import java.util.Objects;
 
 public class ModelInferenceDescriptor {
 
-  private final TEndPoint targetAINode;
-  private ModelInformation modelInformation;
+  private final ModelInformation modelInformation;
   private List<String> outputColumnNames;
-  private InferenceWindowParameter inferenceWindowParameter;
   private Map<String, String> inferenceAttributes;
 
-  public ModelInferenceDescriptor(TEndPoint targetAINode) {
-    this.targetAINode = targetAINode;
+  public ModelInferenceDescriptor(ModelInformation modelInformation) {
+    this.modelInformation = modelInformation;
   }
 
   private ModelInferenceDescriptor(ByteBuffer buffer) {
-    this.targetAINode =
-        new TEndPoint(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
     this.modelInformation = ModelInformation.deserialize(buffer);
     int outputColumnNamesSize = ReadWriteIOUtils.readInt(buffer);
     if (outputColumnNamesSize == 0) {
@@ -58,12 +52,6 @@ public class ModelInferenceDescriptor {
       for (int i = 0; i < outputColumnNamesSize; i++) {
         this.outputColumnNames.add(ReadWriteIOUtils.readString(buffer));
       }
-    }
-    boolean hasInferenceWindowParameter = ReadWriteIOUtils.readBool(buffer);
-    if (hasInferenceWindowParameter) {
-      this.inferenceWindowParameter = InferenceWindowParameter.deserialize(buffer);
-    } else {
-      this.inferenceWindowParameter = null;
     }
     int inferenceAttributesSize = ReadWriteIOUtils.readInt(buffer);
     if (inferenceAttributesSize == 0) {
@@ -85,24 +73,12 @@ public class ModelInferenceDescriptor {
     return inferenceAttributes;
   }
 
-  public void setInferenceWindowParameter(InferenceWindowParameter inferenceWindowParameter) {
-    this.inferenceWindowParameter = inferenceWindowParameter;
-  }
-
-  public InferenceWindowParameter getInferenceWindowParameter() {
-    return inferenceWindowParameter;
-  }
-
   public ModelInformation getModelInformation() {
     return modelInformation;
   }
 
-  public TEndPoint getTargetAINode() {
-    return targetAINode;
-  }
-
-  public String getModelName() {
-    return modelInformation.getModelName();
+  public String getModelId() {
+    return modelInformation.getModelId();
   }
 
   public void setOutputColumnNames(List<String> outputColumnNames) {
@@ -114,8 +90,6 @@ public class ModelInferenceDescriptor {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(targetAINode.ip, byteBuffer);
-    ReadWriteIOUtils.write(targetAINode.port, byteBuffer);
     modelInformation.serialize(byteBuffer);
     if (outputColumnNames == null) {
       ReadWriteIOUtils.write(0, byteBuffer);
@@ -124,12 +98,6 @@ public class ModelInferenceDescriptor {
       for (String outputColumnName : outputColumnNames) {
         ReadWriteIOUtils.write(outputColumnName, byteBuffer);
       }
-    }
-    if (inferenceWindowParameter == null) {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      inferenceWindowParameter.serialize(byteBuffer);
     }
     if (inferenceAttributes == null) {
       ReadWriteIOUtils.write(0, byteBuffer);
@@ -143,8 +111,6 @@ public class ModelInferenceDescriptor {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(targetAINode.ip, stream);
-    ReadWriteIOUtils.write(targetAINode.port, stream);
     modelInformation.serialize(stream);
     if (outputColumnNames == null) {
       ReadWriteIOUtils.write(0, stream);
@@ -153,12 +119,6 @@ public class ModelInferenceDescriptor {
       for (String outputColumnName : outputColumnNames) {
         ReadWriteIOUtils.write(outputColumnName, stream);
       }
-    }
-    if (inferenceWindowParameter == null) {
-      ReadWriteIOUtils.write(false, stream);
-    } else {
-      ReadWriteIOUtils.write(true, stream);
-      inferenceWindowParameter.serialize(stream);
     }
     if (inferenceAttributes == null) {
       ReadWriteIOUtils.write(0, stream);
@@ -184,20 +144,13 @@ public class ModelInferenceDescriptor {
       return false;
     }
     ModelInferenceDescriptor that = (ModelInferenceDescriptor) o;
-    return targetAINode.equals(that.targetAINode)
-        && modelInformation.equals(that.modelInformation)
+    return modelInformation.equals(that.modelInformation)
         && outputColumnNames.equals(that.outputColumnNames)
-        && inferenceWindowParameter.equals(that.inferenceWindowParameter)
         && inferenceAttributes.equals(that.inferenceAttributes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        targetAINode,
-        modelInformation,
-        outputColumnNames,
-        inferenceWindowParameter,
-        inferenceAttributes);
+    return Objects.hash(modelInformation, outputColumnNames, inferenceAttributes);
   }
 }

@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -121,7 +121,12 @@ public class SchemaRegionListeningFilter {
                 .getDatabaseFullPath());
     return (TreePattern.isTreeModelDataAllowToBeCaptured(parameters) && !isTableModel
             || TablePattern.isTableModelDataAllowToBeCaptured(parameters) && isTableModel)
-        && !parseListeningPlanTypeSet(parameters).isEmpty();
+        && shouldSchemaRegionBeListened(parameters);
+  }
+
+  public static boolean shouldSchemaRegionBeListened(final PipeParameters parameters)
+      throws IllegalPathException {
+    return !parseListeningPlanTypeSet(parameters).isEmpty();
   }
 
   public static Set<PlanNodeType> parseListeningPlanTypeSet(final PipeParameters parameters)

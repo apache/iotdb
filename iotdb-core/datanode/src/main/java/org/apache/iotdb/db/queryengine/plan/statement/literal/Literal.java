@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.literal;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -56,7 +57,8 @@ public abstract class Literal extends StatementNode {
       case BINARY:
         return new BinaryLiteral(ReadWriteIOUtils.readBinary(byteBuffer).getValues());
       default:
-        throw new IllegalArgumentException(String.format("Unknown literal type: %s", type));
+        throw new IllegalArgumentException(
+            String.format(DataNodeQueryMessages.UNKNOWN_LITERAL_TYPE, type));
     }
   }
 

@@ -22,6 +22,10 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
+import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -43,10 +47,25 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletRawReq.class);
 
-  protected transient Tablet tablet;
-  protected transient boolean isAligned;
+  protected transient InsertTabletStatement statement;
 
+  protected transient boolean isAligned;
+  protected transient Tablet tablet;
+
+  /**
+   * Get Tablet. If tablet is null, convert from statement.
+   *
+   * @return Tablet object
+   */
   public Tablet getTablet() {
+    if (tablet == null && statement != null) {
+      try {
+        tablet = statement.convertToTablet();
+      } catch (final MetadataException e) {
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET, e);
+        return null;
+      }
+    }
     return tablet;
   }
 
@@ -54,18 +73,31 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return isAligned;
   }
 
+  /**
+   * Construct Statement. If statement already exists, return it. Otherwise, convert from tablet.
+   *
+   * @return InsertTabletStatement
+   */
   public InsertTabletStatement constructStatement() {
+    if (statement != null) {
+      new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+      return statement;
+    }
+
+    // Sort and deduplicate tablet before converting
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
       if (isTabletEmpty(tablet)) {
         // Empty statement, will be filtered after construction
-        return new InsertTabletStatement();
+        statement = new InsertTabletStatement();
+        return statement;
       }
 
-      return new InsertTabletStatement(tablet, isAligned, null);
+      statement = new InsertTabletStatement(tablet, isAligned, null);
+      return statement;
     } catch (final MetadataException e) {
-      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
+      LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);
       return null;
     }
   }
@@ -78,6 +110,27 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    final int startPosition = buffer.position();
+    try {
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, false, tabletStringInternPool);
+      tabletReq.isAligned = insertTabletStatement.isAligned();
+      tabletReq.statement = insertTabletStatement;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+      tabletReq.tablet =
+          PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+      tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
+    }
 
     return tabletReq;
   }
@@ -105,10 +158,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+    final PipeTransferTabletRawReq tabletReq =
+        toTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
@@ -118,16 +169,54 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(final Tablet tablet, final boolean isAligned)
-      throws IOException {
+  /**
+   * Serialize to bytes. If tablet is null, convert from statement first.
+   *
+   * @return serialized bytes
+   * @throws IOException if serialization fails
+   */
+  public byte[] toTPipeTransferBytes() throws IOException {
+    Tablet tabletToSerialize = tablet;
+    boolean isAlignedToSerialize = isAligned;
+
+    // If tablet is null, convert from statement
+    if (tabletToSerialize == null && statement != null) {
+      try {
+        tabletToSerialize = statement.convertToTablet();
+        isAlignedToSerialize = statement.isAligned();
+      } catch (final MetadataException e) {
+        throw new IOException(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR, e);
+      }
+    }
+
+    if (tabletToSerialize == null) {
+      throw new IOException(DataNodePipeMessages.CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE);
+    }
+
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_RAW.getType(), outputStream);
-      tablet.serialize(outputStream);
-      ReadWriteIOUtils.write(isAligned, outputStream);
+      tabletToSerialize.serialize(outputStream);
+      ReadWriteIOUtils.write(isAlignedToSerialize, outputStream);
       return byteArrayOutputStream.toByteArray();
     }
+  }
+
+  /**
+   * Static method for backward compatibility. Creates a temporary instance and serializes.
+   *
+   * @param tablet Tablet to serialize
+   * @param isAligned whether aligned
+   * @return serialized bytes
+   * @throws IOException if serialization fails
+   */
+  public static byte[] toTPipeTransferBytes(final Tablet tablet, final boolean isAligned)
+      throws IOException {
+    final PipeTransferTabletRawReq req = new PipeTransferTabletRawReq();
+    req.tablet = tablet;
+    req.isAligned = isAligned;
+    return req.toTPipeTransferBytes();
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -141,7 +230,16 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       return false;
     }
     final PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
-    return Objects.equals(tablet, that.tablet)
+    // Compare statement if both have it, otherwise compare tablet
+    if (statement != null && that.statement != null) {
+      return Objects.equals(statement, that.statement)
+          && isAligned == that.isAligned
+          && version == that.version
+          && type == that.type
+          && Objects.equals(body, that.body);
+    }
+    // Fallback to tablet comparison
+    return Objects.equals(getTablet(), that.getTablet())
         && isAligned == that.isAligned
         && version == that.version
         && type == that.type
@@ -150,6 +248,6 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, version, type, body);
+    return Objects.hash(getTablet(), isAligned, version, type, body);
   }
 }

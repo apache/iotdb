@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,6 +32,10 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PreciseFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PreciseFilter.class);
+
   private final String value;
 
   public PreciseFilter(final String value) {
@@ -80,5 +85,10 @@ public class PreciseFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(value);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(value);
   }
 }

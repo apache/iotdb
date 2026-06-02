@@ -60,7 +60,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      LOGGER.error("Disk space is insufficient, change system mode to read-only");
+      LOGGER.error("Disk space is insufficient, change system mode to read-only.");
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw new DiskSpaceInsufficientException(folders);
     }

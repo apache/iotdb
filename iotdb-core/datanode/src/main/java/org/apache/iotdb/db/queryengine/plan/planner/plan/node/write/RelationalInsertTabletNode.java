@@ -23,20 +23,27 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -50,6 +57,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
 
@@ -108,6 +116,16 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     this.singleDevice = true;
   }
 
+  public List<Binary[]> getObjectColumns() {
+    List<Binary[]> objectColumns = new ArrayList<>();
+    for (int i = 0; i < columns.length; i++) {
+      if (dataTypes[i] == TSDataType.OBJECT) {
+        objectColumns.add((Binary[]) columns[i]);
+      }
+    }
+    return objectColumns;
+  }
+
   @Override
   public IDeviceID getDeviceID(int rowIdx) {
     if (singleDevice) {
@@ -155,15 +173,15 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRelationalInsertTablet(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRelationalInsertTablet(this, context);
   }
 
   @Override
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
             getPlanNodeId(),
@@ -354,6 +372,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
 
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
@@ -364,12 +386,96 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
       for (int i = 0; i < rawMeasurements.length; i++) {
-        timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
+        timeValuePairs[i] = composeLastTimeValuePair(i, results, startOffset, endOffset);
       }
       TableDeviceSchemaCache.getInstance()
           .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
 
       startOffset = endOffset;
+    }
+  }
+
+  @Override
+  protected List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
+    List<WritePlanNode> result = new ArrayList<>();
+
+    if (splitMap.size() == 1) {
+      final Entry<TRegionReplicaSet, List<Integer>> entry = splitMap.entrySet().iterator().next();
+      if (entry.getValue().size() == 2) {
+        // Avoid using system arraycopy when there is no need to split
+        setRange(entry.getValue());
+        setDataRegionReplicaSet(entry.getKey());
+        result.add(this);
+        return result;
+      }
+    }
+
+    for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+      result.addAll(generateOneSplitList(entry));
+    }
+    return result;
+  }
+
+  private List<WritePlanNode> generateOneSplitList(
+      Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
+    List<Integer> locs;
+    // generate a new times and values
+    locs = entry.getValue();
+    int count = 0;
+    for (int i = 0; i < locs.size(); i += 2) {
+      int start = locs.get(i);
+      int end = locs.get(i + 1);
+      count += end - start;
+    }
+
+    List<WritePlanNode> result = new ArrayList<>();
+
+    final InsertTabletNode subNode = getEmptySplit(count);
+    int destLoc = 0;
+
+    for (int k = 0; k < locs.size(); k += 2) {
+      int start = locs.get(k);
+      int end = locs.get(k + 1);
+      final int length = end - start;
+
+      System.arraycopy(times, start, subNode.times, destLoc, length);
+      for (int i = 0; i < subNode.columns.length; i++) {
+        if (dataTypes[i] != null) {
+          System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
+        }
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[i] != null
+            && i < this.bitMaps.length
+            && this.bitMaps[i] != null) {
+          BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
+        }
+      }
+      destLoc += length;
+    }
+    subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
+    subNode.setRange(locs);
+    subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
+    result.add(subNode);
+    return result;
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    if (singleDevice) {
+      IWritableMemChunkGroup writableMemChunkGroup =
+          memTable.getWritableMemChunkGroup(getDeviceID(0));
+      if (writableMemChunkGroup != null) {
+        writableMemChunkGroup.checkDataType(this);
+      }
+    } else {
+      for (int i = 0; i < rowCount; i++) {
+        IWritableMemChunkGroup writableMemChunkGroup =
+            memTable.getWritableMemChunkGroup(getDeviceID(i));
+        if (writableMemChunkGroup != null) {
+          writableMemChunkGroup.checkDataType(this);
+        }
+      }
     }
   }
 }

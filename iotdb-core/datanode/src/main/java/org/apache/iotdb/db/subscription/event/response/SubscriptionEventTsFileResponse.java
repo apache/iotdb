@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
@@ -142,7 +143,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final short responseType = previousResponse.getResponseType();
     final SubscriptionPollPayload payload = previousResponse.getPayload();
     if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-      LOGGER.warn("unexpected response type: {}", responseType);
+      LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
       return Optional.empty();
     }
 
@@ -157,7 +158,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
         // not need to prefetch
         break;
       default:
-        LOGGER.warn("unexpected message type: {}", responseType);
+        LOGGER.warn(DataNodeMiscMessages.UNEXPECTED_MESSAGE_TYPE, responseType);
     }
 
     return Optional.empty();

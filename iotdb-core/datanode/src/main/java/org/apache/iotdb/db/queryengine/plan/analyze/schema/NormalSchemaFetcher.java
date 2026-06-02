@@ -330,15 +330,13 @@ class NormalSchemaFetcher {
       indexOfDevicesNeedAutoCreateSchema.removeIf(
           i ->
               !schemaComputationWithAutoCreationList
-                  .get(i)
-                  .getDevicePath()
-                  .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
-      indexOfDevicesNeedAutoCreateSchema.removeIf(
-          i ->
-              !schemaComputationWithAutoCreationList
-                  .get(i)
-                  .getDevicePath()
-                  .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
+                      .get(i)
+                      .getDevicePath()
+                      .startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+                  && !schemaComputationWithAutoCreationList
+                      .get(i)
+                      .getDevicePath()
+                      .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
     }
 
     // [Step 5] Auto Create and process the missing schema

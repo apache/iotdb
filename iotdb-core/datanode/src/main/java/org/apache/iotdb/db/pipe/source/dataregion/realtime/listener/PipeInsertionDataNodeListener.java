@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -45,70 +44,65 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>All events extracted by this listener will be first published to different
  * PipeEventDataRegionAssigners (identified by data region id), and then PipeEventDataRegionAssigner
- * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
+ * will filter events and assign them to different PipeRealtimeEventDataRegionSources.
  */
 public class PipeInsertionDataNodeListener {
-  private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
+  private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
-
-  private final AtomicInteger listenToTsFileExtractorCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeExtractorCount = new AtomicInteger(0);
 
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      final String dataRegionId, final PipeRealtimeDataRegionSource extractor) {
-    dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
-        .startAssignTo(extractor);
-
-    if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.incrementAndGet();
-    }
-    if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.incrementAndGet();
-    }
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    // Keep registration inside compute so the assigner is fully started before it becomes visible
+    // to concurrent listeners.
+    dataRegionId2Assigner.compute(
+        dataRegionId,
+        (id, assigner) -> {
+          final PipeDataRegionAssigner actualAssigner =
+              assigner == null ? new PipeDataRegionAssigner(dataRegionId) : assigner;
+          actualAssigner.startAssignTo(source);
+          return actualAssigner;
+        });
   }
 
   public synchronized void stopListenAndAssign(
-      final String dataRegionId, final PipeRealtimeDataRegionSource extractor) {
-    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
-    if (assigner == null) {
-      return;
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    PipeDataRegionAssigner assignerToClose = null;
+
+    synchronized (this) {
+      final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+      if (assigner == null) {
+        return;
+      }
+
+      assigner.stopAssignTo(source);
+
+      if (assigner.notMoreSourceNeededToBeAssigned()) {
+        // The removed assigner will is the same as the one referenced by the variable `assigner`
+        dataRegionId2Assigner.remove(dataRegionId);
+        // This will help to release the memory occupied by the assigner
+        assignerToClose = assigner;
+      }
     }
 
-    assigner.stopAssignTo(extractor);
-
-    if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.decrementAndGet();
-    }
-    if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.decrementAndGet();
-    }
-
-    if (assigner.notMoreExtractorNeededToBeAssigned()) {
-      // The removed assigner will is the same as the one referenced by the variable `assigner`
-      dataRegionId2Assigner.remove(dataRegionId);
-      // This will help to release the memory occupied by the assigner
-      assigner.close();
+    if (assignerToClose != null) {
+      // Closing the disruptor may block for a while, so keep it out of the global listener lock.
+      assignerToClose.close();
     }
   }
 
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(
-      final String dataRegionId,
+      final int dataRegionId,
       final String databaseName,
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
-    // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
-    // because extractors may use tsfile events when some exceptions occur in the
-    // insert nodes listening process.
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with tsfile listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToTsFile()) {
       return;
     }
 
@@ -118,18 +112,14 @@ public class PipeInsertionDataNodeListener {
   }
 
   public void listenToInsertNode(
-      final String dataRegionId,
+      final int dataRegionId,
       final String databaseName,
       final InsertNode insertNode,
       final TsFileResource tsFileResource) {
-    if (listenToInsertNodeExtractorCount.get() == 0) {
-      return;
-    }
-
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be extracted
-    if (assigner == null) {
+    // only events from registered data region with insert listeners will be extracted
+    if (assigner == null || !assigner.shouldListenToInsertNode()) {
       return;
     }
 
@@ -139,7 +129,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public DeletionResource listenToDeleteData(
-      final String regionId, final AbstractDeleteDataNode node) {
+      final int regionId, final AbstractDeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
     if (assigner == null

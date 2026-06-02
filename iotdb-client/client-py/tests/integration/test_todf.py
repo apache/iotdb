@@ -139,7 +139,7 @@ def test_with_null_query():
                 tmp_array = np.full(data_nums, np.nan, np.float32)
                 tmp_array = pd.Series(tmp_array).astype("boolean")
             else:
-                tmp_array = np.full(data_nums, None, dtype=data[ts_path].dtype)
+                tmp_array = np.full(data_nums, np.nan, dtype=data[ts_path].dtype)
             data_empty[ts_path] = tmp_array
         df_input = pd.DataFrame(data_empty)
 

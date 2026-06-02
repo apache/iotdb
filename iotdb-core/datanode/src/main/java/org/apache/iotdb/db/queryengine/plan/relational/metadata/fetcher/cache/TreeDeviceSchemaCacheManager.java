@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -355,7 +355,8 @@ public class TreeDeviceSchemaCacheManager {
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
    * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
-   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}. This method is not supposed to update time
+   * column.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}

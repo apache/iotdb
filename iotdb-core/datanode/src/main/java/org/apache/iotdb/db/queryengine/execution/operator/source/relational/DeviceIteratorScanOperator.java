@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -63,7 +65,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     this.currentDeviceIndex = 0;
     this.currentDeviceInit = false;
     this.operatorContext.recordSpecifiedInfo(
-        AbstractTableScanOperator.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
     constructCurrentDeviceOperatorTree();
   }
 
@@ -99,8 +101,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     queryDataSource.reset();
     initQueryDataSource(queryDataSource);
     this.operatorContext.recordSpecifiedInfo(
-        AbstractTableScanOperator.CURRENT_DEVICE_INDEX_STRING,
-        Integer.toString(currentDeviceIndex));
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   private void constructCurrentDeviceOperatorTree() {
@@ -113,7 +114,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
 
-    deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry);
+    deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry, true);
     currentDeviceRootOperator = deviceChildOperatorTreeGenerator.getCurrentDeviceRootOperator();
     dataSourceOperators = deviceChildOperatorTreeGenerator.getCurrentDeviceDataSourceOperators();
     currentDeviceInit = false;
@@ -185,7 +186,13 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(currentDeviceRootOperator)
-        + RamUsageEstimator.sizeOfCollection(deviceEntries);
+        + RamUsageEstimator.sizeOfCollection(deviceEntries)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            deviceChildOperatorTreeGenerator);
+  }
+
+  public DeviceChildOperatorTreeGenerator getDeviceChildOperatorTreeGenerator() {
+    return deviceChildOperatorTreeGenerator;
   }
 
   public static class TreeNonAlignedDeviceViewScanParameters {
@@ -212,12 +219,12 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
   }
 
-  public interface DeviceChildOperatorTreeGenerator {
+  public interface DeviceChildOperatorTreeGenerator extends Accountable {
     // Do the offset and limit operator need to keep after the device iterator
     boolean keepOffsetAndLimitOperatorAfterDeviceIterator();
 
     // Generate the following operator subtree based on the current deviceEntry
-    void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry);
+    void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry, boolean needAdaptor);
 
     // Returns the root operator of the subtree
     Operator getCurrentDeviceRootOperator();

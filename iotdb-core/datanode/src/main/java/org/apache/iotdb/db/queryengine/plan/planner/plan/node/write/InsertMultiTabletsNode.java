@@ -21,13 +21,17 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -100,7 +104,8 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
-    throw new UnsupportedOperationException("InsertMultiTabletsNode not support merge");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.INSERTMULTITABLETSNODE_NOT_SUPPORT_MERGE);
   }
 
   public InsertMultiTabletsNode(
@@ -184,7 +189,7 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -279,8 +284,8 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertMultiTablets(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitInsertMultiTablets(this, context);
   }
 
   @Override
@@ -292,5 +297,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   public void setProgressIndex(ProgressIndex progressIndex) {
     this.progressIndex = progressIndex;
     insertTabletNodeList.forEach(node -> node.setProgressIndex(progressIndex));
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    for (InsertTabletNode node : insertTabletNodeList) {
+      node.checkDataType(memTable);
+    }
   }
 }

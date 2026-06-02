@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -35,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -62,13 +65,13 @@ public class AuthorInfo implements SnapshotProcessor {
       authorizer = BasicAuthorizer.getInstance();
       authorPlanExecutor = new AuthorPlanExecutor(authorizer);
     } catch (AuthException e) {
-      LOGGER.error("get user or role permissionInfo failed because ", e);
+      LOGGER.error(ConfigNodeMessages.GET_USER_OR_ROLE_PERMISSIONINFO_FAILED_BECAUSE, e);
     }
   }
 
   public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
     if (authorType < 0) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     ConfigPhysicalPlanType configPhysicalPlanType;
     if (authorType >= AuthorType.RENAME_USER.ordinal()) {
@@ -81,7 +84,7 @@ public class AuthorInfo implements SnapshotProcessor {
         case UPDATE_USER_MIN_SESSION:
           return ConfigPhysicalPlanType.UpdateUserMinSession;
         default:
-          throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+          throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
       }
     } else {
       configPhysicalPlanType =
@@ -122,8 +125,9 @@ public class AuthorInfo implements SnapshotProcessor {
     this.authorPlanExecutor = authorPlanExecutor;
   }
 
-  public TPermissionInfoResp login(String username, String password) {
-    return authorPlanExecutor.login(username, password);
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorPlanExecutor.login(username, password, useEncryptedPassword);
   }
 
   public String login4Pipe(final String username, final String password) {
@@ -200,6 +204,11 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
+      throws AuthException {
+    return authorPlanExecutor.generateRawAuthorizedPTree(username, type);
+  }
+
   public TPermissionInfoResp checkRoleOfUser(String username, String roleName) {
     try {
       return authorPlanExecutor.checkRoleOfUser(username, roleName);
@@ -251,7 +260,8 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public TSStatus enableSeparationOfAdminPowers(
       String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
-    throw new UnsupportedOperationException("EnableSeparationOfAdminPowers is not supported");
+    throw new UnsupportedOperationException(
+        ConfigNodeMessages.ENABLESEPARATIONOFADMINPOWERS_IS_NOT_SUPPORTED);
   }
 
   @TestOnly

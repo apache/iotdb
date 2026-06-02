@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -41,18 +43,22 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.math.NumberUtils;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
+import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
+import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +67,9 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression.flipType;
+import static org.apache.tsfile.enums.TSDataType.DOUBLE;
+import static org.apache.tsfile.enums.TSDataType.INT32;
+import static org.apache.tsfile.enums.TSDataType.INT64;
 import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToFilterVisitor
@@ -135,12 +144,13 @@ public class ConvertPredicateToFilterVisitor
   @Override
   public Filter visitIsNullExpression(IsNullExpression isNullExpression, Context context) {
     if (!isNullExpression.isNot()) {
-      throw new IllegalArgumentException("IS NULL cannot be pushed down");
+      throw new IllegalArgumentException(DataNodeQueryMessages.IS_NULL_CANNOT_BE_PUSHED_DOWN);
     }
 
     Expression operand = isNullExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL/IS NOT NULL");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL_IS_NOT);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -154,7 +164,8 @@ public class ConvertPredicateToFilterVisitor
   public Filter visitLikeExpression(LikeExpression likeExpression, Context context) {
     Expression operand = likeExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support LIKE/NOT LIKE");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE_NOT_LIKE);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -174,7 +185,8 @@ public class ConvertPredicateToFilterVisitor
   public Filter visitRegularExpression(RegularExpression regularExpression, Context context) {
     Expression operand = regularExpression.getExpression();
     if (operand.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
-      throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP/NOT REGEXP");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_REGEXP_NOT_REGEXP);
     }
 
     checkArgument(operand.getExpressionType().equals(ExpressionType.TIMESERIES));
@@ -265,7 +277,131 @@ public class ConvertPredicateToFilterVisitor
       Context context) {
     PartialPath path = ((TimeSeriesOperand) timeseriesOperand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    TSDataType dataType = context.getType(path);
+    TSDataType columnDataType = context.getType(path);
+
+    ConstantOperand constantLiteral = (ConstantOperand) constantOperand;
+    TSDataType constantDataType = constantLiteral.getDataType();
+    String constantString = constantLiteral.getValueString();
+    if (constantDataType == DOUBLE && NumberUtils.isCreatable(constantString)) {
+      BigDecimal constantDecimal = new BigDecimal(constantString);
+
+      if (columnDataType == INT64) {
+        if (constantDecimal.compareTo(new BigDecimal(Long.MAX_VALUE)) > 0) {
+          return constructFilterForGreaterThanMax(expressionType, measurementIndex);
+        }
+        if (constantDecimal.compareTo(new BigDecimal(Long.MIN_VALUE)) < 0) {
+          return constructFilterForLessThanMin(expressionType, measurementIndex);
+        }
+        return constructFilterFromDouble(
+            expressionType, constantOperand, measurementIndex, columnDataType);
+
+      } else if (columnDataType == INT32) {
+        if (constantDecimal.compareTo(new BigDecimal(Integer.MAX_VALUE)) > 0) {
+          return constructFilterForGreaterThanMax(expressionType, measurementIndex);
+        }
+        if (constantDecimal.compareTo(new BigDecimal(Integer.MIN_VALUE)) < 0) {
+          return constructFilterForLessThanMin(expressionType, measurementIndex);
+        }
+        return constructFilterFromDouble(
+            expressionType, constantOperand, measurementIndex, columnDataType);
+      }
+    }
+
+    if (constantDataType == INT64 && columnDataType == INT32) {
+      return constructValueFilter(expressionType, constantOperand, INT64, measurementIndex);
+    }
+
+    return constructValueFilter(expressionType, constantOperand, columnDataType, measurementIndex);
+  }
+
+  private Filter constructFilterFromDouble(
+      ExpressionType expressionType,
+      Expression constantOperand,
+      int measurementIndex,
+      TSDataType dataType) {
+
+    ConstantOperand constantLiteral = (ConstantOperand) constantOperand;
+    BigDecimal constantDecimal = new BigDecimal(constantLiteral.getValueString());
+    switch (expressionType) {
+      case GREATER_EQUAL:
+      case LESS_THAN:
+        long ceilValue = constantDecimal.setScale(0, RoundingMode.CEILING).longValue();
+        return constructValueFilter(
+            expressionType,
+            new ConstantOperand(constantLiteral.getDataType(), String.valueOf(ceilValue)),
+            dataType,
+            measurementIndex);
+
+      case LESS_EQUAL:
+      case GREATER_THAN:
+        long floorVal = constantDecimal.setScale(0, RoundingMode.FLOOR).longValue();
+        return constructValueFilter(
+            expressionType,
+            new ConstantOperand(constantLiteral.getDataType(), String.valueOf(floorVal)),
+            dataType,
+            measurementIndex);
+
+      case EQUAL_TO:
+      case NON_EQUAL:
+        boolean isRoundNumber = constantDecimal.remainder(BigDecimal.ONE).signum() == 0;
+        if (isRoundNumber) {
+          String roundNumString = String.valueOf(constantDecimal.longValue());
+          ConstantOperand newOperand =
+              new ConstantOperand(constantLiteral.getDataType(), roundNumString);
+          return constructValueFilter(expressionType, newOperand, dataType, measurementIndex);
+        }
+        return (expressionType == ExpressionType.EQUAL_TO)
+            ? new FalseLiteralFilter()
+            : new ValueIsNotNullOperator(measurementIndex);
+
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unsupported expression type %s", expressionType));
+    }
+  }
+
+  public Filter constructFilterForGreaterThanMax(
+      ExpressionType expressionType, int measurementIndex) {
+    switch (expressionType) {
+      case GREATER_EQUAL:
+      case GREATER_THAN:
+      case EQUAL_TO:
+        return new FalseLiteralFilter();
+
+      case LESS_EQUAL:
+      case LESS_THAN:
+      case NON_EQUAL:
+        return new ValueIsNotNullOperator(measurementIndex);
+
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unsupported expression type %s", expressionType));
+    }
+  }
+
+  public Filter constructFilterForLessThanMin(ExpressionType expressionType, int measurementIndex) {
+    switch (expressionType) {
+      case LESS_EQUAL:
+      case LESS_THAN:
+      case EQUAL_TO:
+        return new FalseLiteralFilter();
+
+      case GREATER_EQUAL:
+      case GREATER_THAN:
+      case NON_EQUAL:
+        return new ValueIsNotNullOperator(measurementIndex);
+
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unsupported expression type %s", expressionType));
+    }
+  }
+
+  private <T extends Comparable<T>> Filter constructValueFilter(
+      ExpressionType expressionType,
+      Expression constantOperand,
+      TSDataType dataType,
+      int measurementIndex) {
     T value = getValue(((ConstantOperand) constantOperand).getValueString(), dataType);
     switch (expressionType) {
       case EQUAL_TO:
@@ -386,7 +522,8 @@ public class ConvertPredicateToFilterVisitor
   @Override
   public Filter visitGroupByTimeExpression(
       GroupByTimeExpression groupByTimeExpression, Context context) {
-    throw new IllegalArgumentException("GroupByTime filter cannot exist in value filter.");
+    throw new IllegalArgumentException(
+        DataNodeQueryMessages.GROUPBYTIME_FILTER_CANNOT_EXIST_IN_VALUE_FILTER);
   }
 
   public static class Context {

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -411,13 +412,7 @@ public class DataNodeMemoryConfig {
         Boolean.parseBoolean(
             properties.getProperty(
                 "meta_data_cache_enable", Boolean.toString(isMetaDataCacheEnable()))));
-    setQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
 
-    if (getQueryThreadCount() <= 0) {
-      setQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
     try {
       // update enable query memory estimation for memory control
       setEnableQueryMemoryEstimation(
@@ -428,7 +423,7 @@ public class DataNodeMemoryConfig {
                       "enable_query_memory_estimation"))));
 
     } catch (Exception e) {
-      LOGGER.error(String.format("Fail to reload configuration because %s", e));
+      LOGGER.error(String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
 
     String queryMemoryAllocateProportion =
@@ -486,8 +481,6 @@ public class DataNodeMemoryConfig {
       dataExchangeMemorySize += partForDataExchange;
       operatorsMemorySize += partForOperators;
     }
-    // set max bytes per fragment instance
-    setMaxBytesPerFragmentInstance(dataExchangeMemorySize / getQueryThreadCount());
 
     bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
@@ -505,6 +498,11 @@ public class DataNodeMemoryConfig {
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
+
+    // must be called after dataExchangeMemoryManager being inited.
+    setQueryThreadCount(
+        Integer.parseInt(
+            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
   }
 
   public double getRejectProportion() {
@@ -573,7 +571,6 @@ public class DataNodeMemoryConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     this.queryThreadCount = queryThreadCount;
-    // TODO @spricoder: influence dynamic change of memory size
     if (getDataExchangeMemoryManager() != null) {
       this.maxBytesPerFragmentInstance =
           getDataExchangeMemoryManager().getTotalMemorySizeInBytes() / queryThreadCount;

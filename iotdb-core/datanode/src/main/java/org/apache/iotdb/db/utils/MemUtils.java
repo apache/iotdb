@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -108,7 +109,9 @@ public class MemUtils {
       if (results == null
           || results[i] == null
           || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+        if (column[i] != null) {
+          memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+        }
       }
     }
     return memSize;
@@ -204,7 +207,7 @@ public class MemUtils {
       memUsed += 8;
       memUsed += getStringMem(TSFileConfig.STRING_ENCODING);
     } else {
-      LOGGER.error("Unsupported data point type");
+      LOGGER.error(DataNodeMiscMessages.UNSUPPORTED_DATA_POINT_TYPE);
     }
 
     return memUsed;

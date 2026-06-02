@@ -121,6 +121,6 @@ public class AlterEncodingCompressorStatement extends Statement implements IConf
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 }

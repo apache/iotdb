@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
-import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
@@ -33,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnviro
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
 import org.apache.iotdb.confignode.manager.pipe.source.IoTDBConfigRegionSource;
@@ -41,7 +41,6 @@ import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +106,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
         source.close();
       } catch (Exception closeException) {
         LOGGER.warn(
-            "Failed to close extractor after failed to initialize extractor. "
+            ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR
                 + "Ignore this exception.",
             closeException);
       }
@@ -156,7 +155,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
         outputPipeSink.close();
       } catch (final Exception closeException) {
         LOGGER.warn(
-            "Failed to close sink after failed to initialize it. Ignore this exception.",
+            ManagerMessages.FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE,
             closeException);
       }
       throw e;
@@ -191,30 +190,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
-    } catch (final PipeNonReportException e) {
-      sleep4NonReportException();
-    } catch (final PipeException e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because pipe is dropped.",
-            e.getClass().getSimpleName(),
-            e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
     } catch (final Exception e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s", taskID, lastEvent),
-            e);
-      } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      handleException(event, e);
     }
 
     return true;
@@ -231,19 +208,19 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     try {
       source.close();
     } catch (final Exception e) {
-      LOGGER.info("Error occurred during closing PipeExtractor.", e);
+      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEEXTRACTOR, e);
     }
 
     try {
       processor.close();
     } catch (final Exception e) {
-      LOGGER.info("Error occurred during closing PipeProcessor.", e);
+      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEPROCESSOR, e);
     }
 
     try {
       outputPipeSink.close();
     } catch (final Exception e) {
-      LOGGER.info("Error occurred during closing PipeConnector.", e);
+      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPECONNECTOR, e);
     } finally {
       // Should be after connector.close()
       super.close();
@@ -259,6 +236,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MAX_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
   }
 

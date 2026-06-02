@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
@@ -133,8 +134,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingEventAndTimeOperatorMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_UNBIND_FROM_PIPE_REMAINING_EVENT);
     }
   }
 
@@ -195,29 +195,29 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
+  public void register(final IoTDBDataRegionSource source) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     remainingEventAndTimeOperatorMap.computeIfAbsent(
         pipeID,
         k ->
             new PipeDataNodeRemainingEventAndTimeOperator(
-                extractor.getPipeName(), extractor.getCreationTime()));
+                source.getPipeName(), source.getCreationTime()));
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
 
-  public void register(final IoTDBSchemaRegionSource extractor) {
+  public void register(final IoTDBSchemaRegionSource source) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
             k ->
                 new PipeDataNodeRemainingEventAndTimeOperator(
-                    extractor.getPipeName(), extractor.getCreationTime()))
-        .register(extractor);
+                    source.getPipeName(), source.getCreationTime()))
+        .register(source);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
@@ -233,7 +233,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void decreaseInsertNodeEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
-    PipeDataNodeRemainingEventAndTimeOperator operator =
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
@@ -345,9 +345,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void deregister(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
-          pipeID);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_DEREGISTER_PIPE_REMAINING_EVENT_AND, pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
@@ -363,7 +361,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
+          DataNodePipeMessages.FAILED_TO_MARK_PIPE_REGION_COMMIT_REMAININGEVENTANDTIMEOPERATOR,
           pipeID);
       return;
     }

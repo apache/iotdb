@@ -28,13 +28,15 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -111,7 +113,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       try {
         pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(stream)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWNODE, e);
       }
     }
     long deleteStartTime = stream.readLong();
@@ -131,7 +134,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       try {
         pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(buffer)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWNODE, e);
       }
     }
     long deleteStartTime = buffer.getLong();
@@ -190,7 +194,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
       ReadWriteIOUtils.write(0, outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurs when serializing deleteDataNode.", e);
+      LOGGER.error(
+          DataNodeQueryMessages.UNEXPECTED_ERROR_OCCURS_WHEN_SERIALIZING_DELETEDATANODE, e);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -261,8 +266,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteData(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitDeleteData(this, context);
   }
 
   @Override
@@ -372,7 +377,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             .collect(Collectors.toList());
     int size = deleteDataNodes.size();
     if (size == 0) {
-      throw new IllegalArgumentException("deleteDataNodes is empty");
+      throw new IllegalArgumentException(DataNodeQueryMessages.DELETEDATANODES_IS_EMPTY);
     }
     DeleteDataNode firstOne = deleteDataNodes.get(0);
     if (size == 1) {

@@ -112,7 +112,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     device2Measurements = null;
   }
 
-  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource extractor) {
+  public boolean maySourceOnlyUseTablets(final PipeRealtimeDataRegionSource extractor) {
     final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
   }
@@ -162,6 +162,16 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public ProgressIndex getProgressIndex() {
     return event.getProgressIndex();
+  }
+
+  @Override
+  public void skipReportOnCommit() {
+    event.skipReportOnCommit();
+  }
+
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return event.isShouldReportOnCommit();
   }
 
   @Override

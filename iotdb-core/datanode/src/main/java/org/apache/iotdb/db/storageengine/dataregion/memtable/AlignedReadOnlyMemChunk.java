@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedChunkLoader;
@@ -108,7 +109,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.valueStatisticsList = new ArrayList<>();
     this.alignedTvListQueryMap = alignedTvListQueryMap;
     this.columnIndexList = columnIndexList;
-    this.context.addTVListToSet(alignedTvListQueryMap);
+    this.context.addTVListToSet(alignedTvListQueryMap.keySet());
   }
 
   @Override
@@ -117,7 +118,30 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
-        alignedTvList.sort();
+        // sort() returns the current row count
+        // TVList may grow between prepareTvListMapForQuery and actual query execution(now).
+        // The queryRowCount recorded here is only a snapshot taken during prepareTvListMapForQuery
+        // phase.
+        // Additional written rows that are not covered by the original queryRowCount can be
+        // involved in current sort operation.
+        // We must update queryRowCount here, otherwise, it may be used later to build
+        // BitMaps, causing bitmap array size mismatch and possible out of bound.
+        entry.setValue(alignedTvList.sort());
+        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
   }
@@ -220,6 +244,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
               if (tsBlock.getColumn(column).isNull(i)) {
                 continue;
@@ -355,10 +380,25 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
-      AlignedTVList tvList = (AlignedTVList) entry.getKey();
+      AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryLength = entry.getValue();
-      if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+      if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
+        entry.setValue(alignedTvList.sort());
+        long alignedTvListRamSize = alignedTvList.calculateRamSize().getRamSize();
+        alignedTvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery =
+              (FragmentInstanceContext) alignedTvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = alignedTvListRamSize - alignedTvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              alignedTvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          alignedTvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();
@@ -412,6 +452,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             valueBuilder.writeBinary(values[columnIndex].getBinary());
             break;
           default:
@@ -476,6 +517,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         floatPrecision,
         encodingList,
         context.isIgnoreAllNullRows(),
-        MAX_NUMBER_OF_POINTS_IN_PAGE);
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

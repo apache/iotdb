@@ -200,7 +200,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    // TODO @spricoder: CoordinatorMemoryManager are not used
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getCoordinatorMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_COORDINATOR,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
   }
 
   @Override

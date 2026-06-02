@@ -22,13 +22,13 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -270,6 +270,55 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.cleanUp();
     Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
+  }
+
+  @Test
+  public void testInvalidateLastCacheByWildcardDevicePath() throws IllegalPathException {
+    final MeasurementSchema s0 = new MeasurementSchema("s0", TSDataType.INT32);
+    final PartialPath device0 = new PartialPath("root.sg1.d1");
+    final PartialPath device1 = new PartialPath("root.sg2.d1");
+    final MeasurementPath path0 = new MeasurementPath(device0.concatNode("s0"), s0);
+    final MeasurementPath path1 = new MeasurementPath(device1.concatNode("s0"), s0);
+    final TimeValuePair tv0 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(0));
+
+    updateLastCache("root.sg1", device0, path0, s0, tv0);
+    updateLastCache("root.sg2", device1, path1, s0, tv0);
+
+    Assert.assertEquals(
+        tv0,
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device0.getIDeviceID(), "s0")));
+    Assert.assertEquals(
+        tv0,
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device1.getIDeviceID(), "s0")));
+
+    treeDeviceSchemaCacheManager.invalidateLastCache(new MeasurementPath("root.sg1.*.s0"));
+
+    Assert.assertNull(
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device0.getIDeviceID(), "s0")));
+    Assert.assertEquals(
+        tv0,
+        treeDeviceSchemaCacheManager.getLastCache(
+            new MeasurementPath(device1.getIDeviceID(), "s0")));
+  }
+
+  private void updateLastCache(
+      final String database,
+      final PartialPath devicePath,
+      final MeasurementPath path,
+      final MeasurementSchema schema,
+      final TimeValuePair timeValuePair) {
+    treeDeviceSchemaCacheManager.declareLastCache(database, path);
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes())),
+        new String[] {path.getMeasurement()},
+        new TimeValuePair[] {timeValuePair},
+        false,
+        new MeasurementSchema[] {schema});
   }
 
   @Test

@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
@@ -39,6 +40,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -126,7 +128,7 @@ public class ReadOnlyMemChunk {
     this.deletionList = deletionList;
     this.tvListQueryMap = tvListQueryMap;
     this.pageStatisticsList = new ArrayList<>();
-    this.context.addTVListToSet(tvListQueryMap);
+    this.context.addTVListToSet(tvListQueryMap.keySet());
   }
 
   public void sortTvLists() {
@@ -134,7 +136,21 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
+        long tvListRamSize = tvList.calculateRamSize().getRamSize();
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
   }
@@ -267,13 +283,31 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
+  public void setChunkMetadata(IChunkMetadata cachedMetaData) {
+    this.cachedMetaData = cachedMetaData;
+  }
+
   @TestOnly
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
       TVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
+        long tvListRamSize = tvList.calculateRamSize().getRamSize();
+        tvList.lockQueryList();
+        try {
+          FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
+          if (ownerQuery != null) {
+            long deltaBytes = tvListRamSize - tvList.getReservedMemoryBytes();
+            if (deltaBytes > 0) {
+              ownerQuery.getMemoryReservationContext().reserveMemoryCumulatively(deltaBytes);
+              tvList.addReservedMemoryBytes(deltaBytes);
+            }
+          }
+        } finally {
+          tvList.unlockQueryList();
+        }
       }
     }
     TsBlock tsBlock = buildTsBlock();
@@ -303,7 +337,12 @@ public class ReadOnlyMemChunk {
           break;
         case INT32:
         case DATE:
-          builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
+          if (builder.getColumnBuilder(0) instanceof BinaryColumnBuilder) {
+            ((BinaryColumnBuilder) builder.getColumnBuilder(0))
+                .writeDate(tvPair.getValue().getInt());
+          } else {
+            builder.getColumnBuilder(0).writeInt(tvPair.getValue().getInt());
+          }
           break;
         case INT64:
         case TIMESTAMP:
@@ -384,6 +423,7 @@ public class ReadOnlyMemChunk {
         deletionList,
         floatPrecision,
         encoding,
-        MAX_NUMBER_OF_POINTS_IN_PAGE);
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

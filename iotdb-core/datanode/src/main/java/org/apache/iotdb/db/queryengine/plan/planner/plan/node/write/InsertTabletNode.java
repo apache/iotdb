@@ -24,22 +24,28 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -94,8 +100,24 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   // proper positions.
   protected List<Integer> range;
 
+  private Boolean shouldCheckTTL;
+
   public InsertTabletNode(PlanNodeId id) {
     super(id);
+  }
+
+  public boolean shouldCheckTTL() {
+    if (shouldCheckTTL != null) {
+      return shouldCheckTTL;
+    }
+    shouldCheckTTL = true;
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      if (measurementSchema != null && measurementSchema.getType() == TSDataType.OBJECT) {
+        shouldCheckTTL = false;
+        break;
+      }
+    }
+    return shouldCheckTTL;
   }
 
   @Override
@@ -196,7 +218,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -219,7 +241,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges();
     final Map<TRegionReplicaSet, List<Integer>> splitMap =
         splitByReplicaSet(deviceIDSplitInfoMap, analysis);
-
     return doSplit(splitMap);
   }
 
@@ -289,7 +310,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return splitMap;
   }
 
-  private List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
+  protected List<WritePlanNode> doSplit(Map<TRegionReplicaSet, List<Integer>> splitMap) {
     List<WritePlanNode> result = new ArrayList<>();
 
     if (splitMap.size() == 1) {
@@ -312,7 +333,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     return new InsertTabletNode(
         getPlanNodeId(),
         targetPath,
@@ -326,7 +347,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         subTimes.length);
   }
 
-  private WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
+  protected WritePlanNode generateOneSplit(Map.Entry<TRegionReplicaSet, List<Integer>> entry) {
     List<Integer> locs;
     // generate a new times and values
     locs = entry.getValue();
@@ -350,7 +371,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         if (dataTypes[k] != null) {
           System.arraycopy(columns[k], start, subNode.columns[k], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[k] != null) {
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[k] != null
+            && k < this.bitMaps.length
+            && this.bitMaps[k] != null) {
           BitMap.copyOfRange(this.bitMaps[k], start, subNode.bitMaps[k], destLoc, length);
         }
       }
@@ -359,6 +383,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     return subNode;
   }
 
@@ -387,6 +412,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             values[i] = new Binary[rowSize];
             break;
           case FLOAT:
@@ -418,6 +444,24 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       bitMaps[i] = new BitMap(rowSize);
     }
     return bitMaps;
+  }
+
+  protected BitMap[] initBitmapsForSplit(int columnSize, int rowSize) {
+    if (this.bitMaps == null) {
+      return null;
+    }
+
+    final int sourceRowCount = rowCount > 0 ? rowCount : times == null ? 0 : times.length;
+    final BitMap[] splitBitMaps = new BitMap[columnSize];
+    boolean hasBitMap = false;
+    for (int i = 0; i < columnSize && i < this.bitMaps.length; ++i) {
+      if (this.bitMaps[i] != null
+          && !this.bitMaps[i].isAllUnmarked(Math.min(sourceRowCount, this.bitMaps[i].getSize()))) {
+        splitBitMaps[i] = new BitMap(rowSize);
+        hasBitMap = true;
+      }
+    }
+    return hasBitMap ? splitBitMaps : null;
   }
 
   @Override
@@ -640,6 +684,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -692,6 +737,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -717,7 +763,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     try {
       targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = buffer.getInt();
@@ -833,6 +880,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
@@ -857,7 +905,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    buffer.putLong(searchIndex);
+    buffer.putLong(getEncodedSearchIndex());
     WALWriteUtils.write(targetPath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -964,6 +1012,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           if (binaryValues[j] != null && binaryValues[j].getValues() != null) {
@@ -988,11 +1037,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
-    searchIndex = stream.readLong();
+    setSearchIndexFromWAL(stream.readLong());
     try {
       targetPath = readTargetPath(stream);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = stream.readInt();
@@ -1023,11 +1073,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected void subDeserializeFromWAL(ByteBuffer buffer) {
-    searchIndex = buffer.getLong();
+    setSearchIndexFromWAL(buffer.getLong());
     try {
       targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = buffer.getInt();
@@ -1127,6 +1178,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
               return false;
             }
@@ -1144,8 +1196,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertTablet(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitInsertTablet(this, context);
   }
 
   public TimeValuePair composeLastTimeValuePair(
@@ -1168,46 +1220,80 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (lastIdx < startOffset) {
       return null;
     }
+    return composeTimeValuePair(measurementIndex, lastIdx);
+  }
 
+  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+    return composeLastTimeValuePair(measurementIndex, 0, rowCount);
+  }
+
+  protected TimeValuePair composeLastTimeValuePair(
+      final int measurementIndex,
+      final TSStatus[] results,
+      final int startOffset,
+      final int endOffset) {
+    if (results == null) {
+      return composeLastTimeValuePair(measurementIndex, startOffset, endOffset);
+    }
+    if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
+      return null;
+    }
+
+    final BitMap bitMap = bitMaps == null ? null : bitMaps[measurementIndex];
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
+    while (lastIdx >= startOffset) {
+      if (results[lastIdx] != null
+          && results[lastIdx].getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastIdx--;
+        continue;
+      }
+      if (bitMap != null && bitMap.isMarked(lastIdx)) {
+        lastIdx--;
+        continue;
+      }
+      break;
+    }
+    return lastIdx < startOffset ? null : composeTimeValuePair(measurementIndex, lastIdx);
+  }
+
+  private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
       case DATE:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
+        value = new TsPrimitiveType.TsInt(intValues[rowIndex]);
         break;
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
+        value = new TsPrimitiveType.TsLong(longValues[rowIndex]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsFloat(floatValues[lastIdx]);
+        value = new TsPrimitiveType.TsFloat(floatValues[rowIndex]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsDouble(doubleValues[lastIdx]);
+        value = new TsPrimitiveType.TsDouble(doubleValues[rowIndex]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
+        value = new TsPrimitiveType.TsBoolean(boolValues[rowIndex]);
         break;
       case TEXT:
       case BLOB:
       case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
+        value = new TsPrimitiveType.TsBinary(binaryValues[rowIndex]);
         break;
+      case OBJECT:
+        return null;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[lastIdx], value);
-  }
-
-  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
-    return composeLastTimeValuePair(measurementIndex, 0, rowCount);
+    return new TimeValuePair(times[rowIndex], value);
   }
 
   public IDeviceID getDeviceID(int rowIdx) {
@@ -1286,10 +1372,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
     final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
     for (int i = 0; i < rawMeasurements.length; i++) {
-      timeValuePairs[i] = composeLastTimeValuePair(i);
+      timeValuePairs[i] = composeLastTimeValuePair(i, results, 0, rowCount);
     }
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCacheIfExists(
@@ -1299,6 +1389,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             timeValuePairs,
             isAligned,
             measurementSchemas);
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    IWritableMemChunkGroup writableMemChunkGroup = memTable.getWritableMemChunkGroup(getDeviceID());
+    if (writableMemChunkGroup != null) {
+      writableMemChunkGroup.checkDataType(this);
+    }
   }
 
   @Override

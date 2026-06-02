@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
@@ -148,7 +149,7 @@ public class SubscriptionBrokerAgent {
 
   public void createBrokerIfNotExist(final String consumerGroupId) {
     consumerGroupIdToSubscriptionBroker.computeIfAbsent(consumerGroupId, SubscriptionBroker::new);
-    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CREATE_BROKER, consumerGroupId);
   }
 
   /**
@@ -173,7 +174,7 @@ public class SubscriptionBrokerAgent {
             return broker;
           }
           dropped.set(true);
-          LOGGER.info("Subscription: drop broker bound to consumer group [{}]", consumerGroupId);
+          LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_BROKER, consumerGroupId);
           return null; // remove this entry
         });
     return dropped.get();
@@ -279,7 +280,7 @@ public class SubscriptionBrokerAgent {
    */
   private static class Cache<T> {
 
-    private T value;
+    private volatile T value;
     private volatile boolean valid = false;
     private final Supplier<T> supplier;
 

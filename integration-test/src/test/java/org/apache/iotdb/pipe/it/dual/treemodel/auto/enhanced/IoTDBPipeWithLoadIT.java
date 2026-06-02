@@ -95,16 +95,17 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
 
     // Enable mods transfer
-    extractorAttributes.put("source.mods.enable", "true");
+    sourceAttributes.put("source.mods.enable", "true");
+    sourceAttributes.put("user", "root");
 
-    connectorAttributes.put("connector.batch.enable", "false");
-    connectorAttributes.put("connector.ip", receiverIp);
-    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -138,8 +139,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -61,6 +63,42 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList implements WALEntryValue {
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+
+  public static class RamInfo {
+    private final int timestampsSize;
+    private final long arrayMemCost;
+    private final int rowCount;
+    private final List<TSDataType> dataTypes;
+
+    public RamInfo(
+        int timestampCount, long arrayMemCost, int rowCount, List<TSDataType> dataTypes) {
+      this.timestampsSize = timestampCount;
+      this.rowCount = rowCount;
+      this.arrayMemCost = arrayMemCost;
+      this.dataTypes = dataTypes;
+    }
+
+    public long getRamSize() {
+      return timestampsSize * arrayMemCost;
+    }
+
+    public int getTimestampsSize() {
+      return timestampsSize;
+    }
+
+    public int getRowCount() {
+      return rowCount;
+    }
+
+    public long getArrayMemCost() {
+      return arrayMemCost;
+    }
+
+    public List<TSDataType> getDataTypes() {
+      return dataTypes;
+    }
+  }
+
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
@@ -77,14 +115,19 @@ public abstract class TVList implements WALEntryValue {
   // Index relation: arrayIndex -> elementIndex
   protected List<BitMap> bitMap;
 
-  // lock to provide synchronization for query list
+  // Guards queryContextSet, ownerQuery, and reservedMemoryBytes.
+  // Always acquire this lock before accessing/modifying these fields.
   private final ReentrantLock queryListLock = new ReentrantLock();
+
   // set of query that this TVList is used
   protected final Set<QueryContext> queryContextSet;
 
   // the owner query which is obligated to release the TVList.
   // When it is null, the TVList is owned by insert thread and released after flush.
   protected QueryContext ownerQuery;
+
+  // Reserved memory by the query. Ensure to acquire queryListLock before update.
+  protected long reservedMemoryBytes = 0L;
 
   protected boolean sorted = true;
   protected long maxTime;
@@ -98,6 +141,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected static int defaultArrayNum = 0;
   protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
+
+  protected TSDataType dataType;
 
   protected TVList() {
     timestamps = new ArrayList<>(getDefaultArrayNum());
@@ -114,12 +159,14 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.newList();
       case FLOAT:
         return FloatTVList.newList();
       case INT32:
+        return IntTVList.newList(TSDataType.INT32);
       case DATE:
-        return IntTVList.newList();
+        return IntTVList.newList(TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.newList();
@@ -156,15 +203,28 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
-  public long calculateRamSize() {
-    return timestamps.size() * tvListArrayMemCost();
+  public synchronized RamInfo calculateRamSize() {
+    return new RamInfo(
+        timestamps.size(), tvListArrayMemCost(), rowCount, ImmutableList.of(getDataType()));
   }
 
   public synchronized boolean isSorted() {
     return sorted;
   }
 
-  public abstract void sort();
+  public void setReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes = bytes;
+  }
+
+  public void addReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes += bytes;
+  }
+
+  public long getReservedMemoryBytes() {
+    return reservedMemoryBytes;
+  }
+
+  public abstract int sort();
 
   public void increaseReferenceCount() {
     referenceCount.incrementAndGet();
@@ -238,7 +298,7 @@ public abstract class TVList implements WALEntryValue {
    */
   private int binarySearchTimestampFirstGreaterOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
-      throw new UnsupportedOperationException("Current TVList is not sorted");
+      throw new UnsupportedOperationException(DataNodeMiscMessages.CURRENT_TV_LIST_NOT_SORTED);
     }
     int mid;
     while (low <= high) {
@@ -287,7 +347,7 @@ public abstract class TVList implements WALEntryValue {
    */
   private int binarySearchTimestampLastLessOrEqualsPosition(long time, int low, int high) {
     if (!sorted && high >= seqRowCount) {
-      throw new UnsupportedOperationException("Current TVList is not sorted");
+      throw new UnsupportedOperationException(DataNodeMiscMessages.CURRENT_TV_LIST_NOT_SORTED);
     }
 
     int mid;
@@ -376,7 +436,7 @@ public abstract class TVList implements WALEntryValue {
    */
   public boolean isNullValue(int unsortedRowIndex) {
     if (unsortedRowIndex >= rowCount) {
-      throw new IndexOutOfBoundsException("Index out of bound error!");
+      throw new IndexOutOfBoundsException(DataNodeMiscMessages.INDEX_OUT_OF_BOUND_ERROR);
     }
     if (bitMap == null || bitMap.get(unsortedRowIndex / ARRAY_SIZE) == null) {
       return false;
@@ -498,6 +558,8 @@ public abstract class TVList implements WALEntryValue {
   }
 
   protected abstract void expandValues();
+
+  public abstract TVList cloneForFlushSort();
 
   @Override
   public abstract TVList clone();
@@ -676,13 +738,15 @@ public abstract class TVList implements WALEntryValue {
     switch (dataType) {
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return BinaryTVList.deserialize(stream);
       case FLOAT:
         return FloatTVList.deserialize(stream);
       case INT32:
+        return IntTVList.deserialize(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserialize(stream);
+        return IntTVList.deserialize(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserialize(stream);
@@ -702,12 +766,14 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.deserializeWithoutBitMap(stream);
       case FLOAT:
         return FloatTVList.deserializeWithoutBitMap(stream);
       case INT32:
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserializeWithoutBitMap(stream);
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserializeWithoutBitMap(stream);
@@ -723,6 +789,10 @@ public abstract class TVList implements WALEntryValue {
 
   public List<long[]> getTimestamps() {
     return timestamps;
+  }
+
+  public List<int[]> getIndices() {
+    return indices;
   }
 
   public void setOwnerQuery(QueryContext queryCtx) {
@@ -756,7 +826,8 @@ public abstract class TVList implements WALEntryValue {
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new TVListIterator(
         scanOrder,
         rowCount,
@@ -764,7 +835,8 @@ public abstract class TVList implements WALEntryValue {
         deletionList,
         floatPrecision,
         encoding,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   /* TVList Iterator */
@@ -789,8 +861,9 @@ public abstract class TVList implements WALEntryValue {
         List<TimeRange> deletionList,
         Integer floatPrecision,
         TSEncoding encoding,
-        int maxNumberOfPointsInPage) {
-      super(scanOrder);
+        int maxNumberOfPointsInPage,
+        QueryContext queryContext) {
+      super(scanOrder, queryContext);
       this.globalTimeFilter = globalTimeFilter;
       this.deletionList = deletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
@@ -823,6 +896,10 @@ public abstract class TVList implements WALEntryValue {
         }
         if (searchTimestamp > outer.getMaxTime()) {
           // all satisfied data has been consumed
+          // the data with same timestamp could exist multi times, which means filter multi times
+          if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
+            this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(rows - index);
+          }
           index = rows;
           probeNext = true;
           return;
@@ -840,6 +917,9 @@ public abstract class TVList implements WALEntryValue {
         }
         if (searchTimestamp < outer.getMinTime()) {
           // all satisfied data has been consumed
+          if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
+            this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(rows - index);
+          }
           index = rows;
           probeNext = true;
           return;
@@ -853,6 +933,10 @@ public abstract class TVList implements WALEntryValue {
       }
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
+        // count the data rows skipped by binary search
+        if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
+          this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(newIndex - index);
+        }
         index = newIndex;
       }
 
@@ -901,16 +985,30 @@ public abstract class TVList implements WALEntryValue {
       probeNext = true;
     }
 
+    /**
+     * The data row that is not deleted and not satisfied by timeFilter has the qualification to be
+     * recorded
+     */
     protected void skipDeletedOrTimeNotSatisfiedRows() {
+      long filteredRows = 0;
       while (index < rows) {
         if (!isNullValue(getValueIndex(getScanOrderIndex(index)))) {
           long time = getTime(getScanOrderIndex(index));
-          if (!isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-              && isTimeSatisfied(time)) {
-            break;
+          if (isPointDeleted(time, deletionList, deleteCursor, scanOrder)) {
+            index++;
+            continue;
           }
+          if (!isTimeSatisfied(time)) {
+            filteredRows++;
+            index++;
+            continue;
+          }
+          break;
         }
         index++;
+      }
+      if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
+        this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
       }
     }
 
@@ -976,6 +1074,13 @@ public abstract class TVList implements WALEntryValue {
               Math.min(maxNumberOfPointsInPage, rows - index));
       TsBlockBuilder builder =
           new TsBlockBuilder(maxRowCountOfCurrentBatch, Collections.singletonList(dataType));
+
+      long[] filteredRowsByTimeFilter =
+          this.getQueryContext() != null && this.getQueryContext().isVerbose()
+              ? new long[] {0}
+              : null;
+      long filteredRowsByPushDownFilter = 0;
+
       switch (dataType) {
         case BOOLEAN:
           while (index < rows
@@ -985,10 +1090,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               boolean aBoolean = getBoolean(getScanOrderIndex(index));
               if (pushDownFilter == null || pushDownFilter.satisfyBoolean(time, aBoolean)) {
                 if (paginationController.hasCurOffset()) {
@@ -1000,6 +1103,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeBoolean(aBoolean);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1014,10 +1119,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               int anInt = getInt(getScanOrderIndex(index));
               if (pushDownFilter == null || pushDownFilter.satisfyInteger(time, anInt)) {
                 if (paginationController.hasCurOffset()) {
@@ -1029,6 +1132,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeInt(anInt);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1043,10 +1148,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               long aLong = getLong(getScanOrderIndex(index));
               if (pushDownFilter == null || pushDownFilter.satisfyLong(time, aLong)) {
                 if (paginationController.hasCurOffset()) {
@@ -1058,6 +1161,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeLong(aLong);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1071,10 +1176,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               float aFloat =
                   roundValueWithGivenPrecision(
                       getFloat(getScanOrderIndex(index)), floatPrecision, encoding);
@@ -1088,6 +1191,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeFloat(aFloat);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1101,10 +1206,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               double aDouble =
                   roundValueWithGivenPrecision(
                       getDouble(getScanOrderIndex(index)), floatPrecision, encoding);
@@ -1118,6 +1221,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeDouble(aDouble);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1126,6 +1231,7 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           while (index < rows
               && builder.getPositionCount() < maxNumberOfPointsInPage
               && paginationController.hasCurLimit()) {
@@ -1133,10 +1239,8 @@ public abstract class TVList implements WALEntryValue {
             if (isCurrentTimeExceedTimeRange(time)) {
               break;
             }
-            if (!isNullValue(getValueIndex(getScanOrderIndex(index)))
-                && !isPointDeleted(time, deletionList, deleteCursor, scanOrder)
-                && isLatestPoint(index, time)
-                && isTimeSatisfied(time)) {
+            if (!isInvalidRow(
+                time, index, deletionList, deleteCursor, scanOrder, filteredRowsByTimeFilter)) {
               Binary binary = getBinary(getScanOrderIndex(index));
               if (pushDownFilter == null || pushDownFilter.satisfyBinary(time, binary)) {
                 if (paginationController.hasCurOffset()) {
@@ -1148,6 +1252,8 @@ public abstract class TVList implements WALEntryValue {
                 builder.getTimeColumnBuilder().writeLong(time);
                 builder.getColumnBuilder(0).writeBinary(binary);
                 builder.declarePosition();
+              } else {
+                filteredRowsByPushDownFilter++;
               }
             }
             index++;
@@ -1157,11 +1263,48 @@ public abstract class TVList implements WALEntryValue {
           throw new UnSupportedDataTypeException(
               String.format("Data type %s is not supported.", dataType));
       }
+
+      // count the filtered row from time filter and other filter
+      if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
+        if (filteredRowsByTimeFilter != null && filteredRowsByTimeFilter[0] > 0) {
+          this.getQueryContext()
+              .getQueryStatistics()
+              .addFilteredRowsOfRowLevel(filteredRowsByTimeFilter[0]);
+        }
+        if (filteredRowsByPushDownFilter > 0) {
+          this.getQueryContext()
+              .getQueryStatistics()
+              .addFilteredRowsOfRowLevel(filteredRowsByPushDownFilter);
+        }
+      }
+
       // There is no need to process pushDownFilter and paginationController here because it has
       // been applied when constructing the tsBlock
       TsBlock tsBlock = builder.build();
       addTsBlock(tsBlock);
       return tsBlock;
+    }
+
+    private boolean isInvalidRow(
+        long time,
+        int index,
+        List<TimeRange> deletionList,
+        int[] deleteCursor,
+        Ordering scanOrder,
+        long[] filteredRowsByTimeFilter) {
+
+      if (isNullValue(getValueIndex(getScanOrderIndex(index)))
+          || isPointDeleted(time, deletionList, deleteCursor, scanOrder)
+          || !isLatestPoint(index, time)) {
+        return true;
+      }
+      if (!isTimeSatisfied(time)) {
+        if (filteredRowsByTimeFilter != null) {
+          filteredRowsByTimeFilter[0]++;
+        }
+        return true;
+      }
+      return false;
     }
 
     protected boolean isLatestPoint(int rowIndex, long currentTime) {
@@ -1226,6 +1369,7 @@ public abstract class TVList implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             Binary value = getBinary(index);
             chunkWriterImpl.write(time, value);
             encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);

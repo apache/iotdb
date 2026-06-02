@@ -22,14 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -232,7 +233,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return analysis;
     }
 
-    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+    LOGGER.info(DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED);
 
     setTsFileModelInfoToStatement();
     if (reconstructStatementIfMiniFileConverted()) {
@@ -296,7 +297,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         setRealStatement(analysis);
         return true;
       }
-      LOGGER.info("Async Load has failed, and is now trying to load sync");
+      LOGGER.info(DataNodeQueryMessages.ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING);
       return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
@@ -311,7 +312,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn("TsFile {} is empty.", tsFile.getPath());
+          LOGGER.warn(DataNodeQueryMessages.TSFILE_IS_EMPTY, tsFile.getPath());
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
@@ -389,7 +390,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final EncryptParameter param = reader.getEncryptParam();
       if (!Objects.equals(param.getType(), EncryptUtils.getEncryptParameter().getType())
           || !Arrays.equals(param.getKey(), EncryptUtils.getEncryptParameter().getKey())) {
-        throw new SemanticException("The encryption way of the TsFile is not supported.");
+        throw new SemanticException(DataNodeQueryMessages.THE_ENCRYPTION_WAY_OF_THE_TSFILE_IS_NOT);
       }
 
       this.isTableModelTsFile.set(i, isTableModelFile);
@@ -408,7 +409,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
-                IClientSession.SqlDialect.TABLE);
+                SqlDialect.TABLE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
@@ -418,12 +419,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
-                IClientSession.SqlDialect.TREE);
+                SqlDialect.TREE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }
     } catch (final LoadEmptyFileException loadEmptyFileException) {
-      LOGGER.warn("Empty file detected, will skip loading this file: {}", tsFile.getAbsolutePath());
+      LOGGER.warn(
+          DataNodeQueryMessages.EMPTY_FILE_DETECTED_WILL_SKIP_LOADING_THIS_FILE,
+          tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
@@ -443,14 +446,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      LoadTsFile.createUnchecked(
+                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      new LoadTsFileStatement(tsFiles.get(i).getPath())
+                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -573,6 +577,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
+    if (getOrCreateTableSchemaCache().isNeedDecode4DifferentTimeColumn()) {
+      if (isTableModelStatement) {
+        loadTsFileTableStatement.enableNeedDecode4TimeColumn();
+      } else {
+        loadTsFileTreeStatement.enableNeedDecode4TimeColumn();
+      }
+    }
     getOrCreateTableSchemaCache().clearTagColumnMapper();
 
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
@@ -625,6 +636,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
     return device2TimeseriesMetadata.values().stream()
         .flatMap(List::stream)
+        .filter(timeseriesMetadata -> !timeseriesMetadata.getMeasurementId().isEmpty())
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
   }
@@ -704,14 +716,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        LoadTsFile.createUnchecked(
+                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        new LoadTsFileStatement(tsFiles.get(i).getPath())
+                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);

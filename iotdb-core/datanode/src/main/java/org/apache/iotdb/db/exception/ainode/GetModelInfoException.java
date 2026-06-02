@@ -23,6 +23,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class GetModelInfoException extends ModelException {
   public GetModelInfoException(String message) {
-    super(message, TSStatusCode.GET_MODEL_INFO_ERROR);
+    super(message, TSStatusCode.AINODE_INTERNAL_ERROR);
   }
 }

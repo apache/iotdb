@@ -19,19 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowAIDevices extends Statement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowAIDevices.class);
+
   public ShowAIDevices() {
     super(null);
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowAIDevices(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowAIDevices(this, context);
   }
 
   @Override
@@ -55,5 +65,12 @@ public class ShowAIDevices extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

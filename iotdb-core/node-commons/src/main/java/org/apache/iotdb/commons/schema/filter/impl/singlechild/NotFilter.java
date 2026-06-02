@@ -23,9 +23,13 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.nio.ByteBuffer;
 
 public class NotFilter extends AbstractSingleChildFilter {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NotFilter.class);
 
   public NotFilter(final SchemaFilter child) {
     super(child);
@@ -43,5 +47,10 @@ public class NotFilter extends AbstractSingleChildFilter {
   @Override
   public SchemaFilterType getSchemaFilterType() {
     return SchemaFilterType.NOT;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForFields();
   }
 }

@@ -55,6 +55,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALCULATION
     | CALL
     | CASE
     | CAST
@@ -99,6 +100,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE
@@ -115,6 +117,7 @@ keyWords
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION
@@ -178,6 +181,8 @@ keyWords
     | PIPESINKTYPE
     | PIPEPLUGIN
     | PIPEPLUGINS
+    | POINT
+    | POINTS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
@@ -214,12 +219,15 @@ keyWords
     | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE
@@ -286,6 +294,7 @@ keyWords
     | WRITABLE
     | WRITE
     | AUDIT
+    | AUTH
     | OPTION
     | INF
     | CURRENT_TIMESTAMP

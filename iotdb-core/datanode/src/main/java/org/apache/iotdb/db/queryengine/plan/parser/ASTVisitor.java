@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
@@ -28,9 +29,22 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -40,10 +54,8 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConnectorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
@@ -52,7 +64,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExtractorAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.GroupByAttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.IdentifierContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ProcessorAttributeClauseContext;
@@ -98,21 +109,12 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByConditionComponent;
@@ -145,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -188,6 +191,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -238,11 +242,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -254,9 +260,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
@@ -300,30 +304,30 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.ROUND_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.ROUND_PLACES;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_START;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
-import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_TO;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROUND_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROUND_PLACES;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
@@ -353,11 +357,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
+  public static final String UNSUPPORTED_DATATYPE_MSG = "Unsupported datatype: %s";
+  public static final String INCORRECT_DATA_TYPE_MSG = "Incorrect Data type";
   private ZoneId zoneId;
+
+  public boolean isUseWildcard() {
+    return useWildcard;
+  }
 
   private boolean useWildcard = false;
 
   private boolean lastLevelUseWildcard = false;
+
+  public static final String SERVICE_MANAGEMENT_NOT_SUPPORTED =
+      "Service management SQLs are not supported now!";
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -457,11 +470,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createTimeSeriesStatement.setDataType(TSDataType.valueOf(datatypeString));
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, datatypeString));
       }
     }
     if (createTimeSeriesStatement.getDataType() == null) {
-      throw new SemanticException("datatype must be declared");
+      throw new SemanticException(DataNodeQueryMessages.DATATYPE_MUST_BE_DECLARED);
     }
 
     final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
@@ -473,7 +486,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createTimeSeriesStatement.setEncoding(TSEncoding.valueOf(encodingString));
         props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_ENCODING, encodingString));
       }
     }
 
@@ -490,7 +504,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(
-            String.format("Unsupported compression: %s", compressionString));
+            String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSION, compressionString));
       }
     } else if (props != null
         && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
@@ -500,7 +514,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createTimeSeriesStatement.setCompressor(CompressionType.valueOf(compressorString));
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSION, compressorString));
       }
     }
     createTimeSeriesStatement.setProps(props);
@@ -535,7 +550,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createAlignedTimeSeriesStatement.addEncoding(encoding);
         props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_ENCODING_2, encodingString));
       }
     } else {
       createAlignedTimeSeriesStatement.addEncoding(encoding);
@@ -550,7 +566,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createAlignedTimeSeriesStatement.addCompressor(compressor);
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSOR, compressorString));
       }
     } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
       String compressionString =
@@ -568,7 +585,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (props.size() > 0) {
-      throw new SemanticException("create aligned timeseries: property is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.CREATE_ALIGNED_TIMESERIES_PROPERTY_IS_NOT_SUPPORTED_YET);
     }
 
     if (ctx.tagClause() != null) {
@@ -615,11 +633,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitAlterTimeseries(IoTDBSqlParser.AlterTimeseriesContext ctx) {
     AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
     alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
-    parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
+    alterTimeSeriesStatement = parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
     return alterTimeSeriesStatement;
   }
 
-  private void parseAlterClause(
+  private AlterTimeSeriesStatement parseAlterClause(
       IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     Map<String, String> alterMap = new HashMap<>();
     // Rename
@@ -627,9 +645,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.RENAME);
       alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
-      // Set
-      alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
-      setMap(ctx, alterMap);
+      if (ctx.DATA() != null && ctx.TYPE() != null) {
+        MeasurementPath path = alterTimeSeriesStatement.getPath();
+        alterTimeSeriesStatement = new AlterTimeSeriesDataTypeStatement();
+        alterTimeSeriesStatement.setPath(path);
+        // Set data type
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE);
+        setMap(ctx, alterMap);
+        if (ctx.attributeValue() != null) {
+          alterTimeSeriesStatement.setDataType(parseDataTypeAttribute(ctx.attributeValue()));
+        }
+      } else {
+        // Set
+        alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.SET);
+        setMap(ctx, alterMap);
+      }
     } else if (ctx.DROP() != null) {
       // Drop
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.DROP);
@@ -644,7 +674,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // Add attribute
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
-    } else {
+    } else if (ctx.UPSERT() != null) {
       // Upsert
       alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
       if (ctx.aliasClause() != null) {
@@ -658,12 +688,35 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     alterTimeSeriesStatement.setAlterMap(alterMap);
+    return alterTimeSeriesStatement;
   }
 
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesStatement alterTimeSeriesStatement) {
     if (alterTimeSeriesStatement != null && ctx.ALIAS() != null) {
       alterTimeSeriesStatement.setAlias(parseAliasNode(ctx.alias()));
+    }
+  }
+
+  private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeValueContext ctx) {
+    if (ctx == null) {
+      throw new SemanticException(INCORRECT_DATA_TYPE_MSG);
+    }
+
+    String dataTypeString = parseAttributeValue(ctx);
+    if (dataTypeString == null || dataTypeString.isEmpty()) {
+      throw new SemanticException(INCORRECT_DATA_TYPE_MSG);
+    }
+
+    dataTypeString = dataTypeString.trim().toUpperCase();
+    try {
+      TSDataType dataType = TSDataType.valueOf(dataTypeString);
+      if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
+      }
+      return dataType;
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
     }
   }
 
@@ -683,7 +736,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           try {
             encoding = TSEncoding.valueOf(value);
           } catch (final Exception e) {
-            throw new SemanticException(String.format("Unsupported encoding: %s", value));
+            throw new SemanticException(
+                String.format(DataNodeQueryMessages.UNSUPPORTED_ENCODING, value));
           }
           break;
         case COLUMN_TIMESERIES_COMPRESSOR:
@@ -691,16 +745,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           try {
             compressor = CompressionType.valueOf(value);
           } catch (final Exception e) {
-            throw new SemanticException(String.format("Unsupported compressor: %s", value));
+            throw new SemanticException(
+                String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSOR_2, value));
           }
           break;
         default:
-          throw new SemanticException(String.format("property %s is unsupported yet.", key));
+          throw new SemanticException(
+              String.format(DataNodeQueryMessages.PROPERTY_IS_UNSUPPORTED_YET, key));
       }
     }
 
     if (tree.isEmpty()) {
-      throw new SemanticException("The timeSeries shall not be root.");
+      throw new SemanticException(DataNodeQueryMessages.THE_TIMESERIES_SHALL_NOT_BE_ROOT);
     }
     return new AlterEncodingCompressorStatement(
         tree,
@@ -749,6 +805,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showTimeSeriesStatement.setTimeCondition(
           parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
+
+    // ORDER BY TIMESERIES [ASC|DESC]
+    if (ctx.orderByTimeseriesClause() != null) {
+      if (orderByHeat) {
+        throw new SemanticException(
+            "LATEST and ORDER BY TIMESERIES cannot be used at the same time.");
+      }
+      showTimeSeriesStatement.setTimeseriesOrdering(
+          ctx.orderByTimeseriesClause().DESC() != null ? Ordering.DESC : Ordering.ASC);
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showTimeSeriesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
@@ -793,10 +859,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         TSDataType dataType = TSDataType.valueOf(value.toUpperCase());
         return SchemaFilterFactory.createDataTypeFilter(dataType);
       } catch (Exception e) {
-        throw new SemanticException(String.format("unsupported datatype: %s", value));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_DATATYPE, value));
       }
     } else {
-      throw new SemanticException("unexpected filter key");
+      throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_FILTER_KEY);
     }
   }
 
@@ -988,12 +1055,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseAndValidateURI(IoTDBSqlParser.UriClauseContext ctx) {
     String uriString = parseStringLiteral(ctx.uri().getText());
     if (StringUtils.isEmpty(uriString)) {
-      throw new SemanticException("URI is empty, please specify the URI.");
+      throw new SemanticException(DataNodeQueryMessages.URI_IS_EMPTY_PLEASE_SPECIFY_THE_URI);
     }
     try {
       new URI(uriString);
     } catch (URISyntaxException e) {
-      throw new SemanticException(String.format("Invalid URI: %s", uriString));
+      throw new SemanticException(String.format(DataNodeQueryMessages.INVALID_URI, uriString));
     }
     return uriString;
   }
@@ -1014,10 +1081,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateTrigger(IoTDBSqlParser.CreateTriggerContext ctx) {
     if (ctx.triggerEventClause().DELETE() != null) {
-      throw new SemanticException("Trigger does not support DELETE as TRIGGER_EVENT for now.");
+      throw new SemanticException(
+          DataNodeQueryMessages.TRIGGER_DOES_NOT_SUPPORT_DELETE_AS_TRIGGER_EVENT);
     }
     if (ctx.triggerType() == null) {
-      throw new SemanticException("Please specify trigger type: STATELESS or STATEFUL.");
+      throw new SemanticException(
+          DataNodeQueryMessages.PLEASE_SPECIFY_TRIGGER_TYPE_STATELESS_OR_STATEFUL);
     }
     Map<String, String> attributes = new HashMap<>();
     if (ctx.triggerAttributeClause() != null) {
@@ -1066,6 +1135,36 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
     return new ShowTriggersStatement();
+  }
+
+  @Override
+  public Statement visitCreateService(IoTDBSqlParser.CreateServiceContext ctx) {
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Statement visitStartService(IoTDBSqlParser.StartServiceContext ctx) {
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Statement visitStopService(IoTDBSqlParser.StopServiceContext ctx) {
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Statement visitDropService(IoTDBSqlParser.DropServiceContext ctx) {
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
+  }
+
+  @Override
+  public Statement visitShowService(IoTDBSqlParser.ShowServiceContext ctx) {
+    // show services on all DNs
+    int dataNodeId = -1;
+    if (ctx.ON() != null) {
+      dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    }
+    return new ShowExternalServiceStatement(dataNodeId);
   }
 
   // Create PipePlugin =====================================================================
@@ -1151,7 +1250,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
     if (ctx.EVERY() != null) {
       statement.setEveryInterval(
-          DateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
+          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
     } else {
       QueryStatement queryStatement = statement.getQueryBodyStatement();
       if (!queryStatement.isGroupByTime()) {
@@ -1169,10 +1268,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.RANGE() != null) {
       statement.setStartTimeOffset(
-          DateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
+          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
       if (ctx.endTimeOffset != null) {
         statement.setEndTimeOffset(
-            DateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
+            DataNodeDateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
       }
     } else {
       statement.setStartTimeOffset(statement.getEveryInterval());
@@ -1257,7 +1356,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
-    throw new SemanticException("Renaming view is not supported.");
+    throw new SemanticException(DataNodeQueryMessages.RENAMING_VIEW_IS_NOT_SUPPORTED);
   }
 
   @Override
@@ -1288,7 +1387,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
       parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
       if (alterTimeSeriesStatement.getAlias() != null) {
-        throw new SemanticException("View doesn't support alias.");
+        throw new SemanticException(DataNodeQueryMessages.VIEW_DOESN_T_SUPPORT_ALIAS);
       }
       return alterTimeSeriesStatement;
     }
@@ -1418,11 +1517,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Create Model =====================================================================
   public static void validateModelId(String modelId) {
     if (modelId.length() < 2 || modelId.length() > 64) {
-      throw new SemanticException("ModelId should be 2-64 characters");
+      throw new SemanticException(DataNodeQueryMessages.MODELID_SHOULD_BE_2_64_CHARACTERS);
     } else if (modelId.startsWith("_")) {
-      throw new SemanticException("ModelId should not start with '_'");
+      throw new SemanticException(DataNodeQueryMessages.MODELID_SHOULD_NOT_START_WITH);
     } else if (!modelId.matches("^[-\\w]*$")) {
-      throw new SemanticException("ModelId can only contain letters, numbers, and underscores");
+      throw new SemanticException(
+          DataNodeQueryMessages.MODELID_CAN_ONLY_CONTAIN_LETTERS_NUMBERS_AND_UNDERSCORES);
     }
   }
 
@@ -1440,7 +1540,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       try {
         Integer.valueOf(deviceId);
       } catch (NumberFormatException e) {
-        throw new SemanticException("Device id should be 'cpu' or integer");
+        throw new SemanticException(DataNodeQueryMessages.DEVICE_ID_SHOULD_BE_CPU_OR_INTEGER);
       }
       result.add(deviceId);
     }
@@ -1466,7 +1566,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
 
       if (ctx.trainingData() == null) {
-        throw new UnsupportedOperationException("data should not be set for model training");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.DATA_SHOULD_NOT_BE_SET_FOR_MODEL_TRAINING);
       }
 
       List<PartialPath> targetPath = new ArrayList<>();
@@ -1573,14 +1674,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           queryStatement.setGroupByTimeComponent(parseGroupByTimeClause(groupByAttribute));
         } else if (groupByAttribute.LEVEL() != null) {
           if (groupByKeys.contains("LEVEL")) {
-            throw new SemanticException("duplicated group by key: LEVEL");
+            throw new SemanticException(DataNodeQueryMessages.DUPLICATED_GROUP_BY_KEY_LEVEL);
           }
 
           groupByKeys.add("LEVEL");
           queryStatement.setGroupByLevelComponent(parseGroupByLevelClause(groupByAttribute));
         } else if (groupByAttribute.TAGS() != null) {
           if (groupByKeys.contains("TAGS")) {
-            throw new SemanticException("duplicated group by key: TAGS");
+            throw new SemanticException(DataNodeQueryMessages.DUPLICATED_GROUP_BY_KEY_TAGS);
           }
 
           groupByKeys.add("TAGS");
@@ -1619,7 +1720,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               parseGroupByClause(groupByAttribute, WindowType.COUNT_WINDOW));
 
         } else {
-          throw new SemanticException("Unknown GROUP BY type.");
+          throw new SemanticException(DataNodeQueryMessages.UNKNOWN_GROUP_BY_TYPE);
         }
       }
     }
@@ -1634,7 +1735,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setOrderByComponent(
           parseOrderByClause(
               ctx.orderByClause(),
-              ImmutableSet.of(OrderByKey.TIME, OrderByKey.DEVICE, OrderByKey.TIMESERIES)));
+              ImmutableSet.of(OrderByKey.TIME, OrderByKey.DEVICE, OrderByKey.TIMESERIES),
+              true));
     }
 
     // parse FILL
@@ -1709,7 +1811,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (resultColumn.hasAlias()) {
         String alias = resultColumn.getAlias();
         if (aliasToColumnMap.containsKey(alias)) {
-          throw new SemanticException("duplicate alias in select clause");
+          throw new SemanticException(DataNodeQueryMessages.DUPLICATE_ALIAS_IN_SELECT_CLAUSE);
         }
         aliasToColumnMap.put(alias, resultColumn.getExpression());
       }
@@ -1723,7 +1825,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
     Expression expression = parseExpression(resultColumnContext.expression(), false);
     if (expression.isConstantOperand()) {
-      throw new SemanticException("Constant operand is not allowed: " + expression);
+      throw new SemanticException(
+          DataNodeQueryMessages.CONSTANT_OPERAND_IS_NOT_ALLOWED + expression);
     }
     String alias = null;
     if (resultColumnContext.AS() != null) {
@@ -1796,7 +1899,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     // Parse time interval
-    groupByTimeComponent.setInterval(DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+    groupByTimeComponent.setInterval(
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     groupByTimeComponent.setOriginalInterval(ctx.interval.getText());
     if (groupByTimeComponent.getInterval().monthDuration == 0
         && groupByTimeComponent.getInterval().nonMonthDuration == 0) {
@@ -1806,7 +1910,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse sliding step
     if (ctx.step != null) {
-      groupByTimeComponent.setSlidingStep(DateTimeUtils.constructTimeDuration(ctx.step.getText()));
+      groupByTimeComponent.setSlidingStep(
+          DataNodeDateTimeUtils.constructTimeDuration(ctx.step.getText()));
       groupByTimeComponent.setOriginalSlidingStep(ctx.step.getText());
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
@@ -1818,7 +1923,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 ((groupByTimeComponent.getEndTime() - groupByTimeComponent.getStartTime())
                     / (double) slidingStep.getMinTotalDuration(currPrecision)))
             >= 10000) {
-      throw new SemanticException("The time windows may exceed 10000, please ensure your input.");
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_TIME_WINDOWS_MAY_EXCEED_10000_PLEASE_ENSURE);
     }
     if (groupByTimeComponent.getSlidingStep().monthDuration == 0
         && groupByTimeComponent.getSlidingStep().nonMonthDuration == 0) {
@@ -1841,7 +1947,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     groupByClauseComponent.setStartTime(startTime);
     groupByClauseComponent.setEndTime(endTime);
     if (startTime >= endTime) {
-      throw new SemanticException("Start time should be smaller than endTime in GroupBy");
+      throw new SemanticException(
+          DataNodeQueryMessages.START_TIME_SHOULD_BE_SMALLER_THAN_ENDTIME_IN);
     }
   }
 
@@ -1878,12 +1985,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (expressions.size() == 2) {
         groupByConditionComponent.setKeepExpression(parseExpression(expressions.get(1), true));
       } else {
-        throw new SemanticException("Keep threshold in group by condition should be set");
+        throw new SemanticException(
+            DataNodeQueryMessages.KEEP_THRESHOLD_IN_GROUP_BY_CONDITION_SHOULD_BE);
       }
       groupByConditionComponent.setIgnoringNull(ignoringNull);
       return groupByConditionComponent;
     } else if (windowType == WindowType.SESSION_WINDOW) {
-      long interval = DateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
+      long interval = DataNodeDateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
       return new GroupBySessionComponent(interval);
     } else if (windowType == WindowType.COUNT_WINDOW) {
       ExpressionContext countExpressionContext = expressions.get(0);
@@ -1900,7 +2008,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       groupByCountComponent.setIgnoringNull(ignoringNull);
       return groupByCountComponent;
     } else {
-      throw new SemanticException("Unsupported window type");
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_WINDOW_TYPE);
     }
   }
 
@@ -1921,7 +2029,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (IdentifierContext identifierContext : ctx.identifier()) {
       String key = parseIdentifier(identifierContext.getText());
       if (tagKeys.contains(key)) {
-        throw new SemanticException("duplicated key in GROUP BY TAGS: " + key);
+        throw new SemanticException(DataNodeQueryMessages.DUPLICATED_KEY_IN_GROUP_BY_TAGS + key);
       }
       tagKeys.add(key);
     }
@@ -1937,7 +2045,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // ---- Order By Clause
   // all SortKeys should be contained by limitSet
   private OrderByComponent parseOrderByClause(
-      IoTDBSqlParser.OrderByClauseContext ctx, ImmutableSet<String> limitSet) {
+      IoTDBSqlParser.OrderByClauseContext ctx,
+      ImmutableSet<String> limitSet,
+      boolean allowExpression) {
     OrderByComponent orderByComponent = new OrderByComponent();
     Set<String> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
@@ -1946,7 +2056,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (orderByComponent.isUnique()) {
         break;
       }
-      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext, limitSet);
+      SortItem sortItem =
+          parseOrderByAttributeClause(orderByAttributeClauseContext, limitSet, allowExpression);
 
       String sortKey = sortItem.getSortKey();
       if (sortKeySet.contains(sortKey)) {
@@ -1965,7 +2076,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private SortItem parseOrderByAttributeClause(
-      IoTDBSqlParser.OrderByAttributeClauseContext ctx, ImmutableSet<String> limitSet) {
+      IoTDBSqlParser.OrderByAttributeClauseContext ctx,
+      ImmutableSet<String> limitSet,
+      boolean allowExpression) {
     if (ctx.sortKey() != null) {
       String sortKey = ctx.sortKey().getText().toUpperCase();
       if (!limitSet.contains(sortKey)) {
@@ -1974,6 +2087,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
       return new SortItem(sortKey, ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
     } else {
+      if (!allowExpression) {
+        throw new SemanticException(
+            "ORDER BY expression is not supported for current statement, supported sort key: "
+                + limitSet.toString());
+      }
       Expression sortExpression = parseExpression(ctx.expression(), true);
       return new SortItem(
           sortExpression,
@@ -1995,7 +2113,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Literal fillValue = parseLiteral(ctx.constant());
       fillComponent.setFillValue(fillValue);
     } else {
-      throw new SemanticException("Unknown FILL type.");
+      throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FILL_TYPE);
     }
     if (ctx.interval != null) {
       if (fillComponent.getFillPolicy() != FillPolicy.PREVIOUS) {
@@ -2003,7 +2121,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             "Only FILL(PREVIOUS) support specifying the time duration threshold.");
       }
       fillComponent.setTimeDurationThreshold(
-          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+          DataNodeDateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }
@@ -2024,7 +2142,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               constantContext.dateExpression(),
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
-      throw new SemanticException("Unsupported constant value in FILL: " + text);
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_CONSTANT_VALUE_IN_FILL + text);
     }
   }
 
@@ -2034,10 +2152,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       limit = Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SemanticException("Out of range. LIMIT <N>: N should be Int64.");
+      throw new SemanticException(DataNodeQueryMessages.OUT_OF_RANGE_LIMIT_N_N_SHOULD_BE);
     }
     if (limit <= 0) {
-      throw new SemanticException("LIMIT <N>: N should be greater than 0.");
+      throw new SemanticException(DataNodeQueryMessages.LIMIT_N_N_SHOULD_BE_GREATER_THAN_0);
     }
     return limit;
   }
@@ -2051,7 +2169,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int64.");
     }
     if (offset < 0) {
-      throw new SemanticException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
+      throw new SemanticException(DataNodeQueryMessages.OFFSET_OFFSETVALUE_OFFSETVALUE_SHOULD_0);
     }
     return offset;
   }
@@ -2062,10 +2180,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     try {
       slimit = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     } catch (NumberFormatException e) {
-      throw new SemanticException("Out of range. SLIMIT <SN>: SN should be Int32.");
+      throw new SemanticException(DataNodeQueryMessages.OUT_OF_RANGE_SLIMIT_SN_SN_SHOULD_BE);
     }
     if (slimit <= 0) {
-      throw new SemanticException("SLIMIT <SN>: SN should be greater than 0.");
+      throw new SemanticException(DataNodeQueryMessages.SLIMIT_SN_SN_SHOULD_BE_GREATER_THAN_0);
     }
     return slimit;
   }
@@ -2080,7 +2198,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
     if (soffset < 0) {
-      throw new SemanticException("SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
+      throw new SemanticException(DataNodeQueryMessages.SOFFSET_SOFFSETVALUE_SOFFSETVALUE_SHOULD_0);
     }
     return soffset;
   }
@@ -2120,7 +2238,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String measurement = parseInsertColumn(ctx.insertColumn(i));
       if ("time".equalsIgnoreCase(measurement) || "timestamp".equalsIgnoreCase(measurement)) {
         if (timeIndex != -1) {
-          throw new SemanticException("One row should only have one time value");
+          throw new SemanticException(
+              DataNodeQueryMessages.ONE_ROW_SHOULD_ONLY_HAVE_ONE_TIME_VALUE);
         } else {
           timeIndex = i;
         }
@@ -2129,7 +2248,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     if (measurementList.isEmpty()) {
-      throw new SemanticException("InsertStatement should contain at least one measurement");
+      throw new SemanticException(
+          DataNodeQueryMessages.INSERTSTATEMENT_SHOULD_CONTAIN_AT_LEAST_ONE_MEASUREMENT);
     }
     insertStatement.setMeasurementList(measurementList.toArray(new String[0]));
     return timeIndex;
@@ -2143,7 +2263,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.InsertValuesSpecContext ctx, InsertStatement insertStatement, int timeIndex) {
     List<IoTDBSqlParser.RowContext> rows = ctx.row();
     if (timeIndex == -1 && rows.size() != 1) {
-      throw new SemanticException("need timestamps when insert multi rows");
+      throw new SemanticException(DataNodeQueryMessages.NEED_TIMESTAMPS_WHEN_INSERT_MULTI_ROWS);
     }
     List<Object[]> valuesList = new ArrayList<>();
     long[] timeArray = new long[rows.size()];
@@ -2203,7 +2323,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constant.dateExpression() != null) {
       return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());
     } else {
-      throw new SemanticException(String.format("Can not parse %s to time", constant));
+      throw new SemanticException(
+          String.format(DataNodeQueryMessages.CAN_NOT_PARSE_TO_TIME, constant));
     }
   }
 
@@ -2273,7 +2394,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Common Parsers. */
 
   // IoTDB Objects ========================================================================
-  private MeasurementPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
+  protected MeasurementPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
     String[] path = new String[nodeNamesWithoutStar.size() + 1];
@@ -2304,14 +2425,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  private PartialPath parseFullPathInExpression(
+  protected PartialPath parseFullPathInExpression(
       IoTDBSqlParser.FullPathInExpressionContext ctx, boolean canUseFullPath) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     int size = nodeNames.size();
     if (ctx.ROOT() != null) {
       if (!canUseFullPath) {
         // now full path cannot occur in SELECT only
-        throw new SemanticException("Path can not start with root in select clause.");
+        throw new SemanticException(DataNodeQueryMessages.PATH_CAN_NOT_START_WITH_ROOT_IN_SELECT);
       }
       size++;
     }
@@ -2348,7 +2469,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
+  protected PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
@@ -2432,7 +2553,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public long parseDateTimeFormat(String timestampStr) {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
-      throw new SemanticException("input timestamp cannot be empty");
+      throw new SemanticException(DataNodeQueryMessages.INPUT_TIMESTAMP_CANNOT_BE_EMPTY);
     }
     if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
       return CommonDateTimeUtils.currentTime();
@@ -2451,7 +2572,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public static long parseDateTimeFormat(String timestampStr, long currentTime, ZoneId zoneId) {
     if (timestampStr == null || timestampStr.trim().isEmpty()) {
-      throw new SemanticException("input timestamp cannot be empty");
+      throw new SemanticException(DataNodeQueryMessages.INPUT_TIMESTAMP_CANNOT_BE_EMPTY);
     }
     if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
       return currentTime;
@@ -2529,7 +2650,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alias = parseConstant(ctx.constant());
       if (PathUtils.isRealNumber(alias)
           || !TsFileConstant.IDENTIFIER_PATTERN.matcher(alias).matches()) {
-        throw new SemanticException("Not support for this alias, Please enclose in back quotes.");
+        throw new SemanticException(
+            DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_ALIAS_PLEASE_ENCLOSE_IN);
       }
     } else {
       alias = parseNodeString(ctx.identifier().getText());
@@ -2704,7 +2826,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void checkGrantRevokePrivileges(String[] privileges, List<PartialPath> nodeNameList) {
     // 1. all grant or revoke statements need target path.
     if (nodeNameList.isEmpty()) {
-      throw new SemanticException("Statement needs target paths");
+      throw new SemanticException(DataNodeQueryMessages.STATEMENT_NEEDS_TARGET_PATHS);
     }
 
     // 2. if privilege list has system privilege or "ALL", nodeNameList must only contain "root.**".
@@ -3028,7 +3150,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (((ConstantOperand) valueExpression).getDataType() != TSDataType.INT64) {
-      throw new SemanticException("The datatype of timestamp should be LONG.");
+      throw new SemanticException(DataNodeQueryMessages.THE_DATATYPE_OF_TIMESTAMP_SHOULD_BE_LONG);
     }
 
     long time = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
@@ -3366,7 +3488,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return;
       default:
         throw new IllegalArgumentException(
-            "Invalid Aggregation function: " + functionExpression.getFunctionName());
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION
+                + functionExpression.getFunctionName());
     }
   }
 
@@ -3434,11 +3557,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               constantContext.dateExpression(),
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
-      throw new IllegalArgumentException("Unsupported constant value: " + text);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNSUPPORTED_CONSTANT_VALUE + text);
     }
   }
 
-  private Expression parseConstantOperand(ConstantContext constantContext) {
+  protected Expression parseConstantOperand(ConstantContext constantContext) {
     String text = constantContext.getText();
     if (constantContext.boolean_literal() != null) {
       return new ConstantOperand(TSDataType.BOOLEAN, text);
@@ -3460,7 +3583,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                   constantContext.dateExpression(),
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision())));
     } else {
-      throw new SemanticException("Unsupported constant operand: " + text);
+      throw new SemanticException(DataNodeQueryMessages.UNSUPPORTED_CONSTANT_OPERAND + text);
     }
   }
 
@@ -3485,11 +3608,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time +=
-            DateTimeUtils.convertDurationStrToLong(
+            DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), precision, false);
       } else {
         time -=
-            DateTimeUtils.convertDurationStrToLong(
+            DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), precision, false);
       }
     }
@@ -3501,9 +3624,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time +=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time -=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3611,13 +3738,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.TREE_SCHEMA));
     } else if (ctx.QUERY() != null) {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.QUERY));
+    } else if (ctx.AUTH() != null) {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.AUTH));
     } else if (ctx.ALL() != null) {
       clearCacheStatement.setOptions(
           new HashSet<>(
               Arrays.asList(
                   CacheClearOptions.TABLE_ATTRIBUTE,
                   CacheClearOptions.TREE_SCHEMA,
-                  CacheClearOptions.QUERY)));
+                  CacheClearOptions.QUERY,
+                  CacheClearOptions.AUTH)));
     } else {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.DEFAULT));
     }
@@ -3654,6 +3784,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return startRepairDataStatement;
   }
 
+  // Repair Data Partition Table
+
+  @Override
+  public Statement visitRepairDataPartitionTable(
+      IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
+    return new RepairDataPartitionTable();
+  }
+
   // Stop Repair Data
 
   @Override
@@ -3685,7 +3823,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
     } else {
-      throw new SemanticException("Unknown system status in set system command.");
+      throw new SemanticException(
+          DataNodeQueryMessages.UNKNOWN_SYSTEM_STATUS_IN_SET_SYSTEM_COMMAND);
     }
     return setSystemStatusStatement;
   }
@@ -3719,7 +3858,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                   OrderByKey.QUERYID,
                   OrderByKey.DATANODEID,
                   OrderByKey.ELAPSEDTIME,
-                  OrderByKey.STATEMENT)));
+                  OrderByKey.STATEMENT),
+              false));
     }
 
     // parse LIMIT & OFFSET
@@ -3734,6 +3874,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return showQueriesStatement;
+  }
+
+  @Override
+  public Statement visitShowDiskUsage(IoTDBSqlParser.ShowDiskUsageContext ctx) {
+    PartialPath pathPattern = parsePrefixPath(ctx.prefixPath());
+    ShowDiskUsageStatement showDiskUsageStatement = new ShowDiskUsageStatement(pathPattern);
+    if (ctx.whereClause() != null) {
+      showDiskUsageStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      showDiskUsageStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(
+                  OrderByKey.DATABASE,
+                  OrderByKey.DATANODEID,
+                  OrderByKey.REGIONID,
+                  OrderByKey.TIMEPARTITION,
+                  OrderByKey.SIZEINBYTES),
+              false));
+    }
+
+    // parse LIMIT & OFFSET
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showDiskUsageStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showDiskUsageStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showDiskUsageStatement;
   }
 
   // show region
@@ -3885,7 +4060,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
     if (ctx.aliasNodeName() != null) {
-      throw new SemanticException("Device Template: alias is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.DEVICE_TEMPLATE_ALIAS_IS_NOT_SUPPORTED_YET);
     }
 
     TSDataType dataType = parseDataTypeAttribute(ctx);
@@ -3908,7 +4083,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         encodings.add(encoding);
         props.remove(COLUMN_TIMESERIES_ENCODING.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_ENCODING, encodingString));
       }
     } else {
       encodings.add(encoding);
@@ -3923,7 +4099,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         compressors.add(compressor);
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported compressor: %s", compressorString));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSOR_2, compressorString));
       }
     } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
       String compressionString =
@@ -3934,22 +4111,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
       } catch (Exception e) {
         throw new SemanticException(
-            String.format("Unsupported compression: %s", compressionString));
+            String.format(DataNodeQueryMessages.UNSUPPORTED_COMPRESSION, compressionString));
       }
     } else {
       compressors.add(compressor);
     }
 
     if (props.size() > 0) {
-      throw new SemanticException("Device Template: property is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.DEVICE_TEMPLATE_PROPERTY_IS_NOT_SUPPORTED_YET);
     }
 
     if (ctx.tagClause() != null) {
-      throw new SemanticException("Device Template: tag is not supported yet.");
+      throw new SemanticException(DataNodeQueryMessages.DEVICE_TEMPLATE_TAG_IS_NOT_SUPPORTED_YET);
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SemanticException("Device Template: attribute is not supported yet.");
+      throw new SemanticException(
+          DataNodeQueryMessages.DEVICE_TEMPLATE_ATTRIBUTE_IS_NOT_SUPPORTED_YET);
     }
   }
 
@@ -3959,16 +4138,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (ctx.attributeKey() != null
           && !parseAttributeKey(ctx.attributeKey())
               .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
-        throw new SemanticException("Expecting datatype");
+        throw new SemanticException(DataNodeQueryMessages.EXPECTING_DATATYPE);
       }
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
-        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
-          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        if (TSDataType.UNKNOWN.equals(dataType)
+            || TSDataType.VECTOR.equals(dataType)
+            || TSDataType.OBJECT.equals(dataType)) {
+          throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
         }
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
       }
     }
     return dataType;
@@ -4054,8 +4235,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final CreatePipeStatement createPipeStatement =
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
+    final String pipeName;
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      pipeName = parseIdentifier(ctx.pipeName.getText());
+      createPipeStatement.setPipeName(pipeName);
     } else {
       throw new SemanticException(
           "Not support for this sql in CREATE PIPE, please enter pipe name.");
@@ -4064,12 +4247,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     createPipeStatement.setIfNotExists(
         ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
-    if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
-              ctx.extractorAttributesClause().extractorAttributeClause()));
+    if (ctx.sourceAttributesClause() != null) {
+      createPipeStatement.setSourceAttributes(
+          parseSourceAttributesClause(ctx.sourceAttributesClause().sourceAttributeClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      createPipeStatement.setSourceAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -4078,15 +4260,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesClause().connectorAttributeClause()));
+    if (ctx.sinkAttributesClause() != null) {
+      createPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(ctx.sinkAttributesClause().sinkAttributeClause()));
     } else {
-      createPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
+      createPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(
+              ctx.sinkAttributesWithoutWithSinkClause().sinkAttributeClause()));
     }
+
     return createPipeStatement;
   }
 
@@ -4103,15 +4285,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     alterPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
 
-    if (ctx.alterExtractorAttributesClause() != null) {
-      alterPipeStatement.setExtractorAttributes(
-          parseExtractorAttributesClause(
-              ctx.alterExtractorAttributesClause().extractorAttributeClause()));
-      alterPipeStatement.setReplaceAllExtractorAttributes(
-          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE()));
+    if (ctx.alterSourceAttributesClause() != null) {
+      alterPipeStatement.setSourceAttributes(
+          parseSourceAttributesClause(ctx.alterSourceAttributesClause().sourceAttributeClause()));
+      alterPipeStatement.setReplaceAllSourceAttributes(
+          Objects.nonNull(ctx.alterSourceAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setExtractorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllExtractorAttributes(false);
+      alterPipeStatement.setSourceAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSourceAttributes(false);
     }
 
     if (ctx.alterProcessorAttributesClause() != null) {
@@ -4125,27 +4306,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterPipeStatement.setReplaceAllProcessorAttributes(false);
     }
 
-    if (ctx.alterConnectorAttributesClause() != null) {
-      alterPipeStatement.setConnectorAttributes(
-          parseConnectorAttributesClause(
-              ctx.alterConnectorAttributesClause().connectorAttributeClause()));
-      alterPipeStatement.setReplaceAllConnectorAttributes(
-          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE()));
+    if (ctx.alterSinkAttributesClause() != null) {
+      alterPipeStatement.setSinkAttributes(
+          parseSinkAttributesClause(ctx.alterSinkAttributesClause().sinkAttributeClause()));
+      alterPipeStatement.setReplaceAllSinkAttributes(
+          Objects.nonNull(ctx.alterSinkAttributesClause().REPLACE()));
     } else {
-      alterPipeStatement.setConnectorAttributes(new HashMap<>());
-      alterPipeStatement.setReplaceAllConnectorAttributes(false);
+      alterPipeStatement.setSinkAttributes(new HashMap<>());
+      alterPipeStatement.setReplaceAllSinkAttributes(false);
     }
 
     return alterPipeStatement;
   }
 
-  private Map<String, String> parseExtractorAttributesClause(
-      List<ExtractorAttributeClauseContext> contexts) {
+  private Map<String, String> parseSourceAttributesClause(
+      List<IoTDBSqlParser.SourceAttributeClauseContext> contexts) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ExtractorAttributeClauseContext context : contexts) {
+    for (IoTDBSqlParser.SourceAttributeClauseContext context : contexts) {
       collectorMap.put(
-          parseStringLiteral(context.extractorKey.getText()),
-          parseStringLiteral(context.extractorValue.getText()));
+          parseStringLiteral(context.sourceKey.getText()),
+          parseStringLiteral(context.sourceValue.getText()));
     }
     return collectorMap;
   }
@@ -4161,15 +4341,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return processorMap;
   }
 
-  private Map<String, String> parseConnectorAttributesClause(
-      List<ConnectorAttributeClauseContext> contexts) {
-    final Map<String, String> connectorMap = new HashMap<>();
-    for (IoTDBSqlParser.ConnectorAttributeClauseContext context : contexts) {
-      connectorMap.put(
-          parseStringLiteral(context.connectorKey.getText()),
-          parseStringLiteral(context.connectorValue.getText()));
+  private Map<String, String> parseSinkAttributesClause(
+      List<IoTDBSqlParser.SinkAttributeClauseContext> contexts) {
+    final Map<String, String> SinkMap = new HashMap<>();
+    for (IoTDBSqlParser.SinkAttributeClauseContext context : contexts) {
+      SinkMap.put(
+          parseStringLiteral(context.sinkKey.getText()),
+          parseStringLiteral(context.sinkValue.getText()));
     }
-    return connectorMap;
+    return SinkMap;
   }
 
   @Override
@@ -4179,7 +4359,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_DROP_PIPE);
     }
 
     dropPipeStatement.setIfExists(ctx.IF() != null && ctx.EXISTS() != null);
@@ -4194,7 +4374,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in START PIPE, please enter pipename.");
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_START_PIPE);
     }
 
     return startPipeStatement;
@@ -4207,7 +4387,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in STOP PIPE, please enter pipename.");
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE);
     }
 
     return stopPipeStatement;
@@ -4220,7 +4400,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       showPipesStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
+    showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
   }
@@ -4373,7 +4553,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           throw new UnsupportedOperationException();
       }
     } else {
-      throw new SemanticException("Get region id statement‘ expression must be a time expression");
+      throw new SemanticException(
+          DataNodeQueryMessages.GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A);
     }
     return getRegionIdStatement;
   }
@@ -4514,7 +4695,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                 case IoTDBConstant.SPACE_QUOTA_DISK:
                   break;
                 default:
-                  throw new SemanticException("Wrong space quota type: " + quotaType);
+                  throw new SemanticException(
+                      DataNodeQueryMessages.WRONG_SPACE_QUOTA_TYPE + quotaType);
               }
             });
 
@@ -4522,7 +4704,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (quotas.get(IoTDBConstant.COLUMN_DEVICES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
         setSpaceQuotaStatement.setDeviceNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)) <= 0) {
-        throw new SemanticException("Please set the number of devices greater than 0");
+        throw new SemanticException(
+            DataNodeQueryMessages.PLEASE_SET_THE_NUMBER_OF_DEVICES_GREATER_THAN);
       } else {
         setSpaceQuotaStatement.setDeviceNum(
             Long.parseLong(quotas.get(IoTDBConstant.COLUMN_DEVICES)));
@@ -4532,7 +4715,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (quotas.get(IoTDBConstant.COLUMN_TIMESERIES).equals(IoTDBConstant.QUOTA_UNLIMITED)) {
         setSpaceQuotaStatement.setTimeSeriesNum(IoTDBConstant.UNLIMITED_VALUE);
       } else if (Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)) <= 0) {
-        throw new SemanticException("Please set the number of timeseries greater than 0");
+        throw new SemanticException(
+            DataNodeQueryMessages.PLEASE_SET_THE_NUMBER_OF_TIMESERIES_GREATER_THAN);
       } else {
         setSpaceQuotaStatement.setTimeSeriesNum(
             Long.parseLong(quotas.get(IoTDBConstant.COLUMN_TIMESERIES)));
@@ -4555,7 +4739,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
     }
     if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
-      throw new SemanticException("Cannot set throttle quota for user root.");
+      throw new SemanticException(DataNodeQueryMessages.CANNOT_SET_THROTTLE_QUOTA_FOR_USER_ROOT);
     }
     SetThrottleQuotaStatement setThrottleQuotaStatement = new SetThrottleQuotaStatement();
     setThrottleQuotaStatement.setUserName(parseIdentifier(ctx.userName.getText()));
@@ -4574,7 +4758,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         String[] split = request.toLowerCase().split(IoTDBConstant.REQ_SPLIT_UNIT);
         if (Long.parseLong(split[0]) < 0) {
-          throw new SemanticException("Please set the number of requests greater than 0");
+          throw new SemanticException(
+              DataNodeQueryMessages.PLEASE_SET_THE_NUMBER_OF_REQUESTS_GREATER_THAN);
         }
         timedQuota =
             new TTimedQuota(parseThrottleQuotaTimeUnit(split[1]), Long.parseLong(split[0]));
@@ -4640,7 +4825,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         int cpuNum = Integer.parseInt(cpuLimit);
         if (cpuNum <= 0) {
-          throw new SemanticException("Please set the number of cpu greater than 0");
+          throw new SemanticException(
+              DataNodeQueryMessages.PLEASE_SET_THE_NUMBER_OF_CPU_GREATER_THAN);
         }
         setThrottleQuotaStatement.setCpuLimit(cpuNum);
       }
@@ -4681,7 +4867,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String unit = data.substring(data.length() - 1);
     long size = Long.parseLong(data.substring(0, data.length() - 1));
     if (size <= 0) {
-      throw new SemanticException("Please set the size greater than 0");
+      throw new SemanticException(DataNodeQueryMessages.PLEASE_SET_THE_SIZE_GREATER_THAN_0);
     }
     switch (unit.toUpperCase()) {
       case IoTDBConstant.B_UNIT:
@@ -4706,7 +4892,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String unit = data.substring(data.length() - 1);
     long disk = Long.parseLong(data.substring(0, data.length() - 1));
     if (disk <= 0) {
-      throw new SemanticException("Please set the disk size greater than 0");
+      throw new SemanticException(DataNodeQueryMessages.PLEASE_SET_THE_DISK_SIZE_GREATER_THAN_0);
     }
     switch (unit.toUpperCase()) {
       case IoTDBConstant.MB_UNIT:
@@ -4757,7 +4943,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         String paramKey = context.hparamKey.getText();
         if (paramKey.equalsIgnoreCase("WINDOW")) {
           if (statement.isSetInferenceWindow()) {
-            throw new SemanticException("There should be only one window in CALL INFERENCE.");
+            throw new SemanticException(
+                DataNodeQueryMessages.THERE_SHOULD_BE_ONLY_ONE_WINDOW_IN_CALL);
           }
           if (valueContext.windowFunction().isEmpty()) {
             throw new SemanticException(
@@ -4798,7 +4985,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreateTableView(final IoTDBSqlParser.CreateTableViewContext ctx) {
     if (true) {
-      throw new SemanticException("The 'CreateTableView' is unsupported in tree sql-dialect.");
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_CREATETABLEVIEW_IS_UNSUPPORTED_IN_TREE_SQL_DIALECT);
     }
     return new CreateTableViewStatement(
         new CreateView(
@@ -4889,16 +5077,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                     .literalExpression()));
   }
 
-  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression parseExpression(
+  private org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression parseExpression(
       final IoTDBSqlParser.LiteralExpressionContext context) {
     if (context.STRING_LITERAL() != null) {
-      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral(
+      return new org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral(
           parseStringLiteral(context.getText()));
     } else if (context.INTEGER_LITERAL() != null) {
-      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral(
+      return new org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral(
           context.getText());
     }
-    throw new UnsupportedOperationException("Currently other expressions are not supported");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.CURRENTLY_OTHER_EXPRESSIONS_ARE_NOT_SUPPORTED);
   }
 
   private QualifiedName getQualifiedName(final IoTDBSqlParser.QualifiedNameContext context) {
@@ -4932,8 +5121,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSetSqlDialect(IoTDBSqlParser.SetSqlDialectContext ctx) {
-    return new SetSqlDialectStatement(
-        ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE);
+    return new SetSqlDialectStatement(ctx.TABLE() == null ? SqlDialect.TREE : SqlDialect.TABLE);
   }
 
   @Override

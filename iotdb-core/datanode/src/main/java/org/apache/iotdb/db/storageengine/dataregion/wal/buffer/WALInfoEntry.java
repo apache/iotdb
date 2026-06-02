@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
@@ -89,12 +91,13 @@ public class WALInfoEntry extends WALEntry {
       case RELATIONAL_DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+      case OBJECT_FILE_NODE:
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:
-        throw new RuntimeException("Cannot serialize checkpoint to wal files.");
+        throw new RuntimeException(StorageEngineMessages.CANNOT_SERIALIZE_CHECKPOINT_TO_WAL);
       default:
-        throw new RuntimeException("Unsupported wal entry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_WAL_ENTRY_TYPE + type);
     }
   }
 
@@ -166,8 +169,10 @@ public class WALInfoEntry extends WALEntry {
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
       case MEMORY_TABLE_CHECKPOINT:
         return RamUsageEstimator.sizeOfObject(value);
+      case OBJECT_FILE_NODE:
+        return ((ObjectNode) value).serializedSize();
       default:
-        throw new RuntimeException("Unsupported wal entry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_WAL_ENTRY_TYPE + type);
     }
   }
 

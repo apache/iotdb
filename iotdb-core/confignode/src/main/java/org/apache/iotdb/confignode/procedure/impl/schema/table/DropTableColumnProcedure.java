@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteCol
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
@@ -89,7 +90,7 @@ public class DropTableColumnProcedure
       switch (state) {
         case CHECK_AND_INVALIDATE_COLUMN:
           LOGGER.info(
-              "Check and invalidate column {} in {}.{} when dropping column",
+              ProcedureMessages.CHECK_AND_INVALIDATE_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
@@ -97,7 +98,7 @@ public class DropTableColumnProcedure
           break;
         case INVALIDATE_CACHE:
           LOGGER.info(
-              "Invalidating cache for column {} in {}.{} when dropping column",
+              ProcedureMessages.INVALIDATING_CACHE_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
@@ -105,24 +106,26 @@ public class DropTableColumnProcedure
           break;
         case EXECUTE_ON_REGIONS:
           LOGGER.info(
-              "Executing on region for column {} in {}.{} when dropping column",
+              ProcedureMessages.EXECUTING_ON_REGION_FOR_COLUMN_IN_WHEN_DROPPING_COLUMN,
               columnName,
               database,
               tableName);
           executeOnRegions(env);
           break;
         case DROP_COLUMN:
-          LOGGER.info("Dropping column {} in {}.{} on configNode", columnName, database, tableName);
+          LOGGER.info(
+              ProcedureMessages.DROPPING_COLUMN_IN_ON_CONFIGNODE, columnName, database, tableName);
           dropColumn(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_DROPTABLECOLUMNSTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "DropTableColumn-{}.{}-{} costs {}ms",
+          ProcedureMessages.DROPTABLECOLUMN_COSTS_MS,
           database,
           tableName,
           state,
@@ -160,7 +163,7 @@ public class DropTableColumnProcedure
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "Failed to invalidate {} column {}'s cache of table {}.{}",
+            ProcedureMessages.FAILED_TO_INVALIDATE_COLUMN_S_CACHE_OF_TABLE,
             isAttributeColumn ? "attribute" : "measurement",
             columnName,
             database,
@@ -169,8 +172,10 @@ public class DropTableColumnProcedure
             new ProcedureException(
                 new MetadataException(
                     String.format(
-                        "Invalidate column %s cache failed for table %s.%s",
-                        columnName, database, tableName))));
+                        ProcedureMessages.INVALIDATE_COLUMN_CACHE_FAILED_FOR_TABLE,
+                        columnName,
+                        database,
+                        tableName))));
         return;
       }
     }

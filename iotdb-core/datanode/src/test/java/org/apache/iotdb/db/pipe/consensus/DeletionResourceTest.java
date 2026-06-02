@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -66,7 +66,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DeletionResourceTest {
-  private static final String[] FAKE_DATA_REGION_IDS = {"2", "3", "4", "5", "6"};
+  private static final int[] FAKE_DATA_REGION_IDS = {2, 3, 4, 5, 6};
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
   private static final int THIS_DATANODE_ID = 0;
@@ -84,7 +84,7 @@ public class DeletionResourceTest {
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
-    for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
+    for (int FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
         FileUtils.deleteFileOrDirectory(baseDir);
@@ -212,7 +212,7 @@ public class DeletionResourceTest {
           new PipeDeleteDataNodeEvent(
               deleteDataNode, "Test", 10, null, null, null, null, null, null, true, true);
       deletionEvent.setCommitterKeyAndCommitId(
-          new CommitterKey("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), 0), i + 1);
+          new CommitterKey("Test", 10, FAKE_DATA_REGION_IDS[3], 0), i + 1);
       deletionEvents.add(deletionEvent);
 
       final DeletionResource deletionResource =
@@ -227,8 +227,7 @@ public class DeletionResourceTest {
 
     // for event commit to invoke onCommit() to removeDAL
     if (initialIndex == 0) {
-      PipeEventCommitManager.getInstance()
-          .register("Test", 10, Integer.parseInt(FAKE_DATA_REGION_IDS[3]), "Test");
+      PipeEventCommitManager.getInstance().register("Test", 10, FAKE_DATA_REGION_IDS[3], "Test");
     }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
     final List<Path> paths =
@@ -265,8 +264,7 @@ public class DeletionResourceTest {
             });
     final PipeTaskRuntimeConfiguration configuration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskSourceRuntimeEnvironment(
-                "1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
+            new PipeTaskSourceRuntimeEnvironment("1", 1, FAKE_DATA_REGION_IDS[4], null));
     extractor.customize(parameters, configuration);
     Assert.assertTrue(extractor.shouldExtractDeletion());
 

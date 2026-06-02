@@ -22,8 +22,30 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(TARGET_NAME session_tests)
 SET(TARGET_NAME_RELATIONAL session_relational_tests)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2")
+IF(NOT MSVC)
+    # Keep GCC/Clang style flags off on MSVC to avoid invalid-option build errors.
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+ENDIF()
 ENABLE_TESTING()
+
+# =========================
+# SSL option (default OFF)
+# =========================
+option(WITH_SSL "Build with SSL support" OFF)
+
+IF(WITH_SSL)
+    FIND_PACKAGE(OpenSSL REQUIRED)
+    IF(OpenSSL_FOUND)
+        MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+        INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
+        ADD_DEFINITIONS(-DWITH_SSL=1)
+    ELSE()
+        MESSAGE(FATAL_ERROR "OpenSSL not found, but WITH_SSL is enabled")
+    ENDIF()
+ELSE()
+    MESSAGE(STATUS "Building without SSL support")
+    ADD_DEFINITIONS(-DWITH_SSL=0)
+ENDIF()
 
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
@@ -52,27 +74,79 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
     add_link_options(-fsanitize=address)
 ENDIF()
 
+SET(TARGET_NAME_C session_c_tests)
+SET(TARGET_NAME_C_RELATIONAL session_c_relational_tests)
+
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelationalIT.cpp)
+ADD_EXECUTABLE(${TARGET_NAME_C} main_c.cpp cpp/sessionCIT.cpp)
+ADD_EXECUTABLE(${TARGET_NAME_C_RELATIONAL} main_c_Relational.cpp cpp/sessionCRelationalIT.cpp)
 
 # Link with shared library iotdb_session and pthread
+SET(ALL_TEST_TARGETS ${TARGET_NAME} ${TARGET_NAME_RELATIONAL} ${TARGET_NAME_C} ${TARGET_NAME_C_RELATIONAL})
+
 IF(MSVC)
-    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
-    TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session ${THRIFT_STATIC_LIB})
+    IF(WITH_SSL)
+        FOREACH(T ${ALL_TEST_TARGETS})
+            TARGET_LINK_LIBRARIES(${T}
+                iotdb_session
+                ${THRIFT_STATIC_LIB}
+                OpenSSL::SSL
+                OpenSSL::Crypto
+            )
+        ENDFOREACH()
+    ELSE()
+        FOREACH(T ${ALL_TEST_TARGETS})
+            TARGET_LINK_LIBRARIES(${T}
+                iotdb_session
+                ${THRIFT_STATIC_LIB}
+            )
+        ENDFOREACH()
+    ENDIF()
 ELSE()
-    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session pthread)
+    IF(WITH_SSL)
+        FOREACH(T ${ALL_TEST_TARGETS})
+            TARGET_LINK_LIBRARIES(${T}
+                iotdb_session
+                pthread
+                OpenSSL::SSL
+                OpenSSL::Crypto
+            )
+        ENDFOREACH()
+    ELSE()
+        FOREACH(T ${ALL_TEST_TARGETS})
+            TARGET_LINK_LIBRARIES(${T}
+                iotdb_session
+                pthread
+            )
+        ENDFOREACH()
+    ENDIF()
 ENDIF()
 
 # Add Catch2 include directory
-TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
-TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME_RELATIONAL} PUBLIC ./catch2/)
+FOREACH(T ${ALL_TEST_TARGETS})
+    TARGET_INCLUDE_DIRECTORIES(${T} PUBLIC ./catch2/)
+ENDFOREACH()
 
-# Add 'sessionIT' to the project to be run by ctest
+# Add tests to ctest
 IF(MSVC)
     ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_RELATIONAL})
+    ADD_TEST(NAME sessionCIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_C})
+    ADD_TEST(NAME sessionCRelationalIT CONFIGURATIONS Release COMMAND ${TARGET_NAME_C_RELATIONAL})
 ELSE()
     ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT COMMAND ${TARGET_NAME_RELATIONAL})
+    ADD_TEST(NAME sessionCIT COMMAND ${TARGET_NAME_C})
+    ADD_TEST(NAME sessionCRelationalIT COMMAND ${TARGET_NAME_C_RELATIONAL})
 ENDIF()
+
+# One process at a time: parallel ctest overloads a single local IoTDB on 127.0.0.1:6667.
+SET_TESTS_PROPERTIES(sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT PROPERTIES RUN_SERIAL TRUE)
+
+if(UNIX AND NOT APPLE)
+  target_link_options(session_tests PRIVATE -Wl,--no-as-needed)
+  target_link_options(session_relational_tests PRIVATE -Wl,--no-as-needed)
+  target_link_options(session_c_tests PRIVATE -Wl,--no-as-needed)
+  target_link_options(session_c_relational_tests PRIVATE -Wl,--no-as-needed)
+endif()

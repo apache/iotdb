@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemp
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetBuiltInExternalServiceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
@@ -47,8 +48,11 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewField
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -98,6 +102,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -117,6 +122,10 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
+
+  private CnToDnInternalServiceAsyncRequestManager() {
+    super(ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager());
+  }
 
   @SuppressWarnings("unchecked")
   @Override
@@ -316,6 +325,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.alterEncodingCompressor(
                 (TAlterEncodingCompressorReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
+        (req, client, handler) ->
+            client.alterTimeSeriesDataType(
+                (TAlterTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->
             client.constructSchemaBlackListWithTemplate(
@@ -401,6 +415,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.PUSH_TOPOLOGY,
+        (req, client, handler) ->
+            client.updateClusterTopology(
+                (TUpdateClusterTopologyReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->
             client.insertRecord((TSInsertRecordReq) req, (DataNodeTSStatusRPCHandler) handler));
@@ -480,6 +499,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.ENABLE_SEPARATION_OF_ADMIN_POWERS,
         (req, client, handler) ->
             client.enableSeparationOfAdminPower((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
+        (req, client, handler) ->
+            client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
   }
 
   @Override
@@ -490,7 +513,8 @@ public class CnToDnInternalServiceAsyncRequestManager
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
       throw new UncheckedStartupException(
-          String.format("These request types should be added to actionMap: %s", lackList));
+          String.format(
+              ConfigNodeMessages.THESE_REQUEST_TYPES_SHOULD_BE_ADDED_TO_ACTIONMAP, lackList));
     }
   }
 

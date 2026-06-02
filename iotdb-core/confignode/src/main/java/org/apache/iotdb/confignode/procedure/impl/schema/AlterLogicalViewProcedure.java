@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -59,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class AlterLogicalViewProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterLogicalViewState> {
@@ -71,6 +73,8 @@ public class AlterLogicalViewProcedure
 
   private transient PathPatternTree pathPatternTree;
   private transient ByteBuffer patternTreeBytes;
+
+  protected final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
 
   public AlterLogicalViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -94,12 +98,12 @@ public class AlterLogicalViewProcedure
     try {
       switch (state) {
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of view {}", viewPathToSourceMap.keySet());
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_VIEW, viewPathToSourceMap.keySet());
           invalidateCache(env);
           setNextState(AlterLogicalViewState.ALTER_LOGICAL_VIEW);
           return Flow.HAS_MORE_STATE;
         case ALTER_LOGICAL_VIEW:
-          LOGGER.info("Alter view {}", viewPathToSourceMap.keySet());
+          LOGGER.info(ProcedureMessages.ALTER_VIEW, viewPathToSourceMap.keySet());
           try {
             alterLogicalView(env);
           } catch (final ProcedureException e) {
@@ -107,12 +111,14 @@ public class AlterLogicalViewProcedure
           }
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
     } finally {
       LOGGER.info(
-          "AlterLogicalView-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ALTERLOGICALVIEW_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -130,10 +136,12 @@ public class AlterLogicalViewProcedure
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "Failed to invalidate schemaengine cache of view {}", viewPathToSourceMap.keySet());
+            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_VIEW,
+            viewPathToSourceMap.keySet());
         setFailure(
             new ProcedureException(
-                new MetadataException("Invalidate view schemaengine cache failed")));
+                new MetadataException(
+                    ProcedureMessages.INVALIDATE_VIEW_SCHEMAENGINE_CACHE_FAILED)));
         return;
       }
     }
@@ -390,11 +398,14 @@ public class AlterLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
+                      ProcedureMessages.ALTER_VIEW_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL,
                       viewPathToSourceMap.keySet(),
                       taskName,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      dataNodeLocationSet.stream()
+                          .map(TDataNodeLocation::getDataNodeId)
+                          .collect(Collectors.toSet()),
+                      failureStatusList))));
       interruptTask();
     }
   }

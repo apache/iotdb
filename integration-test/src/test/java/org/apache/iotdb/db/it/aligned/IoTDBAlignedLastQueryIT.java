@@ -124,7 +124,8 @@ public class IoTDBAlignedLastQueryIT {
                 "40,root.sg1.d2.s2,40,INT32",
                 "30,root.sg1.d2.s3,30,INT64",
                 "30,root.sg1.d2.s4,false,BOOLEAN",
-                "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
+                "40,root.sg1.d2.s5,non_aligned_test40,TEXT",
+                "-40,root.sg1.d2.s6,40.0,DOUBLE"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -390,8 +391,8 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
-                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
+                "1679477545000,root.ln_1.tb_6141.gongnengma,2.0,DOUBLE",
+                "1675995566000,root.ln_1.tb_6141.wenben,52,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -423,9 +424,9 @@ public class IoTDBAlignedLastQueryIT {
     retSet =
         new HashSet<>(
             Arrays.asList(
-                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
-                "1677033625000,root.ln_1.tb_6141.mochanshuizhuangtai_BOOLEAN,true,BOOLEAN",
-                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
+                "1679477545000,root.ln_1.tb_6141.gongnengma,2.0,DOUBLE",
+                "1677033625000,root.ln_1.tb_6141.mochanshuizhuangtai,true,BOOLEAN",
+                "1675995566000,root.ln_1.tb_6141.wenben,52,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

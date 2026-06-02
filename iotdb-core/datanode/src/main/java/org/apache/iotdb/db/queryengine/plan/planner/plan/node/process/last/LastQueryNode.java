@@ -20,13 +20,14 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -90,7 +91,8 @@ public class LastQueryNode extends MultiChildProcessNode {
       PartialPath devicePath,
       boolean aligned,
       List<IMeasurementSchema> measurementSchemas,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType) {
     List<Integer> idxList = new ArrayList<>(measurementSchemas.size());
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
@@ -109,7 +111,8 @@ public class LastQueryNode extends MultiChildProcessNode {
             devicePath,
             aligned,
             idxList,
-            outputViewPath,
+            outputPaths,
+            isOutputPathForView,
             outputViewPathType,
             globalMeasurementSchemaList);
     children.add(scanNode);
@@ -195,8 +198,8 @@ public class LastQueryNode extends MultiChildProcessNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitLastQuery(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitLastQuery(this, context);
   }
 
   @Override

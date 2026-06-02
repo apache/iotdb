@@ -27,13 +27,16 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -62,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
@@ -83,6 +87,9 @@ import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInf
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -101,7 +108,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -111,6 +117,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -124,6 +131,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -177,7 +185,8 @@ public class ClusterSchemaManager {
       clusterSchemaInfo.isDatabaseNameValid(
           schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
       if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -397,7 +406,7 @@ public class ClusterSchemaManager {
       } catch (final DatabaseNotExistsException e) {
         // Skip pre-deleted Database
         LOGGER.warn(
-            "The Database: {} doesn't exist. Maybe it has been pre-deleted.",
+            ManagerMessages.THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE,
             databaseSchema.getName());
         continue;
       }
@@ -420,7 +429,7 @@ public class ClusterSchemaManager {
         }
         infoMap.put(database, ttl);
       } catch (final DatabaseNotExistsException e) {
-        LOGGER.warn("Database: {} doesn't exist", databases, e);
+        LOGGER.warn(ManagerMessages.DATABASE_DOESN_T_EXIST, databases, e);
       }
     }
     return infoMap;
@@ -485,7 +494,8 @@ public class ClusterSchemaManager {
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
           || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -495,7 +505,8 @@ public class ClusterSchemaManager {
         new AdjustMaxRegionGroupNumPlan();
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the system database
         continue;
       }
@@ -522,7 +533,7 @@ public class ClusterSchemaManager {
               databaseSchema.getSchemaReplicationFactor(),
               allocatedSchemaRegionGroupCount);
       LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+          ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_SCHEMAREGIONGROUPS_FOR,
           databaseSchema.getName(),
           maxSchemaRegionGroupNum);
 
@@ -550,7 +561,7 @@ public class ClusterSchemaManager {
               databaseSchema.getDataReplicationFactor(),
               allocatedDataRegionGroupCount);
       LOGGER.info(
-          "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+          ConfigNodeMessages.ADJUSTREGIONGROUPNUM_THE_MAXIMUM_NUMBER_OF_DATAREGIONGROUPS_FOR,
           databaseSchema.getName(),
           maxDataRegionGroupNum);
 
@@ -825,12 +836,15 @@ public class ClusterSchemaManager {
     TSStatus errorResp = null;
     final boolean isSystemDatabase =
         databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
-    final boolean isAuditDatabase = databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE);
+    final boolean isAuditDatabase =
+        databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+            || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be non-negative.");
+              .setMessage(
+                  ProcedureMessages.FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE);
     }
 
     if (!databaseSchema.isSetSchemaReplicationFactor()) {
@@ -893,11 +907,13 @@ public class ClusterSchemaManager {
     } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
+              .setMessage(
+                  ProcedureMessages
+                      .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute SetDatabase: {} with result: {}", databaseSchema, errorResp);
+      LOGGER.warn(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -1161,7 +1177,7 @@ public class ClusterSchemaManager {
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Failed to sync template {} extension info to DataNode {}",
+            ManagerMessages.FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE,
             template.getName(),
             dataNodeLocationMap.get(entry.getKey()));
         return RpcUtils.getStatus(
@@ -1191,7 +1207,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new ShowTablePlan(database, isDetails)))
           .convertToTShowTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TShowTableResp(res);
@@ -1204,7 +1220,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new ShowTable4InformationSchemaPlan()))
           .convertToTShowTable4InformationSchemaResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TShowTable4InformationSchemaResp(res);
@@ -1220,7 +1236,7 @@ public class ClusterSchemaManager {
                   .read(new DescTablePlan(database, tableName, isDetails)))
           .convertToTDescTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TDescTableResp(res);
@@ -1233,7 +1249,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new DescTable4InformationSchemaPlan()))
           .convertToTDescTable4InformationSchemaResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TDescTable4InformationSchemaResp(res);
@@ -1246,7 +1262,7 @@ public class ClusterSchemaManager {
               configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))
           .convertToTFetchTableResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TFetchTableResp(res);
@@ -1347,7 +1363,7 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     final String errorMsg =
         String.format(
@@ -1355,9 +1371,14 @@ public class ClusterSchemaManager {
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
+
+    final AtomicBoolean hasObject = new AtomicBoolean(false);
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
+              hasObject.set(true);
+            }
             expandedTable.addColumnSchema(columnSchema);
             return false;
           }
@@ -1367,7 +1388,48 @@ public class ClusterSchemaManager {
     if (columnSchemaList.isEmpty()) {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+
+    if (hasObject.get()) {
+      expandedTable.checkTableNameAndObjectNames4Object();
+    }
+    return new Pair<>(StatusUtils.OK, expandedTable);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnAltering(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType dataType,
+      final boolean isGeneratedByPipe)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    TSStatus tsStatus =
+        executePlan(
+            new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
+            isGeneratedByPipe);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new Pair<>(tsStatus, null);
+    }
+
+    final TsTable alteredTable = new TsTable(originalTable);
+    TsTableColumnSchema tsTableColumnSchema = alteredTable.getColumnSchema(columnName);
+    tsTableColumnSchema.setDataType(dataType);
+    if (tsTableColumnSchema instanceof FieldColumnSchema) {
+      FieldColumnSchema fieldColumnSchema = ((FieldColumnSchema) tsTableColumnSchema);
+      fieldColumnSchema.setEncoding(
+          SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+    }
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, alteredTable);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
@@ -1417,7 +1479,7 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     expandedTable.renameColumnSchema(oldName, newName);
 
@@ -1450,11 +1512,11 @@ public class ClusterSchemaManager {
       return new Pair<>(
           RpcUtils.getStatus(
               TSStatusCode.TABLE_ALREADY_EXISTS,
-              String.format("Table '%s.%s' already exists.", database, newName)),
+              String.format(ProcedureMessages.TABLE_ALREADY_EXISTS, database, newName)),
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
     expandedTable.renameTable(newName);
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
@@ -1541,7 +1603,7 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
 
-    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable updatedTable = new TsTable(originalTable);
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));

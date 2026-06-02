@@ -179,7 +179,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -190,7 +190,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -202,7 +202,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -214,7 +214,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -227,7 +227,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -241,7 +241,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -271,7 +271,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -282,7 +282,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -293,7 +293,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("3,"));
+        Collections.singleton("2,"));
   }
 
   @Test
@@ -304,7 +304,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -315,7 +315,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -326,7 +326,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -337,7 +337,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -350,7 +350,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -361,7 +361,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -375,7 +375,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -386,7 +386,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
 
   @Test
@@ -397,10 +397,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("1,"));
   }
-
-  // Table model
 
   private void testIdempotent(
       final List<String> beforeSqlList,
@@ -417,24 +415,26 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

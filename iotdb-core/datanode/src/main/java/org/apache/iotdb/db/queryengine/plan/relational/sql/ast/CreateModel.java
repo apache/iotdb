@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Objects;
 
 public class CreateModel extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateModel.class);
 
   private final String modelId;
   private final String uri;
@@ -42,8 +51,8 @@ public class CreateModel extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateModel(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitCreateModel(this, context);
   }
 
   @Override
@@ -68,5 +77,14 @@ public class CreateModel extends Statement {
   @Override
   public String toString() {
     return "CreateModel{" + "modelId='" + modelId + '\'' + ", uri='" + uri + '\'' + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += RamUsageEstimator.sizeOf(uri);
+    return size;
   }
 }

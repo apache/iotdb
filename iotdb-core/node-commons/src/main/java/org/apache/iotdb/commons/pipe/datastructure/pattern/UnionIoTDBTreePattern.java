@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -55,6 +56,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
     this.patterns = Collections.singletonList(pattern);
   }
 
+  @TestOnly
+  public List<IoTDBTreePattern> getPatterns() {
+    return patterns;
+  }
+
   //////////////////////////// Tree Pattern Operations ////////////////////////////
 
   @Override
@@ -65,6 +71,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   @Override
   public boolean isRoot() {
     return patterns.stream().anyMatch(TreePattern::isRoot);
+  }
+
+  @Override
+  public boolean isSingle() {
+    return false;
   }
 
   @Override
@@ -90,6 +101,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     return patterns.stream().anyMatch(p -> p.mayOverlapWithDevice(device));
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return patterns.stream().anyMatch(p -> p.overlapWithDevice(device));
   }
 
   @Override

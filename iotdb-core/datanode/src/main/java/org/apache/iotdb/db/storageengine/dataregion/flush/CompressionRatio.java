@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -83,7 +84,7 @@ public class CompressionRatio {
     try {
       restore();
     } catch (IOException e) {
-      LOGGER.error("restore file error caused by ", e);
+      LOGGER.error(StorageEngineMessages.RESTORE_FILE_ERROR, e);
     }
   }
 
@@ -154,7 +155,7 @@ public class CompressionRatio {
                 + "."
                 + dataRegionId);
     if (!oldDataRegionFile.delete() && oldDataRegionFile.exists()) {
-      LOGGER.warn("Can't delete old data region compression file {}", oldDataRegionFile);
+      LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_OLD_COMPRESSION_FILE, oldDataRegionFile);
     }
   }
 
@@ -234,7 +235,7 @@ public class CompressionRatio {
     for (File ratioFile : ratioFiles) {
       if (ratioFile != null) {
         if (!ratioFile.delete()) {
-          LOGGER.warn("Cannot delete ratio file {}", ratioFile.getAbsolutePath());
+          LOGGER.warn(StorageEngineMessages.CANNOT_DELETE_RATIO_FILE, ratioFile.getAbsolutePath());
         }
       }
     }

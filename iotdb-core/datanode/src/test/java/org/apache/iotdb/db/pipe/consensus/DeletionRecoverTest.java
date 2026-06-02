@@ -22,10 +22,10 @@ package org.apache.iotdb.db.pipe.consensus;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -42,7 +42,7 @@ import java.io.File;
 import java.util.Collections;
 
 public class DeletionRecoverTest {
-  private static final String[] FAKE_DATA_REGION_IDS = {"2", "3"};
+  private static final int[] FAKE_DATA_REGION_IDS = {2, 3};
   private static final int THIS_DATANODE_ID =
       IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private static final String DELETION_BASE_DIR =
@@ -50,7 +50,7 @@ public class DeletionRecoverTest {
   private final int deletionCount = 10;
   private DeletionResourceManager deletionResourceManager;
 
-  public void setUp(boolean isRelational, String FAKE_DATA_REGION_ID) throws Exception {
+  public void setUp(boolean isRelational, int FAKE_DATA_REGION_ID) throws Exception {
     File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
     if (baseDir.exists()) {
       FileUtils.deleteFileOrDirectory(baseDir);
@@ -84,7 +84,7 @@ public class DeletionRecoverTest {
 
   @After
   public void tearDown() throws Exception {
-    for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
+    for (int FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
         FileUtils.deleteFileOrDirectory(baseDir);

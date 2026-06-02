@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -42,11 +43,26 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -55,7 +71,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -75,13 +90,12 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
@@ -89,9 +103,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -102,6 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -129,6 +145,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -146,9 +164,11 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeallocatePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -169,6 +189,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -216,6 +238,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
@@ -227,6 +250,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
 import static org.apache.iotdb.rpc.RpcUtils.TIME_PRECISION;
+import static org.apache.iotdb.rpc.TSStatusCode.QUERY_WAS_KILLED;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
@@ -245,7 +269,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  public static final String ERROR_CODE = "error code: ";
+  public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -267,6 +291,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final String NO_QUERY_EXECUTION_ERR_MSG =
+      "Query is not found, it may be killed by others, timeout or some other runtime errors, you can see more details in server log.";
 
   @FunctionalInterface
   public interface SelectResult {
@@ -298,18 +325,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   private TSExecuteStatementResp executeStatementInternal(
-      TSExecuteStatementReq req, SelectResult setResult) {
-    boolean finished = false;
-    Long statementId = req.getStatementId();
-    long queryId = Long.MIN_VALUE;
-    String statement = req.getStatement();
+      NativeStatementRequest request, SelectResult setResult) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-
-    // quota
-    OperationQuota quota = null;
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
+
+    boolean finished = false;
+    Long statementId = request.getStatementId();
+    long queryId = Long.MIN_VALUE;
+    String statement = request.getSql();
+
+    // quota
+    OperationQuota quota = null;
 
     long startTime = System.nanoTime();
     StatementType statementType = null;
@@ -320,8 +348,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       // create and cache dataset
       ExecutionResult result;
-      if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
-        Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+      if (clientSession.getSqlDialect() == SqlDialect.TREE) {
+        Statement s = request.getTreeStatement(clientSession.getZoneId());
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
         }
@@ -343,7 +371,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   statement,
                   LocalExecutionPlanner.getInstance().metadata,
                   config.getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  s.isDebug());
         } else {
           // permission check
           TSStatus status =
@@ -363,22 +392,37 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
           statementType = s.getType();
 
-          queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+          queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
 
-          result =
-              COORDINATOR.executeForTreeModel(
-                  s,
-                  queryId,
-                  SESSION_MANAGER.getSessionInfo(clientSession),
-                  statement,
-                  partitionFetcher,
-                  schemaFetcher,
-                  req.getTimeout(),
-                  true);
+          // Split statement if needed to limit resource consumption during statement analysis
+          if (s.shouldSplit()) {
+            result =
+                executeBatchStatement(
+                    s,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    partitionFetcher,
+                    schemaFetcher,
+                    config.getQueryTimeoutThreshold(),
+                    true);
+          } else {
+            result =
+                COORDINATOR.executeForTreeModel(
+                    s,
+                    queryId,
+                    SESSION_MANAGER.getSessionInfo(clientSession),
+                    statement,
+                    partitionFetcher,
+                    schemaFetcher,
+                    request.getTimeout(),
+                    true,
+                    s.isDebug());
+          }
         }
       } else {
-        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
+        org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement s =
+            request.getTableStatement(relationSqlParser, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -394,19 +438,35 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
 
-        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
 
-        result =
-            COORDINATOR.executeForTableModel(
-                s,
-                relationSqlParser,
-                clientSession,
-                queryId,
-                SESSION_MANAGER.getSessionInfo(clientSession),
-                statement,
-                metadata,
-                req.getTimeout(),
-                true);
+        // Split statement if needed to limit resource consumption during statement analysis
+        if (s.shouldSplit()) {
+          result =
+              executeBatchTableStatement(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  config.getQueryTimeoutThreshold(),
+                  true);
+        } else {
+          result =
+              COORDINATOR.executeForTableModel(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  request.getTimeout(),
+                  true,
+                  s.isDebug());
+        }
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -428,7 +488,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished = setResult.apply(resp, queryExecution, request.getFetchSize());
           resp.setMoreData(!finished);
           if (quota != null) {
             quota.addReadResult(resp.getQueryResult());
@@ -452,7 +512,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           if (setSqlDialect) {
             resp.setTableModel(
                 SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
-                    == IClientSession.SqlDialect.TABLE);
+                    == SqlDialect.TABLE);
           }
         }
         return resp;
@@ -492,7 +552,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             statementType, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, queryId, req, t);
+        clearUp(clientSession, statementId, queryId, request, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -505,11 +565,168 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       IClientSession clientSession,
       Long statementId,
       Long queryId,
+      Supplier<String> contentSupplier,
+      Throwable t) {
+    COORDINATOR.cleanupQueryExecution(queryId, contentSupplier, t);
+    clientSession.removeQueryId(statementId, queryId);
+  }
+
+  private void clearUp(
+      IClientSession clientSession,
+      Long statementId,
+      Long queryId,
       org.apache.thrift.TBase<?, ?> req,
       Throwable t) {
     COORDINATOR.cleanupQueryExecution(queryId, req, t);
-    // clear up queryId Map in clientSession
     clientSession.removeQueryId(statementId, queryId);
+  }
+
+  /** Adapter that wraps TSExecuteStatementReq to implement NativeStatementRequest. */
+  private static class TSExecuteStatementReqAdapter implements NativeStatementRequest {
+    private final TSExecuteStatementReq req;
+
+    TSExecuteStatementReqAdapter(TSExecuteStatementReq req) {
+      this.req = req;
+    }
+
+    @Override
+    public Long getStatementId() {
+      return req.getStatementId();
+    }
+
+    @Override
+    public long getTimeout() {
+      return req.getTimeout();
+    }
+
+    @Override
+    public int getFetchSize() {
+      return req.getFetchSize();
+    }
+
+    @Override
+    public Statement getTreeStatement(ZoneId zoneId) {
+      return StatementGenerator.createStatement(req.getStatement(), zoneId);
+    }
+
+    @Override
+    public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+        SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
+      return parser.createStatement(req.getStatement(), zoneId, clientSession);
+    }
+
+    @Override
+    public String getSql() {
+      return req.getStatement();
+    }
+  }
+
+  /** Adapter that wraps TSExecutePreparedReq to implement NativeStatementRequest. */
+  private static class TSExecutePreparedReqAdapter implements NativeStatementRequest {
+    private final TSExecutePreparedReq req;
+
+    // Lazily computed fields
+    private String fullStatement;
+    private Execute executeStatement;
+
+    TSExecutePreparedReqAdapter(TSExecutePreparedReq req) {
+      this.req = req;
+    }
+
+    @Override
+    public Long getStatementId() {
+      return req.getStatementId();
+    }
+
+    @Override
+    public long getTimeout() {
+      return req.getTimeout();
+    }
+
+    @Override
+    public int getFetchSize() {
+      return req.getFetchSize();
+    }
+
+    @Override
+    public Statement getTreeStatement(ZoneId zoneId) {
+      throw new UnsupportedOperationException(
+          DataNodeMiscMessages.PREPARED_STMT_NOT_SUPPORTED_FOR_TREE);
+    }
+
+    @Override
+    public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+        SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
+      ensureParsed();
+      return executeStatement;
+    }
+
+    @Override
+    public String getSql() {
+      ensureParsed();
+      return fullStatement;
+    }
+
+    /** Lazily parse parameters and build the Execute statement. */
+    private void ensureParsed() {
+      if (fullStatement != null) {
+        return;
+      }
+
+      String statementName = req.getStatementName();
+
+      // Deserialize parameters and build Execute statement
+      List<DeserializedParam> rawParams =
+          PreparedParameterSerde.deserialize(ByteBuffer.wrap(req.getParameters()));
+      List<Literal> parameters = new ArrayList<>(rawParams.size());
+      List<String> paramStrings = new ArrayList<>(rawParams.size());
+      for (DeserializedParam param : rawParams) {
+        Pair<Literal, String> literalAndString = convertToLiteralWithString(param);
+        parameters.add(literalAndString.left);
+        paramStrings.add(literalAndString.right);
+      }
+
+      executeStatement = new Execute(new Identifier(statementName), parameters);
+      fullStatement =
+          paramStrings.isEmpty()
+              ? "EXECUTE " + statementName
+              : "EXECUTE " + statementName + " USING " + String.join(", ", paramStrings);
+    }
+
+    private static Pair<Literal, String> convertToLiteralWithString(DeserializedParam param) {
+      if (param.isNull()) {
+        return new Pair<>(new NullLiteral(), "NULL");
+      }
+
+      switch (param.type) {
+        case BOOLEAN:
+          String boolStr = (Boolean) param.value ? "true" : "false";
+          return new Pair<>(new BooleanLiteral(boolStr), boolStr);
+        case INT32:
+        case INT64:
+          String numStr = String.valueOf(param.value);
+          return new Pair<>(new LongLiteral(numStr), numStr);
+        case FLOAT:
+          String floatStr = String.valueOf(param.value);
+          return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
+        case DOUBLE:
+          String doubleStr = String.valueOf(param.value);
+          return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
+        case TEXT:
+        case STRING:
+          String strVal = (String) param.value;
+          // Escape single quotes for SQL
+          String escapedStr = "'" + strVal.replace("'", "''") + "'";
+          return new Pair<>(new StringLiteral(strVal), escapedStr);
+        case BLOB:
+          byte[] bytes = (byte[]) param.value;
+          String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
+          return new Pair<>(new BinaryLiteral(bytes), hexStr);
+        default:
+          throw new IllegalArgumentException(
+              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
+      }
+    }
   }
 
   private TSExecuteStatementResp executeRawDataQueryInternal(
@@ -554,7 +771,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -649,7 +867,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -746,7 +965,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -861,7 +1081,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
     boolean canUseStatistics =
-        !TSDataType.BLOB.equals(dataType)
+        (!TSDataType.BLOB.equals(dataType) && !TSDataType.OBJECT.equals(dataType))
             || (!TAggregationType.LAST_VALUE.equals(aggregationType)
                 && !TAggregationType.FIRST_VALUE.equals(aggregationType));
     IFullPath path;
@@ -933,7 +1153,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
-    return executeStatementInternal(req, SELECT_RESULT);
+    return executeStatementInternal(new TSExecuteStatementReqAdapter(req), SELECT_RESULT);
   }
 
   @Override
@@ -957,7 +1177,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     try {
       final long queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
-      // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
+      // 1.1 Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
       if (prefixPath.hasWildcard()) {
@@ -971,13 +1191,26 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           new HashMap<>();
       int sensorNum = 0;
 
+      // 1.2 Check permission, the cost is rather low because the req only contains one prefix path
+      final QueryStatement s = StatementGenerator.createStatement(convert(req));
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
         if (!prefixString.startsWith(region.getDatabaseFullPath())
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+        sensorNum += region.fillLastQueryMap(prefixPath, resultMap, s.getAuthorityScope());
       }
 
       // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
@@ -998,7 +1231,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+            if (tvPair != TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN) {
               LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),
@@ -1021,13 +1254,23 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       resp.setMoreData(false);
 
-      long costTime = System.nanoTime() - startTime;
+      long endTime = System.nanoTime();
+      long costTime = endTime - startTime;
 
       CommonUtils.addStatementExecutionLatency(
           OperationType.EXECUTE_QUERY_STATEMENT, StatementType.FAST_LAST_QUERY.name(), costTime);
       CommonUtils.addQueryLatency(StatementType.FAST_LAST_QUERY, costTime);
-      recordQueries(
-          () -> costTime, () -> String.format("thrift fastLastQuery %s", prefixPath), null);
+
+      String statement = String.format("thrift fastLastQuery %s", prefixPath);
+      COORDINATOR.recordCurrentQueries(
+          null,
+          startTime / 1_000_000,
+          endTime / 1_000_000,
+          costTime,
+          () -> statement,
+          clientSession.getUsername(),
+          clientSession.getClientAddress());
+      recordQueries(() -> costTime, () -> statement, null, false);
       return resp;
     } catch (final Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
@@ -1063,6 +1306,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
+      // Place the permission check first
+      final QueryStatement s = StatementGenerator.createStatement(convert(req));
+      // permission check
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       String db;
       String device;
       PartialPath devicePath;
@@ -1092,7 +1349,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
           || regionReplicaSets.size() == 1 && NOT_ASSIGNED == regionReplicaSets.get(0)) {
-        TSExecuteStatementResp resp =
+        final TSExecuteStatementResp resp =
             createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
         resp.setQueryResult(Collections.emptyList());
@@ -1102,7 +1359,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
-      TEndPoint lastRegionLeader =
+      final TEndPoint lastRegionLeader =
           regionReplicaSets
               .get(regionReplicaSets.size() - 1)
               .dataNodeLocations
@@ -1113,41 +1370,52 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // read directly from cache
       if (isSameNode(lastRegionLeader)) {
         // the device's all dataRegions' leader are on current node, can use null entry in cache
-        boolean canUseNullEntry =
+        final boolean canUseNullEntry =
             regionReplicaSets.stream()
                 .limit(regionReplicaSets.size() - 1L)
                 .allMatch(
                     regionReplicaSet ->
                         isSameNode(
                             regionReplicaSet.dataNodeLocations.get(0).mPPDataExchangeEndPoint));
-        int sensorNum = req.sensors.size();
-        TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
+        final int sensorNum = req.sensors.size();
+        final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
-        for (String sensor : req.sensors) {
-          MeasurementPath fullPath;
+
+        PathPatternTree queryTree = new PathPatternTree();
+        for (final String sensor : req.sensors) {
+          final MeasurementPath fullPath;
           if (req.isLegalPathNodes()) {
             fullPath = devicePath.concatAsMeasurementPath(sensor);
           } else {
             fullPath = devicePath.concatAsMeasurementPath((new PartialPath(sensor)).getFullPath());
           }
-          TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
-          if (timeValuePair == null) {
-            allCached = false;
-            break;
-          } else if (timeValuePair.getValue() == null) {
-            // there is no data for this sensor
-            if (!canUseNullEntry) {
+          queryTree.appendPathPattern(fullPath);
+        }
+        queryTree.constructTree();
+        queryTree = s.getAuthorityScope().intersectWithFullPathPrefixTree(queryTree);
+
+        if (!queryTree.isEmpty()) {
+          for (final MeasurementPath fullPath : queryTree.getAllPathPatterns(true)) {
+            final TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
+            if (timeValuePair == null) {
               allCached = false;
               break;
+            } else if (timeValuePair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || timeValuePair.getValue() == null) {
+              // there is no data for this sensor
+              if (!canUseNullEntry) {
+                allCached = false;
+                break;
+              }
+            } else {
+              // we don't consider TTL
+              LastQueryUtil.appendLastValueRespectBlob(
+                  builder,
+                  timeValuePair.getTimestamp(),
+                  new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
+                  timeValuePair.getValue(),
+                  timeValuePair.getValue().getDataType().name());
             }
-          } else {
-            // we don't consider TTL
-            LastQueryUtil.appendLastValueRespectBlob(
-                builder,
-                timeValuePair.getTimestamp(),
-                new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
-                timeValuePair.getValue(),
-                timeValuePair.getValue().getDataType().name());
           }
         }
         // cache hit
@@ -1167,20 +1435,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
       }
 
-      // cache miss
-      Statement s = StatementGenerator.createStatement(convert(req));
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              s,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
-      }
-
       quota =
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
@@ -1195,11 +1449,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
-        throw new RuntimeException("error code: " + result.status);
+        throw new RuntimeException(DataNodeMiscMessages.ERROR_CODE + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -1306,15 +1561,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
-      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
 
       queryExecution = COORDINATOR.getQueryExecution(req.queryId);
 
       if (queryExecution == null) {
-        resp.setHasResultSet(false);
-        resp.setMoreData(false);
-        return resp;
+        TSStatus noQueryExecutionStatus = new TSStatus(QUERY_WAS_KILLED.getStatusCode());
+        noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
+        return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+
+      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
+
+      queryExecution.updateCurrentRpcStartTime(startTime);
       statementType = queryExecution.getStatementType();
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
@@ -1362,7 +1620,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    IClientSession.SqlDialect sqlDialect;
+    SqlDialect sqlDialect;
     try {
       sqlDialect = parseSqlDialect(req);
     } catch (IllegalArgumentException e) {
@@ -1401,19 +1659,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return IoTDBConstant.ClientVersion.V_0_12;
   }
 
-  private IClientSession.SqlDialect parseSqlDialect(TSOpenSessionReq req) {
+  private SqlDialect parseSqlDialect(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     if (configuration != null && configuration.containsKey("sql_dialect")) {
       String sqlDialect = configuration.get("sql_dialect");
       if ("tree".equalsIgnoreCase(sqlDialect)) {
-        return IClientSession.SqlDialect.TREE;
+        return SqlDialect.TREE;
       } else if ("table".equalsIgnoreCase(sqlDialect)) {
-        return IClientSession.SqlDialect.TABLE;
+        return SqlDialect.TABLE;
       } else {
-        throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_SQL_DIALECT + sqlDialect);
       }
     } else {
-      return IClientSession.SqlDialect.TREE;
+      return SqlDialect.TREE;
     }
   }
 
@@ -1445,8 +1703,78 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         req.statementId,
         req.isSetStatementId(),
         req.isSetQueryId(),
+        req.isSetPreparedStatementName() ? req.getPreparedStatementName() : null,
         COORDINATOR::cleanupQueryExecution);
   }
+
+  // ========================= PreparedStatement RPC Methods =========================
+
+  @Override
+  public TSPrepareResp prepareStatement(TSPrepareReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return new TSPrepareResp(getNotLoggedInStatus());
+    }
+
+    try {
+      String sql = req.getSql();
+      String statementName = req.getStatementName();
+
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement =
+          relationSqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+
+      if (statement == null) {
+        return new TSPrepareResp(
+            RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
+      }
+
+      int parameterCount = ParameterExtractor.getParameterCount(statement);
+
+      PreparedStatementHelper.register(clientSession, statementName, statement);
+
+      TSPrepareResp resp = new TSPrepareResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setParameterCount(parameterCount);
+      return resp;
+    } catch (Exception e) {
+      return new TSPrepareResp(
+          onQueryException(
+              e, OperationType.PREPARE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
+    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), setResultForPrepared);
+  }
+
+  @Override
+  public TSStatus deallocatePreparedStatement(TSDeallocatePreparedReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+
+    try {
+      PreparedStatementHelper.unregister(clientSession, req.getStatementName());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return onQueryException(
+          e,
+          OperationType.DEALLOCATE_PREPARED_STATEMENT.getName(),
+          TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private final SelectResult setResultForPrepared =
+      (resp, queryExecution, fetchSize) -> {
+        // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
+        Pair<List<ByteBuffer>, Boolean> pair =
+            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+        resp.setQueryResult(pair.left);
+        return pair.right;
+      };
+
+  // ========================= End PreparedStatement RPC Methods =========================
 
   @Override
   public TSGetTimeZoneResp getTimeZone(long sessionId) {
@@ -1480,7 +1808,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.setVersion(IoTDBConstant.VERSION);
     properties.setLogo(IoTDBConstant.LOGO);
     properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
+    LOGGER.info(DataNodeMiscMessages.IOTDB_SERVER_VERSION, IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -1781,7 +2109,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-    return executeStatementInternal(req, OLD_SELECT_RESULT);
+    return executeStatementInternal(new TSExecuteStatementReqAdapter(req), OLD_SELECT_RESULT);
   }
 
   @Override
@@ -1805,7 +2133,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         try {
           long queryId;
           ExecutionResult result;
-          if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
+          if (clientSession.getSqlDialect() == SqlDialect.TREE) {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
             if (s == null) {
               return RpcUtils.getStatus(
@@ -1823,7 +2151,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                       statement,
                       LocalExecutionPlanner.getInstance().metadata,
                       config.getQueryTimeoutThreshold(),
-                      false);
+                      false,
+                      s.isDebug());
             } else {
               // permission check
               TSStatus status =
@@ -1845,20 +2174,36 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               queryId = SESSION_MANAGER.requestQueryId();
               type = s.getType() == null ? null : s.getType().name();
               // create and cache dataset
-              result =
-                  COORDINATOR.executeForTreeModel(
-                      s,
-                      queryId,
-                      SESSION_MANAGER.getSessionInfo(clientSession),
-                      statement,
-                      partitionFetcher,
-                      schemaFetcher,
-                      config.getQueryTimeoutThreshold(),
-                      false);
+
+              // Split statement if needed to limit resource consumption during statement analysis
+              if (s.shouldSplit()) {
+                result =
+                    executeBatchStatement(
+                        s,
+                        queryId,
+                        SESSION_MANAGER.getSessionInfo(clientSession),
+                        statement,
+                        partitionFetcher,
+                        schemaFetcher,
+                        config.getQueryTimeoutThreshold(),
+                        false);
+              } else {
+                result =
+                    COORDINATOR.executeForTreeModel(
+                        s,
+                        queryId,
+                        SESSION_MANAGER.getSessionInfo(clientSession),
+                        statement,
+                        partitionFetcher,
+                        schemaFetcher,
+                        config.getQueryTimeoutThreshold(),
+                        false,
+                        s.isDebug());
+              }
             }
           } else {
 
-            org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
+            org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement s =
                 relationSqlParser.createStatement(
                     statement, clientSession.getZoneId(), clientSession);
 
@@ -1875,22 +2220,38 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
             queryId = SESSION_MANAGER.requestQueryId();
 
-            result =
-                COORDINATOR.executeForTableModel(
-                    s,
-                    relationSqlParser,
-                    clientSession,
-                    queryId,
-                    SESSION_MANAGER.getSessionInfo(clientSession),
-                    statement,
-                    metadata,
-                    config.getQueryTimeoutThreshold(),
-                    false);
+            // Split statement if needed to limit resource consumption during statement analysis
+            if (s.shouldSplit()) {
+              result =
+                  executeBatchTableStatement(
+                      s,
+                      relationSqlParser,
+                      clientSession,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(clientSession),
+                      statement,
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false);
+            } else {
+              result =
+                  COORDINATOR.executeForTableModel(
+                      s,
+                      relationSqlParser,
+                      clientSession,
+                      queryId,
+                      SESSION_MANAGER.getSessionInfo(clientSession),
+                      statement,
+                      metadata,
+                      config.getQueryTimeoutThreshold(),
+                      false,
+                      s.isDebug());
+            }
           }
 
           results.add(result.status);
         } catch (Exception e) {
-          LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
+          LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
@@ -1949,16 +2310,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
-      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
-
       queryExecution = COORDINATOR.getQueryExecution(req.queryId);
       if (queryExecution == null) {
-        resp.setHasResultSet(false);
-        resp.setMoreData(true);
-        return resp;
+        TSStatus noQueryExecutionStatus = new TSStatus(QUERY_WAS_KILLED.getStatusCode());
+        noQueryExecutionStatus.setMessage(NO_QUERY_EXECUTION_ERR_MSG);
+        return RpcUtils.getTSFetchResultsResp(noQueryExecutionStatus);
       }
+      queryExecution.updateCurrentRpcStartTime(startTime);
       statementType = queryExecution.getStatementType();
 
+      TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<TSQueryDataSet, Boolean> pair =
             convertTsBlockByFetchSize(queryExecution, req.fetchSize);
@@ -1968,7 +2329,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
-        resp.setMoreData(finished);
+        resp.setMoreData(!finished);
         return resp;
       }
     } catch (Exception e) {
@@ -2493,43 +2854,43 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus testInsertTablet(TSInsertTabletReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertTablets(TSInsertTabletsReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecord(TSInsertRecordReq req) {
-    LOGGER.debug("Test insert row request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecord(TSInsertStringRecordReq req) {
-    LOGGER.debug("Test insert string record request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORD_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecords(TSInsertRecordsReq req) {
-    LOGGER.debug("Test insert row in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    LOGGER.debug("Test insert rows in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROWS_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecords(TSInsertStringRecordsReq req) {
-    LOGGER.debug("Test insert string records request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORDS_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -2806,7 +3167,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold(),
-              true);
+              true,
+              statement.isDebug());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -2823,7 +3185,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           try {
             tsBlock = queryExecution.getBatchResult();
           } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
+            throw new RuntimeException(DataNodeMiscMessages.FETCH_SCHEMA_FAILED, e);
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;
@@ -3038,24 +3400,58 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
-    return PipeDataNodeAgent.receiver()
-        .legacy()
-        .handshake(
-            info,
-            SESSION_MANAGER.getCurrSession().getClientAddress(),
-            partitionFetcher,
-            schemaFetcher);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .handshake(
+              info,
+              SESSION_MANAGER.getCurrSession().getClientAddress(),
+              partitionFetcher,
+              schemaFetcher);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
       throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TSStatus checkLegacyPipeReceiverPermission() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(clientSession.getUsername(), PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
   }
 
   @Override
@@ -3153,8 +3549,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
-        SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
-            == IClientSession.SqlDialect.TABLE);
+        SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect() == SqlDialect.TABLE);
     return resp;
   }
 
@@ -3182,12 +3577,174 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 AuditEventType.LOGOUT,
                 AuditLogOperation.CONTROL,
                 true),
-            () -> String.format("Session-%s is closing", session));
+            () -> String.format(DataNodeMiscMessages.SESSION_CLOSING, session));
       }
       closeSession(req);
     }
     PipeDataNodeAgent.receiver().thrift().handleClientExit();
     PipeDataNodeAgent.receiver().legacy().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
+  }
+
+  /**
+   * Executes tree-model Statement sub-statements in batch.
+   *
+   * @param statement the Statement to be executed
+   * @param queryId the query ID
+   * @param sessionInfo the session information
+   * @param statementStr the SQL statement string
+   * @param partitionFetcher the partition fetcher
+   * @param schemaFetcher the schema fetcher
+   * @param timeoutMs the timeout in milliseconds
+   * @return the execution result
+   */
+  private ExecutionResult executeBatchStatement(
+      final Statement statement,
+      final long queryId,
+      final SessionInfo sessionInfo,
+      final String statementStr,
+      final IPartitionFetcher partitionFetcher,
+      final ISchemaFetcher schemaFetcher,
+      final long timeoutMs,
+      final boolean userQuery) {
+
+    ExecutionResult result = null;
+    final List<? extends Statement> subStatements = statement.getSubStatements();
+    final int totalSubStatements = subStatements.size();
+    boolean debug = statement.isDebug();
+
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
+
+    for (int i = 0; i < totalSubStatements; i++) {
+      final Statement subStatement = subStatements.get(i);
+
+      LOGGER.info(
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TREE, i + 1, totalSubStatements, queryId);
+
+      result =
+          COORDINATOR.executeForTreeModel(
+              subStatement,
+              queryId,
+              sessionInfo,
+              statementStr,
+              partitionFetcher,
+              schemaFetcher,
+              timeoutMs,
+              userQuery,
+              debug);
+
+      // Exit early if any sub-statement execution fails
+      if (result != null
+          && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        final int completed = i + 1;
+        final int remaining = totalSubStatements - completed;
+        final double percentage = (completed * 100.0) / totalSubStatements;
+        LOGGER.warn(
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TREE,
+            i + 1,
+            totalSubStatements,
+            queryId,
+            completed,
+            remaining,
+            String.format("%.2f", percentage),
+            result.status.getMessage());
+        break;
+      }
+
+      LOGGER.info(
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TREE,
+          i + 1,
+          totalSubStatements,
+          queryId);
+    }
+
+    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
+    }
+
+    return result;
+  }
+
+  /**
+   * Executes table-model Statement sub-statements in batch.
+   *
+   * @param statement the Statement to be executed
+   * @param relationSqlParser the relational SQL parser
+   * @param clientSession the client session
+   * @param queryId the query ID
+   * @param sessionInfo the session information
+   * @param statementStr the SQL statement string
+   * @param metadata the metadata
+   * @param timeoutMs the timeout in milliseconds
+   * @return the execution result
+   */
+  private ExecutionResult executeBatchTableStatement(
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      final SqlParser relationSqlParser,
+      final IClientSession clientSession,
+      final long queryId,
+      final SessionInfo sessionInfo,
+      final String statementStr,
+      final Metadata metadata,
+      final long timeoutMs,
+      final boolean userQuery) {
+
+    ExecutionResult result = null;
+    List<? extends org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement>
+        subStatements = statement.getSubStatements();
+    int totalSubStatements = subStatements.size();
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
+
+    for (int i = 0; i < totalSubStatements; i++) {
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement subStatement =
+          subStatements.get(i);
+
+      LOGGER.info(
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TABLE, i + 1, totalSubStatements, queryId);
+
+      result =
+          COORDINATOR.executeForTableModel(
+              subStatement,
+              relationSqlParser,
+              clientSession,
+              queryId,
+              sessionInfo,
+              statementStr,
+              metadata,
+              timeoutMs,
+              userQuery,
+              statement.isDebug());
+
+      // Exit early if any sub-statement execution fails
+      if (result != null
+          && result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        final int completed = i + 1;
+        final int remaining = totalSubStatements - completed;
+        final double percentage = (completed * 100.0) / totalSubStatements;
+        LOGGER.warn(
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TABLE,
+            i + 1,
+            totalSubStatements,
+            queryId,
+            completed,
+            remaining,
+            String.format("%.2f", percentage),
+            result.status.getMessage());
+        break;
+      }
+
+      LOGGER.info(
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TABLE,
+          i + 1,
+          totalSubStatements,
+          queryId);
+    }
+
+    if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.info(
+          DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
+    }
+
+    return result;
   }
 }

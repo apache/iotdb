@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
@@ -28,23 +30,30 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.source.IoTDBNonDataRegionSource;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -53,10 +62,19 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -70,14 +88,22 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       new PipePlanTablePatternParseVisitor();
   public static final PipePlanTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
       new PipePlanTablePrivilegeParseVisitor();
-  private static final PipeStatementToPlanVisitor STATEMENT_TO_PLAN_VISITOR =
-      new PipeStatementToPlanVisitor();
+  private static final PipeTableStatementToPlanVisitor TABLE_STATEMENT_TO_PLAN_VISITOR =
+      new PipeTableStatementToPlanVisitor();
+  private static final PipeTreeStatementToPlanVisitor TREE_STATEMENT_TO_PLAN_VISITOR =
+      new PipeTreeStatementToPlanVisitor();
+  private final PipeTreeStatementToBatchVisitor batchVisitor =
+      new PipeTreeStatementToBatchVisitor();
 
+  // Local for exception
+  private PipePlanTreePrivilegeParseVisitor treePrivilegeParseVisitor;
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
   private String database;
+  private boolean isTableModel;
   private SRStatementGenerator generator;
+  private Iterator<Statement> remainBatches;
 
   @Override
   public void customize(
@@ -89,16 +115,19 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         .getSchemaRegionConsensusProtocolClass()
         .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       throw new PipeException(
-          "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
+          DataNodePipeMessages.IOTDBSCHEMAREGIONSOURCE_DOES_NOT_SUPPORT_TRANSFERRING_EVENTS_UNDER);
     }
 
     super.customize(parameters, configuration);
 
     schemaRegionId = new SchemaRegionId(regionId);
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+    treePrivilegeParseVisitor = new PipePlanTreePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeSchemaRegionSourceMetrics.getInstance().register(this);
-    PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    if (regionId >= 0) {
+      PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    }
   }
 
   @Override
@@ -123,7 +152,27 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     }
 
     database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
+    isTableModel = PathUtils.isTableModelDatabase(database);
     super.start();
+  }
+
+  @Override
+  protected void login(final @Nonnull String password) {
+    if (SessionManager.getInstance()
+            .login(
+                new InternalClientSession("Source_login_session_" + regionId),
+                userName,
+                password,
+                ZoneId.systemDefault().toString(),
+                SessionManager.CURRENT_RPC_VERSION,
+                IoTDBConstant.ClientVersion.V_1_0,
+                SqlDialect.TREE,
+                regionId >= 0)
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipePasswordCheckException(
+          String.format("Failed to check password for pipe %s.", pipeName));
+    }
   }
 
   @Override
@@ -141,7 +190,8 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     try {
       SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId, true);
     } catch (final ConsensusException e) {
-      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+      throw new PipeException(
+          DataNodePipeMessages.EXCEPTION_ENCOUNTERED_WHEN_TRIGGERING_SCHEMA_REGION_SNAPSHOT, e);
     }
   }
 
@@ -161,12 +211,23 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   @Override
   protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     try {
-      if (PathUtils.isTableModelDatabase(database)) {
+      if (isTableModel) {
         AuthorityChecker.getAccessControl()
             .checkCanSelectFromDatabase4Pipe(userName, database, userEntity);
+        return true;
       }
-      return true;
-    } catch (final AccessDeniedException e) {
+      return AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilege4Pipe(
+                  userEntity,
+                  Collections.singletonList(
+                      new PartialPath(
+                          database
+                              + TsFileConstant.PATH_SEPARATOR
+                              + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)),
+                  PrivilegeType.READ_SCHEMA)
+              .getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    } catch (final AccessDeniedException | IllegalPathException e) {
       return false;
     }
   }
@@ -189,22 +250,49 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected boolean hasNextEventInCurrentSnapshot() {
-    return Objects.nonNull(generator) && generator.hasNext();
+    return Objects.nonNull(generator) && generator.hasNext()
+        || Objects.nonNull(remainBatches) && remainBatches.hasNext();
   }
 
   @Override
   protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
-    // Currently only support table model event
+    if (isTableModel) {
+      return new PipeSchemaRegionWritePlanEvent(
+          TABLE_STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
+    }
+    while (generator.hasNext()) {
+      final Optional<Statement> statement =
+          batchVisitor.process((StatementNode) generator.next(), null);
+      if (statement.isPresent()) {
+        if (!generator.hasNext()) {
+          remainBatches =
+              batchVisitor.getRemainBatches().stream()
+                  .filter(Optional::isPresent)
+                  .map(Optional::get)
+                  .iterator();
+        }
+        return new PipeSchemaRegionWritePlanEvent(
+            TREE_STATEMENT_TO_PLAN_VISITOR.process(statement.get(), null), false);
+      }
+    }
+    if (Objects.isNull(remainBatches)) {
+      remainBatches =
+          batchVisitor.getRemainBatches().stream()
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .iterator();
+    }
     return new PipeSchemaRegionWritePlanEvent(
-        STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
+        TREE_STATEMENT_TO_PLAN_VISITOR.process(remainBatches.next(), null), false);
   }
 
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException {
     final Optional<PlanNode> result =
-        TABLE_PRIVILEGE_PARSE_VISITOR.process(
-            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity);
+        treePrivilegeParseVisitor
+            .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userEntity)
+            .flatMap(planNode -> TABLE_PRIVILEGE_PARSE_VISITOR.process(planNode, userEntity));
     if (result.isPresent()) {
       return Optional.of(
           new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
@@ -213,7 +301,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
       return Optional.empty();
     }
     throw new AccessDeniedException(
-        "Not has privilege to transfer event: "
+        DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT
             + ((PipeSchemaRegionWritePlanEvent) event).getPlanNode());
   }
 
@@ -225,7 +313,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         .flatMap(
             planNode ->
                 TABLE_PATTERN_PARSE_VISITOR
-                    .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), tablePattern)
+                    .process(planNode, tablePattern)
                     .map(
                         planNode1 ->
                             new PipeSchemaRegionWritePlanEvent(

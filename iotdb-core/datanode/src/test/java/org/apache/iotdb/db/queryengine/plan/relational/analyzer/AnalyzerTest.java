@@ -29,47 +29,50 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -80,6 +83,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -93,6 +97,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -104,6 +109,15 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScanWithoutEntryOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -131,7 +145,7 @@ public class AnalyzerTest {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           database,
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   Metadata metadata = new TestMetadata();
   WarningCollector warningCollector = NOOP;
   String sql;
@@ -143,6 +157,11 @@ public class AnalyzerTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
@@ -846,6 +865,46 @@ public class AnalyzerTest {
   }
 
   @Test
+  public void diffWithSubqueryOrderByTest() {
+    PlanTester planTester = new PlanTester();
+    String sqlWithOuterWhere =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") WHERE diff(s1) IS NOT NULL ORDER by time DESC";
+    planTester.createPlan(sqlWithOuterWhere);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(sort(filter(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    String sqlWithOuterHaving =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") GROUP BY time, tag1, s1 HAVING diff(s1) IS NOT NULL ORDER by time DESC";
+    planTester.createPlan(sqlWithOuterHaving);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(sort(filter(aggregation(mergeSort(exchange(), exchange(), exchange()))))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+
+    String sqlWithOuterOrderBy =
+        "SELECT time, tag1, s1 FROM ("
+            + "select * from table1 ORDER by time"
+            + ") ORDER by coalesce(diff(s1), -1000.0) DESC, time DESC";
+    planTester.createPlan(sqlWithOuterOrderBy);
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(project(sort(project(mergeSort(exchange(), exchange(), exchange()))))));
+    assertPlan(planTester.getFragmentPlan(1), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(2), sort(tableScan("testdb.table1")));
+    assertPlan(planTester.getFragmentPlan(3), sort(tableScan("testdb.table1")));
+  }
+
+  @Test
   public void predicatePushDownTest() {
     sql =
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' and tag3 is not null and attr1 like '_'"
@@ -1050,12 +1109,13 @@ public class AnalyzerTest {
     DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
     return new TestMetadata() {
       @Override
-      public Optional<TableSchema> validateTableHeaderSchema(
+      public Optional<TableSchema> validateTableHeaderSchema4TsFile(
           String database,
           TableSchema schema,
           MPPQueryContext context,
           boolean allowCreateTable,
-          boolean isStrictIdColumn) {
+          boolean isStrictTagColumn,
+          final AtomicBoolean needDecode4DifferentTimeColumn) {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);
@@ -1242,14 +1302,127 @@ public class AnalyzerTest {
     assertEquals(1, distributedQueryPlan.getInstances().size());
   }
 
+  @Test
+  public void fromFirstQueryTest() throws OperatorNotFoundException {
+    final String sqlSelectFirst = "SELECT * FROM table1";
+    final String sqlFromFirst = "FROM table1 SELECT *";
+
+    final Analysis analysisSelectFirst = analyzeSQL(sqlSelectFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorSelectFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanSelectFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorSelectFirst,
+                DEFAULT_WARNING)
+            .plan(analysisSelectFirst);
+    final PlanNode rootNodeSelectFirst = logicalQueryPlanSelectFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeSelectFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeSelectFirst).getChild();
+
+    final Analysis analysisFromFirst = analyzeSQL(sqlFromFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorFromFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanFromFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorFromFirst,
+                DEFAULT_WARNING)
+            .plan(analysisFromFirst);
+    final PlanNode rootNodeFromFirst = logicalQueryPlanFromFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeFromFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeFromFirst).getChild();
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getOutputColumnNames(),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getQualifiedObjectName(),
+        deviceTableScanNodeFromFirst.getQualifiedObjectName());
+  }
+
+  @Test
+  public void fromFirstImplicitSelectTest() throws OperatorNotFoundException {
+    final String sqlFromFirst = "FROM table1";
+    final String sqlSelectFirst = "SELECT * FROM table1";
+
+    final Analysis analysisFromFirst = analyzeSQL(sqlFromFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorFromFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanFromFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorFromFirst,
+                DEFAULT_WARNING)
+            .plan(analysisFromFirst);
+    final PlanNode rootNodeFromFirst = logicalQueryPlanFromFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeFromFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeFromFirst).getChild();
+
+    final Analysis analysisSelectFirst = analyzeSQL(sqlSelectFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorSelectFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanSelectFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorSelectFirst,
+                DEFAULT_WARNING)
+            .plan(analysisSelectFirst);
+    final PlanNode rootNodeSelectFirst = logicalQueryPlanSelectFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeSelectFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeSelectFirst).getChild();
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getOutputColumnNames(),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+
+    assertEquals(
+        Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+  }
+
+  @Test
+  public void fromFirstWithFilterTest() throws OperatorNotFoundException {
+    final String sql = "FROM table1 SELECT tag1, s1 WHERE s1 > 1";
+
+    final Analysis analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
+            .plan(analysis);
+
+    final PlanNode rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof DeviceTableScanNode);
+
+    final DeviceTableScanNode deviceTableScanNode =
+        (DeviceTableScanNode) rootNode.getChildren().get(0);
+
+    assertEquals(Arrays.asList("tag1", "s1"), deviceTableScanNode.getOutputColumnNames());
+
+    assertNotNull(deviceTableScanNode.getPushDownPredicate());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
+
+    assertEquals(
+        ImmutableSet.of("tag1", "s1"),
+        deviceTableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
+  }
+
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     Statement statement =
         sqlParser.createStatement(
             sql, ZoneId.systemDefault(), new InternalClientSession("testClient"));
     SessionInfo session =
-        new SessionInfo(
-            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb", SqlDialect.TABLE);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 
@@ -1261,7 +1434,8 @@ public class AnalyzerTest {
       final SessionInfo session) {
     try {
       final StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, nopAccessControl, new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
@@ -1285,7 +1459,8 @@ public class AnalyzerTest {
       final SqlParser sqlParser,
       final SessionInfo session) {
     final StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+        new StatementAnalyzerFactory(
+            metadata, sqlParser, nopAccessControl, new InternalTypeManager());
     Analyzer analyzer =
         new Analyzer(
             context,

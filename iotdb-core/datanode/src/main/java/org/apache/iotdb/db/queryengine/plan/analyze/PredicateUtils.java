@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -41,8 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.Convert
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -284,7 +284,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       ZoneId zoneId,
       TimeUnit currPrecision) {
     if (predicate == null) {
@@ -312,7 +312,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate,
       Map<String, Integer> measurementColumnsIndexMap,
       Map<Symbol, ColumnSchema> schemaMap,
       String timeColumnName,
@@ -442,7 +442,7 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushIntoScan(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression predicate) {
     return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .PredicatePushIntoScanChecker()
         .process(predicate, null);

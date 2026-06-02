@@ -67,13 +67,7 @@ public class TNonblockingTransportWrapper {
       String keyStorePwd,
       String trustStorePath,
       String trustStorePwd) {
-    try {
-      return new NettyTNonblockingTransport(
-          host, port, timeout, keyStorePath, keyStorePwd, trustStorePath, trustStorePwd);
-    } catch (TTransportException e) {
-      // never happen
-      return null;
-    }
+    throw new UnsupportedOperationException();
   }
 
   private TNonblockingTransportWrapper() {}

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -123,7 +124,7 @@ public class SubscriptionTopicAgent {
       handleDropTopicInternal(topicName);
       return null;
     } catch (final Exception e) {
-      LOGGER.warn("Exception occurred when dropping topic {}", topicName, e);
+      LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_TOPIC, topicName, e);
       final String exceptionMessage =
           String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       return new TPushTopicMetaRespExceptionMessage(
@@ -149,10 +150,12 @@ public class SubscriptionTopicAgent {
   public String getTopicFormat(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper
+              .getTopicMeta(topicName)
+              .getConfig()
+              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE)
+          : null;
     } finally {
       releaseReadLock();
     }
@@ -161,10 +164,12 @@ public class SubscriptionTopicAgent {
   public String getTopicMode(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper
+              .getTopicMeta(topicName)
+              .getConfig()
+              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE)
+          : null;
     } finally {
       releaseReadLock();
     }
@@ -174,6 +179,7 @@ public class SubscriptionTopicAgent {
     acquireReadLock();
     try {
       return topicNames.stream()
+          .filter(topicMetaKeeper::containsTopicMeta)
           .collect(
               Collectors.toMap(
                   topicName -> topicName,

@@ -259,13 +259,14 @@ public class SourceHandleTest {
             .collect(Collectors.toList()));
     try {
       Mockito.verify(spyMemoryPool, Mockito.timeout(10_000).times(6))
-          .reserve(
+          .reserveWithPriority(
               queryId,
               FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                   localFragmentInstanceId),
               localPlanNodeId,
               MOCK_TSBLOCK_SIZE,
-              maxBytesCanReserve);
+              maxBytesCanReserve,
+              false);
       Mockito.verify(mockClient, Mockito.timeout(10_0000).times(1))
           .getDataBlock(
               Mockito.argThat(

@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -60,12 +62,34 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<? extends PartialPath> getPaths();
 
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
-      final MPPQueryContext context) {
-    throw new UnsupportedOperationException("Method not implemented yet");
+  public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+      toRelationalStatement(final MPPQueryContext context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.METHOD_NOT_IMPLEMENTED_YET);
   }
 
   public String getPipeLoggingString() {
     return toString();
+  }
+
+  /**
+   * Checks whether this statement should be split into multiple sub-statements based on the given
+   * async requirement. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @param requireAsync whether async execution is required
+   * @return true if the statement should be split, false otherwise. Default implementation returns
+   *     false.
+   */
+  public boolean shouldSplit() {
+    return false;
+  }
+
+  /**
+   * Splits the current statement into multiple sub-statements. Used to limit resource consumption
+   * during statement analysis, etc.
+   *
+   * @return the list of sub-statements. Default implementation returns empty list.
+   */
+  public List<? extends Statement> getSubStatements() {
+    return Collections.emptyList();
   }
 }

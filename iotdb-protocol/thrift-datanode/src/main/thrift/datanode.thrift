@@ -332,6 +332,11 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateClusterTopologyReq {
+  1: required map<i32, common.TDataNodeLocation> dataNodes
+  2: required map<i32, set<i32>> topology
+}
+
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
@@ -471,6 +476,14 @@ struct TAlterEncodingCompressorReq {
   3: required bool ifExists
   4: optional byte encoding
   5: optional byte compressor
+}
+
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -671,6 +684,36 @@ struct TAuditLogReq {
 }
 
 /**
+* BEGIN: Data Partition Table Integrity Check Structures
+**/
+
+struct TGetEarliestTimeslotsResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> databaseToEarliestTimeslot
+}
+
+struct TGenerateDataPartitionTableReq {
+  1: required set<string> databases
+}
+
+struct TGenerateDataPartitionTableResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+}
+
+struct TGenerateDataPartitionTableHeartbeatResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+  4: optional list<binary> databaseScopedDataPartitionTables
+}
+
+/**
+* END: Data Partition Table Integrity Check Structures
+**/
+
+/**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
 struct TOperatorStatistics{
@@ -741,6 +784,13 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
+
+  49: i64 timeSeriesIndexFilteredRows
+  50: i64 chunkIndexFilteredRows
+  51: i64 pageIndexFilteredRows
+  52: i64 rowScanFilteredRows
 }
 
 
@@ -1011,6 +1061,11 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
@@ -1085,6 +1140,11 @@ service IDataNodeRPCService {
    * Alter matched timeseries to specific encoding and compressor in target schemaRegions
    */
   common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1211,7 +1271,6 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
-
   /**
    * Construct table device black list
    */
@@ -1250,6 +1309,12 @@ service IDataNodeRPCService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 
+  /**
+   * Push cluster topology to this DataNode.
+   * Each DataNode receives only its own reachable set.
+   */
+  common.TSStatus updateClusterTopology(1:TUpdateClusterTopologyReq req)
+
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 
@@ -1257,6 +1322,30 @@ service IDataNodeRPCService {
    * Write an audit log entry to the DataNode's AuditEventLogger
    */
   common.TSStatus writeAuditLog(TAuditLogReq req);
+
+  /**
+  * BEGIN: Data Partition Table Integrity Check
+  **/
+
+  /**
+   * Get earliest timeslot information from DataNode
+   * Returns map of database name to earliest timeslot id
+   */
+  TGetEarliestTimeslotsResp getEarliestTimeslots()
+
+  /**
+   * Request DataNode to generate DataPartitionTable by scanning tsfile resources
+   */
+  TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Check the status of DataPartitionTable generation task
+   */
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+  * END: Data Partition Table Integrity Check
+  **/
 }
 
 service MPPDataExchangeService {

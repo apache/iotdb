@@ -21,8 +21,11 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -42,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
@@ -54,7 +58,6 @@ public class PipeTaskCoordinator {
   private final PipeTaskInfo pipeTaskInfo;
 
   private final PipeTaskCoordinatorLock pipeTaskCoordinatorLock;
-  private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
@@ -69,12 +72,7 @@ public class PipeTaskCoordinator {
    *     null if the lock is not acquired.
    */
   public AtomicReference<PipeTaskInfo> tryLock() {
-    if (pipeTaskCoordinatorLock.tryLock()) {
-      pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-      return pipeTaskInfoHolder;
-    }
-
-    return null;
+    return pipeTaskCoordinatorLock.tryLock() ? new AtomicReference<>(pipeTaskInfo) : null;
   }
 
   /**
@@ -85,31 +83,15 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-    return pipeTaskInfoHolder;
+    return new AtomicReference<>(pipeTaskInfo);
   }
 
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
-   *
-   * @return {@code true} if successfully unlocked, {@code false} if current thread is not holding
-   *     the lock.
    */
-  public boolean unlock() {
-    if (pipeTaskInfoHolder != null) {
-      pipeTaskInfoHolder.set(null);
-      pipeTaskInfoHolder = null;
-    }
-
-    try {
-      pipeTaskCoordinatorLock.unlock();
-      return true;
-    } catch (IllegalMonitorStateException ignored) {
-      // This is thrown if unlock() is called without lock() called first.
-      LOGGER.warn("This thread is not holding the lock.");
-      return false;
-    }
+  public void unlock() {
+    pipeTaskCoordinatorLock.unlock();
   }
 
   public boolean isLocked() {
@@ -125,7 +107,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().createPipe(req);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_CREATE_PIPE_RESULT_STATUS, req.getPipeName(), status);
     }
     return status;
   }
@@ -145,7 +127,7 @@ public class PipeTaskCoordinator {
     }
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_ALTER_PIPE_RESULT_STATUS, req.getPipeName(), status);
     }
     return status;
   }
@@ -159,7 +141,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().startPipe(pipeName);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to start pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_START_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -178,25 +160,14 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus stopPipe(String pipeName) {
-    final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
     final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().stopConsensusPipe(pipeName);
     } else {
       status = configManager.getProcedureManager().stopPipe(pipeName);
     }
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (isStoppedByRuntimeException) {
-        // Even if the return status is success, it doesn't imply the success of the
-        // `executeFromOperateOnDataNodes` phase of stopping pipe. However, we still need to set
-        // `isStoppedByRuntimeException` to false to avoid auto-restart. Meanwhile,
-        // `isStoppedByRuntimeException` does not need to be synchronized with DNs.
-        LOGGER.info("Pipe {} has stopped manually, stop its auto restart process.", pipeName);
-        pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
-        configManager.getProcedureManager().pipeHandleMetaChange(true, false);
-      }
-    } else {
-      LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(ManagerMessages.FAILED_TO_STOP_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -233,7 +204,7 @@ public class PipeTaskCoordinator {
       status = configManager.getProcedureManager().dropPipe(pipeName);
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
+      LOGGER.warn(ManagerMessages.FAILED_TO_DROP_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
   }
@@ -244,7 +215,7 @@ public class PipeTaskCoordinator {
           .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
@@ -256,7 +227,7 @@ public class PipeTaskCoordinator {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
     } catch (IOException | ConsensusException e) {
-      LOGGER.warn("Failed to get all pipe info.", e);
+      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO, e);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());
@@ -265,6 +236,10 @@ public class PipeTaskCoordinator {
 
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
+  }
+
+  public Map<String, PipeStatus> getConsensusPipeStatusMap() {
+    return pipeTaskInfo.getConsensusPipeStatusMap();
   }
 
   /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */

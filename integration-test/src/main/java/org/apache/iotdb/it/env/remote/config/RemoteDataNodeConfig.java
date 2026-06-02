@@ -93,4 +93,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    return this;
+  }
 }

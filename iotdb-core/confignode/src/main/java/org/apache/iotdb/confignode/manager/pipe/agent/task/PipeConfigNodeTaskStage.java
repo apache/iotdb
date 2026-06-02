@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Map;
@@ -32,9 +33,9 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
   public PipeConfigNodeTaskStage(
       final String pipeName,
       final long creationTime,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> connectorAttributes,
+      final Map<String, String> sinkAttributes,
       final PipeTaskMeta pipeTaskMeta) {
 
     try {
@@ -42,14 +43,16 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
           new PipeConfigNodeSubtask(
               pipeName,
               creationTime,
-              extractorAttributes,
+              sourceAttributes,
               processorAttributes,
-              connectorAttributes,
+              sinkAttributes,
               pipeTaskMeta);
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
-              "Failed to create subtask for pipe %s, creation time %d", pipeName, creationTime),
+              ManagerMessages.FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME,
+              pipeName,
+              creationTime),
           e);
     }
   }

@@ -111,34 +111,6 @@ IF DEFINED CONFIG_FILE (
   set cn_consensus_port=10720
 )
 
-echo Check whether the ports are occupied....
-set occupied=0
-set cn_internal_port_occupied=0
-set cn_consensus_port_occupied=0
-for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
-    if %%i==TCP (
-       if %%j==%cn_internal_port% (
-         if !cn_internal_port_occupied!==0 (
-           echo The cn_internal_port %cn_internal_port% is already occupied, pid:%%k
-           set occupied=1
-           set cn_internal_port_occupied=1
-         )
-       ) else if %%j==%cn_consensus_port% (
-         if !cn_consensus_port_occupied!==0 (
-           echo The cn_consensus_port %cn_consensus_port% is already occupied, pid:%%k
-           set occupied=1
-           set cn_consensus_port_occupied=1
-         )
-       )
-    )
-)
-
-if %occupied%==1 (
-  echo There exists occupied port, please change the configuration.
-  TIMEOUT /T 10 /NOBREAK
-  exit 0
-)
-
 set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.confignode.service.ConfigNode
 if NOT DEFINED JAVA_HOME goto :err

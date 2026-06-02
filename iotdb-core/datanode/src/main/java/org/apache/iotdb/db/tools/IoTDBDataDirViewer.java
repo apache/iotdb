@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -51,7 +52,7 @@ public class IoTDBDataDirViewer {
       data_dir = args[0].split(",");
       outFile = args[1];
     } else {
-      throw new IOException("Invalid parameters. Please check the user guide.");
+      throw new IOException(DataNodeMiscMessages.INVALID_PARAMETERS_CHECK_USER_GUIDE);
     }
     System.out.println("output save path:" + outFile);
     System.out.println("data dir num:" + data_dir.length);

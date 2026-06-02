@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.block.column.Column;
@@ -167,6 +167,10 @@ public abstract class InsertTabletStatementGenerator implements Accountable {
 
   public boolean isEmpty() {
     return rowCount == 0;
+  }
+
+  public int getRowCount() {
+    return rowCount;
   }
 
   public String getDevice() {

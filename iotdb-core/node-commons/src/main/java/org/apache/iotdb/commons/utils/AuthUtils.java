@@ -21,8 +21,11 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.AuthMessages;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -144,13 +147,63 @@ public class AuthUtils {
   }
 
   /**
-   * Validate username
+   * Validate username string (length, allowed characters) only, without {@code __} rules.
    *
    * @param username username
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
     validateName(username);
+  }
+
+  /**
+   * Usernames for built-in users created with a fixed id via {@code tryToCreateBuiltinUser}: the
+   * default superuser (id {@link IoTDBConstant#SUPER_USER_ID}) and the three separation-of-duties
+   * admins (ids {@link User#INTERNAL_SYSTEM_ADMIN}, {@link User#INTERNAL_SECURITY_ADMIN}, {@link
+   * User#INTERNAL_AUDIT_ADMIN}) may use any valid name; all other internal ids must use a name with
+   * prefix {@link User#BUILTIN_USERNAME_PREFIX}.
+   */
+  public static void validateInternalBuiltinUsername(String username, long userId)
+      throws AuthException {
+    validateName(username);
+    if (userId == IoTDBConstant.SUPER_USER_ID) {
+      return;
+    }
+    if (userId == User.INTERNAL_SYSTEM_ADMIN
+        || userId == User.INTERNAL_SECURITY_ADMIN
+        || userId == User.INTERNAL_AUDIT_ADMIN) {
+      return;
+    }
+    if (!User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "Internal user names (except the default superuser and separation-of-duties admins) must "
+              + "start with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\"");
+    }
+  }
+
+  /**
+   * Validate a login name that is being <b>newly assigned</b>: {@code CREATE USER}, or the target
+   * name of {@code RENAME USER}. Same as {@link #validateName(String)} plus disallows the {@link
+   * User#BUILTIN_USERNAME_PREFIX} prefix. Existing accounts that already use a {@code __} name are
+   * unchanged; they may keep using it, but cannot {@code RENAME} to another {@code __}-prefixed
+   * name.
+   *
+   * @param username username
+   * @throws AuthException contains message why username is invalid
+   */
+  public static void validateNewUserUsername(String username) throws AuthException {
+    validateName(username);
+    if (User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "User names starting with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\" are reserved for system use and cannot be used for new users or as a rename "
+              + "target");
+    }
   }
 
   /**
@@ -174,7 +227,8 @@ public class AuthUtils {
           TSStatusCode.ILLEGAL_PASSWORD,
           "The length of name must be less than or equal to " + NAME_MAX_LENGTH);
     } else if (str.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, "The name cannot contain spaces");
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.NAME_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
@@ -193,7 +247,8 @@ public class AuthUtils {
           TSStatusCode.ILLEGAL_PASSWORD,
           "The length of password must be less than or equal to " + PASSWORD_MAX_LENGTH);
     } else if (str.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, "The password cannot contain spaces");
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
@@ -474,7 +529,7 @@ public class AuthUtils {
         path.serialize(dataOutputStream);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize PartialPath list", e);
+      LOGGER.error(UtilMessages.FAILED_TO_SERIALIZE_PARTIAL_PATH_LIST, e);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -519,8 +574,8 @@ public class AuthUtils {
         return PrivilegeType.AUDIT;
       default:
         // Not reach here.
-        LOGGER.warn("Not support position");
-        throw new RuntimeException("Not support position");
+        LOGGER.warn(UtilMessages.UNSUPPORTED_POSITION);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -602,7 +657,7 @@ public class AuthUtils {
       case WRITE_SCHEMA:
         return 3;
       default:
-        throw new RuntimeException("Not support PrivilegeType " + pri);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_PRIVILEGE_TYPE + pri);
     }
   }
 
@@ -621,7 +676,7 @@ public class AuthUtils {
       case 5:
         return PrivilegeType.DELETE;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -640,7 +695,7 @@ public class AuthUtils {
       case DELETE:
         return 5;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 }

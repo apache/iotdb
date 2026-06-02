@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -61,7 +62,7 @@ public class TTLManager {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
     if (ttl < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
-      errorStatus.setMessage("The TTL should be positive.");
+      errorStatus.setMessage(ConfigNodeMessages.THE_TTL_SHOULD_BE_POSITIVE);
       return errorStatus;
     }
     SetTTLPlan setTTLPlan =
@@ -83,7 +84,7 @@ public class TTLManager {
     }
     if (setTTLPlan.getTTL() < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
-      errorStatus.setMessage("The TTL should be positive.");
+      errorStatus.setMessage(ConfigNodeMessages.THE_TTL_SHOULD_BE_POSITIVE);
       return errorStatus;
     }
 
@@ -113,7 +114,7 @@ public class TTLManager {
     try {
       return configManager.getConsensusManager().read(showTTLPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
       ShowTTLResp resp = new ShowTTLResp();
@@ -126,8 +127,26 @@ public class TTLManager {
     return ((ShowTTLResp) showTTL(new ShowTTLPlan())).getPathTTLMap();
   }
 
+  public long getTTL(final String[] pathPattern) {
+    return ttlInfo.getTTL(pathPattern);
+  }
+
   public int getTTLCount() {
     return ttlInfo.getTTLCount();
+  }
+
+  /**
+   * Get the maximum ttl of the corresponding database level.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the corresponding database level.
+   */
+  public long getDatabaseLevelTTL(final String database) {
+    final long ttl = ttlInfo.getDatabaseLevelTTL(database);
+    return ttl == Long.MAX_VALUE || ttl < 0
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /**

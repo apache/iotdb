@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -32,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -190,12 +192,16 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitSetViewComment((SetViewCommentPlan) plan, context);
       case SetTableColumnComment:
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
+      case AlterColumnDataType:
+        return visitAlterColumnDataType((AlterColumnDataTypePlan) plan, context);
       case RenameTable:
         return visitRenameTable((RenameTablePlan) plan, context);
       case RenameView:
         return visitRenameView((RenameViewPlan) plan, context);
       case PipeAlterEncodingCompressor:
         return visitPipeAlterEncodingCompressor((PipeAlterEncodingCompressorPlan) plan, context);
+      case PipeAlterTimeSeries:
+        return visitPipeAlterTimeSeries((PipeAlterTimeSeriesPlan) plan, context);
       default:
         return visitPlan(plan, context);
     }
@@ -511,5 +517,15 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitPipeAlterEncodingCompressor(
       final PipeAlterEncodingCompressorPlan pipeAlterEncodingCompressorPlan, final C context) {
     return visitPlan(pipeAlterEncodingCompressorPlan, context);
+  }
+
+  public R visitPipeAlterTimeSeries(
+      final PipeAlterTimeSeriesPlan pipeAlterTimeSeriesPlan, final C context) {
+    return visitPlan(pipeAlterTimeSeriesPlan, context);
+  }
+
+  public R visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
+    return visitPlan(alterColumnDataTypePlan, context);
   }
 }

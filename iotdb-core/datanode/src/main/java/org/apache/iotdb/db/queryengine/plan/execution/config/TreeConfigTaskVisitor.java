@@ -22,15 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterTimeSeriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -68,13 +69,18 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTrainingTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateTuningTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.LoadModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAIDevicesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowLoadedModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.UnloadModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.CreateExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.DropExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StartExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StopExternalServiceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -100,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataPartitionTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
@@ -126,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -157,6 +165,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -202,6 +215,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
@@ -215,7 +229,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -239,7 +252,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitStatement(Statement statement, MPPQueryContext context) {
-    throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CONFIGTASK_IS_NOT_IMPLEMENTED_FOR + statement);
   }
 
   @Override
@@ -329,20 +343,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   private void visitUpdateUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
-    statement.setPassWord(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(
-        statement.getAssociatedUsedId(), statement.getNewPassword());
+    statement.setPassWord(
+        AuthorityChecker.getAuthorityFetcher()
+            .getUser(statement.getUserName(), true)
+            .getPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
+    AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName(), true);
   }
 
   @Override
@@ -378,6 +386,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, MPPQueryContext context) {
     return new StartRepairDataTask(startRepairDataStatement);
+  }
+
+  @Override
+  public IConfigTask visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
+    return new RepairDataPartitionTableTask();
   }
 
   @Override
@@ -455,6 +469,37 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowTriggers(
       ShowTriggersStatement showTriggersStatement, MPPQueryContext context) {
     return new ShowTriggersTask();
+  }
+
+  @Override
+  public IConfigTask visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, MPPQueryContext context) {
+    return new CreateExternalServiceTask(createExternalServiceStatement);
+  }
+
+  @Override
+  public IConfigTask visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, MPPQueryContext context) {
+    return new StartExternalServiceTask(startExternalServiceStatement.getServiceName());
+  }
+
+  @Override
+  public IConfigTask visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, MPPQueryContext context) {
+    return new StopExternalServiceTask(stopExternalServiceStatement.getServiceName());
+  }
+
+  @Override
+  public IConfigTask visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, MPPQueryContext context) {
+    return new DropExternalServiceTask(
+        dropExternalServiceStatement.getServiceName(), dropExternalServiceStatement.isForcedly());
+  }
+
+  @Override
+  public IConfigTask visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, MPPQueryContext context) {
+    return new ShowExternalServiceTask(showExternalServiceStatement.getDataNodeId());
   }
 
   @Override
@@ -573,7 +618,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipes(
       ShowPipesStatement showPipesStatement, MPPQueryContext context) {
-    return new ShowPipeTask(showPipesStatement);
+    return new ShowPipeTask(showPipesStatement, context.getUsername());
   }
 
   @Override
@@ -584,33 +629,33 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitCreatePipe(
       final CreatePipeStatement createPipeStatement, final MPPQueryContext context) {
-    for (final String ExtractorAttribute : createPipeStatement.getExtractorAttributes().keySet()) {
-      if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
+    for (final String sourceAttribute : createPipeStatement.getSourceAttributes().keySet()) {
+      if (sourceAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), ExtractorAttribute));
+                createPipeStatement.getPipeName(), sourceAttribute));
       }
-      if (ExtractorAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
+      if (sourceAttribute.startsWith(SystemConstant.AUDIT_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
                 "Failed to create pipe %s, setting %s is not allowed.",
-                createPipeStatement.getPipeName(), ExtractorAttribute));
+                createPipeStatement.getPipeName(), sourceAttribute));
       }
     }
 
-    // Inject tree model into the extractor attributes
+    // Inject tree model into the source attributes
     createPipeStatement
-        .getExtractorAttributes()
+        .getSourceAttributes()
         .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
     checkAndEnrichSourceUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getExtractorAttributes(),
+        createPipeStatement.getSourceAttributes(),
         new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
         false);
     checkAndEnrichSinkUser(
         createPipeStatement.getPipeName(),
-        createPipeStatement.getConnectorAttributes(),
+        createPipeStatement.getSinkAttributes(),
         context.getSession().getUserEntity(),
         false);
 
@@ -621,8 +666,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterPipe(
       final AlterPipeStatement alterPipeStatement, final MPPQueryContext context) {
 
-    for (final String extractorAttributeKey :
-        alterPipeStatement.getExtractorAttributes().keySet()) {
+    for (final String extractorAttributeKey : alterPipeStatement.getSourceAttributes().keySet()) {
       if (extractorAttributeKey.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -641,24 +685,23 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterPipeStatement.setUserName(userName);
 
     final String pipeName = alterPipeStatement.getPipeName();
-    final Map<String, String> extractorAttributes = alterPipeStatement.getExtractorAttributes();
+    final Map<String, String> sourceAttributes = alterPipeStatement.getSourceAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
-    if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-      extractorAttributes.put(
-          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    if (alterPipeStatement.isReplaceAllSourceAttributes()) {
+      sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
       checkAndEnrichSourceUser(
           pipeName,
-          extractorAttributes,
+          sourceAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
     }
 
-    if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
+    if (alterPipeStatement.isReplaceAllSinkAttributes()) {
       checkAndEnrichSinkUser(
           pipeName,
-          alterPipeStatement.getConnectorAttributes(),
+          alterPipeStatement.getSinkAttributes(),
           context.getSession().getUserEntity(),
           true);
     }
@@ -740,6 +783,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     return new AlterLogicalViewTask(alterLogicalViewStatement, context);
+  }
+
+  @Override
+  public IConfigTask visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, MPPQueryContext context) {
+    return new AlterTimeSeriesTask(context.getQueryId().getId(), alterTimeSeriesDataTypeStatement);
   }
 
   @Override
@@ -926,7 +975,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     for (PartialPath partialPath : partialPathList) {
       targetPathPatterns.add(partialPath.getFullPath());
     }
-    return new CreateTrainingTask(
+    return new CreateTuningTask(
         createTrainingStatement.getModelId(),
         createTrainingStatement.getParameters(),
         createTrainingStatement.getTargetTimeRanges(),

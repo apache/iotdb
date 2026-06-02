@@ -15,10 +15,25 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import multiprocessing
 import sys
 
+# PyInstaller multiprocessing support
+# freeze_support() is essential for PyInstaller frozen executables on all platforms
+# It detects if the current process is a multiprocessing child process
+# If it is, it executes the child process target function and exits
+# If it's not, it returns immediately and continues with main() execution
+# This prevents child processes from executing the main application logic
+if getattr(sys, "frozen", False):
+    # Call freeze_support() for both standard multiprocessing and torch.multiprocessing
+    multiprocessing.freeze_support()
+    multiprocessing.set_start_method("spawn", force=True)
+
 import torch.multiprocessing as mp
+
+mp.freeze_support()
+mp.set_start_method("spawn", force=True)
 
 from iotdb.ainode.core.ai_node import AINode
 from iotdb.ainode.core.log import Logger
@@ -42,7 +57,6 @@ def main():
     command = arguments[1]
     if command == "start":
         try:
-            mp.set_start_method("spawn", force=True)
             logger.info(f"Current multiprocess start method: {mp.get_start_method()}")
             logger.info("IoTDB-AINode is starting...")
             ai_node = AINode()
@@ -55,15 +69,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # PyInstaller multiprocessing support
-    # freeze_support() is essential for PyInstaller frozen executables on all platforms
-    # It detects if the current process is a multiprocessing child process
-    # If it is, it executes the child process target function and exits
-    # If it's not, it returns immediately and continues with main() execution
-    # This prevents child processes from executing the main application logic
-    if getattr(sys, "frozen", False):
-        # Call freeze_support() for both standard multiprocessing and torch.multiprocessing
-        multiprocessing.freeze_support()
-        mp.freeze_support()
-
     main()

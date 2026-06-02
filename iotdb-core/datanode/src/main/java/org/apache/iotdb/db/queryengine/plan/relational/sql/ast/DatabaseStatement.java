@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Locale;
@@ -84,5 +89,13 @@ public abstract class DatabaseStatement extends Statement {
     return Objects.equals(dbName, o.dbName)
         && Objects.equals(exists, o.exists)
         && Objects.equals(properties, o.properties);
+  }
+
+  protected long ramBytesUsedForCommonFields() {
+    long size = 0;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(dbName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
+    return size;
   }
 }

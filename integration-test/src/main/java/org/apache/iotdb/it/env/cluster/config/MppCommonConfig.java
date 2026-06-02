@@ -198,8 +198,14 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", iotConsensusV2Mode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    setProperty("region_group_allocate_policy", regionGroupAllocatePolicy);
     return this;
   }
 
@@ -574,11 +580,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
-    return this;
-  }
-
   @Override
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     setProperty("default_database_level", String.valueOf(defaultDatabaseLevel));
@@ -648,6 +649,30 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
     setProperty("auditable_operation_result", auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    setProperty("restrict_object_limit", String.valueOf(restrictObjectLimit));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    setProperty("cte_buffer_size_in_bytes", String.valueOf(cteBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    setProperty("max_rows_in_cte_buffer", String.valueOf(maxRows));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    setProperty("enable_topology_probing", String.valueOf(enableTopologyProbing));
     return this;
   }
 

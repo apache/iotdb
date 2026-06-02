@@ -31,21 +31,21 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
 
   public SubscriptionTaskSinkStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeConnectorParameters,
-      int regionId,
-      PipeSinkSubtaskExecutor executor) {
-    super(pipeName, creationTime, pipeConnectorParameters, regionId, () -> executor);
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeSinkParameters,
+      final int regionId,
+      final PipeSinkSubtaskExecutor executor) {
+    super(pipeName, creationTime, pipeSinkParameters, regionId, () -> executor);
   }
 
   @Override
   protected void registerSubtask() {
-    this.connectorSubtaskId =
+    this.sinkSubtaskId =
         SubscriptionSinkSubtaskManager.instance()
             .register(
                 executor.get(),
-                pipeConnectorParameters,
+                pipeSinkParameters,
                 new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
   }
 
@@ -56,22 +56,21 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    SubscriptionSinkSubtaskManager.instance().start(connectorSubtaskId);
+    SubscriptionSinkSubtaskManager.instance().start(sinkSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    SubscriptionSinkSubtaskManager.instance().stop(connectorSubtaskId);
+    SubscriptionSinkSubtaskManager.instance().stop(sinkSubtaskId);
   }
 
   @Override
   public void dropSubtask() throws PipeException {
     SubscriptionSinkSubtaskManager.instance()
-        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
+        .deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
-  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
-    return SubscriptionSinkSubtaskManager.instance()
-        .getPipeConnectorPendingQueue(connectorSubtaskId);
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
+    return SubscriptionSinkSubtaskManager.instance().getPipeConnectorPendingQueue(sinkSubtaskId);
   }
 }

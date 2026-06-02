@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -44,10 +46,12 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.iot.IoTConsensusServerImpl.SNAPSHOT_DIR_NAME;
@@ -338,5 +342,79 @@ public class IoTDBSnapshotTest {
         snapshotFile.getAbsolutePath());
 
     Assert.assertTrue(snapshotFile.getParentFile().exists());
+  }
+
+  /**
+   * Ensure snapshot-related files with the same fileKey are placed into the same data directory
+   * even when hard link succeeds and the method returns early.
+   */
+  @Test
+  public void testFileTargetRecordedWhenHardLinkSuccess() throws Exception {
+    // snapshot source dir
+    File snapshotDir = new File("target/test/snapshot-hardlink");
+    if (snapshotDir.exists()) {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+    }
+    Assert.assertTrue(snapshotDir.mkdirs());
+
+    // same fileKey
+    File tsFile = new File(snapshotDir, "1-1-0-0.tsfile");
+    File resFile = new File(snapshotDir, "1-1-0-0.resource");
+    File modsFile = new File(snapshotDir, "1-1-0-0.mods");
+
+    Assert.assertTrue(tsFile.createNewFile());
+    Assert.assertTrue(resFile.createNewFile());
+    Assert.assertTrue(modsFile.createNewFile());
+
+    File[] files = new File[] {tsFile, resFile, modsFile};
+
+    // data dirs
+    String[] dataDirs =
+        new String[] {"target/test/data1", "target/test/data2", "target/test/data3"};
+
+    for (String dir : dataDirs) {
+      File base = new File(dir);
+      if (base.exists()) {
+        FileUtils.recursivelyDeleteFolder(base.getAbsolutePath());
+      }
+      Assert.assertTrue(base.mkdirs());
+    }
+
+    FolderManager folderManager =
+        new FolderManager(Arrays.asList(dataDirs), DirectoryStrategyType.SEQUENCE_STRATEGY);
+
+    String targetSuffix = "sequence/root.testsg/0/0";
+
+    Method method =
+        SnapshotLoader.class.getDeclaredMethod(
+            "createLinksFromSnapshotToSourceDir", String.class, File[].class, FolderManager.class);
+    method.setAccessible(true);
+
+    SnapshotLoader loader = new SnapshotLoader("dummy", "root.testsg", "0");
+
+    method.invoke(loader, targetSuffix, files, folderManager);
+
+    // verify: only ONE dir contains all three files
+    int hitDirCount = 0;
+
+    for (String dir : dataDirs) {
+      File targetDir = new File(dir + "/" + targetSuffix);
+      if (!targetDir.exists()) {
+        continue;
+      }
+
+      boolean ts = new File(targetDir, tsFile.getName()).exists();
+      boolean res = new File(targetDir, resFile.getName()).exists();
+      boolean mods = new File(targetDir, modsFile.getName()).exists();
+
+      if (ts || res || mods) {
+        hitDirCount++;
+        Assert.assertTrue(ts);
+        Assert.assertTrue(res);
+        Assert.assertTrue(mods);
+      }
+    }
+
+    Assert.assertEquals(1, hitDirCount);
   }
 }

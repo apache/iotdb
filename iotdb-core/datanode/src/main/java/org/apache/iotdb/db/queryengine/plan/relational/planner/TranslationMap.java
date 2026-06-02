@@ -19,23 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 
 import com.google.common.collect.ImmutableMap;
@@ -60,8 +62,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware
  * boundary.
  *
  * <p>AST and IR expressions use the same class hierarchy ({@link
- * org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression}, but differ in the following
- * ways:
+ * org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression}, but differ in the
+ * following ways:
  * <li>AST expressions contain Identifiers, while IR expressions contain SymbolReferences
  * <li>FunctionCalls in AST expressions are SQL function names. In IR expressions, they contain an
  *     encoded name representing a resolved function
@@ -317,9 +319,12 @@ public class TranslationMap {
                   getSymbolForColumn(node)
                       .map(Symbol::toSymbolReference)
                       .orElseThrow(
-                          () -> new IllegalStateException(format("No mapping for %s", node))));
+                          () ->
+                              new IllegalStateException(
+                                  format(DataNodeQueryMessages.NO_MAPPING_FOR_S, node))));
             } else {
-              throw new IllegalStateException("Subscript is not supported in current version");
+              throw new IllegalStateException(
+                  DataNodeQueryMessages.SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION);
             }
           }
 

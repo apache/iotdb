@@ -38,6 +38,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
@@ -52,15 +53,16 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private final String seedConfigNode;
   private final int clusterIngressPort;
 
-  private static final String SCRIPT_FILE = "start-ainode.sh";
+  private static final String START_SCRIPT_FILE = "start-ainode.sh";
+  private static final String STOP_SCRIPT_FILE = "stop-ainode.sh";
 
   private static final String SHELL_COMMAND = "bash";
 
   private static final String PROPERTIES_FILE = "iotdb-ainode.properties";
   public static final String CONFIG_PATH = "conf";
   public static final String SCRIPT_PATH = "sbin";
-  public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/weights";
-  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models/weights";
+  public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/builtin";
+  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models";
 
   private void replaceAttribute(String[] keys, String[] values, String filePath) {
     Properties props = new Properties();
@@ -129,44 +131,60 @@ public class AINodeWrapper extends AbstractNodeWrapper {
           },
           propertiesFile);
 
-      // copy built-in LTSM
+      // Link built-in LTSM weights from the runner-wide cache. These can be hundreds of MB to
+      // multiple GB; copying them per fork dominates IT startup. Symlinks share read-only weights
+      // across forks; we fall back to a copy on platforms / filesystems that reject symlinks.
       String builtInModelPath = filePrefix + File.separator + BUILT_IN_MODEL_PATH;
-      new File(builtInModelPath).mkdirs();
+      File builtInModelDir = new File(builtInModelPath);
       try {
-        if (new File(builtInModelPath).exists()) {
-          PathUtils.deleteDirectory(Paths.get(builtInModelPath));
+        if (builtInModelDir.exists()) {
+          PathUtils.deleteDirectory(builtInModelDir.toPath());
         }
       } catch (NoSuchFileException e) {
         // ignored
       }
-      try (Stream<Path> s = Files.walk(Paths.get(CACHE_BUILT_IN_MODEL_PATH))) {
-        s.forEach(
-            source -> {
-              Path destination =
-                  Paths.get(
-                      builtInModelPath,
-                      source.toString().substring(CACHE_BUILT_IN_MODEL_PATH.length()));
-              logger.info("AINode copying model weights from {} to {}", source, destination);
-              try {
-                Files.copy(
-                    source,
-                    destination,
-                    LinkOption.NOFOLLOW_LINKS,
-                    StandardCopyOption.COPY_ATTRIBUTES);
-              } catch (IOException e) {
-                logger.error("AINode got error copying model weights", e);
-                throw new RuntimeException(e);
-              }
-            });
-      } catch (Exception e) {
-        logger.error("AINode got error copying model weights", e);
+      Path cacheRoot = Paths.get(CACHE_BUILT_IN_MODEL_PATH);
+      Path destRoot = builtInModelDir.toPath();
+      builtInModelDir.getParentFile().mkdirs();
+      try {
+        Files.createSymbolicLink(destRoot, cacheRoot);
+        logger.info("AINode symlinked model weights {} -> {}", destRoot, cacheRoot);
+      } catch (UnsupportedOperationException | IOException symlinkErr) {
+        logger.warn(
+            "AINode failed to symlink {} -> {} ({}), falling back to copy",
+            destRoot,
+            cacheRoot,
+            symlinkErr.toString());
+        builtInModelDir.mkdirs();
+        try (Stream<Path> s = Files.walk(cacheRoot)) {
+          s.forEach(
+              source -> {
+                Path destination =
+                    Paths.get(
+                        builtInModelPath,
+                        source.toString().substring(CACHE_BUILT_IN_MODEL_PATH.length()));
+                logger.info("AINode copying model weights from {} to {}", source, destination);
+                try {
+                  Files.copy(
+                      source,
+                      destination,
+                      LinkOption.NOFOLLOW_LINKS,
+                      StandardCopyOption.COPY_ATTRIBUTES);
+                } catch (IOException e) {
+                  logger.error("AINode got error copying model weights", e);
+                  throw new RuntimeException(e);
+                }
+              });
+        } catch (Exception e) {
+          logger.error("AINode got error copying model weights", e);
+        }
       }
 
       // start AINode
       List<String> startCommand = new ArrayList<>();
       startCommand.add(SHELL_COMMAND);
-      startCommand.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
-      startCommand.add("-r");
+      startCommand.add(
+          filePrefix + File.separator + SCRIPT_PATH + File.separator + START_SCRIPT_FILE);
 
       ProcessBuilder processBuilder =
           new ProcessBuilder(startCommand)
@@ -177,6 +195,48 @@ public class AINodeWrapper extends AbstractNodeWrapper {
     } catch (Exception e) {
       throw new AssertionError("Start AI Node failed. " + e + Paths.get(""));
     }
+  }
+
+  @Override
+  public void stop() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      // stop AINode
+      File stdoutFile = new File(getLogPath());
+      String filePrefix = getNodePath();
+      List<String> stopCommand = new ArrayList<>();
+      stopCommand.add(SHELL_COMMAND);
+      stopCommand.add(
+          filePrefix + File.separator + SCRIPT_PATH + File.separator + STOP_SCRIPT_FILE);
+      ProcessBuilder processBuilder =
+          new ProcessBuilder(stopCommand)
+              .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
+              .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
+      Process stopProcess = processBuilder.inheritIO().start();
+      if (!stopProcess.waitFor(20, TimeUnit.SECONDS)) {
+        logger.warn("Node {} does not exit within 20s, killing it", getId());
+        if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
+          logger.error("Cannot forcibly stop node {}", getId());
+        }
+      }
+      int exitCode = stopProcess.exitValue();
+      if (exitCode != 0) {
+        logger.warn("Node {}'s stop script exited with code {}", getId(), exitCode);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error.", e);
+    } catch (IOException e) {
+      logger.error("Waiting node to shutdown error.", e);
+    }
+    logger.info("In test {} {} stopped.", getTestLogDirName(), getId());
+  }
+
+  @Override
+  public void stopForcibly() {
+    this.stop();
   }
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.factory.BaseClientFactory;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -72,7 +73,7 @@ class RatisClient implements AutoCloseable {
     try {
       raftClient.close();
     } catch (IOException e) {
-      logger.warn("cannot close raft client ", e);
+      logger.warn(RatisMessages.CANNOT_CLOSE_RAFT_CLIENT, e);
     }
   }
 
@@ -216,8 +217,7 @@ class RatisClient implements AutoCloseable {
               .filter(StatusRuntimeException.class::isInstance);
 
       if (unexpectedCause.isPresent()) {
-        logger.info(
-            "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
+        logger.info(RatisMessages.RAFT_CLIENT_REQUEST_FAILED, this, unexpectedCause.get());
         return NO_RETRY_ACTION;
       }
 

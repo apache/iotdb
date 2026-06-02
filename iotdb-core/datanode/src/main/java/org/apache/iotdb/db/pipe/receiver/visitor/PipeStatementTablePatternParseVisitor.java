@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import java.util.Optional;
 
 public class PipeStatementTablePatternParseVisitor
-    extends AstVisitor<Optional<Statement>, TablePattern> {
+    implements AstVisitor<Optional<Statement>, TablePattern> {
 
   @Override
   public Optional<Statement> visitCreateOrUpdateDevice(

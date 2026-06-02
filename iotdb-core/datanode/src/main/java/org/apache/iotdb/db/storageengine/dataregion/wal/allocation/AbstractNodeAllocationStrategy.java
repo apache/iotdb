@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.disk.FolderManager;
 import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -49,33 +50,34 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
           new FolderManager(
               Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
+      // folderManager remains null when disk space is insufficient during initialization
+      // It will be lazily initialized later when disk space becomes available
       logger.error(
           "Fail to create wal node allocation strategy because all disks of wal folders are full.",
           e);
     }
   }
 
-  protected IWALNode createWALNode(String identifier) {
+  protected synchronized IWALNode createWALNode(String identifier) {
     try {
+      // Lazy initialization of folderManager: if it was null during constructor
+      // (due to insufficient disk space), try to initialize it now when disk space
+      // might have become available
+      if (folderManager == null) {
+        folderManager =
+            new FolderManager(
+                Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
+      }
       return folderManager.getNextWithRetry(
           folder -> new WALNode(identifier, folder + File.separator + identifier));
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("Fail to create wal node because all disks of wal folders are full.", e);
+      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL, e);
       return WALFakeNode.getFailureInstance(e);
     } catch (Exception e) {
-      logger.warn("Failed to create WAL node after retries for identifier: " + identifier, e);
+      logger.warn(StorageEngineMessages.FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES + identifier, e);
       return WALFakeNode.getFailureInstance(
           new IOException(
-              "Failed to create WAL node after retries for identifier: " + identifier, e));
-    }
-  }
-
-  protected IWALNode createWALNode(String identifier, String folder) {
-    try {
-      return new WALNode(identifier, folder);
-    } catch (IOException e) {
-      logger.error("Meet exception when creating wal node", e);
-      return WALFakeNode.getFailureInstance(e);
+              StorageEngineMessages.FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES + identifier, e));
     }
   }
 
@@ -84,7 +86,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     try {
       return new WALNode(identifier, folder, startFileVersion, startSearchIndex);
     } catch (IOException e) {
-      logger.error("Fail to create wal node", e);
+      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE, e);
       return WALFakeNode.getFailureInstance(e);
     }
   }

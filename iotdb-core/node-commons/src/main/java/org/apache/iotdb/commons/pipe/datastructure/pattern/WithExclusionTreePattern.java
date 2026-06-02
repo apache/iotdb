@@ -44,8 +44,6 @@ public class WithExclusionTreePattern extends TreePattern {
     super(isTreeModelDataAllowedToBeCaptured);
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
-
-    TreePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   @Override
@@ -61,6 +59,11 @@ public class WithExclusionTreePattern extends TreePattern {
   public boolean isRoot() {
     // Since the exclusion is not empty, the whole pattern is always not root because it may more or
     // less filter some data.
+    return false;
+  }
+
+  @Override
+  public boolean isSingle() {
     return false;
   }
 
@@ -91,6 +94,12 @@ public class WithExclusionTreePattern extends TreePattern {
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     // May overlap if inclusion overlaps AND exclusion doesn't fully cover it.
     return inclusionPattern.mayOverlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    // May overlap if inclusion overlaps AND exclusion doesn't fully cover it.
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
   }
 
   @Override

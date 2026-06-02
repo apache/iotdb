@@ -27,9 +27,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -47,6 +49,7 @@ import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.getReservedDatabaseNameErrorMsg;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
@@ -76,6 +79,18 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanCreateDatabase(
       String userName, String databaseName, IAuditEntity auditEntity) {
+    if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(userName)
+        && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity
+                  .setAuditLogOperation(AuditLogOperation.DDL)
+                  .setDatabase(databaseName)
+                  .setPrivilegeType(PrivilegeType.CREATE)
+                  .setResult(false),
+              () -> databaseName);
+      throw new AccessDeniedException(getReservedDatabaseNameErrorMsg(TABLE_MODEL_AUDIT_DATABASE));
+    }
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.CREATE, auditEntity.setDatabase(databaseName));
@@ -117,9 +132,10 @@ public class AccessControlImpl implements AccessControl {
     }
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
-      ITableAuthCheckerImpl.recordAuditLog(
-          auditEntity.setPrivilegeType(PrivilegeType.CREATE).setResult(true),
-          tableName::getObjectName);
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.CREATE).setResult(true),
+              tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.CREATE, auditEntity);
@@ -134,9 +150,10 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
-      ITableAuthCheckerImpl.recordAuditLog(
-          auditEntity.setPrivilegeType(PrivilegeType.DROP).setResult(true),
-          tableName::getObjectName);
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity.setPrivilegeType(PrivilegeType.DROP).setResult(true),
+              tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DROP, auditEntity);
@@ -148,7 +165,8 @@ public class AccessControlImpl implements AccessControl {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
     if (hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
-      ITableAuthCheckerImpl.recordAuditLog(auditEntity, tableName::getObjectName);
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(auditEntity, tableName::getObjectName);
       return;
     }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.ALTER, auditEntity);
@@ -185,7 +203,7 @@ public class AccessControlImpl implements AccessControl {
   public void checkCanSelectFromDatabase4Pipe(
       final String userName, final String databaseName, IAuditEntity auditEntity) {
     if (Objects.isNull(userName)) {
-      throw new AccessDeniedException("User not exists");
+      throw new AccessDeniedException(DataNodeQueryMessages.USER_NOT_EXISTS);
     }
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.SELECT, auditEntity);
@@ -256,7 +274,9 @@ public class AccessControlImpl implements AccessControl {
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
@@ -266,19 +286,25 @@ public class AccessControlImpl implements AccessControl {
         auditEntity.setAuditLogOperation(AuditLogOperation.DDL);
         if (statement.getUserName().equals(userName)) {
           // users can change the username and password of themselves
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getUserName);
           return;
         }
         if (AuthorityChecker.SUPER_USER_ID
             == AuthorityChecker.getUserId(statement.getUserName()).orElse(-1L)) {
           // Only the superuser can alter him/herself
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(false), statement::getUserName);
-          throw new AccessDeniedException("Only the superuser can alter him/herself.");
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(false), statement::getUserName);
+          throw new AccessDeniedException(
+              DataNodeQueryMessages.ONLY_THE_SUPERUSER_CAN_ALTER_HIM_HERSELF);
         }
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
           // the superuser can alter anyone
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
@@ -287,14 +313,17 @@ public class AccessControlImpl implements AccessControl {
         auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
         if (statement.getUserName().equals(userName)) {
           // No need any privilege to list him/herself
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getUserName);
           return;
         }
         // Require SECURITY privilege to list other users' privileges
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
-              statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                  statement::getUserName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_USER, auditEntity);
@@ -304,11 +333,13 @@ public class AccessControlImpl implements AccessControl {
         if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_USER)) {
           // No need to check privilege to list himself/herself
           statement.setUserName(userName);
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity, statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(auditEntity, statement::getUserName);
         } else {
           // Require SECURITY privilege to list other users
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setPrivilegeType(PrivilegeType.SECURITY), statement::getUserName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setPrivilegeType(PrivilegeType.SECURITY), statement::getUserName);
         }
         return;
       case CREATE_ROLE:
@@ -317,7 +348,9 @@ public class AccessControlImpl implements AccessControl {
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getRoleName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -328,9 +361,10 @@ public class AccessControlImpl implements AccessControl {
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true),
-              () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> "user: " + statement.getUserName() + ", role: " + statement.getRoleName());
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -345,26 +379,32 @@ public class AccessControlImpl implements AccessControl {
         if (!hasGlobalPrivilege(auditEntity, PrivilegeType.MANAGE_ROLE)) {
           // No need to check privilege to list his/hers own role
           statement.setUserName(userName);
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getRoleName);
         } else {
           // Require SECURITY privilege to list all roles
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
-              statement::getRoleName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                  statement::getRoleName);
         }
         return;
       case LIST_ROLE_PRIV:
         auditEntity.setAuditLogOperation(AuditLogOperation.QUERY);
         if (AuthorityChecker.checkRole(userName, statement.getRoleName())) {
           // No need any privilege to list his/hers own role
-          ITableAuthCheckerImpl.recordAuditLog(auditEntity.setResult(true), statement::getRoleName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true), statement::getRoleName);
           return;
         }
         // Require SECURITY privilege to list other roles' privileges
         if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
-              statement::getRoleName);
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setPrivilegeType(PrivilegeType.SECURITY).setResult(true),
+                  statement::getRoleName);
           return;
         }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE, auditEntity);
@@ -378,8 +418,10 @@ public class AccessControlImpl implements AccessControl {
             .setPrivilegeType(PrivilegeType.SECURITY)
             .setDatabase(statement.getDatabase());
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -396,8 +438,10 @@ public class AccessControlImpl implements AccessControl {
             .setPrivilegeType(PrivilegeType.SECURITY)
             .setDatabase(statement.getDatabase());
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (TableModelPrivilege privilege : TableModelPrivilege.values()) {
@@ -419,8 +463,10 @@ public class AccessControlImpl implements AccessControl {
             .setPrivilegeType(PrivilegeType.SECURITY)
             .setDatabase(statement.getDatabase());
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -440,8 +486,10 @@ public class AccessControlImpl implements AccessControl {
             .setPrivilegeType(PrivilegeType.SECURITY)
             .setDatabase(statement.getDatabase());
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -462,8 +510,10 @@ public class AccessControlImpl implements AccessControl {
             .setAuditLogOperation(AuditLogOperation.DDL)
             .setPrivilegeType(PrivilegeType.SECURITY);
         if (hasGlobalPrivilege(auditEntity, PrivilegeType.SECURITY)) {
-          ITableAuthCheckerImpl.recordAuditLog(
-              auditEntity.setResult(true), () -> statement.getUserName() + statement.getRoleName());
+          DNAuditLogger.getInstance()
+              .recordObjectAuthenticationAuditLog(
+                  auditEntity.setResult(true),
+                  () -> statement.getUserName() + statement.getRoleName());
           return;
         }
         for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
@@ -545,12 +595,13 @@ public class AccessControlImpl implements AccessControl {
   public TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths) {
     if (AuthorityChecker.SUPER_USER_ID == entity.getUserId()) {
-      ITableAuthCheckerImpl.recordAuditLog(
-          entity
-              .setPrivilegeTypes(
-                  Arrays.asList(PrivilegeType.READ_SCHEMA, PrivilegeType.WRITE_SCHEMA))
-              .setResult(true),
-          () -> "source: " + sourcePaths + ", target: " + targetPaths);
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              entity
+                  .setPrivilegeTypes(
+                      Arrays.asList(PrivilegeType.READ_SCHEMA, PrivilegeType.WRITE_SCHEMA))
+                  .setResult(true),
+              () -> "source: " + sourcePaths + ", target: " + targetPaths);
       return SUCCEED;
     }
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -561,6 +612,19 @@ public class AccessControlImpl implements AccessControl {
       return checkTimeSeriesPermission(entity, () -> targetPaths, PrivilegeType.WRITE_SCHEMA);
     }
     return status;
+  }
+
+  @Override
+  public TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    return TreeAccessCheckVisitor.checkTimeSeriesPermission(
+        context, () -> checkedPaths, permission);
+  }
+
+  @Override
+  public List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context, List<? extends PartialPath> checkedPaths, PrivilegeType permission) {
+    return TreeAccessCheckVisitor.checkTimeSeriesPermission4Pipe(context, checkedPaths, permission);
   }
 
   @Override

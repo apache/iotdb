@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function;
 
+import org.apache.iotdb.calc.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 public class FunctionTestUtils {
@@ -101,12 +101,7 @@ public class FunctionTestUtils {
     // inputExpressions and inputAttributes are not used in this method
     TableAccumulator accumulator =
         AccumulatorFactory.createBuiltinAccumulator(
-            aggregationType,
-            Collections.singletonList(inputDataType),
-            new ArrayList<>(),
-            new HashMap<>(),
-            ascending,
-            false);
+            aggregationType, Collections.singletonList(inputDataType));
     WindowAggregator aggregator =
         new WindowAggregator(accumulator, outputDataType, Collections.singletonList(0));
     return new AggregationWindowFunction(aggregator);

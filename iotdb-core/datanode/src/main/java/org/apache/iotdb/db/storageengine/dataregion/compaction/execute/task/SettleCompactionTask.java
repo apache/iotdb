@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -209,7 +211,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  public boolean settleWithFullyDirtyFiles() {
+  public boolean settleWithFullyDirtyFiles() throws IllegalPathException, IOException {
     if (fullyDirtyFiles.isEmpty()) {
       return true;
     }
@@ -218,6 +220,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
       }
+
       boolean res = deleteTsFileOnDisk(resource);
       if (res) {
         fullyDeletedSuccessNum++;
@@ -293,9 +296,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  public void recoverFullyDirtyFiles() {
+  public void recoverFullyDirtyFiles() throws IllegalPathException, IOException {
     if (!settleWithFullyDirtyFiles()) {
-      throw new CompactionRecoverException("Failed to delete fully_dirty source file.");
+      throw new CompactionRecoverException(StorageEngineMessages.FAILED_DELETE_FULLY_DIRTY_SOURCE);
     }
   }
 

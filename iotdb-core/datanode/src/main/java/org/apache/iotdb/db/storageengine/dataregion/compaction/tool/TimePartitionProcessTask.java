@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -110,10 +112,10 @@ public class TimePartitionProcessTask {
         }
       } catch (IOException e) {
         if (e instanceof NoSuchFileException) {
-          LOGGER.warn("{} doesn't exist.", ((NoSuchFileException) e).getFile());
+          LOGGER.warn(StorageEngineMessages.DOES_NOT_EXIST, ((NoSuchFileException) e).getFile());
           continue;
         }
-        LOGGER.error("failed to deal with {}", unseqFile, e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_DEAL_WITH, unseqFile, e);
       }
     }
     unsequenceSpaceCost += (System.currentTimeMillis() - startTime);
@@ -139,7 +141,7 @@ public class TimePartitionProcessTask {
       } catch (InterruptedException e) {
         throw e;
       } catch (Exception e) {
-        LOGGER.error("error occurred", e);
+        LOGGER.error(StorageEngineMessages.ERROR_OCCURRED, e);
       }
     }
     overlapStatistic.mergeUnSeqSpaceStatistics(unseqSpaceStatistics);

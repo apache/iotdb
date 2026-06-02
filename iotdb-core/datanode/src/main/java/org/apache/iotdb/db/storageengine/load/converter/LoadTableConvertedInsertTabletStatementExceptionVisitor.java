@@ -20,16 +20,16 @@
 package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class LoadTableConvertedInsertTabletStatementExceptionVisitor
-    extends AstVisitor<TSStatus, Exception> {
+    implements AstVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitNode(final Node node, final Exception context) {
     if (context instanceof AccessDeniedException) {

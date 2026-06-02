@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.resource;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -50,7 +51,7 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
               dataDir + File.separator + PipeConfig.getInstance().getPipeHardlinkBaseDirName());
       if (pipeHardLinkDir.isDirectory()) {
         LOGGER.info(
-            "Pipe hardlink dir found, deleting it: {}, result: {}",
+            DataNodePipeMessages.PIPE_HARDLINK_DIR_FOUND_DELETING_IT_RESULT,
             pipeHardLinkDir,
             FileUtils.deleteQuietly(pipeHardLinkDir));
       }
@@ -58,14 +59,14 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
   }
 
   private static void cleanSnapshotDir() {
-    final File pipeConsensusDir =
+    final File iotConsensusV2Dir =
         new File(
             IoTDBDescriptor.getInstance().getConfig().getConsensusDir()
                 + File.separator
                 + PipeSnapshotResourceManager.PIPE_SNAPSHOT_DIR_NAME);
-    if (pipeConsensusDir.isDirectory()) {
-      LOGGER.info("Pipe snapshot dir found, deleting it: {},", pipeConsensusDir);
-      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeConsensusDir);
+    if (iotConsensusV2Dir.isDirectory()) {
+      LOGGER.info(DataNodePipeMessages.PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT, iotConsensusV2Dir);
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(iotConsensusV2Dir);
     }
   }
 

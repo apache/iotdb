@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -77,8 +79,10 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE;
     } else if (value instanceof RelationalDeleteDataNode) {
       this.type = WALEntryType.RELATIONAL_DELETE_DATA_NODE;
+    } else if (value instanceof ObjectNode) {
+      this.type = WALEntryType.OBJECT_FILE_NODE;
     } else {
-      throw new RuntimeException("Unknown WALEntry type");
+      throw new RuntimeException(StorageEngineMessages.UNKNOWN_WAL_ENTRY_TYPE);
     }
     walFlushListener = new WALFlushListener(wait);
   }
@@ -134,8 +138,11 @@ public abstract class WALEntry implements SerializedSize {
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
         value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
         break;
+      case OBJECT_FILE_NODE:
+        value = (ObjectNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
       default:
-        throw new RuntimeException("Unknown WALEntry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNKNOWN_WAL_ENTRY_TYPE_WITH_VALUE + type);
     }
     return new WALInfoEntry(type, memTableId, value);
   }

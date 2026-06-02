@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -38,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -74,32 +74,26 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
-  public TPermissionInfoResp login(String username, String password) {
+  public TPermissionInfoResp login(
+      String username, final String password, final boolean useEncryptedPassword) {
     boolean status;
     String loginMessage = null;
     TSStatus tsStatus = new TSStatus();
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      status = authorizer.login(username, password);
+      status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
-        // Bring this user's permission information back to the datanode for caching
-        if (authorizer instanceof OpenIdAuthorizer) {
-          username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username, ModelType.ALL);
-          result.getUserInfo().setIsOpenIdUser(true);
-        } else {
-          result = getUserPermissionInfo(username, ModelType.ALL);
-        }
+        result = getUserPermissionInfo(username, ModelType.ALL);
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
-      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setMessage(
+          loginMessage != null ? loginMessage : ConfigNodeMessages.AUTHENTICATION_FAILED);
       result.setStatus(tsStatus);
     }
     return result;
@@ -145,8 +139,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           break;
         case DropRole:
           authorizer.deleteRole(roleName);
-          break;
-        case AccountUnlock:
           break;
         case GrantRole:
           for (int permission : permissions) {
@@ -448,7 +440,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           }
           break;
         default:
-          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, ConfigNodeMessages.NOT_SUPPORT);
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
@@ -680,6 +672,26 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     resp.setPermissionInfo(getUserPermissionInfo(username, ModelType.ALL));
     return resp;
+  }
+
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
+      throws AuthException {
+    final User user = authorizer.getUser(username);
+    if (user == null) {
+      return null;
+    }
+    final PathPatternTree pPtree = new PathPatternTree();
+
+    constructAuthorityScope(pPtree, user, type);
+
+    for (final String roleName : user.getRoleSet()) {
+      Role role = authorizer.getRole(roleName);
+      if (role != null) {
+        constructAuthorityScope(pPtree, role, type);
+      }
+    }
+    pPtree.constructTree();
+    return pPtree;
   }
 
   @Override

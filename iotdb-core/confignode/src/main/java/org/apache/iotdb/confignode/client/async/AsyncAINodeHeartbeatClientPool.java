@@ -21,27 +21,49 @@ package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncAINodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
-import org.apache.iotdb.db.protocol.client.AINodeClientFactory;
-import org.apache.iotdb.db.protocol.client.ainode.AsyncAINodeServiceClient;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
+/** Asynchronously send RPC requests to AINodes. */
 public class AsyncAINodeHeartbeatClientPool {
 
-  private final IClientManager<TEndPoint, AsyncAINodeServiceClient> clientManager;
+  private final IClientManager<TEndPoint, AsyncAINodeInternalServiceClient> clientManager;
 
   private AsyncAINodeHeartbeatClientPool() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncAINodeServiceClient>()
-            .createClientManager(new AINodeClientFactory.AINodeHeartbeatClientPoolFactory());
+        new IClientManager.Factory<TEndPoint, AsyncAINodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory(
+                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
   }
 
+  /**
+   * Only used in LoadManager.
+   *
+   * @param endPoint The specific DataNode
+   */
   public void getAINodeHeartBeat(
       TEndPoint endPoint, TAIHeartbeatReq req, AINodeHeartbeatHandler handler) {
+    AsyncAINodeInternalServiceClient client = null;
+    boolean dispatched = false;
     try {
-      clientManager.borrowClient(endPoint).getAIHeartbeat(req, handler);
+      client = clientManager.borrowClient(endPoint);
+      client.getAIHeartbeat(req, handler);
+      dispatched = true;
     } catch (Exception ignore) {
       // Just ignore
+    } finally {
+      // After the async call is dispatched, the client's onComplete/onError callback is
+      // responsible for returning the client. If the RPC was not dispatched (exception
+      // before/during the call), the client must be returned here to prevent pool leakage.
+      if (!dispatched && client != null && clientManager instanceof ClientManager) {
+        ((ClientManager<TEndPoint, AsyncAINodeInternalServiceClient>) clientManager)
+            .returnClient(endPoint, client);
+      }
     }
   }
 
@@ -56,6 +78,6 @@ public class AsyncAINodeHeartbeatClientPool {
   }
 
   public static AsyncAINodeHeartbeatClientPool getInstance() {
-    return AsyncAINodeHeartbeatClientPool.AsyncAINodeHeartbeatClientPoolHolder.INSTANCE;
+    return AsyncAINodeHeartbeatClientPoolHolder.INSTANCE;
   }
 }

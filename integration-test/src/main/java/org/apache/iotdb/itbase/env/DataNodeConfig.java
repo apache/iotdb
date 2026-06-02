@@ -51,4 +51,6 @@ public interface DataNodeConfig {
   DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
 
   DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
+
+  DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
 }

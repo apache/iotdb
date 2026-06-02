@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.load.RegionReplicaSetChangedException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -86,6 +87,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -179,11 +181,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
-        if (node.isTableModel()) {
-          partitionFetcher.setDatabase(node.getDatabase());
-        } else {
-          partitionFetcher.setDatabase(null);
-        }
+        partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
 
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
@@ -200,7 +198,7 @@ public class LoadTsFileScheduler implements IScheduler {
           final long startTimeMs = System.currentTimeMillis();
 
           if (node.isTsFileEmpty()) {
-            LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
+            LOGGER.info(DataNodeQueryMessages.LOAD_SKIP_TSFILE_BECAUSE_IT_HAS_NO_DATA, filePath);
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
@@ -270,7 +268,7 @@ public class LoadTsFileScheduler implements IScheduler {
         } catch (Exception e) {
           isLoadSuccess = false;
           failedTsFileNodeIndexes.add(i);
-          LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
+          LOGGER.warn(DataNodeQueryMessages.LOADTSFILESCHEDULER_LOADS_TSFILE_ERROR, filePath, e);
         } finally {
           if (shouldRemoveFileFromLoadingSet) {
             synchronized (LOADING_FILE_SET) {
@@ -286,7 +284,10 @@ public class LoadTsFileScheduler implements IScheduler {
         final StringBuilder failedTsFiles =
             new StringBuilder(
                 !tsFileNodeList.isEmpty()
-                    ? tsFileNodeList.get(0).getTsFileResource().getTsFilePath()
+                    ? tsFileNodeList
+                        .get(failedTsFileNodeIndexes.get(0))
+                        .getTsFileResource()
+                        .getTsFilePath()
                     : "");
         final ListIterator<Integer> iterator = failedTsFileNodeIndexes.listIterator(1);
         while (iterator.hasNext()) {
@@ -347,7 +348,9 @@ public class LoadTsFileScheduler implements IScheduler {
             null,
             queryContext.getQueryType(),
             queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
-            queryContext.getSession());
+            queryContext.getSession(),
+            queryContext.isDebug(),
+            queryContext.isVerbose());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(null, Collections.singletonList(instance));
@@ -382,7 +385,7 @@ public class LoadTsFileScheduler implements IScheduler {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.warn("Interrupt or Execution error.", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPT_OR_EXECUTION_ERROR, e);
       return false;
     } catch (TimeoutException e) {
       dispatchResultFuture.cancel(true);
@@ -395,7 +398,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean secondPhase(
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
-    LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    LOGGER.info(DataNodeQueryMessages.START_DISPATCHING_LOAD_COMMAND_FOR_UUID, uuid);
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -447,10 +450,13 @@ public class LoadTsFileScheduler implements IScheduler {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.warn("Interrupt or Execution error.", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPT_OR_EXECUTION_ERROR, e);
       return false;
     } catch (Exception e) {
-      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
+      LOGGER.warn(
+          DataNodeQueryMessages.EXCEPTION_OCCURRED_DURING_SECOND_PHASE_OF_LOADING_TSFILE,
+          tsFile,
+          e);
       return false;
     }
     return true;
@@ -467,7 +473,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
-    LOGGER.info("Start load TsFile {} locally.", node.getTsFileResource().getTsFile().getPath());
+    LOGGER.info(
+        DataNodeQueryMessages.START_LOAD_TSFILE_LOCALLY,
+        node.getTsFileResource().getTsFile().getPath());
 
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
@@ -500,7 +508,9 @@ public class LoadTsFileScheduler implements IScheduler {
               queryContext.getQueryType(),
               queryContext.getTimeOut()
                   - (System.currentTimeMillis() - queryContext.getStartTime()),
-              queryContext.getSession());
+              queryContext.getSession(),
+              queryContext.isDebug(),
+              queryContext.isVerbose());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
@@ -579,16 +589,17 @@ public class LoadTsFileScheduler implements IScheduler {
             failedNode.isTableModel()
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        new LoadTsFile(null, filePath, Collections.emptyMap())
+                        LoadTsFile.createUnchecked(null, filePath, Collections.emptyMap())
                             .setDatabase(failedNode.getDatabase())
                             .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
                             .setConvertOnTypeMismatch(true))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        new LoadTsFileStatement(filePath)
-                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                            .setConvertOnTypeMismatch(true))
+                        buildRetryTreeLoadStatement(
+                            filePath,
+                            failedNode.isDeleteAfterLoad(),
+                            getPartitionQueryDatabase(failedNode, isGeneratedByPipe)))
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -614,7 +625,7 @@ public class LoadTsFileScheduler implements IScheduler {
     // If all failed TsFiles are converted into tablets and inserted,
     // we can consider the load process as successful.
     if (failedTsFileNodeIndexes.isEmpty()) {
-      LOGGER.info("Load: all failed TsFiles are converted to tablets and inserted.");
+      LOGGER.info(DataNodeQueryMessages.LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS);
       stateMachine.transitionToFinished();
     } else {
       final String errorMsg =
@@ -625,6 +636,27 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
+  }
+
+  static String getPartitionQueryDatabase(
+      final LoadSingleTsFileNode node, final boolean isGeneratedByPipe) {
+    return node.isTableModel() || isGeneratedByPipe ? node.getDatabase() : null;
+  }
+
+  private LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath, final boolean deleteAfterLoad, final String database)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(filePath)
+            .setDeleteAfterLoad(deleteAfterLoad)
+            .setConvertOnTypeMismatch(true);
+    if (database != null) {
+      statement.setDatabase(database);
+    }
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+    return statement;
   }
 
   @Override
@@ -844,7 +876,8 @@ public class LoadTsFileScheduler implements IScheduler {
             subSlotList.stream()
                 .map(
                     pair ->
-                        // (database != null) means this file will be loaded into table-model
+                        // database is an explicit database hint for table-model loads and
+                        // pipe-generated tree-model loads.
                         database != null
                             ? dataPartition.getDataRegionReplicaSetForWriting(
                                 pair.left, pair.right, database)
@@ -867,7 +900,8 @@ public class LoadTsFileScheduler implements IScheduler {
               entry -> {
                 DataPartitionQueryParam queryParam =
                     new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
-                // (database != null) means this file will be loaded into table-model
+                // database is an explicit database hint for table-model loads and
+                // pipe-generated tree-model loads.
                 if (database != null) {
                   queryParam.setDatabaseName(database);
                 }

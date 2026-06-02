@@ -22,6 +22,7 @@ package org.apache.iotdb.session.util;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
@@ -135,6 +136,7 @@ public class SessionUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
@@ -185,6 +187,7 @@ public class SessionUtils {
           break;
         case TEXT:
         case STRING:
+        case OBJECT:
           res += Integer.BYTES;
           if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;
@@ -336,6 +339,7 @@ public class SessionUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i) && binaryValues[index] != null) {
@@ -473,7 +477,7 @@ public class SessionUtils {
 
   public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
-      throw new NumberFormatException("nodeUrls is null");
+      throw new NumberFormatException(SessionMessages.NODE_URLS_IS_NULL);
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {

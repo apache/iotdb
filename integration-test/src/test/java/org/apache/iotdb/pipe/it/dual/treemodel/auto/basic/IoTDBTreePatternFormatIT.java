@@ -71,22 +71,23 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1.s");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.db.d1.s");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -123,22 +124,23 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.path", "root.**.d1.s*");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.path", "root.**.d1.s*");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -175,23 +177,24 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.**.d1.s*");
-      extractorAttributes.put("extractor.pattern.format", "iotdb");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.**.d1.s*");
+      sourceAttributes.put("source.pattern.format", "iotdb");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -212,7 +215,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   //////////////////////////// Multiple & Exclusion ////////////////////////////
 
   private void testPipeWithMultiplePatterns(
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final List<String> insertQueries,
       final boolean isHistorical,
       final String validationSelectQuery,
@@ -246,7 +249,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       final TSStatus createStatus =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), createStatus.getCode());
 
@@ -267,64 +270,11 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testMultiplePrefixPatternHistoricalData() throws Exception {
-    // Define extractor attributes
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.pattern", "root.db.d1.s, root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    // Define data to be inserted
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s) values (3, 3)");
-
-    // Define expected results on receiver
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,null,1.0,1.0,");
-    expectedResSet.add("3,3.0,null,null,");
-
-    // Execute the common test logic
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db2.**,root.db.**",
-        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
-        expectedResSet);
-  }
-
-  @Test
-  public void testMultiplePrefixPatternRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.pattern", "root.db.d1.s, root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,null,1.0,1.0,");
-    expectedResSet.add("3,3.0,null,null,");
-
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db2.**,root.db.**",
-        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
-        expectedResSet);
-  }
-
-  @Test
   public void testMultipleIoTDBPatternHistoricalData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.**, root.db2.d1.*");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
@@ -339,7 +289,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     expectedResSet.add("3,3.0,3.0,null,null,null,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         true, // isHistorical = true
         "select * from root.db2.**,root.db.**",
@@ -349,9 +299,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
 
   @Test
   public void testMultipleIoTDBPatternRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.**, root.db2.d1.*");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
@@ -366,7 +317,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     expectedResSet.add("3,3.0,3.0,null,null,null,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         false, // isHistorical = false
         "select * from root.db2.**,root.db.**",
@@ -375,121 +326,14 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testMultipleHybridPatternHistoricalData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.d1.*");
-    extractorAttributes.put("extractor.pattern", "root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db2.d1(time, s) values (2, 2)",
-            "insert into root.db3.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,1.0,null,");
-    expectedResSet.add("2,null,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
-        expectedResSet);
-  }
-
-  @Test
-  public void testMultipleHybridPatternRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.d1.*");
-    extractorAttributes.put("extractor.pattern", "root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db2.d1(time, s) values (2, 2)",
-            "insert into root.db3.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,1.0,null,");
-    expectedResSet.add("2,null,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
-        expectedResSet);
-  }
-
-  @Test
-  public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    // Inclusion: Match everything under root.db.d1 and root.db.d2
-    extractorAttributes.put("extractor.pattern", "root.db.d1, root.db.d2");
-    // Exclusion: Exclude anything with the prefix root.db.d1.s1
-    extractorAttributes.put("extractor.pattern.exclusion", "root.db.d1.s1");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            // s matches, s1 is excluded
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            // s matches
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db1.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,null,");
-    expectedResSet.add("2,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db.**",
-        "Time,root.db.d1.s,root.db.d2.s,",
-        expectedResSet);
-  }
-
-  @Test
-  public void testPrefixPatternWithExclusionRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.pattern", "root.db.d1, root.db.d2");
-    extractorAttributes.put("extractor.pattern.exclusion", "root.db.d1.s1");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db1.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,null,");
-    expectedResSet.add("2,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        extractorAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db.**",
-        "Time,root.db.d1.s,root.db.d2.s,",
-        expectedResSet);
-  }
-
-  @Test
   public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db
-    extractorAttributes.put("extractor.path", "root.db.**");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
     // Exclusion: Exclude root.db.d1.s* and root.db.d3.*
-    extractorAttributes.put("extractor.path.exclusion", "root.db.d1.s*, root.db.d3.*");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
@@ -506,7 +350,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     expectedResSet.add("2,null,2.0,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         true, // isHistorical = true
         "select * from root.db.**",
@@ -516,10 +360,11 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
 
   @Test
   public void testIoTDBPatternWithExclusionRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.**");
-    extractorAttributes.put("extractor.path.exclusion", "root.db.d1.s*, root.db.d3.*");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
@@ -533,7 +378,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
     expectedResSet.add("2,null,2.0,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         false, // isHistorical = false
         "select * from root.db.**",
@@ -542,65 +387,116 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testHybridPatternWithHybridExclusionHistoricalData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
-    extractorAttributes.put("extractor.path", "root.db.**");
-    extractorAttributes.put("extractor.pattern", "root.db2.d1");
-    // Exclusion: Exclude root.db.d1.* (IoTDB) AND root.db2.d1.s (Prefix)
-    extractorAttributes.put("extractor.path.exclusion", "root.db.d1.*");
-    extractorAttributes.put("extractor.pattern.exclusion", "root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+  public void testIoTDBPatternWithExclusionOnlyHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
-            // s, s1 excluded by path.exclusion
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            // s matches
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
             "insert into root.db.d2(time, s) values (2, 2)",
-            // s excluded by pattern.exclusion, t matches
-            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
-            "insert into root.db3.d1(time, s) values (4, 4)");
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
 
     final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("2,2.0,null,");
-    expectedResSet.add("3,null,3.0,");
+    expectedResSet.add("1,null,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+    expectedResSet.add("4,4.0,null,null,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         true, // isHistorical = true
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d2.s,root.db2.d1.t,",
+        "select * from root.db1.**,root.db.**",
+        "Time,root.db1.d1.s,root.db.d1.t,root.db.d2.s,",
         expectedResSet);
   }
 
   @Test
-  public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
-    final Map<String, String> extractorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor.path", "root.db.**");
-    extractorAttributes.put("extractor.pattern", "root.db2.d1");
-    extractorAttributes.put("extractor.path.exclusion", "root.db.d1.*");
-    extractorAttributes.put("extractor.pattern.exclusion", "root.db2.d1.s");
-    extractorAttributes.put("extractor.inclusion", "data.insert");
+  public void testIoTDBPatternWithExclusionOnlyRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
 
     final List<String> insertQueries =
         Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
             "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
-            "insert into root.db3.d1(time, s) values (4, 4)");
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
 
     final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("2,2.0,null,");
-    expectedResSet.add("3,null,3.0,");
+    expectedResSet.add("1,null,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+    expectedResSet.add("4,4.0,null,null,");
 
     testPipeWithMultiplePatterns(
-        extractorAttributes,
+        sourceAttributes,
         insertQueries,
         false, // isHistorical = false
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d2.s,root.db2.d1.t,",
+        "select * from root.db1.**,root.db.**",
+        "Time,root.db1.d1.s,root.db.d1.t,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  public void testIoTDBPatternWithInclusionAndExclusionHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(
+        "source.pattern.inclusion", "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+    sourceAttributes.put("source.pattern.exclusion", "root.test.g_0.d_20.**");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.test.g_0.d_21(time, s_1) values (1, 1)",
+            "insert into root.test.g_0.d_22(time, s_1) values (2, 2)",
+            "insert into root.test.g_0.d_20(time, s_0, s_1) values (3, 3, 3)",
+            "insert into root.test.g_0.d_30(time, s_1) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.test.**",
+        "Time,root.test.g_0.d_21.s_1,root.test.g_0.d_22.s_1,",
+        expectedResSet);
+  }
+
+  @Test
+  public void testIoTDBPatternWithInclusionAndExclusionRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(
+        "source.pattern.inclusion", "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+    sourceAttributes.put("source.pattern.exclusion", "root.test.g_0.d_20.**");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.test.g_0.d_21(time, s_1) values (1, 1)",
+            "insert into root.test.g_0.d_22(time, s_1) values (2, 2)",
+            "insert into root.test.g_0.d_20(time, s_0, s_1) values (3, 3, 3)",
+            "insert into root.test.g_0.d_30(time, s_1) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.test.**",
+        "Time,root.test.g_0.d_21.s_1,root.test.g_0.d_22.s_1,",
         expectedResSet);
   }
 }

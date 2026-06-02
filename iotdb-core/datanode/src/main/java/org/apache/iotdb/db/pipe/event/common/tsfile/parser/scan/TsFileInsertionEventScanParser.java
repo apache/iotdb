@@ -19,11 +19,22 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -32,6 +43,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -82,16 +94,19 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   private boolean currentIsMultiPage;
   private IDeviceID currentDevice;
+  private String currentDeviceString;
   private boolean currentIsAligned;
   private final List<IMeasurementSchema> currentMeasurements = new ArrayList<>();
+  private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
   private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
   // Cached time chunk
   private final List<Chunk> timeChunkList = new ArrayList<>();
   private final List<Boolean> isMultiPageList = new ArrayList<>();
+  private final List<Long> timeChunkPageMemorySizeList = new ArrayList<>();
 
   private final Map<String, Integer> measurementIndexMap = new HashMap<>();
   private int lastIndex = -1;
-  private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
+  private Chunk firstChunk4NextSequentialValueChunks;
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -103,10 +118,24 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
-      throws IOException {
-    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+      throws IOException, IllegalPathException {
+    super(
+        tsFile,
+        pipeName,
+        creationTime,
+        pattern,
+        null,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -115,7 +144,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.allocatedMemoryBlockForBatchData =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
     this.allocatedMemoryBlockForChunk =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());
@@ -151,8 +180,19 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
-      throws IOException {
-    this(null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, isWithMod);
+      throws IOException, IllegalPathException {
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        null,
+        false,
+        sourceEvent,
+        isWithMod);
   }
 
   @Override
@@ -268,8 +308,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       Tablet tablet = null;
 
       if (!data.hasCurrent()) {
-        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
-        tablet.initBitMaps();
+        tablet = new Tablet(currentDeviceString, currentMeasurements, 1);
         return tablet;
       }
 
@@ -283,8 +322,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(data);
             tablet =
                 new Tablet(
-                    currentDevice.toString(), currentMeasurements, rowCountAndMemorySize.getLeft());
-            tablet.initBitMaps();
+                    currentDeviceString, currentMeasurements, rowCountAndMemorySize.getLeft());
             if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
                 < rowCountAndMemorySize.getRight()) {
               PipeDataNodeResourceManager.memory()
@@ -296,7 +334,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           final int rowIndex = tablet.getRowSize();
 
           if (putValueToColumns(data, tablet, rowIndex)) {
-            tablet.addTimestamp(rowIndex, data.currentTime());
+            PipeTabletUtils.putTimestamp(tablet, rowIndex, data.currentTime());
           }
         }
 
@@ -311,22 +349,22 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
 
       if (tablet == null) {
-        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
-        tablet.initBitMaps();
+        tablet = new Tablet(currentDeviceString, currentMeasurements, 1);
       }
 
       // Switch chunk reader iff current chunk is all consumed
       if (!data.hasCurrent()) {
         prepareData();
       }
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     } catch (final Exception e) {
       close();
-      throw new PipeException("Failed to get next tablet insertion event.", e);
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_GET_NEXT_TABLET_INSERTION_EVENT, e);
     }
   }
 
-  private void prepareData() throws IOException {
+  private void prepareData() throws IOException, IllegalPathException {
     do {
       do {
         moveToNextChunkReader();
@@ -338,6 +376,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
 
       do {
+        resizePageDataMemoryForCurrentPageIfNeeded();
         data = chunkReader.nextPageData();
         long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data);
         if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
@@ -345,6 +384,23 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
       } while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage());
     } while (!data.hasCurrent());
+  }
+
+  private void resizePageDataMemoryForCurrentPageIfNeeded() {
+    if (!(chunkReader instanceof EstimatedMemoryChunkReader)) {
+      return;
+    }
+
+    final long estimatedMemoryUsageInBytes =
+        ((EstimatedMemoryChunkReader) chunkReader).getCurrentPageEstimatedMemoryUsageInBytes();
+    resizePageDataMemoryIfNeeded(estimatedMemoryUsageInBytes);
+  }
+
+  private void resizePageDataMemoryIfNeeded(final long estimatedMemoryUsageInBytes) {
+    if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < estimatedMemoryUsageInBytes) {
+      PipeDataNodeResourceManager.memory()
+          .forceResize(allocatedMemoryBlockForBatchData, estimatedMemoryUsageInBytes);
+    }
   }
 
   private boolean putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
@@ -358,79 +414,137 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             case TEXT:
             case BLOB:
             case STRING:
-              tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
+              PipeTabletUtils.putValue(
+                  tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), Binary.EMPTY_VALUE);
           }
-          tablet.getBitMaps()[i].mark(rowIndex);
+          PipeTabletUtils.markNullValue(tablet, rowIndex, i);
           continue;
         }
 
         isNeedFillTime = true;
         switch (tablet.getSchemas().get(i).getType()) {
           case BOOLEAN:
-            tablet.addValue(rowIndex, i, primitiveType.getBoolean());
+            PipeTabletUtils.putValue(
+                tablet,
+                rowIndex,
+                i,
+                tablet.getSchemas().get(i).getType(),
+                primitiveType.getBoolean());
             break;
           case INT32:
-            tablet.addValue(rowIndex, i, primitiveType.getInt());
+            PipeTabletUtils.putValue(
+                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getInt());
             break;
           case DATE:
-            tablet.addValue(rowIndex, i, DateUtils.parseIntToLocalDate(primitiveType.getInt()));
+            PipeTabletUtils.putValue(
+                tablet,
+                rowIndex,
+                i,
+                tablet.getSchemas().get(i).getType(),
+                DateUtils.parseIntToLocalDate(primitiveType.getInt()));
             break;
           case INT64:
           case TIMESTAMP:
-            tablet.addValue(rowIndex, i, primitiveType.getLong());
+            PipeTabletUtils.putValue(
+                tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), primitiveType.getLong());
             break;
           case FLOAT:
-            tablet.addValue(rowIndex, i, primitiveType.getFloat());
+            PipeTabletUtils.putValue(
+                tablet,
+                rowIndex,
+                i,
+                tablet.getSchemas().get(i).getType(),
+                primitiveType.getFloat());
             break;
           case DOUBLE:
-            tablet.addValue(rowIndex, i, primitiveType.getDouble());
+            PipeTabletUtils.putValue(
+                tablet,
+                rowIndex,
+                i,
+                tablet.getSchemas().get(i).getType(),
+                primitiveType.getDouble());
             break;
           case TEXT:
           case BLOB:
           case STRING:
-            tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
+            final Binary binary = primitiveType.getBinary();
+            PipeTabletUtils.putValue(
+                tablet,
+                rowIndex,
+                i,
+                tablet.getSchemas().get(i).getType(),
+                Objects.isNull(binary) || Objects.isNull(binary.getValues())
+                    ? Binary.EMPTY_VALUE
+                    : binary);
             break;
           default:
-            throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
+            throw new UnSupportedDataTypeException(
+                DataNodePipeMessages.UNSUPPORTED + primitiveType.getDataType());
         }
       }
     } else {
+      if (!modsInfos.isEmpty()
+          && ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(0))) {
+        return false;
+      }
+
       isNeedFillTime = true;
       switch (tablet.getSchemas().get(0).getType()) {
         case BOOLEAN:
-          tablet.addValue(rowIndex, 0, data.getBoolean());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getBoolean());
           break;
         case INT32:
-          tablet.addValue(rowIndex, 0, data.getInt());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getInt());
           break;
         case DATE:
-          tablet.addValue(rowIndex, 0, DateUtils.parseIntToLocalDate(data.getInt()));
+          PipeTabletUtils.putValue(
+              tablet,
+              rowIndex,
+              0,
+              tablet.getSchemas().get(0).getType(),
+              DateUtils.parseIntToLocalDate(data.getInt()));
           break;
         case INT64:
         case TIMESTAMP:
-          tablet.addValue(rowIndex, 0, data.getLong());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getLong());
           break;
         case FLOAT:
-          tablet.addValue(rowIndex, 0, data.getFloat());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getFloat());
           break;
         case DOUBLE:
-          tablet.addValue(rowIndex, 0, data.getDouble());
+          PipeTabletUtils.putValue(
+              tablet, rowIndex, 0, tablet.getSchemas().get(0).getType(), data.getDouble());
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          tablet.addValue(rowIndex, 0, data.getBinary().getValues());
+          final Binary binary = data.getBinary();
+          PipeTabletUtils.putValue(
+              tablet,
+              rowIndex,
+              0,
+              tablet.getSchemas().get(0).getType(),
+              Objects.isNull(binary) || Objects.isNull(binary.getValues())
+                  ? Binary.EMPTY_VALUE
+                  : binary);
           break;
         default:
-          throw new UnSupportedDataTypeException("UnSupported" + data.getDataType());
+          throw new UnSupportedDataTypeException(
+              DataNodePipeMessages.UNSUPPORTED + data.getDataType());
       }
     }
     return isNeedFillTime;
   }
 
-  private void moveToNextChunkReader() throws IOException, IllegalStateException {
+  private void moveToNextChunkReader()
+      throws IOException, IllegalStateException, IllegalPathException {
     ChunkHeader chunkHeader;
     long valueChunkSize = 0;
+    long valueChunkPageMemorySize = 0;
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
     modsInfos.clear();
@@ -441,7 +555,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     byte marker;
-    while ((marker = lastMarker != Byte.MIN_VALUE ? lastMarker : tsFileSequenceReader.readMarker())
+    while ((marker =
+            lastMarker != Byte.MIN_VALUE
+                ? lastMarker
+                : Objects.nonNull(firstChunk4NextSequentialValueChunks)
+                    ? toValueChunkMarker(firstChunk4NextSequentialValueChunks.getHeader())
+                    : tsFileSequenceReader.readMarker())
         != MetaMarker.SEPARATOR) {
       lastMarker = Byte.MIN_VALUE;
       switch (marker) {
@@ -453,48 +572,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Notice that the data in one chunk group is either aligned or non-aligned
             // There is no need to consider non-aligned chunks when there are value chunks
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
-            long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
+            final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            final long nextMarkerOffset =
-                tsFileSequenceReader.position() + chunkHeader.getDataSize();
-
-            if (Objects.isNull(currentDevice)) {
-              tsFileSequenceReader.position(nextMarkerOffset);
+            if (filterChunk(currentChunkHeaderOffset, chunkHeader, false, marker)) {
               break;
-            }
-
-            if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-                == TsFileConstant.TIME_COLUMN_MASK) {
-              timeChunkList.add(
-                  new Chunk(
-                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
-              isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
-              break;
-            }
-
-            if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
-              tsFileSequenceReader.position(nextMarkerOffset);
-              break;
-            }
-
-            // Skip the chunk if it is fully deleted by mods
-            if (!currentModifications.isEmpty()) {
-              final Statistics statistics =
-                  findNonAlignedChunkStatistics(
-                      tsFileSequenceReader.getIChunkMetadataList(
-                          currentDevice, chunkHeader.getMeasurementID()),
-                      currentChunkHeaderOffset);
-              if (statistics != null
-                  && ModsOperationUtil.isAllDeletedByMods(
-                      currentDevice,
-                      chunkHeader.getMeasurementID(),
-                      statistics.getStartTime(),
-                      statistics.getEndTime(),
-                      currentModifications)) {
-                tsFileSequenceReader.position(nextMarkerOffset);
-                break;
-              }
             }
 
             if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
@@ -511,54 +593,38 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     ? new ChunkReader(chunk, filter)
                     : new SinglePageWholeChunkReader(chunk);
             currentIsAligned = false;
+            final String measurementID =
+                tabletStringInternPool.intern(chunkHeader.getMeasurementID());
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    measurementID,
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice,
-                    Collections.singletonList(chunkHeader.getMeasurementID()),
-                    currentModifications));
+                    currentDevice, Collections.singletonList(measurementID), currentModifications));
             return;
           }
         case MetaMarker.VALUE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
-            if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
-              long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
+            Chunk chunk;
+            long currentValueChunkPageMemorySize = 0;
+            if (Objects.isNull(firstChunk4NextSequentialValueChunks)) {
+              final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              final long nextMarkerOffset =
-                  tsFileSequenceReader.position() + chunkHeader.getDataSize();
-              if (Objects.isNull(currentDevice)
-                  || !treePattern.matchesMeasurement(
-                      currentDevice, chunkHeader.getMeasurementID())) {
-                tsFileSequenceReader.position(nextMarkerOffset);
+              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
                 break;
               }
 
-              if (!currentModifications.isEmpty()) {
-                // Skip the chunk if it is fully deleted by mods
-                final Statistics statistics =
-                    findAlignedChunkStatistics(
-                        tsFileSequenceReader.getIChunkMetadataList(
-                            currentDevice, chunkHeader.getMeasurementID()),
-                        currentChunkHeaderOffset);
-                if (statistics != null
-                    && ModsOperationUtil.isAllDeletedByMods(
-                        currentDevice,
-                        chunkHeader.getMeasurementID(),
-                        statistics.getStartTime(),
-                        statistics.getEndTime(),
-                        currentModifications)) {
-                  tsFileSequenceReader.position(nextMarkerOffset);
-                  break;
-                }
-              }
-
               // Increase value index
+              final String measurementID =
+                  tabletStringInternPool.intern(chunkHeader.getMeasurementID());
               final int valueIndex =
                   measurementIndexMap.compute(
-                      chunkHeader.getMeasurementID(),
+                      measurementID,
                       (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
 
               // Emit when encountered non-sequential value chunk, or the chunk size exceeds
@@ -567,51 +633,68 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               if (chunkHeader.getDataSize() == 0) {
                 break;
               }
+              chunk =
+                  new Chunk(
+                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+              currentValueChunkPageMemorySize =
+                  calculatePageMemorySizeIfSinglePageValueChunk(chunk);
               boolean needReturn = false;
               final long timeChunkSize =
                   lastIndex >= 0
                       ? PipeMemoryWeightUtil.calculateChunkRamBytesUsed(
                           timeChunkList.get(lastIndex))
                       : 0;
+              final long timeChunkPageMemorySize =
+                  lastIndex >= 0 ? timeChunkPageMemorySizeList.get(lastIndex) : 0;
               if (lastIndex >= 0) {
                 if (valueIndex != lastIndex) {
                   needReturn = recordAlignedChunk(valueChunkList, marker);
                 } else {
                   final long chunkSize = timeChunkSize + valueChunkSize;
+                  final long pageMemorySize = timeChunkPageMemorySize + valueChunkPageMemorySize;
                   if (chunkSize + chunkHeader.getDataSize()
-                      > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                    if (valueChunkList.size() == 1
-                        && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                      PipeDataNodeResourceManager.memory()
-                          .forceResize(allocatedMemoryBlockForChunk, chunkSize);
-                    }
+                          > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()
+                      || timeChunkPageMemorySize > 0
+                          && currentValueChunkPageMemorySize > 0
+                          && pageMemorySize + currentValueChunkPageMemorySize
+                              > getPageDataMemoryLimitInBytes()) {
                     needReturn = recordAlignedChunk(valueChunkList, marker);
                   }
                 }
               }
               lastIndex = valueIndex;
               if (needReturn) {
-                firstChunkHeader4NextSequentialValueChunks = chunkHeader;
+                firstChunk4NextSequentialValueChunks = chunk;
                 return;
               }
+              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
+              resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
+                  valueChunkList, currentValueChunkPageMemorySize);
             } else {
-              chunkHeader = firstChunkHeader4NextSequentialValueChunks;
-              firstChunkHeader4NextSequentialValueChunks = null;
+              chunk = firstChunk4NextSequentialValueChunks;
+              chunkHeader = chunk.getHeader();
+              firstChunk4NextSequentialValueChunks = null;
+              currentValueChunkPageMemorySize =
+                  calculatePageMemorySizeIfSinglePageValueChunk(chunk);
+              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
+              resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
+                  valueChunkList, currentValueChunkPageMemorySize);
             }
 
-            Chunk chunk =
-                new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
-
             valueChunkSize += chunkHeader.getDataSize();
+            valueChunkPageMemorySize += currentValueChunkPageMemorySize;
             valueChunkList.add(chunk);
+            final String measurementID =
+                tabletStringInternPool.intern(chunkHeader.getMeasurementID());
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    measurementID,
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
-                    currentDevice,
-                    Collections.singletonList(chunkHeader.getMeasurementID()),
-                    currentModifications));
+                    currentDevice, Collections.singletonList(measurementID), currentModifications));
             break;
           }
         case MetaMarker.CHUNK_GROUP_HEADER:
@@ -624,9 +707,14 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             lastIndex = -1;
             timeChunkList.clear();
             isMultiPageList.clear();
+            timeChunkPageMemorySizeList.clear();
             measurementIndexMap.clear();
             final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
             currentDevice = treePattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
+            currentDeviceString =
+                Objects.nonNull(currentDevice)
+                    ? tabletStringInternPool.intern(currentDevice.toString())
+                    : null;
             break;
           }
         case MetaMarker.OPERATION_INDEX_RANGE:
@@ -645,21 +733,155 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
+  private long getPageDataMemoryLimitInBytes() {
+    return PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+  }
+
+  private boolean filterChunk(
+      final long currentChunkHeaderOffset,
+      final ChunkHeader chunkHeader,
+      final boolean isAlignedValueChunk,
+      final byte marker)
+      throws IOException, IllegalPathException {
+    final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
+
+    if (Objects.isNull(currentDevice)) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    if (!isAlignedValueChunk) {
+      if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+          == TsFileConstant.TIME_COLUMN_MASK) {
+        final Chunk timeChunk =
+            new Chunk(chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+        timeChunkList.add(timeChunk);
+        final boolean isMultiPage = marker == MetaMarker.TIME_CHUNK_HEADER;
+        isMultiPageList.add(isMultiPage);
+        timeChunkPageMemorySizeList.add(
+            isMultiPage
+                ? 0
+                : SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(timeChunk));
+        return true;
+      }
+    }
+
+    if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    // Skip the chunk if it is fully deleted by mods
+    if (!currentModifications.isEmpty()) {
+      final Statistics statistics =
+          isAlignedValueChunk
+              ? findAlignedChunkStatistics(
+                  tsFileSequenceReader.getIChunkMetadataList(
+                      currentDevice, chunkHeader.getMeasurementID()),
+                  currentChunkHeaderOffset)
+              : findNonAlignedChunkStatistics(
+                  tsFileSequenceReader.getIChunkMetadataList(
+                      currentDevice, chunkHeader.getMeasurementID()),
+                  currentChunkHeaderOffset);
+      if (statistics != null
+          && ModsOperationUtil.isAllDeletedByMods(
+              currentDevice,
+              chunkHeader.getMeasurementID(),
+              statistics.getStartTime(),
+              statistics.getEndTime(),
+              currentModifications)) {
+        tsFileSequenceReader.position(nextMarkerOffset);
+        return true;
+      }
+    }
+
+    if (Objects.nonNull(entity)) {
+      final TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilege4Pipe(
+                  entity,
+                  Collections.singletonList(
+                      new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                  PrivilegeType.READ_DATA);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (skipIfNoPrivileges) {
+          tsFileSequenceReader.position(nextMarkerOffset);
+          return true;
+        }
+        throw new AccessDeniedException(status.getMessage());
+      }
+    }
+    return false;
+  }
+
   private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
       throws IOException {
     if (!valueChunkList.isEmpty()) {
       final Chunk timeChunk = timeChunkList.get(lastIndex);
       timeChunk.getData().rewind();
       currentIsMultiPage = isMultiPageList.get(lastIndex);
+      if (!currentIsMultiPage) {
+        resizePageDataMemoryIfNeeded(
+            AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
+                timeChunk, valueChunkList));
+      }
       chunkReader =
           currentIsMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList, null);
       currentIsAligned = true;
       lastMarker = marker;
       return true;
     }
     return false;
+  }
+
+  private void resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(
+      final List<Chunk> valueChunkList, final ChunkHeader valueChunkHeader) {
+    if (!valueChunkList.isEmpty() || lastIndex < 0) {
+      return;
+    }
+
+    final long chunkSize =
+        PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
+            + valueChunkHeader.getDataSize();
+    if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, chunkSize);
+    }
+  }
+
+  private void resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
+      final List<Chunk> valueChunkList, final long valueChunkPageMemorySize) {
+    if (!valueChunkList.isEmpty() || lastIndex < 0 || valueChunkPageMemorySize <= 0) {
+      return;
+    }
+
+    final long timeChunkPageMemorySize = timeChunkPageMemorySizeList.get(lastIndex);
+    if (timeChunkPageMemorySize <= 0) {
+      return;
+    }
+
+    final long pageMemorySize = timeChunkPageMemorySize + valueChunkPageMemorySize;
+    if (pageMemorySize > getPageDataMemoryLimitInBytes()) {
+      PipeDataNodeResourceManager.memory()
+          .forceResize(allocatedMemoryBlockForBatchData, pageMemorySize);
+    }
+  }
+
+  private long calculatePageMemorySizeIfSinglePageValueChunk(final Chunk chunk) throws IOException {
+    return isSinglePageValueChunk(chunk.getHeader())
+        ? SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(chunk)
+        : 0;
+  }
+
+  private boolean isSinglePageValueChunk(final ChunkHeader chunkHeader) {
+    return (chunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER;
+  }
+
+  private byte toValueChunkMarker(final ChunkHeader chunkHeader) {
+    return isSinglePageValueChunk(chunkHeader)
+        ? MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER
+        : MetaMarker.VALUE_CHUNK_HEADER;
   }
 
   @Override

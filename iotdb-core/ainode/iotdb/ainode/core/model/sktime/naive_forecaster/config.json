@@ -1,0 +1,9 @@
+{
+  "model_type": "sktime",
+  "model_id": "naive_forecaster",
+  "output_length": 1,
+  "strategy": "last",
+  "window_length": null,
+  "sp": 1
+}
+

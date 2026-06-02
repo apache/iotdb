@@ -23,10 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -231,7 +233,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
         modEntry.serialize(buffer);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize modEntry to WAL", e);
+      LOGGER.error(DataNodeQueryMessages.FAILED_TO_SERIALIZE_MODENTRY_TO_WAL, e);
     }
   }
 
@@ -254,8 +256,8 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeleteData(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitDeleteData(this, context);
   }
 
   @Override
@@ -322,7 +324,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
                 this.getDatabaseName() != null
                     && !this.getDatabaseName()
                         .equals(relationalDeleteDataNode.getDatabaseName()))) {
-      throw new IllegalArgumentException("All database name need to be same");
+      throw new IllegalArgumentException(DataNodeQueryMessages.ALL_DATABASE_NAME_NEED_TO_BE_SAME);
     }
     List<TableDeletionEntry> allTableDeletionEntries =
         relationalDeleteDataNodeList.stream()

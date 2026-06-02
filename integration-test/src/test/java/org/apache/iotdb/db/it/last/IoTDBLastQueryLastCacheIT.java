@@ -192,4 +192,46 @@ public class IoTDBLastQueryLastCacheIT {
         };
     resultSetEqualTest("select last s1 from root.sg.d1;", expectedHeader, retArray);
   }
+
+  @Test
+  public void testNonAlignedLastQueryWithTimeFilterWithoutCache() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.db1.g1.d3(time,s_3) values (1,1)");
+      statement.execute("insert into root.db1.g1.d3(time,s_3) values (2,2)");
+      statement.execute("insert into root.db1.g1.d3(time,s_3) values (3,3)");
+      statement.execute("insert into root.db1.g1.d3(time,s_3) values (4,4)");
+      statement.execute("insert into root.db1.g1.d3(time,s_1) values (1,1)");
+      statement.execute("insert into root.db1.g1.d3(time,s_1) values (2,2)");
+    }
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "4,root.db1.g1.d3.s_3,4.0,DOUBLE,",
+        };
+    resultSetEqualTest(
+        "select last s_1, s_3 from root.db1.g1.d3 where time > 2;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testAlignedLastQueryWithTimeFilterWithoutCache() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.db1.g1.d4(time,s_3) aligned values (1,1)");
+      statement.execute("insert into root.db1.g1.d4(time,s_3) aligned values (2,2)");
+      statement.execute("insert into root.db1.g1.d4(time,s_3) aligned values (3,3)");
+      statement.execute("insert into root.db1.g1.d4(time,s_3) aligned values (4,4)");
+      statement.execute("insert into root.db1.g1.d4(time,s_1) aligned values (1,1)");
+      statement.execute("insert into root.db1.g1.d4(time,s_1) aligned values (2,2)");
+    }
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "4,root.db1.g1.d4.s_3,4.0,DOUBLE,",
+        };
+    resultSetEqualTest(
+        "select last s_1, s_3 from root.db1.g1.d4 where time > 2;", expectedHeader, retArray);
+  }
 }

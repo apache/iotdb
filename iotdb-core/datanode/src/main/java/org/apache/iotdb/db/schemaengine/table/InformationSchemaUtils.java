@@ -21,13 +21,14 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -52,7 +53,7 @@ public class InformationSchemaUtils {
     if (dbName.equals(INFORMATION_DATABASE)) {
       throw new SemanticException(
           new IoTDBException(
-              "The database 'information_schema' can only be queried",
+              DataNodeSchemaMessages.INFORMATION_SCHEMA_READ_ONLY,
               TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
     }
   }
@@ -151,7 +152,7 @@ public class InformationSchemaUtils {
       return true;
     }
     if (Objects.nonNull(isShowOrCreateView)) {
-      throw new SemanticException("The system view does not support show create.");
+      throw new SemanticException(DataNodeSchemaMessages.SYSTEM_VIEW_NOT_SUPPORT_SHOW_CREATE);
     }
     final TsTable table = getSchemaTables().get(tableName);
 

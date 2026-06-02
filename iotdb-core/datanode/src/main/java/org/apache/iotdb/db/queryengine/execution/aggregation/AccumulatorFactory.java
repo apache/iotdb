@@ -19,8 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.calc.execution.aggregation.BinaryModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.BooleanModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -85,7 +94,8 @@ public class AccumulatorFactory {
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
     }
   }
 
@@ -141,7 +151,8 @@ public class AccumulatorFactory {
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
     }
   }
 
@@ -163,8 +174,9 @@ public class AccumulatorFactory {
         return new FloatModeAccumulator();
       case DOUBLE:
         return new DoubleModeAccumulator();
+      case OBJECT:
       default:
-        throw new IllegalArgumentException("Unknown data type: " + tsDataType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_DATA_TYPE + tsDataType);
     }
   }
 

@@ -121,6 +121,10 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
             encryptParameter);
+    if (compactionTaskSummary != null) {
+      compactionTaskSummary.recordTargetTsFileTableSizeMap(
+          targetResources.get(currentFileIndex), fileWriter.getTableSizeMap());
+    }
     fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
   }
 

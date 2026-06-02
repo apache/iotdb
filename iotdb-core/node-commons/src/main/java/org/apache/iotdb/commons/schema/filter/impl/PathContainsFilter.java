@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,6 +32,10 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PathContainsFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PathContainsFilter.class);
+
   private final String containString;
 
   public PathContainsFilter(final String containString) {
@@ -80,5 +85,10 @@ public class PathContainsFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(containString);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(containString);
   }
 }

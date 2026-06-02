@@ -71,6 +71,7 @@ public enum ConfigPhysicalPlanType {
   CountTimeSlotList((short) 310),
   AddRegionLocation((short) 311),
   RemoveRegionLocation((short) 312),
+  GetRegionGroupsByTime((short) 313),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
@@ -135,7 +136,6 @@ public enum ConfigPhysicalPlanType {
   CreateUserWithRawPassword((short) 638),
   UpdateUserMaxSession((short) 639),
   UpdateUserMinSession((short) 640),
-  AccountUnlock((short) 641),
 
   /** Table Author */
   RCreateUser((short) 641),
@@ -230,6 +230,8 @@ public enum ConfigPhysicalPlanType {
   PreDeleteViewColumn((short) 875),
   PreDeleteView((short) 876),
   RenameViewColumn((short) 877),
+  AlterColumnDataType((short) 878),
+  PreAlterColumnDataType((short) 879),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -293,6 +295,7 @@ public enum ConfigPhysicalPlanType {
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
   OperateMultiplePipesV2((short) 1505),
+  SetPipeStatusWithStoppedByRuntimeExceptionV2((short) 1506),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -308,6 +311,7 @@ public enum ConfigPhysicalPlanType {
   PipeCreateTableOrView((short) 1706),
   PipeDeleteDevices((short) 1707),
   PipeAlterEncodingCompressor((short) 1708),
+  PipeAlterTimeSeries((short) 1709),
 
   /** Subscription */
   CreateTopic((short) 1800),
@@ -331,6 +335,12 @@ public enum ConfigPhysicalPlanType {
   RRenameUser((short) 2105),
 
   EnableSeparationOfAdminPowers((short) 2200),
+
+  CreateExternalService((short) 2301),
+  StartExternalService((short) 2302),
+  StopExternalService((short) 2303),
+  DropExternalService((short) 2304),
+  ShowExternalService((short) 2305),
 
   /** Test Only. */
   TestOnly((short) 30000),

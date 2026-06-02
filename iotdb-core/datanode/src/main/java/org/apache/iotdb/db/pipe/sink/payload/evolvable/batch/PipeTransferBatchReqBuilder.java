@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
@@ -138,7 +140,9 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
-          "Unsupported event {} type {} when building transfer request", event, event.getClass());
+          DataNodePipeMessages.UNSUPPORTED_EVENT_TYPE_WHEN_BUILDING_TRANSFER_REQUEST,
+          event,
+          event.getClass());
       return;
     }
 
@@ -196,9 +200,14 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
         && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
   }
 
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    defaultBatch.discardEventsOfPipe(pipeNameToDrop, regionId);
-    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, regionId));
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    defaultBatch.discardEventsOfPipe(committerKey);
+    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(committerKey));
   }
 
   public int size() {
@@ -209,7 +218,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
               .reduce(0, Integer::sum);
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to get the size of PipeTransferBatchReqBuilder, return 0. Exception: {}",
+          DataNodePipeMessages.FAILED_TO_GET_THE_SIZE_OF_PIPETRANSFERBATCHREQBUILDER,
           e.getMessage(),
           e);
       return 0;

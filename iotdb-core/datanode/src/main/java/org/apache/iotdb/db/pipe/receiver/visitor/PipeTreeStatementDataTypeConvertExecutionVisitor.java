@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
@@ -74,7 +75,7 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     try {
       return Optional.of(statementExecutor.execute(statement));
     } catch (final Exception e) {
-      LOGGER.warn("Failed to execute statement after data type conversion.", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_EXECUTE_STATEMENT_AFTER_DATA_TYPE, e);
       return Optional.empty();
     }
   }
@@ -95,7 +96,7 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
+        DataNodePipeMessages.DATA_TYPE_MISMATCH_DETECTED_TSSTATUS_FOR_LOADTSFILESTATEMENT,
         status,
         loadTsFileStatement);
 
@@ -114,9 +115,8 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
           TSStatus result;
           try {
             result =
-                statement.accept(
-                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                    statementExecutor.execute(statement));
+                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                    statement, statementExecutor.execute(statement));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -127,9 +127,8 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
-                  statement.accept(
-                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                      statementExecutor.execute(statement));
+                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                      statement, statementExecutor.execute(statement));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
@@ -147,7 +146,9 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+            DataNodePipeMessages.FAILED_TO_CONVERT_DATA_TYPE_FOR_LOADTSFILESTATEMENT,
+            loadTsFileStatement,
+            e);
         return Optional.empty();
       }
     }
@@ -157,7 +158,8 @@ public class PipeTreeStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+        DataNodePipeMessages.DATA_TYPE_CONVERSION_FOR_LOADTSFILESTATEMENT_IS_SUCCESSFUL,
+        loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

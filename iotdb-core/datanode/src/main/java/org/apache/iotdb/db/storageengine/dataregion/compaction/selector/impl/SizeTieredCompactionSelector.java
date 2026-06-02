@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
@@ -139,7 +140,8 @@ public class SizeTieredCompactionSelector
         selectedFileList.add(currentFile);
         selectedFileSize = currentFile.getTsFileSize();
       } else {
-        LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
+        LOGGER.debug(
+            StorageEngineMessages.CURRENT_FILE_SIZE, currentFile, currentFile.getTsFileSize());
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
         LOGGER.debug(
@@ -194,7 +196,7 @@ public class SizeTieredCompactionSelector
       // task at the tsFile level
       return selectTaskBaseOnLevel();
     } catch (Exception e) {
-      LOGGER.error("Exception occurs while selecting files", e);
+      LOGGER.error(StorageEngineMessages.EXCEPTION_SELECTING_FILES, e);
     }
     return Collections.emptyList();
   }

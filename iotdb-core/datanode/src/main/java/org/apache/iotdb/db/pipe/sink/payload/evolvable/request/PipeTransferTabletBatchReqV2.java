@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -33,20 +34,17 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
-
-  private final transient List<PipeTransferTabletBinaryReqV2> binaryReqs = new ArrayList<>();
   private final transient List<PipeTransferTabletInsertNodeReqV2> insertNodeReqs =
       new ArrayList<>();
   private final transient List<PipeTransferTabletRawReqV2> tabletReqs = new ArrayList<>();
@@ -58,53 +56,12 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public List<InsertBaseStatement> constructStatements() {
     final List<InsertBaseStatement> statements = new ArrayList<>();
 
-    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    final InsertMultiTabletsStatement insertMultiTabletsStatement =
-        new InsertMultiTabletsStatement();
-
-    final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
-    final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     final Map<String, List<InsertRowStatement>> tableModelDatabaseInsertRowStatementMap =
-        new HashMap<>();
-
-    for (final PipeTransferTabletBinaryReqV2 binaryReq : binaryReqs) {
-      final InsertBaseStatement statement = binaryReq.constructStatement();
-      if (statement.isEmpty()) {
-        continue;
-      }
-      if (statement.isWriteToTable()) {
-        if (statement instanceof InsertRowStatement) {
-          tableModelDatabaseInsertRowStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .add((InsertRowStatement) statement);
-        } else if (statement instanceof InsertTabletStatement) {
-          statements.add(statement);
-        } else if (statement instanceof InsertRowsStatement) {
-          tableModelDatabaseInsertRowStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
-        } else {
-          throw new UnsupportedOperationException(
-              String.format(
-                  "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
-                  binaryReq));
-        }
-        continue;
-      }
-      if (statement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) statement);
-      } else if (statement instanceof InsertTabletStatement) {
-        insertTabletStatementList.add((InsertTabletStatement) statement);
-      } else if (statement instanceof InsertRowsStatement) {
-        insertRowStatementList.addAll(
-            ((InsertRowsStatement) statement).getInsertRowStatementList());
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReqV2.",
-                binaryReq));
-      }
-    }
+        new LinkedHashMap<>();
+    final Map<String, List<InsertRowStatement>> treeModelDatabaseInsertRowStatementMap =
+        new LinkedHashMap<>();
+    final Map<String, List<InsertTabletStatement>> treeModelDatabaseInsertTabletStatementMap =
+        new LinkedHashMap<>();
 
     for (final PipeTransferTabletInsertNodeReqV2 insertNodeReq : insertNodeReqs) {
       final InsertBaseStatement statement = insertNodeReq.constructStatement();
@@ -119,9 +76,12 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         } else if (statement instanceof InsertTabletStatement) {
           statements.add(statement);
         } else if (statement instanceof InsertRowsStatement) {
-          tableModelDatabaseInsertRowStatementMap
-              .computeIfAbsent(statement.getDatabaseName().get(), k -> new ArrayList<>())
-              .addAll(((InsertRowsStatement) statement).getInsertRowStatementList());
+          for (final InsertRowStatement insertRowStatement :
+              ((InsertRowsStatement) statement).getInsertRowStatementList()) {
+            tableModelDatabaseInsertRowStatementMap
+                .computeIfAbsent(insertRowStatement.getDatabaseName().get(), k -> new ArrayList<>())
+                .add(insertRowStatement);
+          }
         } else {
           throw new UnsupportedOperationException(
               String.format(
@@ -131,12 +91,21 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         continue;
       }
       if (statement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) statement);
+        treeModelDatabaseInsertRowStatementMap
+            .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+            .add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
-        insertTabletStatementList.add((InsertTabletStatement) statement);
+        treeModelDatabaseInsertTabletStatementMap
+            .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+            .add((InsertTabletStatement) statement);
       } else if (statement instanceof InsertRowsStatement) {
-        insertRowStatementList.addAll(
-            ((InsertRowsStatement) statement).getInsertRowStatementList());
+        for (final InsertRowStatement insertRowStatement :
+            ((InsertRowsStatement) statement).getInsertRowStatementList()) {
+          treeModelDatabaseInsertRowStatementMap
+              .computeIfAbsent(
+                  insertRowStatement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+              .add(insertRowStatement);
+        }
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -154,17 +123,13 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
         statements.add(statement);
         continue;
       }
-      insertTabletStatementList.add(statement);
+      treeModelDatabaseInsertTabletStatementMap
+          .computeIfAbsent(statement.getDatabaseName().orElse(null), k -> new ArrayList<>())
+          .add(statement);
     }
 
-    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
-    if (!insertRowsStatement.isEmpty()) {
-      statements.add(insertRowsStatement);
-    }
-    if (!insertMultiTabletsStatement.isEmpty()) {
-      statements.add(insertMultiTabletsStatement);
-    }
+    addTreeModelInsertRowsStatements(statements, treeModelDatabaseInsertRowStatementMap);
+    addTreeModelInsertTabletsStatements(statements, treeModelDatabaseInsertTabletStatementMap);
 
     for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
         tableModelDatabaseInsertRowStatementMap.entrySet()) {
@@ -178,13 +143,39 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     return statements;
   }
 
+  private void addTreeModelInsertRowsStatements(
+      final List<InsertBaseStatement> statements,
+      final Map<String, List<InsertRowStatement>> databaseInsertRowStatementMap) {
+    for (final Map.Entry<String, List<InsertRowStatement>> insertRows :
+        databaseInsertRowStatementMap.entrySet()) {
+      final InsertRowsStatement statement = new InsertRowsStatement();
+      statement.setInsertRowStatementList(insertRows.getValue());
+      if (insertRows.getKey() != null) {
+        statement.setDatabaseName(insertRows.getKey());
+      }
+      statements.add(statement);
+    }
+  }
+
+  private void addTreeModelInsertTabletsStatements(
+      final List<InsertBaseStatement> statements,
+      final Map<String, List<InsertTabletStatement>> databaseInsertTabletStatementMap) {
+    for (final Map.Entry<String, List<InsertTabletStatement>> insertTablets :
+        databaseInsertTabletStatementMap.entrySet()) {
+      final InsertMultiTabletsStatement statement = new InsertMultiTabletsStatement();
+      statement.setInsertTabletStatementList(insertTablets.getValue());
+      if (insertTablets.getKey() != null) {
+        statement.setDatabaseName(insertTablets.getKey());
+      }
+      statements.add(statement);
+    }
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletBatchReqV2 toTPipeTransferReq(
-      final List<ByteBuffer> binaryBuffers,
       final List<ByteBuffer> insertNodeBuffers,
       final List<ByteBuffer> tabletBuffers,
-      final List<String> binaryDataBases,
       final List<String> insertNodeDataBases,
       final List<String> tabletDataBases)
       throws IOException {
@@ -194,13 +185,8 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
     batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
-      for (int i = 0; i < binaryBuffers.size(); i++) {
-        final ByteBuffer binaryBuffer = binaryBuffers.get(i);
-        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
-        outputStream.write(binaryBuffer.array(), 0, binaryBuffer.limit());
-        ReadWriteIOUtils.write(binaryDataBases.get(i), outputStream);
-      }
+      // Binary buffer, for rolling upgrade
+      ReadWriteIOUtils.write(0, outputStream);
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (int i = 0; i < insertNodeBuffers.size(); i++) {
@@ -226,32 +212,24 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   public static PipeTransferTabletBatchReqV2 fromTPipeTransferReq(
       final org.apache.iotdb.service.rpc.thrift.TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReqV2 batchReq = new PipeTransferTabletBatchReqV2();
+    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
+
+    // Binary req, for rolling upgrade
+    ReadWriteIOUtils.readInt(transferReq.body);
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
-      final int length = ReadWriteIOUtils.readInt(transferReq.body);
-      final byte[] body = new byte[length];
-      transferReq.body.get(body);
-      batchReq.binaryReqs.add(
-          PipeTransferTabletBinaryReqV2.toTPipeTransferBinaryReq(
-              ByteBuffer.wrap(body), ReadWriteIOUtils.readString(transferReq.body)));
-    }
-
-    size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null),
-              ReadWriteIOUtils.readString(transferReq.body)));
+              tabletStringInternPool.intern(ReadWriteIOUtils.readString(transferReq.body))));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
           PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-              Tablet.deserialize(transferReq.body),
-              ReadWriteIOUtils.readBool(transferReq.body),
-              ReadWriteIOUtils.readString(transferReq.body)));
+              transferReq.body, tabletStringInternPool));
     }
 
     batchReq.version = transferReq.version;
@@ -262,11 +240,6 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
   }
 
   /////////////////////////////// TestOnly ///////////////////////////////
-
-  @TestOnly
-  public List<PipeTransferTabletBinaryReqV2> getBinaryReqs() {
-    return binaryReqs;
-  }
 
   @TestOnly
   public List<PipeTransferTabletInsertNodeReqV2> getInsertNodeReqs() {
@@ -289,8 +262,7 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
       return false;
     }
     final PipeTransferTabletBatchReqV2 that = (PipeTransferTabletBatchReqV2) obj;
-    return Objects.equals(binaryReqs, that.binaryReqs)
-        && Objects.equals(insertNodeReqs, that.insertNodeReqs)
+    return Objects.equals(insertNodeReqs, that.insertNodeReqs)
         && Objects.equals(tabletReqs, that.tabletReqs)
         && version == that.version
         && type == that.type
@@ -299,6 +271,6 @@ public class PipeTransferTabletBatchReqV2 extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(binaryReqs, insertNodeReqs, tabletReqs, version, type, body);
+    return Objects.hash(insertNodeReqs, tabletReqs, version, type, body);
   }
 }

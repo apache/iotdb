@@ -284,7 +284,7 @@ public class IoTDBRestServiceInsertValuesIT {
   public void testInsertWithWrongMeasurementNum2() {
     nonQuery(
         sqlHandler(
-            "t1", "create table wf04 (tag1 string tag, status int32, temperature int32 field)"));
+            "t1", "create table wf05 (tag1 string tag, status int32, temperature int32 field)"));
     JsonObject jsonObject =
         nonQuery(
             sqlHandler(

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -118,21 +120,21 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute create device template {} in config node, status is {}.",
-            statement.getName(),
-            tsStatus);
+            DataNodeSchemaMessages.FAILED_TO_CREATE_TEMPLATE, statement.getName(), tsStatus);
       }
       return tsStatus;
     } catch (MetadataException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "create template error -" + e.getMessage(),
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR_PREFIX + e.getMessage(),
               e,
               TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+              DataNodeSchemaMessages.CREATE_TEMPLATE_ERROR,
+              e,
+              TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     }
   }
 
@@ -177,7 +179,8 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+              DataNodeSchemaMessages.GET_ALL_TEMPLATE_ERROR,
+              TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return templatesList;
   }
@@ -198,7 +201,8 @@ public class ClusterTemplateManager implements ITemplateManager {
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
           new IoTDBException(
-              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+              DataNodeSchemaMessages.GET_TEMPLATE_INFO_ERROR,
+              TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
   }
 
@@ -228,11 +232,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute set device template {} on path {} in config node, status is {}.",
-            name,
-            path,
-            tsStatus);
+        LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_SET_TEMPLATE, name, path, tsStatus);
         throw new IoTDBException(tsStatus);
       }
     } catch (Exception e) {
@@ -256,7 +256,7 @@ public class ClusterTemplateManager implements ITemplateManager {
                     try {
                       listPath.add(new PartialPath(item));
                     } catch (IllegalPathException e) {
-                      LOGGER.error("illegal path {}", item);
+                      LOGGER.error(DataNodeSchemaMessages.ILLEGAL_PATH_LOG, item);
                     }
                   });
         }
@@ -617,10 +617,14 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   public void updateTemplateInfo(byte[] templateInfo) {
+    Template template =
+        TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
+    updateTemplateInfo(template);
+  }
+
+  public void updateTemplateInfo(Template template) {
     readWriteLock.writeLock().lock();
     try {
-      Template template =
-          TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
       templateIdMap.put(template.getId(), template);
     } finally {
       readWriteLock.writeLock().unlock();

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+
+import org.apache.tsfile.utils.Pair;
+
 public class FakedMemoryReservationManager implements MemoryReservationManager {
 
   @Override
@@ -32,4 +36,13 @@ public class FakedMemoryReservationManager implements MemoryReservationManager {
 
   @Override
   public void releaseAllReservedMemory() {}
+
+  @Override
+  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
+    return new Pair<>(0L, 0L);
+  }
+
+  @Override
+  public void reserveMemoryVirtually(
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {}
 }

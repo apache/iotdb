@@ -22,18 +22,20 @@ package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -61,6 +64,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -75,9 +80,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_CLI_HOSTNAME;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_ID;
@@ -86,14 +93,15 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_USE_EVENT_USER_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_CLI_HOSTNAME;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_USE_EVENT_USER_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.WRITE_BACK_CONNECTOR_SKIP_IF_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 @TreeModel
 @TableModel
@@ -105,16 +113,13 @@ public class WriteBackSink implements PipeConnector {
   // for correctly handling data insertion in IoTDBReceiverAgent#receive method
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private IClientSession session;
+  public static final AtomicLong id = new AtomicLong();
+  private InternalClientSession session;
 
-  // Temporary, used to separate
-  private IClientSession treeSession;
   private boolean skipIfNoPrivileges;
   private boolean useEventUserName;
 
   private UserEntity userEntity;
-
-  private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
 
@@ -136,11 +141,12 @@ public class WriteBackSink implements PipeConnector {
     session =
         new InternalClientSession(
             String.format(
-                "%s_%s_%s_%s",
+                "%s_%s_%s_%s_%s",
                 WriteBackSink.class.getSimpleName(),
                 environment.getPipeName(),
                 environment.getCreationTime(),
-                environment.getRegionId()));
+                environment.getRegionId(),
+                id.getAndIncrement()));
 
     String userIdString =
         parameters.getStringOrDefault(
@@ -151,6 +157,8 @@ public class WriteBackSink implements PipeConnector {
             SINK_IOTDB_USER_KEY,
             CONNECTOR_IOTDB_USERNAME_KEY,
             SINK_IOTDB_USERNAME_KEY);
+    String passwordString =
+        parameters.getStringByKeys(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY);
     String cliHostnameString =
         parameters.getStringByKeys(CONNECTOR_IOTDB_CLI_HOSTNAME, SINK_IOTDB_CLI_HOSTNAME);
     userEntity = new UserEntity(Long.parseLong(userIdString), usernameString, cliHostnameString);
@@ -159,19 +167,6 @@ public class WriteBackSink implements PipeConnector {
     session.setUsername(usernameString);
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
-
-    // Temporary
-    treeSession =
-        new InternalClientSession(
-            String.format(
-                "%s_%s_%s_%s_tree",
-                WriteBackSink.class.getSimpleName(),
-                environment.getPipeName(),
-                environment.getCreationTime(),
-                environment.getRegionId()));
-    treeSession.setUsername(AuthorityChecker.SUPER_USER);
-    treeSession.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    treeSession.setZoneId(ZoneId.systemDefault());
 
     final String connectorSkipIfValue =
         parameters
@@ -195,6 +190,28 @@ public class WriteBackSink implements PipeConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_USE_EVENT_USER_NAME_KEY, SINK_USE_EVENT_USER_NAME_KEY),
             CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE);
+
+    if (SESSION_MANAGER.getCurrSession() == null) {
+      SESSION_MANAGER.registerSession(session);
+    }
+
+    // Check the password and its expiration
+    if (Objects.nonNull(passwordString)
+        && SESSION_MANAGER
+                .login(
+                    session,
+                    usernameString,
+                    passwordString,
+                    ZoneId.systemDefault().toString(),
+                    SessionManager.CURRENT_RPC_VERSION,
+                    IoTDBConstant.ClientVersion.V_1_0,
+                    SqlDialect.TREE,
+                    environment.getRegionId() >= 0)
+                .getCode()
+            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipePasswordCheckException(
+          String.format("Failed to check password for pipe %s.", environment.getPipeName()));
+    }
   }
 
   @Override
@@ -213,7 +230,7 @@ public class WriteBackSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WriteBackConnector only support "
+          "WriteBackSink only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -249,19 +266,12 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertBaseStatement insertBaseStatement;
-    if (Objects.isNull(insertNode)) {
-      insertBaseStatement =
-          PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName)
-              .constructStatement();
-    } else {
-      insertBaseStatement =
-          PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
-              .constructStatement();
-    }
+    insertBaseStatement =
+        PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
+            .constructStatement();
 
     final TSStatus status =
         insertBaseStatement.isWriteToTable()
@@ -271,7 +281,9 @@ public class WriteBackSink implements PipeConnector {
                 insertBaseStatement, pipeInsertNodeTabletInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !(skipIfNoPrivileges
+            && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
@@ -297,7 +309,7 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
             ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
@@ -358,7 +370,9 @@ public class WriteBackSink implements PipeConnector {
                 pipeStatementInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !(skipIfNoPrivileges
+            && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
               "Write back PipeStatementInsertionEvent %s error, result status %s",
@@ -369,22 +383,18 @@ public class WriteBackSink implements PipeConnector {
   @Override
   public void close() throws Exception {
     if (session != null) {
-      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
-    }
-    if (treeSession != null) {
-      SESSION_MANAGER.closeSession(treeSession, COORDINATOR::cleanupQueryExecution);
+      SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
     }
   }
 
   private TSStatus executeStatementForTableModel(
       Statement statement, String dataBaseName, final String userName) {
     session.setDatabaseName(dataBaseName);
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    session.setSqlDialect(SqlDialect.TABLE);
     final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
     }
-    SESSION_MANAGER.registerSession(session);
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
       return Coordinator.getInstance()
@@ -403,7 +413,7 @@ public class WriteBackSink implements PipeConnector {
         throw e;
       }
       LOGGER.debug(
-          "Execute statement {} to database {}, skip because no permission.",
+          DataNodePipeMessages.EXECUTE_STATEMENT_TO_DATABASE_SKIP_BECAUSE_NO,
           statement.getClass().getSimpleName(),
           dataBaseName);
       return StatusUtils.OK;
@@ -436,7 +446,6 @@ public class WriteBackSink implements PipeConnector {
       // If the exception is not caused by database not set, throw it directly
       throw e;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
         session.setUsername(originalUserName);
       }
@@ -478,36 +487,57 @@ public class WriteBackSink implements PipeConnector {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new PipeException("Auto create database failed because: " + e.getMessage());
+      throw new PipeException(
+          DataNodePipeMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
 
     ALREADY_CREATED_DATABASES.add(database);
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
-    treeSession.setDatabaseName(null);
-    treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
-    final String originalUserName = treeSession.getUsername();
+    session.setDatabaseName(null);
+    session.setSqlDialect(SqlDialect.TREE);
+    final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
-      treeSession.setUsername(userName);
+      session.setUsername(userName);
     }
-    SESSION_MANAGER.registerSession(treeSession);
+    final TSStatus permissionCheckStatus =
+        AuthorityChecker.checkAuthority(
+            statement,
+            new TreeAccessCheckContext(
+                session.getUserId(), session.getUsername(), session.getClientAddress()));
+    if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      PipeLogger.log(
+          LOGGER::warn,
+          "Session {}: Failed to check authority for statement {}, username = {}, response = {}.",
+          session.getClientAddress() + ":" + session.getClientPort(),
+          statement.getType().name(),
+          session.getUsername(),
+          permissionCheckStatus);
+      return RpcUtils.getStatus(
+          permissionCheckStatus.getCode(), permissionCheckStatus.getMessage());
+    }
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               new PipeEnrichedStatement(statement),
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(treeSession),
+              SESSION_MANAGER.getSessionInfo(session),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-              false)
+              false,
+              statement.isDebug())
           .status;
+    } catch (final IoTDBRuntimeException e) {
+      if (e.getErrorCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      throw e;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
       if (useEventUserName) {
-        treeSession.setUsername(originalUserName);
+        session.setUsername(originalUserName);
       }
     }
   }

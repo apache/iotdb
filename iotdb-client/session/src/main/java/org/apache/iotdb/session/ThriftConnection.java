@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -192,7 +193,7 @@ public class ThriftConnection {
           client.closeSession(new TSCloseSessionReq(sessionId));
         }
       } catch (TException e) {
-        LOGGER.warn("Closing Session-{} with {} failed.", sessionId, endPoint);
+        LOGGER.warn(SessionMessages.CLOSING_SESSION_FAILED, sessionId, endPoint);
       } finally {
         if (transport.isOpen()) {
           transport.close();

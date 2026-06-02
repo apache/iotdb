@@ -16,13 +16,10 @@
 # under the License.
 #
 
-import os
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-from huggingface_hub import hf_hub_download
-from safetensors.torch import load_file as load_safetensors
 from torch import nn
 from transformers import Cache, DynamicCache, PreTrainedModel
 from transformers.activations import ACT2FN
@@ -32,12 +29,9 @@ from transformers.modeling_outputs import (
     MoeModelOutputWithPast,
 )
 
-from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.sundial.configuration_sundial import SundialConfig
 from iotdb.ainode.core.model.sundial.flow_loss import FlowLoss
 from iotdb.ainode.core.model.sundial.ts_generation_mixin import TSGenerationMixin
-
-logger = Logger()
 
 
 def rotate_half(x):

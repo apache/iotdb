@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Dr
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -186,7 +187,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void checkBeforeDropTopicInternal(String topicName) throws SubscriptionException {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Check before dropping topic: {}, topic exists: {}",
+          ConfigNodeMessages.CHECK_BEFORE_DROPPING_TOPIC_TOPIC_EXISTS,
           topicName,
           isTopicExisted(topicName));
     }
@@ -220,26 +221,21 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  public void validatePipePluginUsageByTopicInternal(String pipePluginName)
+  private void validatePipePluginUsageByTopicInternal(String pipePluginName)
       throws SubscriptionException {
-    acquireReadLock();
-    try {
-      topicMetaKeeper
-          .getAllTopicMeta()
-          .forEach(
-              meta -> {
-                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
-                  final String exceptionMessage =
-                      String.format(
-                          "PipePlugin '%s' is already used by Topic '%s' as a processor.",
-                          pipePluginName, meta.getTopicName());
-                  LOGGER.warn(exceptionMessage);
-                  throw new SubscriptionException(exceptionMessage);
-                }
-              });
-    } finally {
-      releaseReadLock();
-    }
+    topicMetaKeeper
+        .getAllTopicMeta()
+        .forEach(
+            meta -> {
+              if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                final String exceptionMessage =
+                    String.format(
+                        "PipePlugin '%s' is already used by Topic '%s' as a processor.",
+                        pipePluginName, meta.getTopicName());
+                LOGGER.warn(exceptionMessage);
+                throw new SubscriptionException(exceptionMessage);
+              }
+            });
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
@@ -335,21 +331,25 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterTopic(AlterTopicPlan plan) {
     acquireWriteLock();
     try {
-      topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
-      topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return alterTopicInternal(plan);
     } finally {
       releaseWriteLock();
     }
   }
 
-  public TSStatus alterMultipleTopics(AlterMultipleTopicsPlan plan) {
+  private TSStatus alterTopicInternal(final AlterTopicPlan plan) {
+    topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
+    topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus alterMultipleTopics(final AlterMultipleTopicsPlan plan) {
     acquireWriteLock();
     try {
-      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setSubStatus(new ArrayList<>());
-      for (AlterTopicPlan subPlan : plan.getSubPlans()) {
-        TSStatus innerStatus = alterTopic(subPlan);
+      for (final AlterTopicPlan subPlan : plan.getSubPlans()) {
+        final TSStatus innerStatus = alterTopicInternal(subPlan);
         status.getSubStatus().add(innerStatus);
         if (innerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           status.setCode(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode());
@@ -381,7 +381,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus handleTopicMetaChanges(TopicHandleMetaChangePlan plan) {
     acquireWriteLock();
     try {
-      LOGGER.info("Handling topic meta changes ...");
+      LOGGER.info(ConfigNodeMessages.HANDLING_TOPIC_META_CHANGES);
 
       topicMetaKeeper.clear();
 
@@ -389,7 +389,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           .forEach(
               topicMeta -> {
                 topicMetaKeeper.addTopicMeta(topicMeta.getTopicName(), topicMeta);
-                LOGGER.info("Recording topic meta: {}", topicMeta);
+                LOGGER.info(ConfigNodeMessages.RECORDING_TOPIC_META, topicMeta);
               });
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -549,7 +549,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus handleConsumerGroupMetaChanges(ConsumerGroupHandleMetaChangePlan plan) {
     acquireWriteLock();
     try {
-      LOGGER.info("Handling consumer group meta changes ...");
+      LOGGER.info(ConfigNodeMessages.HANDLING_CONSUMER_GROUP_META_CHANGES);
 
       consumerGroupMetaKeeper.clear();
 
@@ -558,7 +558,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
               consumerGroupMeta -> {
                 consumerGroupMetaKeeper.addConsumerGroupMeta(
                     consumerGroupMeta.getConsumerGroupId(), consumerGroupMeta);
-                LOGGER.info("Recording consumer group meta: {}", consumerGroupMeta);
+                LOGGER.info(ConfigNodeMessages.RECORDING_CONSUMER_GROUP_META, consumerGroupMeta);
               });
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -733,7 +733,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (snapshotFile.exists() && snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to take subscription snapshot, because snapshot file {} is already exist.",
+            ConfigNodeMessages
+                .FAILED_TO_TAKE_SUBSCRIPTION_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY,
             snapshotFile.getAbsolutePath());
         return false;
       }
@@ -757,7 +758,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load subscription snapshot, snapshot file {} is not exist.",
+            ConfigNodeMessages.FAILED_TO_LOAD_SUBSCRIPTION_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST,
             snapshotFile.getAbsolutePath());
         return;
       }

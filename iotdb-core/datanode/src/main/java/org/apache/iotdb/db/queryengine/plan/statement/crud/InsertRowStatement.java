@@ -19,23 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -170,7 +171,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+          throw new QueryProcessException(
+              DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }
@@ -234,6 +236,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         // if the type is binary and the value is already binary, do not convert
         if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        } else if (dataTypes[i] == TSDataType.OBJECT && values[i] instanceof Binary) {
+          if (((Binary) values[i]).getValues().length < 9
+              || ((Binary) values[i]).getValues()[0] != 0
+                  && ((Binary) values[i]).getValues()[0] != 1) {
+            throw new IllegalArgumentException(
+                "data type is not consistent, input " + values[i] + ", registered " + dataTypes[i]);
+          }
         }
       } catch (Exception e) {
         LOGGER.warn(

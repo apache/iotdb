@@ -57,6 +57,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,7 +81,19 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_M
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HYPHEN;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.INFLUXDB_RPC_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.JAVA_CMD;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS;
@@ -90,18 +103,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_LIB_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
@@ -418,48 +419,50 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               DATA_REPLICATION_FACTOR,
               System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM));
           break;
-        case PIPE_CONSENSUS_BATCH_MODE:
+        case IOT_CONSENSUS_V2_BATCH_MODE:
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
+                  System.getProperty(IOT_CONSENSUS_V2_BATCH_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
+                  System.getProperty(
+                      IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
+                  System.getProperty(IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
+              System.getProperty(IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM, "2"));
+              System.getProperty(IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_REPLICA_NUM, "2"));
           // set mode
           clusterConfigProperties.setProperty(
               IOT_CONSENSUS_V2_MODE, ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE);
           break;
-        case PIPE_CONSENSUS_STREAM_MODE:
+        case IOT_CONSENSUS_V2_STREAM_MODE:
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
+                  System.getProperty(IOT_CONSENSUS_V2_STREAM_MODE_CONFIG_NODE_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
+                  System.getProperty(
+                      IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_CONSENSUS, "Ratis")));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
               fromConsensusAbbrToFullName(
-                  System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
+                  System.getProperty(IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_CONSENSUS, "IoTV2")));
           clusterConfigProperties.setProperty(
               SCHEMA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
+              System.getProperty(IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM, "3"));
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
-              System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM, "2"));
+              System.getProperty(IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_REPLICA_NUM, "2"));
           // set mode
           clusterConfigProperties.setProperty(
               IOT_CONSENSUS_V2_MODE, ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE);
@@ -524,6 +527,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-D" + IoTDBConstant.INTEGRATION_TEST_KILL_POINTS + "=" + killPoints.toString(),
+              "-Dsun.jnu.encoding=UTF-8",
+              "-Dfile.encoding=UTF-8",
               "-cp",
               server_node_lib_path));
       addStartCmdParams(startCmd);
@@ -572,7 +577,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       Thread.currentThread().interrupt();
       logger.error("Waiting node to shutdown error.", e);
     }
-    logger.info("In test {} {} started forcibly.", getTestLogDirName(), getId());
+    logger.info("In test {} {} stopped forcibly.", getTestLogDirName(), getId());
   }
 
   @Override
@@ -833,5 +838,19 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   public int[] getPortList() {
     return portList;
+  }
+
+  public void clearLogContent() throws IOException {
+    Files.newOutputStream(Paths.get(getLogPath()), StandardOpenOption.TRUNCATE_EXISTING).close();
+  }
+
+  public boolean logContains(String content) throws IOException {
+    List<String> lines = Files.readAllLines(Paths.get(getLogPath()), StandardCharsets.UTF_8);
+    for (String line : lines) {
+      if (line.contains(content)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

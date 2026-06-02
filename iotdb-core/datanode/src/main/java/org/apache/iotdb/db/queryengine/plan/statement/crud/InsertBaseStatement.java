@@ -19,21 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -270,7 +271,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       index++;
       deduplicatedMeasurements.add(measurement);
       if (deduplicatedMeasurements.size() != index) {
-        throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
+        throw new SemanticException(
+            DataNodeQueryMessages.INSERTION_CONTAINS_DUPLICATED_MEASUREMENT + measurement);
       }
     }
 
@@ -837,6 +839,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
             + RamUsageEstimator.sizeOf(databaseName)
             + calculateBytesUsed();
     return ramBytesUsed;
+  }
+
+  /**
+   * Set the pre-calculated memory size. This is used when memory size is calculated during
+   * deserialization to avoid recalculation.
+   *
+   * @param ramBytesUsed the calculated memory size in bytes
+   */
+  public void setRamBytesUsed(long ramBytesUsed) {
+    this.ramBytesUsed = ramBytesUsed;
   }
 
   private long shallowSizeOfList(List<?> list) {

@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -87,12 +88,12 @@ public class IoTDBSessionReporter extends IoTDBReporter {
                     + metricConfig.getInternalDatabase()
                     + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1")) {
           if (!result2.hasNext()) {
-            LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
+            LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_DB_FAILED);
           }
         }
       }
     } catch (IoTDBConnectionException e) {
-      LOGGER.warn("IoTDBSessionReporter checkOrCreateDatabase failed because ", e);
+      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_DB_FAILED_BECAUSE, e);
     } catch (StatementExecutionException e) {
       // do nothing
     }
@@ -102,7 +103,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
   @SuppressWarnings("unsafeThreadSchedule")
   public boolean start() {
     if (currentServiceFuture != null) {
-      LOGGER.warn("IoTDBSessionReporter already start!");
+      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_ALREADY_START);
       return false;
     }
     currentServiceFuture =
@@ -119,7 +120,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
                 }
                 writeMetricsToIoTDB(values, System.currentTimeMillis());
               } catch (Throwable t) {
-                LOGGER.error("IoTDBSessionReporter failed to start, because", t);
+                LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED, t);
               }
             },
             1,
@@ -141,7 +142,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
     if (sessionPool != null) {
       sessionPool.close();
     }
-    LOGGER.info("IoTDBSessionReporter stop!");
+    LOGGER.info(MetricsMessages.IOTDB_SESSION_REPORTER_STOP);
     return true;
   }
 
@@ -164,7 +165,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
     try {
       sessionPool.insertRecord(prefix, time, sensors, dataTypes, values);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn("IoTDBSessionReporter failed to insert record, because ", e);
+      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
     }
   }
 
@@ -195,7 +196,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
     try {
       sessionPool.insertRecords(deviceIds, times, sensors, dataTypes, values);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn("IoTDBSessionReporter failed to insert record, because ", e);
+      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
     }
   }
 }

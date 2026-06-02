@@ -21,12 +21,15 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -73,8 +76,8 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRelationalInsertRows(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRelationalInsertRows(this, context);
   }
 
   public static RelationalInsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -121,7 +124,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(stream);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -141,7 +144,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(buffer);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -159,6 +162,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    List<WritePlanNode> writePlanNodeList = new ArrayList<>();
     Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < getInsertRowNodeList().size(); i++) {
@@ -172,6 +176,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
+
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -185,11 +190,19 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       }
     }
     analysis.setRedirectNodeList(redirectInfo);
+    writePlanNodeList.addAll(splitMap.values());
 
-    return new ArrayList<>(splitMap.values());
+    return writePlanNodeList;
   }
 
   public RelationalInsertRowsNode emptyClone() {
     return new RelationalInsertRowsNode(this.getPlanNodeId());
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
+      insertRowNode.checkDataType(memTable);
+    }
   }
 }

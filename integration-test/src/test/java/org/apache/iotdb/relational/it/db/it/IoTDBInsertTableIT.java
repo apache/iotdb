@@ -355,6 +355,42 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testInsertNullIntoTime() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute(
+          "CREATE TABLE insert_null (region string tag, time_test timestamp time, s1 int64 field)");
+
+      try {
+        statement.execute("insert into insert_null values('SZ', null, 1)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+      try {
+        statement.execute("insert into insert_null(region, time_test, s1) values('SZ', null, 1)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "insert into insert_null(region, time_test, s1) values('SZ', 2, 2),('HK', null ,3)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testInsertNaN() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -535,6 +571,7 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       try {
         st1.execute("use \"test\"");
+        st1.execute("CREATE TABLE wf16 (tag1 string tag, status boolean field)");
         st1.execute(
             "insert into wf16(tag1, time, status) values('wt01', 1618283005586000, true), ('wt01', 1618283005586001, false)");
         fail();
@@ -982,6 +1019,41 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testInsertNullAttributeDoesNotOverwriteDeviceAttribute() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute(
+          "create table attr_null_insert(tag1 string tag, attr1 string attribute, attr2 string attribute, s1 int32 field)");
+
+      statement.execute(
+          "insert into attr_null_insert(time, tag1, attr1, attr2, s1) values(1, 'd1', 'old1', 'old2', 1)");
+      statement.execute(
+          "insert into attr_null_insert(time, tag1, attr1, attr2, s1) values(2, 'd1', null, null, 2)");
+      assertDeviceAttributes(statement, "old1", "old2");
+
+      statement.execute(
+          "insert into attr_null_insert(time, tag1, attr1, attr2, s1) values(3, 'd1', null, 'new2', 3)");
+      assertDeviceAttributes(statement, "old1", "new2");
+
+      statement.execute("update attr_null_insert set attr1 = null where tag1 = 'd1'");
+      assertDeviceAttributes(statement, null, "new2");
+    }
+  }
+
+  private void assertDeviceAttributes(
+      final Statement statement, final String expectedAttr1, final String expectedAttr2)
+      throws SQLException {
+    try (final ResultSet resultSet = statement.executeQuery("show devices from attr_null_insert")) {
+      assertTrue(resultSet.next());
+      assertEquals("d1", resultSet.getString("tag1"));
+      assertEquals(expectedAttr1, resultSet.getString("attr1"));
+      assertEquals(expectedAttr2, resultSet.getString("attr2"));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
   public void testInsertWithTTL() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -1235,6 +1307,23 @@ public class IoTDBInsertTableIT {
       }
     } finally {
       simpleEnv.cleanClusterEnvironment();
+    }
+  }
+
+  @Test
+  public void testInsertWithTree() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg24 (tag1 string tag, s1 int64 field)");
+      statement.execute(
+          String.format(
+              "insert into root.test.sg24(tag1,time,s1) values('d1',%s,2)",
+              System.currentTimeMillis()));
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "701: The tree model database shall not be specified in table model.", e.getMessage());
     }
   }
 

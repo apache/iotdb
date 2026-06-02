@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -29,6 +31,7 @@ import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
 
 import java.io.IOException;
@@ -37,17 +40,20 @@ import java.nio.ByteBuffer;
 
 import static org.apache.tsfile.file.metadata.enums.CompressionType.UNCOMPRESSED;
 
-public class SinglePageWholeChunkReader extends AbstractChunkReader {
+public class SinglePageWholeChunkReader extends AbstractChunkReader
+    implements EstimatedMemoryChunkReader {
   private final ChunkHeader chunkHeader;
   private final ByteBuffer chunkDataBuffer;
   private final EncryptParameter encryptParam;
+  private final long pageEstimatedMemoryUsageInBytes;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
-    super(Long.MIN_VALUE, null);
+    super(Long.MIN_VALUE, null, null);
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
     this.encryptParam = chunk.getEncryptParam();
+    this.pageEstimatedMemoryUsageInBytes = calculatePageEstimatedMemoryUsageInBytes(chunk);
     initAllPageReaders();
   }
 
@@ -62,14 +68,32 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   }
 
   private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
-    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
+    final int currentPagePosition = chunkDataBuffer.position();
+    chunkDataBuffer.position(currentPagePosition + pageHeader.getCompressedSize());
     return new PageReader(
         pageHeader,
-        deserializePageData(pageHeader, chunkDataBuffer, chunkHeader, decryptor),
+        new LazyLoadPageData(
+            chunkDataBuffer.array(),
+            currentPagePosition,
+            IUnCompressor.getUnCompressor(chunkHeader.getCompressionType()),
+            encryptParam),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
         defaultTimeDecoder,
         null);
+  }
+
+  @Override
+  public long getCurrentPageEstimatedMemoryUsageInBytes() {
+    return pageEstimatedMemoryUsageInBytes;
+  }
+
+  public static long calculatePageEstimatedMemoryUsageInBytes(final Chunk chunk)
+      throws IOException {
+    final ByteBuffer chunkDataBuffer = chunk.getData().duplicate();
+    final PageHeader pageHeader =
+        PageHeader.deserializeFrom(chunkDataBuffer, (Statistics<? extends Serializable>) null);
+    return pageHeader.getUncompressedSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +107,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
     // doesn't have a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(
-          "do not has a complete page body. Expected:"
+          DataNodePipeMessages.DO_NOT_HAS_A_COMPLETE_PAGE_BODY
               + compressedPageBodyLength
               + ". Actual:"
               + chunkBuffer.remaining());
@@ -105,7 +129,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
           compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
-          "Uncompress error! uncompress size: "
+          DataNodePipeMessages.UNCOMPRESS_ERROR_UNCOMPRESS_SIZE
               + pageHeader.getUncompressedSize()
               + "compressed size: "
               + pageHeader.getCompressedSize()

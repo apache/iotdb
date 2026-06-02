@@ -19,12 +19,21 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -34,6 +43,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -49,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -69,6 +80,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
+  private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -77,7 +89,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long startTime,
       final long endTime,
       final PipeInsertionEvent sourceEvent)
-      throws IOException {
+      throws IOException, IllegalPathException {
     this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
   }
 
@@ -91,7 +103,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
-      throws IOException {
+      throws IOException, IllegalPathException {
     this(
         pipeName,
         creationTime,
@@ -101,6 +113,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         endTime,
         pipeTaskMeta,
         sourceEvent,
+        null,
+        false,
         null,
         isWithMod);
   }
@@ -114,10 +128,24 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
       final boolean isWithMod)
-      throws IOException {
-    super(pipeName, creationTime, pattern, null, startTime, endTime, pipeTaskMeta, sourceEvent);
+      throws IOException, IllegalPathException {
+    super(
+        tsFile,
+        pipeName,
+        creationTime,
+        pattern,
+        null,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod);
 
     try {
       currentModifications =
@@ -181,7 +209,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
         // Check if deviceId is deleted
         if (deviceId == null) {
-          LOGGER.warn("Found null deviceId, removing entry");
+          LOGGER.warn(DataNodePipeMessages.FOUND_NULL_DEVICEID_REMOVING_ENTRY);
           iterator.remove();
           continue;
         }
@@ -211,7 +239,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                       currentModifications);
                 } catch (IOException e) {
                   LOGGER.warn(
-                      "Failed to read metadata for deviceId: {}, measurement: {}, removing",
+                      DataNodePipeMessages.FAILED_TO_READ_METADATA_FOR_DEVICEID_MEASUREMENT,
                       deviceId,
                       measurement,
                       e);
@@ -239,7 +267,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
-      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap)
+      throws IllegalPathException {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final IDeviceID deviceId = entry.getKey();
@@ -261,6 +290,20 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
         for (final String measurement : entry.getValue()) {
           if (treePattern.matchesMeasurement(deviceId, measurement)) {
+            if (Objects.nonNull(entity)) {
+              final TSStatus status =
+                  AuthorityChecker.getAccessControl()
+                      .checkSeriesPrivilege4Pipe(
+                          entity,
+                          Collections.singletonList(new MeasurementPath(deviceId, measurement)),
+                          PrivilegeType.READ_DATA);
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                if (skipIfNoPrivileges) {
+                  continue;
+                }
+                throw new AccessDeniedException(status.getMessage());
+              }
+            }
             filteredMeasurements.add(measurement);
           }
         }
@@ -377,11 +420,13 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                               entry.getValue(),
                               timeFilterExpression,
                               allocatedMemoryBlockForTablet,
-                              currentModifications);
+                              currentModifications,
+                              tabletStringInternPool);
                     } catch (final Exception e) {
                       close();
                       throw new PipeException(
-                          "failed to create TsFileInsertionDataTabletIterator", e);
+                          DataNodePipeMessages.FAILED_TO_CREATE_TSFILEINSERTIONDATATABLETITERATOR,
+                          e);
                     }
                   }
 
@@ -479,7 +524,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         tsFileReader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close TsFileReader", e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TSFILEREADER, e);
     }
 
     super.close();

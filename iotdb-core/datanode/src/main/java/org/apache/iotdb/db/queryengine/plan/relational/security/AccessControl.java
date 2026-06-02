@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
@@ -229,6 +229,16 @@ public interface AccessControl {
 
   TSStatus checkCanAlterView(
       IAuditEntity entity, List<PartialPath> sourcePaths, List<PartialPath> targetPaths);
+
+  TSStatus checkSeriesPrivilege4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
+
+  List<Integer> checkSeriesPrivilegeWithIndexes4Pipe(
+      IAuditEntity context,
+      List<? extends PartialPath> checkedPathsSupplier,
+      PrivilegeType permission);
 
   // ====================================== COMMON =============================================
   TSStatus allowUserToLogin(String userName);

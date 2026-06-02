@@ -96,6 +96,46 @@ After run verify
 
 `mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am`
 
+## Code Formatting
+
+We use `clang-format` as the only formatter for C++ code and trigger it through Maven Spotless.
+
+### Required version
+
+The version is pinned in the root `pom.xml` as property `clang.format.version` (same approach as Apache TsFile). Use **clang-format 17.0.6** locally so Spotless agrees with CI.
+
+**JDK for Maven:** the C++ `clangFormat` step is registered only when running Maven on **JDK 11 or newer** (see the `spotless-cpp` profile in this module and in `client-cpp-example`). The repository root still supports JDK 8 for Java builds, but `spotless:check` / `spotless:apply` for C++ will not apply the clang-format rules if you use JDK 8.
+
+### Install clang-format 17.0.6
+
+- Linux (Ubuntu): On **24.04+**, `sudo apt-get install -y clang-format-17`. On **22.04**, that package is not in the default archive; add the LLVM 17 repo with [apt.llvm.org](https://apt.llvm.org/) (e.g. `sudo ./llvm.sh 17`, as CI does). The script installs `clang-17` and related tools but **not** the `clang-format-17` package, so also run `sudo apt-get install -y clang-format-17`. Then point the default `clang-format` at 17.x (Spotless invokes `clang-format` on `PATH`; some releases default to another major version):
+
+  `sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100`
+
+  `sudo update-alternatives --set clang-format /usr/bin/clang-format-17`
+
+- macOS: `brew install llvm@17`, then e.g. `ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"` and/or put `$(brew --prefix llvm@17)/bin` on your `PATH`.
+
+- Windows: `choco install llvm --version=17.0.6 --force -y` (CI uses `--force` like TsFile so the expected LLVM is selected).
+
+### Validate only (no changes)
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
+
+`./mvnw -P with-cpp -pl example/client-cpp-example spotless:check`
+
+### Auto-fix formatting
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
+
+`./mvnw -P with-cpp -pl example/client-cpp-example spotless:apply`
+
+### Windows (PowerShell)
+
+PowerShell may treat a comma in `-pl` as an argument separator. Prefer the two commands above. If you need a single invocation, quote the whole `-pl` value, for example:
+
+`./mvnw -P with-cpp "-pl=iotdb-client/client-cpp,example/client-cpp-example" spotless:check`
+
 ## Package Hierarchy
 
 If the compilation finishes successfully, the packaged zip file will be placed under

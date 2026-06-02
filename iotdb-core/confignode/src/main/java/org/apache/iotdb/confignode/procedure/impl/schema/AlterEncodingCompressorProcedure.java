@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -41,6 +42,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -51,7 +53,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -121,7 +122,7 @@ public class AlterEncodingCompressorProcedure
         case ALTER_SCHEMA_REGION:
           if (LOGGER.isInfoEnabled()) {
             LOGGER.info(
-                "Alter encoding {} & compressor {} in schema region for timeSeries {}",
+                ProcedureMessages.ALTER_ENCODING_COMPRESSOR_IN_SCHEMA_REGION_FOR_TIMESERIES,
                 SerializeUtils.deserializeEncodingNullable(encoding),
                 SerializeUtils.deserializeCompressorNullable(compressor),
                 requestMessage);
@@ -131,18 +132,18 @@ public class AlterEncodingCompressorProcedure
           }
           break;
         case CLEAR_CACHE:
-          LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_TIMESERIES, requestMessage);
           invalidateCache(env, patternTreeBytes, requestMessage, this::setFailure, false);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AlterEncodingCompressor-[{}] costs {}ms",
+          ProcedureMessages.ALTERENCODINGCOMPRESSOR_COSTS_MS,
           state,
           (System.currentTimeMillis() - startTime));
     }
@@ -176,8 +177,6 @@ public class AlterEncodingCompressorProcedure
                     .setCompressor(compressor)
                     .setEncoding(encoding))) {
 
-          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
-
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -203,7 +202,7 @@ public class AlterEncodingCompressorProcedure
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
-              failureMap.put(dataNodeLocation, response);
+              failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
             } else {
               failureMap.remove(dataNodeLocation);
             }
@@ -218,8 +217,10 @@ public class AlterEncodingCompressorProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter encoding compressor %s in schema regions failed. Failures: %s",
-                            requestMessage, failureMap))));
+                            ProcedureMessages
+                                .ALTER_ENCODING_COMPRESSOR_IN_SCHEMA_REGIONS_FAILED_FAILURES,
+                            requestMessage,
+                            printFailureMap()))));
             interruptTask();
           }
         };

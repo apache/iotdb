@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -207,7 +208,8 @@ public class TabletDecoder {
         break;
       case UNKNOWN:
       case VECTOR:
-        throw new IllegalArgumentException("Unsupported data type: " + dataType);
+      default:
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
     }
     return column;
   }

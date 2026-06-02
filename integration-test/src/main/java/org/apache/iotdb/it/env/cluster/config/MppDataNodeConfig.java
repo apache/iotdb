@@ -137,4 +137,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("datanode_memory_proportion", dataNodeMemoryProportion);
     return this;
   }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
+    return this;
+  }
 }

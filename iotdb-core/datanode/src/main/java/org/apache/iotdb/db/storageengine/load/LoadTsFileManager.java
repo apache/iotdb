@@ -35,11 +35,13 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -92,9 +94,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
-
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
  * LoadCommand}. This class turn the content of a piece of loading TsFile into a new TsFile. When
@@ -132,6 +131,34 @@ public class LoadTsFileManager {
     registerCleanupTaskExecutor();
     recover();
     activeLoadAgent.start();
+  }
+
+  private long getCleanupTaskDelayInMs() {
+    return CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000L;
+  }
+
+  private void createCleanupTaskIfAbsent(final String uuid) {
+    synchronized (uuid2CleanupTask) {
+      if (uuid2CleanupTask.containsKey(uuid)) {
+        return;
+      }
+
+      final CleanupTask cleanupTask = new CleanupTask(uuid, getCleanupTaskDelayInMs());
+      uuid2CleanupTask.put(uuid, cleanupTask);
+      cleanupTaskQueue.add(cleanupTask);
+    }
+  }
+
+  private void rescheduleCleanupTask(final CleanupTask cleanupTask) {
+    synchronized (uuid2CleanupTask) {
+      if (uuid2CleanupTask.get(cleanupTask.uuid) != cleanupTask) {
+        return;
+      }
+
+      cleanupTaskQueue.remove(cleanupTask);
+      cleanupTask.resetScheduledTime();
+      cleanupTaskQueue.add(cleanupTask);
+    }
   }
 
   private void registerCleanupTaskExecutor() {
@@ -205,28 +232,15 @@ public class LoadTsFileManager {
               uuid2WriterManager.put(uuid, writerManager);
               writerManager.close();
 
-              synchronized (uuid2CleanupTask) {
-                final CleanupTask cleanupTask =
-                    new CleanupTask(
-                        uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-                uuid2CleanupTask.put(uuid, cleanupTask);
-                cleanupTaskQueue.add(cleanupTask);
-              }
+              createCleanupTaskIfAbsent(uuid);
             });
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
       throws IOException, PageException {
-    if (!uuid2WriterManager.containsKey(uuid)) {
-      synchronized (uuid2CleanupTask) {
-        final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-        uuid2CleanupTask.put(uuid, cleanupTask);
-        cleanupTaskQueue.add(cleanupTask);
-      }
-    }
+    createCleanupTaskIfAbsent(uuid);
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       final AtomicReference<Exception> exception = new AtomicReference<>();
@@ -262,7 +276,8 @@ public class LoadTsFileManager {
             writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
             break;
           default:
-            throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
+            throw new IOException(
+                StorageEngineMessages.UNSUPPORTED_TSFILE_DATA_TYPE + tsFileData.getType());
         }
       }
     } finally {
@@ -306,7 +321,9 @@ public class LoadTsFileManager {
       return false;
     }
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    createCleanupTaskIfAbsent(uuid);
+
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
@@ -328,9 +345,10 @@ public class LoadTsFileManager {
 
   private void clean(String uuid) {
     synchronized (uuid2CleanupTask) {
-      final CleanupTask cleanupTask = uuid2CleanupTask.get(uuid);
+      final CleanupTask cleanupTask = uuid2CleanupTask.remove(uuid);
       if (cleanupTask != null) {
         cleanupTask.cancel();
+        cleanupTaskQueue.remove(cleanupTask);
       }
     }
 
@@ -348,7 +366,7 @@ public class LoadTsFileManager {
       final DataRegion dataRegion,
       final String databaseName,
       final long writePointCount,
-      final boolean isGeneratedByPipeConsensusLeader) {
+      final boolean isGeneratedByIoTConsensusV2Leader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
@@ -375,7 +393,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
+    if (replicationNum != 0 && !isGeneratedByIoTConsensusV2Leader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,
@@ -401,7 +419,7 @@ public class LoadTsFileManager {
       Files.deleteIfExists(
           new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
     } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+      LOGGER.warn(StorageEngineMessages.DELETE_AFTER_LOADING_ERROR, tsFile, e);
     }
   }
 
@@ -432,7 +450,7 @@ public class LoadTsFileManager {
         FileUtils.deleteFileOrDirectoryWithRetry(dir);
       }
       if (dir.mkdirs()) {
-        LOGGER.info("Load TsFile dir {} is created.", dir.getPath());
+        LOGGER.info(StorageEngineMessages.LOAD_TSFILE_DIR_CREATED, dir.getPath());
       }
     }
 
@@ -452,7 +470,7 @@ public class LoadTsFileManager {
             SystemFileFactory.INSTANCE.getFile(
                 taskDir, partitionInfo.toString() + TsFileConstant.TSFILE_SUFFIX);
         if (!newTsFile.createNewFile()) {
-          LOGGER.error("Can not create TsFile {} for writing.", newTsFile.getPath());
+          LOGGER.error(StorageEngineMessages.CANNOT_CREATE_TSFILE_FOR_WRITING, newTsFile.getPath());
           return;
         }
 
@@ -489,7 +507,7 @@ public class LoadTsFileManager {
       final String tableName =
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
-          && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
+          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
         // If the table does not exist, it means that the table is all deleted by mods
         final TsTable table =
             DataNodeTableCache.getInstance()
@@ -588,7 +606,12 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false);
+        dataRegion.loadNewTsFile(
+            tsFileResource,
+            true,
+            isGeneratedByPipe,
+            false,
+            Optional.ofNullable(writer.getTableSizeMap()));
 
         // Metrics
         dataRegion
@@ -712,7 +735,10 @@ public class LoadTsFileManager {
                   });
             }
           } catch (IOException e) {
-            LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
+            LOGGER.warn(
+                StorageEngineMessages.CLOSE_TSFILE_IO_WRITER_ERROR,
+                entry.getValue().getFile().getPath(),
+                e);
           }
         }
       }
@@ -731,7 +757,8 @@ public class LoadTsFileManager {
                   });
             }
           } catch (IOException e) {
-            LOGGER.warn("Close ModificationFile {} error.", entry.getValue().getFile(), e);
+            LOGGER.warn(
+                StorageEngineMessages.CLOSE_MODIFICATION_FILE_ERROR, entry.getValue().getFile(), e);
           }
         }
       }
@@ -742,7 +769,7 @@ public class LoadTsFileManager {
               return null;
             });
       } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
+        LOGGER.info(StorageEngineMessages.TASK_DIR_NOT_EMPTY_SKIP_DELETE, taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }
@@ -773,12 +800,12 @@ public class LoadTsFileManager {
 
     public void markLoadTaskRunning() {
       isLoadTaskRunning = true;
-      resetScheduledTime();
+      rescheduleCleanupTask(this);
     }
 
     public void markLoadTaskNotRunning() {
       isLoadTaskRunning = false;
-      resetScheduledTime();
+      rescheduleCleanupTask(this);
     }
 
     public void resetScheduledTime() {
@@ -792,13 +819,13 @@ public class LoadTsFileManager {
     @Override
     public void run() {
       if (isCanceled) {
-        LOGGER.info("Load cleanup task {} is canceled.", uuid);
+        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_CANCELED, uuid);
       } else {
-        LOGGER.info("Load cleanup task {} starts.", uuid);
+        LOGGER.info(StorageEngineMessages.LOAD_CLEANUP_TASK_STARTS, uuid);
         try {
           forceCloseWriterManager(uuid);
         } catch (Exception e) {
-          LOGGER.warn("Load cleanup task {} error.", uuid, e);
+          LOGGER.warn(StorageEngineMessages.LOAD_CLEANUP_TASK_ERROR, uuid, e);
         }
       }
     }

@@ -21,12 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
@@ -139,8 +140,8 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitPipeEnrichedDeleteDataNode(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitPipeEnrichedDeleteDataNode(this, context);
   }
 
   @Override

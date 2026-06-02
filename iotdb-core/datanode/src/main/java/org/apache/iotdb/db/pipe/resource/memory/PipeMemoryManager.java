@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.ThresholdAllocationStrategy;
 
@@ -61,6 +62,8 @@ public class PipeMemoryManager {
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
+  private final Set<PipeMemoryBlock> shrinkableBlocks = new HashSet<>();
+  private final Set<PipeMemoryBlock> expandableBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
     PipeDataNodeAgent.runtime()
@@ -158,7 +161,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -200,7 +206,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -243,7 +252,10 @@ public class PipeMemoryManager {
         Thread.sleep(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
+        LOGGER.warn(
+            DataNodePipeMessages
+                .FORCEALLOCATEWITHRETRY_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY,
+            ex);
       }
     }
 
@@ -284,7 +296,8 @@ public class PipeMemoryManager {
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn(
+            DataNodePipeMessages.FORCEALLOCATE_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY, e);
       }
     }
 
@@ -306,7 +319,7 @@ public class PipeMemoryManager {
   public synchronized void resize(
       final PipeMemoryBlock block, final long targetSize, final boolean force) {
     if (block == null || block.isReleased()) {
-      LOGGER.warn("forceResize: cannot resize a null or released memory block");
+      LOGGER.warn(DataNodePipeMessages.FORCERESIZE_CANNOT_RESIZE_A_NULL_OR_RELEASED);
       return;
     }
 
@@ -361,7 +374,8 @@ public class PipeMemoryManager {
         this.wait(PIPE_CONFIG.getPipeMemoryAllocateRetryIntervalInMs());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceResize: interrupted while waiting for available memory", e);
+        LOGGER.warn(
+            DataNodePipeMessages.FORCERESIZE_INTERRUPTED_WHILE_WAITING_FOR_AVAILABLE_MEMORY, e);
       }
     }
 
@@ -528,8 +542,9 @@ public class PipeMemoryManager {
     return returnedMemoryBlock;
   }
 
+  // Single-threaded logic
   private boolean tryShrinkUntilFreeMemorySatisfy(long sizeInBytes) {
-    final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(allocatedBlocks);
+    final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(shrinkableBlocks);
     Collections.shuffle(shuffledBlocks);
 
     while (true) {
@@ -549,44 +564,62 @@ public class PipeMemoryManager {
     }
   }
 
+  void addShrinkableBlock(final PipeMemoryBlock block) {
+    shrinkableBlocks.add(block);
+  }
+
+  void removeShrinkableBlock(final PipeMemoryBlock block) {
+    shrinkableBlocks.remove(block);
+  }
+
   public synchronized void tryExpandAllAndCheckConsistency() {
-    allocatedBlocks.forEach(PipeMemoryBlock::expand);
+    expandableBlocks.forEach(PipeMemoryBlock::expand);
 
-    long blockSum =
-        allocatedBlocks.stream().mapToLong(PipeMemoryBlock::getMemoryUsageInBytes).sum();
-    if (blockSum != memoryBlock.getUsedMemoryInBytes()) {
-      LOGGER.warn(
-          "tryExpandAllAndCheckConsistency: memory usage is not consistent with allocated blocks,"
-              + " usedMemorySizeInBytes is {} but sum of all blocks is {}",
-          memoryBlock.getUsedMemoryInBytes(),
-          blockSum);
-    }
+    if (LOGGER.isDebugEnabled()) {
+      final long blockSum =
+          allocatedBlocks.stream().mapToLong(PipeMemoryBlock::getMemoryUsageInBytes).sum();
+      if (blockSum != memoryBlock.getUsedMemoryInBytes()) {
+        LOGGER.debug(
+            "tryExpandAllAndCheckConsistency: memory usage is not consistent with allocated blocks,"
+                + " usedMemorySizeInBytes is {} but sum of all blocks is {}",
+            memoryBlock.getUsedMemoryInBytes(),
+            blockSum);
+      }
 
-    long tabletBlockSum =
-        allocatedBlocks.stream()
-            .filter(PipeTabletMemoryBlock.class::isInstance)
-            .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
-            .sum();
-    if (tabletBlockSum != usedMemorySizeInBytesOfTablets) {
-      LOGGER.warn(
-          "tryExpandAllAndCheckConsistency: memory usage of tablets is not consistent with allocated blocks,"
-              + " usedMemorySizeInBytesOfTablets is {} but sum of all tablet blocks is {}",
-          usedMemorySizeInBytesOfTablets,
-          tabletBlockSum);
-    }
+      final long tabletBlockSum =
+          allocatedBlocks.stream()
+              .filter(PipeTabletMemoryBlock.class::isInstance)
+              .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+              .sum();
+      if (tabletBlockSum != usedMemorySizeInBytesOfTablets) {
+        LOGGER.debug(
+            "tryExpandAllAndCheckConsistency: memory usage of tablets is not consistent with allocated blocks,"
+                + " usedMemorySizeInBytesOfTablets is {} but sum of all tablet blocks is {}",
+            usedMemorySizeInBytesOfTablets,
+            tabletBlockSum);
+      }
 
-    long tsFileBlockSum =
-        allocatedBlocks.stream()
-            .filter(PipeTsFileMemoryBlock.class::isInstance)
-            .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
-            .sum();
-    if (tsFileBlockSum != usedMemorySizeInBytesOfTsFiles) {
-      LOGGER.warn(
-          "tryExpandAllAndCheckConsistency: memory usage of tsfiles is not consistent with allocated blocks,"
-              + " usedMemorySizeInBytesOfTsFiles is {} but sum of all tsfile blocks is {}",
-          usedMemorySizeInBytesOfTsFiles,
-          tsFileBlockSum);
+      final long tsFileBlockSum =
+          allocatedBlocks.stream()
+              .filter(PipeTsFileMemoryBlock.class::isInstance)
+              .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+              .sum();
+      if (tsFileBlockSum != usedMemorySizeInBytesOfTsFiles) {
+        LOGGER.debug(
+            "tryExpandAllAndCheckConsistency: memory usage of tsfiles is not consistent with allocated blocks,"
+                + " usedMemorySizeInBytesOfTsFiles is {} but sum of all tsfile blocks is {}",
+            usedMemorySizeInBytesOfTsFiles,
+            tsFileBlockSum);
+      }
     }
+  }
+
+  void addExpandableBlock(final PipeMemoryBlock block) {
+    expandableBlocks.add(block);
+  }
+
+  void removeExpandableBlock(final PipeMemoryBlock block) {
+    expandableBlocks.remove(block);
   }
 
   public synchronized void release(PipeMemoryBlock block) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
@@ -36,7 +37,7 @@ public class SystemConstant {
 
   // This can be arbitrarily changed since it's only a memory key and not stored
   public static final String RESTART_OR_NEWLY_ADDED_KEY = "__system.restart_or_newly_added";
-  public static final boolean RESTART_DEFAULT_VALUE = false;
+  public static final boolean RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE = false;
 
   public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
@@ -60,6 +61,6 @@ public class SystemConstant {
   /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

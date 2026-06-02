@@ -19,10 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Objects;
 
 public class UnloadModel extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(UnloadModel.class);
 
   private final String modelId;
   private final List<String> deviceIdList;
@@ -42,8 +52,8 @@ public class UnloadModel extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitUnloadModel(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitUnloadModel(this, context);
   }
 
   @Override
@@ -68,5 +78,14 @@ public class UnloadModel extends Statement {
   @Override
   public String toString() {
     return "UnloadModel{" + "modelId='" + modelId + '\'' + ", deviceIdList=" + deviceIdList + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
+    return size;
   }
 }

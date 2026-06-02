@@ -50,6 +50,7 @@ struct TGlobalConfig {
   11: optional i32 tagAttributeTotalSize
   12: optional bool isEnterprise
   13: optional i64 timePartitionOrigin
+  14: optional bool restrictObjectLimit
 }
 
 struct TRatisConfig {
@@ -120,6 +121,8 @@ struct TRuntimeConfiguration {
   8: required TAuditConfig auditConfig
   9: required string superUserName
   10: optional bool enableSeparationOfAdminPowers
+  // use 'optional' here to support rolling upgrade
+  11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -310,6 +313,17 @@ struct TCountTimeSlotListResp {
     2: optional i64 count
 }
 
+struct TGetRegionGroupsByTimeReq {
+    1: required string database
+    2: required i64 startTime
+    3: required i64 endTime
+}
+
+struct TGetRegionGroupsByTimeResp {
+    1: required common.TSStatus status
+    2: optional set<common.TRegionReplicaSet> regionReplicaSets
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
     2: required common.TConsensusGroupType type
@@ -442,6 +456,7 @@ struct TAuthizedPatternTreeResp {
 struct TLoginReq {
   1: required string userrname
   2: required string password
+  3: optional bool useEncryptedPassword
 }
 
 // reqtype : tree, relational, system
@@ -943,6 +958,13 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TAlterTimeSeriesReq {
+  1: required string queryId
+  2: required binary measurementPath
+  3: required byte operationType
+  4: required binary updateInfo
+}
+
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1081,6 +1103,14 @@ struct TShowCQResp {
   2: required list<TCQEntry> cqList
 }
 
+// ====================================================
+// ExternalService
+// ====================================================
+struct TCreateExternalServiceReq {
+  1: required i32 dataNodeId
+  2: required string serviceName
+  3: required string className
+}
 
 struct TDeactivateSchemaTemplateReq {
   1: required string queryId
@@ -1096,50 +1126,12 @@ struct TUnsetSchemaTemplateReq {
   4: optional bool isGeneratedByPipe
 }
 
-struct TCreateModelReq {
-  1: required string modelName
-  2: required string uri
-}
-
-struct TDropModelReq {
-  1: required string modelId
-}
-
-struct TGetModelInfoReq {
-  1: required string modelId
-}
-
-struct TGetModelInfoResp {
-  1: required common.TSStatus status
-  2: optional binary modelInfo
-  3: optional common.TEndPoint aiNodeAddress
-}
-
-struct TUpdateModelInfoReq {
-    1: required string modelId
-    2: required i32 modelStatus
-    3: optional string attributes
-    4: optional list<i32> aiNodeIds
-    5: optional i32 inputLength
-    6: optional i32 outputLength
-}
-
 struct TDataSchemaForTable{
     1: required string targetSql
 }
 
 struct TDataSchemaForTree{
     1: required list<string> path
-}
-
-struct TCreateTrainingReq {
-    1: required string modelId
-    2: required bool isTableModel
-    3: required string existingModelId
-    4: optional TDataSchemaForTable dataSchemaForTable
-    5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional map<string, string> parameters
-    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
@@ -1260,6 +1252,7 @@ struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+   4: optional map<string, byte> preAlteredColumns
 }
 
 struct TDescTable4InformationSchemaResp {
@@ -1270,6 +1263,7 @@ struct TDescTable4InformationSchemaResp {
 struct TTableColumnInfo {
    1: required binary tableInfo
    2: optional set<string> preDeletedColumns
+   3: optional map<string, byte> preAlteredColumns
 }
 
 struct TFetchTableResp {
@@ -1503,6 +1497,8 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
+
+  common.TSStatus dataPartitionTableIntegrityCheck()
 
   // ======================================================
   // Authorize
@@ -1879,6 +1875,11 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
+
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 
   common.TSStatus alterLogicalView(TAlterLogicalViewReq req)
@@ -1983,6 +1984,9 @@ service IConfigNodeRPCService {
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
+  /** Get a database's DataRegion groups that overlap a time range */
+  TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req)
+
   // ====================================================
   // CQ
   // ====================================================
@@ -2007,29 +2011,17 @@ service IConfigNodeRPCService {
   TShowCQResp showCQ()
 
   // ====================================================
-  // AI Model
+  // ExternalService
   // ====================================================
+  common.TSStatus createExternalService(TCreateExternalServiceReq req)
 
-  /**
-   * Create a model
-   *
-   * @return SUCCESS_STATUS if the model was created successfully
-   */
-  common.TSStatus createModel(TCreateModelReq req)
+  common.TSStatus startExternalService(i32 dataNodeId, string serviceName)
 
-  /**
-   * Drop a model
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus dropModel(TDropModelReq req)
+  common.TSStatus stopExternalService(i32 dataNodeId, string serviceName)
 
-  /**
-  * Return the model info by model_id
-  */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+  common.TSStatus dropExternalService(i32 dataNodeId, string serviceName)
 
-  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
+  common.TExternalServiceListResp showExternalService(i32 dataNodeId)
 
   // ======================================================
   // Quota

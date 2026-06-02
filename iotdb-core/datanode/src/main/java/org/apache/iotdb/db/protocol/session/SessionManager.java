@@ -24,23 +24,24 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -53,11 +54,9 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -110,13 +109,7 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion) {
     return login(
-        session,
-        username,
-        password,
-        zoneId,
-        tsProtocolVersion,
-        clientVersion,
-        IClientSession.SqlDialect.TREE);
+        session, username, password, zoneId, tsProtocolVersion, clientVersion, SqlDialect.TREE);
   }
 
   public BasicOpenSessionResp login(
@@ -126,19 +119,24 @@ public class SessionManager implements SessionManagerMBean {
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion,
-      IClientSession.SqlDialect sqlDialect) {
-    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+      SqlDialect sqlDialect) {
+    return login(
+        session, username, password, zoneId, tsProtocolVersion, clientVersion, sqlDialect, false);
+  }
 
-    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+  // Only pipe can set useEncryptedPassword to true
+  public BasicOpenSessionResp login(
+      final IClientSession session,
+      final String username,
+      final String password,
+      final String zoneId,
+      final TSProtocolVersion tsProtocolVersion,
+      final IoTDBConstant.ClientVersion clientVersion,
+      final SqlDialect sqlDialect,
+      final boolean useEncryptedPassword) {
+    final BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
-    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
-      openSessionResp
-          .sessionId(-1)
-          .setCode(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
-          .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
-      return openSessionResp;
-    }
+    final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
 
     boolean enableLoginLock = userId != -1;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
@@ -146,59 +144,26 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage("Account is blocked due to consecutive failed logins.")
+          .setMessage(DataNodeMiscMessages.ACCOUNT_BLOCKED_DUE_TO_CONSECUTIVE_FAILED_LOGINS)
           .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
 
-    TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
+    final TSStatus loginStatus =
+        AuthorityChecker.checkUser(username, password, useEncryptedPassword);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
         openSessionResp
             .sessionId(-1)
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+            .setMessage(
+                DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO
+                    + IoTDBConstant.VERSION);
       } else {
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
-        if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
-          DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-          logInMessage +=
-              ". Your password will expire at "
-                  + dateFormat.format(
-                      LocalDateTime.ofInstant(
-                          Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-        } else if (timeToExpire == null) {
-          LOGGER.info(
-              "No password history for user {}, using the current time to create a new one",
-              username);
-          long currentTime = CommonDateTimeUtils.currentTime();
-          TSStatus tsStatus =
-              DataNodeAuthUtils.recordPasswordHistory(
-                  userId, password, AuthUtils.encryptPassword(password), currentTime);
-          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            openSessionResp
-                .sessionId(-1)
-                .setCode(tsStatus.getCode())
-                .setMessage(tsStatus.getMessage());
-            return openSessionResp;
-          }
-          timeToExpire =
-              CommonDateTimeUtils.convertIoTDBTimeToMillis(currentTime)
-                  + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
-                      * 1000
-                      * 86400;
-          if (timeToExpire > System.currentTimeMillis()) {
-            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            logInMessage +=
-                ". Your password will expire at "
-                    + dateFormat.format(
-                        LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-          }
-        }
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -220,7 +185,7 @@ public class SessionManager implements SessionManagerMBean {
                     userId,
                     session));
         LOGGER.info(
-            "{}: Login status: {}. User : {}, opens Session-{}",
+            DataNodeMiscMessages.LOGIN_STATUS,
             IoTDBConstant.GLOBAL_DB_NAME,
             openSessionResp.getMessage(),
             username,
@@ -252,6 +217,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
+    return closeSession(session, releaseByQueryId, true);
+  }
+
+  public boolean closeSession(
+      IClientSession session, LongConsumer releaseByQueryId, boolean mustCurrent) {
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -261,19 +231,19 @@ public class SessionManager implements SessionManagerMBean {
             String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
-    if (session1 != null && session != session1) {
+    if (mustCurrent && session1 != null && session != session1) {
       LOGGER.info(
           String.format(
-              "The client-%s is trying to close another session %s, pls check if it's a bug",
-              session, session1));
+              DataNodeMiscMessages.CLIENT_TRYING_CLOSE_ANOTHER_SESSION, session1, session));
       return false;
     } else {
-      LOGGER.info(String.format("Session-%s is closing", session));
+      LOGGER.info(String.format(DataNodeMiscMessages.SESSION_CLOSING, session));
       return true;
     }
   }
 
   private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {
+    // Release query resources
     Iterable<Long> statementIds = session.getStatementIds();
     if (statementIds != null) {
       for (Long statementId : statementIds) {
@@ -285,6 +255,14 @@ public class SessionManager implements SessionManagerMBean {
         }
       }
     }
+
+    // Release PreparedStatement memory resources
+    try {
+      PreparedStatementMemoryManager.getInstance().releaseAllForSession(session);
+    } catch (Exception e) {
+      LOGGER.warn(
+          DataNodeMiscMessages.FAILED_RELEASE_PREPARED_STATEMENT, session, e.getMessage(), e);
+    }
   }
 
   public TSStatus closeOperation(
@@ -293,6 +271,7 @@ public class SessionManager implements SessionManagerMBean {
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId,
+      String preparedStatementName,
       LongConsumer releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
@@ -305,7 +284,7 @@ public class SessionManager implements SessionManagerMBean {
         if (haveSetQueryId) {
           this.closeDataset(session, statementId, queryId, releaseByQueryId);
         } else {
-          this.closeStatement(session, statementId, releaseByQueryId);
+          this.closeStatement(session, statementId, preparedStatementName, releaseByQueryId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -327,7 +306,7 @@ public class SessionManager implements SessionManagerMBean {
     boolean isLoggedIn = session != null && session.isLogin();
 
     if (!isLoggedIn) {
-      LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
+      LOGGER.info(DataNodeMiscMessages.NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
     }
 
     return isLoggedIn;
@@ -340,14 +319,35 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public void closeStatement(
-      IClientSession session, long statementId, LongConsumer releaseByQueryId) {
+      IClientSession session,
+      long statementId,
+      String preparedStatementName,
+      LongConsumer releaseByQueryId) {
     Set<Long> queryIdSet = session.removeStatementId(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
         releaseByQueryId.accept(queryId);
       }
     }
-    session.removeStatementId(statementId);
+
+    // If preparedStatementName is provided, release the prepared statement resources
+    if (preparedStatementName != null && !preparedStatementName.isEmpty()) {
+      try {
+        PreparedStatementInfo removedInfo = session.removePreparedStatement(preparedStatementName);
+        if (removedInfo != null) {
+          // Release the memory allocated for this PreparedStatement
+          PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            DataNodeMiscMessages.FAILED_RELEASE_PREPARED_STATEMENT_CLOSE,
+            preparedStatementName,
+            statementId,
+            session,
+            e.getMessage(),
+            e);
+      }
+    }
   }
 
   public long requestQueryId(IClientSession session, Long statementId) {
@@ -386,6 +386,10 @@ public class SessionManager implements SessionManagerMBean {
   /** update connection idle time after execution. */
   public void updateIdleTime() {
     currSessionIdleTime.set(System.nanoTime());
+    IClientSession session = currSession.get();
+    if (session != null) {
+      session.setLastActiveTime(CommonDateTimeUtils.currentTime());
+    }
   }
 
   public TimeZone getSessionTimeZone() {
@@ -427,7 +431,7 @@ public class SessionManager implements SessionManagerMBean {
    */
   public boolean registerSession(IClientSession session) {
     if (this.currSession.get() != null) {
-      LOGGER.error("the client session is registered repeatedly, pls check whether this is a bug.");
+      LOGGER.error(DataNodeMiscMessages.CLIENT_SESSION_REGISTERED_REPEATEDLY);
       return false;
     }
     this.currSession.set(session);
@@ -456,8 +460,8 @@ public class SessionManager implements SessionManagerMBean {
     session.setUsername(username);
     session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
-    session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
+    session.setLogin(true);
   }
 
   public void closeDataset(
@@ -489,7 +493,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         sessionInfo.getVersion(),
         sessionInfo.getDatabaseName().orElse(null),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
@@ -499,7 +503,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
@@ -509,7 +513,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
@@ -519,7 +523,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   @Override
@@ -536,6 +540,14 @@ public class SessionManager implements SessionManagerMBean {
             .map(IClientSession::convertToTSConnectionInfo)
             .sorted(Comparator.comparingLong(TSConnectionInfo::getLogInTime))
             .collect(Collectors.toList()));
+  }
+
+  public List<ConnectionInfo> getAllSessionConnectionInfo() {
+    return sessions.keySet().stream()
+        .filter(s -> StringUtils.isNotEmpty(s.getUsername()) && s.isLogin())
+        .map(IClientSession::convertToConnectionInfo)
+        .sorted(Comparator.comparingLong(ConnectionInfo::getLastActiveTime))
+        .collect(Collectors.toList());
   }
 
   private static class SessionManagerHelper {
