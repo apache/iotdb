@@ -521,6 +521,7 @@ public final class DataNodePipeMessages {
   public static final String PIPE_UNSUPPORTED_SOURCE_REALTIME_MODE_CREATE_A =
       "Pipe：不支持的 source realtime mode: {}, create a hybrid source。";
   public static final String PROCESSOR_INTERRUPTED = "处理器被中断";
+  public static final String PROCESSOR_INTERRUPTED_UNEXPECTEDLY = "处理器意外中断，继续运行";
   public static final String PROCESSOR_STOPPED = "处理器已停止";
   public static final String SET_FOR_HISTORICAL_DELETION_EVENT =
       "[{}]Set {} for historical deletion event {}";
