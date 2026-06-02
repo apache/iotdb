@@ -64,11 +64,6 @@ public:
     return this;
   }
 
-  SessionBuilder *database(const std::string &database) {
-    AbstractSessionBuilder::database = database;
-    return this;
-  }
-
   SessionBuilder *nodeUrls(const std::vector<std::string> &nodeUrls) {
     AbstractSessionBuilder::nodeUrls = nodeUrls;
     return this;

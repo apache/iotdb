@@ -28,7 +28,6 @@
 
 #include "AbstractSessionBuilder.h"
 #include "Common.h"
-#include "DeviceID.h"
 #include "Endpoint.h"
 #include "NodesSupplier.h"
 #include "Session.h"
@@ -81,8 +80,6 @@ public:
                          TEndPointHash, TEndPointEqual>;
   EndPointSessionMap endPointToSessionConnection;
   std::unordered_map<std::string, TEndPoint> deviceIdToEndpoint;
-  std::unordered_map<std::shared_ptr<storage::IDeviceID>, TEndPoint>
-      tableModelDeviceIdToEndpoint;
 
   void removeBrokenSessionConnection(
       std::shared_ptr<SessionConnection> sessionConnection);
@@ -139,13 +136,9 @@ public:
 
   std::shared_ptr<SessionConnection> getQuerySessionConnection();
   std::shared_ptr<SessionConnection> getSessionConnection(std::string deviceId);
-  std::shared_ptr<SessionConnection>
-  getSessionConnection(std::shared_ptr<storage::IDeviceID> deviceId);
 
   void handleQueryRedirection(TEndPoint endPoint);
   void handleRedirection(const std::string &deviceId, TEndPoint endPoint);
-  void handleRedirection(const std::shared_ptr<storage::IDeviceID> &deviceId,
-                         TEndPoint endPoint);
 
   static void buildInsertTabletReq(TSInsertTabletReq &request, Tablet &tablet,
                                    bool sorted);

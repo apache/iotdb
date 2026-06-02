@@ -104,12 +104,6 @@ typedef enum {
   TS_COMPRESSION_LZMA2 = 9
 } TSCompressionType_C;
 
-typedef enum {
-  TS_COL_TAG = 0,
-  TS_COL_FIELD = 1,
-  TS_COL_ATTRIBUTE = 2
-} TSColumnCategory_C;
-
 /* ============================================================
  *  Session Lifecycle  —  Tree Model
  * ============================================================ */
@@ -195,12 +189,6 @@ TsStatus ts_session_delete_timeseries_batch(CSession *session,
 CTablet *ts_tablet_new(const char *deviceId, int columnCount,
                        const char *const *columnNames,
                        const TSDataType_C *dataTypes, int maxRowNumber);
-
-CTablet *ts_tablet_new_with_category(const char *deviceId, int columnCount,
-                                     const char *const *columnNames,
-                                     const TSDataType_C *dataTypes,
-                                     const TSColumnCategory_C *columnCategories,
-                                     int maxRowNumber);
 
 void ts_tablet_destroy(CTablet *tablet);
 

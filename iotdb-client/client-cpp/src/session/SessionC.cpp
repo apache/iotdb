@@ -564,31 +564,6 @@ CTablet *ts_tablet_new(const char *deviceId, int columnCount,
   }
 }
 
-CTablet *ts_tablet_new_with_category(const char *deviceId, int columnCount,
-                                     const char *const *columnNames,
-                                     const TSDataType_C *dataTypes,
-                                     const TSColumnCategory_C *columnCategories,
-                                     int maxRowNumber) {
-  try {
-    std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas;
-    std::vector<ColumnCategory> colTypes;
-    schemas.reserve(columnCount);
-    colTypes.reserve(columnCount);
-    for (int i = 0; i < columnCount; i++) {
-      schemas.emplace_back(std::string(columnNames[i]),
-                           static_cast<TSDataType::TSDataType>(dataTypes[i]));
-      colTypes.push_back(static_cast<ColumnCategory>(columnCategories[i]));
-    }
-    Tablet tablet(std::string(deviceId), schemas, colTypes, maxRowNumber);
-    auto *ct = new CTablet_();
-    ct->cpp = std::move(tablet);
-    return ct;
-  } catch (const std::exception &e) {
-    handleException(e);
-    return nullptr;
-  }
-}
-
 void ts_tablet_destroy(CTablet *tablet) { delete tablet; }
 
 void ts_tablet_reset(CTablet *tablet) {

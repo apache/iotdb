@@ -22,7 +22,6 @@
 #include "AbstractSessionBuilder.h"
 #include "Common.h"
 #include "Date.h"
-#include "DeviceID.h"
 #include "SessionDataSet.h"
 #include <algorithm>
 #include <cstdlib>
@@ -117,7 +116,8 @@ public:
   std::map<std::string, size_t>
       schemaNameIndex; // the map of schema name to index
   std::vector<ColumnCategory>
-      columnTypes; // the list of column types (used in table model)
+      columnTypes; // column category (TAG/FIELD/ATTRIBUTE); tree clients use
+                   // FIELD only
   std::vector<int64_t> timestamps; // timestamps in this tablet
   std::vector<void *> values;  // each object is a primitive type array, which
                                // represents values of one measurement
@@ -126,7 +126,6 @@ public:
   size_t rowSize;              // the number of rows to include in this tablet
   size_t maxRowNumber;         // the maximum number of rows for this tablet
   bool isAligned; // whether this tablet store data of aligned timeseries or not
-  std::vector<int> tagColumnIndexes;
 
   Tablet() = default;
 
@@ -142,12 +141,6 @@ public:
              &timeseries)
       : Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE) {}
 
-  Tablet(const std::string &deviceId,
-         const std::vector<std::pair<std::string, TSDataType::TSDataType>>
-             &timeseries,
-         const std::vector<ColumnCategory> &columnTypes)
-      : Tablet(deviceId, timeseries, columnTypes, DEFAULT_ROW_SIZE) {}
-
   /**
    * Return a tablet with the specified number of rows (maxBatchSize). Only
    * call this constructor directly for testing purposes. Tablet should normally
@@ -156,7 +149,7 @@ public:
    * @param deviceId     the name of the device specified to be written in
    * @param schemas   the list of measurement schemas for creating the row
    *                     batch
-   * @param columnTypes the list of column types (used in table model)
+   * @param columnTypes column category per schema (tree clients use FIELD only)
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   Tablet(const std::string &deviceId,
@@ -180,12 +173,6 @@ public:
     // create value columns
     values.resize(schemas.size());
     createColumns();
-    // init tagColumnIndexes
-    for (size_t i = 0; i < this->columnTypes.size(); i++) {
-      if (this->columnTypes[i] == ColumnCategory::TAG) {
-        tagColumnIndexes.push_back(i);
-      }
-    }
     // create bitMaps
     bitMaps.resize(schemas.size());
     for (size_t i = 0; i < schemas.size(); i++) {
@@ -203,7 +190,7 @@ public:
         schemaNameIndex(other.schemaNameIndex), columnTypes(other.columnTypes),
         timestamps(other.timestamps), maxRowNumber(other.maxRowNumber),
         bitMaps(other.bitMaps), rowSize(other.rowSize),
-        isAligned(other.isAligned), tagColumnIndexes(other.tagColumnIndexes) {
+        isAligned(other.isAligned) {
     values.resize(other.values.size());
     for (size_t i = 0; i < other.values.size(); ++i) {
       if (!other.values[i])
@@ -225,7 +212,6 @@ public:
       maxRowNumber = other.maxRowNumber;
       rowSize = other.rowSize;
       isAligned = other.isAligned;
-      tagColumnIndexes = other.tagColumnIndexes;
       bitMaps = other.bitMaps;
       values.resize(other.values.size());
       for (size_t i = 0; i < other.values.size(); ++i) {
@@ -426,8 +412,6 @@ public:
     }
   }
 
-  std::shared_ptr<storage::IDeviceID> getDeviceID(int i);
-
   std::vector<std::pair<std::string, TSDataType::TSDataType>>
   getSchemas() const {
     return schemas;
@@ -447,8 +431,6 @@ public:
   static std::string getTime(const Tablet &tablet);
 
   static std::string getValue(const Tablet &tablet);
-
-  static bool isTabletContainsSingleDevice(Tablet tablet);
 };
 
 class TemplateNode {
@@ -605,11 +587,6 @@ public:
           int fetchSize = AbstractSessionBuilder::DEFAULT_FETCH_SIZE);
   Session(AbstractSessionBuilder *builder);
   ~Session();
-
-  void setSqlDialect(const std::string &dialect);
-  void setDatabase(const std::string &database);
-  std::string getDatabase();
-  void changeDatabase(const std::string &database);
 
   void open();
 

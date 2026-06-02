@@ -265,18 +265,6 @@ size_t Tablet::getValueByteSize() {
 
 void Tablet::setAligned(bool isAligned) { this->isAligned = isAligned; }
 
-std::shared_ptr<storage::IDeviceID> Tablet::getDeviceID(int row) {
-  std::vector<std::string> deviceIdSegments(tagColumnIndexes.size() + 1);
-  size_t deviceIdSegmentIndex = 0;
-  deviceIdSegments[deviceIdSegmentIndex++] = this->deviceId;
-  for (auto tagColumnIndex : tagColumnIndexes) {
-    void *strPtr = getValue(tagColumnIndex, row, TSDataType::TEXT);
-    deviceIdSegments[deviceIdSegmentIndex++] =
-        *static_cast<std::string *>(strPtr);
-  }
-  return std::make_shared<storage::StringArrayDeviceID>(deviceIdSegments);
-}
-
 string SessionUtils::getTime(const Tablet &tablet) {
   MyStringBuffer timeBuffer;
   unsigned int n = 8u * tablet.rowSize;
@@ -398,19 +386,6 @@ string SessionUtils::getValue(const Tablet &tablet) {
     }
   }
   return valueBuffer.str;
-}
-
-bool SessionUtils::isTabletContainsSingleDevice(Tablet tablet) {
-  if (tablet.rowSize == 1) {
-    return true;
-  }
-  auto firstDeviceId = tablet.getDeviceID(0);
-  for (int i = 1; i < tablet.rowSize; ++i) {
-    if (*firstDeviceId != *tablet.getDeviceID(i)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 string MeasurementNode::serialize() const {
@@ -549,20 +524,6 @@ Session::Session(AbstractSessionBuilder *builder) : impl_(new Impl()) {
   impl_->initNodesSupplier(impl_->nodeUrls_);
 }
 
-void Session::setSqlDialect(const std::string &dialect) {
-  impl_->sqlDialect_ = dialect;
-}
-
-void Session::setDatabase(const std::string &database) {
-  impl_->database_ = database;
-}
-
-std::string Session::getDatabase() { return impl_->database_; }
-
-void Session::changeDatabase(const std::string &database) {
-  impl_->database_ = database;
-}
-
 /**
  * When delete variable, make sure release all resource.
  */
@@ -586,15 +547,6 @@ void Session::Impl::removeBrokenSessionConnection(
       it1 = deviceIdToEndpoint.erase(it1);
     } else {
       ++it1;
-    }
-  }
-
-  auto it2 = tableModelDeviceIdToEndpoint.begin();
-  while (it2 != tableModelDeviceIdToEndpoint.end()) {
-    if (it2->second == sessionConnection->getEndPoint()) {
-      it2 = tableModelDeviceIdToEndpoint.erase(it2);
-    } else {
-      ++it2;
     }
   }
 }
@@ -1905,21 +1857,6 @@ Session::Impl::getSessionConnection(std::string deviceId) {
   return endPointToSessionConnection.find(deviceIdToEndpoint[deviceId])->second;
 }
 
-shared_ptr<SessionConnection> Session::Impl::getSessionConnection(
-    std::shared_ptr<storage::IDeviceID> deviceId) {
-  if (!enableRedirection_ ||
-      tableModelDeviceIdToEndpoint.find(deviceId) ==
-          tableModelDeviceIdToEndpoint.end() ||
-      endPointToSessionConnection.find(
-          tableModelDeviceIdToEndpoint[deviceId]) ==
-          endPointToSessionConnection.end()) {
-    return defaultSessionConnection_;
-  }
-  return endPointToSessionConnection
-      .find(tableModelDeviceIdToEndpoint[deviceId])
-      ->second;
-}
-
 string Session::getTimeZone() {
   auto ret = impl_->defaultSessionConnection_->getTimeZone();
   return ret.timeZone;
@@ -1982,31 +1919,6 @@ void Session::Impl::handleRedirection(const std::string &deviceId,
       endPointToSessionConnection.emplace(endPoint, newConnection);
     } catch (exception &e) {
       deviceIdToEndpoint.erase(deviceId);
-      throw IoTDBConnectionException(e.what());
-    }
-  }
-}
-
-void Session::Impl::handleRedirection(
-    const std::shared_ptr<storage::IDeviceID> &deviceId, TEndPoint endPoint) {
-  if (!enableRedirection_)
-    return;
-  if (endPoint.ip == "0.0.0.0")
-    return;
-  tableModelDeviceIdToEndpoint[deviceId] = endPoint;
-
-  shared_ptr<SessionConnection> newConnection;
-  auto it = endPointToSessionConnection.find(endPoint);
-  if (it != endPointToSessionConnection.end()) {
-    newConnection = it->second;
-  } else {
-    try {
-      newConnection = make_shared<SessionConnection>(
-          this, endPoint, zoneId_, nodesSupplier_, fetchSize_, 3, 500,
-          connectTimeoutMs_, sqlDialect_, database_);
-      endPointToSessionConnection.emplace(endPoint, newConnection);
-    } catch (exception &e) {
-      tableModelDeviceIdToEndpoint.erase(deviceId);
       throw IoTDBConnectionException(e.what());
     }
   }

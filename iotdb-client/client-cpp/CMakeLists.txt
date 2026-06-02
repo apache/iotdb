@@ -167,7 +167,6 @@ set(IOTDB_PUBLIC_HEADERS
         AbstractSessionBuilder.h
         SessionC.h
         SessionDataSet.h
-        DeviceID.h
         Column.h
         ColumnDecoder.h
         TsBlock.h)

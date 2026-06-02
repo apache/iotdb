@@ -34,7 +34,7 @@ iotdb-client/client-cpp/
 ├── third-party/              # local tarball cache (one sub-dir per OS)
 │   ├── linux/  mac/  windows/
 ├── src/include/              # public API headers (installed to include/)
-├── src/session/              # Session / Table / C API implementation (.cpp)
+├── src/session/              # Session, Tablet, and C API implementation (.cpp)
 ├── src/rpc/                  # Thrift RPC layer (private, not installed)
 ├── test/                     # Catch2-based integration tests
 └── pom.xml                   # Maven wrapper (cmake-maven-plugin)

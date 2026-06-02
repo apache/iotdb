@@ -34,10 +34,8 @@ user `root` / `root`).
 |---------|-------------|
 | `SessionExample` | Tree model: DDL, insert, query, delete |
 | `AlignedTimeseriesSessionExample` | Aligned time series and templates |
-| `TableModelSessionExample` | Table (relational) model |
 | `MultiSvrNodeClient` | Multi-node insert/query loop |
 | `tree_example` | C Session API (tree model) |
-| `table_example` | C Session API (table model) |
 
 ## Which SDK zip to use
 
@@ -252,10 +250,8 @@ client-cpp-example/
     ├── CMakeLists.txt
     ├── SessionExample.cpp
     ├── AlignedTimeseriesSessionExample.cpp
-    ├── TableModelSessionExample.cpp
     ├── MultiSvrNodeClient.cpp
-    ├── tree_example.c
-    └── table_example.c
+    └── tree_example.c
 ```
 
 After `mvn package`, the runnable tree is under `target/` (sources, `client/`,

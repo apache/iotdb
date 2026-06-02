@@ -33,10 +33,8 @@
 |------|------|
 | `SessionExample` | 树模型：建库建序列、写入、查询、删除 |
 | `AlignedTimeseriesSessionExample` | 对齐时间序列与模板 |
-| `TableModelSessionExample` | 表模型（关系型） |
 | `MultiSvrNodeClient` | 多节点写入/查询循环 |
 | `tree_example` | C Session API（树模型） |
-| `table_example` | C Session API（表模型） |
 
 ## 选择哪个 SDK 压缩包
 
@@ -246,10 +244,8 @@ client-cpp-example/
     ├── CMakeLists.txt
     ├── SessionExample.cpp
     ├── AlignedTimeseriesSessionExample.cpp
-    ├── TableModelSessionExample.cpp
     ├── MultiSvrNodeClient.cpp
-    ├── tree_example.c
-    └── table_example.c
+    └── tree_example.c
 ```
 
 执行 `mvn package` 后，可在 `target/` 下找到源码、`client/` SDK 与 CMake
