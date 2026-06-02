@@ -60,6 +60,7 @@ public class PipeDataRegionAssigner implements Closeable {
   private volatile int listenToInsertNodeSourceCount = 0;
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
+  private int inFlightPublishCount = 0;
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -87,14 +88,28 @@ public class PipeDataRegionAssigner implements Closeable {
       ((PipeHeartbeatEvent) innerEvent).onPublished();
     }
 
-    // use synchronized here for completely preventing reference count leaks under extreme thread
-    // scheduling when closing
     synchronized (this) {
-      if (!disruptor.isClosed()) {
-        disruptor.publish(event);
-      } else {
+      if (disruptor.isClosed()) {
         onAssignedHook(event);
+        return;
       }
+      inFlightPublishCount++;
+    }
+
+    boolean isPublished = false;
+    try {
+      isPublished = disruptor.publishOrDrop(event);
+    } finally {
+      synchronized (this) {
+        inFlightPublishCount--;
+        if (inFlightPublishCount == 0) {
+          notifyAll();
+        }
+      }
+    }
+
+    if (!isPublished) {
+      onAssignedHook(event);
     }
   }
 
@@ -241,9 +256,25 @@ public class PipeDataRegionAssigner implements Closeable {
   public synchronized void close() {
     PipeAssignerMetrics.getInstance().deregister(dataRegionId);
 
+    boolean interrupted = false;
+    disruptor.closeInput();
+    while (inFlightPublishCount > 0) {
+      try {
+        wait();
+      } catch (final InterruptedException e) {
+        interrupted = true;
+        LOGGER.warn(
+            "Interrupted while waiting for in-flight publishes to finish when closing assigner on data region {}.",
+            dataRegionId);
+      }
+    }
+
     final long startTime = System.currentTimeMillis();
     disruptor.shutdown();
     matcher.clear();
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
     LOGGER.info(
         "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
         dataRegionId,
