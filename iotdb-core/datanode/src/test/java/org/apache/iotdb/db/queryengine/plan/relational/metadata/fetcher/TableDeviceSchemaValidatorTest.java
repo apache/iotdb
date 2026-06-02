@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,17 +33,39 @@ import java.util.Map;
 public class TableDeviceSchemaValidatorTest {
 
   @Test
-  public void testNullAttributeNeedsUpdate() {
+  public void testNullAttributeSkipsUpdate() {
     final Map<String, Binary> attributeMap = new HashMap<>();
     attributeMap.put("attr", new Binary("x", StandardCharsets.UTF_8));
 
-    Assert.assertTrue(
+    Assert.assertFalse(
         TableDeviceSchemaValidator.isAttributeUpdateRequired(
             Collections.singletonList("attr"), new Object[] {null}, attributeMap));
   }
 
   @Test
-  public void testMissingTailAttributeValueEqualsNull() {
+  public void testNoneAttributeSkipsUpdate() {
+    final Map<String, Binary> attributeMap = new HashMap<>();
+    attributeMap.put("attr", new Binary("x", StandardCharsets.UTF_8));
+
+    Assert.assertFalse(
+        TableDeviceSchemaValidator.isAttributeUpdateRequired(
+            Collections.singletonList("attr"), new Object[] {Constants.NONE}, attributeMap));
+  }
+
+  @Test
+  public void testNonNullAttributeNeedsUpdate() {
+    final Map<String, Binary> attributeMap = new HashMap<>();
+    attributeMap.put("attr", new Binary("x", StandardCharsets.UTF_8));
+
+    Assert.assertTrue(
+        TableDeviceSchemaValidator.isAttributeUpdateRequired(
+            Collections.singletonList("attr"),
+            new Object[] {new Binary("y", StandardCharsets.UTF_8)},
+            attributeMap));
+  }
+
+  @Test
+  public void testMissingTailAttributeValueSkipsUpdate() {
     final Map<String, Binary> attributeMap = new HashMap<>();
     attributeMap.put("attr1", new Binary("x", StandardCharsets.UTF_8));
 
