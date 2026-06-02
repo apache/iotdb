@@ -87,7 +87,8 @@ jobs:
           sudo rm -rf /Applications/Xcode_15.2.app
           sudo rm -rf /Applications/Xcode_15.3.app
       - name: Install CPP Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           choco install winflexbison3 -y
           choco install boost-msvc-14.3 -y
@@ -99,6 +100,20 @@ jobs:
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
           choco install llvm --version=17.0.6 --force -y
           clang-format --version
+          # windows-latest now ships VS 2026; root pom.xml defaults to VS 2022.
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) {
+            throw "vswhere not found; Visual Studio Build Tools are required"
+          }
+          $catalogVersion = & $vswhere -latest -property catalog_productLineVersion
+          $generator = switch ($catalogVersion) {
+            '2026' { 'Visual Studio 18 2026' }
+            '2022' { 'Visual Studio 17 2022' }
+            '2019' { 'Visual Studio 16 2019' }
+            default { throw "Unsupported Visual Studio version: $catalogVersion" }
+          }
+          "CMAKE_GENERATOR=$generator" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Using CMake generator: $generator (Visual Studio $catalogVersion)"
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -113,7 +128,13 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+        run: |
+          set -euo pipefail
+          MVN_ARGS=()
+          if [ -n "${CMAKE_GENERATOR:-}" ]; then
+            MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
+          fi
+          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am "${MVN_ARGS[@]}"
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
