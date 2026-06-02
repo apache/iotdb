@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 
 import java.util.HashSet;
@@ -50,7 +51,8 @@ public class TypeVariableConstraint {
     this.orderableRequired = orderableRequired;
     this.variadicBound = requireNonNull(variadicBound, "variadicBound is null");
     if (variadicBound.map(bound -> !bound.equalsIgnoreCase("row")).orElse(false)) {
-      throw new IllegalArgumentException("variadicBound must be row but is " + variadicBound.get());
+      throw new IllegalArgumentException(
+          String.format(QueryMessages.VARIADIC_BOUND_MUST_BE_ROW, variadicBound.get()));
     }
     this.castableTo = new HashSet<>(requireNonNull(castableTo, "castableTo is null"));
     this.castableFrom = new HashSet<>(requireNonNull(castableFrom, "castableFrom is null"));

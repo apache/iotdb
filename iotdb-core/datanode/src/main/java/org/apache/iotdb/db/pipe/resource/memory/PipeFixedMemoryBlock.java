@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 import java.util.function.BiConsumer;
 import java.util.function.LongUnaryOperator;
 
@@ -41,24 +43,24 @@ public abstract class PipeFixedMemoryBlock extends PipeMemoryBlock {
   @Override
   public PipeMemoryBlock setShrinkMethod(LongUnaryOperator shrinkMethod) {
     throw new UnsupportedOperationException(
-        "Shrink method is not supported in PipeFixedMemoryBlock");
+        DataNodePipeMessages.SHRINK_METHOD_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK);
   }
 
   @Override
   public PipeMemoryBlock setShrinkCallback(BiConsumer<Long, Long> shrinkCallback) {
     throw new UnsupportedOperationException(
-        "Shrink callback is not supported in PipeFixedMemoryBlock");
+        DataNodePipeMessages.SHRINK_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK);
   }
 
   @Override
   public PipeMemoryBlock setExpandMethod(LongUnaryOperator extendMethod) {
     throw new UnsupportedOperationException(
-        "Expand method is not supported in PipeFixedMemoryBlock");
+        DataNodePipeMessages.EXPAND_METHOD_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK);
   }
 
   @Override
   public PipeMemoryBlock setExpandCallback(BiConsumer<Long, Long> expandCallback) {
     throw new UnsupportedOperationException(
-        "Expand callback is not supported in PipeFixedMemoryBlock");
+        DataNodePipeMessages.EXPAND_CALLBACK_IS_NOT_SUPPORTED_IN_PIPEFIXEDMEMORYBLOCK);
   }
 }

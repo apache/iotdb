@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -71,7 +72,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
 
   protected IoTDBSyncClientManager getClientManager() {
     if (clientManager == null) {
-      throw new IllegalStateException("IoTDB sync client manager has been closed");
+      throw new IllegalStateException(PipeMessages.SYNC_CLIENT_MANAGER_CLOSED);
     }
     return clientManager;
   }
@@ -171,10 +172,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
     try {
       handshake();
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
+      LOGGER.warn(PipeMessages.FAILED_TO_RECONNECT, e.getMessage(), e);
     }
   }
 
@@ -232,7 +230,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
+          LOGGER.info(PipeMessages.REDIRECT_FILE_POSITION, position);
           continue;
         }
 

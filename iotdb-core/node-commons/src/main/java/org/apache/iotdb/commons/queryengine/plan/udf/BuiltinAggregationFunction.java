@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.udf;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -99,7 +101,8 @@ public enum BuiltinAggregationFunction {
       case "min_by":
         return false;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.INVALID_AGGREGATION_FUNCTION, name));
     }
   }
 
@@ -136,7 +139,8 @@ public enum BuiltinAggregationFunction {
       case "count_time":
         return false;
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+        throw new IllegalArgumentException(
+            String.format(QueryMessages.INVALID_AGGREGATION_FUNCTION, name));
     }
   }
 }

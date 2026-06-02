@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
 import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -247,7 +248,7 @@ public class ExpressionAnalyzer {
           return type;
         }
       }
-      throw new IllegalArgumentException("shouldn't attach here");
+      throw new IllegalArgumentException(DataNodeQueryMessages.SHOULDN_T_ATTACH_HERE);
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
       return ResultColumn.ColumnType.RAW;
     } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {

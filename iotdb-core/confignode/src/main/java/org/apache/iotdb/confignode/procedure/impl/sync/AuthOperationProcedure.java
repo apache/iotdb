@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -118,7 +119,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
             }
           }
           if (dataNodesToInvalid.isEmpty()) {
-            LOGGER.info("Auth procedure: clean datanode cache successfully");
+            LOGGER.info(ProcedureMessages.AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY);
             return Flow.NO_MORE_STATE;
           } else {
             setNextState(AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING);
@@ -127,14 +128,16 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOGGER.error("Fail when execute {} ", plan);
+        LOGGER.error(ProcedureMessages.FAIL_WHEN_EXECUTE, plan);
         setFailure(new ProcedureException(e));
       } else {
-        LOGGER.error("Retrievable error trying to execute plan {}, state: {}", plan, state, e);
+        LOGGER.error(
+            ProcedureMessages.RETRIEVABLE_ERROR_TRYING_TO_EXECUTE_PLAN_STATE, plan, state, e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format("Fail to execute plan [%s] at state[%s]", plan.toString(), state)));
+                  String.format(
+                      ProcedureMessages.FAIL_TO_EXECUTE_PLAN_AT_STATE, plan.toString(), state)));
         }
       }
     }
@@ -159,9 +162,11 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
         this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
       }
       LOGGER.info(
-          "Execute auth plan {} success. To invalidate datanodes: {}", plan, dataNodesToInvalid);
+          ProcedureMessages.EXECUTE_AUTH_PLAN_SUCCESS_TO_INVALIDATE_DATANODES,
+          plan,
+          dataNodesToInvalid);
     } else {
-      LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
+      LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
     }
   }
@@ -228,7 +233,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       this.user = plan.getUserName();
       this.role = plan.getRoleName();
     } catch (IOException e) {
-      LOGGER.error("IO error when deserialize authplan.", e);
+      LOGGER.error(ProcedureMessages.IO_ERROR_WHEN_DESERIALIZE_AUTHPLAN, e);
     }
     if (byteBuffer.hasRemaining()) {
       size = ReadWriteIOUtils.readInt(byteBuffer);

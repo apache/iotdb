@@ -128,7 +128,7 @@ public class ReadOnlyMemChunk {
     this.deletionList = deletionList;
     this.tvListQueryMap = tvListQueryMap;
     this.pageStatisticsList = new ArrayList<>();
-    this.context.addTVListToSet(tvListQueryMap);
+    this.context.addTVListToSet(tvListQueryMap.keySet());
   }
 
   public void sortTvLists() {

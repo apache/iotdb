@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.schedule.queue;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import com.google.common.base.Preconditions;
 
 /**
@@ -52,7 +54,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
 
   public synchronized void push(E element) {
     if (element == null) {
-      throw new NullPointerException("pushed element is null");
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     Preconditions.checkState(size + reservedSize < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
     pushToQueue(element);
@@ -63,7 +65,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
   /** RePush an element which is polled out for running or blocked before to the queue. */
   public synchronized void repush(E element) {
     if (element == null) {
-      throw new NullPointerException("pushed element is null");
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     pushToQueue(element);
     reservedSize--;

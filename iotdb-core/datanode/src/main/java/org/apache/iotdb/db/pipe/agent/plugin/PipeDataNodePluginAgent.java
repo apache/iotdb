@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderM
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
@@ -99,8 +100,8 @@ public class PipeDataNodePluginAgent {
     if (information.isBuiltin()) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s, because "
-                  + "the given PipePlugin name is the same as a built-in PipePlugin name.",
+              DataNodePipeMessages
+                  .FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN,
               pluginName);
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
@@ -112,10 +113,9 @@ public class PipeDataNodePluginAgent {
         && !PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
       String errMsg =
           String.format(
-              "Failed to register PipePlugin %s, because "
-                  + "existed md5 of jar file for pipe plugin %s "
-                  + "is different from the new jar file.",
-              pluginName, pluginName);
+              DataNodePipeMessages.FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_JAR_MD5_MISMATCH,
+              pluginName,
+              pluginName);
       LOGGER.warn(errMsg);
       throw new PipeException(errMsg);
     }
@@ -169,9 +169,11 @@ public class PipeDataNodePluginAgent {
         | ClassCastException e) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s(%s), because "
-                  + "its instance can not be constructed successfully. Exception: %s",
-              pluginName.toUpperCase(), className, e);
+              DataNodePipeMessages
+                  .FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_INSTANCE_CONSTRUCTION_FAILED,
+              pluginName.toUpperCase(),
+              className,
+              e);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }
@@ -209,7 +211,8 @@ public class PipeDataNodePluginAgent {
 
       if (information != null && information.isBuiltin()) {
         String errorMessage =
-            String.format("Failed to deregister builtin PipePlugin %s.", pluginName);
+            String.format(
+                DataNodePipeMessages.FAILED_TO_DEREGISTER_BUILTIN_PIPE_PLUGIN, pluginName);
         LOGGER.warn(errorMessage);
         throw new PipeException(errorMessage);
       }
@@ -253,10 +256,12 @@ public class PipeDataNodePluginAgent {
     final PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
 
     if (oldPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, oldPluginName));
     }
     if (newPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, newPluginName));
     }
 
     return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));

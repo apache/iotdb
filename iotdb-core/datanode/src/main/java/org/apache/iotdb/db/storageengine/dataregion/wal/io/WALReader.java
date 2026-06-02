@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 
@@ -83,11 +84,11 @@ public class WALReader implements Closeable {
       fileCorrupted = true;
       // log only when file should be complete
       if (!fileMayCorrupt) {
-        logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+        logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
       }
     } catch (Exception e) {
       fileCorrupted = true;
-      logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
+      logger.warn(StorageEngineMessages.FAIL_TO_READ_WAL_ENTRY_SKIP_BROKEN, logFile, e);
     }
 
     return nextEntry != null;

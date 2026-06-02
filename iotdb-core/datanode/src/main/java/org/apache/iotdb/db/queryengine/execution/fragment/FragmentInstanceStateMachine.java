@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.StateMachine;
 import org.apache.iotdb.db.queryengine.execution.StateMachine.StateChangeListener;
@@ -80,7 +81,7 @@ public class FragmentInstanceStateMachine {
       instanceState.addStateChangeListener(
           newState -> {
             try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
-              LOGGER.debug("[StateChanged] To {}", newState);
+              LOGGER.debug(DataNodeQueryMessages.STATE_CHANGED_TO, newState);
             }
           });
     }

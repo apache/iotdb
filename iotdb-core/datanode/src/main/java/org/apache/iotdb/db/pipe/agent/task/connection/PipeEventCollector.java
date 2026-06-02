@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
@@ -97,7 +99,8 @@ public class PipeEventCollector implements EventCollector {
     } catch (final PipeException e) {
       throw e;
     } catch (final Exception e) {
-      throw new PipeException("Error occurred when collecting events from processor.", e);
+      throw new PipeException(
+          DataNodePipeMessages.ERROR_OCCURRED_WHEN_COLLECTING_EVENTS_FROM_PROCESSOR, e);
     }
   }
 
@@ -129,19 +132,27 @@ public class PipeEventCollector implements EventCollector {
   private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
     if (!sourceEvent.waitForTsFileClose()) {
       LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           sourceEvent.getTsFile());
       return;
     }
 
     if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
+      if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+        PipeTerminateEvent.markHistoricalTsFileUnsplit(
+            sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
+      }
       return;
     }
 
     try {
       sourceEvent.consumeTabletInsertionEventsWithRetry(
           this::collectParsedRawTableEvent, "PipeEventCollector::parseAndCollectEvent");
+      if (sourceEvent.isGeneratedByHistoricalExtractor()) {
+        PipeTerminateEvent.markHistoricalTsFileSplit(
+            sourceEvent.getPipeName(), sourceEvent.getCreationTime(), regionId);
+      }
     } finally {
       sourceEvent.close();
     }
@@ -222,7 +233,8 @@ public class PipeEventCollector implements EventCollector {
     if (event instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
       if (!enrichedEvent.increaseReferenceCount(PipeEventCollector.class.getName())) {
-        LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
+        LOGGER.warn(
+            DataNodePipeMessages.PIPEEVENTCOLLECTOR_THE_EVENT_IS_ALREADY_RELEASED_SKIPPING, event);
         isFailedToIncreaseReferenceCount = true;
         return;
       }
@@ -235,7 +247,10 @@ public class PipeEventCollector implements EventCollector {
       enrichedEvent.setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
 
       if (enrichedEvent.getPipeName() != null
-          && pendingQueue.isPipeDropped(enrichedEvent.getPipeName(), creationTime, regionId)) {
+          && (pendingQueue.isEventFromDroppedPipe(enrichedEvent)
+              || (enrichedEvent.getCommitterKey() == null
+                  && pendingQueue.isPipeDropped(
+                      enrichedEvent.getPipeName(), creationTime, regionId)))) {
         enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
         return;
       }

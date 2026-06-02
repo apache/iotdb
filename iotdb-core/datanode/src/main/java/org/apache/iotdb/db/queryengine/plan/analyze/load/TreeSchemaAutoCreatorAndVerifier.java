@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -244,7 +245,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void handleException(Exception e, String statementString) throws SemanticException {
-    LOGGER.warn("Auto create or verify schema error.", e);
+    LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
             "Auto create or verify schema error when executing statement %s.  Detail: %s.",

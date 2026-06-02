@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -379,7 +381,7 @@ public class DelayAnalyzer {
       cursor = 0;
       isFull = false;
       totalSamples = 0;
-      LOGGER.debug("[DelayAnalyzer] DelayAnalyzer has been reset");
+      LOGGER.debug(DataNodeMiscMessages.DELAY_ANALYZER_RESET);
     } finally {
       lock.writeLock().unlock();
     }

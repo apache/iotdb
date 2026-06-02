@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -53,7 +54,7 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
 
     final boolean throwInValidate = throwingStages.contains("validate");
     if (throwInValidate) {
-      throw new Exception("Throwing exception in validate");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_VALIDATE);
     }
 
     throwInCustomize = throwingStages.contains("customize");
@@ -67,7 +68,7 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
     if (throwInCustomize) {
-      throw new Exception("Throwing exception in customize");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_CUSTOMIZE);
     }
   }
 
@@ -75,7 +76,7 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
     if (throwInProcessTabletInsertionEvent) {
-      throw new Exception("Throwing exception in process(TabletInsertionEvent, EventCollector)");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_PROCESS_TABLET);
     }
   }
 
@@ -83,21 +84,21 @@ public class ThrowingExceptionProcessor implements PipeProcessor {
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
     if (throwInProcessTsFileInsertionEvent) {
-      throw new Exception("Throwing exception in process(TsFileInsertionEvent, EventCollector)");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_PROCESS_TSFILE);
     }
   }
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
     if (throwInProcessEvent) {
-      throw new Exception("Throwing exception in process(Event, EventCollector)");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_PROCESS_EVENT);
     }
   }
 
   @Override
   public void close() throws Exception {
     if (throwInClose) {
-      throw new Exception("Throwing exception in close");
+      throw new Exception(PipeMessages.THROWING_EXCEPTION_IN_CLOSE);
     }
   }
 }

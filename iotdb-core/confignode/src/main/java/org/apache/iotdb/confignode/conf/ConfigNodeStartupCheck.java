@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -62,9 +63,9 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     portSet.add(CONF.getConsensusPort());
     portSet.add(CONF.getInternalPort());
     if (portSet.size() != CONFIGNODE_PORTS) {
-      throw new StartupException("ports used in configNode have repeat.");
+      throw new StartupException(ConfigNodeMessages.PORTS_USED_IN_CONFIGNODE_HAVE_REPEAT);
     } else {
-      LOGGER.info("configNode port check successful.");
+      LOGGER.info(ConfigNodeMessages.CONFIGNODE_PORT_CHECK_SUCCESSFUL);
     }
   }
 
@@ -104,10 +105,12 @@ public class ConfigNodeStartupCheck extends StartupChecks {
 
     // The replication factor should be positive
     if (CONF.getSchemaReplicationFactor() <= 0) {
-      throw new ConfigurationException("The schema_replication_factor should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_SCHEMA_REPLICATION_FACTOR_SHOULD_BE_POSITIVE);
     }
     if (CONF.getDataReplicationFactor() <= 0) {
-      throw new ConfigurationException("The data_replication_factor should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DATA_REPLICATION_FACTOR_SHOULD_BE_POSITIVE);
     }
 
     // When the schema_replication_factor is greater than 1
@@ -115,7 +118,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (CONF.getSchemaReplicationFactor() > 1
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getSchemaRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           CONF.getSchemaRegionConsensusProtocolClass(),
           ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
@@ -127,7 +130,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (CONF.getDataReplicationFactor() > 1
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "data_region_consensus_protocol_class",
+          ConfigNodeMessages.DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
           CONF.getDataRegionConsensusProtocolClass(),
           ConsensusFactory.IOT_CONSENSUS + "or" + ConsensusFactory.RATIS_CONSENSUS,
           ConsensusFactory.SIMPLE_CONSENSUS
@@ -138,7 +141,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     // we should report an error
     if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
@@ -149,7 +152,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     // we should report an error
     if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+          ConfigNodeMessages.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
@@ -158,10 +161,10 @@ public class ConfigNodeStartupCheck extends StartupChecks {
 
     // The leader distribution policy is limited
     if (!AbstractLeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
-        && !AbstractLeaderBalancer.CFD_POLICY.equals(CONF.getLeaderDistributionPolicy())
+        && !AbstractLeaderBalancer.CFS_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !AbstractLeaderBalancer.HASH_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
-          "leader_distribution_policy",
+          ConfigNodeMessages.LEADER_DISTRIBUTION_POLICY,
           CONF.getRoutePriorityPolicy(),
           "GREEDY or MIN_COST_FLOW or HASH",
           "an unrecognized leader_distribution_policy is set");
@@ -171,7 +174,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (!CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.LEADER_POLICY)
         && !CONF.getRoutePriorityPolicy().equals(IPriorityBalancer.GREEDY_POLICY)) {
       throw new ConfigurationException(
-          "route_priority_policy",
+          ConfigNodeMessages.ROUTE_PRIORITY_POLICY,
           CONF.getRoutePriorityPolicy(),
           "LEADER or GREEDY",
           "an unrecognized route_priority_policy is set");
@@ -179,20 +182,24 @@ public class ConfigNodeStartupCheck extends StartupChecks {
 
     // The default RegionGroupNum should be positive
     if (CONF.getDefaultSchemaRegionGroupNumPerDatabase() <= 0) {
-      throw new ConfigurationException("The default_schema_region_group_num should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DEFAULT_SCHEMA_REGION_GROUP_NUM_SHOULD_BE_POSITIVE);
     }
     if (CONF.getDefaultDataRegionGroupNumPerDatabase() <= 0) {
-      throw new ConfigurationException("The default_data_region_group_num should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_DEFAULT_DATA_REGION_GROUP_NUM_SHOULD_BE_POSITIVE);
     }
 
     // Check time partition origin
     if (COMMON_CONFIG.getTimePartitionOrigin() < 0) {
-      throw new ConfigurationException("The time_partition_origin should be non-negative");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIME_PARTITION_ORIGIN_SHOULD_BE_NON_NEGATIVE);
     }
 
     // Check time partition interval
     if (COMMON_CONFIG.getTimePartitionInterval() <= 0) {
-      throw new ConfigurationException("The time_partition_interval should be positive");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIME_PARTITION_INTERVAL_SHOULD_BE_POSITIVE);
     }
 
     // Check timestamp precision
@@ -200,7 +207,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     if (!("ms".equals(timestampPrecision)
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
-      throw new ConfigurationException("The timestamp_precision should be ms, us or ns");
+      throw new ConfigurationException(
+          ConfigNodeMessages.THE_TIMESTAMP_PRECISION_SHOULD_BE_MS_US_OR_NS);
     }
   }
 
@@ -217,11 +225,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
   private void createDirIfEmpty(File dir) throws IOException {
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOGGER.info("Make dirs: {}", dir);
+        LOGGER.info(ConfigNodeMessages.MAKE_DIRS, dir);
       } else {
         throw new IOException(
             String.format(
-                "Start ConfigNode failed, because couldn't make system dirs: %s.",
+                ConfigNodeMessages.START_CONFIGNODE_FAILED_BECAUSE_COULDN_T_MAKE_SYSTEM_DIRS,
                 dir.getAbsolutePath()));
       }
     }

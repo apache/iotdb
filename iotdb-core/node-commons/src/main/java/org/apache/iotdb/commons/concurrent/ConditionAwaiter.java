@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -88,9 +90,9 @@ public class ConditionAwaiter {
           lastException = e;
         } else if (e instanceof InterruptedException) {
           Thread.currentThread().interrupt();
-          throw new AwaitTimeoutException("Interrupted while awaiting condition", e);
+          throw new AwaitTimeoutException(CommonMessages.INTERRUPTED_WHILE_AWAITING, e);
         } else {
-          throw new AwaitTimeoutException("Exception while evaluating condition", e);
+          throw new AwaitTimeoutException(CommonMessages.EXCEPTION_WHILE_EVALUATING, e);
         }
       }
 
@@ -148,7 +150,7 @@ public class ConditionAwaiter {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new AwaitTimeoutException("Interrupted while awaiting condition", e);
+      throw new AwaitTimeoutException(CommonMessages.INTERRUPTED_WHILE_AWAITING, e);
     }
   }
 }

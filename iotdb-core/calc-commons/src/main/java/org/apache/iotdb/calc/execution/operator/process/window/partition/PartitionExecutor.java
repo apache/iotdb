@@ -28,6 +28,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.R
 import org.apache.iotdb.calc.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.calc.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -142,7 +143,7 @@ public final class PartitionExecutor {
                     peerGroupEnd - partitionStart - 1);
             break;
           default:
-            throw new UnsupportedOperationException("Unreachable!");
+            throw new UnsupportedOperationException(CalcMessages.UNREACHABLE);
         }
       }
       frames.add(frame);

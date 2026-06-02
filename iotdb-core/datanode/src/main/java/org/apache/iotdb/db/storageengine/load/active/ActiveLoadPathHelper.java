@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -55,7 +56,7 @@ public final class ActiveLoadPathHelper {
               LoadTsFileConfigurator.PIPE_GENERATED_KEY));
 
   private ActiveLoadPathHelper() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
   }
 
   public static Map<String, String> buildAttributes(
@@ -239,7 +240,7 @@ public final class ActiveLoadPathHelper {
     switch (key) {
       case LoadTsFileConfigurator.DATABASE_NAME_KEY:
         if (value == null || value.isEmpty()) {
-          throw new SemanticException("Database name must not be empty.");
+          throw new SemanticException(StorageEngineMessages.DATABASE_NAME_MUST_NOT_BE_EMPTY);
         }
         break;
       case LoadTsFileConfigurator.DATABASE_LEVEL_KEY:

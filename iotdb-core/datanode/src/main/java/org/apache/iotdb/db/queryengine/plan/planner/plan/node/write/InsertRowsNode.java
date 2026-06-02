@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -186,7 +187,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -349,7 +350,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(getEncodedSearchIndex());
     subSerialize(buffer);
   }
 
@@ -377,7 +378,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(stream);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -397,7 +398,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(buffer);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 

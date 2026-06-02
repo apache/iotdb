@@ -22,6 +22,9 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -59,7 +62,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       try {
         tablet = statement.convertToTablet();
       } catch (final MetadataException e) {
-        LOGGER.warn("Failed to convert statement to tablet.", e);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET, e);
         return null;
       }
     }
@@ -94,7 +97,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       statement = new InsertTabletStatement(tablet, isAligned, null);
       return statement;
     } catch (final MetadataException e) {
-      LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
+      LOGGER.warn(DataNodePipeMessages.GENERATE_STATEMENT_FROM_TABLET_ERROR, tablet, e);
       return null;
     }
   }
@@ -107,6 +110,27 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    final int startPosition = buffer.position();
+    try {
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, false, tabletStringInternPool);
+      tabletReq.isAligned = insertTabletStatement.isAligned();
+      tabletReq.statement = insertTabletStatement;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+      tabletReq.tablet =
+          PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+      tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
+    }
 
     return tabletReq;
   }
@@ -134,22 +158,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    final ByteBuffer buffer = transferReq.body;
-    final int startPosition = buffer.position();
-    try {
-      // V1: no databaseName, readDatabaseName = false
-      final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
-      tabletReq.isAligned = insertTabletStatement.isAligned();
-      // devicePath is already set in deserializeStatementFromTabletFormat for V1 format
-      tabletReq.statement = insertTabletStatement;
-    } catch (final Exception e) {
-      buffer.position(startPosition);
-      tabletReq.tablet = Tablet.deserialize(buffer);
-      tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
-    }
+    final PipeTransferTabletRawReq tabletReq =
+        toTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
@@ -175,12 +185,12 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         tabletToSerialize = statement.convertToTablet();
         isAlignedToSerialize = statement.isAligned();
       } catch (final MetadataException e) {
-        throw new IOException("Failed to convert statement to tablet for serialization", e);
+        throw new IOException(DataNodePipeMessages.FAILED_TO_CONVERT_STATEMENT_TO_TABLET_FOR, e);
       }
     }
 
     if (tabletToSerialize == null) {
-      throw new IOException("Cannot serialize: both tablet and statement are null");
+      throw new IOException(DataNodePipeMessages.CANNOT_SERIALIZE_BOTH_TABLET_AND_STATEMENT_ARE);
     }
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();

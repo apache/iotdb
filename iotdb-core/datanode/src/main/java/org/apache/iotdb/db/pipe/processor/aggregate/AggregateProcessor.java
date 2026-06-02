@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
@@ -370,7 +371,8 @@ public class AggregateProcessor implements PipeProcessor {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
         } catch (final IOException e) {
-          throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
+          throw new PipeException(
+              DataNodePipeMessages.ENCOUNTERED_EXCEPTION_WHEN_DESERIALIZING_FROM_PIPETASKMETA, e);
         }
       }
     }

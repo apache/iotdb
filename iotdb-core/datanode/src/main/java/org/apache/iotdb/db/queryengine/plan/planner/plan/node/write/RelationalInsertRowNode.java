@@ -128,14 +128,14 @@ public class RelationalInsertRowNode extends InsertRowNode {
       throws IOException {
     long searchIndex = stream.readLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
   public static RelationalInsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
