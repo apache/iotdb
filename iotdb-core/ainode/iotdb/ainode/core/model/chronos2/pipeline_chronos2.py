@@ -309,7 +309,6 @@ class Chronos2Pipeline(ForecastPipeline):
         test_loader = DataLoader(
             test_dataset,
             batch_size=None,
-            pin_memory=True,
             shuffle=False,
             drop_last=False,
         )
