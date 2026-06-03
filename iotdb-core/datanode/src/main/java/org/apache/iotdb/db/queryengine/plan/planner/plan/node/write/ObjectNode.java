@@ -120,8 +120,12 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
     buffer.putLong(offset);
     try {
@@ -149,7 +153,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     IObjectPath filePath = IObjectPath.getDeserializer().deserializeFrom(stream);
     int contentLength = stream.readInt();
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contentLength, filePath);
-    objectNode.setSearchIndex(searchIndex);
+    objectNode.setSearchIndexFromWAL(searchIndex);
     return objectNode;
   }
 
@@ -174,7 +178,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     }
 
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contents, filePath);
-    objectNode.setSearchIndex(searchIndex);
+    objectNode.setSearchIndexFromWAL(searchIndex);
     return objectNode;
   }
 

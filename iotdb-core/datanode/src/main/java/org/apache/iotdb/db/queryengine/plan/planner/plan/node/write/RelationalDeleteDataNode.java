@@ -130,7 +130,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
     RelationalDeleteDataNode deleteDataNode =
         new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -145,7 +145,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
     RelationalDeleteDataNode deleteDataNode =
         new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -225,8 +225,12 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(PlanNodeType.RELATIONAL_DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     try {
       ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), buffer);
       for (TableDeletionEntry modEntry : modEntries) {
