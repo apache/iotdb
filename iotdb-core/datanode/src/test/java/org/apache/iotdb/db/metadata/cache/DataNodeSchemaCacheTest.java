@@ -268,6 +268,43 @@ public class DataNodeSchemaCacheTest {
   }
 
   @Test
+  public void testInvalidateLastCacheByWildcardDevicePath() throws IllegalPathException {
+    final MeasurementSchema s0 = new MeasurementSchema("s0", TSDataType.INT32);
+    final PartialPath device0 = new PartialPath("root.sg1.d1");
+    final PartialPath device1 = new PartialPath("root.sg2.d1");
+    final MeasurementPath path0 = new MeasurementPath(device0.concatNode("s0"), s0);
+    final MeasurementPath path1 = new MeasurementPath(device1.concatNode("s0"), s0);
+    final TimeValuePair tv0 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(0));
+
+    updateLastCache("root.sg1", device0, path0, s0, tv0);
+    updateLastCache("root.sg2", device1, path1, s0, tv0);
+
+    Assert.assertEquals(tv0, dataNodeSchemaCache.getLastCache(path0));
+    Assert.assertEquals(tv0, dataNodeSchemaCache.getLastCache(path1));
+
+    dataNodeSchemaCache.invalidateLastCache(new MeasurementPath("root.sg1.*.s0"));
+
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(path0));
+    Assert.assertEquals(tv0, dataNodeSchemaCache.getLastCache(path1));
+  }
+
+  private void updateLastCache(
+      final String database,
+      final PartialPath devicePath,
+      final MeasurementPath path,
+      final MeasurementSchema schema,
+      final TimeValuePair timeValuePair) {
+    dataNodeSchemaCache.declareLastCache(database, path);
+    dataNodeSchemaCache.updateLastCacheIfExists(
+        database,
+        devicePath,
+        new String[] {path.getMeasurement()},
+        new TimeValuePair[] {timeValuePair},
+        false,
+        new MeasurementSchema[] {schema});
+  }
+
+  @Test
   public void testPut() throws Exception {
     final ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
     final Template template1 =
