@@ -141,7 +141,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     if (persistResult != null
         && result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && !rollbackFailedPlanForSimpleConsensus(persistResult)) {
+        && !rollbackFailedPlanForSimpleConsensus(plan, persistResult)) {
       final String rollbackFailureMessage =
           ConfigNodeMessages.FAILED_TO_ROLLBACK_PERSISTED_CONFIGNODE_SIMPLECONSENSUS_LOG;
       result.setMessage(
@@ -418,7 +418,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         persistedLogFile, logFileSizeBeforeWrite, endIndexBeforeWrite);
   }
 
-  private boolean rollbackFailedPlanForSimpleConsensus(SimpleConsensusPersistResult persistResult) {
+  private boolean rollbackFailedPlanForSimpleConsensus(
+      ConfigPhysicalPlan plan, SimpleConsensusPersistResult persistResult) {
     closeSimpleLogWriter();
     try (FileOutputStream outputStream = new FileOutputStream(persistResult.logFile, true);
         FileChannel channel = outputStream.getChannel()) {
@@ -432,6 +433,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       LOGGER.error(
           ConfigNodeMessages
               .ROLLBACK_FAILED_CONFIGPHYSICALPLAN_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE_FAILED,
+          plan.getType(),
+          persistResult.logFile,
+          persistResult.logFileSizeBeforeWrite,
+          persistResult.endIndexBeforeWrite,
           e);
       return false;
     }

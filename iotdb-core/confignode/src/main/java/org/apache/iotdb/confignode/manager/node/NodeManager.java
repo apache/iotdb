@@ -348,9 +348,8 @@ public class NodeManager {
       return resp;
     }
 
-    // Create a new DataNodeHeartbeatCache and force update NodeStatus
+    // Create a new DataNodeHeartbeatCache. The heartbeat service will refresh NodeStatus shortly.
     getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
-    // TODO: invoke a force heartbeat to update new DataNode's status immediately
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(

@@ -427,7 +427,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public boolean matchFullPath(IDeviceID deviceID, String measurement) {
-    // TODO change this way
     PartialPath devicePath;
     try {
       devicePath = new PartialPath(deviceID.toString());

@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.TestOnlyPlan;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -81,6 +82,8 @@ public class ConfigRegionStateMachineTest {
       Assert.assertEquals(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), status.getCode());
       Assert.assertEquals(0, Files.size(tempLogFile));
       Assert.assertEquals(0, getField(stateMachine, "endIndex"));
+      closeSimpleLogWriter(stateMachine);
+      assertNoReplayablePlans(tempLogFile);
     } finally {
       closeSimpleLogWriter(stateMachine);
       Files.deleteIfExists(tempLogFile);
@@ -98,6 +101,15 @@ public class ConfigRegionStateMachineTest {
     Field field = target.getClass().getDeclaredField(fieldName);
     field.setAccessible(true);
     return field.get(target);
+  }
+
+  private static void assertNoReplayablePlans(Path tempLogFile) throws Exception {
+    SingleFileLogReader logReader = new SingleFileLogReader(tempLogFile.toFile());
+    try {
+      Assert.assertFalse(logReader.hasNext());
+    } finally {
+      logReader.close();
+    }
   }
 
   private static void closeSimpleLogWriter(ConfigRegionStateMachine stateMachine) throws Exception {

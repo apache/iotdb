@@ -26,8 +26,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -71,6 +74,49 @@ public class NodeInfoTest {
     NodeInfo nodeInfo1 = new NodeInfo();
     nodeInfo1.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(nodeInfo, nodeInfo1);
+  }
+
+  @Test
+  public void testRegistrationPlansAreIdempotentForWalReplay() {
+    NodeInfo replayNodeInfo = new NodeInfo();
+
+    TDataNodeConfiguration dataNodeConfiguration = generateTDataNodeConfiguration(100);
+    RegisterDataNodePlan registerDataNodePlan = new RegisterDataNodePlan(dataNodeConfiguration);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.registerDataNode(registerDataNodePlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.registerDataNode(registerDataNodePlan).getCode());
+    Assert.assertEquals(1, replayNodeInfo.getRegisteredDataNodeCount());
+    Assert.assertEquals(
+        dataNodeConfiguration,
+        replayNodeInfo.getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId()));
+
+    TConfigNodeLocation configNodeLocation =
+        new TConfigNodeLocation(
+            20000, new TEndPoint("127.0.0.1", 22200), new TEndPoint("127.0.0.1", 22300));
+    ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.applyConfigNode(applyConfigNodePlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.applyConfigNode(applyConfigNodePlan).getCode());
+    Assert.assertEquals(1, replayNodeInfo.getRegisteredConfigNodes().size());
+    Assert.assertEquals(configNodeLocation, replayNodeInfo.getRegisteredConfigNodes().get(0));
+
+    TNodeVersionInfo versionInfo = new TNodeVersionInfo("version", "build");
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.updateVersionInfo(updateVersionInfoPlan).getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        replayNodeInfo.updateVersionInfo(updateVersionInfoPlan).getCode());
+    Assert.assertEquals(
+        versionInfo, replayNodeInfo.getVersionInfo(configNodeLocation.getConfigNodeId()));
   }
 
   private void registerConfigNodes() {
