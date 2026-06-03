@@ -311,9 +311,10 @@ public class RegionScanLogicalPlannerTest {
                 null,
                 null,
                 null,
+                new HashMap<>(),
+                "root.sg",
                 1,
                 true,
-                "root.sg",
                 new HashMap<>()));
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap = new HashMap<>();
     timeseriesSchemaInfoMap.put(
@@ -336,7 +337,7 @@ public class RegionScanLogicalPlannerTest {
 
     TimeseriesRegionScanNode timeseriesRegionScanNode =
         new TimeseriesRegionScanNode(
-            new PlanNodeId("timeseries_test_id"), deviceToTimeseriesSchemaInfo, false, null);
+            new PlanNodeId("timeseries_test_id"), deviceToTimeseriesSchemaInfo, false, null, false);
 
     ByteBuffer buffer = ByteBuffer.allocate(10240);
     timeseriesRegionScanNode.serialize(buffer);

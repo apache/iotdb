@@ -170,9 +170,10 @@ public class RegionScanPlanningTest {
                 null,
                 null,
                 null,
+                Collections.emptyMap(),
+                "root.sg",
                 1,
                 true,
-                "root.sg",
                 Collections.emptyMap()));
     Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemaInfo =
         new HashMap<>();
@@ -211,7 +212,7 @@ public class RegionScanPlanningTest {
 
     TimeseriesRegionScanNode regionScanNode =
         new TimeseriesRegionScanNode(
-            queryId.genPlanNodeId(), deviceToTimeseriesSchemaInfo, true, null);
+            queryId.genPlanNodeId(), deviceToTimeseriesSchemaInfo, true, null, false);
     PlanNode rewrittenRoot =
         new DistributionPlanner(Util.ANALYSIS, new LogicalQueryPlan(context, regionScanNode))
             .rewriteSource();

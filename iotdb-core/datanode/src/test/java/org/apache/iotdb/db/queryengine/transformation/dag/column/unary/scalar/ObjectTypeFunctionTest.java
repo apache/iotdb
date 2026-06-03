@@ -23,7 +23,7 @@ import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ObjectLengthColumnTransformer;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import com.timecho.iotdb.calc.plan.relational.function.scalar.unary.ReadObjectColumnTransformer;
