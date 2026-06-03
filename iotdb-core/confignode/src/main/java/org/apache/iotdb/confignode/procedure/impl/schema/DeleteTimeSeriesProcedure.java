@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -197,26 +198,34 @@ public class DeleteTimeSeriesProcedure
       final String requestMessage,
       final Consumer<ProcedureException> setFailure,
       final boolean needLock) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(patternTreeBytes).setNeedLock(needLock),
-            dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final TSStatus status : statusMap.values()) {
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // schema cache and resyncs on recovery, so it cannot serve the to-be-deleted/altered series),
+    // instead of hard-failing on the first unreachable DataNode. This runs before the physical
+    // delete in the state machine, so the "delete only after PROCEED" ordering holds. The
+    // ConfigCachePropagator may re-broadcast while waiting, so build a fresh request (with a
+    // duplicated buffer) on every attempt rather than reusing a possibly-consumed one.
+    final boolean proceeded =
+        new ClusterCachePropagator(env.getConfigManager())
+            .propagate(
+                targets -> {
+                  final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
+                      clientHandler =
+                          new DataNodeAsyncRequestContext<>(
+                              CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+                              new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
+                                  .setNeedLock(needLock),
+                              targets);
+                  CnToDnInternalServiceAsyncRequestManager.getInstance()
+                      .sendAsyncRequestWithRetry(clientHandler);
+                  return clientHandler.getResponseMap();
+                });
+    if (!proceeded) {
       // All dataNodes must clear the related schemaEngine cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES,
-            requestMessage);
-        setFailure.accept(
-            new ProcedureException(
-                new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
-        return;
-      }
+      LOGGER.error(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
+      setFailure.accept(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
     }
   }
 
