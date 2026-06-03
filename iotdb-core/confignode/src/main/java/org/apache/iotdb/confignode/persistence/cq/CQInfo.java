@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cq.CQState;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -46,9 +45,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -65,7 +62,7 @@ public class CQInfo implements SnapshotProcessor {
 
   private static final String CQ_NOT_EXIST_FORMAT = "CQ %s doesn't exist.";
 
-  private static final String CQ_TOKEN_NOT_MATCH_FORMAT = "Token of CQ %s doesn't match";
+  private static final String MD5_NOT_MATCH_FORMAT = "MD5 of CQ %s doesn't match";
 
   private final Map<String, CQEntry> cqMap;
 
@@ -95,7 +92,7 @@ public class CQInfo implements SnapshotProcessor {
         CQEntry cqEntry =
             new CQEntry(
                 plan.getReq(),
-                plan.getCqToken(),
+                plan.getMd5(),
                 plan.getFirstExecutionTime() - plan.getReq().everyInterval);
         cqMap.put(cqId, cqEntry);
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
@@ -109,13 +106,13 @@ public class CQInfo implements SnapshotProcessor {
   /**
    * Drop the CQ whose ID is same as <tt>cqId</tt> in plan.
    *
-   * @return SUCCESS_STATUS if there is CQ whose ID and token is same as <tt>cqId</tt> in plan,
+   * @return SUCCESS_STATUS if there is CQ whose ID and md5 is same as <tt>cqId</tt> in plan,
    *     otherwise NO_SUCH_CQ.
    */
   public TSStatus dropCQ(DropCQPlan plan) {
     TSStatus res = new TSStatus();
     String cqId = plan.getCqId();
-    Optional<String> cqToken = plan.getCqToken();
+    Optional<String> md5 = plan.getMd5();
     lock.writeLock().lock();
     try {
       CQEntry cqEntry = cqMap.get(cqId);
@@ -123,10 +120,10 @@ public class CQInfo implements SnapshotProcessor {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
         LOGGER.warn(ConfigNodeMessages.DROP_CQ_FAILED_BECAUSE_IT_DOESN_T_EXIST, cqId);
-      } else if ((cqToken.isPresent() && !cqToken.get().equals(cqEntry.cqToken))) {
+      } else if ((md5.isPresent() && !md5.get().equals(cqEntry.md5))) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format(CQ_TOKEN_NOT_MATCH_FORMAT, cqId);
-        LOGGER.warn(ConfigNodeMessages.DROP_CQ_FAILED_BECAUSE_ITS_TOKEN_DOESN_T_MATCH, cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
+        LOGGER.warn(ConfigNodeMessages.DROP_CQ_FAILED_BECAUSE_ITS_MD5_DOESN_T_MATCH, cqId);
       } else {
         cqMap.remove(cqId);
         res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
@@ -139,24 +136,11 @@ public class CQInfo implements SnapshotProcessor {
   }
 
   public ShowCQResp showCQ() {
-    return showCQ(new ShowCQPlan());
-  }
-
-  public ShowCQResp showCQ(ShowCQPlan plan) {
     lock.readLock().lock();
     try {
-      Optional<String> cqId = plan.getCqId();
-      List<CQEntry> cqList;
-      if (cqId.isPresent()) {
-        CQEntry cqEntry = cqMap.get(cqId.get());
-        cqList =
-            cqEntry == null
-                ? Collections.emptyList()
-                : Collections.singletonList(new CQEntry(cqEntry));
-      } else {
-        cqList = cqMap.values().stream().map(CQEntry::new).collect(Collectors.toList());
-      }
-      return new ShowCQResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), cqList);
+      return new ShowCQResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          cqMap.values().stream().map(CQEntry::new).collect(Collectors.toList()));
     } finally {
       lock.readLock().unlock();
     }
@@ -170,16 +154,16 @@ public class CQInfo implements SnapshotProcessor {
   public TSStatus activeCQ(ActiveCQPlan plan) {
     TSStatus res = new TSStatus();
     String cqId = plan.getCqId();
-    String cqToken = plan.getCqToken();
+    String md5 = plan.getMd5();
     lock.writeLock().lock();
     try {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
-      } else if (!cqToken.equals(cqEntry.cqToken)) {
+      } else if (!md5.equals(cqEntry.md5)) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format(CQ_TOKEN_NOT_MATCH_FORMAT, cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
       } else if (cqEntry.state == CQState.ACTIVE) {
         res.code = TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode();
         res.message = String.format("CQ %s has already been active", cqId);
@@ -197,22 +181,22 @@ public class CQInfo implements SnapshotProcessor {
    * Update the last execution time of the corresponding CQ.
    *
    * @return SUCCESS_STATUS if successfully updated, or NO_SUCH_CQ if 1. the CQ doesn't exist; or 2.
-   *     token is different. or CQ_UPDATE_LAST_EXEC_TIME_FAILED 3. original lastExecutionTime >=
+   *     md5 is different. or CQ_UPDATE_LAST_EXEC_TIME_FAILED 3. original lastExecutionTime >=
    *     current lastExecutionTime;
    */
   public TSStatus updateCQLastExecutionTime(UpdateCQLastExecTimePlan plan) {
     TSStatus res = new TSStatus();
     String cqId = plan.getCqId();
-    String cqToken = plan.getCqToken();
+    String md5 = plan.getMd5();
     lock.writeLock().lock();
     try {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
         res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
-      } else if (!cqToken.equals(cqEntry.cqToken)) {
+      } else if (!md5.equals(cqEntry.md5)) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format(CQ_TOKEN_NOT_MATCH_FORMAT, cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
       } else if (cqEntry.lastExecutionTime >= plan.getExecutionTime()) {
         res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode();
         res.message =
@@ -316,7 +300,7 @@ public class CQInfo implements SnapshotProcessor {
     private final TimeoutPolicy timeoutPolicy;
     private final String queryBody;
     private final String sql;
-    private final String cqToken;
+    private final String md5;
 
     private final String zoneId;
 
@@ -325,7 +309,7 @@ public class CQInfo implements SnapshotProcessor {
     private CQState state;
     private long lastExecutionTime;
 
-    private CQEntry(TCreateCQReq req, String cqToken, long lastExecutionTime) {
+    private CQEntry(TCreateCQReq req, String md5, long lastExecutionTime) {
       this(
           req.cqId,
           req.everyInterval,
@@ -335,7 +319,7 @@ public class CQInfo implements SnapshotProcessor {
           TimeoutPolicy.deserialize(req.timeoutPolicy),
           req.queryBody,
           req.sql,
-          cqToken,
+          md5,
           req.zoneId,
           req.username,
           CQState.INACTIVE,
@@ -352,7 +336,7 @@ public class CQInfo implements SnapshotProcessor {
           other.timeoutPolicy,
           other.queryBody,
           other.sql,
-          other.cqToken,
+          other.md5,
           other.zoneId,
           other.username,
           other.state,
@@ -369,7 +353,7 @@ public class CQInfo implements SnapshotProcessor {
         TimeoutPolicy timeoutPolicy,
         String queryBody,
         String sql,
-        String cqToken,
+        String md5,
         String zoneId,
         String username,
         CQState state,
@@ -382,7 +366,7 @@ public class CQInfo implements SnapshotProcessor {
       this.timeoutPolicy = timeoutPolicy;
       this.queryBody = queryBody;
       this.sql = sql;
-      this.cqToken = cqToken;
+      this.md5 = md5;
       this.zoneId = zoneId;
       this.username = username;
       this.state = state;
@@ -398,7 +382,7 @@ public class CQInfo implements SnapshotProcessor {
       ReadWriteIOUtils.write(timeoutPolicy.getType(), stream);
       ReadWriteIOUtils.write(queryBody, stream);
       ReadWriteIOUtils.write(sql, stream);
-      ReadWriteIOUtils.write(cqToken, stream);
+      ReadWriteIOUtils.write(md5, stream);
       ReadWriteIOUtils.write(zoneId, stream);
       ReadWriteIOUtils.write(username, stream);
       ReadWriteIOUtils.write(state.getType(), stream);
@@ -414,7 +398,7 @@ public class CQInfo implements SnapshotProcessor {
       TimeoutPolicy timeoutPolicy = TimeoutPolicy.deserialize(ReadWriteIOUtils.readByte(stream));
       String queryBody = ReadWriteIOUtils.readString(stream);
       String sql = ReadWriteIOUtils.readString(stream);
-      String cqToken = ReadWriteIOUtils.readString(stream);
+      String md5 = ReadWriteIOUtils.readString(stream);
       String zoneId = ReadWriteIOUtils.readString(stream);
       String username = ReadWriteIOUtils.readString(stream);
       CQState state = CQState.deserialize(ReadWriteIOUtils.readByte(stream));
@@ -428,7 +412,7 @@ public class CQInfo implements SnapshotProcessor {
           timeoutPolicy,
           queryBody,
           sql,
-          cqToken,
+          md5,
           zoneId,
           username,
           state,
@@ -467,8 +451,8 @@ public class CQInfo implements SnapshotProcessor {
       return sql;
     }
 
-    public String getCqToken() {
-      return cqToken;
+    public String getMd5() {
+      return md5;
     }
 
     public CQState getState() {
@@ -505,7 +489,7 @@ public class CQInfo implements SnapshotProcessor {
           && timeoutPolicy == cqEntry.timeoutPolicy
           && Objects.equals(queryBody, cqEntry.queryBody)
           && Objects.equals(sql, cqEntry.sql)
-          && Objects.equals(cqToken, cqEntry.cqToken)
+          && Objects.equals(md5, cqEntry.md5)
           && Objects.equals(zoneId, cqEntry.zoneId)
           && Objects.equals(username, cqEntry.username)
           && state == cqEntry.state;
@@ -522,7 +506,7 @@ public class CQInfo implements SnapshotProcessor {
           timeoutPolicy,
           queryBody,
           sql,
-          cqToken,
+          md5,
           zoneId,
           username,
           state,
