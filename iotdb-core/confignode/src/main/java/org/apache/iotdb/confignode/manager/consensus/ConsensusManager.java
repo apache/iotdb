@@ -81,12 +81,14 @@ public class ConsensusManager {
       new ConfigRegionId(CONF.getConfigRegionId());
 
   private final IManager configManager;
+  private final ConfigRegionStateMachine stateMachine;
   private IConsensus consensusImpl;
 
   private boolean isInitialized;
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
+    this.stateMachine = stateMachine;
     setConsensusLayer(stateMachine);
   }
 
@@ -445,39 +447,50 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
-    TSStatus result = new TSStatus();
-    if (isLeaderReady()) {
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
-      result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      if (isLeader()) {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
-          if (isLeaderReady()) {
-            result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-            return result;
-          }
-          try {
-            Thread.sleep(RETRY_WAIT_TIME_MS);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn(
-                ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
-            break;
-          }
-        }
-        result.setMessage(
-            "The current ConfigNode is leader but not ready yet, please try again later.");
-      } else {
-        result.setMessage(
-            "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
-      }
+    if (!isLeader()) {
+      TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      result.setMessage(
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
       TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {
         result.setRedirectNode(leaderLocation.getInternalEndPoint());
       }
+      return result;
     }
-    return result;
+
+    long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+      if (isLeaderReady()) {
+        break;
+      }
+      try {
+        Thread.sleep(RETRY_WAIT_TIME_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
+        break;
+      }
+    }
+
+    if (!isLeaderReady()) {
+      return getLeaderWarmingUpStatus(
+          "The current ConfigNode is leader but consensus is not ready yet.");
+    }
+    if (!stateMachine.areLeaderServicesReady()) {
+      return getLeaderWarmingUpStatus(
+          "The current ConfigNode is leader but leader services are not ready yet.");
+    }
+    if (!configManager.getLoadManager().isLoadReady()) {
+      return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private TSStatus getLeaderWarmingUpStatus(String message) {
+    return new TSStatus(TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode())
+        .setMessage(message);
   }
 
   public ConsensusGroupId getConsensusGroupId() {

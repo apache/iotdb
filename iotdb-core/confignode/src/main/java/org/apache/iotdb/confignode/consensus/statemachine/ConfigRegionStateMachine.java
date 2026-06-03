@@ -64,6 +64,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,6 +77,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.CONFIG_NODE_RECOVER.getName());
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
+  private final AtomicBoolean leaderServicesReady;
   private ConfigManager configManager;
 
   /** Variables for {@link ConfigNode} Simple Consensus. */
@@ -98,6 +100,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
+    this.leaderServicesReady = new AtomicBoolean(false);
     this.configManager = configManager;
     this.currentNodeTEndPoint =
         new TEndPoint()
@@ -231,6 +234,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+    leaderServicesReady.set(false);
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
@@ -246,6 +250,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyNotLeader() {
+    leaderServicesReady.set(false);
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
@@ -283,29 +288,29 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyLeaderReady() {
+    leaderServicesReady.set(false);
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
-    // Always start load services first and wait for its first full warm-up before serving.
-    long loadReadyEpoch = configManager.getLoadManager().startLoadServices();
+    // Always start load services first. ConsensusManager gates external serving until warm-up.
+    configManager.getLoadManager().startLoadServices();
 
     if (CONF.isEnableTopologyProbing()) {
       configManager.getLoadManager().startTopologyService();
     }
 
-    threadPool.submit(() -> startLeaderServicesAfterLoadReady(loadReadyEpoch));
+    threadPool.submit(this::startLeaderServicesAfterLoadReady);
   }
 
-  private void startLeaderServicesAfterLoadReady(long loadReadyEpoch) {
-    if (!configManager.getLoadManager().waitForLoadReady(loadReadyEpoch)) {
+  private void startLeaderServicesAfterLoadReady() {
+    if (!configManager.getLoadManager().isLoadReady()) {
       LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + "skip starting leader services because load warm-up is interrupted",
+          "Current ConfigNode(nodeId: {}, ip: {}) starts leader services while load warm-up is"
+              + " still in progress.",
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint);
-      return;
     }
     if (!configManager.getConsensusManager().isLeaderReady()) {
       LOGGER.info(
@@ -355,10 +360,16 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     // Do check async because sync will be slow and block every other things.
     threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
 
+    leaderServicesReady.set(true);
+
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
+  }
+
+  public boolean areLeaderServicesReady() {
+    return leaderServicesReady.get();
   }
 
   @Override

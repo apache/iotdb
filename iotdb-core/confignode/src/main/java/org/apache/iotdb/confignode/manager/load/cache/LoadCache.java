@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCa
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
-import org.apache.iotdb.confignode.manager.load.cache.region.RegionCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -573,58 +572,22 @@ public class LoadCache {
     return consensusGroupStatisticsMap;
   }
 
-  public boolean isLoadWarmUpReady() {
-    return getLoadWarmUpUnreadyReasons().isEmpty();
-  }
-
-  public List<String> getLoadWarmUpUnreadyReasons() {
-    List<String> unreadyReasons = new ArrayList<>();
+  public List<String> getNodeHeartbeatUnreadyReasons() {
     List<Integer> unreadyNodes = new ArrayList<>();
     nodeCacheMap.forEach(
         (nodeId, nodeCache) -> {
           if (nodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
             return;
           }
-          if (!nodeCache.hasHeartbeatSample()
-              || nodeCache.getCurrentStatistics().getStatisticsNanoTimestamp() == Long.MIN_VALUE) {
+          if ((nodeCache instanceof ConfigNodeHeartbeatCache
+                  || nodeCache instanceof DataNodeHeartbeatCache)
+              && !nodeCache.hasHeartbeatSample()) {
             unreadyNodes.add(nodeId);
           }
         });
+    List<String> unreadyReasons = new ArrayList<>();
+    Collections.sort(unreadyNodes);
     addUnreadyReason(unreadyReasons, "nodes", unreadyNodes);
-
-    List<String> unreadyRegions = new ArrayList<>();
-    List<TConsensusGroupId> unreadyRegionGroups = new ArrayList<>();
-    regionGroupCacheMap.forEach(
-        (regionGroupId, regionGroupCache) -> {
-          regionGroupCache
-              .getRegionLocations()
-              .forEach(
-                  dataNodeId -> {
-                    RegionCache regionCache = regionGroupCache.getRegionCache(dataNodeId);
-                    if (regionCache == null || !regionCache.hasHeartbeatSample()) {
-                      unreadyRegions.add(regionGroupId + "@" + dataNodeId);
-                    }
-                  });
-          if (!regionGroupCache
-              .getCurrentStatistics()
-              .getRegionStatisticsMap()
-              .keySet()
-              .containsAll(regionGroupCache.getRegionLocations())) {
-            unreadyRegionGroups.add(regionGroupId);
-          }
-        });
-    addUnreadyReason(unreadyReasons, "regions", unreadyRegions);
-    addUnreadyReason(unreadyReasons, "regionGroups", unreadyRegionGroups);
-
-    List<TConsensusGroupId> unreadyConsensusGroups = new ArrayList<>();
-    consensusGroupCacheMap.forEach(
-        (consensusGroupId, consensusGroupCache) -> {
-          if (!consensusGroupCache.hasHeartbeatSample()
-              || consensusGroupCache.getCurrentStatistics().getStatisticsNanoTimestamp() == 0) {
-            unreadyConsensusGroups.add(consensusGroupId);
-          }
-        });
-    addUnreadyReason(unreadyReasons, "consensusGroups", unreadyConsensusGroups);
     return unreadyReasons;
   }
 

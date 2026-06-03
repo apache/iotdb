@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
@@ -177,11 +176,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   @Override
   public void onError(Exception e) {
-    if (ThriftClient.isConnectionBroken(e)) {
-      loadManager.forceUpdateNodeCache(
-          NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
-      loadManager.getLoadCache().cacheDataNodeHeartbeatFailureSample(nodeId, System.nanoTime());
-    }
+    loadManager.forceUpdateNodeCache(
+        NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+    loadManager.getLoadCache().cacheDataNodeHeartbeatFailureSample(nodeId, System.nanoTime());
     loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
 }

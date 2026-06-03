@@ -48,8 +48,6 @@ import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +55,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -65,8 +62,7 @@ import java.util.stream.Collectors;
  */
 public class LoadManager {
 
-  private static final long LOAD_READY_CHECK_INTERVAL_MS =
-      Math.max(10, Math.min(100, StatisticsService.STATISTICS_UPDATE_INTERVAL / 10));
+  private static final long FIRST_HEARTBEAT_READY_TOLERANCE_MS = TimeUnit.SECONDS.toMillis(30);
 
   protected final IManager configManager;
 
@@ -84,7 +80,7 @@ public class LoadManager {
   private final EventService eventService;
   private final TopologyService topologyService;
   private final AtomicBoolean loadServicesStarted;
-  private final AtomicLong loadReadyEpoch;
+  private final AtomicLong loadReadyStartTimeMillis;
   private final AtomicBoolean loadReady;
   private volatile String loadReadyReason;
 
@@ -106,7 +102,7 @@ public class LoadManager {
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);
     this.loadServicesStarted = new AtomicBoolean(false);
-    this.loadReadyEpoch = new AtomicLong(0);
+    this.loadReadyStartTimeMillis = new AtomicLong(0);
     this.loadReady = new AtomicBoolean(false);
     this.loadReadyReason = "ConfigNode leader load services are not started.";
   }
@@ -165,9 +161,9 @@ public class LoadManager {
     partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
 
-  public long startLoadServices() {
-    long epoch = loadReadyEpoch.incrementAndGet();
+  public void startLoadServices() {
     loadReady.set(false);
+    loadReadyStartTimeMillis.set(System.currentTimeMillis());
     loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
     loadCache.initHeartbeatCache(configManager);
     loadServicesStarted.set(true);
@@ -175,12 +171,11 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
-    return epoch;
   }
 
   public void stopLoadServices() {
-    loadReadyEpoch.incrementAndGet();
     loadServicesStarted.set(false);
+    loadReadyStartTimeMillis.set(0);
     loadReady.set(false);
     loadReadyReason = "ConfigNode leader load services are stopped.";
     heartbeatService.stopHeartbeatService();
@@ -189,21 +184,6 @@ public class LoadManager {
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
-  }
-
-  public boolean waitForLoadReady(long epoch) {
-    while (epoch == loadReadyEpoch.get() && !Thread.currentThread().isInterrupted()) {
-      if (tryUpdateLoadReady()) {
-        return true;
-      }
-      try {
-        TimeUnit.MILLISECONDS.sleep(LOAD_READY_CHECK_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
-    }
-    return false;
   }
 
   public boolean isLoadReady() {
@@ -224,53 +204,30 @@ public class LoadManager {
     }
 
     loadCache.updateNodeStatistics(false);
-    loadCache.updateRegionGroupStatistics();
-    loadCache.updateConsensusGroupStatistics();
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
-    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
-    eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
 
-    List<String> unreadyReasons = loadCache.getLoadWarmUpUnreadyReasons();
-    if (!unreadyReasons.isEmpty()
-        && unreadyReasons.stream().anyMatch(reason -> !reason.startsWith("consensusGroups="))) {
-      loadReadyReason = "ConfigNode leader is warming up LoadCache: " + unreadyReasons;
-      return false;
+    List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
+    if (unreadyReasons.isEmpty()) {
+      loadReadyReason = "ConfigNode leader load services are ready.";
+      loadReady.set(true);
+      return true;
     }
 
-    routeBalancer.balanceRegionLeaderAndPriority();
-
-    unreadyReasons = loadCache.getLoadWarmUpUnreadyReasons();
-    if (!unreadyReasons.isEmpty()) {
-      loadReadyReason = "ConfigNode leader is warming up LoadCache: " + unreadyReasons;
-      return false;
-    }
-
-    List<TConsensusGroupId> unreadyRegionPriorities = getUnreadyRegionPriorities();
-    if (!unreadyRegionPriorities.isEmpty()) {
+    long elapsedMillis = System.currentTimeMillis() - loadReadyStartTimeMillis.get();
+    if (elapsedMillis < FIRST_HEARTBEAT_READY_TOLERANCE_MS) {
       loadReadyReason =
-          "ConfigNode leader is warming up region priority: "
-              + unreadyRegionPriorities.subList(0, Math.min(10, unreadyRegionPriorities.size()))
-              + (unreadyRegionPriorities.size() > 10
-                  ? "...(" + (unreadyRegionPriorities.size() - 10) + " more)"
-                  : "");
+          "ConfigNode leader is waiting for first heartbeat from registered ConfigNodes/DataNodes: "
+              + unreadyReasons;
       return false;
     }
 
-    loadReadyReason = "ConfigNode leader load services are ready.";
+    loadReadyReason =
+        "ConfigNode leader load services are ready after waiting "
+            + FIRST_HEARTBEAT_READY_TOLERANCE_MS
+            + "ms for first heartbeat. Missing heartbeats: "
+            + unreadyReasons;
     loadReady.set(true);
     return true;
-  }
-
-  private List<TConsensusGroupId> getUnreadyRegionPriorities() {
-    List<TConsensusGroupId> regionGroupIds = loadCache.getAllRegionGroupIds();
-    if (regionGroupIds.isEmpty()) {
-      return Collections.emptyList();
-    }
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
-        routeBalancer.getRegionPriorityMap();
-    return regionGroupIds.stream()
-        .filter(regionGroupId -> !regionPriorityMap.containsKey(regionGroupId))
-        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   public void startTopologyService() {
@@ -595,6 +552,14 @@ public class LoadManager {
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
+  }
+
+  @TestOnly
+  void markLoadServicesStartedForTest(long loadReadyStartTimeMillis) {
+    loadServicesStarted.set(true);
+    loadReady.set(false);
+    this.loadReadyStartTimeMillis.set(loadReadyStartTimeMillis);
+    loadReadyReason = "ConfigNode leader is waiting for cluster heartbeat sampling.";
   }
 
   @TestOnly

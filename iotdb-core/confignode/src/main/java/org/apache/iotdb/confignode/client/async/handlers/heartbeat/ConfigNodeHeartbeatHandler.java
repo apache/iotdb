@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
-import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -47,10 +46,8 @@ public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<TConfigNo
 
   @Override
   public void onError(Exception e) {
-    if (ThriftClient.isConnectionBroken(e)) {
-      loadManager.forceUpdateNodeCache(
-          NodeType.ConfigNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
-    }
+    loadManager.forceUpdateNodeCache(
+        NodeType.ConfigNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
 }
