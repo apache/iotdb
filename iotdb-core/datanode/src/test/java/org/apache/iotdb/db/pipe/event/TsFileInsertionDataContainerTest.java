@@ -167,7 +167,7 @@ public class TsFileInsertionDataContainerTest {
 
       try (final TsFileWriter writer = new TsFileWriter(nonalignedTsFile)) {
         writer.registerTimeseries(new Path("root.sg.d"), schemaList);
-        writer.writeTree(tablet);
+        writer.write(tablet);
       }
 
       CommonDescriptor.getInstance()
