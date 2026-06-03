@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -94,6 +95,7 @@ public class IoTConsensus implements IConsensus {
   private final TEndPoint thisNode;
   private final int thisNodeId;
   private final File storageDir;
+  private final List<String> recvSnapshotDirs;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
@@ -110,6 +112,7 @@ public class IoTConsensus implements IConsensus {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
+    this.recvSnapshotDirs = config.getRecvSnapshotDirs();
     this.config = config.getIotConsensusConfig();
     this.registry = registry;
     this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
@@ -177,6 +180,7 @@ public class IoTConsensus implements IConsensus {
           IoTConsensusServerImpl consensus =
               new IoTConsensusServerImpl(
                   path.toString(),
+                  recvSnapshotDirs,
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new TreeSet<>(),
                   registry.apply(consensusGroupId),
@@ -186,6 +190,8 @@ public class IoTConsensus implements IConsensus {
                   config);
           stateMachineMap.put(consensusGroupId, consensus);
         }
+      } catch (DiskSpaceInsufficientException e) {
+        throw new IOException(e);
       }
     }
     if (correctPeerListBeforeStart != null) {
@@ -283,16 +289,22 @@ public class IoTConsensus implements IConsensus {
                     return null;
                   }
 
-                  IoTConsensusServerImpl impl =
-                      new IoTConsensusServerImpl(
-                          path,
-                          new Peer(groupId, thisNodeId, thisNode),
-                          new TreeSet<>(peers),
-                          registry.apply(groupId),
-                          backgroundTaskService,
-                          clientManager,
-                          syncClientManager,
-                          config);
+                  IoTConsensusServerImpl impl = null;
+                  try {
+                    impl =
+                        new IoTConsensusServerImpl(
+                            path,
+                            recvSnapshotDirs,
+                            new Peer(groupId, thisNodeId, thisNode),
+                            new TreeSet<>(peers),
+                            registry.apply(groupId),
+                            backgroundTaskService,
+                            clientManager,
+                            syncClientManager,
+                            config);
+                  } catch (DiskSpaceInsufficientException e) {
+                    throw new RuntimeException(e);
+                  }
                   impl.start();
                   return impl;
                 }))

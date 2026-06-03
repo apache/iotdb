@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -115,6 +118,7 @@ public class IoTConsensusServerImpl {
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
+  private FolderManager recvFolderManager = null;
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
@@ -132,15 +136,29 @@ public class IoTConsensusServerImpl {
 
   public IoTConsensusServerImpl(
       String storageDir,
+      List<String> recvSnapshotDirs,
       Peer thisNode,
       TreeSet<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
-      IoTConsensusConfig config) {
+      IoTConsensusConfig config)
+      throws DiskSpaceInsufficientException {
     this.active = true;
     this.storageDir = storageDir;
+    List<String> snapshotDirs = new ArrayList<>();
+    if (recvSnapshotDirs != null) {
+      for (String dir : recvSnapshotDirs) {
+        snapshotDirs.add(dir + File.separator + SNAPSHOT_DIR_NAME);
+      }
+    } else {
+      snapshotDirs.add(storageDir);
+    }
+
+    this.recvFolderManager =
+        new FolderManager(
+            snapshotDirs, DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY);
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
@@ -360,18 +378,45 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
-      File targetFile = getSnapshotPath(targetFilePath);
-      Path parentDir = Paths.get(targetFile.getParent());
-      if (!Files.exists(parentDir)) {
-        Files.createDirectories(parentDir);
+      File existingFile = getExistingSnapshotFile(targetFilePath);
+      if (existingFile != null) {
+        writeSnapshotFragment(existingFile, fileChunk, fileOffset);
+        return;
       }
-      try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-          FileChannel channel = fos.getChannel()) {
-        channel.write(fileChunk.slice(), fileOffset);
-      }
+
+      recvFolderManager.getNextWithRetry(
+          folder -> {
+            writeSnapshotFragment(getSnapshotPath(folder, targetFilePath), fileChunk, fileOffset);
+            return null;
+          });
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    } catch (DiskSpaceInsufficientException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    }
+  }
+
+  private File getExistingSnapshotFile(String targetFilePath) {
+    for (String folder : recvFolderManager.getFolders()) {
+      File targetFile = getSnapshotPath(folder, targetFilePath);
+      if (targetFile.exists()) {
+        return targetFile;
+      }
+    }
+    return null;
+  }
+
+  private void writeSnapshotFragment(File targetFile, ByteBuffer fileChunk, long fileOffset)
+      throws IOException {
+    Path parentDir = Paths.get(targetFile.getParent());
+    if (!Files.exists(parentDir)) {
+      Files.createDirectories(parentDir);
+    }
+    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
+        FileChannel channel = fos.getChannel()) {
+      channel.write(fileChunk.slice(), fileOffset);
     }
   }
 
@@ -404,12 +449,17 @@ public class IoTConsensusServerImpl {
 
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    stateMachine.loadSnapshot(getSnapshotPath(snapshotId));
+    recvFolderManager
+        .getFolders()
+        .forEach(
+            dir -> {
+              stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId));
+            });
   }
 
-  private File getSnapshotPath(String snapshotRelativePath) {
-    File storageDirFile = new File(storageDir);
-    File snapshotDir = new File(storageDir, snapshotRelativePath);
+  private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {
+    File storageDirFile = new File(curStorageDir);
+    File snapshotDir = new File(curStorageDir, snapshotRelativePath);
     try {
       if (!snapshotDir
           .getCanonicalFile()
@@ -829,15 +879,19 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = getSnapshotPath(snapshotId);
-    if (snapshotDir.exists()) {
-      try {
-        FileUtils.deleteDirectory(snapshotDir);
-      } catch (IOException e) {
-        throw new ConsensusGroupModifyPeerException(e);
+    List<String> allDirs = new ArrayList<>(Collections.singletonList(storageDir));
+    allDirs.addAll(recvFolderManager.getFolders());
+    for (String dir : allDirs) {
+      File snapshotDir = getSnapshotPath(dir, snapshotId);
+      if (snapshotDir.exists()) {
+        try {
+          FileUtils.deleteDirectory(snapshotDir);
+        } catch (IOException e) {
+          throw new ConsensusGroupModifyPeerException(e);
+        }
+      } else {
+        logger.info(IoTConsensusMessages.FILE_NOT_EXIST, snapshotDir);
       }
-    } else {
-      logger.info(IoTConsensusMessages.FILE_NOT_EXIST, snapshotDir);
     }
   }
 
