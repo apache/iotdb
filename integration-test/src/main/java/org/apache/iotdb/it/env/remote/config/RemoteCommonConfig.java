@@ -45,6 +45,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMetadataLeaseFenceMs(long metadataLeaseFenceMs) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setPartitionInterval(long partitionInterval) {
     return this;
   }
