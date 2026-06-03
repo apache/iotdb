@@ -20,17 +20,35 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 public class AuthorityCheckerTest {
+
+  @Before
+  public void setup() {
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
+  }
+
+  @After
+  public void teardown() {
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
+  }
 
   @Test
   public void testLogReduce() throws IllegalPathException {
@@ -47,5 +65,61 @@ public class AuthorityCheckerTest {
                 PrivilegeType.WRITE_DATA)
             .getMessage());
     config.setPathLogMaxSize(oldSize);
+  }
+
+  @Test
+  public void testCountTimeSeriesExplicitSystemDatabasePermission() throws Exception {
+    User user = new User("user1", "password");
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+
+    CountTimeSeriesStatement systemStatement =
+        new CountTimeSeriesStatement(new PartialPath("root.__system.**"));
+    Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        systemStatement.checkPermissionBeforeProcess(user.getName()).getCode());
+
+    user.addSysPrivilege(PrivilegeType.MAINTAIN.ordinal());
+    systemStatement = new CountTimeSeriesStatement(new PartialPath("root.__system.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        systemStatement.checkPermissionBeforeProcess(user.getName()).getCode());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__system.**")),
+        systemStatement.getAuthorityScope().getAllPathPatterns());
+    Assert.assertTrue(systemStatement.isCanSeeSystemDB());
+
+    CountLevelTimeSeriesStatement systemLevelStatement =
+        new CountLevelTimeSeriesStatement(new PartialPath("root.__system.**"), 1);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        systemLevelStatement.checkPermissionBeforeProcess(user.getName()).getCode());
+    Assert.assertEquals(
+        Collections.singletonList(new PartialPath("root.__system.**")),
+        systemLevelStatement.getAuthorityScope().getAllPathPatterns());
+    Assert.assertTrue(systemLevelStatement.isCanSeeSystemDB());
+  }
+
+  @Test
+  public void testCountTimeSeriesImplicitSystemDatabasePermission() throws Exception {
+    User user = new User("user2", "password");
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().putUserCache(user.getName(), user);
+
+    CountTimeSeriesStatement statement = new CountTimeSeriesStatement(new PartialPath("root.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        statement.checkPermissionBeforeProcess(user.getName()).getCode());
+    Assert.assertFalse(statement.isCanSeeSystemDB());
+
+    user.addSysPrivilege(PrivilegeType.MAINTAIN.ordinal());
+    statement = new CountTimeSeriesStatement(new PartialPath("root.**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        statement.checkPermissionBeforeProcess(user.getName()).getCode());
+    Assert.assertTrue(statement.isCanSeeSystemDB());
+    Assert.assertTrue(
+        statement
+            .getAuthorityScope()
+            .getAllPathPatterns()
+            .contains(new PartialPath("root.__system.**")));
   }
 }

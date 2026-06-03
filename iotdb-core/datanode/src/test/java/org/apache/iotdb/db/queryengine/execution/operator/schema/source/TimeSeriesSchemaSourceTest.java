@@ -37,14 +37,15 @@ import static org.junit.Assert.assertTrue;
 public class TimeSeriesSchemaSourceTest {
 
   @Test
-  public void testCountSourceSkipsImplicitInternalDatabases() throws Exception {
+  public void testCountSourceSkipsUnauthorizedInternalDatabases() throws Exception {
     final ISchemaSource<ITimeSeriesSchemaInfo> countSource =
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
             new PartialPath("root.**"),
             false,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true);
 
     assertTrue(
         countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
@@ -52,27 +53,30 @@ public class TimeSeriesSchemaSourceTest {
   }
 
   @Test
-  public void testCountSourceKeepsExplicitInternalDatabaseQueries() throws Exception {
+  public void testCountSourceKeepsAuthorizedInternalDatabases() throws Exception {
     final ISchemaSource<ITimeSeriesSchemaInfo> systemCountSource =
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-            new PartialPath("root.__system.**"),
+            new PartialPath("root.**"),
             false,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true);
     assertFalse(
         systemCountSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
   }
 
   @Test
-  public void testCountSourceSkipsWildcardSecondNodeForInternalDatabases() throws Exception {
+  public void testCountSourceSkipsUnauthorizedInternalDatabasesWithWildcardSecondNode()
+      throws Exception {
     final ISchemaSource<ITimeSeriesSchemaInfo> countSource =
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
             new PartialPath("root.*.**"),
             false,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            false);
 
     assertTrue(
         countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
@@ -80,14 +84,15 @@ public class TimeSeriesSchemaSourceTest {
   }
 
   @Test
-  public void testCountSourceKeepsExactInternalDatabaseQueries() throws Exception {
+  public void testCountSourceKeepsExactInternalDatabaseQueriesWithPrivilege() throws Exception {
     final ISchemaSource<ITimeSeriesSchemaInfo> systemCountSource =
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
             new PartialPath("root.__system"),
             false,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            false);
     assertFalse(
         systemCountSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
   }
@@ -116,7 +121,8 @@ public class TimeSeriesSchemaSourceTest {
             false,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            false);
     final ISchemaRegion schemaRegion = mockSchemaRegion("root.sg");
     final ISchemaRegionStatistics schemaRegionStatistics =
         Mockito.mock(ISchemaRegionStatistics.class);
