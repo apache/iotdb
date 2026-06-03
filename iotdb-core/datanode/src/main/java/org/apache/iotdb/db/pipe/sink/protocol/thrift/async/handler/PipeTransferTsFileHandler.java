@@ -78,6 +78,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private File currentFile;
 
   private final boolean transferMod;
+  private final String dataBaseName;
 
   private final int readFileBufferSize;
   private PipeTsFileMemoryBlock memoryBlock;
@@ -98,7 +99,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
-      final boolean transferMod)
+      final boolean transferMod,
+      final String dataBaseName)
       throws InterruptedException {
     super(connector);
 
@@ -111,6 +113,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.tsFile = tsFile;
     this.modFile = modFile;
     this.transferMod = transferMod;
+    this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
@@ -191,8 +194,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : dataBaseName == null
+                    ? PipeTransferTsFileSealReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length())
+                    : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length(), dataBaseName);
         final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(

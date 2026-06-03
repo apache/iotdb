@@ -255,7 +255,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   eventsHadBeenAddedToRetryQueue,
                   sealedFile,
                   null,
-                  false));
+                  false,
+                  null));
         }
       } catch (final Exception e) {
         PipeLogger.log(LOGGER::warn, e, "Failed to transfer tsfile batch (%s).", sealedFiles);
@@ -400,7 +401,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
               pipeTsFileInsertionEvent.isWithMod()
-                  && clientManager.supportModsIfIsDataNodeReceiver());
+                  && clientManager.supportModsIfIsDataNodeReceiver(),
+              pipeTsFileInsertionEvent.getDatabaseName());
 
       transfer(pipeTransferTsFileHandler);
       return true;

@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -42,10 +44,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel;
+  private String database;
   private boolean verifySchema = true;
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
@@ -201,6 +206,14 @@ public class LoadTsFileStatement extends Statement {
     return databaseLevel;
   }
 
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
   public void setVerifySchema(boolean verifySchema) {
     this.verifySchema = verifySchema;
   }
@@ -281,6 +294,7 @@ public class LoadTsFileStatement extends Statement {
 
   private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
@@ -291,6 +305,28 @@ public class LoadTsFileStatement extends Statement {
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+  }
+
+  public void updateDatabaseLevelByTreeDatabase() {
+    final Integer databaseLevel = getDatabaseLevelByTreeDatabase(database);
+    if (databaseLevel != null) {
+      this.databaseLevel = databaseLevel;
+    }
+  }
+
+  public static Integer getDatabaseLevelByTreeDatabase(final String database) {
+    if (database == null) {
+      return null;
+    }
+    try {
+      final String[] nodes = PathUtils.splitPathToDetachedNodes(database);
+      if (nodes.length > 1 && PATH_ROOT.equals(nodes[0])) {
+        return nodes.length - 1;
+      }
+    } catch (final IllegalPathException ignored) {
+      // Keep the configured database level when database is not a legal tree path.
+    }
+    return null;
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -352,6 +388,7 @@ public class LoadTsFileStatement extends Statement {
 
       final LoadTsFileStatement statement = new LoadTsFileStatement();
       statement.databaseLevel = this.databaseLevel;
+      statement.database = this.database;
       statement.verifySchema = this.verifySchema;
       statement.deleteAfterLoad = this.deleteAfterLoad;
       statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
@@ -395,6 +432,8 @@ public class LoadTsFileStatement extends Statement {
         + deleteAfterLoad
         + ", database-level="
         + databaseLevel
+        + ", database="
+        + database
         + ", verify-schema="
         + verifySchema
         + ", convert-on-type-mismatch="
