@@ -67,7 +67,11 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
     return this;
   }
 
-  protected long getEncodedSearchIndex() {
+  public long getEncodedSearchIndex() {
+    return encodeSearchIndex(searchIndex, isLastFragment);
+  }
+
+  public static long encodeSearchIndex(long searchIndex, boolean isLastFragment) {
     if (!isLastFragment) {
       return searchIndex;
     }

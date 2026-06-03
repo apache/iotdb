@@ -278,7 +278,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    super.subSerialize(buffer, rangeList);
+    subSerialize(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  @Override
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
+    super.subSerialize(buffer, rangeList, encodedSearchIndex);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         buffer.put(columnCategories[i].getCategory());

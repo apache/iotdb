@@ -45,6 +45,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -56,7 +58,9 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class WALFileTest {
 
@@ -127,6 +131,59 @@ public class WALFileTest {
             getRelationalInsertTabletNode("table1"),
             Collections.singletonList(new int[] {0, 4})));
     assertEquals(expectedWALEntries, actualWALEntries);
+  }
+
+  @Test
+  public void testWALInfoEntryFreezesSearchIndexAtCreation()
+      throws IOException, IllegalPathException {
+    int fakeMemTableId = 1;
+
+    InsertRowNode insertRowNode = getInsertRowNode(devicePath);
+    insertRowNode.setSearchIndex(99L);
+    WALInfoEntry insertRowEntry = new WALInfoEntry(fakeMemTableId, insertRowNode);
+    insertRowNode.setSearchIndex(100L);
+    insertRowNode.setLastFragment(true);
+
+    InsertRowNode actualInsertRowNode =
+        (InsertRowNode) serializeAndDeserialize(insertRowEntry).getValue();
+    assertEquals(99L, actualInsertRowNode.getSearchIndex());
+    assertFalse(actualInsertRowNode.isLastFragment());
+
+    InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath);
+    insertTabletNode.setSearchIndex(101L);
+    insertTabletNode.setLastFragment(false);
+    WALInfoEntry firstFragmentEntry =
+        new WALInfoEntry(
+            fakeMemTableId, insertTabletNode, Collections.singletonList(new int[] {0, 2}));
+
+    insertTabletNode.setLastFragment(true);
+    WALInfoEntry lastFragmentEntry =
+        new WALInfoEntry(
+            fakeMemTableId, insertTabletNode, Collections.singletonList(new int[] {2, 4}));
+
+    InsertTabletNode firstFragmentNode =
+        (InsertTabletNode) serializeAndDeserialize(firstFragmentEntry).getValue();
+    InsertTabletNode lastFragmentNode =
+        (InsertTabletNode) serializeAndDeserialize(lastFragmentEntry).getValue();
+
+    assertEquals(101L, firstFragmentNode.getSearchIndex());
+    assertFalse(firstFragmentNode.isLastFragment());
+    assertEquals(2, firstFragmentNode.getRowCount());
+    assertEquals(101L, lastFragmentNode.getSearchIndex());
+    assertTrue(lastFragmentNode.isLastFragment());
+    assertEquals(2, lastFragmentNode.getRowCount());
+  }
+
+  private static WALEntry serializeAndDeserialize(WALEntry walEntry) throws IOException {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(walEntry.serializedSize());
+    WALByteBufferForTest buffer = new WALByteBufferForTest(byteBuffer);
+    walEntry.serialize(buffer);
+    byteBuffer.flip();
+    byte[] serializedEntry = new byte[byteBuffer.remaining()];
+    byteBuffer.get(serializedEntry);
+    try (DataInputStream stream = new DataInputStream(new ByteArrayInputStream(serializedEntry))) {
+      return WALEntry.deserialize(stream);
+    }
   }
 
   @Test

@@ -900,12 +900,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void serializeToWAL(IWALByteBufferView buffer, List<int[]> rangeList) {
+    serializeToWAL(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(
+      IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    subSerialize(buffer, rangeList);
+    subSerialize(buffer, rangeList, encodedSearchIndex);
   }
 
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    buffer.putLong(getEncodedSearchIndex());
+    subSerialize(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
+    buffer.putLong(encodedSearchIndex);
     WALWriteUtils.write(targetPath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
