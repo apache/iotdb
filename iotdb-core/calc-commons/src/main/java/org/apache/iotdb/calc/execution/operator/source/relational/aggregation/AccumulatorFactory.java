@@ -20,7 +20,6 @@
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
-import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
@@ -299,10 +298,7 @@ public class AccumulatorFactory {
           return new GroupedApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
       case CORR:
-        return new GroupedCorrelationAccumulator(
-            inputDataTypes.get(0),
-            inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.CORR);
+        return new GroupedCorrelationAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case COVAR_POP:
         return new GroupedCovarianceAccumulator(
             inputDataTypes.get(0),
@@ -393,10 +389,7 @@ public class AccumulatorFactory {
           return new ApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
       case CORR:
-        return new TableCorrelationAccumulator(
-            inputDataTypes.get(0),
-            inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.CORR);
+        return new TableCorrelationAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case COVAR_POP:
         return new TableCovarianceAccumulator(
             inputDataTypes.get(0),

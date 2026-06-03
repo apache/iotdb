@@ -508,7 +508,7 @@ public class IoTDBStatisticalAggregationIT {
         };
     String[] retArray =
         new String[] {
-          "0.0,0.4082482904638631,-1.2000000000000002,-3.333333333333333,0.0,0.4082482904638631,-1.2000000000000002,-3.333333333333333,"
+          "0.0,0.6085806194501846,-1.2000000000000002,-3.333333333333333,0.0,0.6085806194501846,-1.2000000000000002,-3.333333333333333,"
         };
     resultSetEqualTest(
         "select skewness(s1),skewness(s2),kurtosis(s1),kurtosis(s2),"
@@ -520,7 +520,7 @@ public class IoTDBStatisticalAggregationIT {
         new String[] {
           skewness("root.db.d1.s1"), skewness("root.db.d1.s2"), kurtosis("root.db.d1.s1")
         };
-    retArray = new String[] {"0.0,-0.7071067811865475,null,"};
+    retArray = new String[] {"0.0,-1.7320508075688774,null,"};
     resultSetEqualTest(
         "select skewness(s1),skewness(s2),kurtosis(s1) from root.db.d1 where time < 10",
         expectedHeader,
@@ -534,13 +534,13 @@ public class IoTDBStatisticalAggregationIT {
           DEVICE, skewness("s1"), skewness("s2"), kurtosis("s1"), kurtosis("s2"),
         };
     String[] retArray =
-        new String[] {"root.db.d1,0.0,0.4082482904638631,-1.2000000000000002,-3.333333333333333,"};
+        new String[] {"root.db.d1,0.0,0.6085806194501846,-1.2000000000000002,-3.333333333333333,"};
     resultSetEqualTest(
         "select skewness(s1),skewness(s2),kurtosis(s1),kurtosis(s2) from root.db.d1 align by device",
         expectedHeader,
         retArray);
 
-    retArray = new String[] {"root.db.d1,0.0,-0.7071067811865475,null,null,"};
+    retArray = new String[] {"root.db.d1,0.0,-1.7320508075688774,null,null,"};
     resultSetEqualTest(
         "select skewness(s1),skewness(s2),kurtosis(s1),kurtosis(s2) from root.db.d1 "
             + "where time < 10 align by device",
@@ -551,7 +551,7 @@ public class IoTDBStatisticalAggregationIT {
   @Test
   public void testMomentsInHaving() {
     String[] expectedHeader = new String[] {skewness("root.db.d1.s2"), kurtosis("root.db.d1.s2")};
-    String[] retArray = new String[] {"0.4082482904638631,-3.333333333333333,"};
+    String[] retArray = new String[] {"0.6085806194501846,-3.333333333333333,"};
     resultSetEqualTest(
         "select skewness(s2),kurtosis(s2) from root.db.d1 having skewness(s2) > 0",
         expectedHeader,
@@ -569,7 +569,7 @@ public class IoTDBStatisticalAggregationIT {
         };
     String[] retArray =
         new String[] {
-          "1.0606601717798214,0.25714285714285623,-0.8728715609439697,-1.224489795918367,"
+          "1.2577882373436315,0.25714285714285623,-1.0350983390135313,-1.224489795918367,"
         };
     resultSetEqualTest(
         "select skewness(s1),kurtosis(s1),skewness(s2),kurtosis(s2) from root.db.* group by level = 0",

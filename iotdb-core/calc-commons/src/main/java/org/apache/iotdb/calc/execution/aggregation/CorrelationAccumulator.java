@@ -34,12 +34,7 @@ public class CorrelationAccumulator implements Accumulator {
 
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
 
-  public enum CorrelationType {
-    CORR
-  }
-
   private final TSDataType[] seriesDataTypes;
-  private final CorrelationType correlationType;
 
   private long count;
   private double meanX;
@@ -48,9 +43,8 @@ public class CorrelationAccumulator implements Accumulator {
   private double m2Y;
   private double c2;
 
-  public CorrelationAccumulator(TSDataType[] seriesDataTypes, CorrelationType correlationType) {
+  public CorrelationAccumulator(TSDataType[] seriesDataTypes) {
     this.seriesDataTypes = seriesDataTypes;
-    this.correlationType = correlationType;
   }
 
   @Override
@@ -177,10 +171,6 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (correlationType != CorrelationType.CORR) {
-      throw new UnsupportedOperationException("Unknown type: " + correlationType);
-    }
-
     double result = c2 / Math.sqrt(m2X * m2Y);
     if (Double.isFinite(result)) {
       columnBuilder.writeDouble(result);

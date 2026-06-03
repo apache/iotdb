@@ -361,7 +361,6 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltinAggregationDataType(

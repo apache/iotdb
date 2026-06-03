@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
@@ -45,7 +44,6 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
   private final TSDataType xDataType;
   private final TSDataType yDataType;
-  private final CorrelationAccumulator.CorrelationType correlationType;
 
   private final LongBigArray counts = new LongBigArray();
   private final DoubleBigArray meanXs = new DoubleBigArray();
@@ -54,13 +52,9 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
   private final DoubleBigArray m2Ys = new DoubleBigArray();
   private final DoubleBigArray c2s = new DoubleBigArray();
 
-  public GroupedCorrelationAccumulator(
-      TSDataType xDataType,
-      TSDataType yDataType,
-      CorrelationAccumulator.CorrelationType correlationType) {
+  public GroupedCorrelationAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-    this.correlationType = correlationType;
   }
 
   @Override
@@ -229,10 +223,6 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    if (correlationType != CorrelationAccumulator.CorrelationType.CORR) {
-      throw new UnsupportedOperationException("Unknown type: " + correlationType);
-    }
-
     double result = c2s.get(groupId) / Math.sqrt(m2Xs.get(groupId) * m2Ys.get(groupId));
     if (Double.isFinite(result)) {
       columnBuilder.writeDouble(result);

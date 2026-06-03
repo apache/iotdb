@@ -104,8 +104,7 @@ public class AccumulatorFactory {
       case CORR:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new CorrelationAccumulator(
-            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
-            CorrelationAccumulator.CorrelationType.CORR);
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)});
       case COVAR_POP:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new CovarianceAccumulator(

@@ -14,8 +14,6 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
-
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -39,7 +37,6 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   private static final double EPSILON = 1e-12;
   private final TSDataType xDataType;
   private final TSDataType yDataType;
-  private final CorrelationAccumulator.CorrelationType correlationType;
 
   private long count;
   private double meanX;
@@ -48,13 +45,9 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   private double m2Y;
   private double c2;
 
-  public TableCorrelationAccumulator(
-      TSDataType xDataType,
-      TSDataType yDataType,
-      CorrelationAccumulator.CorrelationType correlationType) {
+  public TableCorrelationAccumulator(TSDataType xDataType, TSDataType yDataType) {
     this.xDataType = xDataType;
     this.yDataType = yDataType;
-    this.correlationType = correlationType;
   }
 
   @Override
@@ -64,7 +57,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new TableCorrelationAccumulator(xDataType, yDataType, correlationType);
+    return new TableCorrelationAccumulator(xDataType, yDataType);
   }
 
   @Override
@@ -249,10 +242,6 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (correlationType != CorrelationAccumulator.CorrelationType.CORR) {
-      throw new UnsupportedOperationException("Unknown type: " + correlationType);
-    }
-
     double result = c2 / Math.sqrt(m2X * m2Y);
     if (Double.isFinite(result)) {
       columnBuilder.writeDouble(result);

@@ -28,6 +28,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class CentralMomentAccumulator implements Accumulator {
 
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
+  private static final double EPSILON = 1e-12;
 
   public enum MomentType {
     SKEWNESS,
@@ -173,7 +174,7 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (count == 0 || m2 == 0) {
+    if (count == 0 || Math.abs(m2) < EPSILON) {
       columnBuilder.appendNull();
       return;
     }
@@ -183,18 +184,17 @@ public class CentralMomentAccumulator implements Accumulator {
         columnBuilder.appendNull();
         return;
       }
-      double result = Math.sqrt((double) count) * m3 / Math.pow(m2, 1.5);
+      double n = count;
+      double result = n * Math.sqrt(n - 1) * m3 / ((n - 2) * Math.pow(m2, 1.5));
       columnBuilder.writeDouble(result);
     } else {
       if (count < 4) {
         columnBuilder.appendNull();
       } else {
-
+        double n = count;
         double variance = m2 / (count - 1);
-        double term1 =
-            (count * (count + 1) * m4)
-                / ((count - 1) * (count - 2) * (count - 3) * variance * variance);
-        double term2 = (3 * Math.pow(count - 1, 2)) / ((count - 2) * (count - 3));
+        double term1 = (n * (n + 1) * m4) / ((n - 1) * (n - 2) * (n - 3) * variance * variance);
+        double term2 = (3 * (n - 1) * (n - 1)) / ((n - 2) * (n - 3));
         columnBuilder.writeDouble(term1 - term2);
       }
     }
@@ -259,9 +259,9 @@ public class CentralMomentAccumulator implements Accumulator {
 
     count = nA;
     mean = meanA;
-    m2 = m2A;
-    m3 = m3A;
-    m4 = m4A;
+    m2 = normalizeZero(m2A);
+    m3 = normalizeZero(m3A);
+    m4 = normalizeZero(m4A);
   }
 
   @Override
@@ -279,6 +279,10 @@ public class CentralMomentAccumulator implements Accumulator {
     m2 = 0;
     m3 = 0;
     m4 = 0;
+  }
+
+  private double normalizeZero(double value) {
+    return Math.abs(value) < EPSILON ? 0 : value;
   }
 
   @Override
