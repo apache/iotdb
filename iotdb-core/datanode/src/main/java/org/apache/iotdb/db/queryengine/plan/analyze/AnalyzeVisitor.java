@@ -35,8 +35,11 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -71,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExistUnknownTypeInExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
@@ -142,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -2932,6 +2937,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context,
       PathPatternTree authorityScope,
       boolean canSeeAuditDB,
+      boolean canSeeSystemDB,
       boolean includeLogicalView)
       throws IllegalPathException {
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
@@ -2965,6 +2971,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       boolean isAligned = deviceSchemaInfo.isAligned();
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+      if (shouldSkipInternalDatabaseForActiveCount(
+          devicePath, schemaTree, canSeeAuditDB, canSeeSystemDB)) {
+        continue;
+      }
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
         List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -3022,6 +3032,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return true;
   }
 
+  private boolean shouldSkipInternalDatabaseForActiveCount(
+      PartialPath devicePath,
+      ISchemaTree schemaTree,
+      boolean canSeeAuditDB,
+      boolean canSeeSystemDB) {
+    String database = schemaTree.getBelongedDatabase(devicePath);
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)) {
+      return !canSeeSystemDB;
+    }
+    if (SchemaConstant.AUDIT_DATABASE.equals(database)
+        || Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+      return !canSeeAuditDB;
+    }
+    return false;
+  }
+
   private void addLogicalViewSourcesForActiveCount(
       PartialPath viewDevicePath,
       IMeasurementSchemaInfo viewSchemaInfo,
@@ -3034,6 +3060,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     String viewPath = viewDevicePath.concatNode(viewSchemaInfo.getName()).getFullPath();
+    String viewDataType = getLogicalViewDataType(logicalViewSchema, schemaTree);
+    String viewDatabase = schemaTree.getBelongedDatabase(viewDevicePath);
     for (PartialPath sourcePath : getSourcePaths(logicalViewSchema.getExpression())) {
       if (sourcePath.getNodeLength() <= 1) {
         continue;
@@ -3054,13 +3082,36 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         continue;
       }
 
+      Map<String, TimeseriesContext> activeLogicalViewContextMap =
+          Collections.singletonMap(
+              viewPath,
+              new TimeseriesContext(
+                  viewSchemaInfo, viewDataType, viewDatabase, 1, Collections.emptyMap()));
       addPhysicalTimeseriesForActiveCount(
           sourceDevicePath,
           sourceSchemaInfo,
           sourceDeviceSchemaInfo.isAligned(),
-          new TimeseriesContext(sourceSchemaInfo, 0, Collections.singleton(viewPath)),
+          new TimeseriesContext(sourceSchemaInfo, 0, activeLogicalViewContextMap),
           deviceToTimeseriesContext,
           deviceSet);
+    }
+  }
+
+  private String getLogicalViewDataType(
+      LogicalViewSchema logicalViewSchema, ISchemaTree schemaTree) {
+    if (logicalViewSchema.getType() != TSDataType.UNKNOWN) {
+      return logicalViewSchema.getType().toString();
+    }
+    try {
+      Expression expression =
+          new TransformToExpressionVisitor().process(logicalViewSchema.getExpression(), null);
+      expression = new CompleteMeasurementSchemaVisitor().process(expression, schemaTree);
+      Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+      analyzeExpression(expressionTypes, expression);
+      TSDataType dataType = expressionTypes.get(NodeRef.of(expression));
+      return dataType == null ? TSDataType.UNKNOWN.toString() : dataType.toString();
+    } catch (Exception e) {
+      return TSDataType.UNKNOWN.toString();
     }
   }
 
@@ -3117,7 +3168,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 context,
                 showTimeSeriesStatement.getAuthorityScope(),
                 showTimeSeriesStatement.isCanSeeAuditDB(),
-                false);
+                true,
+                true);
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
           return analysis;
@@ -3369,6 +3421,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 context,
                 countTimeSeriesStatement.getAuthorityScope(),
                 countTimeSeriesStatement.isCanSeeAuditDB(),
+                countTimeSeriesStatement.isCanSeeSystemDB(),
                 true);
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
