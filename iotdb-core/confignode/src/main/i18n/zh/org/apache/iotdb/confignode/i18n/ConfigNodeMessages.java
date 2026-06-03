@@ -126,8 +126,8 @@ public final class ConfigNodeMessages {
       "Deserialization error for write plan, request: {}, bytebuffer: {}";
   public static final String DOES_NOT_EXIST = "%s does not exist";
   public static final String DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED = "不支持删除标签列或时间列。";
-  public static final String DROP_CQ_FAILED_BECAUSE_ITS_TOKEN_DOESN_T_MATCH =
-      "Drop CQ {} failed, because its token doesn't match.";
+  public static final String DROP_CQ_FAILED_BECAUSE_ITS_MD5_DOESN_T_MATCH =
+      "Drop CQ {} failed, because its MD5 doesn't match.";
   public static final String DROP_CQ_FAILED_BECAUSE_IT_DOESN_T_EXIST =
       "Drop CQ {} failed, because it doesn't exist.";
   public static final String DROP_CQ_SUCCESSFULLY = "Drop CQ {} successfully.";
