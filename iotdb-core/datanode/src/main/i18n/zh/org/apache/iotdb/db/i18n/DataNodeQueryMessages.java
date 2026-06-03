@@ -1432,6 +1432,8 @@ public final class DataNodeQueryMessages {
       "LOAD TSFILE 目标 '%s.%s' 是可写视图，需要先转换为 Tablet 再加载到源表 '%s.%s'。";
   public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
       "不带列列表向可写视图 INSERT 时，源表的每一列都必须映射到视图列，但源列 '%s' 未暴露在视图中。请使用显式列列表。";
+  public static final String INSERT_COLUMN_NOT_EXPOSED_BY_WRITABLE_VIEW =
+      "INSERT 列 '%s' 未暴露在可写视图 '%s.%s' 中。";
   public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =
       "ALIGN BY DEVICE 查询仅支持可写视图时间序列。";
   public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW =

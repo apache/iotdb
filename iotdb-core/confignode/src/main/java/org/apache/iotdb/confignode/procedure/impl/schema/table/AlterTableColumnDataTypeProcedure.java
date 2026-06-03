@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -178,6 +179,9 @@ public class AlterTableColumnDataTypeProcedure
           getOriginalDatabaseForColumn(),
           getOriginalTableNameForColumn(),
           getOriginalColumnName());
+    }
+    if (getTableSchemaObjectType() == TableSchemaObjectType.VIEW) {
+      return new AlterViewColumnDataTypePlan(database, tableName, columnName, dataType);
     }
     return new AlterColumnDataTypePlan(database, tableName, columnName, dataType);
   }

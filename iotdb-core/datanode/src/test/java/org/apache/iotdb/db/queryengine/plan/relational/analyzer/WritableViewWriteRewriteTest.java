@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
@@ -117,6 +118,7 @@ public class WritableViewWriteRewriteTest {
   private static final String SOURCE_TAG = "id1";
   private static final String SOURCE_ATTR = "attr1";
   private static final String SOURCE_FIELD = "m1";
+  private static final String SOURCE_ONLY_FIELD = "m2";
   private static final String VIEW_TAG = "id_alias";
   private static final String VIEW_ATTR = "attr_alias";
   private static final String VIEW_FIELD = "m_alias";
@@ -168,6 +170,88 @@ public class WritableViewWriteRewriteTest {
     assertEquals(SOURCE_TABLE, insertNode.getTableName());
     assertArrayEquals(new String[] {SOURCE_TAG, SOURCE_FIELD}, insertNode.getMeasurements());
     assertEquals(SOURCE_TABLE, insertNode.getDeviceID().getTableName());
+  }
+
+  @Test
+  public void testInsertRowIntoWritableViewRejectsUnexposedSourceColumn() {
+    resetWritableView(
+        createSourceTableWithExtraSourceField(),
+        createWritableView(null),
+        createSourceTableSchemaWithExtraSourceField(),
+        createWritableViewSchema(null));
+
+    final InsertRowStatement insertRowStatement = StatementTestUtils.genInsertRowStatement(true);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
+    insertRowStatement.setMeasurements(new String[] {VIEW_TAG, VIEW_ATTR, SOURCE_ONLY_FIELD});
+
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "", new QueryId("query_insert_row_unexposed_source_column"), sessionInfo, null, null);
+    final Analysis analysis =
+        AnalyzerTest.analyzeStatement(
+            new InsertRow(insertRowStatement, context), metadata, context, sqlParser, sessionInfo);
+    assertFailedAnalysis(
+        analysis,
+        "Insert column 'm2' is not exposed by writable view 'writable_view_db.writable_view'.");
+  }
+
+  @Test
+  public void testInsertTabletIntoWritableViewRejectsUnexposedSourceColumn() {
+    resetWritableView(
+        createSourceTableWithExtraSourceField(),
+        createWritableView(null),
+        createSourceTableSchemaWithExtraSourceField(),
+        createWritableViewSchema(null));
+
+    final InsertTabletStatement insertTabletStatement =
+        StatementTestUtils.genInsertTabletStatement(true);
+    insertTabletStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
+    insertTabletStatement.setMeasurements(new String[] {VIEW_TAG, VIEW_ATTR, SOURCE_ONLY_FIELD});
+
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("query_insert_tablet_unexposed_source_column"),
+            sessionInfo,
+            null,
+            null);
+    final Analysis analysis =
+        AnalyzerTest.analyzeStatement(
+            insertTabletStatement.toRelationalStatement(context),
+            metadata,
+            context,
+            sqlParser,
+            sessionInfo);
+    assertFailedAnalysis(
+        analysis,
+        "Insert column 'm2' is not exposed by writable view 'writable_view_db.writable_view'.");
+  }
+
+  @Test
+  public void testIdentityMappedWritableViewRejectsUnexposedSourceColumnBeforeTargetRewrite() {
+    resetWritableView(
+        createSourceTableWithExtraSourceField(),
+        createIdentityWritableView(),
+        createSourceTableSchemaWithExtraSourceField(),
+        createIdentityWritableViewFastPathSchema());
+
+    final InsertRowStatement insertRowStatement = StatementTestUtils.genInsertRowStatement(true);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {VIEW_TABLE}));
+    insertRowStatement.setMeasurements(new String[] {SOURCE_TAG, SOURCE_ATTR, SOURCE_ONLY_FIELD});
+
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("query_identity_insert_unexposed_source_column"),
+            sessionInfo,
+            null,
+            null);
+    final Analysis analysis =
+        AnalyzerTest.analyzeStatement(
+            new InsertRow(insertRowStatement, context), metadata, context, sqlParser, sessionInfo);
+    assertFailedAnalysis(
+        analysis,
+        "Insert column 'm2' is not exposed by writable view 'writable_view_db.writable_view'.");
   }
 
   @Test
@@ -925,6 +1009,14 @@ public class WritableViewWriteRewriteTest {
     }
   }
 
+  private void assertFailedAnalysis(final Analysis analysis, final String expectedMessage) {
+    assertTrue(analysis.isFinishQueryAfterAnalyze());
+    assertTrue(analysis.isFailed());
+    assertTrue(
+        analysis.getFailStatus().getMessage(),
+        analysis.getFailStatus().getMessage().contains(expectedMessage));
+  }
+
   private void assertSourcePredicate(final Expression expression) {
     final LogicalExpression where = (LogicalExpression) expression;
     final List<String> columnNames = new ArrayList<>();
@@ -971,6 +1063,14 @@ public class WritableViewWriteRewriteTest {
     return tsTable;
   }
 
+  private static TsTable createSourceTableWithExtraSourceField() {
+    final TsTable tsTable = createSourceTable(true, true);
+    tsTable.addColumnSchema(
+        new FieldColumnSchema(
+            SOURCE_ONLY_FIELD, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    return tsTable;
+  }
+
   private static WritableView createWritableView(
       final org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema extraColumn) {
     final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
@@ -983,6 +1083,17 @@ public class WritableViewWriteRewriteTest {
       writableView.addColumnSchema(extraColumn);
     }
     writableView.setViewColumnToSourceColumnMap(createWritableViewColumnMap());
+    return writableView;
+  }
+
+  private static WritableView createIdentityWritableView() {
+    final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
+    writableView.addColumnSchema(new TagColumnSchema(SOURCE_TAG, TSDataType.STRING));
+    writableView.addColumnSchema(new AttributeColumnSchema(SOURCE_ATTR, TSDataType.STRING));
+    writableView.addColumnSchema(
+        new FieldColumnSchema(
+            SOURCE_FIELD, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+    writableView.setViewColumnToSourceColumnMap(createIdentityWritableViewColumnMap());
     return writableView;
   }
 
@@ -1011,6 +1122,18 @@ public class WritableViewWriteRewriteTest {
               false,
               TsTableColumnCategory.FIELD));
     }
+    return new TableSchema(SOURCE_TABLE, columns);
+  }
+
+  private static TableSchema createSourceTableSchemaWithExtraSourceField() {
+    final List<ColumnSchema> columns =
+        new ArrayList<>(createSourceTableSchema(true, true).getColumns());
+    columns.add(
+        new ColumnSchema(
+            SOURCE_ONLY_FIELD,
+            TypeFactory.getType(TSDataType.DOUBLE),
+            false,
+            TsTableColumnCategory.FIELD));
     return new TableSchema(SOURCE_TABLE, columns);
   }
 

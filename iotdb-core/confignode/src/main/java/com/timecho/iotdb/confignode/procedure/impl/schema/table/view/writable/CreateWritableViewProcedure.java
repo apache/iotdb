@@ -317,16 +317,11 @@ public class CreateWritableViewProcedure extends CreateTableViewProcedure {
 
   private void materializeSelectStarColumns(final TsTable source, final WritableView view) {
     view.setViewColumnToSourceColumnMap(new LinkedHashMap<>());
-    source
-        .getColumnList()
-        .forEach(
-            column -> {
-              view.getViewColumnToSourceColumnMap()
-                  .put(column.getColumnName(), column.getColumnName());
-              view.addColumnSchema(
-                  copySourceColumnSchemaForView(
-                      source, column.getColumnName(), column.getColumnName()));
-            });
+    addViewColumnFromSource(
+        source, view, source.getTimeColumnSchema().getColumnName(), source.getTimeColumnSchema());
+    source.getColumnList().stream()
+        .filter(column -> !(column instanceof TimeColumnSchema))
+        .forEach(column -> addViewColumnFromSource(source, view, column.getColumnName(), column));
   }
 
   private void materializeProjectedColumns(
@@ -337,24 +332,55 @@ public class CreateWritableViewProcedure extends CreateTableViewProcedure {
     if (!validateNoDuplicateSourceColumnMapping(view)) {
       return;
     }
-    boolean hasTime = false;
-    for (final Map.Entry<String, String> entry : view.getViewColumnToSourceColumnMap().entrySet()) {
+    final Map<String, String> projectedColumnMap =
+        new LinkedHashMap<>(view.getViewColumnToSourceColumnMap());
+    final String sourceTimeColumnName = source.getTimeColumnSchema().getColumnName();
+    Map.Entry<String, String> timeColumnMapping = null;
+    for (final Map.Entry<String, String> entry : projectedColumnMap.entrySet()) {
       if (Objects.isNull(
           validateSourceColumnExists(source, sourceDatabase, sourceTableName, entry.getValue()))) {
         return;
       }
-      final TsTableColumnSchema viewColumnSchema =
-          copySourceColumnSchemaForView(source, entry.getValue(), entry.getKey());
-      hasTime |= viewColumnSchema instanceof TimeColumnSchema;
-      view.addColumnSchema(viewColumnSchema);
+      if (Objects.equals(entry.getValue(), sourceTimeColumnName)) {
+        timeColumnMapping = entry;
+      }
     }
-    if (!hasTime) {
-      view.addColumnSchema(source.getTimeColumnSchema().copy());
-      view.getViewColumnToSourceColumnMap()
-          .put(
-              source.getTimeColumnSchema().getColumnName(),
-              source.getTimeColumnSchema().getColumnName());
+
+    view.setViewColumnToSourceColumnMap(new LinkedHashMap<>());
+    if (Objects.nonNull(timeColumnMapping)) {
+      addViewColumnFromSource(
+          source, view, timeColumnMapping.getKey(), timeColumnMapping.getValue());
+    } else {
+      addViewColumnFromSource(source, view, sourceTimeColumnName, sourceTimeColumnName);
     }
+
+    for (final Map.Entry<String, String> entry : projectedColumnMap.entrySet()) {
+      if (Objects.equals(entry.getValue(), sourceTimeColumnName)) {
+        continue;
+      }
+      if (Objects.isNull(timeColumnMapping)
+          && Objects.equals(entry.getKey(), sourceTimeColumnName)) {
+        continue;
+      }
+      addViewColumnFromSource(source, view, entry.getKey(), entry.getValue());
+    }
+  }
+
+  private void addViewColumnFromSource(
+      final TsTable source,
+      final WritableView view,
+      final String viewColumnName,
+      final TsTableColumnSchema sourceColumnSchema) {
+    addViewColumnFromSource(source, view, viewColumnName, sourceColumnSchema.getColumnName());
+  }
+
+  private void addViewColumnFromSource(
+      final TsTable source,
+      final WritableView view,
+      final String viewColumnName,
+      final String sourceColumnName) {
+    view.getViewColumnToSourceColumnMap().put(viewColumnName, sourceColumnName);
+    view.addColumnSchema(copySourceColumnSchemaForView(source, sourceColumnName, viewColumnName));
   }
 
   private boolean validateNoDuplicateSourceColumnMapping(final WritableView view) {

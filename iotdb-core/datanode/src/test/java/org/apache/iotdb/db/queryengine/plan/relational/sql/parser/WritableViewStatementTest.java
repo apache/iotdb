@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateWritableView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.DataNodeSqlFormatter;
 
 import org.junit.Test;
 
@@ -151,6 +154,37 @@ public class WritableViewStatementTest {
     assertEquals("target_view", renameColumn.getTable().getSuffix());
     assertEquals("old_col", renameColumn.getSource().getValue());
     assertEquals("new_col", renameColumn.getTarget().getValue());
+  }
+
+  @Test
+  public void testAlterViewColumnDataTypeUsesViewSyntax() {
+    clientSession.setDatabaseName("test");
+
+    final AlterColumnDataType alterTableStatement =
+        (AlterColumnDataType)
+            parser.createStatement(
+                "alter table target_view alter column temp set data type FLOAT",
+                ZonedDateTime.now().getOffset(),
+                clientSession);
+    assertFalse(alterTableStatement.isView());
+
+    final AlterColumnDataType alterViewStatement =
+        (AlterColumnDataType)
+            parser.createStatement(
+                "alter view if exists target_view alter column if exists temp set data type DOUBLE",
+                ZonedDateTime.now().getOffset(),
+                clientSession);
+
+    assertTrue(alterViewStatement.isView());
+    assertTrue(alterViewStatement.isIfTableExists());
+    assertTrue(alterViewStatement.isIfColumnExists());
+    assertEquals("target_view", alterViewStatement.getTableName().getSuffix());
+    assertEquals("temp", alterViewStatement.getColumnName().getValue());
+    assertEquals(
+        "DOUBLE", ((GenericDataType) alterViewStatement.getDataType()).getName().getValue());
+    assertEquals(
+        "ALTER VIEW IF EXISTS target_view ALTER COLUMN IF EXISTS temp SET DATA TYPE DOUBLE",
+        DataNodeSqlFormatter.formatDataNodeSql(alterViewStatement));
   }
 
   @Test

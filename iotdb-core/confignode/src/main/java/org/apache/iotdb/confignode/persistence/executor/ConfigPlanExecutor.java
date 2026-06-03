@@ -626,9 +626,11 @@ public class ConfigPlanExecutor {
       case CommitDeleteWritableView:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
       case PreAlterColumnDataType:
+      case PreAlterViewColumnDataType:
       case PreAlterWritableViewColumnDataType:
         return clusterSchemaInfo.preAlterColumnDataType((PreAlterColumnDataTypePlan) physicalPlan);
       case AlterColumnDataType:
+      case AlterViewColumnDataType:
       case AlterWritableViewColumnDataType:
         return clusterSchemaInfo.commitAlterColumnDataType(
             ((AlterColumnDataTypePlan) physicalPlan));

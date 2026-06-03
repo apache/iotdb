@@ -25,9 +25,12 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import static java.util.Locale.ENGLISH;
@@ -43,6 +46,7 @@ public final class WritableViewInsertRewriteSupport {
   private final QualifiedObjectName writableViewName;
   private final QualifiedObjectName sourceTableName;
   private final Map<String, String> viewColumnToSourceColumnMap;
+  private final Set<String> viewColumnNames;
   private final boolean sourceTableKnownToExist;
   private final Predicate<String> sourceColumnExists;
   private final boolean requiresSourceColumnRewrite;
@@ -53,12 +57,31 @@ public final class WritableViewInsertRewriteSupport {
       final Map<String, String> viewColumnToSourceColumnMap,
       final boolean sourceTableKnownToExist,
       final Predicate<String> sourceColumnExists) {
+    this(
+        writableViewName,
+        sourceTableName,
+        viewColumnToSourceColumnMap,
+        Objects.nonNull(viewColumnToSourceColumnMap)
+            ? viewColumnToSourceColumnMap.keySet()
+            : Collections.emptySet(),
+        sourceTableKnownToExist,
+        sourceColumnExists);
+  }
+
+  public WritableViewInsertRewriteSupport(
+      final QualifiedObjectName writableViewName,
+      final QualifiedObjectName sourceTableName,
+      final Map<String, String> viewColumnToSourceColumnMap,
+      final Collection<String> viewColumnNames,
+      final boolean sourceTableKnownToExist,
+      final Predicate<String> sourceColumnExists) {
     this.writableViewName = Objects.requireNonNull(writableViewName, "writableViewName is null");
     this.sourceTableName = Objects.requireNonNull(sourceTableName, "sourceTableName is null");
     this.viewColumnToSourceColumnMap =
         Objects.nonNull(viewColumnToSourceColumnMap)
             ? viewColumnToSourceColumnMap
             : Collections.emptyMap();
+    this.viewColumnNames = normalizeColumnNames(viewColumnNames);
     this.sourceTableKnownToExist = sourceTableKnownToExist;
     this.sourceColumnExists =
         Objects.requireNonNull(sourceColumnExists, "sourceColumnExists is null");
@@ -74,6 +97,19 @@ public final class WritableViewInsertRewriteSupport {
     return requiresSourceColumnRewrite;
   }
 
+  private static Set<String> normalizeColumnNames(final Collection<String> columnNames) {
+    final Set<String> normalizedColumnNames = new HashSet<>();
+    if (Objects.nonNull(columnNames)) {
+      for (final String columnName : columnNames) {
+        if (Objects.nonNull(columnName)) {
+          normalizedColumnNames.add(columnName);
+          normalizedColumnNames.add(columnName.toLowerCase(ENGLISH));
+        }
+      }
+    }
+    return Collections.unmodifiableSet(normalizedColumnNames);
+  }
+
   public void ensureSourceTableExists() {
     if (!sourceTableKnownToExist) {
       throw new SemanticException(
@@ -86,8 +122,23 @@ public final class WritableViewInsertRewriteSupport {
     }
   }
 
+  public String validateExposedViewColumnName(final String viewColumnName) {
+    if (Objects.isNull(viewColumnName)
+        || (!viewColumnNames.contains(viewColumnName)
+            && !viewColumnNames.contains(viewColumnName.toLowerCase(ENGLISH)))) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.INSERT_COLUMN_NOT_EXPOSED_BY_WRITABLE_VIEW,
+              viewColumnName,
+              writableViewName.getDatabaseName(),
+              writableViewName.getObjectName()));
+    }
+    return viewColumnName;
+  }
+
   public String resolveExistingSourceColumnName(final String viewColumnName) {
     ensureSourceTableExists();
+    validateExposedViewColumnName(viewColumnName);
 
     final String sourceColumnName =
         WritableViewUtils.getSourceColumnName(viewColumnName, viewColumnToSourceColumnMap);

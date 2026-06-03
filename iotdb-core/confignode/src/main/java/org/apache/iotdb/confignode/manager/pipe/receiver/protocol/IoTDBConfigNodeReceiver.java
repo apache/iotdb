@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
@@ -117,6 +118,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumn
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AlterViewColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
@@ -546,6 +548,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RenameView:
       case RenameWritableView:
       case AlterColumnDataType:
+      case AlterViewColumnDataType:
         status =
             checkTableStatus(
                 userEntity,
@@ -1216,6 +1219,22 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     queryId,
                     ((AlterColumnDataTypePlan) plan).getColumnName(),
                     ((AlterColumnDataTypePlan) plan).getNewType(),
+                    shouldMarkAsPipeRequest.get()));
+      case AlterViewColumnDataType:
+        return configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                ((AlterViewColumnDataTypePlan) plan).getDatabase(),
+                null,
+                ((AlterViewColumnDataTypePlan) plan).getTableName(),
+                queryId,
+                ProcedureType.ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE,
+                new AlterViewColumnDataTypeProcedure(
+                    ((AlterViewColumnDataTypePlan) plan).getDatabase(),
+                    ((AlterViewColumnDataTypePlan) plan).getTableName(),
+                    queryId,
+                    ((AlterViewColumnDataTypePlan) plan).getColumnName(),
+                    ((AlterViewColumnDataTypePlan) plan).getNewType(),
                     shouldMarkAsPipeRequest.get()));
       case AlterWritableViewColumnDataType:
         return executeWritableViewPlan(

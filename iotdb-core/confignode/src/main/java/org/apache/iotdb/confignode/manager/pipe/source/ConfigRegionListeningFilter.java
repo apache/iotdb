@@ -135,6 +135,7 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RenameTableColumn,
                   ConfigPhysicalPlanType.RenameViewColumn,
                   ConfigPhysicalPlanType.AlterColumnDataType,
+                  ConfigPhysicalPlanType.AlterViewColumnDataType,
                   ConfigPhysicalPlanType.AddWritableViewColumn,
                   ConfigPhysicalPlanType.RenameWritableView,
                   ConfigPhysicalPlanType.SetWritableViewProperties,
@@ -308,6 +309,7 @@ public class ConfigRegionListeningFilter {
       case RenameTableColumn:
       case RenameViewColumn:
       case AlterColumnDataType:
+      case AlterViewColumnDataType:
       case CommitDeleteTable:
       case CommitDeleteView:
       case CommitDeleteColumn:

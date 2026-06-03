@@ -163,8 +163,13 @@ public class WritableView extends TsTable {
 
   @Override
   public void removeColumnSchema(final String columnName) {
-    super.removeColumnSchema(columnName);
-    removeViewColumnSourceColumnMapping(columnName);
+    executeWrite(
+        () -> {
+          removeColumnSchemaInternal(columnName, true);
+          if (Objects.nonNull(viewColumnToSourceColumnMap)) {
+            viewColumnToSourceColumnMap.remove(columnName);
+          }
+        });
   }
 
   public String getSourceTableDatabase() {

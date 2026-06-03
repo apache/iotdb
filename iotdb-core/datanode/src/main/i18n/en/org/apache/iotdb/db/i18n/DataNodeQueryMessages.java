@@ -1433,6 +1433,8 @@ public final class DataNodeQueryMessages {
       "LOAD TSFILE target '%s.%s' is a writable view and requires tablet conversion to load into source table '%s.%s'.";
   public static final String INSERT_WRITABLE_VIEW_WITHOUT_COLUMN_LIST_REQUIRES_MAPPING =
       "INSERT into writable view without column list requires every source table column to be mapped, but source column '%s' is not exposed by the view. Use an explicit column list.";
+  public static final String INSERT_COLUMN_NOT_EXPOSED_BY_WRITABLE_VIEW =
+      "Insert column '%s' is not exposed by writable view '%s.%s'.";
   public static final String ONLY_WRITABLE_VIEW_TIMESERIES_ALIGN_BY_DEVICE =
       "Only writable view timeseries are supported in ALIGN BY DEVICE queries.";
   public static final String CANNOT_INSERT_DATA_TO_NON_ALIAS_VIEW =

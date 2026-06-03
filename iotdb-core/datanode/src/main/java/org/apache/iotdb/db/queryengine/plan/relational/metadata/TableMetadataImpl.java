@@ -218,6 +218,10 @@ public class TableMetadataImpl implements Metadata {
                 viewName,
                 sourceTableName,
                 effectiveViewColumnToSourceColumnMap,
+                viewColumnSchemas.stream()
+                    .filter(column -> !column.isHidden())
+                    .map(ColumnSchema::getName)
+                    .collect(Collectors.toSet()),
                 sourceTableKnownToExist,
                 sourceColumnExists));
     writableViewMetadataCacheMap.put(viewName, resolvedWritableViewMetadata);

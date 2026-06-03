@@ -113,6 +113,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedur
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AlterViewColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
@@ -2221,6 +2222,28 @@ public class ProcedureManager {
       final TAlterOrDropTableReq req,
       final @Nullable String originalDatabase,
       final @Nullable String originalTableName) {
+    final boolean isView = req.isSetIsView() && req.isIsView();
+    final String columnName = ReadWriteIOUtils.readVarIntString(req.updateInfo);
+    final TSDataType dataType = TSDataType.deserialize(req.updateInfo.get());
+    final ProcedureType procedureType;
+    final Procedure<ConfigNodeProcedureEnv> procedure;
+    if (Objects.nonNull(originalTableName)) {
+      procedureType = ProcedureType.ALTER_WRITABLE_VIEW_COLUMN_DATATYPE_PROCEDURE;
+      procedure =
+          new AlterWritableViewColumnDataTypeProcedure(
+              req.database, req.tableName, req.queryId, columnName, dataType, false);
+    } else if (isView) {
+      procedureType = ProcedureType.ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE;
+      procedure =
+          new AlterViewColumnDataTypeProcedure(
+              req.database, req.tableName, req.queryId, columnName, dataType, false);
+    } else {
+      procedureType = ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
+      procedure =
+          new AlterTableColumnDataTypeProcedure(
+              req.database, req.tableName, req.queryId, columnName, dataType, false);
+    }
+
     return executeWithoutDuplicate(
         req.database,
         originalDatabase,
@@ -2228,24 +2251,8 @@ public class ProcedureManager {
         req.tableName,
         originalTableName,
         req.queryId,
-        Objects.nonNull(originalTableName)
-            ? ProcedureType.ALTER_WRITABLE_VIEW_COLUMN_DATATYPE_PROCEDURE
-            : ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE,
-        Objects.nonNull(originalTableName)
-            ? new AlterWritableViewColumnDataTypeProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readVarIntString(req.updateInfo),
-                TSDataType.deserialize(req.updateInfo.get()),
-                false)
-            : new AlterTableColumnDataTypeProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readVarIntString(req.updateInfo),
-                TSDataType.deserialize(req.updateInfo.get()),
-                false));
+        procedureType,
+        procedure);
   }
 
   public TSStatus dropTable(
@@ -2477,6 +2484,7 @@ public class ProcedureManager {
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
         case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
+        case ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE:
           alterTableProcedure = (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);

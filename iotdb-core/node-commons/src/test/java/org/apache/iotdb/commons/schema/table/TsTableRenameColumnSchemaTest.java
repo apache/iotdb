@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
@@ -63,6 +64,23 @@ public class TsTableRenameColumnSchemaTest {
   }
 
   @Test
+  public void testRemoveTagColumnFromTableIsRejected() {
+    final TsTable table = new TsTable("test_table");
+    table.addColumnSchema(new TagColumnSchema("tag_1", TSDataType.STRING));
+
+    try {
+      table.removeColumnSchema("tag_1");
+      Assert.fail("Base table tag column removal should fail");
+    } catch (final SchemaExecutionException e) {
+      Assert.assertTrue(e.getMessage().contains("tag_1"));
+    }
+
+    Assert.assertNotNull(table.getColumnSchema("tag_1"));
+    Assert.assertEquals(1, table.getTagNum());
+    Assert.assertEquals(0, table.getTagColumnOrdinal("tag_1"));
+  }
+
+  @Test
   public void testWritableViewRenameColumnSchemaUpdatesOriginalMapping() {
     final WritableView writableView =
         new WritableView("view_table", "source_db", "source_table", true);
@@ -78,6 +96,26 @@ public class TsTableRenameColumnSchemaTest {
     Assert.assertEquals("source_col", writableView.getOriginalColumnName("renamed_view_col"));
     Assert.assertEquals("source_col", writableView.getMappedSourceColumnName("renamed_view_col"));
     Assert.assertFalse(writableView.getViewColumnToSourceColumnMap().containsKey("view_col"));
+  }
+
+  @Test
+  public void testWritableViewRemoveTagColumnSchemaRemovesSourceMapping() {
+    final WritableView writableView =
+        new WritableView("view_table", "source_db", "source_table", true);
+    writableView.addColumnSchema(new TagColumnSchema("tag_1", TSDataType.STRING));
+    writableView.addColumnSchema(new TagColumnSchema("tag_2", TSDataType.STRING));
+    writableView.putViewColumnSourceColumnMapping("tag_1", "source_tag_1");
+    writableView.putViewColumnSourceColumnMapping("tag_2", "source_tag_2");
+
+    writableView.removeColumnSchema("tag_1");
+
+    Assert.assertNull(writableView.getColumnSchema("tag_1"));
+    Assert.assertNotNull(writableView.getColumnSchema("tag_2"));
+    Assert.assertNull(writableView.getMappedSourceColumnName("tag_1"));
+    Assert.assertEquals("source_tag_2", writableView.getMappedSourceColumnName("tag_2"));
+    Assert.assertEquals(1, writableView.getTagNum());
+    Assert.assertEquals(-1, writableView.getTagColumnOrdinal("tag_1"));
+    Assert.assertEquals(0, writableView.getTagColumnOrdinal("tag_2"));
   }
 
   @Test

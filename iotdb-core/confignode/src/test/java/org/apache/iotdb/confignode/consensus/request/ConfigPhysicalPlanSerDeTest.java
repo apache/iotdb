@@ -153,8 +153,10 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
@@ -1761,11 +1763,47 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void PreAlterViewColumnDataTypePlanTest() throws IOException {
+    final PreAlterViewColumnDataTypePlan alterColumnDataTypePlan =
+        new PreAlterViewColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final PreAlterViewColumnDataTypePlan alterColumnDataTypePlan1 =
+        (PreAlterViewColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+  }
+
+  @Test
   public void AlterTableColumnDataTypePlanTest() throws IOException {
     final AlterColumnDataTypePlan alterColumnDataTypePlan =
         new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
     final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
         (AlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+  }
+
+  @Test
+  public void AlterViewColumnDataTypePlanTest() throws IOException {
+    final AlterViewColumnDataTypePlan alterColumnDataTypePlan =
+        new AlterViewColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final AlterViewColumnDataTypePlan alterColumnDataTypePlan1 =
+        (AlterViewColumnDataTypePlan)
             ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
     Assert.assertEquals(
         alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());

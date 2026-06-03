@@ -231,6 +231,8 @@ public enum ConfigPhysicalPlanType {
   RenameViewColumn((short) 877),
   AlterColumnDataType((short) 878),
   PreAlterColumnDataType((short) 879),
+  AlterViewColumnDataType((short) -894),
+  PreAlterViewColumnDataType((short) -895),
 
   // We need to define writable view plans separately because they may also need to change the
   // original table, and the pipe may need to tell whether the target is a writable view and throw

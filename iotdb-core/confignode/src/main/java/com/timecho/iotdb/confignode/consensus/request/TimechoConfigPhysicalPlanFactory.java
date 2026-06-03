@@ -21,6 +21,8 @@ package com.timecho.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AddWritableViewColumnPlan;
@@ -49,6 +51,10 @@ public final class TimechoConfigPhysicalPlanFactory {
   public static ConfigPhysicalPlan create(final ConfigPhysicalPlanType configPhysicalPlanType)
       throws IOException {
     switch (configPhysicalPlanType) {
+      case PreAlterViewColumnDataType:
+        return new PreAlterViewColumnDataTypePlan();
+      case AlterViewColumnDataType:
+        return new AlterViewColumnDataTypePlan();
       case RollbackCreateWritableView:
         return new RollbackCreateWritableViewPlan();
       case CommitCreateWritableView:

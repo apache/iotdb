@@ -495,27 +495,32 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     support.ensureSourceTableExists();
     final QualifiedObjectName sourceTableName = support.getSourceTableName();
 
-    if (support.requiresSourceColumnRewrite()) {
-      final String[] measurements = insertBaseStatement.getMeasurements();
-      if (measurements != null) {
-        for (int i = 0; i < measurements.length; i++) {
-          if (measurements[i] != null) {
-            measurements[i] = support.resolveExistingSourceColumnName(measurements[i]);
-          }
+    final boolean requiresSourceColumnRewrite = support.requiresSourceColumnRewrite();
+    final String[] measurements = insertBaseStatement.getMeasurements();
+    if (measurements != null) {
+      for (int i = 0; i < measurements.length; i++) {
+        if (measurements[i] != null) {
+          measurements[i] =
+              requiresSourceColumnRewrite
+                  ? support.resolveExistingSourceColumnName(measurements[i])
+                  : support.validateExposedViewColumnName(measurements[i]);
         }
       }
+    }
 
-      final MeasurementSchema[] measurementSchemas = insertBaseStatement.getMeasurementSchemas();
-      if (measurementSchemas != null) {
-        for (int i = 0; i < measurementSchemas.length; i++) {
-          if (measurementSchemas[i] != null) {
-            final String rewrittenMeasurementName =
-                measurements != null && i < measurements.length
-                    ? measurements[i]
-                    : support.resolveExistingSourceColumnName(
-                        measurementSchemas[i].getMeasurementName());
-            measurementSchemas[i].setMeasurementName(rewrittenMeasurementName);
-          }
+    final MeasurementSchema[] measurementSchemas = insertBaseStatement.getMeasurementSchemas();
+    if (measurementSchemas != null) {
+      for (int i = 0; i < measurementSchemas.length; i++) {
+        if (measurementSchemas[i] != null) {
+          final String rewrittenMeasurementName =
+              measurements != null && i < measurements.length
+                  ? measurements[i]
+                  : requiresSourceColumnRewrite
+                      ? support.resolveExistingSourceColumnName(
+                          measurementSchemas[i].getMeasurementName())
+                      : support.validateExposedViewColumnName(
+                          measurementSchemas[i].getMeasurementName());
+          measurementSchemas[i].setMeasurementName(rewrittenMeasurementName);
         }
       }
     }

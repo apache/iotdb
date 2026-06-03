@@ -71,6 +71,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1470,19 +1471,32 @@ public class ClusterSchemaManager {
           null);
     }
 
-    TSStatus tsStatus =
-        executePlan(
-            tableType == TableType.WRITABLE_VIEW
-                ? new PreAlterWritableViewColumnDataTypePlan(
-                    database,
-                    tableName,
-                    columnName,
-                    dataType,
-                    originalDatabase,
-                    originalTableName,
-                    originalColumnName)
-                : new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
-            isGeneratedByPipe);
+    if (tableType != TableType.BASE_TABLE) {
+      final Optional<Pair<TSStatus, TsTable>> result =
+          checkTable4View(database, originalTable, tableType);
+      if (result.isPresent()) {
+        return result.get();
+      }
+    }
+
+    final ConfigPhysicalPlan preAlterPlan;
+    if (tableType == TableType.WRITABLE_VIEW) {
+      preAlterPlan =
+          new PreAlterWritableViewColumnDataTypePlan(
+              database,
+              tableName,
+              columnName,
+              dataType,
+              originalDatabase,
+              originalTableName,
+              originalColumnName);
+    } else if (tableType == TableType.VIEW_FROM_TREE) {
+      preAlterPlan = new PreAlterViewColumnDataTypePlan(database, tableName, columnName, dataType);
+    } else {
+      preAlterPlan = new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType);
+    }
+
+    TSStatus tsStatus = executePlan(preAlterPlan, isGeneratedByPipe);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new Pair<>(tsStatus, null);
     }

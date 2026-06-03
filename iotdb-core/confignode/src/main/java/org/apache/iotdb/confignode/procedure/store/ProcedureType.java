@@ -87,6 +87,7 @@ public enum ProcedureType {
   RENAME_VIEW_PROCEDURE((short) 764),
 
   ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE((short) 765),
+  ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE((short) 766),
 
   // Keep writable-view extensions in the negative space to avoid colliding with the shared
   // positive procedure id allocation.
@@ -160,6 +161,7 @@ public enum ProcedureType {
   PIPE_ENRICHED_CREATE_TABLE_VIEW_PROCEDURE((short) 1420),
   PIPE_ENRICHED_ADD_VIEW_COLUMN_PROCEDURE((short) 1421),
   PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE((short) 1422),
+  PIPE_ENRICHED_ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE((short) 1423),
   PIPE_ENRICHED_DROP_VIEW_COLUMN_PROCEDURE((short) 143),
   PIPE_ENRICHED_DROP_VIEW_PROCEDURE((short) 144),
   PIPE_ENRICHED_SET_VIEW_PROPERTIES_PROCEDURE((short) 145),

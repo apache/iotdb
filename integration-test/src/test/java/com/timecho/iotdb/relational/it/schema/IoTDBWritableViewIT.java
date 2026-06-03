@@ -283,6 +283,11 @@ public class IoTDBWritableViewIT {
                     "a,STRING,TAG,USING,source_a_without_explicit_comment,a,",
                     "b,STRING,ATTRIBUTE,USING,source_b_without_explicit_comment,b,",
                     "c,INT32,FIELD,USING,source_c_without_explicit_comment,c,")));
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("select * from writable_view_without_explicit_comment"),
+            "time,a,b,c,",
+            Collections.emptySet());
       } finally {
         dropDatabaseQuietly(statement, database);
       }
@@ -517,6 +522,51 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testWritableViewDropTagSkipsSourceCascade() throws Exception {
+    final String database = "writable_view_drop_tag_cascade_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table source_table("
+                + "station string tag, "
+                + "device_id string tag, "
+                + "temperature int32 field"
+                + ")");
+        statement.execute(
+            "create writable view writable_view as select station, device_id, temperature "
+                + "from source_table with (schema_cascade=true)");
+
+        statement.execute("alter view writable_view drop column station");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("describe source_table details"),
+            "ColumnName,DataType,Category,Status,Comment,",
+            new HashSet<>(
+                Arrays.asList(
+                    "time,TIMESTAMP,TIME,USING,null,",
+                    "station,STRING,TAG,USING,null,",
+                    "device_id,STRING,TAG,USING,null,",
+                    "temperature,INT32,FIELD,USING,null,")));
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery("describe writable_view details"),
+            "ColumnName,DataType,Category,Status,Comment,OriginalColumnName,",
+            new HashSet<>(
+                Arrays.asList(
+                    "time,TIMESTAMP,TIME,USING,null,time,",
+                    "device_id,STRING,TAG,USING,null,device_id,",
+                    "temperature,INT32,FIELD,USING,null,temperature,")));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testWritableViewSetPropertiesUsesPreviousSchemaCascade() throws Exception {
     final String database = "writable_view_property_db";
     try (final Connection connection =
@@ -614,9 +664,7 @@ public class IoTDBWritableViewIT {
                 + "(1, 'd2', 'south', 'B', 20, 2.1)");
 
         TestUtils.assertResultSetEqual(
-            statement.executeQuery(
-                "select time, dev, area, label, temp, humidity from writable_view "
-                    + "order by time, dev"),
+            statement.executeQuery("select * from writable_view order by time, dev"),
             "time,dev,area,label,temp,humidity,",
             new HashSet<>(
                 Arrays.asList(

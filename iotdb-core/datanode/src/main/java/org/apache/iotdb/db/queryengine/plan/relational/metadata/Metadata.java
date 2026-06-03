@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 // All the input databases shall not contain "root"
 public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
@@ -79,6 +80,10 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
             name,
             writableViewSchema.getSourceTableName(),
             writableViewSchema.getViewColumnToSourceColumnMap(),
+            targetTableSchema.get().getColumns().stream()
+                .filter(column -> !column.isHidden())
+                .map(column -> column.getName())
+                .collect(Collectors.toSet()),
             resolvedSourceTableSchema.isPresent(),
             resolvedSourceTableSchema.isPresent()
                 ? resolvedSourceTableSchema.get().getColumnSchemaMap()::containsKey

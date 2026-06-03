@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumn
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AddViewColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.AlterViewColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.CreateTableViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewProcedure;
@@ -266,6 +267,9 @@ public class ProcedureFactory implements IProcedureFactory {
         case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
           procedure = new AlterTableColumnDataTypeProcedure(false);
           break;
+        case ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE:
+          procedure = new AlterViewColumnDataTypeProcedure(false);
+          break;
         case DROP_TABLE_PROCEDURE:
           procedure = new DropTableProcedure(false);
           break;
@@ -340,6 +344,9 @@ public class ProcedureFactory implements IProcedureFactory {
           break;
         case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
           procedure = new AlterTableColumnDataTypeProcedure(true);
+          break;
+        case PIPE_ENRICHED_ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE:
+          procedure = new AlterViewColumnDataTypeProcedure(true);
           break;
         case PIPE_ENRICHED_ALTER_TIMESERIES_DATATYPE_PROCEDURE:
           procedure = new AlterTimeSeriesDataTypeProcedure(true);
@@ -521,6 +528,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropViewProcedure) {
       return ProcedureType.DROP_VIEW_PROCEDURE;
+    } else if (procedure instanceof AlterViewColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_VIEW_COLUMN_DATATYPE_PROCEDURE;
     } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
       return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {

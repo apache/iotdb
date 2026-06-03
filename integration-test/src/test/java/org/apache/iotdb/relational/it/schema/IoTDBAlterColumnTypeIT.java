@@ -49,7 +49,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.ITsFileWriter;
 import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -1120,22 +1119,16 @@ public class IoTDBAlterColumnTypeIT {
       if (isCompatible) {
         try {
           session.executeNonQueryStatement(
-              "ALTER TABLE view1 ALTER COLUMN current SET DATA TYPE " + to);
-          SessionDataSet dataSet = session.executeQueryStatement("DESC view1");
-          while (dataSet.hasNext()) {
-            RowRecord rowRecord = dataSet.next();
-            if (rowRecord.getField(0).equals("current")) {
-              Assert.assertEquals(to, rowRecord.getField(1));
-            }
-          }
+              "ALTER VIEW view1 ALTER COLUMN current SET DATA TYPE " + to);
+          assertColumnDataType(session, "view1", "current", to);
         } catch (Exception e) {
           fail(e.getMessage());
-          log.error("ALTER TABLE view1 ALTER COLUMN current SET DATA TYPE {}", to, e);
+          log.error("ALTER VIEW view1 ALTER COLUMN current SET DATA TYPE {}", to, e);
         }
       } else {
         try {
           session.executeNonQueryStatement(
-              "ALTER TABLE view1 ALTER COLUMN current SET DATA TYPE " + to);
+              "ALTER VIEW view1 ALTER COLUMN current SET DATA TYPE " + to);
         } catch (StatementExecutionException e) {
           assertEquals(
               "701: New type " + to + " is not compatible with the existing one " + from,
@@ -1148,6 +1141,34 @@ public class IoTDBAlterColumnTypeIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("DELETE TIMESERIES root.db.battery.**");
+    }
+  }
+
+  @Test
+  public void testAlterWritableViewType()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      try {
+        session.executeNonQueryStatement("DROP VIEW IF EXISTS alter_writable_view");
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS alter_writable_source");
+        session.executeNonQueryStatement(
+            "CREATE TABLE alter_writable_source(device TAG, temperature FLOAT FIELD)");
+        session.executeNonQueryStatement(
+            "CREATE WRITABLE VIEW alter_writable_view AS SELECT device, temperature AS temp "
+                + "FROM alter_writable_source WITH (schema_cascade=true)");
+
+        assertColumnDataType(session, "alter_writable_source", "temperature", TSDataType.FLOAT);
+        assertColumnDataType(session, "alter_writable_view", "temp", TSDataType.FLOAT);
+
+        session.executeNonQueryStatement(
+            "ALTER VIEW alter_writable_view ALTER COLUMN temp SET DATA TYPE DOUBLE");
+
+        assertColumnDataType(session, "alter_writable_source", "temperature", TSDataType.DOUBLE);
+        assertColumnDataType(session, "alter_writable_view", "temp", TSDataType.DOUBLE);
+      } finally {
+        session.executeNonQueryStatement("DROP VIEW IF EXISTS alter_writable_view");
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS alter_writable_source");
+      }
     }
   }
 
@@ -2647,6 +2668,26 @@ public class IoTDBAlterColumnTypeIT {
       return TSDataType.valueOf(typeStr);
     } catch (Exception e) {
       return null;
+    }
+  }
+
+  private static void assertColumnDataType(
+      final ITableSession session,
+      final String tableName,
+      final String columnName,
+      final TSDataType expectedDataType)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (final SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "SELECT datatype FROM information_schema.columns WHERE database = 'test' "
+                + "AND table_name = '"
+                + tableName
+                + "' AND column_name = '"
+                + columnName
+                + "'")) {
+      assertTrue(dataSet.hasNext());
+      assertEquals(expectedDataType.name(), dataSet.next().getField(0).getStringValue());
+      assertFalse(dataSet.hasNext());
     }
   }
 

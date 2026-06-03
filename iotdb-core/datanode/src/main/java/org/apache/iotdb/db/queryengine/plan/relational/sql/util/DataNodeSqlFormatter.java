@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuery
 import org.apache.iotdb.commons.schema.table.TableType;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -454,6 +455,29 @@ public final class DataNodeSqlFormatter extends CommonQuerySqlFormatter
     } else {
       builder.append(formatColumnDefinition(node.getColumn()));
     }
+
+    return null;
+  }
+
+  @Override
+  public Void visitAlterColumnDataType(AlterColumnDataType node, Integer indent) {
+    builder.append("ALTER");
+    builder.append(node.isView() ? " VIEW " : " TABLE ");
+    if (node.isIfTableExists()) {
+      builder.append("IF EXISTS ");
+    }
+
+    builder
+        .append(CommonQuerySqlFormatter.formatName(node.getTableName()))
+        .append(" ALTER COLUMN ");
+    if (node.isIfColumnExists()) {
+      builder.append("IF EXISTS ");
+    }
+
+    builder
+        .append(CommonQuerySqlFormatter.formatName(node.getColumnName()))
+        .append(" SET DATA TYPE ")
+        .append(formatExpression(node.getDataType()));
 
     return null;
   }

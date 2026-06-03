@@ -114,9 +114,6 @@ public class DropTableColumnProcedure
           LOGGER.info(
               ProcedureMessages.DROPPING_COLUMN_IN_ON_CONFIGNODE, columnName, database, tableName);
           dropColumn(env);
-          if (skipOriginalTagCascade) {
-            setFailure(buildSkipOriginalTagCascadeWarning());
-          }
           return Flow.NO_MORE_STATE;
         default:
           setFailure(
@@ -351,13 +348,5 @@ public class DropTableColumnProcedure
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), isAttributeColumn, skipOriginalTagCascade);
-  }
-
-  private ProcedureException buildSkipOriginalTagCascadeWarning() {
-    return new ProcedureException(
-        new IoTDBException(
-            new TSStatus(TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode())
-                .setMessage(
-                    "WARNING: The original column to be deleted in a cascade is a tag, which is not allowed to be deleted. The original column remains unchanged.")));
   }
 }

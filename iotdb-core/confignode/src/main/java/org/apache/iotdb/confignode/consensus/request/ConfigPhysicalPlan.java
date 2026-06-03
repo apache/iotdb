@@ -120,8 +120,10 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewPlan;
@@ -473,8 +475,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           case PreAlterColumnDataType:
             plan = new PreAlterColumnDataTypePlan(configPhysicalPlanType);
             break;
+          case PreAlterViewColumnDataType:
+            plan = new PreAlterViewColumnDataTypePlan();
+            break;
           case AlterColumnDataType:
             plan = new AlterColumnDataTypePlan(configPhysicalPlanType);
+            break;
+          case AlterViewColumnDataType:
+            plan = new AlterViewColumnDataTypePlan();
             break;
           case CommitDeleteColumn:
             plan = new CommitDeleteColumnPlan(configPhysicalPlanType);

@@ -806,6 +806,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitAlterViewColumnDataType(
+      final RelationalSqlParser.AlterViewColumnDataTypeContext ctx) {
+    final QualifiedName viewName = getQualifiedName(ctx.viewName);
+    final Identifier columnName = lowerIdentifier((Identifier) visit(ctx.column));
+    final DataType dataType = (DataType) visit(ctx.new_type);
+    final boolean ifViewExists =
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex());
+    final boolean ifColumnExists =
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex());
+    return new AlterColumnDataType(
+        getLocation(ctx), viewName, columnName, dataType, ifViewExists, ifColumnExists, true);
+  }
+
+  @Override
   public Node visitViewColumnDefinition(final RelationalSqlParser.ViewColumnDefinitionContext ctx) {
     return buildViewColumnDefinition(
         getLocation(ctx),

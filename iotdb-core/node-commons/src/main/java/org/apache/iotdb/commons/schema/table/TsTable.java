@@ -274,20 +274,34 @@ public class TsTable {
   }
 
   public void removeColumnSchema(final String columnName) {
-    executeWrite(
-        () -> {
-          final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
-          if (columnSchema != null
-              && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
-            throw new SchemaExecutionException(
-                SchemaMessages.CANNOT_REMOVE_TAG_COLUMN + columnName);
-          } else if (columnSchema != null) {
-            columnSchemaMap.remove(columnName);
-            if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
-              fieldNum--;
-            }
-          }
-        });
+    executeWrite(() -> removeColumnSchemaInternal(columnName, false));
+  }
+
+  protected void removeColumnSchemaInternal(final String columnName, final boolean allowTagColumn) {
+    final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
+    if (Objects.isNull(columnSchema)) {
+      return;
+    }
+    if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG) && !allowTagColumn) {
+      throw new SchemaExecutionException(SchemaMessages.CANNOT_REMOVE_TAG_COLUMN + columnName);
+    }
+
+    columnSchemaMap.remove(columnName);
+    if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+      rebuildTagColumnIndexMap();
+    } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
+      fieldNum--;
+    }
+  }
+
+  private void rebuildTagColumnIndexMap() {
+    tagColumnIndexMap.clear();
+    tagNums = 0;
+    for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
+        tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums++);
+      }
+    }
   }
 
   public int getColumnNum() {

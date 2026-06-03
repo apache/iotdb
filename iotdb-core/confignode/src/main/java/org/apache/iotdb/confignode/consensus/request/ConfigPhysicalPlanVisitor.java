@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnC
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.AddTableViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
@@ -203,6 +204,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
       case AlterColumnDataType:
         return visitAlterColumnDataType((AlterColumnDataTypePlan) plan, context);
+      case AlterViewColumnDataType:
+        return visitAlterViewColumnDataType((AlterViewColumnDataTypePlan) plan, context);
       case RenameTable:
         return visitRenameTable((RenameTablePlan) plan, context);
       case RenameView:
@@ -549,5 +552,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitAlterColumnDataType(
       final AlterColumnDataTypePlan alterColumnDataTypePlan, final C context) {
     return visitPlan(alterColumnDataTypePlan, context);
+  }
+
+  public R visitAlterViewColumnDataType(
+      final AlterViewColumnDataTypePlan alterViewColumnDataTypePlan, final C context) {
+    return visitAlterColumnDataType(alterViewColumnDataTypePlan, context);
   }
 }

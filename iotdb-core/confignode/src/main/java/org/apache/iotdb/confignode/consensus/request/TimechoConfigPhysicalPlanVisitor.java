@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
+import org.apache.iotdb.confignode.consensus.request.write.table.view.AlterViewColumnDataTypePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreAlterViewColumnDataTypePlan;
+
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AddWritableViewColumnPlan;
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.AlterWritableViewColumnDataTypePlan;
 import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitCreateWritableViewPlan;
@@ -43,6 +46,10 @@ public class TimechoConfigPhysicalPlanVisitor<R, C> {
 
   public R process(final ConfigPhysicalPlan plan, final C context) {
     switch (plan.getType()) {
+      case PreAlterViewColumnDataType:
+        return visitPreAlterViewColumnDataType((PreAlterViewColumnDataTypePlan) plan, context);
+      case AlterViewColumnDataType:
+        return visitAlterViewColumnDataType((AlterViewColumnDataTypePlan) plan, context);
       case RollbackCreateWritableView:
         return visitRollbackCreateWritableView((RollbackCreateWritableViewPlan) plan, context);
       case CommitCreateWritableView:
@@ -135,6 +142,16 @@ public class TimechoConfigPhysicalPlanVisitor<R, C> {
   public R visitRenameWritableViewColumn(
       final RenameWritableViewColumnPlan renameWritableViewColumnPlan, final C context) {
     return apacheVisitor.visitRenameTableColumn(renameWritableViewColumnPlan, context);
+  }
+
+  public R visitPreAlterViewColumnDataType(
+      final PreAlterViewColumnDataTypePlan preAlterViewColumnDataTypePlan, final C context) {
+    return apacheVisitor.visitPlan(preAlterViewColumnDataTypePlan, context);
+  }
+
+  public R visitAlterViewColumnDataType(
+      final AlterViewColumnDataTypePlan alterViewColumnDataTypePlan, final C context) {
+    return apacheVisitor.visitAlterViewColumnDataType(alterViewColumnDataTypePlan, context);
   }
 
   public R visitPreAlterWritableViewColumnDataType(
