@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,6 +159,10 @@ public class FolderManager {
     try {
       FileStore fileStore = Files.getFileStore(path);
       for (String folder : folders) {
+        if (foldersStates.getOrDefault(folder, FolderState.ABNORMAL) != FolderState.HEALTHY
+            || !JVMCommonUtils.hasSpace(folder)) {
+          continue;
+        }
         Path folderPath = Paths.get(folder);
         FileStore folderFileStore = Files.getFileStore(folderPath);
         if (folderFileStore.equals(fileStore)) {
