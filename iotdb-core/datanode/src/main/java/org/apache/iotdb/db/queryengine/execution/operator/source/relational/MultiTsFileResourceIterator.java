@@ -151,9 +151,8 @@ public class MultiTsFileResourceIterator {
   }
 
   private boolean isDeviceMatched(IDeviceID deviceID) {
-    return tableName.equalsIgnoreCase(deviceID.getTableName())
-        && (deviceFilter == null
-            || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID)));
+    return deviceFilter == null
+        || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID));
   }
 
   private class TsFileResourceDeviceIterator {

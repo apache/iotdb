@@ -618,8 +618,12 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
-  public void setExternalTsFilePaths(List<String> externalTsFilePaths) {
-    this.externalTsFilePaths = externalTsFilePaths;
+  public void addExternalTsFilePaths(List<String> externalTsFilePaths) {
+    if (this.externalTsFilePaths == null) {
+      this.externalTsFilePaths = new ArrayList<>(externalTsFilePaths);
+      return;
+    }
+    this.externalTsFilePaths.addAll(externalTsFilePaths);
   }
 
   public MemoryReservationManager getMemoryReservationContext() {

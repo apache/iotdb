@@ -1149,9 +1149,9 @@ public class DataNodeTableOperatorGenerator
 
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
     dataDriverContext.addSourceOperator(externalTsFileTableScanOperator);
-    dataDriverContext.setExternalTsFilePaths(node.getTsFilePaths());
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
     dataDriverContext.setInputDriver(true);
+    context.getInstanceContext().addExternalTsFilePaths(node.getTsFilePaths());
 
     return externalTsFileTableScanOperator;
   }

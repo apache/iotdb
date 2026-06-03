@@ -36,10 +36,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.TsFileDeviceIterator;
+import org.apache.tsfile.read.LazyTsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
@@ -136,15 +135,18 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
   private void collectDeviceInfos(
       TsFileResource resource, List<ExternalTsFileDeviceInfo> deviceInfos) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
-      TsFileDeviceIterator deviceIterator =
-          reader.getTableDevicesIteratorWithIsAligned(tableName, contextValue -> {});
+      LazyTsFileDeviceIterator deviceIterator =
+          new LazyTsFileDeviceIterator(
+              reader,
+              tableName,
+              ((OperatorContext) operatorContext)
+                  .getInstanceContext()
+                  .getQueryStatistics()
+                  .getLoadTimeSeriesMetadataActualIOSize()
+                  ::addAndGet);
       while (deviceIterator.hasNext()) {
-        Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.next();
-        IDeviceID deviceID = deviceInfo.left;
+        IDeviceID deviceID = deviceIterator.next();
         if (!isDeviceMatched(deviceID)) {
-          continue;
-        }
-        if (!isDeviceFilterMatched(deviceID)) {
           continue;
         }
         deviceInfos.add(
@@ -167,10 +169,6 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
   }
 
   private boolean isDeviceMatched(IDeviceID deviceID) {
-    return tableName.equalsIgnoreCase(deviceID.getTableName());
-  }
-
-  private boolean isDeviceFilterMatched(IDeviceID deviceID) {
     return deviceFilter == null
         || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID));
   }
