@@ -21,19 +21,53 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public interface ISubscriptionBroker {
 
   List<SubscriptionEvent> poll(String consumerId, Set<String> topicNames, long maxBytes);
 
+  default List<SubscriptionEvent> poll(
+      final String consumerId,
+      final Set<String> topicNames,
+      final long maxBytes,
+      final Map<String, TopicProgress> progressByTopic) {
+    return poll(consumerId, topicNames, maxBytes);
+  }
+
   List<SubscriptionEvent> pollTablets(
       String consumerId, SubscriptionCommitContext commitContext, int offset);
 
   List<SubscriptionCommitContext> commit(
       String consumerId, List<SubscriptionCommitContext> commitContexts, boolean nack);
+
+  default List<SubscriptionCommitContext> selectAcceptedCommitContexts(
+      final List<SubscriptionCommitContext> commitContexts) {
+    if (Objects.isNull(commitContexts) || commitContexts.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionCommitContext> acceptedCommitContexts = new ArrayList<>();
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      if (acceptsCommitContext(commitContext)) {
+        acceptedCommitContexts.add(commitContext);
+      }
+    }
+    return acceptedCommitContexts;
+  }
+
+  default boolean acceptsCommitContext(final SubscriptionCommitContext commitContext) {
+    return Objects.nonNull(commitContext) && acceptsTopic(commitContext.getTopicName());
+  }
+
+  boolean acceptsTopic(String topicName);
 
   int refreshInFlightEventLeases(String consumerId, List<SubscriptionCommitContext> commitContexts);
 

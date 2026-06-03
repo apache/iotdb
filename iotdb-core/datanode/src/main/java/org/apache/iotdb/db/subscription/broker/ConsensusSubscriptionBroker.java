@@ -93,6 +93,11 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         && queues.stream().anyMatch(q -> !q.isClosed());
   }
 
+  @Override
+  public boolean acceptsTopic(final String topicName) {
+    return hasQueue(topicName);
+  }
+
   //////////////////////////// poll ////////////////////////////
 
   @Override

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPend
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
@@ -95,6 +96,12 @@ public class SubscriptionBroker implements ISubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     return Objects.nonNull(prefetchingQueue) && !prefetchingQueue.isClosed();
+  }
+
+  @Override
+  public boolean acceptsTopic(final String topicName) {
+    return Objects.nonNull(topicName)
+        && !ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
   }
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
