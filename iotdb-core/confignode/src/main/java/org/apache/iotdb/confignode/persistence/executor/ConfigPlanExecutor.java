@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -362,7 +361,7 @@ public class ConfigPlanExecutor {
       case GetRegionGroupsByTime:
         return partitionInfo.getRegionGroupsByTime((GetRegionGroupsByTimePlan) req);
       case SHOW_CQ:
-        return cqInfo.showCQ((ShowCQPlan) req);
+        return cqInfo.showCQ();
       case ShowExternalService:
         return externalServiceInfo.showService(((ShowExternalServicePlan) req).getDataNodeIds());
       case GetFunctionTable:

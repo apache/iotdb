@@ -35,39 +35,39 @@ public class ActiveCQPlan extends ConfigPhysicalPlan {
 
   private String cqId;
 
-  private String cqToken;
+  private String md5;
 
   public ActiveCQPlan() {
     super(ACTIVE_CQ);
   }
 
-  public ActiveCQPlan(String cqId, String cqToken) {
+  public ActiveCQPlan(String cqId, String md5) {
     super(ACTIVE_CQ);
     Validate.notNull(cqId);
-    Validate.notNull(cqToken);
+    Validate.notNull(md5);
     this.cqId = cqId;
-    this.cqToken = cqToken;
+    this.md5 = md5;
   }
 
   public String getCqId() {
     return cqId;
   }
 
-  public String getCqToken() {
-    return cqToken;
+  public String getMd5() {
+    return md5;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(cqId, stream);
-    ReadWriteIOUtils.write(cqToken, stream);
+    ReadWriteIOUtils.write(md5, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     cqId = ReadWriteIOUtils.readString(buffer);
-    cqToken = ReadWriteIOUtils.readString(buffer);
+    md5 = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -82,11 +82,11 @@ public class ActiveCQPlan extends ConfigPhysicalPlan {
       return false;
     }
     ActiveCQPlan that = (ActiveCQPlan) o;
-    return cqId.equals(that.cqId) && cqToken.equals(that.cqToken);
+    return cqId.equals(that.cqId) && md5.equals(that.md5);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), cqId, cqToken);
+    return Objects.hash(super.hashCode(), cqId, md5);
   }
 }
