@@ -87,16 +87,29 @@ public class DisruptorQueue {
   }
 
   public void publish(final PipeRealtimeEvent event) {
+    publishOrDrop(event);
+  }
+
+  public boolean publishOrDrop(final PipeRealtimeEvent event) {
     final EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).recordDisruptorSize(ringBuffer);
     }
-    ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
-    mayPrintExceedingLog();
+    final boolean published =
+        ringBuffer.publishEvent(
+            (container, sequence, o) -> container.setEvent(event), event, this::isClosed);
+    if (published) {
+      mayPrintExceedingLog();
+    }
+    return published;
+  }
+
+  public void closeInput() {
+    isClosed = true;
   }
 
   public void shutdown() {
-    isClosed = true;
+    closeInput();
     // use shutdown instead of halt to ensure all published events have been handled
     disruptor.shutdown();
     allocatedMemoryBlock.close();
