@@ -81,6 +81,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
   private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
   private final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
+  private RuntimeException deferredException;
 
   @TestOnly
   public TsFileInsertionEventQueryParser(
@@ -471,6 +472,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
                 @Override
                 public boolean hasNext() {
+                  throwIfDeferredException();
                   boolean hasNext = false;
                   while (tabletIterator == null || !tabletIterator.hasNext()) {
                     if (!deviceMeasurementsMapIterator.hasNext()) {
@@ -525,9 +527,16 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                   final boolean isAligned =
                       deviceIsAlignedMap.getOrDefault(
                           IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
+                  boolean isLast;
+                  try {
+                    isLast = !hasNext();
+                  } catch (final RuntimeException e) {
+                    deferredException = e;
+                    isLast = false;
+                  }
 
                   final TabletInsertionEvent next;
-                  if (!hasNext()) {
+                  if (isLast) {
                     next =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
@@ -591,8 +600,19 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     return tabletInsertionIterable;
   }
 
+  private void throwIfDeferredException() {
+    if (Objects.isNull(deferredException)) {
+      return;
+    }
+
+    final RuntimeException exception = deferredException;
+    deferredException = null;
+    throw exception;
+  }
+
   @Override
   public void close() {
+    deferredException = null;
     try {
       if (tsFileReader != null) {
         tsFileReader.close();
