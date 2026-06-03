@@ -315,8 +315,8 @@ public class TsFileInsertionEventParserTest {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
     try {
-      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(4 * 1024);
-      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(8);
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(64 * 1024);
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(32);
 
       final int measurementCount = 16;
       final int rowCount = 64;
