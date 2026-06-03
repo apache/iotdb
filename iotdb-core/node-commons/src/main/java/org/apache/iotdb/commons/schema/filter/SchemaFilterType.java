@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 public enum SchemaFilterType {
   NULL((short) -1),
   TAGS_FILTER((short) 1),
@@ -81,7 +83,7 @@ public enum SchemaFilterType {
       case 14:
         return COMPARISON;
       default:
-        throw new IllegalArgumentException("Invalid input: " + code);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + code);
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.AlignedPageMetadata;
 import org.apache.iotdb.db.utils.CommonUtils;
 
@@ -127,7 +128,8 @@ public class MemAlignedPageReader implements IPageReader {
     // build value column
     buildValueColumns(satisfyInfo, readEndIndex);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[memAlignedPageReader] TsBlock:{}", CommonUtils.toString(tsBlock));
+      LOGGER.debug(
+          StorageEngineMessages.MEM_ALIGNED_PAGE_READER_TSBLOCK, CommonUtils.toString(tsBlock));
     }
     return builder.build();
   }

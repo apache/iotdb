@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.AlignedSinglePageWholeChunkReader;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.SinglePageWholeChunkReader;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -58,6 +59,7 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.write.TsFileWriter;
@@ -79,6 +81,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -103,6 +106,7 @@ public class TsFileInsertionEventParserTest {
       "iotdb.query.parser.performance.enabled";
   private static final String MANUAL_TABLE_PARSER_PERFORMANCE_TEST =
       "iotdb.table.parser.performance.enabled";
+  private static final long BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE = 1024 * 1024L;
 
   private File alignedTsFile;
   private File nonalignedTsFile;
@@ -143,6 +147,84 @@ public class TsFileInsertionEventParserTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testScanParserSplitNonAlignedSinglePageChunkByEstimatedPageMemory() throws Exception {
+    final long originalPipeMaxReaderChunkSize =
+        CommonDescriptor.getInstance().getConfig().getPipeMaxReaderChunkSize();
+    final int originalPageSizeInByte =
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    final int originalMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+    try {
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(64 * 1024);
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10000);
+
+      final int measurementCount = 16;
+      final int rowCount = 64;
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      for (int i = 0; i < measurementCount; ++i) {
+        schemaList.add(
+            new MeasurementSchema(
+                "s" + i, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
+      }
+
+      nonalignedTsFile = new File("nonaligned-single-page-high-compression.tsfile");
+      final Tablet tablet = new Tablet("root.sg.d", schemaList, rowCount);
+      final Binary value =
+          new Binary(new String(new char[512]).replace('\0', 'a'), TSFileConfig.STRING_CHARSET);
+      for (int row = 0; row < rowCount; ++row) {
+        tablet.addTimestamp(row, row);
+        for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+          tablet.addValue("s" + measurementIndex, row, value);
+        }
+      }
+
+      try (final TsFileWriter writer = new TsFileWriter(nonalignedTsFile)) {
+        writer.registerTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.writeTree(tablet);
+      }
+
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(
+              calculatePipeMaxReaderChunkSizeForSinglePageNonAlignedChunk(nonalignedTsFile));
+
+      int tabletCount = 0;
+      int maxMeasurementCount = 0;
+      int pointCount = 0;
+      try (final TsFileInsertionEventScanParser parser =
+          new TsFileInsertionEventScanParser(
+              nonalignedTsFile,
+              new PrefixTreePattern("root"),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null,
+              false)) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          Assert.assertFalse(tabletWithIsAligned.getRight());
+          final Tablet parsedTablet = tabletWithIsAligned.getLeft();
+          tabletCount++;
+          maxMeasurementCount = Math.max(maxMeasurementCount, parsedTablet.getSchemas().size());
+          pointCount += getNonNullSize(parsedTablet);
+        }
+      }
+
+      Assert.assertTrue(tabletCount > 1);
+      Assert.assertTrue(maxMeasurementCount < measurementCount);
+      Assert.assertEquals(measurementCount * rowCount, pointCount);
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(originalPageSizeInByte);
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setMaxNumberOfPointsInPage(originalMaxNumberOfPointsInPage);
+    }
   }
 
   @Test
@@ -187,6 +269,84 @@ public class TsFileInsertionEventParserTest {
           .getConfig()
           .setPipeMaxReaderChunkSize(
               calculatePipeMaxReaderChunkSizeForSinglePageAlignedChunk(alignedTsFile));
+
+      int tabletCount = 0;
+      int maxMeasurementCount = 0;
+      int pointCount = 0;
+      try (final TsFileInsertionEventScanParser parser =
+          new TsFileInsertionEventScanParser(
+              alignedTsFile,
+              new PrefixTreePattern("root"),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null,
+              false)) {
+        for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
+          Assert.assertTrue(tabletWithIsAligned.getRight());
+          final Tablet parsedTablet = tabletWithIsAligned.getLeft();
+          tabletCount++;
+          maxMeasurementCount = Math.max(maxMeasurementCount, parsedTablet.getSchemas().size());
+          pointCount += getNonNullSize(parsedTablet);
+        }
+      }
+
+      Assert.assertTrue(tabletCount > 1);
+      Assert.assertTrue(maxMeasurementCount < measurementCount);
+      Assert.assertEquals(measurementCount * rowCount, pointCount);
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(originalPageSizeInByte);
+      TSFileDescriptor.getInstance()
+          .getConfig()
+          .setMaxNumberOfPointsInPage(originalMaxNumberOfPointsInPage);
+    }
+  }
+
+  @Test
+  public void testScanParserSplitAlignedMultiPageChunkByEstimatedPageMemory() throws Exception {
+    final long originalPipeMaxReaderChunkSize =
+        CommonDescriptor.getInstance().getConfig().getPipeMaxReaderChunkSize();
+    final int originalPageSizeInByte =
+        TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    final int originalMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+
+    try {
+      TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(64 * 1024);
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(32);
+
+      final int measurementCount = 16;
+      final int rowCount = 64;
+      final List<IMeasurementSchema> schemaList = new ArrayList<>();
+      for (int i = 0; i < measurementCount; ++i) {
+        schemaList.add(
+            new MeasurementSchema(
+                "s" + i, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
+      }
+
+      alignedTsFile = new File("aligned-multi-page-high-compression.tsfile");
+      final Tablet tablet = new Tablet("root.sg.d", schemaList, rowCount);
+      final Binary value =
+          new Binary(new String(new char[512]).replace('\0', 'a'), TSFileConfig.STRING_CHARSET);
+      for (int row = 0; row < rowCount; ++row) {
+        tablet.addTimestamp(row, row);
+        for (int measurementIndex = 0; measurementIndex < measurementCount; ++measurementIndex) {
+          tablet.addValue("s" + measurementIndex, row, value);
+        }
+      }
+
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.writeAligned(tablet);
+      }
+
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(
+              calculatePipeMaxReaderChunkSizeForMultiPageAlignedChunk(alignedTsFile));
 
       int tabletCount = 0;
       int maxMeasurementCount = 0;
@@ -273,6 +433,95 @@ public class TsFileInsertionEventParserTest {
       CommonDescriptor.getInstance()
           .getConfig()
           .setPipeDataStructureTabletSizeInBytes(originalPipeDataStructureTabletSizeInBytes);
+    }
+  }
+
+  @Test
+  public void testQueryParserSkipsUnnecessaryBitMaps() throws Exception {
+    testTreeParserSkipsUnnecessaryBitMaps(true);
+  }
+
+  @Test
+  public void testScanParserSkipsUnnecessaryBitMaps() throws Exception {
+    testTreeParserSkipsUnnecessaryBitMaps(false);
+  }
+
+  @Test
+  public void testTableParserSkipsUnnecessaryBitMaps() throws Exception {
+    final long originalPipeMaxReaderChunkSize =
+        PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMaxReaderChunkSize(BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE);
+
+    try {
+      alignedTsFile = new File("table-parser-bitmap.tsfile");
+      if (alignedTsFile.exists()) {
+        Assert.assertTrue(alignedTsFile.delete());
+      }
+
+      final List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("tag0", TSDataType.STRING),
+              new MeasurementSchema("dense", TSDataType.INT64),
+              new MeasurementSchema("sparse", TSDataType.INT64));
+      final List<String> columnNameList = Arrays.asList("tag0", "dense", "sparse");
+      final List<TSDataType> dataTypeList =
+          Arrays.asList(TSDataType.STRING, TSDataType.INT64, TSDataType.INT64);
+      final List<ColumnCategory> columnCategoryList =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+
+      final Tablet tablet =
+          new Tablet("bitmap_table", columnNameList, dataTypeList, columnCategoryList, 2);
+      for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
+        tablet.addTimestamp(rowIndex, rowIndex);
+        tablet.addValue(rowIndex, 0, "tag-value");
+        tablet.addValue(rowIndex, 1, (long) rowIndex);
+        tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
+      }
+
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerTableSchema(new TableSchema("bitmap_table", schemaList, columnCategoryList));
+        writer.writeTable(tablet);
+      }
+
+      try (final TsFileInsertionEventTableParser parser =
+          new TsFileInsertionEventTableParser(
+              alignedTsFile,
+              new TablePattern(true, null, null),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE,
+              null,
+              null,
+              null,
+              false)) {
+        final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+        Assert.assertTrue(iterator.hasNext());
+        Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        if (parsedTablet.getSchemas().size() == 3) {
+          assertBitMapExistence(parsedTablet, false, false, true);
+          Assert.assertTrue(parsedTablet.isNull(1, 2));
+          Assert.assertFalse(iterator.hasNext());
+        } else {
+          if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
+            Assert.assertNull(parsedTablet.getBitMaps());
+          } else {
+            Assert.assertTrue(parsedTablet.isNull(1, 1));
+          }
+          while (iterator.hasNext()) {
+            parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+            if (parsedTablet.getSchemas().get(1).getMeasurementName().equals("dense")) {
+              Assert.assertNull(parsedTablet.getBitMaps());
+            } else {
+              Assert.assertTrue(parsedTablet.isNull(1, 1));
+            }
+          }
+        }
+      }
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
     }
   }
 
@@ -970,6 +1219,89 @@ public class TsFileInsertionEventParserTest {
         alignedTsFile, new PrefixTreePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 4);
   }
 
+  private void testTreeParserSkipsUnnecessaryBitMaps(final boolean isQuery) throws Exception {
+    final long originalPipeMaxReaderChunkSize =
+        PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMaxReaderChunkSize(BITMAP_TEST_PIPE_MAX_READER_CHUNK_SIZE);
+
+    try {
+      alignedTsFile =
+          new File(isQuery ? "query-parser-bitmap.tsfile" : "scan-parser-bitmap.tsfile");
+      if (alignedTsFile.exists()) {
+        Assert.assertTrue(alignedTsFile.delete());
+      }
+
+      final List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("dense", TSDataType.INT64),
+              new MeasurementSchema("sparse", TSDataType.INT64));
+      final Tablet tablet = new Tablet("root.sg.d", schemaList, 2);
+      for (int rowIndex = 0; rowIndex < 2; ++rowIndex) {
+        tablet.addTimestamp(rowIndex, rowIndex);
+        tablet.addValue("dense", rowIndex, (long) rowIndex);
+        tablet.addValue("sparse", rowIndex, rowIndex == 0 ? 100L : null);
+      }
+
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.writeAligned(tablet);
+      }
+
+      try (final TsFileInsertionEventParser parser =
+          isQuery
+              ? new TsFileInsertionEventQueryParser(
+                  alignedTsFile,
+                  new PrefixTreePattern("root"),
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE,
+                  null)
+              : new TsFileInsertionEventScanParser(
+                  alignedTsFile,
+                  new PrefixTreePattern("root"),
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE,
+                  null,
+                  null,
+                  false)) {
+        final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+        Assert.assertTrue(iterator.hasNext());
+        Tablet parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+        if (parsedTablet.getSchemas().size() > 1) {
+          assertBitMapExistence(parsedTablet, false, true);
+          Assert.assertTrue(parsedTablet.isNull(1, 1));
+          Assert.assertFalse(iterator.hasNext());
+        } else {
+          Assert.assertNull(parsedTablet.getBitMaps());
+          Assert.assertTrue(iterator.hasNext());
+          while (iterator.hasNext()) {
+            parsedTablet = ((PipeRawTabletInsertionEvent) iterator.next()).convertToTablet();
+            Assert.assertNull(parsedTablet.getBitMaps());
+          }
+        }
+      }
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
+    }
+  }
+
+  private void assertBitMapExistence(
+      final Tablet tablet, final boolean... expectedColumnHasBitMap) {
+    final BitMap[] bitMaps = tablet.getBitMaps();
+    Assert.assertNotNull(bitMaps);
+    Assert.assertEquals(expectedColumnHasBitMap.length, bitMaps.length);
+    for (int i = 0; i < expectedColumnHasBitMap.length; ++i) {
+      if (expectedColumnHasBitMap[i]) {
+        Assert.assertNotNull(bitMaps[i]);
+      } else {
+        Assert.assertNull(bitMaps[i]);
+      }
+    }
+  }
+
   private void generateLargeAlignedTsFile(
       final File tsFile,
       final List<IMeasurementSchema> schemaList,
@@ -1405,6 +1737,64 @@ public class TsFileInsertionEventParserTest {
           AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
               timeChunk, valueChunkList);
       Assert.assertTrue(estimatedPageMemorySize > chunkSizeLimit);
+      return chunkSizeLimit;
+    }
+  }
+
+  private long calculatePipeMaxReaderChunkSizeForSinglePageNonAlignedChunk(final File tsFile)
+      throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final IDeviceID deviceID = reader.getDeviceMeasurementsMap().keySet().iterator().next();
+      final List<String> measurements = reader.getDeviceMeasurementsMap().get(deviceID);
+      Assert.assertFalse(measurements.isEmpty());
+
+      long chunkSizeLimit = 0;
+      long estimatedPageMemorySize = 0;
+      for (final String measurement : measurements) {
+        final List<ChunkMetadata> chunkMetadataList =
+            reader.getChunkMetadataList(new Path(deviceID, measurement, false));
+        Assert.assertEquals(1, chunkMetadataList.size());
+
+        final Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
+        Assert.assertEquals(
+            MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, chunk.getHeader().getChunkType() & 0x3F);
+        chunkSizeLimit += chunk.getHeader().getDataSize();
+        estimatedPageMemorySize +=
+            SinglePageWholeChunkReader.calculateMaxPageEstimatedMemoryUsageInBytesWithBatchData(
+                chunk);
+      }
+
+      Assert.assertTrue(estimatedPageMemorySize > chunkSizeLimit);
+      return chunkSizeLimit;
+    }
+  }
+
+  private long calculatePipeMaxReaderChunkSizeForMultiPageAlignedChunk(final File tsFile)
+      throws Exception {
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      final IDeviceID deviceID = reader.getDeviceMeasurementsMap().keySet().iterator().next();
+      final List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
+          reader.getAlignedChunkMetadata(deviceID, true);
+      Assert.assertEquals(1, alignedChunkMetadataList.size());
+
+      final AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+      final Chunk timeChunk =
+          reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
+      Assert.assertEquals(MetaMarker.CHUNK_HEADER, timeChunk.getHeader().getChunkType() & 0x3F);
+
+      long chunkSizeLimit = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
+      long estimatedMaxPageMemorySize =
+          SinglePageWholeChunkReader.calculateMaxPageEstimatedMemoryUsageInBytes(timeChunk);
+      for (final IChunkMetadata valueChunkMetadata :
+          alignedChunkMetadata.getValueChunkMetadataList()) {
+        final Chunk valueChunk = reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
+        Assert.assertEquals(MetaMarker.CHUNK_HEADER, valueChunk.getHeader().getChunkType() & 0x3F);
+        chunkSizeLimit += valueChunk.getHeader().getDataSize();
+        estimatedMaxPageMemorySize +=
+            SinglePageWholeChunkReader.calculateMaxPageEstimatedMemoryUsageInBytes(valueChunk);
+      }
+
+      Assert.assertTrue(estimatedMaxPageMemorySize > chunkSizeLimit);
       return chunkSizeLimit;
     }
   }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.schema.node.common;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.MNodeType;
@@ -35,6 +36,10 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   public AbstractAboveDatabaseMNode(BasicNode basicMNode) {
     this.basicMNode = basicMNode;
+  }
+
+  public BasicNode getBasicMNode() {
+    return basicMNode;
   }
 
   @Override
@@ -62,7 +67,7 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
@@ -150,22 +155,22 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   @Override
   public IDatabaseMNode<N> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IDeviceMNode<N> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IInternalMNode<N> getAsInternalMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IMeasurementMNode<N> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(SchemaMessages.WRONG_MNODE_TYPE);
   }
 
   /**

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
@@ -1434,8 +1435,7 @@ public class IoTDBConfig {
                 newDir ->
                     Objects.equals(
                         new File(newDir).getAbsolutePath(), new File(oldDir).getAbsolutePath()))) {
-          String msg =
-              String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+          String msg = String.format(DataNodeMiscMessages.DIR_REMOVED_FROM_DATA_DIRS, oldDir);
           logger.error(msg);
           throw new LoadConfigurationException(msg);
         }
@@ -1471,7 +1471,7 @@ public class IoTDBConfig {
     try {
       dataHomeDir = dataHomeFile.getCanonicalPath();
     } catch (IOException e) {
-      logger.error("Fail to get canonical path of {}", dataHomeFile, e);
+      logger.error(DataNodeMiscMessages.FAIL_GET_CANONICAL_PATH, dataHomeFile, e);
     }
     return FileUtils.addPrefix2FilePath(dataHomeDir, dir);
   }
@@ -1606,7 +1606,7 @@ public class IoTDBConfig {
 
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
     if (tierDataDirs.length < 1) {
-      logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
+      logger.warn(DataNodeMiscMessages.NO_DATA_DIR_SET);
       return;
     }
 
@@ -3616,7 +3616,7 @@ public class IoTDBConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        logger.warn("Failed to get field {}", configField, e);
+        logger.warn(DataNodeMiscMessages.FAILED_GET_FIELD, configField, e);
       }
     }
     return configMessage.toString();
@@ -4106,7 +4106,7 @@ public class IoTDBConfig {
       return;
     }
     this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
-    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
+    logger.info(DataNodeMiscMessages.SKIP_FAILED_TABLE_SCHEMA_CHECK, skipFailedTableSchemaCheck);
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {
@@ -4299,7 +4299,7 @@ public class IoTDBConfig {
   }
 
   public String getObjectStorageBucket() {
-    throw new UnsupportedOperationException("object storage is not supported yet");
+    throw new UnsupportedOperationException(DataNodeMiscMessages.OBJECT_STORAGE_NOT_SUPPORTED_YET);
   }
 
   public long getDataRatisPeriodicSnapshotInterval() {

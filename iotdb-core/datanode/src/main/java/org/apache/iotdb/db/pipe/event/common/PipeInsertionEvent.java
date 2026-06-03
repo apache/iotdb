@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
 import javax.validation.constraints.NotNull;
@@ -129,7 +130,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   public boolean isTableModelEvent() {
     if (isTableModelEvent == null) {
       if (sourceDatabaseNameFromDataRegion == null) {
-        throw new IllegalStateException("databaseNameFromDataRegion is null");
+        throw new IllegalStateException(DataNodePipeMessages.DATABASENAMEFROMDATAREGION_IS_NULL);
       }
       return isTableModelEvent = PathUtils.isTableModelDatabase(sourceDatabaseNameFromDataRegion);
     }

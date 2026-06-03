@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpres
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
@@ -152,7 +153,8 @@ public final class IrUtils {
         case OR:
           return FALSE_LITERAL;
       }
-      throw new IllegalArgumentException("Unsupported LogicalExpression operator");
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.UNSUPPORTED_LOGICALEXPRESSION_OPERATOR);
     }
 
     if (expressions.size() == 1) {

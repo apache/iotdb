@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.function.tvf;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.QetchAlgorithm;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.MatchState;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.match.model.Point;
@@ -110,16 +111,17 @@ public class PatternMatchTableFunction implements TableFunction {
     Double widthValue = (Double) ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue();
     Double heightValue = (Double) ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue();
     if (smoothValue < 0) {
-      throw new UDFException("smooth must be a non-negative number, but got: " + smoothValue);
+      throw new UDFException(String.format(QueryMessages.SMOOTH_MUST_BE_NON_NEGATIVE, smoothValue));
     }
     if (thresholdValue < 0) {
-      throw new UDFException("threshold must be a non-negative number, but got: " + thresholdValue);
+      throw new UDFException(
+          String.format(QueryMessages.THRESHOLD_MUST_BE_NON_NEGATIVE, thresholdValue));
     }
     if (widthValue < 0) {
-      throw new UDFException("width must be a non-negative number, but got: " + widthValue);
+      throw new UDFException(String.format(QueryMessages.WIDTH_MUST_BE_NON_NEGATIVE, widthValue));
     }
     if (heightValue < 0) {
-      throw new UDFException("height must be a non-negative number, but got: " + heightValue);
+      throw new UDFException(String.format(QueryMessages.HEIGHT_MUST_BE_NON_NEGATIVE, heightValue));
     }
 
     // outputColumnSchema description

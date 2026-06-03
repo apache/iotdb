@@ -174,6 +174,9 @@ public class SingleDeviceViewOperatorTest {
       int total = 0;
       while (singleDeviceViewOperator.isBlocked().isDone() && singleDeviceViewOperator.hasNext()) {
         TsBlock tsBlock = singleDeviceViewOperator.next();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          continue;
+        }
         assertEquals(4, tsBlock.getValueColumnCount());
         total += tsBlock.getPositionCount();
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {

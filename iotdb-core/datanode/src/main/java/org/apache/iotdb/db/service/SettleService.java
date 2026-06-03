@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleLog;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -92,7 +93,7 @@ public class SettleService implements IService {
       startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
       setRecoverFinish(true);
     } catch (WriteProcessException e) {
-      logger.error("Start error", e);
+      logger.error(DataNodeMiscMessages.START_ERROR, e);
     }
   }
 
@@ -129,9 +130,9 @@ public class SettleService implements IService {
     filesToBeSettledCount.set(0);
     if (settleThreadPool != null) {
       settleThreadPool.shutdownNow();
-      logger.info("Waiting for settle task pool to shut down");
+      logger.info(DataNodeMiscMessages.WAITING_SETTLE_POOL_SHUTDOWN);
       settleThreadPool = null;
-      logger.info("Settle service stopped");
+      logger.info(DataNodeMiscMessages.SETTLE_SERVICE_STOPPED);
     }
   }
 

@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.sink.protocol;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+
 public interface PipeConnectorWithEventDiscard {
 
   void discardEventsOfPipe(String pipeName, long creationTime, int regionId);
+
+  default void discardEventsOfPipe(final CommitterKey committerKey) {
+    discardEventsOfPipe(
+        committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
+  }
 }

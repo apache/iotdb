@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -327,7 +328,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     deleteCompactionModsFile(selectedUnsequenceFiles);
     // delete target file
     if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
-      throw new CompactionRecoverException("failed to delete target file %s");
+      throw new CompactionRecoverException(StorageEngineMessages.FAILED_TO_DELETE_TARGET_FILE);
     }
   }
 
@@ -352,7 +353,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     if (!deleteTsFilesOnDisk(selectedSequenceFiles)
         || !deleteTsFilesOnDisk(selectedUnsequenceFiles)) {
-      throw new CompactionRecoverException("source files cannot be deleted successfully");
+      throw new CompactionRecoverException(StorageEngineMessages.SOURCE_FILES_CANNOT_BE_DELETED);
     }
     if (recoverMemoryStatus) {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.approximate;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 
 import com.google.common.base.Preconditions;
@@ -188,7 +189,7 @@ public class HyperLogLog {
     }
 
     if (sum == 0.0) {
-      throw new IllegalStateException("sum should never be zero.");
+      throw new IllegalStateException(CalcMessages.SUM_SHOULD_NEVER_BE_ZERO);
     }
     // Apply bias correction formula
     double estimate = alpha * m * m / sum;

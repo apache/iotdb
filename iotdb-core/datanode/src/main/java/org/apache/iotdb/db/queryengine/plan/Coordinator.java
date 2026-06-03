@@ -46,6 +46,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
@@ -77,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
@@ -255,7 +257,7 @@ public class Coordinator {
         1_000L,
         1_000L,
         TimeUnit.MILLISECONDS);
-    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+    LOGGER.info(DataNodeQueryMessages.EXPIRED_QUERIES_INFO_CLEAR_THREAD_IS_SUCCESSFULLY_STARTED);
   }
 
   static {
@@ -308,7 +310,7 @@ public class Coordinator {
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
-        LOGGER.debug("[QueryStart] sql: {}", sql);
+        LOGGER.debug(DataNodeQueryMessages.QUERY_START_SQL, sql);
       }
       queryContext =
           new MPPQueryContext(
@@ -609,6 +611,7 @@ public class Coordinator {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
+        || statement instanceof CountDB
         || statement instanceof ShowDB
         || statement instanceof CreateDB
         || statement instanceof AlterDB
@@ -822,7 +825,7 @@ public class Coordinator {
       Supplier<String> contentOfQuerySupplier,
       Throwable t) {
     try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-      LOGGER.debug("[CleanUpQuery]]");
+      LOGGER.debug(DataNodeQueryMessages.CLEAN_UP_QUERY);
       queryExecution.stopAndCleanup(t);
       boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
       if (isUserQuery) {
@@ -871,7 +874,8 @@ public class Coordinator {
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+      SLOW_SQL_LOGGER.info(
+          DataNodeQueryMessages.COST_MS, costTime / 1_000_000, contentOfQuerySupplier.get());
     }
 
     // always print the query when debug is true
@@ -910,10 +914,7 @@ public class Coordinator {
           long executeTime = currentTime - queryStartTime;
           if (timeout > 0 && executeTime - 60_000L > timeout) {
             LOGGER.warn(
-                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
-                queryId,
-                executeTime,
-                timeout);
+                DataNodeQueryMessages.CLEANING_UP_STALE_QUERY, queryId, executeTime, timeout);
             cleanupQueryExecution(
                 queryId,
                 (org.apache.thrift.TBase<?, ?>) null,

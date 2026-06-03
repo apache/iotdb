@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
@@ -208,7 +209,7 @@ public class LoadTsFileTableSchemaCache {
       getTableSchemaValidationIterator()
           .forEachRemaining(o -> metadata.validateDeviceSchema(o, context));
     } catch (Exception e) {
-      LOGGER.warn("Auto create or verify schema error.", e);
+      LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
       throw new SemanticException(
           String.format("Auto create or verify schema error.  Detail: %s.", e.getMessage()));
     }
@@ -240,7 +241,7 @@ public class LoadTsFileTableSchemaCache {
             tableTagColumnMapper.get(tableName);
         if (Objects.isNull(tagColumnCountAndMapper)) {
           // This should not happen
-          LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
+          LOGGER.warn(DataNodeQueryMessages.FAILED_TO_FIND_TAG_COLUMN_MAPPING_FOR_TABLE, tableName);
         }
 
         for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
@@ -349,7 +350,8 @@ public class LoadTsFileTableSchemaCache {
                 database, result.getStatusCode()));
       }
     } catch (final Exception e) {
-      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
+      throw new LoadAnalyzeException(
+          DataNodeQueryMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
   }
 

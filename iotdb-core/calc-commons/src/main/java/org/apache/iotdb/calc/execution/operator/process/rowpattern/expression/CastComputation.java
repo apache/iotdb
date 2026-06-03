@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
 
@@ -72,7 +73,7 @@ public class CastComputation extends Computation {
           }
           return Boolean.parseBoolean(value.toString());
         default:
-          throw new UnsupportedOperationException("Unsupported cast to type: " + typeName);
+          throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_CAST_TO_TYPE + typeName);
       }
     } else {
       throw new UnsupportedOperationException(

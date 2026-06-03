@@ -37,6 +37,8 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
@@ -168,7 +170,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted when dispatching read async", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_READ_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -320,7 +322,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Interrupted when dispatching write async", e);
+      LOGGER.error(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -571,7 +573,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         ExceptionUtils.getRootCause(e).toString());
     TSStatus status = new TSStatus();
     status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-    status.setMessage("can't connect to node " + endPoint);
+    status.setMessage(DataNodeQueryMessages.CANT_CONNECT_TO_NODE_PREFIX + endPoint);
     // If the DataNode cannot be connected, its endPoint will be put into black list
     // so that the following retry will avoid dispatching instance towards this DataNode.
     queryContext.addFailedEndPoint(endPoint);
@@ -588,6 +590,20 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
+      // If the query has already timed out, do not retry. Re-dispatching the same FragmentInstance
+      // may cause it to be executed twice on the remote node (see the REPEATED_RPC_CALL handling in
+      // FragmentInstanceManager), so we fail fast with a timeout status instead.
+      long currentTime = System.currentTimeMillis();
+      if (currentTime - queryContext.getStartTime() >= queryContext.getTimeOut()) {
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.QUERY_TIMEOUT,
+                String.format(
+                    QueryTimeoutRuntimeException.QUERY_TIMEOUT_EXCEPTION_MESSAGE,
+                    queryContext.getStartTime(),
+                    queryContext.getStartTime() + queryContext.getTimeOut(),
+                    currentTime)));
+      }
       // we just retry once to clear stale connection for a restart node.
       try {
         dispatchRemoteHelper(instance, endPoint);
@@ -612,7 +628,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             ConsensusGroupId.Factory.createFromTConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
       } catch (final Throwable t) {
-        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        LOGGER.warn(DataNodeQueryMessages.DESERIALIZE_CONSENSUSGROUPID_FAILED, t);
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.config;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import java.nio.file.Paths;
 
 public class ConsumerConstant {
@@ -84,6 +86,6 @@ public class ConsumerConstant {
   public static final long AUTO_POLL_TIMEOUT_MS_MIN_VALUE = 1_000L;
 
   private ConsumerConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(SubscriptionMessages.UTILITY_CLASS);
   }
 }

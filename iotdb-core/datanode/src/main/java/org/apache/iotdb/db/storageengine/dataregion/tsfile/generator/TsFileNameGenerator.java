@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.generator;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -126,11 +127,11 @@ public class TsFileNameGenerator {
                     customSuffix);
           });
     } catch (DiskSpaceInsufficientException e) {
-      LOGGER.error("All disks are full, cannot create tsfile directory", e);
-      throw new IOException("Disk space insufficient", e);
+      LOGGER.error(StorageEngineMessages.ALL_DISKS_FULL_CANNOT_CREATE_TSFILE_DIR, e);
+      throw new IOException(StorageEngineMessages.DISK_SPACE_INSUFFICIENT, e);
     } catch (Exception e) {
-      LOGGER.warn("Failed to create tsfile directory after retries", e);
-      throw new IOException("Failed to create directory after retries", e);
+      LOGGER.warn(StorageEngineMessages.FAILED_TO_CREATE_TSFILE_DIR_AFTER_RETRIES, e);
+      throw new IOException(StorageEngineMessages.FAILED_TO_CREATE_DIR_AFTER_RETRIES, e);
     }
   }
 
@@ -168,10 +169,10 @@ public class TsFileNameGenerator {
                 Integer.parseInt(matcher.group(4)));
         return tsFileName;
       } catch (NumberFormatException e) {
-        throw new IOException("tsfile file name format is incorrect:" + fileName);
+        throw new IOException(StorageEngineMessages.TSFILE_NAME_FORMAT_INCORRECT + fileName);
       }
     } else {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
+      throw new IOException(StorageEngineMessages.TSFILE_NAME_FORMAT_INCORRECT + fileName);
     }
   }
 

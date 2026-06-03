@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CountDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
@@ -155,6 +157,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
@@ -355,7 +358,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
             }
             break;
           default:
-            throw new SemanticException("Unsupported database property key: " + key);
+            throw new SemanticException(
+                DataNodeQueryMessages.UNSUPPORTED_DATABASE_PROPERTY_KEY + key);
         }
         continue;
       }
@@ -388,7 +392,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           schema.setMinDataRegionGroupNum(parseIntFromLiteral(value, DATA_REGION_GROUP_NUM_KEY));
           break;
         default:
-          throw new SemanticException("Unsupported database property key: " + key);
+          throw new SemanticException(
+              DataNodeQueryMessages.UNSUPPORTED_DATABASE_PROPERTY_KEY + key);
       }
     }
     return node.getType() == DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE
@@ -416,6 +421,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   public IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
+        node,
+        databaseName ->
+            canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
+  }
+
+  @Override
+  public IConfigTask visitCountDB(final CountDB node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new CountDBTask(
         node,
         databaseName ->
             canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
@@ -587,7 +601,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
                     columnDefinition.getColumnCategory() == TsTableColumnCategory.TIME)
             .count();
     if (timeColumnCount > 1) {
-      throw new SemanticException("A table cannot have more than one time column");
+      throw new SemanticException(DataNodeQueryMessages.A_TABLE_CANNOT_HAVE_MORE_THAN_ONE_TIME);
     }
     if (timeColumnCount == 0) {
       // append the time column with default name "time" if user do not specify the time column
@@ -658,7 +672,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
       table.addColumnSchema(timeColumnSchema);
 
     } else {
-      throw new SemanticException("The time column's type shall be 'timestamp'.");
+      throw new SemanticException(DataNodeQueryMessages.THE_TIME_COLUMN_S_TYPE_SHALL_BE_TIMESTAMP);
     }
   }
 
@@ -697,7 +711,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     final String newName = node.getTarget().getValue();
     if (tableName.equals(newName)) {
-      throw new SemanticException("The table's old name shall not be equal to the new one.");
+      throw new SemanticException(DataNodeQueryMessages.THE_TABLE_S_OLD_NAME_SHALL_NOT_BE);
     }
 
     return new AlterTableRenameTableTask(
@@ -721,7 +735,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
 
     final ColumnDefinition definition = node.getColumn();
     if (definition.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Adding TIME column is not supported.");
+      throw new SemanticException(DataNodeQueryMessages.ADDING_TIME_COLUMN_IS_NOT_SUPPORTED);
     }
     return new AlterTableAddColumnTask(
         database,
@@ -755,7 +769,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();
     if (oldName.equals(newName)) {
-      throw new SemanticException("The column's old name shall not be equal to the new one.");
+      throw new SemanticException(DataNodeQueryMessages.THE_COLUMN_S_OLD_NAME_SHALL_NOT_BE);
     }
 
     return new AlterTableRenameColumnTask(
@@ -881,7 +895,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (!deduplicate.add(key)) {
-        throw new SemanticException("Duplicated property: " + key);
+        throw new SemanticException(DataNodeQueryMessages.DUPLICATED_PROPERTY + key);
       }
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
@@ -901,7 +915,8 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           map.put(key, null);
         }
       } else {
-        throw new SemanticException("Table property '" + key + "' is currently not allowed.");
+        throw new SemanticException(
+            DataNodeQueryMessages.TABLE_PROPERTY + key + "' is currently not allowed.");
       }
     }
     return map;
@@ -911,7 +926,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
     try {
       return getTSDataType(metadata.getType(toTypeSignature(dataType)));
     } catch (final TypeNotFoundException e) {
-      throw new SemanticException(String.format("Unknown type: %s", dataType));
+      throw new SemanticException(String.format(DataNodeQueryMessages.UNKNOWN_TYPE, dataType));
     }
   }
 
@@ -1025,7 +1040,7 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
           setConfigurationStatement.getNeededPrivileges(),
           context);
     } catch (IOException e) {
-      throw new AccessDeniedException("Failed to check config item permission");
+      throw new AccessDeniedException(DataNodeQueryMessages.FAILED_TO_CHECK_CONFIG_ITEM_PERMISSION);
     }
     setConfigurationStatement.checkSomeParametersKeepConsistentInCluster();
     return new SetConfigurationTask(setConfigurationStatement);

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -199,7 +200,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore for tsFile {}: The memory usage of the insert node {} has reached the dangerous threshold of single pipe {}, event count: {}",
+          DataNodePipeMessages.PIPE_TASK_CANNOTUSETABLETANYMORE_FOR_TSFILE_THE_MEMORY,
           pipeName,
           dataRegionId,
           event.getTsFileEpoch().getFilePath(),
@@ -278,9 +279,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "TsFile Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
+              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()

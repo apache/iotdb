@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.backup;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -136,11 +137,11 @@ public class IoTDBDataBackTool {
     boolean isVaild = true;
     if (type == null || type.trim().length() == 0 || !type.equals("quick")) {
       if (targetDirParam.isEmpty()) {
-        LOGGER.error(" -targetdir cannot be empty， The backup folder must be specified");
+        LOGGER.error(CliMessages.TARGET_DIR_EMPTY);
         isVaild = false;
       } else {
         if (isRelativePath(targetDirParam)) {
-          LOGGER.error("-targetdir parameter exception, please use absolute path");
+          LOGGER.error(CliMessages.TARGET_DIR_USE_ABSOLUTE_PATH);
           isVaild = false;
         }
       }
@@ -152,7 +153,7 @@ public class IoTDBDataBackTool {
           isVaild = false;
         }
         if (targetPathVild(targetDataDirParam)) {
-          LOGGER.error("-targetdatadir parameter exception, please use absolute path");
+          LOGGER.error(CliMessages.TARGET_DATA_DIR_USE_ABSOLUTE_PATH);
           isVaild = false;
         }
       }
@@ -164,7 +165,7 @@ public class IoTDBDataBackTool {
           isVaild = false;
         }
         if (targetPathVild(targetWalDirParam)) {
-          LOGGER.error("-targetwaldir parameter exception, please use absolute path");
+          LOGGER.error(CliMessages.TARGET_WAL_DIR_USE_ABSOLUTE_PATH);
           isVaild = false;
         }
       }
@@ -194,7 +195,7 @@ public class IoTDBDataBackTool {
           .append("iotdb_backup");
       File targetDir = new File(targetDirString.toString());
       if (targetDir.exists()) {
-        LOGGER.error("The backup folder already exists:{}", targetDirString);
+        LOGGER.error(CliMessages.BACKUP_FOLDER_EXISTS, targetDirString);
         System.exit(0);
       }
 
@@ -345,7 +346,7 @@ public class IoTDBDataBackTool {
             dnMapProperties);
       }
     }
-    LOGGER.info("all operations are complete");
+    LOGGER.info(CliMessages.ALL_OPERATIONS_COMPLETE);
     delFile(filename);
   }
 
@@ -353,7 +354,7 @@ public class IoTDBDataBackTool {
     for (Map.Entry<String, String> entry : dnDataDirsMap.entrySet()) {
       File backupDir = new File(entry.getValue());
       if (backupDir.exists()) {
-        LOGGER.error("The backup folder already exists:{}", entry.getValue());
+        LOGGER.error(CliMessages.BACKUP_FOLDER_EXISTS, entry.getValue());
         System.exit(0);
       }
     }
@@ -417,7 +418,7 @@ public class IoTDBDataBackTool {
             Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             targetFileCount.incrementAndGet();
           } catch (IOException e) {
-            LOGGER.error("copy file error", e);
+            LOGGER.error(CliMessages.COPY_FILE_ERROR, e);
           }
         }
       }
@@ -434,7 +435,7 @@ public class IoTDBDataBackTool {
             Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             targetFileCount.incrementAndGet();
           } catch (IOException e) {
-            LOGGER.error("copy file error", e);
+            LOGGER.error(CliMessages.COPY_FILE_ERROR, e);
           }
         }
       }
@@ -894,10 +895,10 @@ public class IoTDBDataBackTool {
     Properties properties = new Properties();
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
+        LOGGER.info(CliMessages.START_READ_CONFIG, url);
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (Exception e) {
-        LOGGER.error("Read config file {} error", url, e);
+        LOGGER.error(CliMessages.READ_CONFIG_ERROR, url, e);
       }
     }
     return properties;
@@ -953,7 +954,7 @@ public class IoTDBDataBackTool {
             }
           });
     } catch (IOException e) {
-      LOGGER.error("copy file error {}", sourceDirectory, e);
+      LOGGER.error(CliMessages.COPY_FILE_ERROR_WITH_PATH, sourceDirectory, e);
     }
   }
 
@@ -962,9 +963,9 @@ public class IoTDBDataBackTool {
     if (!directory.exists()) {
       boolean created = directory.mkdirs();
       if (created) {
-        LOGGER.info("Directory created successfully:{}", directoryPath);
+        LOGGER.info(CliMessages.DIRECTORY_CREATED, directoryPath);
       } else {
-        LOGGER.error("Failed to create directory:{}", directoryPath);
+        LOGGER.error(CliMessages.FAILED_TO_CREATE_DIRECTORY, directoryPath);
       }
     }
   }
@@ -986,12 +987,12 @@ public class IoTDBDataBackTool {
                   try {
                     Files.createLink(targetFile, file);
                   } catch (UnsupportedOperationException | IOException e) {
-                    LOGGER.debug("link file error {}", e);
+                    LOGGER.debug(CliMessages.LINK_FILE_ERROR, e);
                     try {
                       Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException ex) {
                       targetFileCount.decrementAndGet();
-                      LOGGER.error("copy file error {}", ex);
+                      LOGGER.error(CliMessages.COPY_FILE_ERROR_WITH_PATH, ex);
                     }
                   }
                 }
@@ -1079,7 +1080,7 @@ public class IoTDBDataBackTool {
       fileOutputStream.close();
 
     } catch (IOException e) {
-      LOGGER.error("properties file update error.", e);
+      LOGGER.error(CliMessages.PROPERTIES_FILE_UPDATE_ERROR, e);
     }
   }
 
@@ -1115,7 +1116,7 @@ public class IoTDBDataBackTool {
         return Integer.parseInt(lines.get(0));
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to read data from file: {}", filename, e);
+      LOGGER.error(CliMessages.FAILED_TO_READ_DATA, filename, e);
     }
     return 0;
   }
@@ -1134,7 +1135,7 @@ public class IoTDBDataBackTool {
     try {
       Files.write(filePath, Integer.toString(data).getBytes(StandardCharsets.UTF_8));
     } catch (IOException e) {
-      LOGGER.error("Failed to write data to file: {}", filename, e);
+      LOGGER.error(CliMessages.FAILED_TO_WRITE_DATA, filename, e);
     }
   }
 
@@ -1144,7 +1145,7 @@ public class IoTDBDataBackTool {
       try {
         Files.createFile(filePath);
       } catch (IOException e) {
-        LOGGER.error("Failed to create file: {}", filename, e);
+        LOGGER.error(CliMessages.FAILED_TO_CREATE_FILE, filename, e);
       }
     }
   }

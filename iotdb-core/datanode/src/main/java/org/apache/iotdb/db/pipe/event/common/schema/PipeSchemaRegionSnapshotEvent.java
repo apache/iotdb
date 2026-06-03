@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -355,7 +356,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Decrease reference count for mTree snapshot {} or tLog {} or attribute snapshot {} error.",
+            DataNodePipeMessages.DECREASE_REFERENCE_COUNT_FOR_MTREE_SNAPSHOT_OR,
             mTreeSnapshotPath,
             tagLogSnapshotPath,
             attributeSnapshotPath,

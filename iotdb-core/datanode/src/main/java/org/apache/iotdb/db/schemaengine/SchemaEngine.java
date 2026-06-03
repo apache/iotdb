@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaMetricManager;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -58,6 +59,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -108,7 +110,7 @@ public class SchemaEngine {
 
   public void init() {
     logger.info(
-        "used schema engine mode: {}.",
+        DataNodeSchemaMessages.USED_SCHEMA_ENGINE_MODE,
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
 
     schemaRegionLoader.init(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -198,7 +200,7 @@ public class SchemaEngine {
         final ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (final ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery", e);
+        logger.error(DataNodeSchemaMessages.SCHEMA_REGION_RECOVERY_ERROR, e);
       }
     }
     schemaRegionRecoverPools.shutdown();
@@ -234,7 +236,7 @@ public class SchemaEngine {
       schemaRegion.clear();
     }
     schemaRegionMap.clear();
-    logger.info("clear schema region map.");
+    logger.info(DataNodeSchemaMessages.CLEAR_SCHEMA_REGION_MAP);
 
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
@@ -266,7 +268,7 @@ public class SchemaEngine {
               .updateSubtreeMeasurementCountForTemplate(templateId, delta);
         } catch (MetadataException e) {
           logger.warn(
-              "Failed to update subtree measurement count for template {} in schemaRegion {}",
+              DataNodeSchemaMessages.FAILED_TO_UPDATE_SUBTREE_MEASUREMENT_COUNT,
               templateId,
               schemaRegion.getSchemaRegionId(),
               e);
@@ -278,7 +280,7 @@ public class SchemaEngine {
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
     if (this.schemaRegionMap == null) {
-      throw new MetadataException("Peer is shutting down now.");
+      throw new MetadataException(DataNodeSchemaMessages.PEER_IS_SHUTTING_DOWN);
     }
     final ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
@@ -287,9 +289,10 @@ public class SchemaEngine {
       } else {
         throw new MetadataException(
             String.format(
-                "SchemaRegion [%s] is duplicated between [%s] and [%s], "
-                    + "and the former one has been recovered.",
-                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
+                DataNodeSchemaMessages.SCHEMA_REGION_DUPLICATED,
+                schemaRegionId,
+                schemaRegion.getDatabaseFullPath(),
+                storageGroup));
       }
     }
     this.schemaRegionMap.put(
@@ -307,15 +310,16 @@ public class SchemaEngine {
             createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
-            "Recover [{}] spend: {} ms",
+            DataNodeSchemaMessages.RECOVER_SPEND,
             storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
       } catch (final MetadataException e) {
         logger.error(
             String.format(
-                "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup));
+                DataNodeSchemaMessages.SCHEMA_REGION_FAILED_TO_RECOVER,
+                schemaRegionId.getId(),
+                storageGroup));
         throw new RuntimeException(e);
       }
     };
@@ -335,7 +339,7 @@ public class SchemaEngine {
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion == null) {
-      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
+      logger.warn(DataNodeSchemaMessages.SCHEMA_REGION_ALREADY_DELETED, schemaRegionId);
       return;
     }
     schemaRegion.deleteSchemaRegion();
@@ -368,11 +372,13 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> deviceNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
 
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
@@ -384,10 +390,12 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    final Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new HashSet<>(schemaIds) : schemaIds;
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
                     && !entry
                         .getValue()
@@ -414,7 +422,7 @@ public class SchemaEngine {
                               false);
                   if (Objects.isNull(table)) {
                     logger.warn(
-                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        DataNodeSchemaMessages.FAILED_TO_GET_TABLE_FOR_TIMESERIES_COUNT,
                         PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
                         tableEntry.getKey());
                     return 0L;

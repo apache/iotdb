@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpressio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 /**
@@ -46,7 +47,7 @@ public abstract class PredicateVisitor<R, C> implements AstVisitor<R, C> {
   @Override
   public R visitExpression(Expression expression, C context) {
     throw new IllegalArgumentException(
-        "Unsupported expression: " + expression.getClass().getSimpleName());
+        DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + expression.getClass().getSimpleName());
   }
 
   @Override

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -102,7 +103,7 @@ public class ProcedureInfo implements SnapshotProcessor {
                       Long.parseLong(p2.getFileName().toString().split("\\.")[0])))
           .forEach(path -> loadProcedure(path).ifPresent(procedureList::add));
     } catch (IOException e) {
-      LOGGER.error("Load procedure wal failed.", e);
+      LOGGER.error(ConfigNodeMessages.LOAD_PROCEDURE_WAL_FAILED, e);
     }
     procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
     procedureList.forEach(
@@ -113,22 +114,23 @@ public class ProcedureInfo implements SnapshotProcessor {
   public void upgrade() {
     if (isOldVersion()) {
       try {
-        LOGGER.info("Old procedure files have been loaded successfully, taking snapshot...");
+        LOGGER.info(
+            ConfigNodeMessages.OLD_PROCEDURE_FILES_HAVE_BEEN_LOADED_SUCCESSFULLY_TAKING_SNAPSHOT);
         configManager.getConsensusManager().manuallyTakeSnapshot();
       } catch (ConsensusException e) {
-        LOGGER.warn("Taking snapshot fail, procedure upgrade fail", e);
+        LOGGER.warn(ConfigNodeMessages.TAKING_SNAPSHOT_FAIL_PROCEDURE_UPGRADE_FAIL, e);
         return;
       }
       try {
         FileUtils.recursivelyDeleteFolder(OLD_PROCEDURE_WAL_DIR);
       } catch (IOException e) {
-        LOGGER.error("Delete useless procedure wal dir fail.", e);
+        LOGGER.error(ConfigNodeMessages.DELETE_USELESS_PROCEDURE_WAL_DIR_FAIL, e);
         LOGGER.error(
-            "You should manually delete the procedure wal dir before ConfigNode restart. {}",
+            ConfigNodeMessages.YOU_SHOULD_MANUALLY_DELETE_THE_PROCEDURE_WAL_DIR_BEFORE_CONFIGNODE,
             OLD_PROCEDURE_WAL_DIR);
       }
       LOGGER.info(
-          "The Procedure framework has been successfully upgraded. Now it uses the consensus layer's services instead of maintaining the WAL itself.");
+          ConfigNodeMessages.THE_PROCEDURE_FRAMEWORK_HAS_BEEN_SUCCESSFULLY_UPGRADED_NOW_IT_USES);
     }
   }
 
@@ -148,7 +150,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     try {
       procedureWAL.save(procedure);
     } catch (IOException e) {
-      LOGGER.error("Update Procedure (pid={}) wal failed", procedure.getProcId(), e);
+      LOGGER.error(ConfigNodeMessages.UPDATE_PROCEDURE_PID_WAL_FAILED, procedure.getProcId(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -172,9 +174,10 @@ public class ProcedureInfo implements SnapshotProcessor {
         return Optional.ofNullable(procedure);
       }
     } catch (Exception e) {
-      LOGGER.error("Load {} failed, it will be deleted.", procedureFilePath, e);
+      LOGGER.error(ConfigNodeMessages.LOAD_FAILED_IT_WILL_BE_DELETED, procedureFilePath, e);
       if (!procedureFilePath.toFile().delete()) {
-        LOGGER.error("{} deleted failed; take appropriate action.", procedureFilePath, e);
+        LOGGER.error(
+            ConfigNodeMessages.DELETED_FAILED_TAKE_APPROPRIATE_ACTION, procedureFilePath, e);
       }
     }
     return Optional.empty();
@@ -185,13 +188,13 @@ public class ProcedureInfo implements SnapshotProcessor {
     File procedureSnapshotDir = new File(snapshotDir, PROCEDURE_SNAPSHOT_DIR);
     if (procedureSnapshotDir.exists()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot dir [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_DIR_IS_ALREADY_EXIST,
           procedureSnapshotDir.getAbsolutePath());
       return false;
     }
     File tmpDir = new File(procedureSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
     if (!tmpDir.mkdir()) {
-      LOGGER.error("Failed to take snapshot, because create tmp dir [{}] fail.", tmpDir);
+      LOGGER.error(ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_CREATE_TMP_DIR_FAIL, tmpDir);
       return false;
     }
 
@@ -223,7 +226,10 @@ public class ProcedureInfo implements SnapshotProcessor {
               } catch (IOException e) {
                 snapshotAllSuccess.set(false);
                 LOGGER.warn(
-                    "{} id {} took snapshot fail", procedure.getClass(), procedure.getProcId(), e);
+                    ConfigNodeMessages.ID_TOOK_SNAPSHOT_FAIL,
+                    procedure.getClass(),
+                    procedure.getProcId(),
+                    e);
               }
             });
     if (!snapshotAllSuccess.get()) {
@@ -238,7 +244,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     File procedureSnapshotDir = new File(snapshotDir, PROCEDURE_SNAPSHOT_DIR);
     if (!procedureSnapshotDir.exists() || !procedureSnapshotDir.isDirectory()) {
       LOGGER.error(
-          "Failed to load snapshot, because snapshot dir [{}] not exists.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_BECAUSE_SNAPSHOT_DIR_NOT_EXISTS,
           procedureSnapshotDir.getAbsolutePath());
       return;
     }

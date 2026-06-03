@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.transformation.datastructure.row;
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.datastructure.Cache;
 import org.apache.iotdb.calc.transformation.datastructure.SerializableList;
 import org.apache.iotdb.calc.transformation.datastructure.iterator.RowListForwardIterator;
@@ -379,7 +380,7 @@ public class ElasticSerializableRowList {
       return;
     }
 
-    throw new QueryProcessException("Memory is not enough for current query.");
+    throw new QueryProcessException(CalcMessages.MEMORY_IS_NOT_ENOUGH_FOR_CURRENT_QUERY);
   }
 
   protected void applyNewMemoryControlParameters(

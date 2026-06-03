@@ -87,7 +87,9 @@ public class SchemaCountNodeSerdeTest {
             10,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true,
+            true);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
@@ -122,7 +124,9 @@ public class SchemaCountNodeSerdeTest {
             true,
             null,
             Collections.emptyMap(),
-            SchemaConstant.ALL_MATCH_SCOPE);
+            SchemaConstant.ALL_MATCH_SCOPE,
+            true,
+            true);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

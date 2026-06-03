@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
@@ -77,7 +78,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final Void v) {
 
-    LOGGER.info("Start data type conversion for LoadTsFileStatement: {}", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION, loadTsFileStatement);
 
     final LoadTsFileMemoryBlock block =
         LoadTsFileMemoryManager.getInstance()

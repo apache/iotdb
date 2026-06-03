@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -119,8 +120,6 @@ public class WriteBackSink implements PipeConnector {
   private boolean useEventUserName;
 
   private UserEntity userEntity;
-
-  private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
 
@@ -267,7 +266,7 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
             ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertBaseStatement insertBaseStatement;
     insertBaseStatement =
@@ -310,7 +309,7 @@ public class WriteBackSink implements PipeConnector {
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
             ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-            : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
+            : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
 
     final InsertTabletStatement insertTabletStatement =
         PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
@@ -414,7 +413,7 @@ public class WriteBackSink implements PipeConnector {
         throw e;
       }
       LOGGER.debug(
-          "Execute statement {} to database {}, skip because no permission.",
+          DataNodePipeMessages.EXECUTE_STATEMENT_TO_DATABASE_SKIP_BECAUSE_NO,
           statement.getClass().getSimpleName(),
           dataBaseName);
       return StatusUtils.OK;
@@ -488,7 +487,8 @@ public class WriteBackSink implements PipeConnector {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new PipeException("Auto create database failed because: " + e.getMessage());
+      throw new PipeException(
+          DataNodePipeMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
 
     ALREADY_CREATED_DATABASES.add(database);

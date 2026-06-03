@@ -25,10 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
@@ -157,7 +154,7 @@ public class WALBuffer extends AbstractWALBuffer {
       compressedByteBuffer =
           ByteBuffer.allocateDirect(getCompressedByteBufferSize(ONE_THIRD_WAL_BUFFER_SIZE));
     } catch (OutOfMemoryError e) {
-      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      logger.error(StorageEngineMessages.FAIL_TO_ALLOCATE_WAL_BUFFER_OOM, identifier, e);
       close();
       throw e;
     }
@@ -196,7 +193,7 @@ public class WALBuffer extends AbstractWALBuffer {
       compressedByteBuffer = ByteBuffer.allocateDirect(getCompressedByteBufferSize(capacity));
       currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
-      logger.error("Fail to allocate wal node-{}'s buffer because out of memory.", identifier, e);
+      logger.error(StorageEngineMessages.FAIL_TO_ALLOCATE_WAL_BUFFER_OOM, identifier, e);
       close();
       throw e;
     } finally {
@@ -217,7 +214,7 @@ public class WALBuffer extends AbstractWALBuffer {
     try {
       walEntries.put(walEntry);
     } catch (InterruptedException e) {
-      logger.warn("Interrupted when waiting for adding WALEntry to buffer.");
+      logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_ADD_WAL_ENTRY);
       Thread.currentThread().interrupt();
     }
   }
@@ -337,15 +334,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // parse search index
       long searchIndex = DEFAULT_SEARCH_INDEX;
       if (walEntry.getType().needSearch()) {
-        if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
-          searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
-        } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
-          searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
-        } else if (walEntry.getType() == WALEntryType.OBJECT_FILE_NODE) {
-          searchIndex = ((ObjectNode) walEntry.getValue()).getSearchIndex();
-        } else {
-          searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
-        }
+        searchIndex = ((WALInfoEntry) walEntry).getSearchIndex();
         if (searchIndex != DEFAULT_SEARCH_INDEX) {
           currentSearchIndex = searchIndex;
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
@@ -369,7 +358,7 @@ public class WALBuffer extends AbstractWALBuffer {
       switch (walSignalEntry.getType()) {
         case ROLL_WAL_LOG_WRITER_SIGNAL:
           if (logger.isDebugEnabled()) {
-            logger.debug("Handle roll log writer signal for wal node-{}.", identifier);
+            logger.debug(StorageEngineMessages.HANDLE_ROLL_LOG_WRITER_SIGNAL, identifier);
           }
           info.rollWALFileWriterListener = walSignalEntry.getWalFlushListener();
           fsyncWorkingBuffer(currentSearchIndex, currentFileStatus, info);
@@ -512,7 +501,7 @@ public class WALBuffer extends AbstractWALBuffer {
       workingBuffer.clear();
       idleBuffer = null;
     } catch (InterruptedException e) {
-      logger.warn("Interrupted When waiting for available working buffer.");
+      logger.warn(StorageEngineMessages.INTERRUPTED_WAITING_WORKING_BUFFER);
       Thread.currentThread().interrupt();
     } finally {
       buffersLock.unlock();
@@ -706,7 +695,7 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         walEntries.put(new WALSignalEntry(WALEntryType.CLOSE_SIGNAL));
       } catch (InterruptedException e) {
-        logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
+        logger.error(StorageEngineMessages.FAIL_TO_PUT_CLOSE_SIGNAL, e);
         Thread.currentThread().interrupt();
       }
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
@@ -719,7 +708,7 @@ public class WALBuffer extends AbstractWALBuffer {
       try {
         currentWALFileWriter.close();
       } catch (IOException e) {
-        logger.error("Fail to close wal node-{}'s log writer.", identifier, e);
+        logger.error(StorageEngineMessages.FAIL_TO_CLOSE_WAL_LOG_WRITER, identifier, e);
       }
     }
     checkpointManager.close();
@@ -738,10 +727,10 @@ public class WALBuffer extends AbstractWALBuffer {
     thread.shutdown();
     try {
       if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
-        logger.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
+        logger.warn(StorageEngineMessages.WAITING_THREAD_TERMINATED_TIMEOUT, threadName.getName());
       }
     } catch (InterruptedException e) {
-      logger.warn("Thread {} still doesn't exit after 30s", threadName.getName());
+      logger.warn(StorageEngineMessages.THREAD_NOT_EXIT_AFTER_30S, threadName.getName());
       Thread.currentThread().interrupt();
     }
   }

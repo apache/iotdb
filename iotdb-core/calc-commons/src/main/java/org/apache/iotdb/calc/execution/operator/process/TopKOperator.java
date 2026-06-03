@@ -21,6 +21,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
@@ -324,7 +325,7 @@ public abstract class TopKOperator implements ProcessOperator {
                   new Binary[positionCount]);
           break;
         default:
-          throw new UnSupportedDataTypeException("Unknown datatype: " + dataTypes.get(i));
+          throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + dataTypes.get(i));
       }
     }
     this.tmpResultTsBlock = constrcutResultTsBlock(positionCount, columns);
@@ -397,7 +398,7 @@ public abstract class TopKOperator implements ProcessOperator {
           memory += 16;
           break;
         default:
-          throw new UnSupportedDataTypeException("Unknown datatype: " + dataType);
+          throw new UnSupportedDataTypeException(CalcMessages.UNKNOWN_DATATYPE + dataType);
       }
     }
     return memory;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -163,7 +164,7 @@ public class UDTFLOF implements UDTF {
             lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
-            throw new UDFException("Fail to get LOF " + m, e);
+            throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
           }
         }
       }
@@ -201,7 +202,7 @@ public class UDTFLOF implements UDTF {
               lof[m] = getLOF(knn, knn[m], size);
               collector.putDouble(timestamp[m], lof[m]);
             } catch (Exception e) {
-              throw new UDFException("Fail to get LOF " + m, e);
+              throw new UDFException(LibraryUdfMessages.FAIL_TO_GET_LOF + m, e);
             }
           }
         }

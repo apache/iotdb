@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
@@ -245,7 +246,7 @@ public class MemTableFlushTask {
             try {
               task = encodingTaskQueue.take();
             } catch (InterruptedException e1) {
-              LOGGER.error("Take task into ioTaskQueue Interrupted");
+              LOGGER.error(StorageEngineMessages.TAKE_TASK_INTO_IO_QUEUE_INTERRUPTED);
               Thread.currentThread().interrupt();
               break;
             }
@@ -272,7 +273,6 @@ public class MemTableFlushTask {
                 times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
               }
               writableMemChunk.encode(ioTaskQueue, encodeInfo, times);
-              writableMemChunk.releaseTemporaryTvListForFlush();
               long subTaskTime = System.currentTimeMillis() - starTime;
               WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;
@@ -281,7 +281,7 @@ public class MemTableFlushTask {
           try {
             ioTaskQueue.put(new TaskEnd());
           } catch (InterruptedException e) {
-            LOGGER.error("Put task into ioTaskQueue Interrupted");
+            LOGGER.error(StorageEngineMessages.PUT_TASK_INTO_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
           }
 
@@ -336,7 +336,7 @@ public class MemTableFlushTask {
           try {
             ioMessage = ioTaskQueue.take();
           } catch (InterruptedException e1) {
-            LOGGER.error("take task from ioTaskQueue Interrupted");
+            LOGGER.error(StorageEngineMessages.TAKE_TASK_FROM_IO_QUEUE_INTERRUPTED);
             Thread.currentThread().interrupt();
             break;
           }

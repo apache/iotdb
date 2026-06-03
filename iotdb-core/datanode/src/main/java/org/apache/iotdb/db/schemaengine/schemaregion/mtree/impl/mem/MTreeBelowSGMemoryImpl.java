@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -207,6 +208,43 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  private IDeviceMNode<IMemMNode> setToEntityAndUpdateFlags(final IMemMNode node) {
+    final boolean wasDevice = node.isDevice();
+    final IDeviceMNode<IMemMNode> deviceMNode = store.setToEntity(node);
+    if (!wasDevice) {
+      markAncestorsHavingDeviceDescendant(node);
+    }
+    return deviceMNode;
+  }
+
+  private void markAncestorsHavingDeviceDescendant(final IMemMNode deviceNode) {
+    IMemMNode current = deviceNode.getParent();
+    while (current != null && !current.hasDeviceDescendant()) {
+      current.setHasDeviceDescendant(true);
+      current = current.getParent();
+    }
+  }
+
+  private boolean hasDeviceDescendantInChildren(final IMemMNode node) {
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private void refreshAncestorsHavingDeviceDescendant(IMemMNode startNode) {
+    IMemMNode current = startNode;
+    while (current != null) {
+      current.setHasDeviceDescendant(hasDeviceDescendantInChildren(current));
+      current = current.getParent();
+    }
+  }
+
   private long getTemplateMeasurementCount(final int templateId) {
     final Template template = ClusterTemplateManager.getInstance().getTemplate(templateId);
     return template == null ? 0L : template.getMeasurementNumber();
@@ -315,7 +353,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
       }
 
       // create a non-aligned time series
@@ -409,7 +447,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         entityMNode.setAligned(true);
       }
 
@@ -480,7 +518,7 @@ public class MTreeBelowSGMemoryImpl {
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
         if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(databaseMNode.getName())) {
           throw new ExceedQuotaException(
-              "The number of devices has reached the upper limit",
+              DataNodeSchemaMessages.DEVICE_NUM_UPPER_LIMIT,
               TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
         }
       }
@@ -544,7 +582,7 @@ public class MTreeBelowSGMemoryImpl {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
-                  "The number of timeseries has reached the upper limit",
+                  DataNodeSchemaMessages.TIMESERIES_NUM_UPPER_LIMIT,
                   TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode()));
         }
       }
@@ -563,7 +601,7 @@ public class MTreeBelowSGMemoryImpl {
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
-              throw new MetadataException("View table is not allowed.");
+              throw new MetadataException(DataNodeSchemaMessages.VIEW_TABLE_NOT_ALLOWED);
             }
             if (node.isPreDeleted()) {
               throw new MeasurementInBlackListException(
@@ -573,7 +611,7 @@ public class MTreeBelowSGMemoryImpl {
                 measurementPath.getMeasurementSchema().getType(), newDataType)) {
               throw new MetadataException(
                   String.format(
-                      "The timeseries %s used new type %s is not compatible with the existing one %s",
+                      DataNodeSchemaMessages.TIMESERIES_TYPE_NOT_COMPATIBLE,
                       measurementPath.getFullPath(),
                       newDataType,
                       measurementPath.getMeasurementSchema().getType()));
@@ -606,11 +644,11 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement, alias: "
+              DataNodeSchemaMessages.ALIAS_DUPLICATED
                   + alias
-                  + ", fullPath: "
+                  + DataNodeSchemaMessages.ALIAS_DUPLICATED_DETAIL
                   + fullPath
-                  + ", otherMeasurement: "
+                  + DataNodeSchemaMessages.ALIAS_DUPLICATED_OTHER_MEASUREMENT
                   + memMNode.getFullPath());
         }
         if (measurementMNode.getAlias() != null) {
@@ -657,14 +695,15 @@ public class MTreeBelowSGMemoryImpl {
       boolean hasMeasurement = false;
       boolean hasNonViewMeasurement = false;
       IMemMNode child;
-      IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
-      while (iterator.hasNext()) {
-        child = iterator.next();
-        if (child.isMeasurement()) {
-          hasMeasurement = true;
-          if (!child.getAsMeasurementMNode().isLogicalView()) {
-            hasNonViewMeasurement = true;
-            break;
+      try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode)) {
+        while (iterator.hasNext()) {
+          child = iterator.next();
+          if (child.isMeasurement()) {
+            hasMeasurement = true;
+            if (!child.getAsMeasurementMNode().isLogicalView()) {
+              hasNonViewMeasurement = true;
+              break;
+            }
           }
         }
       }
@@ -673,6 +712,7 @@ public class MTreeBelowSGMemoryImpl {
         synchronized (this) {
           curNode = store.setToInternal(entityMNode);
         }
+        refreshAncestorsHavingDeviceDescendant(curNode.getParent());
       } else if (!hasNonViewMeasurement) {
         // has some measurement but they are all logical view
         entityMNode.setAligned(null);
@@ -1033,7 +1073,7 @@ public class MTreeBelowSGMemoryImpl {
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
       }
     }
 
@@ -1141,7 +1181,7 @@ public class MTreeBelowSGMemoryImpl {
     if (cur.isDevice()) {
       entityMNode = cur.getAsDeviceMNode();
     } else {
-      entityMNode = store.setToEntity(cur);
+      entityMNode = setToEntityAndUpdateFlags(cur);
     }
 
     if (!entityMNode.isAligned()) {
@@ -1196,14 +1236,21 @@ public class MTreeBelowSGMemoryImpl {
 
   private long rebuildSubtreeMeasurementCountFromNode(final IMemMNode node) {
     long count = node.isMeasurement() ? 1L : 0L;
-    final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node);
-    while (iterator.hasNext()) {
-      count += rebuildSubtreeMeasurementCountFromNode(iterator.next());
+    boolean hasDeviceDescendant = false;
+    try (final IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(node)) {
+      while (iterator.hasNext()) {
+        final IMemMNode child = iterator.next();
+        count += rebuildSubtreeMeasurementCountFromNode(child);
+        if (child.isDevice() || child.hasDeviceDescendant()) {
+          hasDeviceDescendant = true;
+        }
+      }
     }
     if (node.isDevice() && node.getAsDeviceMNode().isUseTemplate()) {
       count += getTemplateMeasurementCount(node.getAsDeviceMNode().getSchemaTemplateId());
     }
     node.setSubtreeMeasurementCount(count);
+    node.setHasDeviceDescendant(hasDeviceDescendant);
     return count;
   }
 
@@ -1786,7 +1833,7 @@ public class MTreeBelowSGMemoryImpl {
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(device);
+        entityMNode = setToEntityAndUpdateFlags(device);
         // this parent has no measurement before. The leafName is his first child who is a logical
         // view.
         entityMNode.setAligned(null);
@@ -1892,7 +1939,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     // todo implement storage for device of diverse data types
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Start to create table device {}.{}", tableName, Arrays.toString(devicePath));
+      LOGGER.debug(
+          DataNodeSchemaMessages.START_CREATE_TABLE_DEVICE, tableName, Arrays.toString(devicePath));
     }
     IMemMNode cur = databaseMNode.getChild(tableName);
     if (cur == null) {
@@ -1913,23 +1961,27 @@ public class MTreeBelowSGMemoryImpl {
     synchronized (this) {
       if (cur.isDevice()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Table device {}.{} already exists", tableName, Arrays.toString(devicePath));
+          LOGGER.debug(
+              DataNodeSchemaMessages.TABLE_DEVICE_ALREADY_EXISTS,
+              tableName,
+              Arrays.toString(devicePath));
         }
         entityMNode = cur.getAsDeviceMNode();
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
-          throw new MetadataException("Table device shall not create under tree model");
+          throw new MetadataException(DataNodeSchemaMessages.TABLE_DEVICE_NOT_UNDER_TREE_MODEL);
         }
         final TableDeviceInfo<IMemMNode> deviceInfo =
             (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();
         attributeUpdater.accept(deviceInfo.getAttributePointer());
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
         final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
         deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addTableDevice(tableName);
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Table device {}.{} created", tableName, Arrays.toString(devicePath));
+          LOGGER.debug(
+              DataNodeSchemaMessages.TABLE_DEVICE_CREATED, tableName, Arrays.toString(devicePath));
         }
       }
     }
@@ -2040,6 +2092,7 @@ public class MTreeBelowSGMemoryImpl {
       collector.traverse();
     }
     databaseMNode.deleteChild(tableName);
+    refreshAncestorsHavingDeviceDescendant(databaseMNode);
     regionStatistics.resetTableDevice(tableName);
     store.releaseMemory(memoryReleased.get());
     return true;
