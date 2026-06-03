@@ -108,6 +108,7 @@ import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 public class IoTConsensusServerImpl {
 
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
+  private static final String SNAPSHOT_LOG_NAME = "snapshot.log";
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -378,22 +379,45 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
+      File existingFile = getExistingSnapshotFile(targetFilePath);
+      if (existingFile != null) {
+        writeSnapshotFragment(existingFile, fileChunk, fileOffset);
+        return;
+      }
+
       recvFolderManager.getNextWithRetry(
           folder -> {
-            File targetFile = getSnapshotPath(folder, targetFilePath);
-            Path parentDir = Paths.get(targetFile.getParent());
-            if (!Files.exists(parentDir)) {
-              Files.createDirectories(parentDir);
-            }
-            try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-                FileChannel channel = fos.getChannel()) {
-              channel.write(fileChunk.slice(), fileOffset);
-            }
+            writeSnapshotFragment(getSnapshotPath(folder, targetFilePath), fileChunk, fileOffset);
             return null;
           });
+    } catch (IOException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
     } catch (DiskSpaceInsufficientException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    }
+  }
+
+  private File getExistingSnapshotFile(String targetFilePath) {
+    for (String folder : recvFolderManager.getFolders()) {
+      File targetFile = getSnapshotPath(folder, targetFilePath);
+      if (targetFile.exists()) {
+        return targetFile;
+      }
+    }
+    return null;
+  }
+
+  private void writeSnapshotFragment(File targetFile, ByteBuffer fileChunk, long fileOffset)
+      throws IOException {
+    Path parentDir = Paths.get(targetFile.getParent());
+    if (!Files.exists(parentDir)) {
+      Files.createDirectories(parentDir);
+    }
+    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
+        FileChannel channel = fos.getChannel()) {
+      channel.write(fileChunk.slice(), fileOffset);
     }
   }
 
