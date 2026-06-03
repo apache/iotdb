@@ -46,6 +46,9 @@ public interface SubscriptionMessageProcessor {
   /**
    * Flush all internally buffered messages. Called when the consumer is closing.
    *
+   * <p>The returned list is transferred to the consumer and must not be modified by the processor
+   * after this method returns.
+   *
    * @return any remaining buffered messages
    */
   List<SubscriptionMessage> flush();

@@ -151,7 +151,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     if (impl == null) {
       final String message =
           String.format(
-              "unexpected consensusGroupId %s for TSyncWriterSafeTimeBarrierReq", groupId);
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "TSyncWriterSafeTimeBarrierReq");
       LOGGER.error(message);
       final TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);

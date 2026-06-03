@@ -297,17 +297,25 @@ public class ConsensusLogToTabletConverter {
       schemas.add(new MeasurementSchema(measurements[colIdx], dataTypes[colIdx]));
     }
 
-    // Build column arrays and bitmaps using bulk copy
-    final long[] newTimes = Arrays.copyOf(times, rowCount);
+    // Reuse complete tablets on the server-side read path. Column filtering changes tablet shape
+    // and still needs copies for the selected columns.
+    final long[] newTimes = allColumnsMatch ? times : Arrays.copyOf(times, rowCount);
     final Object[] newColumns = new Object[columnCount];
     final BitMap[] newBitMaps = new BitMap[columnCount];
 
     for (int i = 0; i < columnCount; i++) {
       final int originalColIdx = allColumnsMatch ? i : matchedColumnIndices.get(i);
-      newColumns[i] = copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+      newColumns[i] =
+          allColumnsMatch
+              ? columns[originalColIdx]
+              : copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
       if (bitMaps != null && bitMaps[originalColIdx] != null) {
-        newBitMaps[i] = new BitMap(rowCount);
-        BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[i], 0, rowCount);
+        if (allColumnsMatch) {
+          newBitMaps[i] = bitMaps[originalColIdx];
+        } else {
+          newBitMaps[i] = new BitMap(rowCount);
+          BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[i], 0, rowCount);
+        }
       }
     }
 
@@ -526,18 +534,25 @@ public class ConsensusLogToTabletConverter {
       columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), originalColIdx));
     }
 
-    // Build column arrays and bitmaps using bulk copy
-    final long[] newTimes = Arrays.copyOf(times, rowCount);
+    // Reuse complete tablets on the server-side read path. Column filtering changes tablet shape
+    // and still needs copies for the selected columns.
+    final long[] newTimes = allColumnsMatch ? times : Arrays.copyOf(times, rowCount);
     final Object[] newColumns = new Object[columnCount];
     final BitMap[] newBitMaps = new BitMap[columnCount];
 
     for (int colIdx = 0; colIdx < columnCount; colIdx++) {
       final int originalColIdx = allColumnsMatch ? colIdx : matchedColumnIndices.get(colIdx);
       newColumns[colIdx] =
-          copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+          allColumnsMatch
+              ? columns[originalColIdx]
+              : copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
       if (bitMaps != null && bitMaps[originalColIdx] != null) {
-        newBitMaps[colIdx] = new BitMap(rowCount);
-        BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[colIdx], 0, rowCount);
+        if (allColumnsMatch) {
+          newBitMaps[colIdx] = bitMaps[originalColIdx];
+        } else {
+          newBitMaps[colIdx] = new BitMap(rowCount);
+          BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[colIdx], 0, rowCount);
+        }
       }
     }
 

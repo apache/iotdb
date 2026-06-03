@@ -23,19 +23,18 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 public abstract class SearchNode extends WritePlanNode implements ComparableConsensusRequest {
 
-  protected static final int WAL_POSITION_SERIALIZED_SIZE = Long.BYTES;
+  private static final long LAST_FRAGMENT_MASK = Long.MIN_VALUE;
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+
+  // Preserve last-fragment state for WAL entries that do not have a consensus search index.
+  private static final long NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT = Long.MIN_VALUE;
 
   /**
    * this index is used by wal search, its order should be protected by the upper layer, and the
@@ -58,6 +57,8 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
    * WAL entry's own searchIndex.
    */
   protected long syncIndex = NO_CONSENSUS_INDEX;
+
+  protected boolean isLastFragment = false;
 
   protected SearchNode(PlanNodeId id) {
     super(id);
@@ -118,16 +119,50 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
     return this;
   }
 
-  protected final void serializeWalPosition(IWALByteBufferView buffer) {
-    buffer.putLong(searchIndex);
+  public long getProgressLocalSeq() {
+    return syncIndex >= 0 ? syncIndex : searchIndex;
   }
 
-  protected final void deserializeWalPosition(DataInputStream stream) throws IOException {
-    this.searchIndex = stream.readLong();
+  public boolean isLastFragment() {
+    return isLastFragment;
   }
 
-  protected final void deserializeWalPosition(ByteBuffer buffer) {
-    this.searchIndex = buffer.getLong();
+  public SearchNode setLastFragment(boolean lastFragment) {
+    isLastFragment = lastFragment;
+    return this;
+  }
+
+  public long getEncodedSearchIndex() {
+    return encodeSearchIndex(searchIndex, isLastFragment);
+  }
+
+  public static long encodeSearchIndex(long searchIndex, boolean isLastFragment) {
+    if (!isLastFragment) {
+      return searchIndex;
+    }
+    if (searchIndex == NO_CONSENSUS_INDEX) {
+      return NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT;
+    }
+    return searchIndex | LAST_FRAGMENT_MASK;
+  }
+
+  public static long extractSearchIndex(long encodedSearchIndex) {
+    if (encodedSearchIndex == NO_CONSENSUS_INDEX
+        || encodedSearchIndex == NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT) {
+      return NO_CONSENSUS_INDEX;
+    }
+    return encodedSearchIndex & ~LAST_FRAGMENT_MASK;
+  }
+
+  public static boolean isLastFragment(long encodedSearchIndex) {
+    return encodedSearchIndex == NO_CONSENSUS_INDEX_WITH_LAST_FRAGMENT
+        || (encodedSearchIndex != NO_CONSENSUS_INDEX
+            && (encodedSearchIndex & LAST_FRAGMENT_MASK) != 0);
+  }
+
+  protected void setSearchIndexFromWAL(long encodedSearchIndex) {
+    this.searchIndex = extractSearchIndex(encodedSearchIndex);
+    this.isLastFragment = isLastFragment(encodedSearchIndex);
   }
 
   public abstract SearchNode merge(List<SearchNode> searchNodes);

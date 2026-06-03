@@ -168,6 +168,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       new HashMap<>();
   private final Map<PersistentResource, Long> pendingResource2ReplicateIndexForIoTV2 =
       new HashMap<>();
+  private int extractedHistoricalTsFileCount = 0;
+  private int extractedHistoricalDeletionCount = 0;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -488,6 +490,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return;
     }
     hasBeenStarted = true;
+    extractedHistoricalTsFileCount = 0;
+    extractedHistoricalDeletionCount = 0;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -521,6 +525,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                   : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
       pendingQueue = new ArrayDeque<>(originalResourceList);
+      PipeTerminateEvent.initializeHistoricalTransferSummary(
+          pipeName,
+          creationTime,
+          dataRegionId,
+          extractedHistoricalTsFileCount,
+          extractedHistoricalDeletionCount);
 
       LOGGER.info(
           DataNodePipeMessages.PIPE_FINISH_TO_SORT_ALL_EXTRACTED_RESOURCES,
@@ -649,6 +659,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   return true;
                 }
               });
+      extractedHistoricalTsFileCount = filteredTsFileResources2TableNames.size();
 
       LOGGER.info(
           "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
@@ -798,6 +809,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 })
             .collect(Collectors.toList());
     resourceList.addAll(allDeletionResources);
+    extractedHistoricalDeletionCount = allDeletionResources.size();
     LOGGER.info(
         DataNodePipeMessages.PIPE_FINISH_TO_EXTRACT_DELETIONS_EXTRACT_DELETIONS,
         pipeName,
@@ -841,6 +853,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private Event supplyTerminateEvent() {
+    final PipeTerminateEvent.HistoricalTransferSummary historicalTransferSummary =
+        PipeTerminateEvent.snapshotHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    if (Objects.nonNull(historicalTransferSummary)) {
+      LOGGER.info(
+          "Pipe {}@{}: historical source has supplied all events, emitting terminate event. {}",
+          pipeName,
+          dataRegionId,
+          historicalTransferSummary.toReportMessage());
+    }
+
     final PipeTerminateEvent terminateEvent =
         new PipeTerminateEvent(
             pipeName,
@@ -867,6 +889,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     filteredTsFileResources2TableNames.remove(resource);
+    PipeTerminateEvent.markHistoricalTsFileSkipped(pipeName, creationTime, dataRegionId);
     LOGGER.info(
         DataNodePipeMessages.PIPE_SKIP_HISTORICAL_TSFILE_BECAUSE_REALTIME_SOURCE,
         pipeName,
@@ -1074,6 +1097,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void close() {
+    if (!isTerminateSignalSent) {
+      PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
+    }
     if (Objects.nonNull(pendingQueue)) {
       pendingQueue.forEach(
           resource -> {

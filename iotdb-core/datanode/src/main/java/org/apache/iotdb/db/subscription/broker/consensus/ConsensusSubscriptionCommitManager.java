@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -129,14 +130,16 @@ public class ConsensusSubscriptionCommitManager {
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
       new ConcurrentHashMap<>();
 
+  /** Key: encoded commit-state key -> decoded (consumerGroupId, topicName, regionId) fields. */
   private final Map<String, CommitStateKey> commitStateKeys = new ConcurrentHashMap<>();
 
   private final Set<String> recoveredTopicKeys = ConcurrentHashMap.newKeySet();
 
   private final Map<String, Object> topicPersistLocks = new ConcurrentHashMap<>();
 
-  // Runtime random-write index. The on-disk .meta file is the only source of truth; this map is
-  // rebuilt from .meta during recovery and is never persisted separately.
+  // Runtime random-write index. The outer key is the topic file key
+  // "base64(consumerGroupId).base64(topicName)"; the inner key is regionId. The on-disk .meta
+  // file is the only source of truth, and this map is rebuilt from .meta during recovery.
   private final Map<String, Map<String, ProgressIndexEntry>> topicProgressIndexes =
       new ConcurrentHashMap<>();
 
@@ -167,17 +170,17 @@ public class ConsensusSubscriptionCommitManager {
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String regionIdString = regionId.toString();
     final CommitStateKey stateKey = getCommitStateKey(consumerGroupId, topicName, regionIdString);
-    final ConsensusSubscriptionCommitState existing = commitStates.get(stateKey.stateKey);
+    final ConsensusSubscriptionCommitState existing = commitStates.get(stateKey.encodedStateKey);
     if (Objects.nonNull(existing)) {
       return existing;
     }
     recoverTopicStatesIfNeeded(stateKey);
-    final ConsensusSubscriptionCommitState recovered = commitStates.get(stateKey.stateKey);
+    final ConsensusSubscriptionCommitState recovered = commitStates.get(stateKey.encodedStateKey);
     if (Objects.nonNull(recovered)) {
       return recovered;
     }
     return commitStates.computeIfAbsent(
-        stateKey.stateKey,
+        stateKey.encodedStateKey,
         k -> {
           final ConsensusSubscriptionCommitState recoveredFromConfigNode =
               queryCommitProgressStateFromConfigNode(consumerGroupId, topicName, regionId);
@@ -218,7 +221,7 @@ public class ConsensusSubscriptionCommitManager {
       final WriterProgress writerProgress) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
-    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot commit for unknown state, "
@@ -236,7 +239,7 @@ public class ConsensusSubscriptionCommitManager {
       persistProgressIfNeeded(stateKey, state);
       if (result.hasAdvancedWriter()) {
         maybeBroadcast(
-            stateKey.stateKey,
+            stateKey.encodedStateKey,
             consumerGroupId,
             topicName,
             regionId,
@@ -255,7 +258,7 @@ public class ConsensusSubscriptionCommitManager {
       final WriterProgress writerProgress) {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
-    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot direct-commit for unknown state, "
@@ -273,7 +276,7 @@ public class ConsensusSubscriptionCommitManager {
       persistProgressIfNeeded(stateKey, state);
       if (result.hasAdvancedWriter()) {
         maybeBroadcast(
-            stateKey.stateKey,
+            stateKey.encodedStateKey,
             consumerGroupId,
             topicName,
             regionId,
@@ -341,8 +344,8 @@ public class ConsensusSubscriptionCommitManager {
     final CommitStateKey stateKey =
         getCommitStateKey(consumerGroupId, topicName, regionId.toString());
     recoverTopicStatesIfNeeded(stateKey);
-    commitStates.remove(stateKey.stateKey);
-    commitStateKeys.remove(stateKey.stateKey);
+    commitStates.remove(stateKey.encodedStateKey);
+    commitStateKeys.remove(stateKey.encodedStateKey);
     rewriteTopicProgressFiles(stateKey);
   }
 
@@ -542,7 +545,7 @@ public class ConsensusSubscriptionCommitManager {
     }
     final CommitStateKey stateKey = getCommitStateKey(consumerGroupId, topicName, regionIdStr);
     recoverTopicStatesIfNeeded(stateKey);
-    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.encodedStateKey);
     if (state != null) {
       // Update only if broadcast is ahead
       state.updateFromBroadcast(writerId, writerProgress);
@@ -555,8 +558,8 @@ public class ConsensusSubscriptionCommitManager {
               new SubscriptionConsensusProgress(
                   new RegionProgress(Collections.singletonMap(writerId, writerProgress)), 0L));
       newState.updateFromBroadcast(writerId, writerProgress);
-      commitStates.putIfAbsent(stateKey.stateKey, newState);
-      persistRegionProgress(stateKey, commitStates.get(stateKey.stateKey));
+      commitStates.putIfAbsent(stateKey.encodedStateKey, newState);
+      persistRegionProgress(stateKey, commitStates.get(stateKey.encodedStateKey));
     }
     LOGGER.debug(
         "Received subscription progress broadcast: consumerGroupId={}, topicName={}, "
@@ -702,7 +705,7 @@ public class ConsensusSubscriptionCommitManager {
             snapshot.states.entrySet()) {
           final CommitStateKey recoveredStateKey =
               getCommitStateKey(consumerGroupId, topicName, entry.getKey());
-          commitStates.putIfAbsent(recoveredStateKey.stateKey, entry.getValue());
+          commitStates.putIfAbsent(recoveredStateKey.encodedStateKey, entry.getValue());
         }
         topicProgressIndexes.put(topicFileKey, snapshot.indexEntries);
       } catch (final IOException e) {
@@ -731,7 +734,9 @@ public class ConsensusSubscriptionCommitManager {
       final int version = ReadWriteIOUtils.readInt(buffer);
       if (version != TOPIC_PROGRESS_FILE_VERSION) {
         throw new IOException(
-            "Unsupported consensus subscription progress file version " + version);
+            String.format(
+                DataNodeMiscMessages.SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT,
+                version));
       }
       final int regionCount = ReadWriteIOUtils.readInt(buffer);
       if (regionCount < 0) {
@@ -1021,7 +1026,7 @@ public class ConsensusSubscriptionCommitManager {
 
     private final String regionIdStr;
 
-    private final String stateKey;
+    private final String encodedStateKey;
 
     private final String topicFileKey;
 
@@ -1029,12 +1034,12 @@ public class ConsensusSubscriptionCommitManager {
         final String consumerGroupId,
         final String topicName,
         final String regionIdStr,
-        final String stateKey,
+        final String encodedStateKey,
         final String topicFileKey) {
       this.consumerGroupId = consumerGroupId;
       this.topicName = topicName;
       this.regionIdStr = regionIdStr;
-      this.stateKey = stateKey;
+      this.encodedStateKey = encodedStateKey;
       this.topicFileKey = topicFileKey;
     }
 

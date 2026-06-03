@@ -84,7 +84,8 @@ public class ColumnAlignProcessorTest {
 
   @Test
   public void testTableModelForwardFillDoesNotCrossDevices() {
-    final ColumnAlignProcessor processor = new ColumnAlignProcessor();
+    final ColumnAlignProcessor processor =
+        new ColumnAlignProcessor(ColumnAlignProcessor.Dialect.TABLE);
 
     processor.process(
         Collections.singletonList(
@@ -136,17 +137,38 @@ public class ColumnAlignProcessorTest {
   }
 
   @Test
-  public void testTableModelWithoutDeviceIdentityDoesNotForwardFill() {
-    final ColumnAlignProcessor processor = new ColumnAlignProcessor();
+  public void testTableModelWithoutTagColumnsForwardFillsSameDevice() {
+    final ColumnAlignProcessor processor =
+        new ColumnAlignProcessor(ColumnAlignProcessor.Dialect.TABLE);
 
     processor.process(
         Collections.singletonList(messageForTablet(fieldOnlyTableModelTablet(1L, 11L, false))));
 
-    final Tablet ambiguousTablet = fieldOnlyTableModelTablet(2L, 0L, true);
+    final Tablet sameDeviceTablet = fieldOnlyTableModelTablet(2L, 0L, true);
 
-    processor.process(Collections.singletonList(messageForTablet(ambiguousTablet)));
+    processor.process(Collections.singletonList(messageForTablet(sameDeviceTablet)));
 
-    Assert.assertTrue(ambiguousTablet.getBitMaps()[0].isMarked(0));
+    Assert.assertEquals(11L, ((long[]) sameDeviceTablet.getValues()[0])[0]);
+    Assert.assertFalse(sameDeviceTablet.getBitMaps()[0].isMarked(0));
+  }
+
+  @Test
+  public void testTableModelWithAllTagNullForwardFillsSameDevice() {
+    final ColumnAlignProcessor processor =
+        new ColumnAlignProcessor(ColumnAlignProcessor.Dialect.TABLE);
+
+    processor.process(
+        Collections.singletonList(
+            messageForTablet(
+                tableModelTablet(new long[] {1L}, new String[] {null}, new Long[] {11L}, false))));
+
+    final Tablet sameDeviceTablet =
+        tableModelTablet(new long[] {2L}, new String[] {null}, new Long[] {0L}, true);
+
+    processor.process(Collections.singletonList(messageForTablet(sameDeviceTablet)));
+
+    Assert.assertEquals(11L, ((long[]) sameDeviceTablet.getValues()[1])[0]);
+    Assert.assertFalse(sameDeviceTablet.getBitMaps()[1].isMarked(0));
   }
 
   private static SubscriptionMessage messageForTablet(final Tablet tablet) {

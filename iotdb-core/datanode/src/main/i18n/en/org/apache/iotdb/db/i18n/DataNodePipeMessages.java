@@ -142,6 +142,16 @@ public final class DataNodePipeMessages {
       "Failed to persist progress index to configNode, status: {}";
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
       "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN =
+          "Failed to register PipePlugin %s, because the given PipePlugin name is the same as a built-in PipePlugin name.";
+  public static final String
+      FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_INSTANCE_CONSTRUCTION_FAILED =
+          "Failed to register PipePlugin %s(%s), because its instance can not be constructed successfully. Exception: %s";
+  public static final String FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_JAR_MD5_MISMATCH =
+      "Failed to register PipePlugin %s, because existed md5 of jar file for pipe plugin %s is different from the new jar file.";
+  public static final String FAILED_TO_DEREGISTER_BUILTIN_PIPE_PLUGIN =
+      "Failed to deregister builtin PipePlugin %s.";
   public static final String PIPECONNECTOR = "PipeConnector: ";
   public static final String PIPEDATANODETASKBUILDER_FAILED_TO_PARSE_INCLUSION_AND_EXCLUSION =
       "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}";
@@ -439,8 +449,15 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_START_SOURCES = "failed to start sources.";
   public static final String HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE =
       "Heartbeat Event {} can not be supplied because the reference count can not be increased";
+  public static final String EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST =
+      "Event %s can not be supplied because the reference count can not be increased, the data represented by this event is lost";
   public static final String INTERRUPTED_WAITING_FOR_PROCESSOR_TO_STOP =
       "Interrupted waiting for processor to stop";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_PARSING_PRIVILEGE_FOR_TSFILE =
+      "Interrupted when waiting for parsing privilege for TsFile %s.";
+  public static final String PARSE_TSFILE_WHEN_CHECKING_PRIVILEGE_ERROR =
+      "Parse TsFile %s when checking privilege error. Because: %s";
+  public static final String READ_TSFILE_ERROR = "Read TsFile %s error.";
   public static final String IOTDBSCHEMAREGIONSOURCE_DOES_NOT_SUPPORT_TRANSFERRING_EVENTS_UNDER =
       "IoTDBSchemaRegionSource does not support transferring events under simple consensus";
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_EVENT =
@@ -527,6 +544,8 @@ public final class DataNodePipeMessages {
   public static final String PIPE_UNSUPPORTED_SOURCE_REALTIME_MODE_CREATE_A =
       "Pipe: Unsupported source realtime mode: {}, create a hybrid source.";
   public static final String PROCESSOR_INTERRUPTED = "Processor interrupted";
+  public static final String PROCESSOR_INTERRUPTED_UNEXPECTEDLY =
+      "Processor interrupted unexpectedly, continue running";
   public static final String PROCESSOR_STOPPED = "Processor stopped";
   public static final String SET_FOR_HISTORICAL_DELETION_EVENT =
       "[{}]Set {} for historical deletion event {}";
@@ -826,6 +845,8 @@ public final class DataNodePipeMessages {
   public static final String REDIRECT_FILE_POSITION_TO = "Redirect file position to {}.";
   public static final String REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE =
       "Redirect to position {} in transferring tsFile {}.";
+  public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
+      "Network failed to receive tsFile %s, status: %s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
   public static final String SUCCESSFULLY_ADDED_ITEM = "Successfully added item {}.";
@@ -1291,8 +1312,8 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_DEREGISTER_PIPE_SCHEMA_REGION_SOURCE =
       "Failed to deregister pipe schema region source metrics, IoTDBSchemaRegionSource({}) "
           + "does not exist";
-  public static final String FAILED_TO_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
-      "Failed to deregister pipe tsfile to tablets metrics, pipeID({}) does not exist";
+  public static final String SKIP_DEREGISTER_PIPE_TSFILE_TO_TABLETS =
+      "Skip deregistering pipe tsfile to tablets metrics because pipeID({}) is not registered";
   public static final String FAILED_TO_DEREGISTER_SCHEMA_REGION_LISTENER_METRICS =
       "Failed to deregister schema region listener metrics, SchemaRegionListeningQueue({}) "
           + "does not exist";

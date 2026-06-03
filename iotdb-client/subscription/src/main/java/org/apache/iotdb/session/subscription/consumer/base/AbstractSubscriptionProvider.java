@@ -41,10 +41,10 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -272,9 +272,9 @@ public abstract class AbstractSubscriptionProvider {
   PipeSubscribeHeartbeatResp heartbeat(
       final List<SubscriptionCommitContext> processorBufferedCommitContexts)
       throws SubscriptionException {
-    final PipeSubscribeHeartbeatReq req;
+    final SubscriptionHeartbeatReq req;
     try {
-      req = PipeSubscribeHeartbeatReq.toTPipeSubscribeReq(processorBufferedCommitContexts);
+      req = SubscriptionHeartbeatReq.toThriftReq(processorBufferedCommitContexts);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize heartbeat request {}",
@@ -552,6 +552,8 @@ public abstract class AbstractSubscriptionProvider {
   }
 
   static final class CommitResult {
+    private static final CommitResult EMPTY =
+        new CommitResult(Collections.emptyList(), Collections.emptyMap());
 
     private final List<SubscriptionCommitContext> acceptedCommitContexts;
 
@@ -567,7 +569,7 @@ public abstract class AbstractSubscriptionProvider {
     }
 
     static CommitResult empty() {
-      return new CommitResult(Collections.emptyList(), Collections.emptyMap());
+      return EMPTY;
     }
 
     List<SubscriptionCommitContext> getAcceptedCommitContexts() {

@@ -1422,5 +1422,10 @@ public final class DataNodeQueryMessages {
 
   public static final String CANT_CONNECT_TO_NODE_PREFIX = "can't connect to node ";
   public static final String REMOVE_AINODE_FAILED = "Remove AINode failed: ";
+
+  public static final String QUERY_TIMEOUT_IN_FETCH_SCHEMA = "Query execution is time out while fetching schema";
+
+  public static final String QUERY_EXECUTION_MISSING = "Query execution %s is missing during fetching device schema";
+
   private DataNodeQueryMessages() {}
 }

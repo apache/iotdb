@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -51,6 +52,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -59,6 +62,8 @@ import java.util.concurrent.TimeUnit;
  * dataRegion's reading and writing
  */
 public class DataRegionConsensusImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionConsensusImpl.class);
 
   private DataRegionConsensusImpl() {
     // do nothing
@@ -113,6 +118,11 @@ public class DataRegionConsensusImpl {
 
     private static DataRegionStateMachine createDataRegionStateMachine(ConsensusGroupId gid) {
       DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) gid);
+      if (dataRegion == null) {
+        String errorMsg = String.format(StorageEngineMessages.FAILED_TO_FIND_DATA_REGION, gid);
+        LOGGER.error(errorMsg);
+        throw new IllegalArgumentException(errorMsg);
+      }
       if (ConsensusFactory.IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
         return new IoTConsensusDataRegionStateMachine(dataRegion);
       } else {

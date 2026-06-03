@@ -19,14 +19,33 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
 
 public interface IMemMNode extends IMNode<IMemMNode> {
+
+  BasicMNode getBasicMNode();
 
   /**
    * The count of measurement nodes contained in the subtree rooted at this node. The counter is
    * maintained in memory only.
    */
-  long getSubtreeMeasurementCount();
+  default long getSubtreeMeasurementCount() {
+    return getBasicMNode().getSubtreeMeasurementCount();
+  }
 
-  void setSubtreeMeasurementCount(long subtreeMeasurementCount);
+  default void setSubtreeMeasurementCount(final long subtreeMeasurementCount) {
+    getBasicMNode().setSubtreeMeasurementCount(subtreeMeasurementCount);
+  }
+
+  /**
+   * Whether there is any device node in the subtree rooted at this node, excluding the node itself.
+   * This flag is maintained in memory only.
+   */
+  default boolean hasDeviceDescendant() {
+    return getBasicMNode().hasDeviceDescendant();
+  }
+
+  default void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
+    getBasicMNode().setHasDeviceDescendant(hasDeviceDescendant);
+  }
 }

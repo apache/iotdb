@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -1131,9 +1132,11 @@ public class ConsensusPrefetchingQueue {
           || !(event.getCurrentResponse().getPayload() instanceof TabletsPayload)) {
         return generateErrorResponse(
             String.format(
-                "ConsensusPrefetchingQueue %s: unexpected in-flight response for consumer %s, "
-                    + "commit context %s, offset %s",
-                this, consumerId, commitContext, offset));
+                DataNodeMiscMessages.SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT,
+                this,
+                consumerId,
+                commitContext,
+                offset));
       }
 
       final TabletsPayload payload = (TabletsPayload) event.getCurrentResponse().getPayload();

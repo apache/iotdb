@@ -495,8 +495,7 @@ public class SubscriptionBrokerAgent {
       return broker;
     }
     final String errorMessage =
-        String.format(
-            "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+        String.format(DataNodeMiscMessages.SUBSCRIPTION_BROKER_NOT_EXIST_FMT, consumerGroupId);
     LOGGER.warn(errorMessage);
     throw new SubscriptionException(errorMessage);
   }
@@ -555,9 +554,7 @@ public class SubscriptionBrokerAgent {
             return null;
           }
           if (!broker.isEmpty()) {
-            LOGGER.warn(
-                "Subscription: pipe broker bound to consumer group [{}] is not empty when dropping",
-                consumerGroupId);
+            LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_PIPE_BROKER_NOT_EMPTY, consumerGroupId);
             return broker;
           }
           dropped.set(true);
@@ -574,13 +571,11 @@ public class SubscriptionBrokerAgent {
           }
           if (!broker.isEmpty()) {
             LOGGER.warn(
-                "Subscription: consensus broker bound to consumer group [{}] is not empty when dropping",
-                consumerGroupId);
+                DataNodeMiscMessages.SUBSCRIPTION_CONSENSUS_BROKER_NOT_EMPTY, consumerGroupId);
             return broker;
           }
           dropped.set(true);
-          LOGGER.info(
-              "Subscription: drop consensus broker bound to consumer group [{}]", consumerGroupId);
+          LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_CONSENSUS_BROKER, consumerGroupId);
           return null;
         });
 
@@ -596,7 +591,7 @@ public class SubscriptionBrokerAgent {
             consumerGroupId,
             id -> {
               LOGGER.info(
-                  "Subscription: pipe broker bound to consumer group [{}] does not exist, create new for binding prefetching queue",
+                  DataNodeMiscMessages.SUBSCRIPTION_CREATE_PIPE_BROKER_FOR_BINDING,
                   consumerGroupId);
               return new SubscriptionBroker(consumerGroupId);
             })
@@ -622,7 +617,7 @@ public class SubscriptionBrokerAgent {
             consumerGroupId,
             id -> {
               LOGGER.info(
-                  "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue",
+                  DataNodeMiscMessages.SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING,
                   consumerGroupId);
               return new ConsensusSubscriptionBroker(consumerGroupId);
             })

@@ -62,12 +62,12 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.SubscriptionSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
@@ -140,8 +140,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             return handlePipeSubscribeHandshake(
                 PipeSubscribeHandshakeReq.fromTPipeSubscribeReq(req));
           case HEARTBEAT:
-            return handlePipeSubscribeHeartbeat(
-                PipeSubscribeHeartbeatReq.fromTPipeSubscribeReq(req));
+            return handleSubscriptionHeartbeat(SubscriptionHeartbeatReq.fromThriftReq(req));
           case SUBSCRIBE:
             return handlePipeSubscribeSubscribe(
                 PipeSubscribeSubscribeReq.fromTPipeSubscribeReq(req));
@@ -311,9 +310,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         RpcUtils.SUCCESS_STATUS, dataNodeId, consumerId, consumerGroupId);
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeHeartbeat(final PipeSubscribeHeartbeatReq req) {
+  private TPipeSubscribeResp handleSubscriptionHeartbeat(final SubscriptionHeartbeatReq req) {
     try {
-      return handlePipeSubscribeHeartbeatInternal(req);
+      return handleSubscriptionHeartbeatInternal(req);
     } catch (final Exception e) {
       LOGGER.warn(DataNodeMiscMessages.SUBSCRIPTION_EXCEPTION_HEARTBEAT, req, e);
       final String exceptionMessage =
@@ -325,13 +324,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeHeartbeatInternal(
-      final PipeSubscribeHeartbeatReq req) throws IOException {
+  private TPipeSubscribeResp handleSubscriptionHeartbeatInternal(final SubscriptionHeartbeatReq req)
+      throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn(
-          "Subscription: missing consumer config when handling PipeSubscribeHeartbeatReq: {}", req);
+      LOGGER.warn("Subscription: missing consumer config when handling heartbeat request: {}", req);
       return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 

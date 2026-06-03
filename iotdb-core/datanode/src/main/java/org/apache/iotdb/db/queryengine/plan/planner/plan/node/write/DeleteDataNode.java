@@ -122,7 +122,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -143,7 +143,7 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId(""), pathList, deleteStartTime, deleteEndTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -233,8 +233,12 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(PlanNodeType.DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     buffer.putInt(pathList.size());
     for (PartialPath path : pathList) {
       WALWriteUtils.write(path.getFullPath(), buffer);

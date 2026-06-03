@@ -262,6 +262,10 @@ public class WALFileUtils {
     return located != null && located[1] == 1L ? located[0] : -1L;
   }
 
+  /**
+   * @return the local searchIndex of the first request whose writer progress is strictly greater
+   *     than the given frontier, or {@code -1} if no later request exists.
+   */
   public static long findSearchIndexAfterWriterProgress(
       final File logDir, final int nodeId, final long physicalTime, final long localSeq) {
     final long[] bestSearchIndex = new long[] {-1L};

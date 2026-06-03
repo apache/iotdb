@@ -345,18 +345,28 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       }
 
       final List<SubscriptionMessage> flushedMessages = processor.flush();
-      if (Objects.nonNull(flushedMessages) && !flushedMessages.isEmpty()) {
-        if (drainedMessages.isEmpty()) {
-          drainedMessages = new ArrayList<>(flushedMessages);
-        } else {
-          drainedMessages = new ArrayList<>(drainedMessages);
-          drainedMessages.addAll(flushedMessages);
-        }
-      }
+      drainedMessages = appendMessages(drainedMessages, flushedMessages);
     }
 
     refreshProcessorBufferedCommitContexts();
     return filterUserVisibleMessages(drainedMessages);
+  }
+
+  private static List<SubscriptionMessage> appendMessages(
+      final List<SubscriptionMessage> baseMessages,
+      final List<SubscriptionMessage> appendedMessages) {
+    if (Objects.isNull(appendedMessages) || appendedMessages.isEmpty()) {
+      return baseMessages;
+    }
+    if (baseMessages.isEmpty()) {
+      return appendedMessages;
+    }
+
+    final List<SubscriptionMessage> mergedMessages =
+        new ArrayList<>(baseMessages.size() + appendedMessages.size());
+    mergedMessages.addAll(baseMessages);
+    mergedMessages.addAll(appendedMessages);
+    return mergedMessages;
   }
 
   private List<SubscriptionMessage> drainPendingDrainedMessages() {

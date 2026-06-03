@@ -22,7 +22,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 
-import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -32,23 +32,37 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A non-buffering processor that forward-fills null columns in each Tablet using the last known
  * value for the same device. This is useful for CDC scenarios where a write only updates a subset
  * of columns, leaving others null; the processor fills them with the most recent value.
  *
- * <p>State is maintained per topic and per device (identified by {@code Tablet.getDeviceId()} for
- * tree-model or {@code Tablet.getDeviceID(row)} for table-model tablets that still carry TAG
- * columns).
+ * <p>State is maintained per topic and per device. Tree-model tablets use {@code
+ * Tablet.getDeviceId()}; table-model tablets use {@code Tablet.getDeviceID(row)} because each row
+ * may belong to a different table device even when the table has no TAG column.
  */
 public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
-  private static final String TREE_MODEL_DEVICE_PREFIX = "root.";
+  public enum Dialect {
+    TREE,
+    TABLE
+  }
 
   // topicName -> deviceKey -> columnName -> latest non-null value with its timestamp
-  private final Map<String, Map<String, Map<String, Pair<Long, Object>>>> lastValues =
+  private final Map<String, Map<Object, Map<String, Pair<Long, Object>>>> lastValues =
       new HashMap<>();
+
+  private final Dialect dialect;
+
+  public ColumnAlignProcessor() {
+    this(Dialect.TREE);
+  }
+
+  public ColumnAlignProcessor(final Dialect dialect) {
+    this.dialect = Objects.requireNonNull(dialect, "dialect");
+  }
 
   @Override
   public List<SubscriptionMessage> process(final List<SubscriptionMessage> messages) {
@@ -86,7 +100,7 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
   }
 
   private void fillTablet(final String topicName, final Tablet tablet) {
-    final Map<String, Map<String, Pair<Long, Object>>> topicCache =
+    final Map<Object, Map<String, Pair<Long, Object>>> topicCache =
         lastValues.computeIfAbsent(topicName, ignored -> new HashMap<>());
 
     final Object[] values = tablet.getValues();
@@ -96,7 +110,7 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
     for (int row = 0; row < rowSize; row++) {
       final long timestamp = tablet.getTimestamp(row);
-      final String deviceKey = getDeviceKey(tablet, row);
+      final Object deviceKey = getDeviceKey(tablet, row);
       if (deviceKey == null) {
         continue;
       }
@@ -114,28 +128,23 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
           }
         } else {
           final Pair<Long, Object> cached = cache.get(columnKey);
-          if (cached == null || timestamp >= cached.left) {
+          if (cached == null) {
             cache.put(columnKey, new Pair<>(timestamp, getValueAt(values[col], row)));
+          } else if (timestamp >= cached.left) {
+            cached.left = timestamp;
+            cached.right = getValueAt(values[col], row);
           }
         }
       }
     }
   }
 
-  private static String getDeviceKey(final Tablet tablet, final int row) {
-    if (hasTableDeviceIdentity(tablet)) {
-      return "table:" + tablet.getDeviceID(row);
+  private Object getDeviceKey(final Tablet tablet, final int row) {
+    if (dialect == Dialect.TABLE) {
+      final IDeviceID deviceID = tablet.getDeviceID(row);
+      return Objects.nonNull(deviceID) ? deviceID : tablet.getTableName();
     }
-
-    final String deviceId = tablet.getDeviceId();
-    return deviceId != null && deviceId.startsWith(TREE_MODEL_DEVICE_PREFIX)
-        ? "tree:" + deviceId
-        : null;
-  }
-
-  private static boolean hasTableDeviceIdentity(final Tablet tablet) {
-    final List<ColumnCategory> columnTypes = tablet.getColumnTypes();
-    return columnTypes != null && columnTypes.stream().anyMatch(type -> type == ColumnCategory.TAG);
+    return tablet.getDeviceId();
   }
 
   private static String getColumnKey(final Tablet tablet, final int columnIndex) {

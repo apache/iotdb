@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -1231,7 +1232,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
+            if (tvPair != TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN) {
               LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),
@@ -1400,7 +1401,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             if (timeValuePair == null) {
               allCached = false;
               break;
-            } else if (timeValuePair.getValue() == null) {
+            } else if (timeValuePair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || timeValuePair.getValue() == null) {
               // there is no data for this sensor
               if (!canUseNullEntry) {
                 allCached = false;
@@ -3406,24 +3408,58 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
-    return PipeDataNodeAgent.receiver()
-        .legacy()
-        .handshake(
-            info,
-            SESSION_MANAGER.getCurrSession().getClientAddress(),
-            partitionFetcher,
-            schemaFetcher);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver()
+          .legacy()
+          .handshake(
+              info,
+              SESSION_MANAGER.getCurrSession().getClientAddress(),
+              partitionFetcher,
+              schemaFetcher);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportPipeData(buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
   public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
       throws TException {
-    return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    try {
+      final TSStatus status = checkLegacyPipeReceiverPermission();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return PipeDataNodeAgent.receiver().legacy().transportFile(metaInfo, buff);
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private TSStatus checkLegacyPipeReceiverPermission() {
+    final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(clientSession.getUsername(), PrivilegeType.USE_PIPE),
+        PrivilegeType.USE_PIPE);
   }
 
   @Override

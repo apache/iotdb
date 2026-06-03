@@ -29,13 +29,14 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
+public class SubscriptionHeartbeatReq extends TPipeSubscribeReq {
 
   private transient List<SubscriptionCommitContext> processorBufferedCommitContexts =
-      new ArrayList<>();
+      Collections.emptyList();
 
   public List<SubscriptionCommitContext> getProcessorBufferedCommitContexts() {
     return processorBufferedCommitContexts;
@@ -44,11 +45,11 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
+   * Serialize the incoming parameters into {@code TPipeSubscribeReq}, called by the subscription
    * client.
    */
-  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq() {
-    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+  public static SubscriptionHeartbeatReq toThriftReq() {
+    final SubscriptionHeartbeatReq req = new SubscriptionHeartbeatReq();
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.HEARTBEAT.getType();
@@ -57,16 +58,16 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
   }
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
+   * Serialize the incoming parameters into {@code TPipeSubscribeReq}, called by the subscription
    * client.
    */
-  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq(
+  public static SubscriptionHeartbeatReq toThriftReq(
       final List<SubscriptionCommitContext> processorBufferedCommitContexts) throws IOException {
-    final PipeSubscribeHeartbeatReq req = toTPipeSubscribeReq();
+    final SubscriptionHeartbeatReq req = toThriftReq();
     req.processorBufferedCommitContexts =
         Objects.nonNull(processorBufferedCommitContexts)
             ? processorBufferedCommitContexts
-            : new ArrayList<>();
+            : Collections.emptyList();
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -80,13 +81,15 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(
-      final TPipeSubscribeReq heartbeatReq) {
-    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+  /**
+   * Deserialize {@code TPipeSubscribeReq} to obtain parameters, called by the subscription server.
+   */
+  public static SubscriptionHeartbeatReq fromThriftReq(final TPipeSubscribeReq heartbeatReq) {
+    final SubscriptionHeartbeatReq req = new SubscriptionHeartbeatReq();
 
     if (Objects.nonNull(heartbeatReq.body) && heartbeatReq.body.hasRemaining()) {
       final int size = ReadWriteIOUtils.readInt(heartbeatReq.body);
+      req.processorBufferedCommitContexts = new ArrayList<>(size);
       for (int i = 0; i < size; ++i) {
         req.processorBufferedCommitContexts.add(
             SubscriptionCommitContext.deserialize(heartbeatReq.body));
@@ -110,7 +113,7 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
+    final SubscriptionHeartbeatReq that = (SubscriptionHeartbeatReq) obj;
     return Objects.equals(
             this.processorBufferedCommitContexts, that.processorBufferedCommitContexts)
         && this.version == that.version
