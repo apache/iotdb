@@ -187,8 +187,6 @@ public class Bandit {
     int dataCapacity = buf.capacity() - HmacProtocol.SIGN_LENGTH;
     byte[] data = new byte[dataCapacity];
     buf.get(data);
-    byte identifier = data[0];
-
     byte[] sigBytes = new byte[HmacProtocol.SIGN_LENGTH];
     buf.get(sigBytes);
 
@@ -200,7 +198,7 @@ public class Bandit {
       }
 
       // Parse fields
-      Properties properties = unpack(data, identifier);
+      Properties properties = unpack(data);
 
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -265,9 +263,9 @@ public class Bandit {
         Optional.empty());
   }
 
-  public static Properties unpack(byte[] data, byte identifier) {
+  public static Properties unpack(byte[] data) {
     ByteBuffer buffer = ByteBuffer.wrap(data);
-    buffer.get();
+    byte identifier = buffer.get();
     int l2 = buffer.getInt();
 
     Properties p = new Properties();
