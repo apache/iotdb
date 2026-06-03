@@ -259,6 +259,8 @@ public final class DataNodeQueryMessages {
       "Left hand expression is not an identifier: ";
   public static final String THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER =
       "The left hand value must be an identifier: ";
+  public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
+      "The table '%s' does not contain a time column";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =

@@ -572,7 +572,9 @@ public class AnalyzeUtils {
     final TsTableColumnSchema timeColumnSchema = table.getTimeColumnSchema();
     if (Objects.isNull(timeColumnSchema)) {
       throw new SemanticException(
-          "The table '" + table.getTableName() + "' does not contain a time column");
+          String.format(
+              DataNodeQueryMessages.THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN,
+              table.getTableName()));
     }
     return timeColumnSchema.getColumnName();
   }
