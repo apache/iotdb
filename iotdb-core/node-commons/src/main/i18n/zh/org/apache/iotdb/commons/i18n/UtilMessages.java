@@ -105,6 +105,18 @@ public final class UtilMessages {
   public static final String UNEXPECTED_ERROR_CHECKING_DISK_SPACE =
       "检查 {} 的磁盘空间时发生意外错误";
 
+  // ======================== FolderManager ========================
+
+  public static final String ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY =
+      "所有文件夹空间均已耗尽，系统切换为只读模式。";
+  public static final String FAILED_TO_PROCESS_FOLDER = "处理文件夹 {} 失败";
+  public static final String FAILED_TO_READ_FILE_STORE_PATH =
+      "读取文件存储路径 '{}' 失败";
+  public static final String DISK_SPACE_INSUFFICIENT_READ_ONLY =
+      "磁盘空间不足，系统切换为只读模式。";
+  public static final String CANNOT_CALCULATE_OCCUPIED_SPACE =
+      "无法计算文件夹 {} 的已占用空间";
+
   // ======================== NodeUrlUtils ========================
 
   public static final String BAD_CONFIG_NODE_URL = "ConfigNode URL 格式错误：{}";
