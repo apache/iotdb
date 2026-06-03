@@ -98,12 +98,23 @@ public class ReferenceCountedJarMetaKeeper {
 
   public synchronized void serializeJarNameToMd5AndReferenceCount(final OutputStream outputStream)
       throws IOException {
-    ReadWriteIOUtils.write(jarNameToMd5Map.size(), outputStream);
-    for (final Map.Entry<String, String> entry : jarNameToMd5Map.entrySet()) {
+    int size = 0;
+    for (final Map.Entry<String, Integer> entry : jarNameToReferenceCountMap.entrySet()) {
+      if (entry.getValue() > 0 && jarNameToMd5Map.containsKey(entry.getKey())) {
+        size++;
+      }
+    }
+
+    ReadWriteIOUtils.write(size, outputStream);
+    for (final Map.Entry<String, Integer> entry : jarNameToReferenceCountMap.entrySet()) {
       final String jarName = entry.getKey();
+      final int referenceCount = entry.getValue();
+      if (referenceCount <= 0 || !jarNameToMd5Map.containsKey(jarName)) {
+        continue;
+      }
       ReadWriteIOUtils.write(jarName, outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-      ReadWriteIOUtils.write(jarNameToReferenceCountMap.getOrDefault(jarName, 0), outputStream);
+      ReadWriteIOUtils.write(jarNameToMd5Map.get(jarName), outputStream);
+      ReadWriteIOUtils.write(referenceCount, outputStream);
     }
   }
 
@@ -114,8 +125,12 @@ public class ReferenceCountedJarMetaKeeper {
     final int jarSize = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < jarSize; i++) {
       final String jarName = ReadWriteIOUtils.readString(inputStream);
-      jarNameToMd5Map.put(jarName, ReadWriteIOUtils.readString(inputStream));
-      jarNameToReferenceCountMap.put(jarName, ReadWriteIOUtils.readInt(inputStream));
+      final String md5 = ReadWriteIOUtils.readString(inputStream);
+      final int referenceCount = ReadWriteIOUtils.readInt(inputStream);
+      if (referenceCount > 0) {
+        jarNameToMd5Map.put(jarName, md5);
+        jarNameToReferenceCountMap.put(jarName, referenceCount);
+      }
     }
   }
 }

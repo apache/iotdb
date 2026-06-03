@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.executable;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -80,6 +81,22 @@ public class ReferenceCountedJarMetaKeeperTest {
     Assert.assertTrue(loaded.containsJar(JAR_NAME));
 
     loaded.removeReference(JAR_NAME);
+    Assert.assertFalse(loaded.containsJar(JAR_NAME));
+  }
+
+  @Test
+  public void testDeserializeJarNameToMd5AndReferenceCountSkipsZeroReferenceCount()
+      throws IOException {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ReadWriteIOUtils.write(1, outputStream);
+    ReadWriteIOUtils.write(JAR_NAME, outputStream);
+    ReadWriteIOUtils.write(MD5, outputStream);
+    ReadWriteIOUtils.write(0, outputStream);
+
+    final ReferenceCountedJarMetaKeeper loaded = new ReferenceCountedJarMetaKeeper();
+    loaded.deserializeJarNameToMd5AndReferenceCount(
+        new ByteArrayInputStream(outputStream.toByteArray()));
+
     Assert.assertFalse(loaded.containsJar(JAR_NAME));
   }
 
