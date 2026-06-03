@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -2962,7 +2963,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   private static void executeTableStatementOnSingleDataNode(
       final DataNodeWrapper dataNodeWrapper, final String sql) throws Exception {
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection(dataNodeWrapper, "root", "root", "table");
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
         final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     }
@@ -2975,7 +2981,12 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
       final String[] expectedRetArray)
       throws Exception {
     try (final Connection connection =
-            EnvFactory.getEnv().getConnection(dataNodeWrapper, "root", "root", "table");
+            EnvFactory.getEnv()
+                .getConnection(
+                    dataNodeWrapper,
+                    SessionConfig.DEFAULT_USER,
+                    SessionConfig.DEFAULT_PASSWORD,
+                    "table");
         final Statement statement = connection.createStatement()) {
       statement.execute("use " + DATABASE_NAME);
       try (final ResultSet resultSet = statement.executeQuery(sql)) {

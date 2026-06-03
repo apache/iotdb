@@ -314,8 +314,11 @@ public class LoginLockManager {
               // Remove outdated failures
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
-                String[] parts = entry.getKey().split("@");
-                LOGGER.info(DataNodeMiscMessages.IP_UNLOCKED_EXPIRED, parts[1], parts[0]);
+                final String[] parts = entry.getKey().split("@", 2);
+                LOGGER.info(
+                    DataNodeMiscMessages.IP_UNLOCKED_EXPIRED,
+                    parts.length == 2 ? parts[1] : "",
+                    parts.length >= 1 ? parts[0] : "");
                 return true;
               }
               return false;

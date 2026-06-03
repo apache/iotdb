@@ -142,8 +142,8 @@ public final class ConfigNodeMessages {
   public static final String DOES_NOT_EXIST = "%s does not exist";
   public static final String DROPPING_TAG_OR_TIME_COLUMN_IS_NOT_SUPPORTED =
       "Dropping tag or time column is not supported.";
-  public static final String DROP_CQ_FAILED_BECAUSE_ITS_MD5_DOESN_T_MATCH =
-      "Drop CQ {} failed, because its MD5 doesn't match.";
+  public static final String DROP_CQ_FAILED_BECAUSE_ITS_TOKEN_DOESN_T_MATCH =
+      "Drop CQ {} failed, because its token doesn't match.";
   public static final String DROP_CQ_FAILED_BECAUSE_IT_DOESN_T_EXIST =
       "Drop CQ {} failed, because it doesn't exist.";
   public static final String DROP_CQ_SUCCESSFULLY = "Drop CQ {} successfully.";
@@ -478,7 +478,7 @@ public final class ConfigNodeMessages {
   public static final String UNKNOWN_HOST_WHEN_CHECKING_SEED_CONFIGNODE_IP =
       "Unknown host when checking seed configNode IP {}";
   public static final String UNKNOWN_LEADER_DISTRIBUTION_POLICY =
-      "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"CFD\" or \"HASH\"";
+      "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"CFS\" or \"HASH\"";
   public static final String UNKNOWN_PHYSICALPLAN_CONFIGPHYSICALPLANTYPE =
       "unknown PhysicalPlan configPhysicalPlanType: ";
   public static final String UNKNOWN_READ_CONSISTENCY_LEVEL_PLEASE_SET_TO =
