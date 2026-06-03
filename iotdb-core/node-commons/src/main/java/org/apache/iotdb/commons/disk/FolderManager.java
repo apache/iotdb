@@ -17,22 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.rescon.disk;
+package org.apache.iotdb.commons.disk;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.i18n.StorageEngineMessages;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategy;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.commons.disk.strategy.SequenceStrategy;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
+import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +88,7 @@ public class FolderManager {
       this.selectStrategy.setFolders(folders);
       this.selectStrategy.setFoldersStates(foldersStates);
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(StorageEngineMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
@@ -98,7 +104,7 @@ public class FolderManager {
     try {
       return folders.get(selectStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(StorageEngineMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+      logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
       throw e;
@@ -129,7 +135,7 @@ public class FolderManager {
       try {
         folder = folders.get(selectStrategy.nextFolderIndex());
       } catch (DiskSpaceInsufficientException e) {
-        logger.error(StorageEngineMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
+        logger.error(UtilMessages.ALL_FOLDERS_FULL_CHANGE_TO_READ_ONLY, e);
         CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         CommonDescriptor.getInstance().getConfig().setStatusReason(NodeStatus.DISK_FULL);
         throw e;
@@ -138,7 +144,7 @@ public class FolderManager {
         return folderConsumer.apply(folder);
       } catch (Exception e) {
         updateFolderState(folder, FolderState.ABNORMAL);
-        logger.warn(StorageEngineMessages.FAILED_TO_PROCESS_FOLDER + folder);
+        logger.warn(UtilMessages.FAILED_TO_PROCESS_FOLDER, folder);
       }
     }
     throw new DiskSpaceInsufficientException(folders);
@@ -146,5 +152,26 @@ public class FolderManager {
 
   public List<String> getFolders() {
     return folders;
+  }
+
+  public String getFirstFolderOfSameDisk(String pathStr) {
+    Path path = Paths.get(pathStr);
+    try {
+      FileStore fileStore = Files.getFileStore(path);
+      for (String folder : folders) {
+        if (foldersStates.getOrDefault(folder, FolderState.ABNORMAL) != FolderState.HEALTHY
+            || !JVMCommonUtils.hasSpace(folder)) {
+          continue;
+        }
+        Path folderPath = Paths.get(folder);
+        FileStore folderFileStore = Files.getFileStore(folderPath);
+        if (folderFileStore.equals(fileStore)) {
+          return folder;
+        }
+      }
+    } catch (IOException e) {
+      logger.warn(UtilMessages.FAILED_TO_READ_FILE_STORE_PATH, pathStr, e);
+    }
+    return null;
   }
 }

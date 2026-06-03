@@ -90,10 +90,17 @@ public class InsertTablet extends WrappedInsertStatement {
   public List<Object[]> getAttributeValueList() {
     prepareDeviceID2LastIdxMap();
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    List<Object[]> result = new ArrayList<>(insertTabletStatement.getRowCount());
     final List<Integer> attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    for (Integer rowIndex : deviceID2LastIdxMap.values()) {
-      Object[] attrValues = new Object[attrColumnIndices.size()];
+
+    final Map<IDeviceID, Object[]> deviceID2AttributeValues =
+        new LinkedHashMap<>(deviceID2LastIdxMap.size());
+    for (final IDeviceID deviceID : deviceID2LastIdxMap.keySet()) {
+      deviceID2AttributeValues.put(deviceID, new Object[attrColumnIndices.size()]);
+    }
+
+    for (int rowIndex = 0; rowIndex < insertTabletStatement.getRowCount(); rowIndex++) {
+      final Object[] attrValues =
+          deviceID2AttributeValues.get(insertTabletStatement.getTableDeviceID(rowIndex));
       for (int attrColNum = 0; attrColNum < attrColumnIndices.size(); attrColNum++) {
         final int columnIndex = attrColumnIndices.get(attrColNum);
         if (!insertTabletStatement.isNull(rowIndex, columnIndex)) {
@@ -101,9 +108,9 @@ public class InsertTablet extends WrappedInsertStatement {
               ((Object[]) insertTabletStatement.getColumns()[columnIndex])[rowIndex];
         }
       }
-      result.add(attrValues);
     }
-    return result;
+
+    return new ArrayList<>(deviceID2AttributeValues.values());
   }
 
   // The map cannot be maintained during construction because the IDeviceID may be reset later.

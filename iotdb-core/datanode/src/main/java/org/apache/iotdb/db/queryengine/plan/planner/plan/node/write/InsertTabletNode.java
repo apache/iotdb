@@ -900,12 +900,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void serializeToWAL(IWALByteBufferView buffer, List<int[]> rangeList) {
+    serializeToWAL(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(
+      IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    subSerialize(buffer, rangeList);
+    subSerialize(buffer, rangeList, encodedSearchIndex);
   }
 
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    buffer.putLong(searchIndex);
+    subSerialize(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
+    buffer.putLong(encodedSearchIndex);
     WALWriteUtils.write(targetPath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
@@ -1037,7 +1046,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
-    searchIndex = stream.readLong();
+    setSearchIndexFromWAL(stream.readLong());
     try {
       targetPath = readTargetPath(stream);
     } catch (IllegalPathException e) {
@@ -1073,7 +1082,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected void subDeserializeFromWAL(ByteBuffer buffer) {
-    searchIndex = buffer.getLong();
+    setSearchIndexFromWAL(buffer.getLong());
     try {
       targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
