@@ -108,7 +108,6 @@ import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 public class IoTConsensusServerImpl {
 
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
-  private static final String SNAPSHOT_LOG_NAME = "snapshot.log";
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();

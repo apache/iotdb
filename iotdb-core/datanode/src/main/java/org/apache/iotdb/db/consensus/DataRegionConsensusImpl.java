@@ -140,7 +140,7 @@ public class DataRegionConsensusImpl {
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
-          .setRecvSnapshotDirs(Arrays.asList(CONF.getDataDirs()))
+          .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()
