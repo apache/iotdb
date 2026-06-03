@@ -1201,7 +1201,9 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1209,7 +1211,9 @@ public class LogicalPlanBuilder {
             prefixPath,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 
@@ -1219,7 +1223,9 @@ public class LogicalPlanBuilder {
       int level,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1228,7 +1234,9 @@ public class LogicalPlanBuilder {
             level,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 

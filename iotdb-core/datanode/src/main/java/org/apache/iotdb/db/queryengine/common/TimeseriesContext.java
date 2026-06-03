@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -50,7 +49,8 @@ public class TimeseriesContext {
   private final Map<String, String> props;
   private final String database;
   private final int activeCountMultiplier;
-  private final Set<String> activeLogicalViewCountSet;
+  private final boolean logicalView;
+  private final Map<String, TimeseriesContext> activeLogicalViewContextMap;
 
   public TimeseriesContext(IMeasurementSchemaInfo schemaInfo, String database) {
     this(schemaInfo, database, 1, Collections.emptySet());
@@ -72,9 +72,34 @@ public class TimeseriesContext {
       String database,
       int activeCountMultiplier,
       Set<String> activeLogicalViewCountSet) {
+    this(
+        schemaInfo,
+        database,
+        activeCountMultiplier,
+        createLogicalViewContextMap(activeLogicalViewCountSet));
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      int activeCountMultiplier,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
+    this(schemaInfo, null, activeCountMultiplier, activeLogicalViewContextMap);
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      String database,
+      int activeCountMultiplier,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
     this.dataType = schemaInfo.getSchema().getType().toString();
-    this.encoding = schemaInfo.getSchema().getEncodingType().toString();
-    this.compression = schemaInfo.getSchema().getCompressor().toString();
+    this.logicalView = schemaInfo.isLogicalView();
+    if (logicalView) {
+      this.encoding = null;
+      this.compression = null;
+    } else {
+      this.encoding = schemaInfo.getSchema().getEncodingType().toString();
+      this.compression = schemaInfo.getSchema().getCompressor().toString();
+    }
     this.alias = schemaInfo.getAlias();
     this.tags = mapToString(schemaInfo.getTagMap());
     this.attributes = mapToString(schemaInfo.getAttributeMap());
@@ -86,7 +111,36 @@ public class TimeseriesContext {
     this.props = schemaProps != null ? schemaProps : Collections.emptyMap();
     this.database = database;
     this.activeCountMultiplier = activeCountMultiplier;
-    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+    this.activeLogicalViewContextMap = new HashMap<>(activeLogicalViewContextMap);
+  }
+
+  public TimeseriesContext(
+      IMeasurementSchemaInfo schemaInfo,
+      String dataType,
+      String database,
+      int activeCountMultiplier,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
+    this.dataType = dataType;
+    this.logicalView = schemaInfo.isLogicalView();
+    if (logicalView) {
+      this.encoding = null;
+      this.compression = null;
+    } else {
+      this.encoding = schemaInfo.getSchema().getEncodingType().toString();
+      this.compression = schemaInfo.getSchema().getCompressor().toString();
+    }
+    this.alias = schemaInfo.getAlias();
+    this.tags = mapToString(schemaInfo.getTagMap());
+    this.attributes = mapToString(schemaInfo.getAttributeMap());
+    Pair<String, String> deadbandInfo =
+        MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
+    this.deadband = deadbandInfo.left;
+    this.deadbandParameters = deadbandInfo.right;
+    Map<String, String> schemaProps = schemaInfo.getSchema().getProps();
+    this.props = schemaProps != null ? schemaProps : Collections.emptyMap();
+    this.database = database;
+    this.activeCountMultiplier = activeCountMultiplier;
+    this.activeLogicalViewContextMap = new HashMap<>(activeLogicalViewContextMap);
   }
 
   public String getDataType() {
@@ -134,7 +188,15 @@ public class TimeseriesContext {
   }
 
   public Set<String> getActiveLogicalViewCountSet() {
-    return activeLogicalViewCountSet;
+    return activeLogicalViewContextMap.keySet();
+  }
+
+  public Map<String, TimeseriesContext> getActiveLogicalViewContextMap() {
+    return activeLogicalViewContextMap;
+  }
+
+  public boolean isLogicalView() {
+    return logicalView;
   }
 
   public TimeseriesContext(
@@ -158,7 +220,8 @@ public class TimeseriesContext {
         Collections.emptyMap(),
         null,
         1,
-        Collections.emptySet());
+        false,
+        Collections.emptyMap());
   }
 
   public TimeseriesContext(
@@ -184,7 +247,8 @@ public class TimeseriesContext {
         Collections.emptyMap(),
         null,
         activeCountMultiplier,
-        activeLogicalViewCountSet);
+        false,
+        createLogicalViewContextMap(activeLogicalViewCountSet));
   }
 
   public TimeseriesContext(
@@ -210,7 +274,35 @@ public class TimeseriesContext {
         props,
         database,
         1,
-        Collections.emptySet());
+        false,
+        Collections.emptyMap());
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      int activeCountMultiplier,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        Collections.emptyMap(),
+        null,
+        activeCountMultiplier,
+        false,
+        activeLogicalViewContextMap);
   }
 
   public TimeseriesContext(
@@ -226,6 +318,64 @@ public class TimeseriesContext {
       String database,
       int activeCountMultiplier,
       Set<String> activeLogicalViewCountSet) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        props,
+        database,
+        activeCountMultiplier,
+        false,
+        createLogicalViewContextMap(activeLogicalViewCountSet));
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      int activeCountMultiplier,
+      boolean logicalView,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
+    this(
+        dataType,
+        alias,
+        encoding,
+        compression,
+        tags,
+        attributes,
+        deadband,
+        deadbandParameters,
+        Collections.emptyMap(),
+        null,
+        activeCountMultiplier,
+        logicalView,
+        activeLogicalViewContextMap);
+  }
+
+  public TimeseriesContext(
+      String dataType,
+      String alias,
+      String encoding,
+      String compression,
+      String tags,
+      String attributes,
+      String deadband,
+      String deadbandParameters,
+      Map<String, String> props,
+      String database,
+      int activeCountMultiplier,
+      boolean logicalView,
+      Map<String, TimeseriesContext> activeLogicalViewContextMap) {
     this.dataType = dataType;
     this.alias = alias;
     this.encoding = encoding;
@@ -237,12 +387,29 @@ public class TimeseriesContext {
     this.props = props != null ? new HashMap<>(props) : new HashMap<>();
     this.database = database;
     this.activeCountMultiplier = activeCountMultiplier;
-    this.activeLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
+    this.logicalView = logicalView;
+    this.activeLogicalViewContextMap = new HashMap<>(activeLogicalViewContextMap);
+  }
+
+  private static Map<String, TimeseriesContext> createLogicalViewContextMap(
+      Set<String> activeLogicalViewCountSet) {
+    if (activeLogicalViewCountSet.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, TimeseriesContext> activeLogicalViewContextMap = new HashMap<>();
+    for (String logicalView : activeLogicalViewCountSet) {
+      activeLogicalViewContextMap.put(
+          logicalView,
+          new TimeseriesContext(
+              null, null, null, null, null, null, null, null, 1, true, Collections.emptyMap()));
+    }
+    return activeLogicalViewContextMap;
   }
 
   public TimeseriesContext mergeActiveCount(TimeseriesContext that) {
-    Set<String> mergedActiveLogicalViewCountSet = new HashSet<>(activeLogicalViewCountSet);
-    mergedActiveLogicalViewCountSet.addAll(that.activeLogicalViewCountSet);
+    Map<String, TimeseriesContext> mergedActiveLogicalViewContextMap =
+        new HashMap<>(activeLogicalViewContextMap);
+    mergedActiveLogicalViewContextMap.putAll(that.activeLogicalViewContextMap);
     return new TimeseriesContext(
         dataType,
         alias,
@@ -255,7 +422,8 @@ public class TimeseriesContext {
         props,
         database,
         activeCountMultiplier + that.activeCountMultiplier,
-        mergedActiveLogicalViewCountSet);
+        logicalView,
+        mergedActiveLogicalViewContextMap);
   }
 
   public void serializeAttributes(ByteBuffer byteBuffer) {
@@ -270,9 +438,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(props, byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(activeCountMultiplier, byteBuffer);
-    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), byteBuffer);
-    for (String logicalView : activeLogicalViewCountSet) {
-      ReadWriteIOUtils.write(logicalView, byteBuffer);
+    ReadWriteIOUtils.write(logicalView, byteBuffer);
+    ReadWriteIOUtils.write(activeLogicalViewContextMap.size(), byteBuffer);
+    for (Map.Entry<String, TimeseriesContext> entry : activeLogicalViewContextMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      entry.getValue().serializeAttributes(byteBuffer);
     }
   }
 
@@ -288,9 +458,11 @@ public class TimeseriesContext {
     ReadWriteIOUtils.write(props, stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(activeCountMultiplier, stream);
-    ReadWriteIOUtils.write(activeLogicalViewCountSet.size(), stream);
-    for (String logicalView : activeLogicalViewCountSet) {
-      ReadWriteIOUtils.write(logicalView, stream);
+    ReadWriteIOUtils.write(logicalView, stream);
+    ReadWriteIOUtils.write(activeLogicalViewContextMap.size(), stream);
+    for (Map.Entry<String, TimeseriesContext> entry : activeLogicalViewContextMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      entry.getValue().serializeAttributes(stream);
     }
   }
 
@@ -306,10 +478,12 @@ public class TimeseriesContext {
     Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     String database = ReadWriteIOUtils.readString(buffer);
     int activeCountMultiplier = ReadWriteIOUtils.readInt(buffer);
-    int activeLogicalViewCountSetSize = ReadWriteIOUtils.readInt(buffer);
-    Set<String> activeLogicalViewCountSet = new HashSet<>();
-    for (int i = 0; i < activeLogicalViewCountSetSize; i++) {
-      activeLogicalViewCountSet.add(ReadWriteIOUtils.readString(buffer));
+    boolean logicalView = ReadWriteIOUtils.readBool(buffer);
+    int activeLogicalViewContextMapSize = ReadWriteIOUtils.readInt(buffer);
+    Map<String, TimeseriesContext> activeLogicalViewContextMap = new HashMap<>();
+    for (int i = 0; i < activeLogicalViewContextMapSize; i++) {
+      activeLogicalViewContextMap.put(
+          ReadWriteIOUtils.readString(buffer), TimeseriesContext.deserialize(buffer));
     }
     return new TimeseriesContext(
         dataType,
@@ -323,7 +497,8 @@ public class TimeseriesContext {
         props,
         database,
         activeCountMultiplier,
-        activeLogicalViewCountSet);
+        logicalView,
+        activeLogicalViewContextMap);
   }
 
   @Override
@@ -338,7 +513,7 @@ public class TimeseriesContext {
     boolean res =
         Objects.equals(dataType, that.dataType)
             && Objects.equals(alias, that.alias)
-            && encoding.equals(that.encoding)
+            && Objects.equals(encoding, that.encoding)
             && Objects.equals(compression, that.compression)
             && Objects.equals(tags, that.tags)
             && Objects.equals(attributes, that.attributes)
@@ -347,7 +522,8 @@ public class TimeseriesContext {
             && Objects.equals(props, that.props)
             && Objects.equals(database, that.database)
             && activeCountMultiplier == that.activeCountMultiplier
-            && Objects.equals(activeLogicalViewCountSet, that.activeLogicalViewCountSet);
+            && logicalView == that.logicalView
+            && Objects.equals(activeLogicalViewContextMap, that.activeLogicalViewContextMap);
     return res;
   }
 
@@ -365,6 +541,7 @@ public class TimeseriesContext {
         props,
         database,
         activeCountMultiplier,
-        activeLogicalViewCountSet);
+        logicalView,
+        activeLogicalViewContextMap);
   }
 }

@@ -47,7 +47,9 @@ public class SchemaSourceFactory {
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     return new TimeSeriesSchemaSource(
         pathPattern,
         isPrefixMatch,
@@ -56,7 +58,8 @@ public class SchemaSourceFactory {
         schemaFilter,
         templateMap,
         false,
-        true,
+        includeSystemDatabase,
+        includeAuditDatabase,
         scope,
         true,
         null);
@@ -80,7 +83,8 @@ public class SchemaSourceFactory {
         schemaFilter,
         templateMap,
         true,
-        false,
+        true,
+        true,
         scope,
         true,
         timeseriesOrdering);
@@ -166,7 +170,8 @@ public class SchemaSourceFactory {
         null, // schemaFilter
         Collections.emptyMap(), // templateMap
         true, // needViewDetail
-        false, // excludeInternalDatabase
+        true, // includeSystemDatabase
+        true, // includeAuditDatabase
         scope,
         false, // skipInvalidSchema=false to get all series (including invalid)
         true, // onlyInvalidSchema=true to filter only invalid

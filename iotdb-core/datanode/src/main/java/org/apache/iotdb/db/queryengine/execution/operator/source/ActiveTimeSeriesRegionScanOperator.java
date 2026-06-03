@@ -46,9 +46,13 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   // Timeseries which need to be checked.
   private final Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo;
   private final Set<String> countedLogicalViews;
-  private static final Binary VIEW_TYPE = new Binary("BASE".getBytes());
+  private static final Binary BASE_VIEW_TYPE =
+      new Binary("BASE".getBytes(TSFileConfig.STRING_CHARSET));
+  private static final Binary LOGICAL_VIEW_TYPE =
+      new Binary("VIEW".getBytes(TSFileConfig.STRING_CHARSET));
   private final Binary dataBaseName;
   private final boolean onlyInvalidSchema;
+  private final String dataBaseNameString;
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ActiveTimeSeriesRegionScanOperator.class)
           + RamUsageEstimator.shallowSizeOfInstance(Map.class)
@@ -69,14 +73,13 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     this.countedLogicalViews = new HashSet<>();
     this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.onlyInvalidSchema = onlyInvalidSchema;
-    this.dataBaseName =
-        new Binary(
-            operatorContext
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getDataRegion()
-                .getDatabaseName()
-                .getBytes(TSFileConfig.STRING_CHARSET));
+    this.dataBaseNameString =
+        operatorContext
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .getDataRegion()
+            .getDatabaseName();
+    this.dataBaseName = new Binary(this.dataBaseNameString.getBytes(TSFileConfig.STRING_CHARSET));
   }
 
   @Override
@@ -100,9 +103,6 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
   @Override
   protected void updateActiveData() {
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-
     Map<IDeviceID, List<String>> activeTimeSeries =
         ((RegionScanForActiveTimeSeriesUtil) regionScanUtil).getActiveTimeSeries();
 
@@ -131,74 +131,83 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {
         TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
-        // Check if this is an invalid series
         final boolean isInvalid = MeasurementPropsUtils.isInvalid(schemaInfo.getProps());
-
-        // If onlyInvalidSchema is true, skip non-invalid series
         if (onlyInvalidSchema && !isInvalid) {
           continue;
         }
 
-        // Determine timeseries path to display
-        byte[] timeseriesPath;
+        if (schemaInfo.getActiveCountMultiplier() > 0) {
+          byte[] timeseriesPath = contactDeviceAndMeasurement(deviceStr, timeSeries);
+          if (!onlyInvalidSchema && isInvalid) {
+            String aliasPathString =
+                MeasurementPropsUtils.getAliasPathString(schemaInfo.getProps());
+            if (aliasPathString != null && !aliasPathString.isEmpty()) {
+              timeseriesPath = aliasPathString.getBytes(TSFileConfig.STRING_CHARSET);
+            }
+          }
+
+          appendTimeseries(
+              timeseriesPath,
+              schemaInfo,
+              BASE_VIEW_TYPE,
+              isInvalid && !onlyInvalidSchema ? schemaInfo.getDatabase() : dataBaseNameString,
+              onlyInvalidSchema
+                  ? MeasurementPropsUtils.getAliasPathString(schemaInfo.getProps())
+                  : null);
+        }
+
         if (onlyInvalidSchema) {
-          // For onlyInvalidSchema mode: always show original path in Timeseries column
-          timeseriesPath = contactDeviceAndMeasurement(deviceStr, timeSeries);
-        } else if (isInvalid) {
-          // For invalid series in normal mode: show alias-path if available
-          String aliasPathString = MeasurementPropsUtils.getAliasPathString(schemaInfo.getProps());
-          timeseriesPath =
-              (aliasPathString != null && !aliasPathString.isEmpty())
-                  ? aliasPathString.getBytes(TSFileConfig.STRING_CHARSET)
-                  : contactDeviceAndMeasurement(deviceStr, timeSeries);
-        } else {
-          // For non-invalid series: show original path
-          timeseriesPath = contactDeviceAndMeasurement(deviceStr, timeSeries);
+          continue;
         }
-
-        // Determine database to display
-        Binary database;
-        if (isInvalid && !onlyInvalidSchema) {
-          // For invalid series in normal mode: use database from TimeseriesContext
-          String databaseStr = schemaInfo.getDatabase();
-          database =
-              (databaseStr != null && !databaseStr.isEmpty())
-                  ? new Binary(databaseStr.getBytes(TSFileConfig.STRING_CHARSET))
-                  : this.dataBaseName;
-        } else {
-          // For other cases: use default database
-          database = this.dataBaseName;
+        for (Map.Entry<String, TimeseriesContext> logicalViewEntry :
+            schemaInfo.getActiveLogicalViewContextMap().entrySet()) {
+          if (countedLogicalViews.add(logicalViewEntry.getKey())) {
+            appendTimeseries(
+                logicalViewEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET),
+                logicalViewEntry.getValue(),
+                LOGICAL_VIEW_TYPE);
+          }
         }
-
-        // Get alias-path for NewPath column (only used in onlyInvalidSchema mode)
-        String aliasPathString =
-            onlyInvalidSchema
-                ? MeasurementPropsUtils.getAliasPathString(schemaInfo.getProps())
-                : null;
-
-        timeColumnBuilder.writeLong(-1);
-        columnBuilders[0].writeBinary(new Binary(timeseriesPath)); // Timeseries
-
-        checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
-        columnBuilders[2].writeBinary(database); // Database
-        checkAndAppend(schemaInfo.getDataType(), columnBuilders[3]); // DataType
-        checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
-        checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
-        checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
-        checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
-        checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
-        checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
-        columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
-
-        // For onlyInvalidSchema mode, add NewPath column (column 11) with alias-path
-        if (onlyInvalidSchema) {
-          checkAndAppend(aliasPathString, columnBuilders[11]); // NewPath
-        }
-
-        resultTsBlockBuilder.declarePosition();
       }
       removeTimeseriesListFromDevice(deviceID, timeSeriesList);
     }
+  }
+
+  private void appendTimeseries(
+      byte[] timeseriesPath, TimeseriesContext schemaInfo, Binary viewType) {
+    appendTimeseries(timeseriesPath, schemaInfo, viewType, schemaInfo.getDatabase(), null);
+  }
+
+  private void appendTimeseries(
+      byte[] timeseriesPath,
+      TimeseriesContext schemaInfo,
+      Binary viewType,
+      String database,
+      String aliasPathString) {
+    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+
+    timeColumnBuilder.writeLong(-1);
+    columnBuilders[0].writeBinary(new Binary(timeseriesPath));
+
+    checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
+    if (database == null || dataBaseNameString.equals(database)) {
+      columnBuilders[2].writeBinary(dataBaseName); // Database
+    } else {
+      checkAndAppend(database, columnBuilders[2]); // Database
+    }
+    checkAndAppend(schemaInfo.getDataType(), columnBuilders[3]); // DataType
+    checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
+    checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
+    checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
+    checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
+    checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
+    checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
+    columnBuilders[10].writeBinary(viewType); // ViewType
+    if (onlyInvalidSchema) {
+      checkAndAppend(aliasPathString, columnBuilders[11]); // NewPath
+    }
+    resultTsBlockBuilder.declarePosition();
   }
 
   private void removeTimeseriesListFromDevice(IDeviceID deviceID, List<String> timeSeriesList) {
