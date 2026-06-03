@@ -309,11 +309,9 @@ public class SchemaUtils {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  public static Map<Integer, TSStatus> rollbackPreRelease(
-      final String database,
-      final String tableName,
-      final ConfigManager configManager,
-      final @Nullable String oldName) {
+  /** Build the ROLLBACK_UPDATE_TABLE request used to roll back a pre-released table change. */
+  public static TUpdateTableReq rollbackUpdateTableReq(
+      final String database, final String tableName, final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -325,16 +323,18 @@ public class SchemaUtils {
     }
     req.setTableInfo(outputStream.toByteArray());
     req.setOldName(oldName);
+    return req;
+  }
 
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  public static Map<Integer, TSStatus> rollbackPreRelease(
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
+    return failedOnly(
+        broadcastTableUpdate(
+            rollbackUpdateTableReq(database, tableName, oldName),
+            configManager.getNodeManager().getRegisteredDataNodeLocations()));
   }
 
   public static TSStatus executeInConsensusLayer(
