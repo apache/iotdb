@@ -30,8 +30,6 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -44,7 +42,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -181,29 +178,17 @@ public class DeactivateTemplateProcedure
 
   private void invalidateCache(final ConfigNodeProcedureEnv env) {
     // if no target timeseries, return directly
-    if (!timeSeriesPatternTree.isEmpty()) {
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-          env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-      DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-          new DataNodeAsyncRequestContext<>(
-              CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-              new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
-              dataNodeLocationMap);
-      CnToDnInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestWithRetry(clientHandler);
-      Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-      for (TSStatus status : statusMap.values()) {
-        // all dataNodes must clear the related schema cache
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.error(
-              ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES,
-              requestMessage);
-          setFailure(
-              new ProcedureException(
-                  new MetadataException(ProcedureMessages.INVALIDATE_SCHEMA_CACHE_FAILED)));
-          return;
-        }
-      }
+    if (!timeSeriesPatternTree.isEmpty()
+        && !SchemaUtils.invalidateMatchedSchemaCache(
+            env.getConfigManager(), timeSeriesPatternTreeBytes, false)) {
+      // all dataNodes must clear the related schema cache
+      LOGGER.error(
+          ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMA_CACHE_OF_TEMPLATE_TIMESERIES,
+          requestMessage);
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.INVALIDATE_SCHEMA_CACHE_FAILED)));
+      return;
     }
 
     setNextState(DeactivateTemplateState.DELETE_DATA);

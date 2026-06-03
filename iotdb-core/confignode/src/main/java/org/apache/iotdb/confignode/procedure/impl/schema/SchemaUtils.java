@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -335,6 +337,37 @@ public class SchemaUtils {
         broadcastTableUpdate(
             rollbackUpdateTableReq(database, tableName, oldName),
             configManager.getNodeManager().getRegisteredDataNodeLocations()));
+  }
+
+  /**
+   * Broadcast an INVALIDATE_MATCHED_SCHEMA_CACHE to all DataNodes through {@link
+   * ClusterCachePropagator}: proceed once every unreachable DataNode is provably self-fenced (it
+   * fails closed on its schema cache and resyncs on recovery, so it cannot serve the
+   * deleted/altered series), instead of hard-failing on the first unreachable DataNode. Returns
+   * whether it is safe to proceed; the caller maps {@code false} to its own failure.
+   *
+   * <p>The propagator may re-broadcast while waiting for unacked DataNodes, so a fresh request with
+   * a duplicated buffer is built on each attempt — a consumed buffer can never be re-sent as an
+   * empty (and silently-successful) invalidation.
+   */
+  public static boolean invalidateMatchedSchemaCache(
+      final ConfigManager configManager,
+      final ByteBuffer patternTreeBytes,
+      final boolean needLock) {
+    return new ClusterCachePropagator(configManager)
+        .propagate(
+            targets -> {
+              final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
+                  clientHandler =
+                      new DataNodeAsyncRequestContext<>(
+                          CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+                          new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
+                              .setNeedLock(needLock),
+                          targets);
+              CnToDnInternalServiceAsyncRequestManager.getInstance()
+                  .sendAsyncRequestWithRetry(clientHandler);
+              return clientHandler.getResponseMap();
+            });
   }
 
   public static TSStatus executeInConsensusLayer(

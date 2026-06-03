@@ -27,12 +27,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
-import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
-import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -43,7 +40,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -201,25 +197,9 @@ public class DeleteTimeSeriesProcedure
     // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
     // schema cache and resyncs on recovery, so it cannot serve the to-be-deleted/altered series),
     // instead of hard-failing on the first unreachable DataNode. This runs before the physical
-    // delete in the state machine, so the "delete only after PROCEED" ordering holds. The
-    // ConfigCachePropagator may re-broadcast while waiting, so build a fresh request (with a
-    // duplicated buffer) on every attempt rather than reusing a possibly-consumed one.
-    final boolean proceeded =
-        new ClusterCachePropagator(env.getConfigManager())
-            .propagate(
-                targets -> {
-                  final DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus>
-                      clientHandler =
-                          new DataNodeAsyncRequestContext<>(
-                              CnToDnAsyncRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-                              new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
-                                  .setNeedLock(needLock),
-                              targets);
-                  CnToDnInternalServiceAsyncRequestManager.getInstance()
-                      .sendAsyncRequestWithRetry(clientHandler);
-                  return clientHandler.getResponseMap();
-                });
-    if (!proceeded) {
+    // delete in the state machine, so the "delete only after PROCEED" ordering holds.
+    if (!SchemaUtils.invalidateMatchedSchemaCache(
+        env.getConfigManager(), patternTreeBytes, needLock)) {
       // All dataNodes must clear the related schemaEngine cache
       LOGGER.error(
           ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_TIMESERIES, requestMessage);
