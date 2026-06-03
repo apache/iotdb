@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_LTSM_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
@@ -90,6 +91,10 @@ public class AINodeSharedClusterIT {
       "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT 256\")";
   private static final int DEFAULT_INPUT_LENGTH = 256;
   private static final int DEFAULT_OUTPUT_LENGTH = 48;
+  private static final int LOADED_MODEL_SMOKE_INPUT_LENGTH = 96;
+  private static final int LOADED_MODEL_SMOKE_OUTPUT_LENGTH = 1;
+  private static final List<String> LTSM_LOAD_DEVICE_COMBINATIONS =
+      Arrays.asList("cpu", "0", "cpu,0");
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
       "SELECT * FROM FORECAST("
@@ -437,6 +442,84 @@ public class AINodeSharedClusterIT {
   }
 
   // ========== Concurrent forecast tests ==========
+
+  @Test
+  public void largeTimeSeriesModelLoadInferenceAndForecastTest()
+      throws SQLException, InterruptedException {
+    try (Connection treeConnection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
+        Statement treeStatement = treeConnection.createStatement();
+        Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement tableStatement = tableConnection.createStatement()) {
+      for (FakeModelInfo modelInfo : BUILTIN_LTSM_MAP.values()) {
+        for (String devices : LTSM_LOAD_DEVICE_COMBINATIONS) {
+          loadRunAndUnloadModelOnDevices(
+              treeStatement, tableStatement, modelInfo.getModelId(), devices);
+        }
+      }
+    }
+  }
+
+  private void loadRunAndUnloadModelOnDevices(
+      Statement treeStatement, Statement tableStatement, String modelId, String devices)
+      throws SQLException, InterruptedException {
+    boolean loadSubmitted = false;
+    try {
+      treeStatement.execute(String.format("LOAD MODEL %s TO DEVICES '%s'", modelId, devices));
+      loadSubmitted = true;
+      checkModelOnSpecifiedDevice(treeStatement, modelId, devices);
+      assertLoadedModelCallInferenceSucceeds(treeStatement, modelId);
+      assertLoadedModelForecastSucceeds(tableStatement, modelId);
+    } finally {
+      if (loadSubmitted) {
+        treeStatement.execute(String.format("UNLOAD MODEL %s FROM DEVICES '%s'", modelId, devices));
+        checkModelNotOnSpecifiedDevice(treeStatement, modelId, devices);
+      }
+    }
+  }
+
+  private void assertLoadedModelCallInferenceSucceeds(Statement statement, String modelId)
+      throws SQLException {
+    String callInferenceSQL =
+        String.format(
+            CALL_INFERENCE_SQL_TEMPLATE,
+            modelId,
+            0,
+            LOADED_MODEL_SMOKE_INPUT_LENGTH,
+            LOADED_MODEL_SMOKE_OUTPUT_LENGTH);
+    try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      checkHeader(resultSetMetaData, "Time,output");
+      Assert.assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(2));
+      int count = 0;
+      while (resultSet.next()) {
+        resultSet.getDouble("output");
+        count++;
+      }
+      Assert.assertEquals(LOADED_MODEL_SMOKE_OUTPUT_LENGTH, count);
+    }
+  }
+
+  private void assertLoadedModelForecastSucceeds(Statement statement, String modelId)
+      throws SQLException {
+    String forecastTableFunctionSQL =
+        String.format(
+            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+            modelId,
+            0,
+            5760,
+            LOADED_MODEL_SMOKE_INPUT_LENGTH,
+            5760,
+            LOADED_MODEL_SMOKE_OUTPUT_LENGTH,
+            1,
+            "time");
+    try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQL)) {
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(LOADED_MODEL_SMOKE_OUTPUT_LENGTH, count);
+    }
+  }
 
   @Test
   public void concurrentForecastTest() throws SQLException, InterruptedException {
