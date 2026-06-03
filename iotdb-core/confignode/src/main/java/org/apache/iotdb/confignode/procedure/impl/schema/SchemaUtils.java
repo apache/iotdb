@@ -240,25 +240,45 @@ public class SchemaUtils {
     }
   }
 
+  /** Build the PRE_UPDATE_TABLE request used to pre-release a table change to DataNodes. */
+  public static TUpdateTableReq preUpdateTableReq(
+      final String database, final TsTable table, final String oldName) {
+    final TUpdateTableReq req = new TUpdateTableReq();
+    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
+    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
+    req.setOldName(oldName);
+    return req;
+  }
+
+  /**
+   * Broadcast a table update to exactly {@code targets} and return the full per-nodeId response map
+   * (both successes and failures). Used by {@link
+   * org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator}, which needs to know which
+   * DataNodes acknowledged in order to decide whether it is safe to proceed past the rest.
+   */
+  public static Map<Integer, TSStatus> broadcastTableUpdate(
+      final TUpdateTableReq req, final Map<Integer, TDataNodeLocation> targets) {
+    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.UPDATE_TABLE, req, targets);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
+  }
+
+  private static Map<Integer, TSStatus> failedOnly(final Map<Integer, TSStatus> responses) {
+    return responses.entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
   public static Map<Integer, TSStatus> preReleaseTable(
       final String database,
       final TsTable table,
       final ConfigManager configManager,
       final String oldName) {
-    final TUpdateTableReq req = new TUpdateTableReq();
-    req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
-    req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
-    req.setOldName(oldName);
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTableReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    return failedOnly(
+        broadcastTableUpdate(
+            preUpdateTableReq(database, table, oldName),
+            configManager.getNodeManager().getRegisteredDataNodeLocations()));
   }
 
   public static Map<Integer, TSStatus> commitReleaseTable(
