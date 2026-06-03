@@ -241,6 +241,8 @@ public class ReleaseFlushMonitor {
         scheduler.scheduleFlushAll().join();
         scheduler.scheduleRelease(true);
       } else {
+        // No volatile nodes left, but clean unpinned cache may still remain after previous flushes.
+        scheduler.scheduleRelease(true);
         break;
       }
     }
