@@ -200,6 +200,18 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         objectPathsOnly);
   }
 
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod)
+      throws IOException, IllegalPathException {
+    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, isWithMod, false);
+  }
+
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     if (tabletInsertionIterable == null) {
