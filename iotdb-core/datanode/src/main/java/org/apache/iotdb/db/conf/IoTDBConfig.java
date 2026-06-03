@@ -87,8 +87,7 @@ public class IoTDBConfig {
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  private static final String MULTI_DIR_STRATEGY_PREFIX =
-      "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
+  private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
       new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
