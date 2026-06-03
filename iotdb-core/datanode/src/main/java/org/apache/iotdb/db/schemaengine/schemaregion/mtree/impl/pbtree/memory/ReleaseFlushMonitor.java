@@ -230,6 +230,7 @@ public class ReleaseFlushMonitor {
   public void forceFlushAndRelease() {
     boolean needFlush;
     while (true) {
+      waitUntilWorkerTasksDone();
       needFlush = false;
       for (CachedMTreeStore store : regionToStoreMap.values()) {
         if (store.getMemoryManager().getBufferNodeNum() > 0) {
@@ -239,11 +240,25 @@ public class ReleaseFlushMonitor {
       }
       if (needFlush) {
         scheduler.scheduleFlushAll().join();
+        waitUntilWorkerTasksDone();
         scheduler.scheduleRelease(true);
       } else {
         // No volatile nodes left, but clean unpinned cache may still remain after previous flushes.
         scheduler.scheduleRelease(true);
+        waitUntilWorkerTasksDone();
         break;
+      }
+    }
+  }
+
+  @TestOnly
+  private void waitUntilWorkerTasksDone() {
+    while (scheduler.getActiveWorkerNum() > 0 || !flushingRegionSet.isEmpty()) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
       }
     }
   }
