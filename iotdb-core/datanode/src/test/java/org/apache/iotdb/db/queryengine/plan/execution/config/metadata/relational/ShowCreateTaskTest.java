@@ -213,10 +213,7 @@ public class ShowCreateTaskTest {
 
     assertEquals(
         "CREATE TOPIC \"test_topic\" WITH ('database'='test_db','format'='SubscriptionTsFileHandler','table'='test_table')",
-        ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, true));
-    assertEquals(
-        "CREATE TOPIC `test_topic` WITH ('database'='test_db','format'='SubscriptionTsFileHandler','table'='test_table')",
-        ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, false));
+        ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta));
   }
 
   @Test
@@ -228,8 +225,6 @@ public class ShowCreateTaskTest {
     final TopicMeta topicMeta = new TopicMeta("test`topic", 1L, topicAttributes);
 
     assertEquals(
-        "CREATE TOPIC \"test`topic\"", ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, true));
-    assertEquals(
-        "CREATE TOPIC `test``topic`", ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta, false));
+        "CREATE TOPIC \"test`topic\"", ShowCreateTopicTask.getShowCreateTopicSQL(topicMeta));
   }
 }

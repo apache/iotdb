@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCreateTopic;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -48,28 +47,20 @@ import java.util.stream.Collectors;
 
 public class ShowCreateTopicTask implements IConfigTask {
 
-  private final ShowCreateTopicStatement showCreateTopicStatement;
-
-  public ShowCreateTopicTask(final ShowCreateTopicStatement showCreateTopicStatement) {
-    this.showCreateTopicStatement = showCreateTopicStatement;
-  }
+  private final String topicName;
 
   public ShowCreateTopicTask(final ShowCreateTopic showCreateTopic) {
-    this.showCreateTopicStatement = new ShowCreateTopicStatement();
-    this.showCreateTopicStatement.setTopicName(showCreateTopic.getTopicName());
-    this.showCreateTopicStatement.setTableModel(true);
+    this.topicName = showCreateTopic.getTopicName();
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showCreateTopic(showCreateTopicStatement);
+    return configTaskExecutor.showCreateTopic(topicName);
   }
 
   public static void buildTsBlock(
-      final TopicMeta topicMeta,
-      final boolean isTableModel,
-      final SettableFuture<ConfigTaskResult> future) {
+      final TopicMeta topicMeta, final SettableFuture<ConfigTaskResult> future) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showCreateTopicColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -82,20 +73,17 @@ public class ShowCreateTopicTask implements IConfigTask {
         .writeBinary(new Binary(topicMeta.getTopicName(), TSFileConfig.STRING_CHARSET));
     builder
         .getColumnBuilder(1)
-        .writeBinary(
-            new Binary(
-                getShowCreateTopicSQL(topicMeta, isTableModel), TSFileConfig.STRING_CHARSET));
+        .writeBinary(new Binary(getShowCreateTopicSQL(topicMeta), TSFileConfig.STRING_CHARSET));
     builder.declarePosition();
 
     final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowCreateTopicColumnHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
-  public static String getShowCreateTopicSQL(
-      final TopicMeta topicMeta, final boolean isTableModel) {
+  public static String getShowCreateTopicSQL(final TopicMeta topicMeta) {
     final StringBuilder builder =
         new StringBuilder("CREATE TOPIC ")
-            .append(getTopicIdentifier(topicMeta.getTopicName(), isTableModel));
+            .append(ShowCreateTableTask.getIdentifier(topicMeta.getTopicName()));
 
     final Map<String, String> sanitizedAttributes =
         sanitizeTopicAttributes(topicMeta.getConfig().getAttribute());
@@ -111,13 +99,6 @@ public class ShowCreateTopicTask implements IConfigTask {
     }
 
     return builder.toString();
-  }
-
-  private static String getTopicIdentifier(final String topicName, final boolean isTableModel) {
-    if (isTableModel) {
-      return ShowCreateTableTask.getIdentifier(topicName);
-    }
-    return "`" + topicName.replace("`", "``") + "`";
   }
 
   private static Map<String, String> sanitizeTopicAttributes(final Map<String, String> attributes) {

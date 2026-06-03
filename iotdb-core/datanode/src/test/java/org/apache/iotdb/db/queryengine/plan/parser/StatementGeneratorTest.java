@@ -56,7 +56,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -692,27 +691,6 @@ public class StatementGeneratorTest {
     Statement stmt = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     AuthorStatement roleDcl = (AuthorStatement) stmt;
     return roleDcl;
-  }
-
-  @Test
-  public void testShowCreateTopicStatement() {
-    final Statement stmt =
-        StatementGenerator.createStatement(
-            "SHOW CREATE TOPIC topic1", ZonedDateTime.now().getOffset());
-
-    assertTrue(stmt instanceof ShowCreateTopicStatement);
-    assertEquals(StatementType.SHOW_CREATE_TOPIC, stmt.getType());
-    assertEquals("topic1", ((ShowCreateTopicStatement) stmt).getTopicName());
-  }
-
-  @Test
-  public void testShowCreateTopicStatementWithQuotedIdentifier() {
-    final Statement stmt =
-        StatementGenerator.createStatement(
-            "SHOW CREATE TOPIC `topic``1`", ZonedDateTime.now().getOffset());
-
-    assertTrue(stmt instanceof ShowCreateTopicStatement);
-    assertEquals("topic`1", ((ShowCreateTopicStatement) stmt).getTopicName());
   }
 
   @Test

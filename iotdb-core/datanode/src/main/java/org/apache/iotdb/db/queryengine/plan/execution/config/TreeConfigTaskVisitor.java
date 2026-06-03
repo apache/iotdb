@@ -126,7 +126,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrot
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropSubscriptionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowCreateTopicTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -196,7 +195,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegi
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
@@ -748,12 +746,6 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowTopics(
       ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
     return new ShowTopicsTask(showTopicsStatement);
-  }
-
-  @Override
-  public IConfigTask visitShowCreateTopic(
-      ShowCreateTopicStatement showCreateTopicStatement, MPPQueryContext context) {
-    return new ShowCreateTopicTask(showCreateTopicStatement);
   }
 
   @Override

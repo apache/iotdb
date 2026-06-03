@@ -301,7 +301,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropSubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowCreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
@@ -3008,8 +3007,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showCreateTopic(
-      final ShowCreateTopicStatement showCreateTopicStatement) {
+  public SettableFuture<ConfigTaskResult> showCreateTopic(final String topicName) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE;
     }
@@ -3027,23 +3025,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TopicMeta topicMeta =
           getAllTopicInfoResp.getAllTopicInfo().stream()
               .map(TopicMeta::deserialize)
-              .filter(
-                  meta ->
-                      meta.visibleUnder(showCreateTopicStatement.isTableModel())
-                          && meta.getTopicName().equals(showCreateTopicStatement.getTopicName()))
+              .filter(meta -> meta.visibleUnder(true) && meta.getTopicName().equals(topicName))
               .findFirst()
               .orElse(null);
       if (topicMeta == null) {
         future.setException(
             new IoTDBException(
                 String.format(
-                    "Failed to show create topic %s, the topic does not exist.",
-                    showCreateTopicStatement.getTopicName()),
+                    "Failed to show create topic %s, the topic does not exist.", topicName),
                 TSStatusCode.TOPIC_NOT_EXIST_ERROR.getStatusCode()));
         return future;
       }
 
-      ShowCreateTopicTask.buildTsBlock(topicMeta, showCreateTopicStatement.isTableModel(), future);
+      ShowCreateTopicTask.buildTsBlock(topicMeta, future);
     } catch (final Exception e) {
       future.setException(e);
     }
