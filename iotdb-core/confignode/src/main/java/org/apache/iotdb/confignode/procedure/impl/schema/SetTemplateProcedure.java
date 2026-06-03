@@ -215,30 +215,25 @@ public class SetTemplateProcedure
       return;
     }
 
-    final TUpdateTemplateReq req = new TUpdateTemplateReq();
-    req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
-    req.setTemplateInfo(
-        TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
-
-    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new DataNodeAsyncRequestContext<>(
-            CnToDnAsyncRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-    final Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (final Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
-      if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
-            templateName,
-            templateSetPath,
-            dataNodeLocationMap.get(entry.getKey()));
-        setFailure(
-            new ProcedureException(
-                new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
-        return;
-      }
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // template cache and resyncs on recovery) instead of hard-failing on the first unreachable one.
+    if (!SchemaUtils.broadcastTemplateUpdate(
+        env.getConfigManager(),
+        () -> {
+          final TUpdateTemplateReq req = new TUpdateTemplateReq();
+          req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_PRE_SET_INFO.toByte());
+          req.setTemplateInfo(
+              TemplateInternalRPCUtil.generateAddTemplateSetInfoBytes(template, templateSetPath));
+          return req;
+        })) {
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_SYNC_TEMPLATE_PRE_SET_INFO_ON_PATH_TO,
+          templateName,
+          templateSetPath,
+          "an unreachable DataNode is not provably fenced");
+      setFailure(
+          new ProcedureException(new MetadataException(ProcedureMessages.PRE_SET_TEMPLATE_FAILED)));
+      return;
     }
     setNextState(SetTemplateState.VALIDATE_TIMESERIES_EXISTENCE);
   }

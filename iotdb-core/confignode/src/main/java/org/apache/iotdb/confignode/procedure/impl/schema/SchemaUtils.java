@@ -46,6 +46,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -62,6 +63,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SchemaUtils {
@@ -364,6 +366,30 @@ public class SchemaUtils {
                           new TInvalidateMatchedSchemaCacheReq(patternTreeBytes.duplicate())
                               .setNeedLock(needLock),
                           targets);
+              CnToDnInternalServiceAsyncRequestManager.getInstance()
+                  .sendAsyncRequestWithRetry(clientHandler);
+              return clientHandler.getResponseMap();
+            });
+  }
+
+  /**
+   * Broadcast an UPDATE_TEMPLATE to all DataNodes through {@link ClusterCachePropagator}: proceed
+   * once every unreachable DataNode is provably self-fenced (it fails closed on its template cache
+   * and resyncs on recovery), instead of hard-failing on the first unreachable DataNode. Returns
+   * whether it is safe to proceed.
+   *
+   * <p>The request is rebuilt from {@code requestSupplier} on every attempt: the propagator may
+   * re-broadcast while waiting, and {@code TUpdateTemplateReq}'s binary field is backed by a {@link
+   * ByteBuffer}, so reusing one request could re-send a consumed (empty) payload.
+   */
+  public static boolean broadcastTemplateUpdate(
+      final ConfigManager configManager, final Supplier<TUpdateTemplateReq> requestSupplier) {
+    return new ClusterCachePropagator(configManager)
+        .propagate(
+            targets -> {
+              final DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+                  new DataNodeAsyncRequestContext<>(
+                      CnToDnAsyncRequestType.UPDATE_TEMPLATE, requestSupplier.get(), targets);
               CnToDnInternalServiceAsyncRequestManager.getInstance()
                   .sendAsyncRequestWithRetry(clientHandler);
               return clientHandler.getResponseMap();
