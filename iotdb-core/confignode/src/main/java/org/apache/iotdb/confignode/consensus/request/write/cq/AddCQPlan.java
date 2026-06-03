@@ -37,7 +37,7 @@ public class AddCQPlan extends ConfigPhysicalPlan {
 
   private TCreateCQReq req;
 
-  private String cqToken;
+  private String md5;
 
   private long firstExecutionTime;
 
@@ -45,12 +45,12 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     super(ADD_CQ);
   }
 
-  public AddCQPlan(TCreateCQReq req, String cqToken, long firstExecutionTime) {
+  public AddCQPlan(TCreateCQReq req, String md5, long firstExecutionTime) {
     super(ADD_CQ);
     Validate.notNull(req);
-    Validate.notNull(cqToken);
+    Validate.notNull(md5);
     this.req = req;
-    this.cqToken = cqToken;
+    this.md5 = md5;
     this.firstExecutionTime = firstExecutionTime;
   }
 
@@ -58,8 +58,8 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     return req;
   }
 
-  public String getCqToken() {
-    return cqToken;
+  public String getMd5() {
+    return md5;
   }
 
   public long getFirstExecutionTime() {
@@ -70,14 +70,14 @@ public class AddCQPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
-    ReadWriteIOUtils.write(cqToken, stream);
+    ReadWriteIOUtils.write(md5, stream);
     ReadWriteIOUtils.write(firstExecutionTime, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     req = ThriftCommonsSerDeUtils.deserializeTCreateCQReq(buffer);
-    cqToken = ReadWriteIOUtils.readString(buffer);
+    md5 = ReadWriteIOUtils.readString(buffer);
     firstExecutionTime = ReadWriteIOUtils.readLong(buffer);
   }
 
@@ -95,11 +95,11 @@ public class AddCQPlan extends ConfigPhysicalPlan {
     AddCQPlan addCQPlan = (AddCQPlan) o;
     return firstExecutionTime == addCQPlan.firstExecutionTime
         && Objects.equals(req, addCQPlan.req)
-        && Objects.equals(cqToken, addCQPlan.cqToken);
+        && Objects.equals(md5, addCQPlan.md5);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), req, cqToken, firstExecutionTime);
+    return Objects.hash(super.hashCode(), req, md5, firstExecutionTime);
   }
 }

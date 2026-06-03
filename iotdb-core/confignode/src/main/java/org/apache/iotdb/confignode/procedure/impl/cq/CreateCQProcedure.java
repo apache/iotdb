@@ -22,14 +22,10 @@ package org.apache.iotdb.confignode.procedure.impl.cq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
-import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
-import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -39,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +44,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.apache.iotdb.confignode.procedure.state.cq.CreateCQState.INACTIVE;
@@ -64,7 +59,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   private TCreateCQReq req;
 
-  private String cqToken;
+  private String md5;
 
   private long firstExecutionTime;
 
@@ -79,7 +74,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   public CreateCQProcedure(TCreateCQReq req, ScheduledExecutorService executor) {
     super();
     this.req = req;
-    this.cqToken = generateCQToken();
+    this.md5 = DigestUtils.md2Hex(req.cqId);
     this.executor = executor;
     this.firstExecutionTime =
         CQScheduleTask.getFirstExecutionTime(req.boundaryTime, req.everyInterval);
@@ -95,16 +90,12 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           addCQ(env);
           return Flow.HAS_MORE_STATE;
         case INACTIVE:
-          submitScheduleTask(
-              env,
-              new CQScheduleTask(
-                  req, firstExecutionTime, cqToken, executor, env.getConfigManager()));
+          CQScheduleTask cqScheduleTask =
+              new CQScheduleTask(req, firstExecutionTime, md5, executor, env.getConfigManager());
+          cqScheduleTask.submitSelf();
           setNextState(SCHEDULED);
           break;
         case SCHEDULED:
-          if (isStateDeserialized()) {
-            recoverScheduledTask(env);
-          }
           activeCQ(env);
           return Flow.NO_MORE_STATE;
         default:
@@ -134,7 +125,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       res =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new AddCQPlan(req, cqToken, firstExecutionTime));
+              .write(new AddCQPlan(req, md5, firstExecutionTime));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -155,7 +146,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   private void activeCQ(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res = env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, cqToken));
+      res = env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -173,42 +164,6 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     }
   }
 
-  void recoverScheduledTask(ConfigNodeProcedureEnv env) throws ConsensusException {
-    Optional<CQInfo.CQEntry> cqEntry = getCurrentCQEntry(env);
-    if (!cqEntry.isPresent()) {
-      LOGGER.info(
-          "Skip recovering the schedule task of CQ {} because its metadata is unavailable.",
-          req.cqId);
-      return;
-    }
-    submitScheduleTask(env, new CQScheduleTask(cqEntry.get(), executor, env.getConfigManager()));
-  }
-
-  Optional<CQInfo.CQEntry> getCurrentCQEntry(ConfigNodeProcedureEnv env) throws ConsensusException {
-    ShowCQResp response =
-        (ShowCQResp) env.getConfigManager().getConsensusManager().read(new ShowCQPlan(req.cqId));
-    return response.getCqList().stream()
-        .filter(entry -> cqToken.equals(entry.getCqToken()))
-        .findFirst();
-  }
-
-  private static String generateCQToken() {
-    return UUID.randomUUID().toString();
-  }
-
-  private void submitScheduleTask(ConfigNodeProcedureEnv env, CQScheduleTask cqScheduleTask) {
-    CQManager cqManager = env.getConfigManager().getCQManager();
-    if (!cqManager.markCQLocallyScheduled(req.cqId, cqToken, cqScheduleTask)) {
-      return;
-    }
-    try {
-      cqScheduleTask.submitSelf();
-    } catch (RuntimeException e) {
-      cqManager.unmarkCQLocallyScheduled(req.cqId, cqToken);
-      throw e;
-    }
-  }
-
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, CreateCQState state)
       throws IOException, InterruptedException, ProcedureException {
@@ -221,8 +176,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         LOGGER.info("Start [INACTIVE] rollback of CQ {}", req.cqId);
         TSStatus res;
         try {
-          res =
-              env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, cqToken));
+          res = env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
         } catch (ConsensusException e) {
           LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
           res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -273,7 +227,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     stream.writeShort(ProcedureType.CREATE_CQ_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTCreateCQReq(req, stream);
-    ReadWriteIOUtils.write(cqToken, stream);
+    ReadWriteIOUtils.write(md5, stream);
     ReadWriteIOUtils.write(firstExecutionTime, stream);
   }
 
@@ -281,7 +235,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     this.req = ThriftCommonsSerDeUtils.deserializeTCreateCQReq(byteBuffer);
-    this.cqToken = ReadWriteIOUtils.readString(byteBuffer);
+    this.md5 = ReadWriteIOUtils.readString(byteBuffer);
     this.firstExecutionTime = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
@@ -300,7 +254,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         && isGeneratedByPipe == that.isGeneratedByPipe
         && firstExecutionTime == that.firstExecutionTime
         && Objects.equals(req, that.req)
-        && Objects.equals(cqToken, that.cqToken);
+        && Objects.equals(md5, that.md5);
   }
 
   @Override
@@ -311,15 +265,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         getCycles(),
         isGeneratedByPipe,
         req,
-        cqToken,
+        md5,
         firstExecutionTime);
-  }
-
-  public String getCqId() {
-    return req == null ? null : req.getCqId();
-  }
-
-  public String getCqToken() {
-    return cqToken;
   }
 }

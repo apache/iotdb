@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
-import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -75,7 +70,7 @@ public class CQInfoTest {
                 "create cq testCq1 BEGIN select s1 into root.backup.d1.s1 from root.sg.d1 END",
                 "Asia",
                 "root"),
-            "testCq1Token",
+            "testCq1_md5",
             executionTime);
 
     cqInfo.addCQ(addCQPlan);
@@ -94,7 +89,7 @@ public class CQInfoTest {
                 "create cq testCq2 BEGIN select s1 into root.backup.d2.s1 from root.sg.d2 END",
                 "Asia",
                 "root"),
-            "testCq2Token",
+            "testCq2_md5",
             executionTime);
     cqInfo.addCQ(addCQPlan);
 
@@ -103,60 +98,5 @@ public class CQInfoTest {
     actualCQInfo.processLoadSnapshot(snapshotDir);
 
     Assert.assertEquals(cqInfo, actualCQInfo);
-  }
-
-  @Test
-  public void testOldCallbackCannotTouchRecreatedCQ() throws Exception {
-    long executionTime = System.currentTimeMillis();
-    TCreateCQReq req =
-        new TCreateCQReq(
-            "testCq3",
-            1000,
-            0,
-            1000,
-            0,
-            (byte) 0,
-            "select s1 into root.backup.d3.s1 from root.sg.d3",
-            "create cq testCq3 BEGIN select s1 into root.backup.d3.s1 from root.sg.d3 END",
-            "Asia",
-            "root");
-
-    cqInfo.addCQ(new AddCQPlan(req, "oldToken", executionTime));
-    cqInfo.dropCQ(new DropCQPlan("testCq3"));
-    cqInfo.addCQ(new AddCQPlan(req, "newToken", executionTime));
-
-    Assert.assertEquals(
-        TSStatusCode.NO_SUCH_CQ.getStatusCode(),
-        cqInfo.updateCQLastExecutionTime(
-                new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "oldToken"))
-            .code);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-        cqInfo.updateCQLastExecutionTime(
-                new UpdateCQLastExecTimePlan("testCq3", executionTime + 1000, "newToken"))
-            .code);
-  }
-
-  @Test
-  public void testShowCQCanFilterByCQId() throws Exception {
-    long executionTime = System.currentTimeMillis();
-    TCreateCQReq req =
-        new TCreateCQReq(
-            "testCq4",
-            1000,
-            0,
-            1000,
-            0,
-            (byte) 0,
-            "select s1 into root.backup.d4.s1 from root.sg.d4",
-            "create cq testCq4 BEGIN select s1 into root.backup.d4.s1 from root.sg.d4 END",
-            "Asia",
-            "root");
-    cqInfo.addCQ(new AddCQPlan(req, "testCq4Token", executionTime));
-
-    ShowCQResp showCQResp = cqInfo.showCQ(new ShowCQPlan("testCq4"));
-
-    Assert.assertEquals(1, showCQResp.getCqList().size());
-    Assert.assertEquals("testCq4", showCQResp.getCqList().get(0).getCqId());
   }
 }
