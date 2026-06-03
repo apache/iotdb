@@ -984,7 +984,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase(),
+            node.isIncludeAuditDatabase()));
   }
 
   @Override
@@ -1006,7 +1008,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase(),
+            node.isIncludeAuditDatabase()));
   }
 
   @Override
