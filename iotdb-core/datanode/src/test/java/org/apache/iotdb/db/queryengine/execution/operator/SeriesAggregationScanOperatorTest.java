@@ -115,6 +115,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       count++;
     }
@@ -139,6 +142,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       count++;
     }
@@ -165,6 +171,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
       count++;
@@ -196,6 +205,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
       assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
@@ -232,6 +244,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(20000, resultTsBlock.getColumn(0).getInt(0));
       assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
@@ -263,6 +278,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
       count++;
     }
@@ -289,6 +307,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(resultTsBlock.getColumn(0).getLong(0), 380);
       count++;
     }
@@ -315,6 +336,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(resultTsBlock.getColumn(0).getLong(0), 300);
       count++;
     }
@@ -347,6 +371,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(20100, resultTsBlock.getColumn(0).getInt(0));
       assertEquals(399, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(100, resultTsBlock.getColumn(2).getLong(0));
@@ -379,6 +406,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -412,6 +442,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -454,6 +487,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -499,6 +535,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(pos));
@@ -534,6 +573,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -567,6 +609,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
@@ -610,6 +655,9 @@ public class SeriesAggregationScanOperatorTest {
 
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));

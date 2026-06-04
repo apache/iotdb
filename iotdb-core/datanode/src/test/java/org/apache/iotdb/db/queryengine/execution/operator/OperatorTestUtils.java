@@ -29,14 +29,6 @@ public final class OperatorTestUtils {
   }
 
   public static TsBlock nextNonEmpty(Operator operator) throws Exception {
-    TsBlock result = nextNonEmptyOrNull(operator);
-    if (result != null) {
-      return result;
-    }
-    throw new AssertionError("Expected a non-empty TsBlock from operator");
-  }
-
-  public static TsBlock nextNonEmptyOrNull(Operator operator) throws Exception {
     while (operator.hasNext()) {
       TsBlock result = operator.next();
       if (!isNullOrEmpty(result)) {

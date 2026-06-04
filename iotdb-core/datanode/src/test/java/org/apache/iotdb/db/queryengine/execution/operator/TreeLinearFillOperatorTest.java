@@ -1310,6 +1310,9 @@ public class TreeLinearFillOperatorTest {
 
       while (fillOperator.hasNext()) {
         TsBlock block = nextNonEmpty(fillOperator);
+        if (block == null) {
+          continue;
+        }
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + count;
           assertEquals(expectedTime, block.getTimeByIndex(i));

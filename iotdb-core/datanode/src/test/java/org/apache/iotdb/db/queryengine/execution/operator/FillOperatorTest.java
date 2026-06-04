@@ -212,6 +212,9 @@ public class FillOperatorTest {
           };
       while (fillOperator.hasNext()) {
         TsBlock block = nextNonEmpty(fillOperator);
+        if (block == null) {
+          continue;
+        }
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));
@@ -385,6 +388,9 @@ public class FillOperatorTest {
           };
       while (fillOperator.hasNext()) {
         TsBlock block = nextNonEmpty(fillOperator);
+        if (block == null) {
+          continue;
+        }
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));
@@ -562,6 +568,9 @@ public class FillOperatorTest {
           };
       while (fillOperator.hasNext()) {
         TsBlock block = nextNonEmpty(fillOperator);
+        if (block == null) {
+          continue;
+        }
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));

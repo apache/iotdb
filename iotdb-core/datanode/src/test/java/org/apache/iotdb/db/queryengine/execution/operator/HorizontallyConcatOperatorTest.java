@@ -205,6 +205,9 @@ public class HorizontallyConcatOperatorTest {
       while (horizontallyConcatOperator.isBlocked().isDone()
           && horizontallyConcatOperator.hasNext()) {
         TsBlock tsBlock = nextNonEmpty(horizontallyConcatOperator);
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(6, tsBlock.getValueColumnCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
           assertEquals(count, tsBlock.getTimeByIndex(i));

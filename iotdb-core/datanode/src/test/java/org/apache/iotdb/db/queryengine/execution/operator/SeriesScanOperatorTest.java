@@ -121,7 +121,7 @@ public class SeriesScanOperatorTest {
       int count = 0;
       while (seriesScanOperator.hasNext()) {
         TsBlock tsBlock = nextNonEmpty(seriesScanOperator);
-        if (tsBlock.isEmpty()) {
+        if (tsBlock == null) {
           continue;
         }
         assertEquals(1, tsBlock.getValueColumnCount());

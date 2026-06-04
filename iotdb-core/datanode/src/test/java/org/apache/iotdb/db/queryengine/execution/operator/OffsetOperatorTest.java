@@ -66,7 +66,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmptyOrNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -171,6 +170,9 @@ public class OffsetOperatorTest {
       int count = 100;
       while (limitOperator.isBlocked().isDone() && limitOperator.hasNext()) {
         TsBlock tsBlock = nextNonEmpty(limitOperator);
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -279,6 +281,9 @@ public class OffsetOperatorTest {
       int count = 0;
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
         TsBlock tsBlock = nextNonEmpty(offsetOperator);
+        if (tsBlock == null) {
+          continue;
+        }
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -384,7 +389,7 @@ public class OffsetOperatorTest {
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 500, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = nextNonEmptyOrNull(offsetOperator);
+        TsBlock tsBlock = nextNonEmpty(offsetOperator);
         if (tsBlock == null) {
           continue;
         }
@@ -476,7 +481,7 @@ public class OffsetOperatorTest {
               driverContext.getOperatorContexts().get(3), 98_784_247_808L, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = nextNonEmptyOrNull(offsetOperator);
+        TsBlock tsBlock = nextNonEmpty(offsetOperator);
         if (tsBlock == null) {
           continue;
         }

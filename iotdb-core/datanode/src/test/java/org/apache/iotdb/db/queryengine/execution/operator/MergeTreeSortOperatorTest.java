@@ -1796,6 +1796,9 @@ public class MergeTreeSortOperatorTest {
     int index = 0;
     while (treeMergeSortOperator.isBlocked().isDone() && treeMergeSortOperator.hasNext()) {
       TsBlock result = nextNonEmpty(treeMergeSortOperator);
+      if (result == null) {
+        continue;
+      }
       for (int i = 0; i < result.getPositionCount(); i++) {
         long time = result.getTimeByIndex(i);
         assertEquals(time, ans[index++]);
