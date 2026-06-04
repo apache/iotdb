@@ -1142,20 +1142,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case SetWritableViewProperties:
         final SetWritableViewPropertiesPlan setWritableViewPropertiesPlan =
             (SetWritableViewPropertiesPlan) plan;
-        return executeWritableViewPlan(
-            (AbstractTablePlan) plan,
-            queryId,
-            ProcedureType.SET_WRITABLE_VIEW_PROPERTIES_PROCEDURE,
-            new SetWritableViewPropertiesProcedure(
-                ((AbstractTablePlan) plan).getDatabase(),
-                ((AbstractTablePlan) plan).getTableName(),
-                queryId,
-                setWritableViewPropertiesPlan.getProperties(),
-                shouldMarkAsPipeRequest.get(),
-                false),
-            ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
-            buildOriginalTablePropertiesProcedure(
-                setWritableViewPropertiesPlan, queryId, shouldMarkAsPipeRequest.get()));
+        return executeSetWritableViewPropertiesPlan(
+            setWritableViewPropertiesPlan, queryId, shouldMarkAsPipeRequest.get());
       case CommitDeleteColumn:
         return configManager
             .getProcedureManager()
@@ -1367,45 +1355,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 null,
                 null);
       case SetWritableViewComment:
-        result =
-            configManager.checkWritableView(
-                ((SetWritableViewCommentPlan) plan).getDatabase(),
-                ((SetWritableViewCommentPlan) plan).getTableName(),
-                false,
-                true);
-        if (result.getLeft().getLeft().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return result.getLeft().getLeft();
-        }
-        status =
-            STATUS_VISITOR.process(
-                plan,
-                configManager
-                    .getClusterSchemaManager()
-                    .setTableComment(
-                        ((SetWritableViewCommentPlan) plan).getDatabase(),
-                        ((SetWritableViewCommentPlan) plan).getTableName(),
-                        ((SetWritableViewCommentPlan) plan).getComment(),
-                        true,
-                        shouldMarkAsPipeRequest.get(),
-                        result.left.getRight(),
-                        result.right.getLeft(),
-                        result.right.getRight()));
-        return Objects.isNull(((SetWritableViewCommentPlan) plan).getOriginalDatabase())
-                || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    && status.getCode()
-                        != TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
-            ? status
-            : configManager
-                .getClusterSchemaManager()
-                .setTableComment(
-                    ((SetWritableViewCommentPlan) plan).getOriginalDatabase(),
-                    ((SetWritableViewCommentPlan) plan).getOriginalTableName(),
-                    ((SetWritableViewCommentPlan) plan).getComment(),
-                    true,
-                    shouldMarkAsPipeRequest.get(),
-                    false,
-                    result.right.getLeft(),
-                    result.right.getRight());
+        return executeSetWritableViewCommentPlan(
+            (SetWritableViewCommentPlan) plan, shouldMarkAsPipeRequest.get());
       case SetTableColumnComment:
         return configManager
             .getClusterSchemaManager()
@@ -1614,6 +1565,118 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             null);
   }
 
+  private TSStatus executeSetWritableViewCommentPlan(
+      final SetWritableViewCommentPlan plan, final boolean shouldMarkAsPipeRequest) {
+    final Pair<Pair<TSStatus, Boolean>, Pair<String, String>> result =
+        configManager.checkWritableView(plan.getDatabase(), plan.getTableName(), false, true);
+    if (result.getLeft().getLeft().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return result.getLeft().getLeft();
+    }
+
+    final TSStatus status =
+        STATUS_VISITOR.process(
+            plan,
+            configManager
+                .getClusterSchemaManager()
+                .setTableComment(
+                    plan.getDatabase(),
+                    plan.getTableName(),
+                    plan.getComment(),
+                    true,
+                    shouldMarkAsPipeRequest,
+                    result.left.getRight(),
+                    result.right.getLeft(),
+                    result.right.getRight()));
+    return shouldReplaySenderSourceForSetWritableViewComment(
+                plan, result.getLeft().getRight(), result.getRight().left, result.getRight().right)
+            && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || status.getCode()
+                    == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+        ? configManager
+            .getClusterSchemaManager()
+            .setTableComment(
+                plan.getOriginalDatabase(),
+                plan.getOriginalTableName(),
+                plan.getComment(),
+                false,
+                shouldMarkAsPipeRequest,
+                false,
+                null,
+                null)
+        : status;
+  }
+
+  static boolean shouldReplaySenderSourceForSetWritableViewComment(
+      final SetWritableViewCommentPlan plan,
+      final boolean receiverSchemaCascade,
+      final String receiverSourceDatabase,
+      final String receiverSourceTableName) {
+    return Objects.nonNull(plan.getOriginalDatabase())
+        && (!receiverSchemaCascade
+            || !Objects.equals(plan.getOriginalDatabase(), receiverSourceDatabase)
+            || !Objects.equals(plan.getOriginalTableName(), receiverSourceTableName));
+  }
+
+  private TSStatus executeSetWritableViewPropertiesPlan(
+      final SetWritableViewPropertiesPlan plan,
+      final String queryId,
+      final boolean shouldMarkAsPipeRequest) {
+    final Pair<Pair<TSStatus, Boolean>, Pair<String, String>> result =
+        configManager.checkWritableView(plan.getDatabase(), plan.getTableName(), false, true);
+    if (result.getLeft().getLeft().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return result.getLeft().getLeft();
+    }
+
+    final boolean shouldRunReceiverSourceProcedure =
+        shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+            plan, result.getLeft().getRight(), result.getRight().left, result.getRight().right);
+    final TSStatus status =
+        STATUS_VISITOR.process(
+            plan,
+            configManager
+                .getProcedureManager()
+                .executeWithoutDuplicate(
+                    plan.getDatabase(),
+                    result.getRight().left,
+                    null,
+                    plan.getTableName(),
+                    result.getRight().right,
+                    queryId,
+                    ProcedureType.SET_WRITABLE_VIEW_PROPERTIES_PROCEDURE,
+                    new SetWritableViewPropertiesProcedure(
+                        plan.getDatabase(),
+                        plan.getTableName(),
+                        queryId,
+                        plan.getProperties(),
+                        shouldMarkAsPipeRequest,
+                        shouldRunReceiverSourceProcedure)));
+    return Objects.isNull(plan.getOriginalDatabase())
+            || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && status.getCode()
+                    != TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
+        ? status
+        : configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                plan.getOriginalDatabase(),
+                null,
+                plan.getOriginalTableName(),
+                queryId,
+                ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
+                buildOriginalTablePropertiesProcedure(plan, queryId, shouldMarkAsPipeRequest));
+  }
+
+  static boolean shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+      final SetWritableViewPropertiesPlan plan,
+      final boolean receiverSchemaCascade,
+      final String receiverSourceDatabase,
+      final String receiverSourceTableName) {
+    return Objects.nonNull(plan.getOriginalDatabase())
+        && receiverSchemaCascade
+        && (!Objects.equals(plan.getOriginalDatabase(), receiverSourceDatabase)
+            || !Objects.equals(plan.getOriginalTableName(), receiverSourceTableName));
+  }
+
   private TSStatus executeWritableViewPlan(
       final AbstractTablePlan plan,
       final String queryId,
@@ -1649,6 +1712,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 && status.getCode()
                     != TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()
             || Objects.isNull(originalProcedureType)
+            || !shouldReplaySenderSourceForWritableViewPlan(
+                plan, result.getLeft().getRight(), result.getRight().left, result.getRight().right)
         ? status
         : configManager
             .getProcedureManager()
@@ -1659,6 +1724,17 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 queryId,
                 originalProcedureType,
                 originalProcedure);
+  }
+
+  static boolean shouldReplaySenderSourceForWritableViewPlan(
+      final AbstractTablePlan plan,
+      final boolean receiverSchemaCascade,
+      final String receiverSourceDatabase,
+      final String receiverSourceTableName) {
+    return Objects.nonNull(plan.getOriginalDatabase())
+        && (!receiverSchemaCascade
+            || !Objects.equals(plan.getOriginalDatabase(), receiverSourceDatabase)
+            || !Objects.equals(plan.getOriginalTableName(), receiverSourceTableName));
   }
 
   private TSStatus executeIdempotentCreateTableOrView(

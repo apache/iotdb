@@ -116,6 +116,161 @@ public class WritableViewPipeReplayTest {
   }
 
   @Test
+  public void testSetWritableViewPropertiesRunsReceiverSourceWhenSourceDiffers() {
+    final SetWritableViewPropertiesPlan plan =
+        new SetWritableViewPropertiesPlan(
+            "view_db", "view_table", Collections.emptyMap(), "sender_db", "sender_source");
+
+    Assert.assertTrue(
+        IoTDBConfigNodeReceiver.shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testSetWritableViewPropertiesSkipsReceiverSourceWhenSourceMatches() {
+    final SetWritableViewPropertiesPlan plan =
+        new SetWritableViewPropertiesPlan(
+            "view_db", "view_table", Collections.emptyMap(), "sender_db", "sender_source");
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+            plan, true, "sender_db", "sender_source"));
+  }
+
+  @Test
+  public void testSetWritableViewPropertiesSkipsReceiverSourceWithoutSenderCascade() {
+    final SetWritableViewPropertiesPlan plan =
+        new SetWritableViewPropertiesPlan(
+            "view_db", "view_table", Collections.emptyMap(), null, null);
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testSetWritableViewPropertiesSkipsReceiverSourceWhenReceiverCascadeDisabled() {
+    final SetWritableViewPropertiesPlan plan =
+        new SetWritableViewPropertiesPlan(
+            "view_db", "view_table", Collections.emptyMap(), "sender_db", "sender_source");
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldRunReceiverSourceProcedureForSetWritableViewProperties(
+            plan, false, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testSetWritableViewCommentReplaysSenderSourceWhenReceiverSourceDiffers() {
+    final SetWritableViewCommentPlan plan =
+        new SetWritableViewCommentPlan(
+            "view_db", "view_table", "comment", "sender_db", "sender_source");
+
+    Assert.assertTrue(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForSetWritableViewComment(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testSetWritableViewCommentSkipsSenderSourceWhenReceiverSourceMatches() {
+    final SetWritableViewCommentPlan plan =
+        new SetWritableViewCommentPlan(
+            "view_db", "view_table", "comment", "sender_db", "sender_source");
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForSetWritableViewComment(
+            plan, true, "sender_db", "sender_source"));
+  }
+
+  @Test
+  public void testSetWritableViewCommentReplaysSenderSourceWhenReceiverCascadeDisabled() {
+    final SetWritableViewCommentPlan plan =
+        new SetWritableViewCommentPlan(
+            "view_db", "view_table", "comment", "sender_db", "sender_source");
+
+    Assert.assertTrue(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForSetWritableViewComment(
+            plan, false, "sender_db", "sender_source"));
+  }
+
+  @Test
+  public void testSetWritableViewCommentSkipsSenderSourceWithoutSenderCascade() {
+    final SetWritableViewCommentPlan plan =
+        new SetWritableViewCommentPlan("view_db", "view_table", "comment", null, null);
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForSetWritableViewComment(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testWritableViewPlanReplaysSenderSourceWhenReceiverSourceDiffers() {
+    final AddWritableViewColumnPlan plan =
+        new AddWritableViewColumnPlan(
+            "view_db",
+            "view_table",
+            Collections.singletonList(new FieldColumnSchema("view_col", TSDataType.INT32)),
+            false,
+            "sender_db",
+            "sender_source",
+            Collections.singletonList(new FieldColumnSchema("source_col", TSDataType.INT32)));
+
+    Assert.assertTrue(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForWritableViewPlan(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testWritableViewPlanSkipsSenderSourceWhenReceiverSourceMatches() {
+    final AddWritableViewColumnPlan plan =
+        new AddWritableViewColumnPlan(
+            "view_db",
+            "view_table",
+            Collections.singletonList(new FieldColumnSchema("view_col", TSDataType.INT32)),
+            false,
+            "sender_db",
+            "sender_source",
+            Collections.singletonList(new FieldColumnSchema("source_col", TSDataType.INT32)));
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForWritableViewPlan(
+            plan, true, "sender_db", "sender_source"));
+  }
+
+  @Test
+  public void testWritableViewPlanReplaysSenderSourceWhenReceiverCascadeDisabled() {
+    final AddWritableViewColumnPlan plan =
+        new AddWritableViewColumnPlan(
+            "view_db",
+            "view_table",
+            Collections.singletonList(new FieldColumnSchema("view_col", TSDataType.INT32)),
+            false,
+            "sender_db",
+            "sender_source",
+            Collections.singletonList(new FieldColumnSchema("source_col", TSDataType.INT32)));
+
+    Assert.assertTrue(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForWritableViewPlan(
+            plan, false, "sender_db", "sender_source"));
+  }
+
+  @Test
+  public void testWritableViewPlanSkipsSenderSourceWithoutSenderCascade() {
+    final AddWritableViewColumnPlan plan =
+        new AddWritableViewColumnPlan(
+            "view_db",
+            "view_table",
+            Collections.singletonList(new FieldColumnSchema("view_col", TSDataType.INT32)),
+            false,
+            null,
+            null,
+            null);
+
+    Assert.assertFalse(
+        IoTDBConfigNodeReceiver.shouldReplaySenderSourceForWritableViewPlan(
+            plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
   public void testGetSetWritableViewPropertiesPlanKeepsCascadeViewOnlyWhenOriginalInvisible() {
     final Map<String, String> properties = new HashMap<>();
     properties.put(TsTable.TTL_PROPERTY, "1");

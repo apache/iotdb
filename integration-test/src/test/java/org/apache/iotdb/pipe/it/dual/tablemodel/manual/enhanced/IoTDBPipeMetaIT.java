@@ -488,6 +488,90 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testWritableViewMetaSyncWithReceiverSourceMismatch() throws Exception {
+    final String dbName = "source_mismatch";
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      createTableModelPipe(client, "testPipe", dbName, null);
+
+      TableModelUtils.createDatabase(senderEnv, dbName, 100);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create table table1(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view view1 as select * from table1 with (schema_cascade=true)",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,100,USING,null,BASE TABLE,null,",
+                  "view1,100,USING,null,WRITABLE VIEW,table1,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "create table table2(a tag, b attribute, c int32) with (ttl=100)",
+          null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          receiverEnv,
+          "create or replace writable view view1 as select * from table2 "
+              + "with (schema_cascade=true)",
+          null);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "alter view view1 set properties ttl=300",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,300,USING,null,BASE TABLE,null,",
+                  "table2,300,USING,null,BASE TABLE,null,",
+                  "view1,300,USING,null,WRITABLE VIEW,table2,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "comment on view view1 is 'source mismatch comment'",
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "table1,300,USING,source mismatch comment,BASE TABLE,null,",
+                  "table2,300,USING,source mismatch comment,BASE TABLE,null,",
+                  "view1,300,USING,source mismatch comment,WRITABLE VIEW,table2,")),
+          dbName);
+    }
+  }
+
+  @Test
   public void testWritableViewMetaSyncWithTablePattern() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
