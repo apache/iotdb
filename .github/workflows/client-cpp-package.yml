@@ -463,13 +463,18 @@ jobs:
           set -euxo pipefail
           PKG_TARBALL=$(find iotdb-client/client-cpp/target -maxdepth 1 -type f -name 'iotdb-session-cpp-*.tar.gz' -print -quit)
           test -n "${PKG_TARBALL}"
-          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            TEMP_BASE="$(cygpath -u "${RUNNER_TEMP}")"
+          else
+            TEMP_BASE="${RUNNER_TEMP}"
+          fi
+          PKG_UNPACK="${TEMP_BASE}/client-cpp-package"
           rm -rf "${PKG_UNPACK}"
           mkdir -p "${PKG_UNPACK}"
           tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
-          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
+          EXAMPLE_BUILD="${TEMP_BASE}/client-cpp-example-smoke"
           CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
