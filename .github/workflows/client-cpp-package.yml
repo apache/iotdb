@@ -482,10 +482,15 @@ jobs:
           cmake "${CMAKE_ARGS[@]}"
           cmake --build "${EXAMPLE_BUILD}" --config Release
           ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
-          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.bat' -print -quit | sed 's#/sbin/start-standalone.bat##')
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            WORKSPACE_BASE="$(cygpath -u "${GITHUB_WORKSPACE}")"
+          else
+            WORKSPACE_BASE="${GITHUB_WORKSPACE}"
+          fi
+          SERVER_ROOT=$(find "${WORKSPACE_BASE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/windows/start-standalone.bat' -print -quit | sed 's#/sbin/windows/start-standalone.bat##')
           test -n "${SERVER_ROOT}"
-          cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/start-standalone.bat")"
-          trap 'cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/stop-standalone.bat")" || true' EXIT
+          cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/windows/start-standalone.bat")"
+          trap 'cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/windows/stop-standalone.bat")" || true' EXIT
           sleep 30
           for exe in SessionExample.exe AlignedTimeseriesSessionExample.exe TableModelSessionExample.exe tree_example.exe table_example.exe; do
             EXE=$(find "${EXAMPLE_BUILD}" -name "${exe}" -print -quit)
