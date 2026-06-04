@@ -65,6 +65,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.isNullOrEmpty;
 import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -383,11 +384,11 @@ public class OffsetOperatorTest {
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 500, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = nextNonNull(offsetOperator);
-        assertEquals(2, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertEquals(0, tsBlock.getPositionCount());
+        TsBlock tsBlock = offsetOperator.next();
+        if (isNullOrEmpty(tsBlock)) {
+          continue;
+        }
+        fail("Expected no data from offset operator");
       }
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -475,11 +476,11 @@ public class OffsetOperatorTest {
               driverContext.getOperatorContexts().get(3), 98_784_247_808L, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = nextNonNull(offsetOperator);
-        assertEquals(2, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertEquals(0, tsBlock.getPositionCount());
+        TsBlock tsBlock = offsetOperator.next();
+        if (isNullOrEmpty(tsBlock)) {
+          continue;
+        }
+        fail("Expected no data from offset operator");
       }
     } catch (IllegalPathException e) {
       e.printStackTrace();

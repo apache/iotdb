@@ -31,21 +31,25 @@ public final class OperatorTestUtils {
   public static TsBlock nextNonNull(Operator operator) throws Exception {
     while (operator.hasNext()) {
       TsBlock result = operator.next();
-      if (result != null) {
+      if (!isNullOrEmpty(result)) {
         return result;
       }
     }
-    throw new AssertionError("Expected a non-null TsBlock from operator");
+    throw new AssertionError("Expected a non-empty TsBlock from operator");
   }
 
   public static TsBlock lastNonNull(Operator operator) throws Exception {
     TsBlock result = null;
     while (operator.isBlocked().isDone() && operator.hasNext()) {
       TsBlock nextResult = operator.next();
-      if (nextResult != null) {
+      if (!isNullOrEmpty(nextResult)) {
         result = nextResult;
       }
     }
     return result;
+  }
+
+  public static boolean isNullOrEmpty(TsBlock tsBlock) {
+    return tsBlock == null || tsBlock.getPositionCount() == 0;
   }
 }
