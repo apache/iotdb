@@ -30,12 +30,10 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
-import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -116,13 +114,8 @@ public class ReadTsFileTableFunction implements TableFunction {
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(
       TableFunctionHandle tableFunctionHandle) {
-    ReadTsFileTableFunctionHandle handle = (ReadTsFileTableFunctionHandle) tableFunctionHandle;
-    return new TableFunctionProcessorProvider() {
-      @Override
-      public TableFunctionLeafProcessor getSplitProcessor() {
-        return new ReadTsFileLeafProcessor(handle);
-      }
-    };
+    throw new UnsupportedOperationException(
+        "read_tsfile must be planned as an ExternalTsFileScanNode");
   }
 
   private static String getRequiredStringArgument(Map<String, Argument> arguments, String name) {
@@ -321,33 +314,27 @@ public class ReadTsFileTableFunction implements TableFunction {
     return builder.build();
   }
 
-  private static class ReadTsFileLeafProcessor implements TableFunctionLeafProcessor {
-    private final ReadTsFileTableFunctionHandle handle;
-    private boolean finished;
+  public static class ExternalTsFileDeviceOffset {
 
-    private ReadTsFileLeafProcessor(ReadTsFileTableFunctionHandle handle) {
-      this.handle = handle;
+    private final String tsFilePath;
+    private final long[] deviceMeasurementNodeOffset;
+
+    public ExternalTsFileDeviceOffset(String tsFilePath, long[] deviceMeasurementNodeOffset) {
+      this.tsFilePath = tsFilePath;
+      this.deviceMeasurementNodeOffset =
+          deviceMeasurementNodeOffset == null
+              ? null
+              : Arrays.copyOf(deviceMeasurementNodeOffset, deviceMeasurementNodeOffset.length);
     }
 
-    @Override
-    public void beforeStart() {
-      // TODO: Open TsFile resources here.
-      finished = true;
+    public String getTsFilePath() {
+      return tsFilePath;
     }
 
-    @Override
-    public void process(List<ColumnBuilder> columnBuilders) {
-      // TODO: Read one batch from TsFile resources and write values into column builders.
-    }
-
-    @Override
-    public boolean isFinish() {
-      return finished;
-    }
-
-    @Override
-    public void beforeDestroy() {
-      // TODO: Close TsFile resources here.
+    public long[] getDeviceMeasurementNodeOffset() {
+      return deviceMeasurementNodeOffset == null
+          ? null
+          : Arrays.copyOf(deviceMeasurementNodeOffset, deviceMeasurementNodeOffset.length);
     }
   }
 

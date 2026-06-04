@@ -20,60 +20,44 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.FileLoaderUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING;
 
-public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanOperator {
+public class ExternalTsFileTableScanOperator extends AbstractTableScanOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(UnorderedExternalTsFileTableScanOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(ExternalTsFileTableScanOperator.class);
 
   private final String tableName;
-  private final SchemaFilter deviceFilter;
   private final List<DeviceEntry> deviceEntries;
   private final List<List<ExternalTsFileDeviceOffset>> deviceOffsets;
-  private final ExternalTsFileDeviceFilterVisitor deviceFilterVisitor =
-      new ExternalTsFileDeviceFilterVisitor();
 
-  private MultiTsFileResourceIterator deviceIterator;
-  private Map<TsFileResource, TsFileSequenceReader> resourceReaderMap = Collections.emptyMap();
   private DeviceEntry currentDeviceEntry;
   private List<ExternalTsFileDeviceOffset> currentDeviceOffsets;
   private int currentDeviceIndex;
 
-  public UnorderedExternalTsFileTableScanOperator(
+  public ExternalTsFileTableScanOperator(
       AbstractTableScanOperatorParameter parameter,
       String tableName,
-      SchemaFilter deviceFilter,
       List<DeviceEntry> deviceEntries,
       List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
     super(parameter);
     this.tableName = tableName;
-    this.deviceFilter = deviceFilter;
-    this.deviceEntries = deviceEntries;
-    this.deviceOffsets = deviceOffsets;
+    this.deviceEntries = new ArrayList<>(deviceEntries);
+    this.deviceOffsets = new ArrayList<>(deviceOffsets);
     this.currentDeviceIndex = 0;
   }
 
@@ -91,84 +75,22 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     super.initQueryDataSource(dataSource);
-
-    QueryDataSource queryDataSource = (QueryDataSource) dataSource;
-    if (deviceEntries.isEmpty()) {
-      initDeviceIterator(queryDataSource);
-    }
     currentDeviceEntry = nextDeviceEntry();
     recordCurrentDeviceIndex();
     constructAlignedSeriesScanUtil();
     if (seriesScanUtil != null) {
-      seriesScanUtil.initQueryDataSource(queryDataSource);
+      seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource);
     }
-  }
-
-  private void initDeviceIterator(QueryDataSource queryDataSource) {
-    resourceReaderMap = createResourceReaderMap(getAllResources(queryDataSource));
-    deviceIterator =
-        new MultiTsFileResourceIterator(
-            tableName,
-            queryDataSource.getSeqResources(),
-            queryDataSource.getUnseqResources(),
-            resourceReaderMap,
-            ((OperatorContext) operatorContext).getInstanceContext(),
-            seriesScanOptions,
-            deviceFilter);
-  }
-
-  private Map<TsFileResource, TsFileSequenceReader> createResourceReaderMap(
-      List<TsFileResource> resources) {
-    Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>(resources.size());
-    for (TsFileResource resource : resources) {
-      try {
-        readerMap.put(
-            resource,
-            new TsFileSequenceReader(
-                resource.getTsFilePath(),
-                ((OperatorContext) operatorContext)
-                        .getInstanceContext()
-                        .getQueryStatistics()
-                        .getLoadTimeSeriesMetadataActualIOSize()
-                    ::addAndGet,
-                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath())));
-      } catch (IOException e) {
-        closeResourceReaders(readerMap);
-        throw new RuntimeException(
-            "Failed to open external TsFile reader: " + resource.getTsFilePath(), e);
-      }
-    }
-    return readerMap;
-  }
-
-  private List<TsFileResource> getAllResources(QueryDataSource queryDataSource) {
-    List<TsFileResource> resources =
-        new ArrayList<>(
-            queryDataSource.getSeqResources().size() + queryDataSource.getUnseqResources().size());
-    resources.addAll(queryDataSource.getSeqResources());
-    resources.addAll(queryDataSource.getUnseqResources());
-    return resources;
   }
 
   private DeviceEntry nextDeviceEntry() {
-    if (!deviceEntries.isEmpty()) {
-      while (currentDeviceIndex < deviceEntries.size()) {
-        currentDeviceOffsets = deviceOffsets.get(currentDeviceIndex);
-        DeviceEntry deviceEntry = deviceEntries.get(currentDeviceIndex);
-        if (isDeviceMatched(deviceEntry.getDeviceID())) {
-          return deviceEntry;
-        }
-        currentDeviceIndex++;
-      }
+    if (currentDeviceIndex >= deviceEntries.size()) {
       currentDeviceOffsets = null;
       return null;
     }
-
-    if (deviceIterator == null || !deviceIterator.hasNextDevice()) {
-      return null;
-    }
-    IDeviceID nextDevice = deviceIterator.nextDevice();
-    return nextDevice == null ? null : new AlignedDeviceEntry(nextDevice, new Binary[0]);
+    DeviceEntry deviceEntry = deviceEntries.get(currentDeviceIndex);
+    currentDeviceOffsets = deviceOffsets.get(currentDeviceIndex);
+    return deviceEntry;
   }
 
   @Override
@@ -214,14 +136,7 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
             ((OperatorContext) operatorContext).getInstanceContext(),
             true,
             measurementColumnTSDataTypes,
-            deviceEntries.isEmpty()
-                ? deviceIterator::loadTimeSeriesMetadata
-                : this::loadTimeSeriesMetadata);
-  }
-
-  private boolean isDeviceMatched(IDeviceID deviceID) {
-    return deviceFilter == null
-        || Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID));
+            this::loadTimeSeriesMetadata);
   }
 
   private AbstractAlignedTimeSeriesMetadata loadTimeSeriesMetadata(
@@ -230,9 +145,13 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
         || !getCurrentDeviceEntry().getDeviceID().equals(alignedPath.getDeviceId())) {
       return null;
     }
-    if (!containsCurrentDevice(resource)) {
+
+    long[] deviceMeasurementNodeOffset = getDeviceMeasurementNodeOffset(resource.getTsFilePath());
+    if (deviceMeasurementNodeOffset == null) {
       return null;
     }
+    // TODO: Use deviceMeasurementNodeOffset after FileLoaderUtils supports offset-based metadata
+    // loading in this branch.
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource,
         alignedPath,
@@ -242,22 +161,13 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
         ((OperatorContext) operatorContext).getInstanceContext().isIgnoreAllNullRows());
   }
 
-  private boolean containsCurrentDevice(TsFileResource resource) {
-    String tsFilePath = resource.getTsFilePath();
+  private long[] getDeviceMeasurementNodeOffset(String tsFilePath) {
     for (ExternalTsFileDeviceOffset offset : currentDeviceOffsets) {
       if (tsFilePath.equals(offset.getTsFilePath())) {
-        return true;
+        return offset.getDeviceMeasurementNodeOffset();
       }
     }
-    return false;
-  }
-
-  @Override
-  public void close() throws Exception {
-    closeResourceReaders(resourceReaderMap);
-    resourceReaderMap = Collections.emptyMap();
-    deviceIterator = null;
-    super.close();
+    return null;
   }
 
   @Override
@@ -265,16 +175,7 @@ public class UnorderedExternalTsFileTableScanOperator extends AbstractTableScanO
     return super.ramBytesUsed()
         + INSTANCE_SIZE
         - AbstractTableScanOperator.INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfMap(resourceReaderMap);
-  }
-
-  private void closeResourceReaders(Map<TsFileResource, TsFileSequenceReader> readerMap) {
-    for (TsFileSequenceReader reader : readerMap.values()) {
-      try {
-        reader.close();
-      } catch (IOException ignored) {
-        // ignore close failure
-      }
-    }
+        + RamUsageEstimator.sizeOfCollection(deviceEntries)
+        + RamUsageEstimator.sizeOfCollection(deviceOffsets);
   }
 }

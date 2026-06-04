@@ -21,17 +21,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -44,10 +42,10 @@ import java.util.Optional;
 
 public class ExternalTsFileScanNode extends TableScanNode {
   private List<String> tsFilePaths;
-  private Expression tagPredicate;
   private Expression timePredicate;
   private Ordering scanOrder = Ordering.ASC;
-  private OrderingScheme pushedOrderingScheme;
+  private List<DeviceEntry> deviceEntries = Collections.emptyList();
+  private List<List<ExternalTsFileDeviceOffset>> deviceOffsets = Collections.emptyList();
 
   protected ExternalTsFileScanNode() {}
 
@@ -57,8 +55,28 @@ public class ExternalTsFileScanNode extends TableScanNode {
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
       List<String> tsFilePaths) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        tsFilePaths,
+        Collections.emptyList(),
+        Collections.emptyList());
+  }
+
+  public ExternalTsFileScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      List<String> tsFilePaths,
+      List<DeviceEntry> deviceEntries,
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
     super(id, qualifiedObjectName, outputSymbols, assignments);
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
+    this.deviceEntries = new ArrayList<>(deviceEntries);
+    this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
   }
 
   public ExternalTsFileScanNode(
@@ -70,7 +88,6 @@ public class ExternalTsFileScanNode extends TableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       Ordering scanOrder,
-      OrderingScheme pushedOrderingScheme,
       List<String> tsFilePaths) {
     this(
         id,
@@ -80,11 +97,9 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        null,
-        null,
         scanOrder,
-        pushedOrderingScheme,
-        tsFilePaths);
+        tsFilePaths,
+        Collections.emptyList());
   }
 
   public ExternalTsFileScanNode(
@@ -95,11 +110,63 @@ public class ExternalTsFileScanNode extends TableScanNode {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      Expression tagPredicate,
+      Ordering scanOrder,
+      List<String> tsFilePaths,
+      List<DeviceEntry> deviceEntries) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        null,
+        scanOrder,
+        tsFilePaths,
+        deviceEntries,
+        Collections.emptyList());
+  }
+
+  public ExternalTsFileScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
       Expression timePredicate,
       Ordering scanOrder,
-      OrderingScheme pushedOrderingScheme,
       List<String> tsFilePaths) {
+    this(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        timePredicate,
+        scanOrder,
+        tsFilePaths,
+        Collections.emptyList(),
+        Collections.emptyList());
+  }
+
+  public ExternalTsFileScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      Expression timePredicate,
+      Ordering scanOrder,
+      List<String> tsFilePaths,
+      List<DeviceEntry> deviceEntries,
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
     super(
         id,
         qualifiedObjectName,
@@ -108,11 +175,11 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset);
-    this.tagPredicate = tagPredicate;
     this.timePredicate = timePredicate;
     this.scanOrder = scanOrder;
-    this.pushedOrderingScheme = pushedOrderingScheme;
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
+    this.deviceEntries = new ArrayList<>(deviceEntries);
+    this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
   }
 
   @Override
@@ -130,23 +197,41 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        tagPredicate,
         timePredicate,
         scanOrder,
-        pushedOrderingScheme,
-        tsFilePaths);
+        tsFilePaths,
+        deviceEntries,
+        deviceOffsets);
   }
 
   public List<String> getTsFilePaths() {
     return tsFilePaths;
   }
 
-  public Optional<Expression> getTagPredicate() {
-    return Optional.ofNullable(tagPredicate);
+  public List<DeviceEntry> getDeviceEntries() {
+    return deviceEntries;
   }
 
-  public void setTagPredicate(Expression tagPredicate) {
-    this.tagPredicate = tagPredicate;
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+    this.deviceEntries = new ArrayList<>(deviceEntries);
+  }
+
+  public List<List<ExternalTsFileDeviceOffset>> getDeviceOffsets() {
+    return deviceOffsets;
+  }
+
+  public void setDeviceOffsets(List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
+    this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
+  }
+
+  private static List<List<ExternalTsFileDeviceOffset>> copyDeviceOffsets(
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
+    List<List<ExternalTsFileDeviceOffset>> copiedDeviceOffsets =
+        new ArrayList<>(deviceOffsets.size());
+    for (List<ExternalTsFileDeviceOffset> offsets : deviceOffsets) {
+      copiedDeviceOffsets.add(new ArrayList<>(offsets));
+    }
+    return copiedDeviceOffsets;
   }
 
   public Optional<Expression> getTimePredicate() {
@@ -165,104 +250,21 @@ public class ExternalTsFileScanNode extends TableScanNode {
     this.scanOrder = scanOrder;
   }
 
-  public Optional<OrderingScheme> getPushedOrderingScheme() {
-    return Optional.ofNullable(pushedOrderingScheme);
-  }
-
-  public void setPushedOrderingScheme(OrderingScheme pushedOrderingScheme) {
-    this.pushedOrderingScheme = pushedOrderingScheme;
-  }
-
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(byteBuffer);
-    TableScanNode.serializeMemberVariables(this, byteBuffer, true);
-    serializePredicate(tagPredicate, byteBuffer);
-    serializePredicate(timePredicate, byteBuffer);
-    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
-    if (pushedOrderingScheme == null) {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      pushedOrderingScheme.serialize(byteBuffer);
-    }
-    serializeTsFilePaths(byteBuffer);
+    throw new UnsupportedOperationException(
+        "ExternalTsFileScanNode cannot be serialized because it reads local external TsFiles");
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.EXTERNAL_TSFILE_SCAN_NODE.serialize(stream);
-    TableScanNode.serializeMemberVariables(this, stream, true);
-    serializePredicate(tagPredicate, stream);
-    serializePredicate(timePredicate, stream);
-    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
-    if (pushedOrderingScheme == null) {
-      ReadWriteIOUtils.write(false, stream);
-    } else {
-      ReadWriteIOUtils.write(true, stream);
-      pushedOrderingScheme.serialize(stream);
-    }
-    serializeTsFilePaths(stream);
-  }
-
-  private void serializeTsFilePaths(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(tsFilePaths.size(), byteBuffer);
-    for (String tsFilePath : tsFilePaths) {
-      ReadWriteIOUtils.write(tsFilePath, byteBuffer);
-    }
-  }
-
-  private void serializeTsFilePaths(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(tsFilePaths.size(), stream);
-    for (String tsFilePath : tsFilePaths) {
-      ReadWriteIOUtils.write(tsFilePath, stream);
-    }
-  }
-
-  private void serializePredicate(Expression predicate, ByteBuffer byteBuffer) {
-    if (predicate == null) {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(predicate, byteBuffer);
-    }
-  }
-
-  private void serializePredicate(Expression predicate, DataOutputStream stream)
-      throws IOException {
-    if (predicate == null) {
-      ReadWriteIOUtils.write(false, stream);
-    } else {
-      ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(predicate, stream);
-    }
+    throw new UnsupportedOperationException(
+        "ExternalTsFileScanNode cannot be serialized because it reads local external TsFiles");
   }
 
   public static ExternalTsFileScanNode deserialize(ByteBuffer byteBuffer) {
-    ExternalTsFileScanNode node = new ExternalTsFileScanNode();
-    TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
-
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      node.tagPredicate = Expression.deserialize(byteBuffer);
-    }
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      node.timePredicate = Expression.deserialize(byteBuffer);
-    }
-
-    node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      node.pushedOrderingScheme = OrderingScheme.deserialize(byteBuffer);
-    }
-
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> tsFilePaths = new ArrayList<>(size);
-    while (size-- > 0) {
-      tsFilePaths.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-    node.tsFilePaths = Collections.unmodifiableList(tsFilePaths);
-
-    node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return node;
+    throw new UnsupportedOperationException(
+        "ExternalTsFileScanNode cannot be deserialized because it reads local external TsFiles");
   }
 
   @Override

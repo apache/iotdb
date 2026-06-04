@@ -188,11 +188,11 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
               externalTsFileScanNode.getPushDownPredicate(),
               externalTsFileScanNode.getPushDownLimit(),
               externalTsFileScanNode.getPushDownOffset(),
-              externalTsFileScanNode.getTagPredicate().orElse(null),
               externalTsFileScanNode.getTimePredicate().orElse(null),
               externalTsFileScanNode.getScanOrder(),
-              externalTsFileScanNode.getPushedOrderingScheme().orElse(null),
-              externalTsFileScanNode.getTsFilePaths()));
+              externalTsFileScanNode.getTsFilePaths(),
+              externalTsFileScanNode.getDeviceEntries(),
+              externalTsFileScanNode.getDeviceOffsets()));
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for
       // InformationSchemaTableScanNode is

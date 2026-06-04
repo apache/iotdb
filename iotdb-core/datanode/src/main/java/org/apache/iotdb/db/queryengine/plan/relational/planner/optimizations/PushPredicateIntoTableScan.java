@@ -47,12 +47,18 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.ExternalTsFileDeviceFilterVisitor;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -61,6 +67,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
@@ -79,18 +87,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceVi
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.LazyTsFileDeviceIterator;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -118,6 +132,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATE_
 import static org.apache.iotdb.commons.schema.table.InformationSchema.CURRENT_QUERIES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
@@ -476,6 +491,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     public PlanNode visitExternalTsFileScan(
         ExternalTsFileScanNode tableScanNode, RewriteContext context) {
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        collectExternalTsFileDeviceTasks(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -524,11 +540,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         getDeviceEntriesWithDataPartitions(
             (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
       } else if (tableScanNode instanceof ExternalTsFileScanNode) {
-        ((ExternalTsFileScanNode) tableScanNode)
-            .setTagPredicate(
-                splitExpression.getMetadataExpressions().isEmpty()
-                    ? null
-                    : combineConjuncts(splitExpression.getMetadataExpressions()));
+        collectExternalTsFileDeviceTasks(
+            (ExternalTsFileScanNode) tableScanNode, splitExpression.getMetadataExpressions());
       }
 
       // exist expressions can not push down to scan operator
@@ -543,6 +556,77 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return tableScanNode;
+    }
+
+    private void collectExternalTsFileDeviceTasks(
+        ExternalTsFileScanNode tableScanNode, List<Expression> metadataExpressions) {
+      SchemaFilter deviceFilter =
+          constructExternalTsFileDeviceFilter(tableScanNode, metadataExpressions);
+      ExternalTsFileDeviceFilterVisitor deviceFilterVisitor =
+          new ExternalTsFileDeviceFilterVisitor();
+      Map<IDeviceID, List<ExternalTsFileDeviceOffset>> deviceOffsetMap = new LinkedHashMap<>();
+      for (String tsFilePath : tableScanNode.getTsFilePaths()) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath)) {
+          LazyTsFileDeviceIterator deviceIterator =
+              new LazyTsFileDeviceIterator(
+                  reader, tableScanNode.getQualifiedObjectName().getObjectName(), ignored -> {});
+          while (deviceIterator.hasNext()) {
+            IDeviceID deviceID = deviceIterator.next();
+            if (deviceFilter != null
+                && !Boolean.TRUE.equals(deviceFilter.accept(deviceFilterVisitor, deviceID))) {
+              continue;
+            }
+            deviceOffsetMap
+                .computeIfAbsent(deviceID, ignored -> new ArrayList<>())
+                .add(
+                    new ExternalTsFileDeviceOffset(
+                        tsFilePath, deviceIterator.getCurrentDeviceMeasurementNodeOffset()));
+          }
+        } catch (IOException e) {
+          throw new SemanticException(
+              "Failed to collect devices from external TsFile: " + tsFilePath);
+        }
+      }
+      List<DeviceEntry> deviceEntries = new ArrayList<>(deviceOffsetMap.size());
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets =
+          new ArrayList<>(deviceOffsetMap.size());
+      for (Map.Entry<IDeviceID, List<ExternalTsFileDeviceOffset>> entry :
+          deviceOffsetMap.entrySet()) {
+        deviceEntries.add(new AlignedDeviceEntry(entry.getKey(), new Binary[0]));
+        deviceOffsets.add(entry.getValue());
+      }
+      tableScanNode.setDeviceEntries(deviceEntries);
+      tableScanNode.setDeviceOffsets(deviceOffsets);
+    }
+
+    private SchemaFilter constructExternalTsFileDeviceFilter(
+        ExternalTsFileScanNode tableScanNode, List<Expression> metadataExpressions) {
+      if (metadataExpressions.isEmpty()) {
+        return null;
+      }
+      TsTable table = new TsTable(tableScanNode.getQualifiedObjectName().getObjectName());
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        ColumnSchema columnSchema = entry.getValue();
+        if (TAG.equals(columnSchema.getColumnCategory())) {
+          table.addColumnSchema(
+              new TagColumnSchema(
+                  entry.getKey().getName(),
+                  InternalTypeManager.getTSDataType(columnSchema.getType())));
+        }
+      }
+      Expression predicate =
+          metadataExpressions.size() == 1
+              ? metadataExpressions.get(0)
+              : new LogicalExpression(LogicalExpression.Operator.AND, metadataExpressions);
+      SchemaFilter deviceFilter =
+          predicate.accept(
+              new ConvertSchemaPredicateToFilterVisitor(),
+              new ConvertSchemaPredicateToFilterVisitor.Context(table));
+      if (deviceFilter == null) {
+        throw new UnsupportedOperationException(
+            "Unsupported external TsFile device filter: " + predicate);
+      }
+      return deviceFilter;
     }
 
     interface InformationSchemaTablePredicatePushDownChecker {

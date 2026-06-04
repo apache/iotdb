@@ -73,6 +73,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -731,14 +732,72 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitExternalTsFileScan(
       final ExternalTsFileScanNode node, final PlanContext context) {
-    node.setRegionReplicaSet(
-        new TRegionReplicaSet(
-            null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation())));
+    TRegionReplicaSet localRegionReplicaSet =
+        new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
+    node.setRegionReplicaSet(localRegionReplicaSet);
     context.mostUsedRegion = node.getRegionReplicaSet();
     if (context.hasSortProperty) {
       processExternalTsFileSortProperty(node, context);
+      return Collections.singletonList(node);
+    }
+
+    List<PlanNode> splitNodes = splitExternalTsFileScanByDeviceEntries(node, localRegionReplicaSet);
+    if (!splitNodes.isEmpty()) {
+      return splitNodes;
     }
     return Collections.singletonList(node);
+  }
+
+  private List<PlanNode> splitExternalTsFileScanByDeviceEntries(
+      final ExternalTsFileScanNode node, final TRegionReplicaSet localRegionReplicaSet) {
+    List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    if (deviceEntries.size() <= 1) {
+      return Collections.emptyList();
+    }
+
+    int splitCount =
+        Math.min(
+            deviceEntries.size(),
+            IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism());
+    if (splitCount <= 1) {
+      return Collections.emptyList();
+    }
+
+    List<List<DeviceEntry>> splitDeviceEntries = new ArrayList<>(splitCount);
+    List<List<List<ExternalTsFileDeviceOffset>>> splitDeviceOffsets = new ArrayList<>(splitCount);
+    for (int i = 0; i < splitCount; i++) {
+      splitDeviceEntries.add(new ArrayList<>());
+      splitDeviceOffsets.add(new ArrayList<>());
+    }
+    for (int i = 0; i < deviceEntries.size(); i++) {
+      splitDeviceEntries.get(i % splitCount).add(deviceEntries.get(i));
+      splitDeviceOffsets.get(i % splitCount).add(node.getDeviceOffsets().get(i));
+    }
+
+    List<PlanNode> result = new ArrayList<>(splitCount);
+    for (int i = 0; i < splitDeviceEntries.size(); i++) {
+      List<DeviceEntry> entries = splitDeviceEntries.get(i);
+      if (entries.isEmpty()) {
+        continue;
+      }
+      ExternalTsFileScanNode splitNode =
+          new ExternalTsFileScanNode(
+              queryId.genPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.getTimePredicate().orElse(null),
+              node.getScanOrder(),
+              node.getTsFilePaths(),
+              entries,
+              splitDeviceOffsets.get(i));
+      splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      result.add(splitNode);
+    }
+    return result;
   }
 
   private List<PlanNode> constructDeviceTableScanByTags(
@@ -1969,13 +2028,32 @@ public class TableDistributedPlanGenerator
       return;
     }
 
-    OrderingScheme pushedOrderingScheme =
+    OrderingScheme orderingScheme =
         new OrderingScheme(
             newOrderingSymbols,
             IntStream.range(0, newOrderingSymbols.size())
                 .boxed()
                 .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
-    externalTsFileScanNode.setPushedOrderingScheme(pushedOrderingScheme);
+
+    Comparator<DeviceEntry> comparator =
+        createExternalTsFileDeviceEntryComparator(
+            externalTsFileScanNode, newOrderingSymbols, newSortOrders);
+    if (comparator != null) {
+      Map<IDeviceID, List<ExternalTsFileDeviceOffset>> offsetMap = new HashMap<>();
+      List<DeviceEntry> deviceEntries = externalTsFileScanNode.getDeviceEntries();
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets =
+          externalTsFileScanNode.getDeviceOffsets();
+      for (int i = 0; i < deviceEntries.size(); i++) {
+        offsetMap.put(deviceEntries.get(i).getDeviceID(), deviceOffsets.get(i));
+      }
+      externalTsFileScanNode.getDeviceEntries().sort(comparator);
+      List<List<ExternalTsFileDeviceOffset>> sortedDeviceOffsets =
+          new ArrayList<>(externalTsFileScanNode.getDeviceEntries().size());
+      for (DeviceEntry deviceEntry : externalTsFileScanNode.getDeviceEntries()) {
+        sortedDeviceOffsets.add(offsetMap.get(deviceEntry.getDeviceID()));
+      }
+      externalTsFileScanNode.setDeviceOffsets(sortedDeviceOffsets);
+    }
 
     if (lastIsTimeRelated) {
       if (newOrderingSymbols.size() > 1
@@ -1989,14 +2067,66 @@ public class TableDistributedPlanGenerator
                       .boxed()
                       .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get))),
               newOrderingSymbols.size() - 2)) {
-        nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), pushedOrderingScheme);
+        nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), orderingScheme);
       }
       return;
     }
 
     if (newOrderingSymbols.size() == expectedOrderingScheme.getOrderBy().size()) {
-      nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), pushedOrderingScheme);
+      nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), orderingScheme);
     }
+  }
+
+  private Comparator<DeviceEntry> createExternalTsFileDeviceEntryComparator(
+      ExternalTsFileScanNode externalTsFileScanNode,
+      List<Symbol> orderingSymbols,
+      List<SortOrder> sortOrders) {
+    Comparator<DeviceEntry> comparator = null;
+    for (int i = 0; i < orderingSymbols.size(); i++) {
+      Symbol symbol = orderingSymbols.get(i);
+      if (externalTsFileScanNode.isTimeColumn(symbol)) {
+        break;
+      }
+      int tagIndex = getExternalTsFileTagIndex(externalTsFileScanNode, symbol);
+      final int deviceSegmentIndex = tagIndex + 1;
+      SortOrder sortOrder = sortOrders.get(i);
+      Comparator<String> valueComparator =
+          sortOrder.isNullsFirst()
+              ? Comparator.nullsFirst(Comparator.naturalOrder())
+              : Comparator.nullsLast(Comparator.naturalOrder());
+      Comparator<DeviceEntry> currentComparator =
+          Comparator.comparing(
+              deviceEntry -> getDeviceSegment(deviceEntry.getDeviceID(), deviceSegmentIndex),
+              valueComparator);
+      if (!sortOrder.isAscending()) {
+        currentComparator = currentComparator.reversed();
+      }
+      comparator =
+          comparator == null ? currentComparator : comparator.thenComparing(currentComparator);
+    }
+    return comparator == null ? null : comparator.thenComparing(DeviceEntry::getDeviceID);
+  }
+
+  private int getExternalTsFileTagIndex(
+      ExternalTsFileScanNode externalTsFileScanNode, Symbol symbol) {
+    int tagIndex = 0;
+    for (Map.Entry<Symbol, ColumnSchema> entry :
+        externalTsFileScanNode.getAssignments().entrySet()) {
+      if (entry.getValue().getColumnCategory() != TsTableColumnCategory.TAG) {
+        continue;
+      }
+      if (entry.getKey().equals(symbol)) {
+        return tagIndex;
+      }
+      tagIndex++;
+    }
+    throw new IllegalArgumentException("Unexpected external TsFile ordering symbol: " + symbol);
+  }
+
+  private String getDeviceSegment(IDeviceID deviceID, int deviceSegmentIndex) {
+    return deviceSegmentIndex < deviceID.segmentNum()
+        ? (String) deviceID.segment(deviceSegmentIndex)
+        : null;
   }
 
   private Optional<IDeviceID.TreeDeviceIdColumnValueExtractor>
