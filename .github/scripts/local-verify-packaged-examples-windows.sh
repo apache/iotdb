@@ -35,7 +35,7 @@ EXAMPLE_BUILD="${TEMP_BASE}/client-cpp-example-smoke"
 rm -rf "${EXAMPLE_BUILD}"
 CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
 if [ -n "${CMAKE_GENERATOR}" ]; then
-  CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
+  CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}" -A x64)
 fi
 cmake "${CMAKE_ARGS[@]}"
 cmake --build "${EXAMPLE_BUILD}" --config Release

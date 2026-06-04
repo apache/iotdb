@@ -505,6 +505,8 @@ jobs:
           CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
+            # windows-x86_64 SDK; VS2017/2019 default to Win32 without -A x64 (see client-cpp pom).
+            CMAKE_ARGS+=(-A x64)
           fi
           cmake "${CMAKE_ARGS[@]}"
           cmake --build "${EXAMPLE_BUILD}" --config Release
