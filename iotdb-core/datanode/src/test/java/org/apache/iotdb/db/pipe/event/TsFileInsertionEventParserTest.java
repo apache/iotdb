@@ -526,6 +526,77 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
+  public void testTableParserWithTablePatternReportsLastNonEmptyTablet() throws Exception {
+    final int originalPipeDataStructureTabletRowSize =
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize();
+    CommonDescriptor.getInstance().getConfig().setPipeDataStructureTabletRowSize(2);
+
+    try {
+      alignedTsFile = new File("table-parser-table-pattern.tsfile");
+      if (alignedTsFile.exists()) {
+        Assert.assertTrue(alignedTsFile.delete());
+      }
+
+      final List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("tag0", TSDataType.STRING),
+              new MeasurementSchema("s0", TSDataType.INT64));
+      final List<String> columnNameList = Arrays.asList("tag0", "s0");
+      final List<TSDataType> dataTypeList = Arrays.asList(TSDataType.STRING, TSDataType.INT64);
+      final List<ColumnCategory> columnCategoryList =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+
+      try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+        writer.registerTableSchema(new TableSchema("test", schemaList, columnCategoryList));
+        writer.registerTableSchema(new TableSchema("test1", schemaList, columnCategoryList));
+        writer.writeTable(
+            generateSimpleTableTablet(
+                "test", columnNameList, dataTypeList, columnCategoryList, "ignored", 0, 2));
+        writer.writeTable(
+            generateSimpleTableTablet(
+                "test1", columnNameList, dataTypeList, columnCategoryList, "matched", 3, 4));
+        writer.writeTable(
+            generateSimpleTableTablet(
+                "test1", columnNameList, dataTypeList, columnCategoryList, "unmatched", 2, 10));
+      }
+
+      try (final TsFileInsertionEventTableParser parser =
+          new TsFileInsertionEventTableParser(
+              alignedTsFile,
+              new TablePattern(true, null, "test1"),
+              3,
+              5,
+              null,
+              null,
+              null,
+              false)) {
+        final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
+        int rowCount = 0;
+        PipeRawTabletInsertionEvent lastEvent = null;
+        while (iterator.hasNext()) {
+          final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) iterator.next();
+          final Tablet tablet = event.convertToTablet();
+          Assert.assertEquals("test1", tablet.getTableName());
+          Assert.assertFalse(PipeRawTabletInsertionEvent.isTabletEmpty(tablet));
+          rowCount += tablet.getRowSize();
+          if (lastEvent != null) {
+            Assert.assertFalse(lastEvent.isNeedToReport());
+          }
+          lastEvent = event;
+        }
+
+        Assert.assertEquals(2, rowCount);
+        Assert.assertNotNull(lastEvent);
+        Assert.assertTrue(lastEvent.isNeedToReport());
+      }
+    } finally {
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeDataStructureTabletRowSize(originalPipeDataStructureTabletRowSize);
+    }
+  }
+
+  @Test
   public void manualTestScanParserSplitPerformance() throws Exception {
     Assume.assumeTrue(
         "Set -D" + MANUAL_SCAN_PARSER_PERFORMANCE_TEST + "=true to run this manual test.",
@@ -1341,6 +1412,23 @@ public class TsFileInsertionEventParserTest {
         }
       }
     }
+  }
+
+  private Tablet generateSimpleTableTablet(
+      final String tableName,
+      final List<String> columnNameList,
+      final List<TSDataType> dataTypeList,
+      final List<ColumnCategory> columnCategoryList,
+      final String tagValue,
+      final long... timestamps) {
+    final Tablet tablet =
+        new Tablet(tableName, columnNameList, dataTypeList, columnCategoryList, timestamps.length);
+    for (int rowIndex = 0; rowIndex < timestamps.length; ++rowIndex) {
+      tablet.addTimestamp(rowIndex, timestamps[rowIndex]);
+      tablet.addValue(rowIndex, 0, tagValue);
+      tablet.addValue(rowIndex, 1, (long) rowIndex);
+    }
+    return tablet;
   }
 
   private void generateLargeTableTsFile(
