@@ -57,14 +57,25 @@ public class PredicateUtils {
    */
   public static Pair<Expression, Boolean> extractGlobalTimePredicate(
       Expression predicate, boolean canRewrite, boolean isFirstOr) {
+    return extractGlobalTimePredicate(predicate, canRewrite, isFirstOr, TIME);
+  }
+
+  public static Pair<Expression, Boolean> extractGlobalTimePredicate(
+      Expression predicate, boolean canRewrite, boolean isFirstOr, String timeColumnName) {
     if (predicate instanceof LogicalExpression
         && ((LogicalExpression) predicate).getOperator().equals(AND)) {
       Pair<Expression, Boolean> leftResultPair =
           extractGlobalTimePredicate(
-              ((LogicalExpression) predicate).getTerms().get(0), canRewrite, isFirstOr);
+              ((LogicalExpression) predicate).getTerms().get(0),
+              canRewrite,
+              isFirstOr,
+              timeColumnName);
       Pair<Expression, Boolean> rightResultPair =
           extractGlobalTimePredicate(
-              ((LogicalExpression) predicate).getTerms().get(1), canRewrite, isFirstOr);
+              ((LogicalExpression) predicate).getTerms().get(1),
+              canRewrite,
+              isFirstOr,
+              timeColumnName);
 
       // rewrite predicate to avoid duplicate calculation on time filter
       // If Left-child or Right-child does not contain value filter
@@ -104,10 +115,10 @@ public class PredicateUtils {
         && ((LogicalExpression) predicate).getOperator().equals(OR)) {
       Pair<Expression, Boolean> leftResultPair =
           extractGlobalTimePredicate(
-              ((LogicalExpression) predicate).getTerms().get(0), false, false);
+              ((LogicalExpression) predicate).getTerms().get(0), false, false, timeColumnName);
       Pair<Expression, Boolean> rightResultPair =
           extractGlobalTimePredicate(
-              ((LogicalExpression) predicate).getTerms().get(1), false, false);
+              ((LogicalExpression) predicate).getTerms().get(1), false, false, timeColumnName);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
         if (Boolean.TRUE.equals(isFirstOr && !leftResultPair.right && !rightResultPair.right)) {
@@ -132,8 +143,8 @@ public class PredicateUtils {
     else if (predicate instanceof ComparisonExpression) {
       Expression leftExpression = ((ComparisonExpression) predicate).getLeft();
       Expression rightExpression = ((ComparisonExpression) predicate).getRight();
-      if (checkIsTimeFilter(leftExpression, rightExpression)
-          || checkIsTimeFilter(rightExpression, leftExpression)) {
+      if (checkIsTimeFilter(leftExpression, rightExpression, timeColumnName)
+          || checkIsTimeFilter(rightExpression, leftExpression, timeColumnName)) {
         return new Pair<>(predicate, false);
       }
       return new Pair<>(null, true);
@@ -190,9 +201,10 @@ public class PredicateUtils {
     }
   }
 
-  private static boolean checkIsTimeFilter(Expression timeExpression, Expression valueExpression) {
+  private static boolean checkIsTimeFilter(
+      Expression timeExpression, Expression valueExpression, String timeColumnName) {
     return timeExpression instanceof Identifier
-        && ((Identifier) timeExpression).getValue().equalsIgnoreCase(TIME)
+        && ((Identifier) timeExpression).getValue().equalsIgnoreCase(timeColumnName)
         && valueExpression instanceof LongLiteral;
   }
 }

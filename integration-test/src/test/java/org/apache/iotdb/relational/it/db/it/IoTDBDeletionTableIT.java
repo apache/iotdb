@@ -415,6 +415,27 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testDeleteWithRenamedTimeColumn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE time_column_rename");
+      statement.execute("use time_column_rename");
+      statement.execute("CREATE TABLE vehicle(ts time, deviceId STRING TAG, s0 INT32 FIELD)");
+      statement.execute("INSERT INTO vehicle(ts, deviceId, s0) VALUES(1, 'd0', 1)");
+      statement.execute("INSERT INTO vehicle(ts, deviceId, s0) VALUES(2, 'd0', 2)");
+
+      statement.execute("DELETE FROM vehicle WHERE ts <= 1");
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT ts, s0 FROM vehicle")) {
+        assertTrue(resultSet.next());
+        assertEquals(2, resultSet.getLong("ts"));
+        assertEquals(2, resultSet.getInt("s0"));
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testRangeDelete() throws SQLException {
     prepareData(4, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

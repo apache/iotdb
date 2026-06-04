@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -533,7 +534,7 @@ public class AnalyzeUtils {
     }
     Identifier identifier = (Identifier) left;
     // time predicate
-    if (identifier.getValue().equalsIgnoreCase("time")) {
+    if (identifier.getValue().equalsIgnoreCase(getTimeColumnName(table))) {
       long rightHandValue;
       if (right instanceof LongLiteral) {
         rightHandValue = ((LongLiteral) right).getParsedValue();
@@ -578,6 +579,17 @@ public class AnalyzeUtils {
 
     IDPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
     return combinePredicates(oldPredicate, newPredicate);
+  }
+
+  private static String getTimeColumnName(final TsTable table) {
+    final TsTableColumnSchema timeColumnSchema = table.getTimeColumnSchema();
+    if (Objects.isNull(timeColumnSchema)) {
+      throw new SemanticException(
+          String.format(
+              DataNodeQueryMessages.THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN,
+              table.getTableName()));
+    }
+    return timeColumnSchema.getColumnName();
   }
 
   private static IDPredicate getTagPredicate(
