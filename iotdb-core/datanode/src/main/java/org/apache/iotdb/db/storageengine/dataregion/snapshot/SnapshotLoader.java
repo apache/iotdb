@@ -619,27 +619,35 @@ public class SnapshotLoader {
       FolderManager folderManager, Path sourceFile, Path targetRelPath, String finalErrorTemplate)
       throws IOException {
     try {
-      folderManager.getNextWithRetry(
-          currentObjectDir -> {
-            File targetFile = new File(currentObjectDir).toPath().resolve(targetRelPath).toFile();
-            try {
-              return createLinkOrCopy(sourceFile, targetFile);
-            } catch (IOException e) {
-              LOGGER.warn(
-                  FAILED_PROCESS_FILE_LOG,
-                  sourceFile.getFileName(),
-                  currentObjectDir,
-                  e.getMessage(),
-                  e);
-              throw new IOException(
-                  String.format(
-                      "Failed to process object file. Source: %s, Target dir: %s",
-                      sourceFile.toAbsolutePath(), currentObjectDir),
-                  e);
-            }
-          });
+      String firstFolderOfSameDisk =
+          IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+              ? folderManager.getFirstFolderOfSameDisk(sourceFile.toAbsolutePath().toString())
+              : null;
+
+      if (firstFolderOfSameDisk != null) {
+        processObjectFileInDir(firstFolderOfSameDisk, sourceFile, targetRelPath);
+      } else {
+        folderManager.getNextWithRetry(
+            currentObjectDir ->
+                processObjectFileInDir(currentObjectDir, sourceFile, targetRelPath));
+      }
     } catch (Exception e) {
       throw new IOException(String.format(finalErrorTemplate, sourceFile.toAbsolutePath()), e);
+    }
+  }
+
+  private File processObjectFileInDir(String objectDir, Path sourceFile, Path targetRelPath)
+      throws IOException {
+    File targetFile = new File(objectDir).toPath().resolve(targetRelPath).toFile();
+    try {
+      return createLinkOrCopy(sourceFile, targetFile);
+    } catch (IOException e) {
+      LOGGER.warn(FAILED_PROCESS_FILE_LOG, sourceFile.getFileName(), objectDir, e.getMessage(), e);
+      throw new IOException(
+          String.format(
+              "Failed to process object file. Source: %s, Target dir: %s",
+              sourceFile.toAbsolutePath(), objectDir),
+          e);
     }
   }
 
