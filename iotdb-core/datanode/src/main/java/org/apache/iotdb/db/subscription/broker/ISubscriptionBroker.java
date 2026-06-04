@@ -79,6 +79,12 @@ public interface ISubscriptionBroker {
 
   int getQueueCount();
 
+  default Map<String, Long> getLagSummary() {
+    return Collections.emptyMap();
+  }
+
+  void unbind(String topicName);
+
   void removeQueue(String topicName);
 
   boolean isEmpty();

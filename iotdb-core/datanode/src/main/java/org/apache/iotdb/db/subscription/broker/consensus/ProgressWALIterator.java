@@ -241,21 +241,20 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
           final long localSeq = currentReader.getCurrentEntryLocalSeq();
           final long physicalTime = currentReader.getCurrentEntryPhysicalTime();
           final int nodeId = currentReader.getCurrentEntryNodeId();
-
-          buffer.position(SEARCH_INDEX_OFFSET);
-          final long bodySearchIndex = buffer.getLong();
+          final long searchIndex =
+              getSearchIndexOrMetadataFallback(buffer, currentReader.getCurrentEntrySearchIndex());
           buffer.clear();
 
           if (isSamePendingRequest(physicalTime, nodeId, localSeq)) {
-            if (pendingSearchIndex < 0 && bodySearchIndex >= 0) {
-              pendingSearchIndex = bodySearchIndex;
+            if (pendingSearchIndex < 0 && searchIndex >= 0) {
+              pendingSearchIndex = searchIndex;
             }
             pendingRequests.add(new IoTConsensusRequest(buffer));
             continue;
           }
 
           final IndexedConsensusRequest flushed = flushPending();
-          startPending(bodySearchIndex, physicalTime, nodeId, localSeq, buffer);
+          startPending(searchIndex, physicalTime, nodeId, localSeq, buffer);
           if (flushed != null && !shouldSkip(flushed)) {
             return flushed;
           }
@@ -449,6 +448,16 @@ public class ProgressWALIterator implements Closeable, Iterator<IndexedConsensus
         && pendingPhysicalTime == physicalTime
         && pendingNodeId == nodeId
         && pendingLocalSeq == localSeq;
+  }
+
+  private long getSearchIndexOrMetadataFallback(
+      final ByteBuffer buffer, final long metadataSearchIndex) {
+    if (buffer.limit() < SEARCH_INDEX_OFFSET + Long.BYTES) {
+      return metadataSearchIndex;
+    }
+    buffer.position(SEARCH_INDEX_OFFSET);
+    final long bodySearchIndex = buffer.getLong();
+    return bodySearchIndex >= 0 ? bodySearchIndex : metadataSearchIndex;
   }
 
   private void startPending(

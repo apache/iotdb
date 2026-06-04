@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import java.io.Closeable;
@@ -142,6 +143,14 @@ public class WALByteBufReader implements Closeable {
       return localSeqs.get(currentEntryIndex);
     }
     return metaData.getFirstSearchIndex() + currentEntryIndex;
+  }
+
+  public long getCurrentEntrySearchIndex() {
+    final long firstSearchIndex = metaData.getFirstSearchIndex();
+    if (firstSearchIndex == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
+      return ConsensusReqReader.DEFAULT_SEARCH_INDEX;
+    }
+    return firstSearchIndex + currentEntryIndex;
   }
 
   /** Returns the current entry index (0-based). */

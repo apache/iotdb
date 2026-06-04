@@ -210,9 +210,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       return Collections.emptyList();
     }
 
-    final ConsensusPrefetchingQueue assignedQueue =
-        getAssignedQueueForConsumer(
-            queues, topicName, consumerId, commitContext.getRegionId(), "pollTablets");
+    final ConsensusPrefetchingQueue assignedQueue = getQueueForCommitContext(queues, commitContext);
     if (Objects.isNull(assignedQueue)) {
       return Collections.emptyList();
     }
@@ -245,8 +243,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
 
       final ConsensusPrefetchingQueue assignedQueue =
-          getAssignedQueueForConsumer(
-              queues, topicName, consumerId, commitContext.getRegionId(), nack ? "nack" : "ack");
+          getQueueForCommitContext(queues, commitContext);
       boolean handled = false;
       if (Objects.nonNull(assignedQueue)) {
         final boolean success;
@@ -285,8 +282,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
 
       final ConsensusPrefetchingQueue assignedQueue =
-          getAssignedQueueForConsumer(
-              queues, topicName, consumerId, commitContext.getRegionId(), "refresh lease");
+          getQueueForCommitContext(queues, commitContext);
       if (Objects.nonNull(assignedQueue)
           && assignedQueue.refreshInFlightEventLease(consumerId, commitContext)) {
         refreshedCount++;
@@ -537,34 +533,19 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     return orderedQueues;
   }
 
-  private ConsensusPrefetchingQueue getAssignedQueueForConsumer(
-      final List<ConsensusPrefetchingQueue> queues,
-      final String topicName,
-      final String consumerId,
-      final String regionId,
-      final String action) {
-    final TopicOwnershipSnapshot ownershipSnapshot =
-        refreshAndGetTopicOwnership(topicName, queues, consumerId);
+  private ConsensusPrefetchingQueue getQueueForCommitContext(
+      final List<ConsensusPrefetchingQueue> queues, final SubscriptionCommitContext commitContext) {
+    final String regionId = commitContext.getRegionId();
     for (final ConsensusPrefetchingQueue queue : queues) {
       if (queue.isClosed()) {
         continue;
       }
-      if (!regionId.isEmpty() && !regionId.equals(queue.getConsensusGroupId().toString())) {
+      if (Objects.nonNull(regionId)
+          && !regionId.isEmpty()
+          && !regionId.equals(queue.getConsensusGroupId().toString())) {
         continue;
       }
-      if (consumerId.equals(
-          ownershipSnapshot.getOwnerConsumerId(queue.getConsensusGroupId().toString()))) {
-        return queue;
-      }
-      LOGGER.debug(
-          "ConsensusSubscriptionBroker [{}]: consumer [{}] skipped {} on topic [{}], region [{}] is currently owned by [{}]",
-          brokerId,
-          consumerId,
-          action,
-          topicName,
-          queue.getConsensusGroupId(),
-          ownershipSnapshot.getOwnerConsumerId(queue.getConsensusGroupId().toString()));
-      return null;
+      return queue;
     }
     return null;
   }
@@ -655,6 +636,11 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   public void unbindConsensusPrefetchingQueue(final String topicName) {
     closeAndRemoveConsensusPrefetchingQueues(topicName, true);
+  }
+
+  @Override
+  public void unbind(final String topicName) {
+    unbindConsensusPrefetchingQueue(topicName);
   }
 
   public int unbindByRegion(final ConsensusGroupId regionId) {

@@ -70,6 +70,10 @@ public class ProgressWALReader implements Closeable {
     return delegate.getCurrentEntryLocalSeq();
   }
 
+  public long getCurrentEntrySearchIndex() {
+    return delegate.getCurrentEntrySearchIndex();
+  }
+
   public int getCurrentEntryIndex() {
     return delegate.getCurrentEntryIndex();
   }

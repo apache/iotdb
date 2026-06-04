@@ -306,6 +306,10 @@ public class WALFileUtils {
   }
 
   private interface SearchableRequestVisitor {
+    /**
+     * @return {@code true} to continue scanning the following searchable requests, {@code false} to
+     *     stop immediately.
+     */
     boolean onRequest(SearchableRequestMeta request);
   }
 

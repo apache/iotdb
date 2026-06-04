@@ -54,6 +54,7 @@ public class ProgressWALReaderTest {
         assertEquals(10000L, reader.getCurrentEntryPhysicalTime());
         assertEquals(1, reader.getCurrentEntryNodeId());
         assertEquals(10L, reader.getCurrentEntryLocalSeq());
+        assertEquals(10L, reader.getCurrentEntrySearchIndex());
 
         assertTrue(reader.hasNext());
         assertArrayEquals(new byte[] {4, 5}, reader.next().array());
@@ -61,6 +62,7 @@ public class ProgressWALReaderTest {
         assertEquals(10010L, reader.getCurrentEntryPhysicalTime());
         assertEquals(1, reader.getCurrentEntryNodeId());
         assertEquals(11L, reader.getCurrentEntryLocalSeq());
+        assertEquals(11L, reader.getCurrentEntrySearchIndex());
 
         assertTrue(reader.hasNext());
         assertArrayEquals(new byte[] {6, 7, 8, 9}, reader.next().array());
@@ -68,6 +70,7 @@ public class ProgressWALReaderTest {
         assertEquals(20000L, reader.getCurrentEntryPhysicalTime());
         assertEquals(4, reader.getCurrentEntryNodeId());
         assertEquals(1L, reader.getCurrentEntryLocalSeq());
+        assertEquals(12L, reader.getCurrentEntrySearchIndex());
       }
     } finally {
       Files.deleteIfExists(walFile.toPath());

@@ -2850,7 +2850,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         PipeDataNodeAgent.plugin()
             .validate(
                 "fakePipeName",
-                // TODO: currently use root to create topic
+                // Topic validation uses the admin name because topic creation has no user context
+                // here.
                 temporaryTopicMeta.generateExtractorAttributes(
                     CommonDescriptor.getInstance().getConfig().getDefaultAdminName()),
                 temporaryTopicMeta.generateProcessorAttributes(),

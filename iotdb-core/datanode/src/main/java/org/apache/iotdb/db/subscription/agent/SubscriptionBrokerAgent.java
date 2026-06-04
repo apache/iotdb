@@ -734,13 +734,7 @@ public class SubscriptionBrokerAgent {
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    if (broker instanceof ConsensusSubscriptionBroker) {
-      ((ConsensusSubscriptionBroker) broker).unbindConsensusPrefetchingQueue(topicName);
-    } else if (broker instanceof SubscriptionBroker) {
-      ((SubscriptionBroker) broker).unbindPrefetchingQueue(topicName);
-    } else {
-      broker.removeQueue(topicName);
-    }
+    broker.unbind(topicName);
     prefetchingQueueCount.invalidate();
   }
 
@@ -789,11 +783,7 @@ public class SubscriptionBrokerAgent {
     for (final Map.Entry<String, List<ISubscriptionBroker>> entry :
         consumerGroupIdToBrokers.entrySet()) {
       for (final ISubscriptionBroker broker : entry.getValue()) {
-        if (!(broker instanceof ConsensusSubscriptionBroker)) {
-          continue;
-        }
-        for (final Map.Entry<String, Long> lag :
-            ((ConsensusSubscriptionBroker) broker).getLagSummary().entrySet()) {
+        for (final Map.Entry<String, Long> lag : broker.getLagSummary().entrySet()) {
           result.put(entry.getKey() + "/" + lag.getKey(), lag.getValue());
         }
       }

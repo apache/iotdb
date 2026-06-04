@@ -221,12 +221,12 @@ public class ConsensusPrefetchingQueue {
       new ConcurrentHashMap<>();
 
   /**
-   * Source-level dedup frontier for follower-origin entries that do not carry a local searchIndex.
-   * The same request may first arrive through pendingEntries and later become visible from WAL;
-   * once a follower-origin localSeq has already been materialized into queue state, the WAL path
-   * must not materialize it again.
+   * Source-level dedup frontier for entries that have already been materialized into queue state.
+   * The same request may first arrive through pendingEntries and later become visible from WAL; the
+   * second path must not materialize it again.
    */
-  private final Map<Integer, Long> materializedFollowerProgressByWriter = new ConcurrentHashMap<>();
+  private final Map<Integer, WriterProgress> materializedProgressByWriter =
+      new ConcurrentHashMap<>();
 
   /**
    * Per-writer state used to release entries by writer progress and safe frontiers instead of a
@@ -917,27 +917,29 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private boolean shouldTrackFollowerProgressForDedup(final IndexedConsensusRequest request) {
-    return request.getSearchIndex() < 0
-        && request.getNodeId() >= 0
-        && request.getProgressLocalSeq() >= 0;
+  private boolean shouldTrackMaterializedProgress(final IndexedConsensusRequest request) {
+    return hasComparableWriterProgress(request);
   }
 
-  private boolean shouldSkipForMaterializedFollowerProgress(final IndexedConsensusRequest request) {
-    if (!shouldTrackFollowerProgressForDedup(request)) {
+  private boolean shouldSkipForMaterializedProgress(final IndexedConsensusRequest request) {
+    if (!shouldTrackMaterializedProgress(request)) {
       return false;
     }
-    final Long materializedLocalSeq = materializedFollowerProgressByWriter.get(request.getNodeId());
-    return Objects.nonNull(materializedLocalSeq)
-        && request.getProgressLocalSeq() <= materializedLocalSeq;
+    final WriterProgress materializedProgress =
+        materializedProgressByWriter.get(request.getNodeId());
+    return Objects.nonNull(materializedProgress)
+        && compareWriterProgress(toWriterProgress(request), materializedProgress) <= 0;
   }
 
-  private void markMaterializedFollowerProgress(final IndexedConsensusRequest request) {
-    if (!shouldTrackFollowerProgressForDedup(request)) {
+  private void markMaterializedProgress(final IndexedConsensusRequest request) {
+    if (!shouldTrackMaterializedProgress(request)) {
       return;
     }
-    materializedFollowerProgressByWriter.merge(
-        request.getNodeId(), request.getProgressLocalSeq(), Math::max);
+    materializedProgressByWriter.merge(
+        request.getNodeId(),
+        toWriterProgress(request),
+        (existing, candidate) ->
+            compareWriterProgress(candidate, existing) > 0 ? candidate : existing);
   }
 
   private int compareWriterProgress(
@@ -1472,14 +1474,14 @@ public class ConsensusPrefetchingQueue {
         advanceLocalCursorIfPresent(request);
         continue;
       }
-      if (shouldSkipForMaterializedFollowerProgress(request)) {
+      if (shouldSkipForMaterializedProgress(request)) {
         skippedCount++;
         advanceLocalCursorIfPresent(request);
         continue;
       }
 
       appendRealtimeRequest(request, lingerBatch, maxTablets, maxBatchBytes, true);
-      markMaterializedFollowerProgress(request);
+      markMaterializedProgress(request);
       processedCount++;
       advanceLocalCursorIfPresent(request);
     }
@@ -1608,13 +1610,13 @@ public class ConsensusPrefetchingQueue {
           advanceLocalCursorIfPresent(walEntry);
           continue;
         }
-        if (shouldSkipForMaterializedFollowerProgress(walEntry)) {
+        if (shouldSkipForMaterializedProgress(walEntry)) {
           advanceLocalCursorIfPresent(walEntry);
           continue;
         }
 
         appendRealtimeRequest(walEntry, batchState, maxTablets, maxBatchBytes, false);
-        markMaterializedFollowerProgress(walEntry);
+        markMaterializedProgress(walEntry);
         advanceLocalCursorIfPresent(walEntry);
       } catch (final Exception e) {
         LOGGER.warn("ConsensusPrefetchingQueue {}: error reading subscription WAL", this, e);
@@ -2335,7 +2337,7 @@ public class ConsensusPrefetchingQueue {
       realtimeEntriesByWriter.clear();
       writerStates.clear();
       clearRecoveryWriterProgress();
-      materializedFollowerProgressByWriter.clear();
+      materializedProgressByWriter.clear();
       pendingEntries.clear();
       lingerBatch.reset();
       resetBatchWriterProgress();
@@ -2596,7 +2598,7 @@ public class ConsensusPrefetchingQueue {
     realtimeEntriesByWriter.clear();
     writerStates.clear();
     clearRecoveryWriterProgress();
-    materializedFollowerProgressByWriter.clear();
+    materializedProgressByWriter.clear();
     if (Objects.nonNull(request.committedRegionProgress)
         && !request.committedRegionProgress.getWriterPositions().isEmpty()) {
       installRecoveryWriterProgress(request.committedRegionProgress);

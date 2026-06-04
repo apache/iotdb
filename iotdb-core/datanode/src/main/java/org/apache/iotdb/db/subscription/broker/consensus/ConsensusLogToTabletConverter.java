@@ -297,25 +297,17 @@ public class ConsensusLogToTabletConverter {
       schemas.add(new MeasurementSchema(measurements[colIdx], dataTypes[colIdx]));
     }
 
-    // Reuse complete tablets on the server-side read path. Column filtering changes tablet shape
-    // and still needs copies for the selected columns.
-    final long[] newTimes = allColumnsMatch ? times : Arrays.copyOf(times, rowCount);
+    // Column filtering changes only the tablet shape. The selected value arrays come from WAL
+    // InsertNodes and are reused by the subscription read path.
+    final long[] newTimes = times;
     final Object[] newColumns = new Object[columnCount];
     final BitMap[] newBitMaps = new BitMap[columnCount];
 
     for (int i = 0; i < columnCount; i++) {
       final int originalColIdx = allColumnsMatch ? i : matchedColumnIndices.get(i);
-      newColumns[i] =
-          allColumnsMatch
-              ? columns[originalColIdx]
-              : copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+      newColumns[i] = columns[originalColIdx];
       if (bitMaps != null && bitMaps[originalColIdx] != null) {
-        if (allColumnsMatch) {
-          newBitMaps[i] = bitMaps[originalColIdx];
-        } else {
-          newBitMaps[i] = new BitMap(rowCount);
-          BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[i], 0, rowCount);
-        }
+        newBitMaps[i] = bitMaps[originalColIdx];
       }
     }
 
@@ -534,25 +526,17 @@ public class ConsensusLogToTabletConverter {
       columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), originalColIdx));
     }
 
-    // Reuse complete tablets on the server-side read path. Column filtering changes tablet shape
-    // and still needs copies for the selected columns.
-    final long[] newTimes = allColumnsMatch ? times : Arrays.copyOf(times, rowCount);
+    // Column filtering changes only the tablet shape. The selected value arrays come from WAL
+    // InsertNodes and are reused by the subscription read path.
+    final long[] newTimes = times;
     final Object[] newColumns = new Object[columnCount];
     final BitMap[] newBitMaps = new BitMap[columnCount];
 
     for (int colIdx = 0; colIdx < columnCount; colIdx++) {
       final int originalColIdx = allColumnsMatch ? colIdx : matchedColumnIndices.get(colIdx);
-      newColumns[colIdx] =
-          allColumnsMatch
-              ? columns[originalColIdx]
-              : copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+      newColumns[colIdx] = columns[originalColIdx];
       if (bitMaps != null && bitMaps[originalColIdx] != null) {
-        if (allColumnsMatch) {
-          newBitMaps[colIdx] = bitMaps[originalColIdx];
-        } else {
-          newBitMaps[colIdx] = new BitMap(rowCount);
-          BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[colIdx], 0, rowCount);
-        }
+        newBitMaps[colIdx] = bitMaps[originalColIdx];
       }
     }
 
@@ -653,65 +637,6 @@ public class ConsensusLogToTabletConverter {
     return columnCategories != null && columnCategories[columnIndex] != null
         ? columnCategories[columnIndex].toTsFileColumnType()
         : ColumnCategory.FIELD;
-  }
-
-  /**
-   * Bulk-copies a typed column array using System.arraycopy. Returns a new array of the same type
-   * containing the first {@code rowCount} elements.
-   */
-  private Object copyColumnArray(
-      final TSDataType dataType, final Object sourceColumn, final int rowCount) {
-    switch (dataType) {
-      case BOOLEAN:
-        {
-          final boolean[] src = (boolean[]) sourceColumn;
-          final boolean[] dst = new boolean[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      case INT32:
-      case DATE:
-        {
-          final int[] src = (int[]) sourceColumn;
-          final int[] dst = new int[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      case INT64:
-      case TIMESTAMP:
-        {
-          final long[] src = (long[]) sourceColumn;
-          final long[] dst = new long[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      case FLOAT:
-        {
-          final float[] src = (float[]) sourceColumn;
-          final float[] dst = new float[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      case DOUBLE:
-        {
-          final double[] src = (double[]) sourceColumn;
-          final double[] dst = new double[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      case TEXT:
-      case BLOB:
-      case STRING:
-        {
-          final Binary[] src = (Binary[]) sourceColumn;
-          final Binary[] dst = new Binary[rowCount];
-          System.arraycopy(src, 0, dst, 0, rowCount);
-          return dst;
-        }
-      default:
-        LOGGER.warn("Unsupported data type for bulk copy: {}", dataType);
-        return sourceColumn;
-    }
   }
 
   /**

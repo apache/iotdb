@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -82,7 +83,8 @@ public class ConsensusLogToTabletConverterTest {
   public void testConvertRelationalInsertTabletNodeWithSingleMatchedColumn() {
     final ConsensusLogToTabletConverter converter = createConverter("m1");
 
-    final List<Tablet> tablets = converter.convert(StatementTestUtils.genInsertTabletNode(3, 10));
+    final RelationalInsertTabletNode node = StatementTestUtils.genInsertTabletNode(3, 10);
+    final List<Tablet> tablets = converter.convert(node);
 
     Assert.assertEquals(1, tablets.size());
     final Tablet tablet = tablets.get(0);
@@ -97,6 +99,9 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertEquals("id:10", toUtf8(((Binary[]) tablet.getValues()[0])[0]));
     Assert.assertArrayEquals(
         new double[] {10.0, 11.0, 12.0}, (double[]) tablet.getValues()[1], 0.0);
+    Assert.assertSame(node.getTimes(), tablet.getTimestamps());
+    Assert.assertSame(node.getColumns()[0], tablet.getValues()[0]);
+    Assert.assertSame(node.getColumns()[2], tablet.getValues()[1]);
   }
 
   @Test

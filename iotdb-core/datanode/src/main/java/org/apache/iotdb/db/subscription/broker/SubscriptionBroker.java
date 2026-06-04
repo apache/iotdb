@@ -497,6 +497,11 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public void unbind(final String topicName) {
+    unbindPrefetchingQueue(topicName);
+  }
+
+  @Override
   public void removeQueue(final String topicName) {
     removePrefetchingQueue(topicName);
   }

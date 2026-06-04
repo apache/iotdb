@@ -83,6 +83,41 @@ public class ProgressWALIteratorTest {
   }
 
   @Test
+  public void testIteratorUsesMetadataSearchIndexForStartFiltering() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-metadata-search-index");
+    final File firstWal =
+        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+    final File lastWal =
+        dir.resolve(WALFileUtils.getLogFileName(1, 6, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
+        writer.write(searchableEntry(-1L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 105L));
+        writer.write(searchableEntry(-1L), singleEntryMeta(19, 6L, 1L, 2000L, 7, 106L));
+      }
+      try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
+        // Create a sealed successor so the first WAL becomes historical and readable.
+      }
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), 6L)) {
+        assertTrue(iterator.hasNext());
+        final IndexedConsensusRequest request = iterator.next();
+        assertEquals(6L, request.getSearchIndex());
+        assertEquals(106L, request.getProgressLocalSeq());
+        assertEquals(2000L, request.getPhysicalTime());
+        assertEquals(7, request.getNodeId());
+        assertFalse(iterator.hasNext());
+      }
+    } finally {
+      Files.deleteIfExists(firstWal.toPath());
+      Files.deleteIfExists(lastWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
   public void testIteratorMergesFragmentsWithSameLocalSeq() throws Exception {
     final Path dir = Files.createTempDirectory("progress-wal-iterator-merge");
     final File firstWal =
