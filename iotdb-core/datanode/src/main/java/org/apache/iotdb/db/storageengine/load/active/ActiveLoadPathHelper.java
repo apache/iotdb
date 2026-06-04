@@ -46,6 +46,7 @@ public final class ActiveLoadPathHelper {
   private static final List<String> KEY_ORDER =
       Collections.unmodifiableList(
           Arrays.asList(
+              LoadTsFileConfigurator.DATABASE_NAME_KEY,
               LoadTsFileConfigurator.DATABASE_LEVEL_KEY,
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
@@ -62,7 +63,27 @@ public final class ActiveLoadPathHelper {
       final Boolean verify,
       final Long tabletConversionThresholdBytes,
       final Boolean pipeGenerated) {
+    return buildAttributes(
+        null,
+        databaseLevel,
+        convertOnTypeMismatch,
+        verify,
+        tabletConversionThresholdBytes,
+        pipeGenerated);
+  }
+
+  public static Map<String, String> buildAttributes(
+      final String databaseName,
+      final Integer databaseLevel,
+      final Boolean convertOnTypeMismatch,
+      final Boolean verify,
+      final Long tabletConversionThresholdBytes,
+      final Boolean pipeGenerated) {
     final Map<String, String> attributes = new LinkedHashMap<>();
+
+    if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
+      attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
+    }
 
     if (Objects.nonNull(databaseLevel)) {
       attributes.put(LoadTsFileConfigurator.DATABASE_LEVEL_KEY, databaseLevel.toString());
@@ -149,6 +170,10 @@ public final class ActiveLoadPathHelper {
       final LoadTsFileStatement statement,
       final boolean defaultVerify) {
 
+    Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_NAME_KEY))
+        .filter(name -> !name.isEmpty())
+        .ifPresent(statement::setDatabase);
+
     Optional.ofNullable(attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY))
         .ifPresent(
             level -> {
@@ -216,6 +241,11 @@ public final class ActiveLoadPathHelper {
 
   private static void validateAttributeValue(final String key, final String value) {
     switch (key) {
+      case LoadTsFileConfigurator.DATABASE_NAME_KEY:
+        if (value == null || value.isEmpty()) {
+          throw new SemanticException("Database name must not be empty.");
+        }
+        break;
       case LoadTsFileConfigurator.DATABASE_LEVEL_KEY:
         LoadTsFileConfigurator.validateDatabaseLevelParam(value);
         break;
