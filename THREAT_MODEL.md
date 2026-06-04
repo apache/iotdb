@@ -19,11 +19,11 @@ limitations under the License.
 ## §1 Header
 
 - **Project:** Apache IoTDB (`apache/iotdb`), `master` / 2.0.x line, against which this draft was written.
-- **Date:** 2026-06-02. **Status:** draft — for IoTDB PMC review. **Author:** ASF Security team (drafted via the Scovetta threat-model rubric), for PMC ratification.
+- **Date:** 2026-06-02 (rev. 2026-06-04). **Status:** v0, two PMC review passes folded in (HTHou + JackieTien97) — for final IoTDB PMC ratification. **Author:** ASF Security team (drafted via the Scovetta threat-model rubric), for PMC ratification.
 - **Version binding:** this model is versioned with the project; a report against IoTDB version *N* is triaged against the model as it stood at *N*, not at HEAD.
 - **Reporting cross-reference:** findings that violate a §8 property should be reported privately per the ASF process (`security@apache.org` → `private@iotdb.apache.org`); findings that fall under §3 or §9 will be closed citing this document.
-- **Provenance legend:** *(documented)* = stated in IoTDB's own docs/repo; *(maintainer)* = confirmed by an IoTDB PMC member through this process; *(inferred)* = reasoned from architecture/domain knowledge, not yet confirmed — every *(inferred)* claim has a matching §14 open question.
-- **Draft confidence:** ~13 documented / ~40 maintainer-confirmed mentions / ~36 inferred (tag occurrences, counting the §14 resolution records). This is a v0 that has had its first PMC pass: the deployment posture, default-credential disposition, default-enabled protocols (REST/MQTT off; client Thrift SSL off), extension-privilege model, and the resource/DoS line were confirmed by an IoTDB PMC member (HTHou) in PR review and are now *(maintainer)*; the remaining trust-boundary and adversary claims (inter-node posture, Byzantine peer, TsFile/SDK boundary, long-term triage-policy/canonical-location wording) stay hypotheses for the PMC to confirm or correct.
+- **Provenance legend:** *(documented)* = stated in IoTDB's own docs/repo; *(maintainer)* = confirmed by an IoTDB PMC member through this process; *(inferred)* = reasoned from architecture/domain knowledge, not yet confirmed. The high-stakes inferred claims were routed to §14 and have since been resolved across two PMC review passes; the residual *(inferred)* tags are low-stakes environmental details the PMC can confirm or correct at leisure.
+- **Draft confidence:** a v0 that has had **two PMC review passes**. First pass (HTHou, issue-comment review 2026-06-03): deployment posture, default-credential disposition, default-enabled protocols (REST/MQTT off; client Thrift SSL off), extension-privilege model, and the resource/DoS line. Second pass (JackieTien97, PR review 2026-06-04): the previously-open items — TsFile/SDK boundary, inter-node posture (trusted-network; no transport encryption), inter-node TLS (none today), cluster Byzantine posture (membership fully trusted, no BFT claim), the §5 clock assumption, and the canonical-location/ownership wording. With both passes folded in, the core model (§2–§13) is PMC-confirmed; the remaining *(inferred)* tags are limited to low-stakes environmental details (filesystem-privacy, thread-safety correctness assumptions, the operator/peer-trust framing).
 - **What IoTDB is:** Apache IoTDB is a time-series database management system for IoT data — collection, storage, query, and analysis. It runs as a server (standalone, or a distributed cluster of ConfigNodes for metadata/coordination and DataNodes for storage/query), stores data in the TsFile columnar format, and is accessed over a Thrift-based RPC protocol via a SQL-like language and JDBC/session clients. *(documented — README, repo `CLAUDE.md`)*
 
 ## §2 Scope and intended use
@@ -52,7 +52,7 @@ limitations under the License.
 
 - **Attackers who already control the host or the IoTDB process / config files / data directory.** They have the operator's authority by definition. *(inferred)*
 - **`example/`, `integration-test/`, build/distribution tooling.** Shipped in the repo but not a production trust surface; threat-model separately if ever promoted. *(inferred)*
-- **TsFile format internals** — owned by `apache/tsfile`; a parsing/decoding finding in TsFile is routed there, not here (this model covers IoTDB's *use* of TsFile, not the format library). *(inferred — confirm the boundary)*
+- **TsFile format internals** — owned by `apache/tsfile`; a parsing/decoding finding in TsFile is routed there, not here (this model covers IoTDB's *use* of TsFile, not the format library). *(maintainer — JackieTien97: TsFile findings route to `apache/tsfile`; the `iotdb-client-*` SDKs are out of this batch)*
 - **The client SDK repos** (`iotdb-client-go/nodejs/csharp`) — out of this scan batch by agreement; each is enrolled separately as its discoverability lands. *(documented — engagement scope)*
 - **Direct public exposure of the server**, especially with default credentials, is **not a supported production posture** — a report that depends on it is not in-model as a project defect; it is a deployment misconfiguration (see §10/§11). *(maintainer — HTHou: "Direct public exposure, especially with default credentials, should not be considered a supported production posture.")*
 - **Confidentiality of data at rest / in transit when the operator has not enabled encryption** — see §10; TLS/disk-encryption posture is the operator's deployment responsibility unless the project claims otherwise. *(inferred)*
@@ -60,12 +60,12 @@ limitations under the License.
 ## §4 Trust boundaries and data flow
 
 - **Primary trust boundary: the authenticated client RPC surface.** This is the main in-model boundary. Bytes arriving over the Thrift session protocol (and any enabled REST/MQTT endpoint) from a client are untrusted; a client is constrained to its RBAC-granted privileges. The query engine, schema engine, and storage layer sit behind this boundary. *(maintainer — HTHou: "the client RPC surface as the main in-model boundary")*
-- **Secondary boundary: the cluster/inter-node surface.** ConfigNode↔DataNode RPC and the consensus channel — whether this is assumed to run on a trusted private network, or is itself authenticated/encrypted against an active network attacker, is left as an explicit open question (see §14); the PMC's suggestion is to settle it through follow-up discussion rather than in this PR. *(inferred — HTHou flagged inter-node trust as an open question to settle later)*
+- **Secondary boundary: the cluster/inter-node surface.** ConfigNode↔DataNode RPC and the consensus channel are assumed to run on a **trusted network**. These channels currently have **no transport encryption**; a finding that requires intercepting or modifying inter-node traffic is therefore `OUT-OF-MODEL: adversary-not-in-scope` under this posture, and operators are responsible for network segmentation (§10). *(maintainer — JackieTien97)*
 - **Reachability preconditions per component** (the test a triager applies before anything else):
   - A finding in the query/SQL/schema engine is **in-model** only if reachable from a client operating *within its granted privileges* (or from an unauthenticated pre-login surface). *(inferred)*
   - A finding requiring an already-`root`/admin session is **out-of-model: trusted-input** unless it crosses into host compromise the operator didn't already have. *(inferred)*
   - A finding in UDF/Trigger/Pipe/Model execution is in-model only subject to the §9 ruling: these are grantable system privileges, so the question is whether the principal granted them is trusted for that server-side execution capability (RBAC is the boundary, not a sandbox). *(maintainer — HTHou: see §9)*
-  - A finding on the inter-node channel is in-model only if the cluster threat posture (§14) treats that channel as exposed. *(inferred)*
+  - A finding on the inter-node channel is **out-of-model**: the channel runs on a trusted network by posture (no transport encryption today), so a finding requiring interception/modification of inter-node traffic is `OUT-OF-MODEL: adversary-not-in-scope`. *(maintainer — JackieTien97)*
 
 ## §5 Assumptions about the environment
 
@@ -73,7 +73,7 @@ limitations under the License.
 - **OS:** Windows / macOS / Linux. *(documented — README)*
 - **Filesystem:** the data/WAL/TsFile directories are private to the IoTDB process and not writable by untrusted local users; `max open files` raised to 65535. *(documented for the fd limit; filesystem-privacy inferred)*
 - **Concurrency:** the server is multi-threaded and serves concurrent client sessions; thread-safety of the storage/query path is a correctness assumption. *(inferred)*
-- **Clock:** time-series semantics depend on timestamps; whether server-side time ordering assumes monotonic/synchronized clocks across the cluster is open. *(inferred)*
+- **Clock:** time-series semantics depend on timestamps, but server-side time ordering does **not** assume monotonic or synchronized clocks across the cluster. *(maintainer — JackieTien97)*
 - **What the server does to its host** (negative inventory — predominantly inferred, a wave-1/2 confirmation target): listens on network ports; reads/writes its data + WAL directories; reads its config files; spawns no child processes *except* where features explicitly do (e.g. Pipe sinks, external scripts?); the UDF/Trigger/Model features load and execute user-supplied code in-process. *(inferred)*
 
 ## §5a Build-time and configuration variants
@@ -84,7 +84,7 @@ Knobs that change which security properties hold:
 - **REST API — disabled by default** (`enable_rest_service=false`). In-model only when the operator has explicitly enabled it. *(maintainer — HTHou)*
 - **MQTT — disabled by default** (`enable_mqtt_service=false`). In-model only when explicitly enabled. *(maintainer — HTHou)*
 - **Client Thrift SSL — available but disabled by default** (`enable_thrift_ssl=false`). Transport confidentiality/integrity on the client channel is therefore off unless the operator turns it on; see §9/§10. *(maintainer — HTHou)*
-- **Inter-node TLS / wire encryption** — default on or off for the cluster channel? *(inferred — see §14)*
+- **Inter-node TLS / wire encryption** — **none today**; the ConfigNode↔DataNode and consensus channels have no transport encryption, so operators rely on network segmentation (§10). *(maintainer — JackieTien97)*
 - **UDF / Trigger / Pipe / AINode-model execution** — gated by grantable system privileges (`USE_UDF`/`USE_TRIGGER`/`USE_PIPE`/`USE_MODEL`); see §9. *(maintainer — HTHou)*
 - **Whitelist / network bind** (bind address, client allow-list) defaults. *(inferred)*
 
@@ -109,7 +109,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 - **Primary adversary:** a network client that can reach the IoTDB RPC port (or an enabled REST/MQTT port) **from within the trusted-network deployment posture** — either **unauthenticated** (pre-login) or **authenticated with limited privileges** — trying to read/write data outside its grants, escalate privilege, execute code on the server beyond its granted extension privileges, crash/exhaust the server via malformed/pre-auth input, or move laterally to peer nodes. *(maintainer for the posture — HTHou; the per-vector detail remains inferred)*
 - **Capabilities assumed:** can open connections, send arbitrary protocol/SQL bytes, supply large/malformed payloads, and (if granted the relevant privilege) register extensions. *(inferred)*
 - **Out of scope:** anyone with `root`/admin session or host/process/filesystem control (already authoritative); an attacker who only reaches the server because it was directly publicly exposed (non-supported posture, §3); side-channel/timing adversaries (unless the PMC wants them in). *(maintainer for public-exposure exclusion — HTHou; rest inferred)*
-- **Cluster — authenticated-but-Byzantine peer:** a node that holds a valid cluster identity and then behaves arbitrarily. Whether IoTDB's consensus claims safety/liveness against such a peer (and under what honest-fraction threshold), or whether cluster membership is assumed fully trusted, is left as an explicit open question for follow-up PMC discussion (see §14). *(inferred — HTHou: keep Byzantine-peer assumptions as an open question)*
+- **Cluster — authenticated-but-Byzantine peer:** cluster membership is assumed **fully trusted**. IoTDB does **not** claim Byzantine fault tolerance — there is no safety/liveness guarantee against an authenticated-but-malicious peer node. A finding that requires a cluster member to behave arbitrarily is out-of-model under this posture. *(maintainer — JackieTien97)*
 
 ## §8 Security properties the project provides
 
@@ -125,7 +125,7 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 *(The highest-value section for integrators — inferred unless tagged, confirm each.)*
 
 - **Server-side code execution via extensions is by-design, not a vulnerability — gated by RBAC.** UDFs, Triggers, Pipe processors, and AINode models execute user-supplied logic/JARs **inside the server process**. `USE_UDF`, `USE_TRIGGER`, `USE_PIPE`, and `USE_MODEL` are **grantable system privileges** (not strictly root/admin-only). The security-model interpretation is that **principals granted these privileges are trusted for the corresponding server-side execution capability**; RBAC is the authorization boundary here, **not a sandbox**. A scan reporting "UDF/Trigger/Pipe/Model allows arbitrary code execution" is therefore `BY-DESIGN` for a principal holding the relevant grant. *(maintainer — HTHou: "system privileges and … grantable privileges, not strictly root/admin-only … principals granted these privileges are trusted for the corresponding server-side execution capability. RBAC is the authorization boundary here, not a sandbox.")*
-- **Transport confidentiality/integrity is the operator's job** unless TLS is enabled — client Thrift SSL is off by default (`enable_thrift_ssl=false`, §5a), so by default IoTDB does not defend against a network attacker reading/modifying client traffic. The inter-node channel's default posture is an open question (§14). *(maintainer for the client-SSL default — HTHou; inter-node inferred)*
+- **Transport confidentiality/integrity is the operator's job** unless TLS is enabled — client Thrift SSL is off by default (`enable_thrift_ssl=false`, §5a), so by default IoTDB does not defend against a network attacker reading/modifying client traffic. The inter-node channel has **no transport encryption today**, and is assumed to run on a trusted network (operators own segmentation, §10). *(maintainer — HTHou for the client-SSL default; JackieTien97 for the inter-node posture)*
 - **No defense against a malicious operator / `root`.** *(inferred)*
 - **Default-credential exposure is not IoTDB's bug** — `root:root` is a must-change-before-production default, not a supported posture (§5a/§10). *(maintainer — HTHou)*
 - **Ordinary resource exhaustion is not a defended property.** Ordinary expensive queries or write load that consume CPU/memory/disk are an operator capacity/resource-management concern, not an in-model security property — unless a specific bug applies (super-linear amplification, a missing limit where a limit is expected, or a hang), in which case it is in-model (§8). *(maintainer — HTHou)*
@@ -186,23 +186,23 @@ Per-surface trust table *(inferred unless noted; REST/MQTT rows apply only when 
 
 ## §14 Open questions for the maintainers
 
-Several wave-1 items below were **confirmed by an IoTDB PMC member (HTHou) in PR review** and folded into the body; they are retained here only as a record of the resolution. The genuinely-open items are the inter-node trust posture, the Byzantine-peer assumption, and the long-term triage-policy/canonical-location wording — which HTHou suggested settling through follow-up PMC discussion rather than finalizing in this PR.
+All items below have now been **confirmed by IoTDB PMC members across two review passes** — HTHou (issue-comment review, 2026-06-03) and JackieTien97 (PR review, 2026-06-04) — and folded into the body; they are retained here only as a record of the resolution. With both passes in, the core model (§2–§13) is PMC-confirmed; any remaining *(inferred)* tags are limited to low-stakes environmental details (e.g. filesystem-privacy, thread-safety correctness assumptions).
 
 **Wave 1 — scope & intended posture** (resolved by HTHou; recorded):
 1. **Deployment posture:** *resolved* — trusted-network-by-default, operator-deployed infrastructure, client RPC surface as the main in-model boundary; direct public exposure (esp. with default creds) is not a supported posture. → §2/§3/§4/§7. *(maintainer)*
 2. **Default `root:root`:** *resolved* — must-change before production/exposure, not a supported production posture; report = `OUT-OF-MODEL: non-default-build`. → §5a/§10/§11a. *(maintainer)*
-3. **TsFile boundary + SDK repos:** still open — confirm TsFile findings route to `apache/tsfile`, and the `iotdb-client-*` SDKs are out of this batch. → §2/§3. *(inferred)*
+3. **TsFile boundary + SDK repos:** *resolved* — TsFile findings route to `apache/tsfile`; the `iotdb-client-*` SDKs are out of this batch. → §2/§3. *(maintainer — JackieTien97)*
 
 **Wave 2 — trust boundaries & protocols:**
 4. **Default-enabled protocols:** *resolved* — Thrift session is the primary surface; REST (`enable_rest_service=false`) and MQTT (`enable_mqtt_service=false`) are **disabled by default**. → §2/§5a/§6. *(maintainer)*
-5. **Inter-node trust (open):** is the ConfigNode↔DataNode + consensus channel assumed to run on a trusted network, or authenticated/encrypted against an active network attacker? HTHou suggested settling this via follow-up PMC discussion. Proposed interim: trusted-network assumption unless TLS/mutual-auth is configured. → §4/§7. *(inferred)*
-6. **TLS defaults:** *partially resolved* — client Thrift SSL is **off by default** (`enable_thrift_ssl=false`). Still open: is TLS available/default for the **inter-node** channel? → §5a/§9. *(client part maintainer; inter-node part inferred)*
+5. **Inter-node trust:** *resolved* — the ConfigNode↔DataNode + consensus channel is assumed to run on a **trusted network** and currently has **no transport encryption**; a finding requiring interception/modification of inter-node traffic is `OUT-OF-MODEL: adversary-not-in-scope`, and operators own network segmentation (§10). → §4/§7/§9. *(maintainer — JackieTien97)*
+6. **TLS defaults:** *resolved* — client Thrift SSL is **off by default** (`enable_thrift_ssl=false`); there is **no inter-node TLS today**. → §5a/§9. *(maintainer — HTHou for client SSL; JackieTien97 for inter-node)*
 
 **Wave 3 — extension execution & adversary:**
 7. **Extension privilege model:** *resolved* — `USE_UDF`/`USE_TRIGGER`/`USE_PIPE`/`USE_MODEL` are grantable system privileges (not strictly root-only); server-side code execution by a principal holding the grant is **by-design**; RBAC is the boundary, not a sandbox. → §9/§11a/§13. *(maintainer)*
-8. **Cluster Byzantine posture (open):** does IoTDB claim any safety/liveness against an authenticated-but-malicious peer node, or is cluster membership assumed fully trusted? HTHou suggested keeping this as an explicit open question for follow-up. Proposed interim: membership trusted; no Byzantine-fault tolerance claimed. → §7/§8. *(inferred)*
+8. **Cluster Byzantine posture:** *resolved* — cluster membership is assumed **fully trusted**; IoTDB does not claim Byzantine fault tolerance and makes no safety/liveness guarantee against an authenticated-but-malicious peer. → §7/§8. *(maintainer — JackieTien97)*
 
 **Wave 4 — properties & resource line:**
 9. **Resource/DoS line:** *resolved* — malformed/pre-auth/client input causing crash/OOM/deadlock/clearly-unbounded behavior is in-model; ordinary expensive queries or write load are an operator capacity concern unless a specific bug applies (super-linear amplification, missing-expected-limit, or a hang). → §8/§9/§11a. *(maintainer)*
-10. Are there other recurring scanner/fuzzer false positives the PMC already knows about (to seed §11a)? → §11a. *(inferred)*
-11. **Meta / long-term triage policy (open):** IoTDB has no in-repo `SECURITY.md` today and an `AGENTS.md` that is a developer/build guide. This engagement adds `SECURITY.md` + `THREAT_MODEL.md` and wires `AGENTS.md → SECURITY.md → THREAT_MODEL.md`. Confirm where the canonical model should live (in-repo, as proposed, vs. the project website), who owns revisions, and the exact wording of the long-term triage policy — which HTHou suggested settling through follow-up PMC discussion. → §1. *(inferred)*
+10. **Other recurring false positives:** *resolved* — no additional recurring false positives beyond the §11a seed list at this time. → §11a. *(maintainer — JackieTien97)*
+11. **Meta / canonical location:** *resolved* — keep the model **in-repo** as proposed (`AGENTS.md → SECURITY.md → THREAT_MODEL.md`); the IoTDB PMC owns revisions. → §1. *(maintainer — JackieTien97)*
