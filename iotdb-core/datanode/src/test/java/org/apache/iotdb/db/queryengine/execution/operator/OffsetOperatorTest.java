@@ -65,7 +65,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.isNullOrEmpty;
 import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -385,7 +384,13 @@ public class OffsetOperatorTest {
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
         TsBlock tsBlock = offsetOperator.next();
-        if (isNullOrEmpty(tsBlock)) {
+        if (tsBlock == null) {
+          continue;
+        }
+        assertEquals(2, tsBlock.getValueColumnCount());
+        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
+        if (tsBlock.getPositionCount() == 0) {
           continue;
         }
         fail("Expected no data from offset operator");
@@ -477,7 +482,13 @@ public class OffsetOperatorTest {
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
         TsBlock tsBlock = offsetOperator.next();
-        if (isNullOrEmpty(tsBlock)) {
+        if (tsBlock == null) {
+          continue;
+        }
+        assertEquals(2, tsBlock.getValueColumnCount());
+        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
+        if (tsBlock.getPositionCount() == 0) {
           continue;
         }
         fail("Expected no data from offset operator");
