@@ -119,6 +119,19 @@ public class TimeSeriesMetadataCache {
       boolean debug,
       QueryContext queryContext)
       throws IOException {
+    return get(filePath, key, allSensors, ignoreNotExists, debug, queryContext, false);
+  }
+
+  @SuppressWarnings({"squid:S1860", "squid:S6541", "squid:S3776"}) // Suppress synchronize warning
+  public TimeseriesMetadata get(
+      String filePath,
+      TimeSeriesMetadataCacheKey key,
+      Set<String> allSensors,
+      boolean ignoreNotExists,
+      boolean debug,
+      QueryContext queryContext,
+      boolean externalTsFile)
+      throws IOException {
     long startTime = System.nanoTime();
     long loadBloomFilterTime = 0;
     LongConsumer timeSeriesMetadataIoSizeRecorder =
@@ -127,14 +140,14 @@ public class TimeSeriesMetadataCache {
         queryContext.getQueryStatistics().getLoadBloomFilterActualIOSize()::addAndGet;
     boolean cacheHit = true;
     try {
-      if (!CACHE_ENABLE) {
+      if (!CACHE_ENABLE || externalTsFile) {
         String deviceStringFormat = key.device.toString();
         cacheHit = false;
 
         // bloom filter part
         TsFileSequenceReader reader =
             FileReaderManager.getInstance()
-                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder);
+                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder, externalTsFile);
         BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
         queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
         if (bloomFilter != null
@@ -182,7 +195,8 @@ public class TimeSeriesMetadataCache {
                         queryContext.getQueryStatistics().getLoadBloomFilterFromCacheCount()
                             ::addAndGet,
                         queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount()
-                            ::addAndGet);
+                            ::addAndGet,
+                        externalTsFile);
             if (bloomFilter != null
                 && !bloomFilter.contains(
                     deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
@@ -196,7 +210,12 @@ public class TimeSeriesMetadataCache {
             loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
-                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder);
+                    .get(
+                        filePath,
+                        key.tsFileID,
+                        true,
+                        timeSeriesMetadataIoSizeRecorder,
+                        externalTsFile);
             List<TimeseriesMetadata> timeSeriesMetadataList =
                 reader.readTimeseriesMetadata(
                     key.device,

@@ -140,9 +140,9 @@ public class OrderedExternalTsFileTableScanOperator extends AbstractTableScanOpe
               reader,
               tableName,
               ((OperatorContext) operatorContext)
-                  .getInstanceContext()
-                  .getQueryStatistics()
-                  .getLoadTimeSeriesMetadataActualIOSize()
+                      .getInstanceContext()
+                      .getQueryStatistics()
+                      .getLoadTimeSeriesMetadataActualIOSize()
                   ::addAndGet);
       while (deviceIterator.hasNext()) {
         IDeviceID deviceID = deviceIterator.next();

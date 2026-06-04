@@ -239,15 +239,11 @@ public class ConvertSchemaPredicateToFilterVisitor
       final BetweenPredicate node, final Context context) {
     final SchemaFilter lowerBoundFilter =
         new ComparisonExpression(
-                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
-                node.getMin(),
-                node.getValue())
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getMin(), node.getValue())
             .accept(this, context);
     final SchemaFilter upperBoundFilter =
         new ComparisonExpression(
-                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
-                node.getValue(),
-                node.getMax())
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, node.getValue(), node.getMax())
             .accept(this, context);
     if (Objects.isNull(lowerBoundFilter) || Objects.isNull(upperBoundFilter)) {
       return null;

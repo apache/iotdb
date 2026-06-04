@@ -110,7 +110,8 @@ public class FileLoaderUtils {
                     context.ignoreNotExistsDevice()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
-                    context);
+                    context,
+                    context.isExternalTsFileScan());
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
@@ -297,6 +298,7 @@ public class FileLoaderUtils {
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();
+    boolean isExternalTsFile = context.isExternalTsFileScan();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -308,7 +310,8 @@ public class FileLoaderUtils {
             context.ignoreNotExistsDevice()
                 || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
-            context);
+            context,
+            isExternalTsFile);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -337,7 +340,8 @@ public class FileLoaderUtils {
                   context.ignoreNotExistsDevice()
                       || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
-                  context);
+                  context,
+                  isExternalTsFile);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }

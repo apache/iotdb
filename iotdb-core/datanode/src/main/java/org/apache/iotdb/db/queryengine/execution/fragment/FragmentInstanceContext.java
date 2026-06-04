@@ -122,6 +122,7 @@ public class FragmentInstanceContext extends QueryContext {
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
   private List<String> externalTsFilePaths;
+  private List<TsFileResource> externalTsFileResources;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -234,6 +235,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  @Override
+  public boolean isExternalTsFileScan() {
+    return queryDataSourceType == QueryDataSourceType.EXTERNAL_TSFILE_SCAN;
   }
 
   @TestOnly
@@ -802,7 +808,7 @@ public class FragmentInstanceContext extends QueryContext {
         return true;
       }
 
-      List<TsFileResource> externalTsFileResources = new ArrayList<>(externalTsFilePaths.size());
+      externalTsFileResources = new ArrayList<>(externalTsFilePaths.size());
       for (String externalTsFilePath : externalTsFilePaths) {
         TsFileResource resource =
             new TsFileResource(new File(externalTsFilePath), TsFileResourceStatus.NORMAL);
@@ -820,6 +826,7 @@ public class FragmentInstanceContext extends QueryContext {
           resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
         }
         externalTsFileResources.add(resource);
+        FileReaderManager.getInstance().increaseExternalFileReaderReference(externalTsFilePath);
       }
 
       this.sharedQueryDataSource =
@@ -1073,6 +1080,13 @@ public class FragmentInstanceContext extends QueryContext {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
       }
       unClosedFilePaths = null;
+    }
+
+    if (externalTsFileResources != null) {
+      for (TsFileResource tsFile : externalTsFileResources) {
+        FileReaderManager.getInstance().decreaseExternalFileReaderReference(tsFile.getTsFilePath());
+      }
+      externalTsFileResources = null;
     }
 
     // release TVList/AlignedTVList owned by current query
