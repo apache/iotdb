@@ -367,6 +367,71 @@ public class StatementAnalyzer {
     MERGE,
   }
 
+  private static final class SelectAnalysis {
+    private final List<Expression> outputExpressions;
+    private final List<SelectAlias> aliases;
+
+    private SelectAnalysis(List<Expression> outputExpressions, List<SelectAlias> aliases) {
+      this.outputExpressions =
+          ImmutableList.copyOf(requireNonNull(outputExpressions, "outputExpressions is null"));
+      this.aliases = ImmutableList.copyOf(requireNonNull(aliases, "aliases is null"));
+    }
+
+    private List<Expression> getOutputExpressions() {
+      return outputExpressions;
+    }
+
+    private List<SelectAlias> getAliases() {
+      return aliases;
+    }
+  }
+
+  private static final class SelectAlias {
+    private final String canonicalName;
+    private final Expression expression;
+    private final int position;
+
+    private SelectAlias(String canonicalName, Expression expression, int position) {
+      this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
+      this.expression = requireNonNull(expression, "expression is null");
+      this.position = position;
+    }
+
+    private String getCanonicalName() {
+      return canonicalName;
+    }
+
+    private Expression getExpression() {
+      return expression;
+    }
+
+    private int getPosition() {
+      return position;
+    }
+  }
+
+  private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
+    return scope.tryResolveField(identifier, QualifiedName.of(identifier.getValue())).isPresent();
+  }
+
+  private static Optional<SelectAlias> resolveSelectAlias(
+      Identifier identifier, List<SelectAlias> aliases) {
+    List<SelectAlias> matches =
+        aliases.stream()
+            .filter(alias -> alias.getCanonicalName().equals(identifier.getCanonicalValue()))
+            .collect(toImmutableList());
+    if (matches.size() > 1) {
+      throw new SemanticException(
+          String.format(
+              "Column alias '%s' is ambiguous at positions %s",
+              identifier.getValue(),
+              matches.stream()
+                  .map(alias -> Integer.toString(alias.getPosition()))
+                  .collect(Collectors.joining(", "))));
+    }
+    return matches.stream().findFirst();
+  }
+
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
    * scopes hierarchy should always have outer query scope (if provided) as ancestor.
@@ -901,7 +966,12 @@ public class StatementAnalyzer {
       List<Expression> orderByExpressions = emptyList();
       if (node.getOrderBy().isPresent()) {
         orderByExpressions =
-            analyzeOrderBy(node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope);
+            analyzeOrderBy(
+                node,
+                getSortItemsFromOrderBy(node.getOrderBy()),
+                queryBodyScope,
+                queryBodyScope,
+                emptyList());
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1193,9 +1263,10 @@ public class StatementAnalyzer {
 
       node.getWhere().ifPresent(where -> analyzeWhere(node, sourceScope, where));
 
-      List<Expression> outputExpressions = analyzeSelect(node, sourceScope);
+      SelectAnalysis selectAnalysis = analyzeSelect(node, sourceScope);
+      List<Expression> outputExpressions = selectAnalysis.getOutputExpressions();
       Analysis.GroupingSetAnalysis groupByAnalysis =
-          analyzeGroupBy(node, sourceScope, outputExpressions);
+          analyzeGroupBy(node, sourceScope, outputExpressions, selectAnalysis.getAliases());
       analyzeHaving(node, sourceScope);
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
@@ -1213,7 +1284,13 @@ public class StatementAnalyzer {
         OrderBy orderBy = node.getOrderBy().get();
         orderByScope = Optional.of(computeAndAssignOrderByScope(orderBy, sourceScope, outputScope));
 
-        orderByExpressions = analyzeOrderBy(node, orderBy.getSortItems(), orderByScope.get());
+        orderByExpressions =
+            analyzeOrderBy(
+                node,
+                orderBy.getSortItems(),
+                sourceScope,
+                orderByScope.get(),
+                selectAnalysis.getAliases());
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1569,11 +1646,13 @@ public class StatementAnalyzer {
       analysis.setWhere(node, predicate);
     }
 
-    private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
+    private SelectAnalysis analyzeSelect(QuerySpecification node, Scope scope) {
       ImmutableList.Builder<Expression> outputExpressionBuilder = ImmutableList.builder();
       ImmutableList.Builder<Analysis.SelectExpression> selectExpressionBuilder =
           ImmutableList.builder();
+      ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
 
+      int selectItemPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
         if (item instanceof AllColumns) {
           analyzeSelectAllColumns(
@@ -1598,11 +1677,17 @@ public class StatementAnalyzer {
           } else {
             analyzeSelectSingleColumn(
                 selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+            if (singleColumn.getAlias().isPresent()) {
+              Identifier alias = singleColumn.getAlias().get();
+              selectAliasBuilder.add(
+                  new SelectAlias(alias.getCanonicalValue(), selectExpression, selectItemPosition));
+            }
           }
         } else {
           throw new IllegalArgumentException(
               "Unsupported SelectItem type: " + item.getClass().getName());
         }
+        selectItemPosition++;
       }
       analysis.setSelectExpressions(node, selectExpressionBuilder.build());
 
@@ -1610,7 +1695,7 @@ public class StatementAnalyzer {
         analysis.setContainsSelectDistinct();
       }
 
-      return outputExpressionBuilder.build();
+      return new SelectAnalysis(outputExpressionBuilder.build(), selectAliasBuilder.build());
     }
 
     /**
@@ -2681,7 +2766,10 @@ public class StatementAnalyzer {
     }
 
     private Analysis.GroupingSetAnalysis analyzeGroupBy(
-        QuerySpecification node, Scope scope, List<Expression> outputExpressions) {
+        QuerySpecification node,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
       if (node.getGroupBy().isPresent()) {
         ImmutableList.Builder<List<Set<FieldId>>> cubes = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> rollups = ImmutableList.builder();
@@ -2706,6 +2794,7 @@ public class StatementAnalyzer {
                 column = outputExpressions.get(toIntExact(ordinal - 1));
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               } else {
+                column = resolveGroupBySelectAlias(column, scope, selectAliases);
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
                 analyzeExpression(column, scope);
               }
@@ -2805,6 +2894,22 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private Expression resolveGroupBySelectAlias(
+        Expression expression, Scope scope, List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return expression;
+      }
+
+      Identifier identifier = (Identifier) expression;
+      if (resolvesToInputColumn(scope, identifier)) {
+        return expression;
+      }
+
+      return resolveSelectAlias(identifier, selectAliases)
+          .map(SelectAlias::getExpression)
+          .orElse(expression);
     }
 
     private boolean isDateBinGapFill(Expression column) {
@@ -4102,11 +4207,16 @@ public class StatementAnalyzer {
     }
 
     private List<Expression> analyzeOrderBy(
-        Node node, List<SortItem> sortItems, Scope orderByScope) {
+        Node node,
+        List<SortItem> sortItems,
+        Scope sourceScope,
+        Scope orderByScope,
+        List<SelectAlias> selectAliases) {
       ImmutableList.Builder<Expression> orderByFieldsBuilder = ImmutableList.builder();
 
       for (SortItem item : sortItems) {
         Expression expression = item.getSortKey();
+        Scope expressionScope = sourceScope;
 
         if (expression instanceof LongLiteral) {
           // this is an ordinal in the output tuple
@@ -4118,6 +4228,12 @@ public class StatementAnalyzer {
           }
 
           expression = new FieldReference(toIntExact(ordinal - 1));
+          expressionScope = orderByScope;
+        } else {
+          Optional<SelectAlias> selectAlias = resolveOrderBySelectAlias(expression, selectAliases);
+          if (selectAlias.isPresent()) {
+            expression = selectAlias.get().getExpression();
+          }
         }
 
         ExpressionAnalysis expressionAnalysis =
@@ -4127,7 +4243,7 @@ public class StatementAnalyzer {
                 sessionContext,
                 statementAnalyzerFactory,
                 accessControl,
-                orderByScope,
+                expressionScope,
                 analysis,
                 expression,
                 WarningCollector.NOOP,
@@ -4146,6 +4262,15 @@ public class StatementAnalyzer {
       }
 
       return orderByFieldsBuilder.build();
+    }
+
+    private Optional<SelectAlias> resolveOrderBySelectAlias(
+        Expression expression, List<SelectAlias> selectAliases) {
+      if (!(expression instanceof Identifier)) {
+        return Optional.empty();
+      }
+
+      return resolveSelectAlias((Identifier) expression, selectAliases);
     }
 
     private void analyzeOffset(Offset node, Scope scope) {
@@ -5452,7 +5577,11 @@ public class StatementAnalyzer {
   }
 
   static void verifyNoAggregateWindowOrGroupingFunctions(Expression predicate, String clause) {
-    List<FunctionCall> aggregates = extractAggregateFunctions(ImmutableList.of(predicate));
+    List<FunctionCall> aggregates =
+        ImmutableList.<FunctionCall>builder()
+            .addAll(extractAggregateFunctions(ImmutableList.of(predicate)))
+            .addAll(extractWindowFunctions(ImmutableList.of(predicate)))
+            .build();
 
     if (!aggregates.isEmpty()) {
       throw new SemanticException(
