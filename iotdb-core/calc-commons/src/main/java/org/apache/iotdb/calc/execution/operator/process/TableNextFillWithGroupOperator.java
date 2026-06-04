@@ -38,8 +38,6 @@ import java.util.List;
 
 public class TableNextFillWithGroupOperator extends TableNextFillOperator {
 
-  private final List<Boolean> groupSplitter;
-
   private final List<Boolean> noMoreTsBlockForCurrentGroup;
 
   private final Comparator<SortKey> groupKeyComparator;
@@ -57,7 +55,6 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
       Comparator<SortKey> groupKeyComparator,
       List<TSDataType> dataTypes) {
     super(operatorContext, fillArray, child, helperColumnIndex, hasTimeBound);
-    this.groupSplitter = new ArrayList<>();
     this.noMoreTsBlockForCurrentGroup = new ArrayList<>();
     this.groupKeyComparator = groupKeyComparator;
     this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -101,7 +98,6 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
 
   @Override
   void resetFill() {
-    groupSplitter.remove(0);
     boolean isNoMoreTsBlockForCurrentGroup =
         Boolean.TRUE.equals(noMoreTsBlockForCurrentGroup.remove(0));
     if (isNoMoreTsBlockForCurrentGroup) {
@@ -136,9 +132,6 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
           } else if (isNewGroup) {
             resetFillState();
           }
-          groupSplitter.add(isNewGroup);
-        } else {
-          groupSplitter.add(true);
         }
         noMoreTsBlockForCurrentGroup.add(true);
         currentGroupKey = nextGroupKey;
@@ -155,9 +148,6 @@ public class TableNextFillWithGroupOperator extends TableNextFillOperator {
       } else if (isNewGroup) {
         resetFillState();
       }
-      groupSplitter.add(isNewGroup);
-    } else {
-      groupSplitter.add(true);
     }
     noMoreTsBlockForCurrentGroup.add(false);
     lastRow = currentGroupKey;
