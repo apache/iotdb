@@ -28,17 +28,17 @@ public final class OperatorTestUtils {
     // Utility class.
   }
 
-  public static TsBlock nextNonEmpty(Operator operator) throws Exception {
+  public static TsBlock nextNonNullOrEmpty(Operator operator) throws Exception {
     while (operator.hasNext()) {
       TsBlock result = operator.next();
       if (!isNullOrEmpty(result)) {
         return result;
       }
     }
-    return null;
+    throw new AssertionError("Expected a non-null and non-empty TsBlock from operator");
   }
 
-  public static TsBlock lastNonEmpty(Operator operator) throws Exception {
+  public static TsBlock lastNonNullOrEmpty(Operator operator) throws Exception {
     TsBlock result = null;
     while (operator.isBlocked().isDone() && operator.hasNext()) {
       TsBlock nextResult = operator.next();

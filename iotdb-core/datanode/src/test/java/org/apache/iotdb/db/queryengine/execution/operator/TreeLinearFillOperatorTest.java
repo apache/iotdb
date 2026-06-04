@@ -42,7 +42,7 @@ import org.junit.Test;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -1309,10 +1309,7 @@ public class TreeLinearFillOperatorTest {
           };
 
       while (fillOperator.hasNext()) {
-        TsBlock block = nextNonEmpty(fillOperator);
-        if (block == null) {
-          continue;
-        }
+        TsBlock block = nextNonNullOrEmpty(fillOperator);
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + count;
           assertEquals(expectedTime, block.getTimeByIndex(i));

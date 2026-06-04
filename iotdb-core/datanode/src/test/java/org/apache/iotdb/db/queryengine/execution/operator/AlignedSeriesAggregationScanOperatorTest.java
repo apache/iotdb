@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -123,10 +123,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       for (int i = 0; i < measurementSchemas.size(); i++) {
         assertEquals(500, resultTsBlock.getColumn(i).getLong(0));
       }
@@ -157,10 +154,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, false, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       for (int i = 0; i < measurementSchemas.size(); i++) {
         assertEquals(500, resultTsBlock.getColumn(i).getLong(0));
       }
@@ -196,10 +190,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
       count++;
@@ -237,10 +228,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       assertTrue(resultTsBlock.getColumn(0).getBoolean(0));
       assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(20199, resultTsBlock.getColumn(2).getLong(0));
@@ -282,10 +270,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, false, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       assertTrue(resultTsBlock.getColumn(0).getBoolean(0));
       assertEquals(10499, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(20199, resultTsBlock.getColumn(2).getLong(0));
@@ -320,10 +305,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       for (int i = 0; i < measurementSchemas.size(); i++) {
         assertEquals(resultTsBlock.getColumn(i).getLong(0), 380);
       }
@@ -356,10 +338,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       for (int i = 0; i < measurementSchemas.size(); i++) {
         assertEquals(resultTsBlock.getColumn(i).getLong(0), 380);
       }
@@ -392,10 +371,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       for (int i = 0; i < measurementSchemas.size(); i++) {
         assertEquals(resultTsBlock.getColumn(i).getLong(0), 300);
       }
@@ -435,10 +411,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, timeFilter, true, null);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       assertTrue(resultTsBlock.getColumn(0).getBoolean(0));
       assertEquals(399, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(20199, resultTsBlock.getColumn(2).getLong(0));
@@ -476,10 +449,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -520,10 +490,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
             aggregators, timeFilter, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -568,10 +535,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -617,10 +581,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, false, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(pos));
@@ -656,10 +617,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -692,10 +650,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
@@ -739,10 +694,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         initAlignedSeriesAggregationScanOperator(aggregators, null, true, groupByTimeParameter);
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
-      TsBlock resultTsBlock = nextNonEmpty(seriesAggregationScanOperator);
-      if (resultTsBlock == null) {
-        continue;
-      }
+      TsBlock resultTsBlock = nextNonNullOrEmpty(seriesAggregationScanOperator);
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
