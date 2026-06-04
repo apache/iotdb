@@ -2307,6 +2307,10 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
       File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
+      if (!dataRegionObjectFolder.exists()) {
+        continue;
+      }
+
       AtomicLong totalSize = new AtomicLong(0);
       AtomicInteger count = new AtomicInteger(0);
       try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
