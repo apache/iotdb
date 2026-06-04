@@ -541,6 +541,57 @@ public class IoTDBRelationalStrictSystemPermissionIT {
   }
 
   @Test
+  public void sysAdminCanOperateWritableView()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String database = "strict_system_writable_view_db";
+    final String setupUser = "writable_view_setup_user";
+    createUser(setupUser, "TimechoDB@2021");
+    executeTableNonQuery(
+        "grant all on any to user " + setupUser, "security_admin", "TimechoDB@2021");
+    try (ITableSession setupSession =
+            EnvFactory.getEnv().getTableSessionConnection(setupUser, "TimechoDB@2021");
+        ITableSession sysAdminSession =
+            EnvFactory.getEnv().getTableSessionConnection("sys_admin", "TimechoDB@2021")) {
+      try {
+        setupSession.executeNonQueryStatement("drop database if exists " + database);
+        setupSession.executeNonQueryStatement("create database " + database);
+        setupSession.executeNonQueryStatement("use " + database);
+        setupSession.executeNonQueryStatement(
+            "create table source_table(" + "device_id string tag, " + "temperature int32 field)");
+        setupSession.executeNonQueryStatement(
+            "create writable view writable_view as select "
+                + "device_id as dev, temperature as temp from source_table");
+
+        sysAdminSession.executeNonQueryStatement("use " + database);
+        sysAdminSession.executeNonQueryStatement(
+            "insert into writable_view(time, dev, temp) values (1, 'd1', 10), (2, 'd1', 11)");
+
+        try (SessionDataSet dataSet =
+            sysAdminSession.executeQueryStatement("select temp from writable_view order by time")) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          Assert.assertTrue(iterator.next());
+          Assert.assertEquals(10, iterator.getInt("temp"));
+          Assert.assertTrue(iterator.next());
+          Assert.assertEquals(11, iterator.getInt("temp"));
+          Assert.assertFalse(iterator.next());
+        }
+
+        sysAdminSession.executeNonQueryStatement("delete from writable_view where time = 1");
+
+        try (SessionDataSet dataSet =
+            sysAdminSession.executeQueryStatement("select temp from writable_view order by time")) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          Assert.assertTrue(iterator.next());
+          Assert.assertEquals(11, iterator.getInt("temp"));
+          Assert.assertFalse(iterator.next());
+        }
+      } finally {
+        setupSession.executeNonQueryStatement("drop database if exists " + database);
+      }
+    }
+  }
+
+  @Test
   public void listPrivilegesOfUser() throws IoTDBConnectionException, StatementExecutionException {
     createUser("user1", "TimechoDB@2021");
     createUser("user2", "TimechoDB@2021");

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.ViewTableUtils;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -76,6 +78,25 @@ public class AccessControlImpl implements AccessControl {
       throw new AccessDeniedException(
           String.format(READ_ONLY_DB_ERROR_MSG, TABLE_MODEL_AUDIT_DATABASE));
     }
+  }
+
+  private boolean checkSystemPrivilegeOnWritableView(
+      QualifiedObjectName tableName, IAuditEntity auditEntity, TableModelPrivilege privilege) {
+    if (!ViewTableUtils.isWritableView(
+            DataNodeTableCache.getInstance()
+                .getTable(tableName.getDatabaseName(), tableName.getObjectName(), false))
+        || !hasGlobalPrivilege(auditEntity, PrivilegeType.SYSTEM)) {
+      return false;
+    }
+    DNAuditLogger.getInstance()
+        .recordObjectAuthenticationAuditLog(
+            auditEntity
+                .setAuditLogOperation(privilege.getAuditLogOperation())
+                .setDatabase(tableName.getDatabaseName())
+                .setPrivilegeType(privilege.getPrivilegeType())
+                .setResult(true),
+            tableName::getObjectName);
+    return true;
   }
 
   @Override
@@ -184,6 +205,9 @@ public class AccessControlImpl implements AccessControl {
       return;
     }
     checkAuditDatabase(tableName.getDatabaseName());
+    if (checkSystemPrivilegeOnWritableView(tableName, auditEntity, TableModelPrivilege.INSERT)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.INSERT, auditEntity);
   }
 
@@ -196,6 +220,9 @@ public class AccessControlImpl implements AccessControl {
     }
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(tableName.getDatabaseName())) {
       checkCanSelectAuditTable(auditEntity);
+    } else if (checkSystemPrivilegeOnWritableView(
+        tableName, auditEntity, TableModelPrivilege.SELECT)) {
+      return;
     } else {
       authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT, auditEntity);
     }
@@ -223,6 +250,9 @@ public class AccessControlImpl implements AccessControl {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     InformationSchemaUtils.checkDBNameInWrite(tableName.getDatabaseName());
     checkAuditDatabase(tableName.getDatabaseName());
+    if (checkSystemPrivilegeOnWritableView(tableName, auditEntity, TableModelPrivilege.DELETE)) {
+      return;
+    }
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE, auditEntity);
   }
 
