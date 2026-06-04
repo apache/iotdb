@@ -174,7 +174,7 @@ set(IOTDB_PUBLIC_HEADERS
         ColumnDecoder.h
         TsBlock.h)
 
-# Windows: RUNTIME = iotdb_session.dll, ARCHIVE = import .lib (both under lib/ in the tarball).
+# Windows: RUNTIME = iotdb_session.dll, ARCHIVE = import .lib (both under lib/ in the zip).
 install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib

@@ -53,7 +53,7 @@ During configure CMake will, in order:
 5. Compile `iotdb_session` (the C/C++ session library) and, optionally,
    the Catch2 integration test binaries.
 6. `cmake --install` lays out the SDK under `target/install/{include,lib}`,
-   which Maven's assembly step packages into a tarball.
+   which Maven's assembly step packages into a zip.
 
 ## Build matrix
 
@@ -64,8 +64,8 @@ During configure CMake will, in order:
 | Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
-The Maven build sets `cmake.install.prefix` to `target/install/`. Output tarballs
-land at `iotdb-client/client-cpp/target/iotdb-session-cpp-<version>-<classifier>.tar.gz`
+The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
+land at `iotdb-client/client-cpp/target/iotdb-session-cpp-<version>-<classifier>.zip`
 (with a package root directory and a `.sha512` checksum generated alongside).
 The classifier can be overridden with `-Dclient.cpp.package.classifier=...` when
 building multiple toolchains on the same platform.
@@ -73,10 +73,10 @@ building multiple toolchains on the same platform.
 ### Release packages (CI)
 
 The [C++ Client package](../../.github/workflows/client-cpp-package.yml) workflow
-builds one tarball per platform/toolchain. Pick the artifact that matches your
+builds one zip per platform/toolchain. Pick the artifact that matches your
 deployment environment:
 
-| Target environment | Tarball classifier (suffix) |
+| Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
 | Linux x86_64, glibc >= 2.17 | `linux-x86_64-glibc2.17` |
 | Linux aarch64, glibc >= 2.17 | `linux-aarch64-glibc2.17` |
@@ -88,7 +88,7 @@ deployment environment:
 | Windows + Visual Studio 2026 | `windows-x86_64-msvc14.4` |
 
 Example file name:
-`iotdb-session-cpp-2.0.10.1-linux-x86_64-glibc2.17.tar.gz`.
+`iotdb-session-cpp-2.0.10.1-linux-x86_64-glibc2.17.zip`.
 
 Linux release packages are built in the `manylinux2014` container, so they require
 glibc 2.17 or newer on the deployment host.
@@ -229,7 +229,7 @@ CI environments can share a single cache by setting
 ### Windows
 
 Visual Studio **2017, 2019, 2022, or 2026** is supported for building the SDK.
-Link your application against the tarball built with the **same VS generation** you
+Link your application against the zip built with the **same VS generation** you
 use for your project.
 
 Prerequisites:
@@ -305,7 +305,7 @@ JDK 11+).
 ## Package layout
 
 A successful `mvn ... package` produces
-`target/iotdb-session-cpp-<version>-<classifier>.tar.gz` with this layout:
+`target/iotdb-session-cpp-<version>-<classifier>.zip` with this layout:
 
 ```
 README.md

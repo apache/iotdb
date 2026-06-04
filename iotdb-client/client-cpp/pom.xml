@@ -57,7 +57,7 @@
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
         <boost.include.dir/>
         <iotdb.extra.cxx.flags/>
-        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release tarballs. -->
+        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
         <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
         <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
@@ -211,7 +211,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- tar.gz: iotdb-session-cpp-<version>-<classifier>.tar.gz with a package root directory. -->
+            <!-- zip: iotdb-session-cpp-<version>-<classifier>.zip with a package root directory. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -231,7 +231,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Create SHA512 checksum files for the release tarball. -->
+            <!-- Create SHA512 checksum files for the release zip. -->
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>
@@ -250,7 +250,7 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>${client.cpp.package.name}.tar.gz</include>
+                                        <include>${client.cpp.package.name}.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>

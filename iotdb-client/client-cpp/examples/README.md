@@ -39,11 +39,11 @@ user `root` / `root`).
 | `tree_example` | C Session API (tree model) |
 | `table_example` | C Session API (table model) |
 
-## Which SDK tarball to use
+## Which SDK zip to use
 
 Release CI ([client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml))
-publishes one tarball per platform/toolchain:
-`iotdb-session-cpp-<version>-<classifier>.tar.gz` (package root contains `include/` and `lib/`).
+publishes one zip per platform/toolchain:
+`iotdb-session-cpp-<version>-<classifier>.zip` (package root contains `include/` and `lib/`).
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
@@ -61,7 +61,7 @@ pre-built Thrift workflow only. Linux release packages are built in the
 
 ## SDK layout (after unpack)
 
-The SDK tarball produced by `client-cpp` contains **public headers only** and one
+The SDK zip produced by `client-cpp` contains **public headers only** and one
 shared library:
 
 ```

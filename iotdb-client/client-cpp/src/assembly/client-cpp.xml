@@ -20,13 +20,13 @@
 <!--
   The CMake build installs the SDK into ${cmake.install.prefix} = target/install.
   Package layout:
-  iotdb-session-cpp-<version>-<classifier>.tar.gz ->
+  iotdb-session-cpp-<version>-<classifier>.zip ->
   iotdb-session-cpp-<version>-<classifier>/{include,lib,cmake,pkgconfig,examples,...}.
 -->
 <assembly>
     <id>${client.cpp.package.classifier}</id>
     <formats>
-        <format>tar.gz</format>
+        <format>zip</format>
         <format>dir</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>

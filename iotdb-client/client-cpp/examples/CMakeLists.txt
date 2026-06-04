@@ -83,7 +83,7 @@ if(NOT _iotdb_examples_in_tree)
     if(NOT EXISTS "${_iotdb_link_lib}")
         message(FATAL_ERROR
             "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
-            "Unpack iotdb-session-cpp-<version>-<classifier>.tar.gz so that ${_iotdb_link_lib} exists.")
+            "Unpack iotdb-session-cpp-<version>-<classifier>.zip so that ${_iotdb_link_lib} exists.")
     endif()
 endif()
 

@@ -185,26 +185,26 @@ jobs:
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package tarball
+      - name: Resolve package zip
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.17.tar.gz)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.17.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
-            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
           fi
           echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
           sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload tarball artifact
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -243,26 +243,26 @@ jobs:
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package tarball
+      - name: Resolve package zip
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.17.tar.gz)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.17.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
-            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
           fi
           echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
           sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload tarball artifact
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -316,26 +316,26 @@ jobs:
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true
-      - name: Resolve package tarball
+      - name: Resolve package zip
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*.tar.gz)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
-            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
           fi
           echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
           sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload tarball artifact
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -352,7 +352,7 @@ jobs:
           PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
           rm -rf "${PKG_UNPACK}"
           mkdir -p "${PKG_UNPACK}"
-          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+          unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
           EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
@@ -455,26 +455,26 @@ jobs:
             throw "Expected PE32+ x64 (machine=0x8664), got 0x$($machine.ToString('X4'))"
           }
           Write-Host "Verified x64 DLL: $dll"
-      - name: Resolve package tarball
+      - name: Resolve package zip
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.tar.gz)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
-            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
+            echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
           fi
           echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .zip)" >> "$GITHUB_OUTPUT"
           sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload tarball artifact
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -498,7 +498,7 @@ jobs:
           PKG_UNPACK="${TEMP_BASE}/client-cpp-package"
           rm -rf "${PKG_UNPACK}"
           mkdir -p "${PKG_UNPACK}"
-          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+          unzip -q -o "${PKG_TARBALL}" -d "${PKG_UNPACK}"
           PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
           test -n "${PKG_ROOT}"
           EXAMPLE_BUILD="${TEMP_BASE}/client-cpp-example-smoke"

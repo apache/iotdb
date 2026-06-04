@@ -95,15 +95,15 @@ fi
 echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
 
 echo "=== Example package build/link/run smoke test ==="
-PKG_TARBALL=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.tar.gz" -print -quit)
-if [[ -z "${PKG_TARBALL}" ]]; then
-  echo "ERROR: could not find package tarball for ${PACKAGE_CLASSIFIER}"
+PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
+if [[ -z "${PKG_ZIP}" ]]; then
+  echo "ERROR: could not find package zip for ${PACKAGE_CLASSIFIER}"
   exit 1
 fi
 PKG_UNPACK="/tmp/client-cpp-package-smoke-glibc217"
 rm -rf "${PKG_UNPACK}"
 mkdir -p "${PKG_UNPACK}"
-tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+unzip -q -o "${PKG_ZIP}" -d "${PKG_UNPACK}"
 PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}" -print -quit)
 if [[ -z "${PKG_ROOT}" ]]; then
   echo "ERROR: could not find unpacked package directory for ${PACKAGE_CLASSIFIER}"

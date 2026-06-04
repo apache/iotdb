@@ -41,8 +41,8 @@
 ## 选择哪个 SDK 压缩包
 
 CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml)）
-会按平台/工具链打出多份 tarball，文件名形如
-`iotdb-session-cpp-<version>-<classifier>.tar.gz`（解压后根目录即为 `include/` 与 `lib/`）。请按目标环境选择：
+会按平台/工具链打出多份 zip，文件名形如
+`iotdb-session-cpp-<version>-<classifier>.zip`（解压后根目录即为 `include/` 与 `lib/`）。请按目标环境选择：
 
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|

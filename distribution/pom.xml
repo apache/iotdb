@@ -234,7 +234,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <includes combine.children="append">
-                                                <include>apache-iotdb-${project.version}-client-cpp-${client.cpp.package.classifier}-bin.tar.gz</include>
+                                                <include>apache-iotdb-${project.version}-client-cpp-${client.cpp.package.classifier}-bin.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
