@@ -909,6 +909,12 @@ tag_attribute_flush_interval=1000
 # Datatype: int
 tag_attribute_total_size=700
 
+# The maximum number of single measurement check results cached by PathUtils.
+# Set to 0 to disable this cache.
+# effectiveMode: restart
+# Datatype: int
+single_measurement_check_cache_size=10000
+
 # max measurement num of internal request
 # When creating timeseries with Session.createMultiTimeseries, the user input plan, the timeseries num of
 # which exceeds this num, will be split to several plans with timeseries no more than this num.

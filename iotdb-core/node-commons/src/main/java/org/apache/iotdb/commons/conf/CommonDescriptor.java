@@ -276,6 +276,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
 
+    int singleMeasurementCheckCacheSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "single_measurement_check_cache_size",
+                String.valueOf(config.getSingleMeasurementCheckCacheSize())));
+    if (singleMeasurementCheckCacheSize >= 0) {
+      config.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    }
+
     config.setTimePartitionOrigin(
         Long.parseLong(
             properties.getProperty(
