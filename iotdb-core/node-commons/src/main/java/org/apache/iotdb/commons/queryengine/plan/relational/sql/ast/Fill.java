@@ -77,6 +77,7 @@ public class Fill extends Node {
       LongLiteral timeColumnIndex,
       List<LongLiteral> fillGroupingElements) {
     super(requireNonNull(location, "location is null"));
+    fillMethod = requireNonNull(fillMethod, "fillMethod is null");
     if (fillMethod != FillPolicy.PREVIOUS && fillMethod != FillPolicy.NEXT) {
       throw new IllegalArgumentException("Unsupported fill method: " + fillMethod);
     }
