@@ -45,7 +45,7 @@ public class TimeSeriesSchemaSourceTest {
             null,
             Collections.emptyMap(),
             SchemaConstant.ALL_MATCH_SCOPE,
-            true);
+            false);
 
     assertTrue(
         countSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
@@ -92,7 +92,7 @@ public class TimeSeriesSchemaSourceTest {
             null,
             Collections.emptyMap(),
             SchemaConstant.ALL_MATCH_SCOPE,
-            false);
+            true);
     assertFalse(
         systemCountSource.shouldSkipSchemaRegion(mockSchemaRegion(SchemaConstant.SYSTEM_DATABASE)));
   }
