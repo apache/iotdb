@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.env;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -46,6 +45,7 @@ import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -95,7 +95,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -162,62 +161,63 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(final String databaseName) throws IOException, TException {
-    final List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     final TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(databaseName);
-    for (final TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
-      final int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+    // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on its
+    // caches
+    // and resyncs on recovery), instead of hard-failing whenever any DataNode is Unknown. This runs
+    // before the physical database-schema delete in the state machine, so the "delete only after
+    // PROCEED" ordering holds. (throws kept for source compatibility with callers.)
+    return new ClusterCachePropagator(configManager)
+        .propagate(targets -> invalidateDatabaseCacheOnce(targets, invalidateCacheReq));
+  }
 
-      // If the node is not alive, retry for up to 10 times
-      NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-      int retryNum = 10;
-      if (nodeStatus == NodeStatus.Unknown) {
-        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
-          try {
-            TimeUnit.MILLISECONDS.sleep(500);
-          } catch (final InterruptedException e) {
-            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-            Thread.currentThread().interrupt();
-            break;
-          }
-          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-        }
+  /**
+   * One broadcast round of the database cache invalidation over {@code targets}: synchronously
+   * invalidate partition then schema cache on each DataNode and report SUCCESS for a DataNode only
+   * if both succeeded. Unknown DataNodes are not contacted (a sync send would block on connect
+   * timeouts) and are reported as not-acked, so the {@link ClusterCachePropagator} can decide
+   * whether they are provably fenced.
+   */
+  private Map<Integer, TSStatus> invalidateDatabaseCacheOnce(
+      final Map<Integer, TDataNodeLocation> targets, final TInvalidateCacheReq invalidateCacheReq) {
+    final Map<Integer, TSStatus> result = new HashMap<>();
+    for (final Map.Entry<Integer, TDataNodeLocation> entry : targets.entrySet()) {
+      final int dataNodeId = entry.getKey();
+      final TSStatus notAcked = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      if (getLoadManager().getNodeStatus(dataNodeId) == NodeStatus.Unknown) {
+        result.put(dataNodeId, notAcked);
+        continue;
       }
-
-      if (nodeStatus == NodeStatus.Unknown) {
+      try {
+        // Always invalidate PartitionCache first.
+        final TSStatus invalidatePartitionStatus =
+            (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        entry.getValue().getInternalEndPoint(),
+                        invalidateCacheReq,
+                        CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
+        final TSStatus invalidateSchemaStatus =
+            (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        entry.getValue().getInternalEndPoint(),
+                        invalidateCacheReq,
+                        CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
+        result.put(
+            dataNodeId,
+            verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)
+                ? invalidatePartitionStatus
+                : notAcked);
+      } catch (final Exception e) {
         LOG.warn(
-            "Invalidate cache failed, because DataNode {} is Unknown",
-            dataNodeConfiguration.getLocation().getInternalEndPoint());
-        return false;
-      }
-
-      // Always invalidate PartitionCache first
-      final TSStatus invalidatePartitionStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_PARTITION_CACHE);
-
-      final TSStatus invalidateSchemaStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
-
-      if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
-        LOG.error(
-            "Invalidate cache failed, invalidate partition cache status is {}, invalidate schemaengine cache status is {}",
-            invalidatePartitionStatus,
-            invalidateSchemaStatus);
-        return false;
+            "Invalidate cache failed for DataNode {}", entry.getValue().getInternalEndPoint(), e);
+        result.put(dataNodeId, notAcked);
       }
     }
-    return true;
+    return result;
   }
 
   public boolean verifySucceed(TSStatus... status) {
@@ -874,10 +874,6 @@ public class ConfigNodeProcedureEnv {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
-  }
-
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

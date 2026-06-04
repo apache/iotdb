@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.lease.DataNodeContactTracker;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
@@ -290,6 +291,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     // Always start load services first
     configManager.getLoadManager().startLoadServices();
+
+    // Reset every DataNode's last-contact time to now on (re)acquiring leadership: a stale
+    // timestamp
+    // left from a previous leadership term (while another ConfigNode was contacting the DataNodes)
+    // would otherwise let the metadata-broadcast verdict wrongly judge a live DataNode as fenced.
+    DataNodeContactTracker.getInstance()
+        .onLeadershipAcquired(
+            configManager.getNodeManager().getRegisteredDataNodeLocations().keySet());
 
     if (CONF.isEnableTopologyProbing()) {
       configManager.getLoadManager().startTopologyService();

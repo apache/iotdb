@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewExceptio
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
+import org.apache.iotdb.db.schemaengine.lease.MetadataLeaseManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 
@@ -65,6 +66,10 @@ public class TreeDeviceSchemaCacheManager {
 
   private TreeDeviceSchemaCacheManager() {
     tableDeviceSchemaCache = TableDeviceSchemaCache.getInstance();
+    // On lease recovery (a ConfigNode heartbeat after this DataNode was fenced), drop everything:
+    // entries cached before the partition may have missed a ConfigNode invalidation, and forcing a
+    // miss while fenced does not cover entries that were never re-read during the partition.
+    MetadataLeaseManager.getInstance().addLeaseRecoveryListener(this::cleanUp);
   }
 
   public static TreeDeviceSchemaCacheManager getInstance() {
@@ -93,6 +98,23 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
+   * Look up a device's cached schema, but report a miss (return {@code null}) while the metadata
+   * lease is fenced. A fenced DataNode may hold a stale entry (it could have missed a ConfigNode
+   * cache-invalidation such as a DELETE TIMESERIES or datatype change while partitioned); forcing a
+   * miss makes the read-through callers re-fetch from the authoritative, quorum-backed SchemaRegion
+   * rather than validate writes/queries against possibly-stale schema. This is more available than
+   * hard-failing: the operation still succeeds whenever the SchemaRegion quorum is reachable, and
+   * only fails (fail-closed) when it is not. On lease recovery {@link #cleanUp()} additionally
+   * drops entries cached before the partition that were never re-read while fenced.
+   */
+  private IDeviceSchema getDeviceSchemaOrMissWhenFenced(final String[] deviceIdNodes) {
+    if (MetadataLeaseManager.getInstance().isFenced()) {
+      return null;
+    }
+    return tableDeviceSchemaCache.getDeviceSchema(deviceIdNodes);
+  }
+
+  /**
    * Get SchemaEntity info without auto create schema
    *
    * @param devicePath should not be measurementPath or AlignedPath
@@ -101,7 +123,7 @@ public class TreeDeviceSchemaCacheManager {
    */
   public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = getDeviceSchemaOrMissWhenFenced(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       return tree;
     }
@@ -130,7 +152,7 @@ public class TreeDeviceSchemaCacheManager {
    */
   public ClusterSchemaTree getMatchedTemplateSchema(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = getDeviceSchemaOrMissWhenFenced(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceTemplateSchema)) {
       return tree;
     }
@@ -150,7 +172,7 @@ public class TreeDeviceSchemaCacheManager {
   public ClusterSchemaTree getMatchedNormalSchema(final PartialPath fullPath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema =
-        tableDeviceSchemaCache.getDeviceSchema(
+        getDeviceSchemaOrMissWhenFenced(
             Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       return tree;
@@ -171,7 +193,7 @@ public class TreeDeviceSchemaCacheManager {
     final String[] measurements = schemaComputation.getMeasurements();
 
     final IDeviceSchema schema =
-        tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
+        getDeviceSchemaOrMissWhenFenced(schemaComputation.getDevicePath().getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       return IntStream.range(0, schemaComputation.getMeasurements().length)
           .boxed()
@@ -229,7 +251,7 @@ public class TreeDeviceSchemaCacheManager {
 
       final PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       final IDeviceSchema schema =
-          tableDeviceSchemaCache.getDeviceSchema(fullPath.getDevicePath().getNodes());
+          getDeviceSchemaOrMissWhenFenced(fullPath.getDevicePath().getNodes());
       if (!(schema instanceof TreeDeviceNormalSchema)) {
         indexOfMissingMeasurements.add(i);
         continue;
@@ -265,7 +287,7 @@ public class TreeDeviceSchemaCacheManager {
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = computation.getMeasurements();
     final IDeviceSchema deviceSchema =
-        tableDeviceSchemaCache.getDeviceSchema(computation.getDevicePath().getNodes());
+        getDeviceSchemaOrMissWhenFenced(computation.getDevicePath().getNodes());
 
     if (!(deviceSchema instanceof TreeDeviceTemplateSchema)) {
       return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());

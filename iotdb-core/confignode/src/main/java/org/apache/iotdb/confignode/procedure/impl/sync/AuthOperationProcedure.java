@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -31,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+import org.apache.iotdb.confignode.manager.lease.ClusterCachePropagator;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -49,8 +52,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.confignode.procedure.state.auth.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
@@ -96,34 +100,25 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
           writePlan(env);
           return Flow.HAS_MORE_STATE;
         case DATANODE_AUTHCACHE_INVALIDING:
-          TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-          TSStatus status;
+          final TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
           req.setUsername(user);
           req.setRoleName(role);
-          Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
-          while (it.hasNext()) {
-            Pair<TDataNodeConfiguration, Long> pair = it.next();
-            if (pair.getRight() + this.timeoutMS < System.currentTimeMillis()) {
-              it.remove();
-              continue;
-            }
-            status =
-                (TSStatus)
-                    SyncDataNodeClientPool.getInstance()
-                        .sendSyncRequestToDataNodeWithRetry(
-                            pair.getLeft().getLocation().getInternalEndPoint(),
-                            req,
-                            CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
-            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              it.remove();
-            }
-          }
-          if (dataNodesToInvalid.isEmpty()) {
+          // Proceed once every unreachable DataNode is provably self-fenced (it fails closed on
+          // auth
+          // and resyncs on recovery), instead of silently dropping a DataNode after a timeout,
+          // which
+          // left a live but un-acked DataNode serving the just-revoked permission. Fail only when a
+          // live DataNode stays un-acked. (dataNodesToInvalid is retained for serialization
+          // compatibility but no longer drives this step.)
+          if (new ClusterCachePropagator(env.getConfigManager())
+              .propagate(targets -> invalidatePermissionCacheOnce(env, targets, req))) {
             LOGGER.info(ProcedureMessages.AUTH_PROCEDURE_CLEAN_DATANODE_CACHE_SUCCESSFULLY);
             return Flow.NO_MORE_STATE;
-          } else {
-            setNextState(AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING);
           }
+          setFailure(
+              new ProcedureException(
+                  String.format(
+                      ProcedureMessages.FAIL_TO_EXECUTE_PLAN_AT_STATE, plan.toString(), state)));
           break;
       }
     } catch (Exception e) {
@@ -169,6 +164,44 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
     }
+  }
+
+  /**
+   * One broadcast round of the permission-cache invalidation over {@code targets}: synchronously
+   * invalidate each reachable DataNode and report its status. Unknown DataNodes are not contacted
+   * (a sync send would block on connect timeouts) and are reported as not-acked, so the {@link
+   * ClusterCachePropagator} can decide whether they are provably fenced.
+   */
+  private Map<Integer, TSStatus> invalidatePermissionCacheOnce(
+      final ConfigNodeProcedureEnv env,
+      final Map<Integer, TDataNodeLocation> targets,
+      final TInvalidatePermissionCacheReq req) {
+    final Map<Integer, TSStatus> result = new HashMap<>();
+    for (final Map.Entry<Integer, TDataNodeLocation> entry : targets.entrySet()) {
+      final int dataNodeId = entry.getKey();
+      final TSStatus notAcked = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      if (env.getConfigManager().getLoadManager().getNodeStatus(dataNodeId) == NodeStatus.Unknown) {
+        result.put(dataNodeId, notAcked);
+        continue;
+      }
+      try {
+        result.put(
+            dataNodeId,
+            (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        entry.getValue().getInternalEndPoint(),
+                        req,
+                        CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE));
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Invalidate permission cache failed for DataNode {}",
+            entry.getValue().getInternalEndPoint(),
+            e);
+        result.put(dataNodeId, notAcked);
+      }
+    }
+    return result;
   }
 
   @Override

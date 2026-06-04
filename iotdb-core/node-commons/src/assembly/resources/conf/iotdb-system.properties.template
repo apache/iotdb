@@ -744,6 +744,16 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# A DataNode self-fences its ConfigNode-pushed metadata caches (table/tree schema, templates, TTL,
+# permissions, ...) if it has not received a ConfigNode heartbeat within this duration, so a
+# partitioned DataNode stops trusting stale caches. Kept aligned with
+# failure_detector_fixed_threshold_in_ms so a DataNode fences itself around the same time the
+# cluster would consider it down. The ConfigNode also uses this to decide how long it must wait
+# before treating an unreachable DataNode as safely fenced.
+# effectiveMode: restart
+# Datatype: long
+metadata_lease_fence_ms=20000
+
 # Whether to enable topology probing between DataNodes
 # effectiveMode: hot_reload
 # Datatype: Boolean
