@@ -1982,6 +1982,18 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
           Arrays.asList(
               "root.__audit.log.node_1.u_1",
               "true",
+              "GLOBAL",
+              "[SYSTEM]",
+              "null",
+              "QUERY",
+              "User sys_admin (ID=1) requests authority on object root.__system with result true",
+              "COUNT TIMESERIES root.test",
+              "OBJECT_AUTHENTICATION",
+              "127.0.0.1",
+              "sys_admin"),
+          Arrays.asList(
+              "root.__audit.log.node_1.u_1",
+              "true",
               "OBJECT",
               "[READ_SCHEMA]",
               "null",
