@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
@@ -84,6 +87,51 @@ public class SubscriptionInfoTest {
     Assert.assertEquals(
         "root.sg.**",
         subscriptionInfo.getTopicMeta(topicName).getConfig().getString(TopicConstant.PATH_KEY));
+  }
+
+  @Test
+  public void testAlterTopicOwnerAndShowTopicOwner() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final long ownerLeaseExpireTimeMs = 123456789L;
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta initialTopicMeta = createTopicMeta(topicName, "sn1", 5L);
+    initialTopicMeta.getConfig().getAttribute().put(TopicConstant.PATH_KEY, "root.sg.**");
+    initialTopicMeta.getConfig().getAttribute().put(TopicConstant.START_TIME_KEY, "0");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(initialTopicMeta)).getCode());
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    updatedAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo
+            .alterTopic(
+                new AlterTopicPlan(
+                    initialTopicMeta.deepCopyWithUpdatedAttributes(updatedAttributes)))
+            .getCode());
+
+    final TShowTopicResp showTopicResp =
+        ((TopicTableResp) subscriptionInfo.showTopics()).convertToTShowTopicResp();
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), showTopicResp.status.code);
+    Assert.assertEquals(1, showTopicResp.getTopicInfoListSize());
+
+    final TShowTopicInfo showTopicInfo = showTopicResp.getTopicInfoList().get(0);
+    Assert.assertEquals(topicName, showTopicInfo.getTopicName());
+    Assert.assertEquals(1L, showTopicInfo.getCreationTime());
+    Assert.assertTrue(showTopicInfo.getTopicAttributes().contains("path=root.sg.**"));
+    Assert.assertTrue(showTopicInfo.getTopicAttributes().contains("start-time=0"));
+    Assert.assertTrue(showTopicInfo.getTopicAttributes().contains("owner-id=sn2"));
+    Assert.assertTrue(showTopicInfo.getTopicAttributes().contains("owner-epoch=6"));
+    Assert.assertTrue(
+        showTopicInfo
+            .getTopicAttributes()
+            .contains("owner-lease-expire-time-ms=" + ownerLeaseExpireTimeMs));
   }
 
   private TopicMeta createTopicMeta(
