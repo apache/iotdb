@@ -489,9 +489,26 @@ jobs:
           fi
           SERVER_ROOT=$(find "${WORKSPACE_BASE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/windows/start-standalone.bat' -print -quit | sed 's#/sbin/windows/start-standalone.bat##')
           test -n "${SERVER_ROOT}"
-          cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/windows/start-standalone.bat")"
-          trap 'cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/windows/stop-standalone.bat")" || true' EXIT
-          sleep 30
+          START_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/start-standalone.bat")"
+          STOP_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/stop-standalone.bat")"
+          cmd.exe //c "\"${START_BAT}\""
+          trap "cmd.exe //c '\"${STOP_BAT}\"' || true" EXIT
+          echo "Waiting for IoTDB RPC on 127.0.0.1:6667..."
+          ready=0
+          for _ in $(seq 1 60); do
+            if powershell.exe -NoProfile -Command \
+              '(Test-NetConnection -ComputerName 127.0.0.1 -Port 6667 -WarningAction SilentlyContinue).TcpTestSucceeded' \
+              | grep -qi True; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "${ready}" -ne 1 ]; then
+            echo "ERROR: IoTDB did not listen on 6667 within 120s"
+            ls -la "${SERVER_ROOT}/logs" 2>/dev/null || true
+            exit 1
+          fi
           for exe in SessionExample.exe AlignedTimeseriesSessionExample.exe TableModelSessionExample.exe tree_example.exe table_example.exe; do
             EXE=$(find "${EXAMPLE_BUILD}" -name "${exe}" -print -quit)
             test -n "${EXE}"
