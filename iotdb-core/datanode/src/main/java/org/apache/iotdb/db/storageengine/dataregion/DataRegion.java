@@ -2404,6 +2404,9 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
       File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
+      if (!dataRegionObjectFolder.exists()) {
+        continue;
+      }
       if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
         try {
           fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
