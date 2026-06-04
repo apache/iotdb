@@ -69,7 +69,7 @@ client/
 ├── include/
 │   ├── Session.h
 │   ├── Export.h
-│   └── ...          (17 public headers; no thrift/ or boost/)
+│   └── ...
 └── lib/
     ├── iotdb_session.dll + iotdb_session.lib   (Windows)
     ├── libiotdb_session.so                     (Linux)

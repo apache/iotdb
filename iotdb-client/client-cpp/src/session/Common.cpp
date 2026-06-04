@@ -59,8 +59,6 @@ std::string getTimePrecision(int32_t timeFactor) {
 
 std::string formatDatetime(const std::string& format, const std::string& precision,
                            int64_t timestamp, const std::string& zoneId) {
-  (void)precision;
-  (void)zoneId;
   std::time_t time = static_cast<std::time_t>(timestamp);
   std::tm* tm = std::localtime(&time);
   char buffer[80];
