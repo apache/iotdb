@@ -333,6 +333,7 @@ public enum ConfigPhysicalPlanType {
   RDropUserV2((short) 2103),
   RenameUser((short) 2104),
   RRenameUser((short) 2105),
+  AccountUnlock((short) 2106),
 
   EnableSeparationOfAdminPowers((short) 2200),
 
