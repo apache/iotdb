@@ -316,34 +316,6 @@ jobs:
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true
-      - name: Verify packaged examples
-        shell: bash
-        run: |
-          set -euxo pipefail
-          PKG_TARBALL=$(find iotdb-client/client-cpp/target -maxdepth 1 -type f -name 'iotdb-session-cpp-*.tar.gz' -print -quit)
-          test -n "${PKG_TARBALL}"
-          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
-          rm -rf "${PKG_UNPACK}"
-          mkdir -p "${PKG_UNPACK}"
-          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
-          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
-          test -n "${PKG_ROOT}"
-          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
-          cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DIOTDB_SDK_ROOT="${PKG_ROOT}"
-          cmake --build "${EXAMPLE_BUILD}" -j"$(sysctl -n hw.ncpu)"
-          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
-          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.sh' -print -quit | sed 's#/sbin/start-standalone.sh##')
-          test -n "${SERVER_ROOT}"
-          "${SERVER_ROOT}/sbin/start-standalone.sh"
-          trap '"${SERVER_ROOT}/sbin/stop-standalone.sh" || true' EXIT
-          sleep 30
-          "${EXAMPLE_BUILD}/SessionExample"
-          "${EXAMPLE_BUILD}/AlignedTimeseriesSessionExample"
-          "${EXAMPLE_BUILD}/TableModelSessionExample"
-          "${EXAMPLE_BUILD}/tree_example"
-          "${EXAMPLE_BUILD}/table_example"
       - name: Resolve package tarball
         id: pkg
         shell: bash
@@ -371,6 +343,34 @@ jobs:
             ${{ steps.pkg.outputs.path }}
             ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
+      - name: Verify packaged examples
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PKG_TARBALL="${{ steps.pkg.outputs.path }}"
+          test -n "${PKG_TARBALL}"
+          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
+          rm -rf "${PKG_UNPACK}"
+          mkdir -p "${PKG_UNPACK}"
+          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
+          test -n "${PKG_ROOT}"
+          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
+          cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIOTDB_SDK_ROOT="${PKG_ROOT}"
+          cmake --build "${EXAMPLE_BUILD}" -j"$(sysctl -n hw.ncpu)"
+          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.sh' -print -quit | sed 's#/sbin/start-standalone.sh##')
+          test -n "${SERVER_ROOT}"
+          "${SERVER_ROOT}/sbin/start-standalone.sh"
+          trap '"${SERVER_ROOT}/sbin/stop-standalone.sh" || true' EXIT
+          sleep 30
+          "${EXAMPLE_BUILD}/SessionExample"
+          "${EXAMPLE_BUILD}/AlignedTimeseriesSessionExample"
+          "${EXAMPLE_BUILD}/TableModelSessionExample"
+          "${EXAMPLE_BUILD}/tree_example"
+          "${EXAMPLE_BUILD}/table_example"
 
   package-windows:
     name: Package (${{ matrix.name }})
@@ -455,13 +455,40 @@ jobs:
             throw "Expected PE32+ x64 (machine=0x8664), got 0x$($machine.ToString('X4'))"
           }
           Write-Host "Verified x64 DLL: $dll"
+      - name: Resolve package tarball
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.tar.gz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
+            exit 1
+          fi
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
+          if [ ! -f "${sha512}" ]; then
+            echo "Expected checksum file: ${sha512}"
+            exit 1
+          fi
+          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: |
+            ${{ steps.pkg.outputs.path }}
+            ${{ steps.pkg.outputs.sha512_path }}
+          if-no-files-found: error
       - name: Verify packaged examples
         shell: bash
         env:
           CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
         run: |
           set -euxo pipefail
-          PKG_TARBALL=$(find iotdb-client/client-cpp/target -maxdepth 1 -type f -name 'iotdb-session-cpp-*.tar.gz' -print -quit)
+          PKG_TARBALL="${{ steps.pkg.outputs.path }}"
           test -n "${PKG_TARBALL}"
           if [ "${RUNNER_OS}" = "Windows" ]; then
             TEMP_BASE="$(cygpath -u "${RUNNER_TEMP}")"
@@ -514,30 +541,3 @@ jobs:
             test -n "${EXE}"
             "${EXE}"
           done
-      - name: Resolve package tarball
-        id: pkg
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.tar.gz)
-          if [ "${#packages[@]}" -ne 1 ]; then
-            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
-            exit 1
-          fi
-          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
-          sha512="${packages[0]}.sha512"
-          if [ ! -f "${sha512}" ]; then
-            echo "Expected checksum file: ${sha512}"
-            exit 1
-          fi
-          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload tarball artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ steps.pkg.outputs.name }}
-          path: |
-            ${{ steps.pkg.outputs.path }}
-            ${{ steps.pkg.outputs.sha512_path }}
-          if-no-files-found: error
