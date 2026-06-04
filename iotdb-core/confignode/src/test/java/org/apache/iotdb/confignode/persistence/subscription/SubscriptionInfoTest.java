@@ -60,6 +60,32 @@ public class SubscriptionInfoTest {
     Assert.assertEquals(6L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
   }
 
+  @Test
+  public void testAlterTopicTransfersOwnerWithUpdatedAttributes() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta initialTopicMeta = createTopicMeta(topicName, "sn1", 5L);
+    initialTopicMeta.getConfig().getAttribute().put(TopicConstant.PATH_KEY, "root.sg.**");
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(initialTopicMeta)).getCode());
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    final TSStatus alterStatus =
+        subscriptionInfo.alterTopic(
+            new AlterTopicPlan(initialTopicMeta.deepCopyWithUpdatedAttributes(updatedAttributes)));
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), alterStatus.getCode());
+    Assert.assertEquals("sn2", subscriptionInfo.getTopicMeta(topicName).getOwnerId());
+    Assert.assertEquals(6L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
+    Assert.assertEquals(
+        "root.sg.**",
+        subscriptionInfo.getTopicMeta(topicName).getConfig().getString(TopicConstant.PATH_KEY));
+  }
+
   private TopicMeta createTopicMeta(
       final String topicName, final String ownerId, final long ownerEpoch) {
     final Map<String, String> topicAttributes = new HashMap<>();

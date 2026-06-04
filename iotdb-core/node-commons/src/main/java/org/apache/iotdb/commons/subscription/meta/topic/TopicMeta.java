@@ -88,6 +88,17 @@ public class TopicMeta {
     return copied;
   }
 
+  public TopicMeta deepCopyWithUpdatedAttributes(final Map<String, String> updatedAttributes) {
+    final Map<String, String> copiedAttributes = new HashMap<>(config.getAttribute());
+    if (Objects.nonNull(updatedAttributes)) {
+      copiedAttributes.putAll(updatedAttributes);
+    }
+
+    final TopicMeta copied = new TopicMeta(topicName, creationTime, copiedAttributes);
+    copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
+    return copied;
+  }
+
   public String getTopicName() {
     return topicName;
   }

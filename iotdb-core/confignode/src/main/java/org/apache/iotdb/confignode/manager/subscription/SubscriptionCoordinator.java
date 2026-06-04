@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
@@ -28,6 +29,7 @@ import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -147,6 +149,25 @@ public class SubscriptionCoordinator {
           status);
     }
     return status;
+  }
+
+  public TSStatus alterTopic(TAlterTopicReq req) {
+    final TSStatus status = configManager.getProcedureManager().alterTopic(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to alter topic {} with attributes {}, result status is {}.",
+          req.getTopicName(),
+          req.getTopicAttributes(),
+          status);
+    }
+    return status;
+  }
+
+  public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {
+    final TopicMeta existedTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+    return existedTopicMeta == null
+        ? null
+        : existedTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {

@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
@@ -103,25 +104,51 @@ abstract class AbstractSubscriptionSession {
       }
       return;
     }
-    final StringBuilder sb = new StringBuilder();
-    sb.append('(');
-    properties.forEach(
-        (k, v) ->
-            sb.append('\'')
-                .append(k)
-                .append('\'')
-                .append('=')
-                .append('\'')
-                .append(v)
-                .append('\'')
-                .append(','));
-    sb.deleteCharAt(sb.length() - 1);
-    sb.append(')');
     final String sql =
         isSetIfNotExistsCondition
-            ? String.format("CREATE TOPIC IF NOT EXISTS %s WITH %s", topicName, sb)
-            : String.format("CREATE TOPIC %s WITH %s", topicName, sb);
+            ? String.format(
+                "CREATE TOPIC IF NOT EXISTS %s WITH %s",
+                topicName, buildTopicAttributesClause(properties))
+            : String.format(
+                "CREATE TOPIC %s WITH %s", topicName, buildTopicAttributesClause(properties));
     session.executeNonQueryStatement(sql);
+  }
+
+  protected void alterTopic(final String topicName, final Properties properties)
+      throws IoTDBConnectionException, StatementExecutionException {
+    IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
+    if (Objects.isNull(properties) || properties.isEmpty()) {
+      throw new StatementExecutionException("Topic attributes should not be empty in ALTER TOPIC.");
+    }
+    final String sql =
+        String.format("ALTER TOPIC %s WITH %s", topicName, buildTopicAttributesClause(properties));
+    session.executeNonQueryStatement(sql);
+  }
+
+  protected void alterTopicOwner(
+      final String topicName, final String ownerId, final long ownerEpoch)
+      throws IoTDBConnectionException, StatementExecutionException {
+    alterTopicOwner(topicName, ownerId, ownerEpoch, null);
+  }
+
+  protected void alterTopicOwner(
+      final String topicName,
+      final String ownerId,
+      final long ownerEpoch,
+      final Long ownerLeaseExpireTimeMs)
+      throws IoTDBConnectionException, StatementExecutionException {
+    if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
+      throw new StatementExecutionException("Topic owner id should not be empty.");
+    }
+
+    final Properties properties = new Properties();
+    properties.put(TopicConstant.OWNER_ID_KEY, ownerId);
+    properties.put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    if (Objects.nonNull(ownerLeaseExpireTimeMs)) {
+      properties.put(
+          TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+    }
+    alterTopic(topicName, properties);
   }
 
   protected void dropTopic(final String topicName)
@@ -230,5 +257,28 @@ abstract class AbstractSubscriptionSession {
               fields.get(3).getStringValue()));
     }
     return subscriptions;
+  }
+
+  private static String buildTopicAttributesClause(final Properties properties) {
+    final StringBuilder builder = new StringBuilder();
+    builder.append('(');
+    properties.forEach(
+        (key, value) ->
+            builder
+                .append('\'')
+                .append(escapeSqlStringLiteral(String.valueOf(key)))
+                .append('\'')
+                .append('=')
+                .append('\'')
+                .append(escapeSqlStringLiteral(String.valueOf(value)))
+                .append('\'')
+                .append(','));
+    builder.deleteCharAt(builder.length() - 1);
+    builder.append(')');
+    return builder.toString();
+  }
+
+  private static String escapeSqlStringLiteral(final String value) {
+    return value.replace("'", "''");
   }
 }

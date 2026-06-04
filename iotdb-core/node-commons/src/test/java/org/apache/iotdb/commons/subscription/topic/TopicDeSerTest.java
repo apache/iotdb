@@ -102,6 +102,29 @@ public class TopicDeSerTest {
   }
 
   @Test
+  public void testDeepCopyWithUpdatedAttributesTransfersOwnerAndPreservesExistingConfig() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.PATH_KEY, "root.sg.**");
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+    topicMeta.addSubscribedConsumerGroup("group1");
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    final TopicMeta updatedTopicMeta = topicMeta.deepCopyWithUpdatedAttributes(updatedAttributes);
+
+    Assert.assertEquals(
+        "root.sg.**", updatedTopicMeta.getConfig().getString(TopicConstant.PATH_KEY));
+    Assert.assertEquals("sn2", updatedTopicMeta.getOwnerId());
+    Assert.assertEquals(6L, updatedTopicMeta.getOwnerEpoch());
+    Assert.assertTrue(updatedTopicMeta.isSubscribedByConsumerGroup("group1"));
+    Assert.assertEquals("sn1", topicMeta.getOwnerId());
+    Assert.assertEquals(5L, topicMeta.getOwnerEpoch());
+  }
+
+  @Test
   public void testSequentialTopicMetaDeserializeDoesNotConsumeNextTopic() throws IOException {
     final TopicMeta firstTopicMeta = new TopicMeta("first_topic", 1, new HashMap<>());
     final TopicMeta secondTopicMeta = new TopicMeta("second_topic", 2, new HashMap<>());

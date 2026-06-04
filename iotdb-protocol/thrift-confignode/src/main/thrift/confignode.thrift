@@ -1930,6 +1930,9 @@ service IConfigNodeRPCService {
   /** Create Topic */
   common.TSStatus createTopic(TCreateTopicReq req)
 
+  /** Alter Topic */
+  common.TSStatus alterTopic(TAlterTopicReq req)
+
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
 
@@ -2071,4 +2074,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-
