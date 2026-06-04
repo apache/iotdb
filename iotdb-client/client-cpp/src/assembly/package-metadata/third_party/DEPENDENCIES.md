@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -19,20 +18,17 @@
     under the License.
 
 -->
-<assembly>
-    <id>client-cpp-${client.cpp.package.classifier}-bin</id>
-    <formats>
-        <format>dir</format>
-        <format>tar.gz</format>
-    </formats>
-    <baseDirectory>apache-iotdb-${project.version}-client-cpp-${client.cpp.package.classifier}-bin</baseDirectory>
-    <fileSets>
-        <fileSet>
-            <directory>${project.basedir}/../iotdb-client/client-cpp/target/iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</directory>
-            <outputDirectory>${file.separator}</outputDirectory>
-        </fileSet>
-    </fileSets>
-    <componentDescriptors>
-        <componentDescriptor>common-files.xml</componentDescriptor>
-    </componentDescriptors>
-</assembly>
+# Third-party Dependencies
+
+The release library is built with the following third-party components. Some
+components are linked into the produced IoTDB C++ session library; this file is
+included for provenance.
+
+| Component | Version | License |
+| --- | --- | --- |
+| Apache Thrift | 0.21.0 | Apache License 2.0 |
+| Boost | 1.60.0 on Linux/Windows, 1.84.0 on macOS by default | Boost Software License 1.0 |
+| OpenSSL | 3.5.0 when `WITH_SSL=ON` | Apache License 2.0 |
+| GNU m4 | 1.4.19 on Linux build bootstrap | GPL-3.0-or-later |
+| GNU flex | 2.6.4 on Linux build bootstrap | BSD-style flex license |
+| GNU bison | 3.8 on Linux build bootstrap | GPL-3.0-or-later |

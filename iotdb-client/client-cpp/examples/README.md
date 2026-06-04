@@ -39,32 +39,29 @@ user `root` / `root`).
 | `tree_example` | C Session API (tree model) |
 | `table_example` | C Session API (table model) |
 
-## Which SDK zip to use
+## Which SDK tarball to use
 
 Release CI ([client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml))
-publishes one zip per platform/toolchain:
-`client-cpp-<version>-<classifier>.zip` (zip root contains `include/` and `lib/`).
+publishes one tarball per platform/toolchain:
+`iotdb-session-cpp-<version>-<classifier>.tar.gz` (package root contains `include/` and `lib/`).
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
-| Linux x86_64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-x86_64-glibc224` |
-| Linux aarch64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-aarch64-glibc224` |
-| Linux x86_64, glibc ≥ 2.17, legacy ABI | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.17, legacy ABI | `linux-aarch64-glibc217` |
-| macOS x86_64 | `mac-x86_64` |
-| macOS arm64 | `mac-aarch64` |
-| Windows (match your Visual Studio version) | `windows-x86_64-vs2017` … `vs2026` |
+| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc2.17` |
+| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc2.17` |
+| macOS x86_64 | `macos-x86_64` |
+| macOS arm64 | `macos-aarch64` |
+| Windows (match your Visual Studio version) | `windows-x86_64-msvc14.1` ... `msvc14.4` |
 
 The current build compiles Thrift 0.21 from source at CMake configure time.
 Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
-pre-built Thrift workflow only. On Linux, prefer **`glibc224`** when your host has
-glibc ≥ 2.24 and you use the default `g++`. Use **`glibc217`** only for glibc 2.17
-systems or legacy ABI; on Ubuntu 22/24 you may need `-D_GLIBCXX_USE_CXX11_ABI=0`
-when linking against `glibc217`. See [client-cpp README](../../iotdb-client/client-cpp/README.md).
+pre-built Thrift workflow only. Linux release packages are built in the
+`manylinux2014` container and require glibc 2.17 or newer. See
+[client-cpp README](../../iotdb-client/client-cpp/README.md).
 
 ## SDK layout (after unpack)
 
-The SDK zip produced by `client-cpp` contains **public headers only** and one
+The SDK tarball produced by `client-cpp` contains **public headers only** and one
 shared library:
 
 ```
@@ -86,23 +83,26 @@ client/
 From the repository root:
 
 ```bash
-mvn clean package -DskipTests -P with-cpp -pl example/client-cpp-example -am
+mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am
 ```
 
-Maven unpacks the SDK zip into `example/client-cpp-example/target/client/` and
-runs CMake in `target/`. Binaries are under `target/` (exact path depends on
-the generator; on Windows with Visual Studio: `target/Release/`).
+Maven builds the C++ client, starts a local IoTDB server for the verify phase,
+and runs the C++ tests plus runnable examples through CTest. Example binaries
+are under `iotdb-client/client-cpp/target/build/examples/` (or
+`target/build/examples/Release/` with Visual Studio).
 
 ### Option B – CMake only (manual SDK)
 
 1. Build or download the SDK and unpack it so `client/include` and
    `client/lib` exist (see layout above).
-2. Copy `src/*.{cpp,c}` and `src/CMakeLists.txt` into one directory (or use
-   `src/` as the source tree and place `client/` beside it).
+2. Use this `examples/` directory as the source tree and place `client/` beside
+   it, or pass `-DIOTDB_SDK_ROOT=/path/to/iotdb-session-cpp-...`.
 3. Configure and build:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S iotdb-client/client-cpp/examples -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DIOTDB_SDK_ROOT=/path/to/iotdb-session-cpp-...
 cmake --build build
 ```
 
@@ -244,18 +244,16 @@ otool -L SessionExample
 ## Project layout in this module
 
 ```
-client-cpp-example/
-├── pom.xml              # Maven: unpack SDK + invoke CMake
+client-cpp/examples/
 ├── README.md
 ├── README_zh.md
-└── src/
-    ├── CMakeLists.txt
-    ├── SessionExample.cpp
-    ├── AlignedTimeseriesSessionExample.cpp
-    ├── TableModelSessionExample.cpp
-    ├── MultiSvrNodeClient.cpp
-    ├── tree_example.c
-    └── table_example.c
+├── CMakeLists.txt
+├── SessionExample.cpp
+├── AlignedTimeseriesSessionExample.cpp
+├── TableModelSessionExample.cpp
+├── MultiSvrNodeClient.cpp
+├── tree_example.c
+└── table_example.c
 ```
 
 After `mvn package`, the runnable tree is under `target/` (sources, `client/`,

@@ -23,6 +23,17 @@ using namespace std;
 
 Session* session;
 
+void setStorageGroupIfAbsent(const string& storageGroup) {
+  try {
+    session->setStorageGroup(storageGroup);
+  } catch (IoTDBException& e) {
+    string errorMessage(e.what());
+    if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+      cout << errorMessage << endl;
+    }
+  }
+}
+
 void createTimeseries() {
   if (!session->checkTimeseriesExists("root.sg1.d1.s1")) {
     session->createTimeseries("root.sg1.d1.s1", TSDataType::BOOLEAN, TSEncoding::RLE,
@@ -87,6 +98,8 @@ void createMultiTimeseries() {
 }
 
 void createSchemaTemplate() {
+  setStorageGroupIfAbsent("root.sg3");
+
   if (!session->checkTemplateExists("template1")) {
     Template temp("template1", false);
 
@@ -382,26 +395,10 @@ int main() {
   session->open(false);
 
   cout << "setStorageGroup: root.sg1\n" << endl;
-  try {
-    session->setStorageGroup("root.sg1");
-  } catch (IoTDBException& e) {
-    string errorMessage(e.what());
-    if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-      cout << errorMessage << endl;
-    }
-    //throw e;
-  }
+  setStorageGroupIfAbsent("root.sg1");
 
   cout << "setStorageGroup: root.sg2\n" << endl;
-  try {
-    session->setStorageGroup("root.sg2");
-  } catch (IoTDBException& e) {
-    string errorMessage(e.what());
-    if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-      cout << errorMessage << endl;
-    }
-    //throw e;
-  }
+  setStorageGroupIfAbsent("root.sg2");
 
   cout << "createTimeseries\n" << endl;
   createTimeseries();

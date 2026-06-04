@@ -43,7 +43,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 !iotdb-client/client-cpp/CMakeLists.txt
 !iotdb-client/client-cpp/src/test/CMakeLists.txt
 !example/rest-client-c-example/CMakeLists.txt
-!example/client-cpp-example/src/CMakeLists.txt
+!iotdb-client/client-cpp/examples/CMakeLists.txt
 
 
 *.jar

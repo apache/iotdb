@@ -53,7 +53,7 @@ During configure CMake will, in order:
 5. Compile `iotdb_session` (the C/C++ session library) and, optionally,
    the Catch2 integration test binaries.
 6. `cmake --install` lays out the SDK under `target/install/{include,lib}`,
-   which Maven's assembly step packages into a zip.
+   which Maven's assembly step packages into a tarball.
 
 ## Build matrix
 
@@ -64,44 +64,34 @@ During configure CMake will, in order:
 | Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
-The Maven build sets `cmake.install.prefix` to `target/install/`. Output zips
-land at `iotdb-client/client-cpp/target/client-cpp-<version>-<classifier>.zip`
-(with `include/` and `lib/` at the zip root; a `.sha512` checksum is generated alongside),
-where `<classifier>` defaults to the OS name (for example `linux-x86_64`) and
-can be overridden with `-Dclient.cpp.package.classifier=...` when building
-multiple toolchains on the same platform.
+The Maven build sets `cmake.install.prefix` to `target/install/`. Output tarballs
+land at `iotdb-client/client-cpp/target/iotdb-session-cpp-<version>-<classifier>.tar.gz`
+(with a package root directory and a `.sha512` checksum generated alongside).
+The classifier can be overridden with `-Dclient.cpp.package.classifier=...` when
+building multiple toolchains on the same platform.
 
 ### Release packages (CI)
 
 The [C++ Client package](../../.github/workflows/client-cpp-package.yml) workflow
-builds one zip per platform/toolchain. Pick the artifact that matches your
+builds one tarball per platform/toolchain. Pick the artifact that matches your
 deployment environment:
 
-| Target environment | Zip classifier (suffix) |
+| Target environment | Tarball classifier (suffix) |
 |--------------------|-------------------------|
-| Linux x86_64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-x86_64-glibc224` |
-| Linux aarch64, glibc ≥ 2.24, CXX11 ABI (**recommended**) | `linux-aarch64-glibc224` |
-| Linux x86_64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-x86_64-glibc217` |
-| Linux aarch64, glibc ≥ 2.17, legacy libstdc++ ABI | `linux-aarch64-glibc217` |
-| macOS x86_64 | `mac-x86_64` |
-| macOS arm64 | `mac-aarch64` |
-| Windows + Visual Studio 2017 | `windows-x86_64-vs2017` |
-| Windows + Visual Studio 2019 | `windows-x86_64-vs2019` |
-| Windows + Visual Studio 2022 | `windows-x86_64-vs2022` |
-| Windows + Visual Studio 2026 | `windows-x86_64-vs2026` |
+| Linux x86_64, glibc >= 2.17 | `linux-x86_64-glibc2.17` |
+| Linux aarch64, glibc >= 2.17 | `linux-aarch64-glibc2.17` |
+| macOS x86_64 | `macos-x86_64` |
+| macOS arm64 | `macos-aarch64` |
+| Windows + Visual Studio 2017 | `windows-x86_64-msvc14.1` |
+| Windows + Visual Studio 2019 | `windows-x86_64-msvc14.2` |
+| Windows + Visual Studio 2022 | `windows-x86_64-msvc14.3` |
+| Windows + Visual Studio 2026 | `windows-x86_64-msvc14.4` |
 
 Example file name:
-`client-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc224.zip`.
+`iotdb-session-cpp-2.0.10.1-linux-x86_64-glibc2.17.tar.gz`.
 
-**Linux package choice:** Prefer **`glibc224`** when the deployment host has
-**glibc ≥ 2.24** and you build your application with the system default `g++`
-(Ubuntu 18.04+, recent Kylin, etc.)—no extra ABI macros needed. Use **`glibc217`**
-only when the host is stuck on **glibc 2.17** (e.g. CentOS 7) or you must match
-the **legacy** libstdc++ ABI; on a modern dev machine linking against `glibc217`
-often requires `-D_GLIBCXX_USE_CXX11_ABI=0`. The `glibc224` zip is built in CI
-with `-D_GLIBCXX_USE_CXX11_ABI=1` (Session + Thrift); `glibc217` uses the
-manylinux2014 default toolchain (legacy ABI). The `manylinux_2_24` image series
-is EOL but remains a common PEP 600 baseline for glibc 2.24.
+Linux release packages are built in the `manylinux2014` container, so they require
+glibc 2.17 or newer on the deployment host.
 
 Thrift **0.21.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
@@ -112,19 +102,11 @@ and OS used to build** the SDK, not by that Maven property.
 
 ### Local build for a specific classifier
 
-Linux x86_64 (glibc 2.24 + CXX11 ABI — match `manylinux_2_24` release builds):
+Linux x86_64 (glibc 2.17 baseline, matching the manylinux2014 release build):
 
 ```bash
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-  -Dclient.cpp.package.classifier=linux-x86_64-glibc224 \
-  -Diotdb.libstdcxx.cxx11.abi=ON package
-```
-
-Linux x86_64 (glibc 2.17 + legacy ABI — CentOS 7 / manylinux2014):
-
-```bash
-mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-  -Dclient.cpp.package.classifier=linux-x86_64-glibc217 package
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc2.17 package
 ```
 
 Windows (match the Visual Studio version you use to build your application):
@@ -136,12 +118,12 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
 # Visual Studio 2019
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
   -Dcmake.generator="Visual Studio 16 2019" `
-  -Dclient.cpp.package.classifier=windows-x86_64-vs2019 package
+  -Dclient.cpp.package.classifier=windows-x86_64-msvc14.2 package
 
 # Visual Studio 2017 (CMake uses -A x64 on Windows automatically)
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
   -Dcmake.generator="Visual Studio 15 2017" `
-  -Dclient.cpp.package.classifier=windows-x86_64-vs2017 package
+  -Dclient.cpp.package.classifier=windows-x86_64-msvc14.1 package
 ```
 
 On Windows, the build passes `-DCMAKE_GENERATOR_PLATFORM=x64` so Visual Studio
@@ -247,7 +229,7 @@ CI environments can share a single cache by setting
 ### Windows
 
 Visual Studio **2017, 2019, 2022, or 2026** is supported for building the SDK.
-Link your application against the zip built with the **same VS generation** you
+Link your application against the tarball built with the **same VS generation** you
 use for your project.
 
 Prerequisites:
@@ -302,7 +284,7 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am verify
 Running ctest directly (after a `mvn ... package` build) is also supported:
 
 ```bash
-cd iotdb-client/client-cpp/target/build/test
+cd iotdb-client/client-cpp/target/build
 ctest --output-on-failure
 ```
 
@@ -323,9 +305,14 @@ JDK 11+).
 ## Package layout
 
 A successful `mvn ... package` produces
-`target/client-cpp-<version>-<classifier>.zip` with this layout:
+`target/iotdb-session-cpp-<version>-<classifier>.tar.gz` with this layout:
 
 ```
+README.md
+LICENSE
+NOTICE
+VERSION
+BUILD-INFO.txt
 include/
 ├── Session.h
 ├── SessionC.h
@@ -334,6 +321,15 @@ lib/
 ├── libiotdb_session.{so,dylib}     (Linux / macOS)
 ├── iotdb_session.dll               (Windows – runtime)
 └── iotdb_session.lib               (Windows – import library for linking)
+third_party/
+└── DEPENDENCIES.md
+cmake/
+└── iotdb-session-config.cmake
+pkgconfig/
+└── iotdb-session.pc
+examples/
+├── CMakeLists.txt
+└── ...
 ```
 
 Thrift is embedded inside `iotdb_session` on all platforms; it is not shipped

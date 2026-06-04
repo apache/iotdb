@@ -23,7 +23,18 @@ using namespace std;
 
 Session* session;
 
-#define DEFAULT_ROW_NUMBER 1000000
+#define DEFAULT_ROW_NUMBER 1000
+
+void setStorageGroupIfAbsent(const string& storageGroup) {
+  try {
+    session->setStorageGroup(storageGroup);
+  } catch (IoTDBException& e) {
+    string errorMessage(e.what());
+    if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+      cout << errorMessage << endl;
+    }
+  }
+}
 
 void createAlignedTimeseries() {
   string alignedDeviceId = "root.sg1.d1";
@@ -45,6 +56,8 @@ void createAlignedTimeseries() {
 }
 
 void createSchemaTemplate() {
+  setStorageGroupIfAbsent("root.sg3");
+
   if (!session->checkTemplateExists("template1")) {
     Template temp("template1", false);
 
@@ -349,15 +362,7 @@ int main() {
   session->open(false);
 
   cout << "setStorageGroup\n" << endl;
-  try {
-    session->setStorageGroup("root.sg1");
-  } catch (IoTDBException& e) {
-    string errorMessage(e.what());
-    if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-      cout << errorMessage << endl;
-      //throw e;
-    }
-  }
+  setStorageGroupIfAbsent("root.sg1");
 
   cout << "createAlignedTimeseries\n" << endl;
   createAlignedTimeseries();

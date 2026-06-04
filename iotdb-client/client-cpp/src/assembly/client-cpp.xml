@@ -18,18 +18,50 @@
   under the License.
   -->
 <!--
-  The CMake build installs everything (headers + libs) into
-  ${cmake.install.prefix} = target/install. Package layout:
-  client-cpp-<version>-<classifier>.zip -> {include,lib} at zip root.
+  The CMake build installs the SDK into ${cmake.install.prefix} = target/install.
+  Package layout:
+  iotdb-session-cpp-<version>-<classifier>.tar.gz ->
+  iotdb-session-cpp-<version>-<classifier>/{include,lib,cmake,pkgconfig,examples,...}.
 -->
 <assembly>
     <id>${client.cpp.package.classifier}</id>
     <formats>
-        <format>zip</format>
+        <format>tar.gz</format>
         <format>dir</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>${client.cpp.package.name}</baseDirectory>
     <fileSets>
+        <fileSet>
+            <directory>${project.basedir}/../..</directory>
+            <includes>
+                <include>LICENSE</include>
+                <include>NOTICE</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}</directory>
+            <includes>
+                <include>README.md</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/package-metadata</directory>
+            <includes>
+                <include>third_party/DEPENDENCIES.md</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/install</directory>
+            <includes>
+                <include>VERSION</include>
+                <include>BUILD-INFO.txt</include>
+            </includes>
+            <outputDirectory>${file.separator}</outputDirectory>
+        </fileSet>
         <fileSet>
             <directory>${project.build.directory}/install/include</directory>
             <includes>
@@ -43,6 +75,31 @@
                 <include>**</include>
             </includes>
             <outputDirectory>lib</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/install/cmake</directory>
+            <includes>
+                <include>**</include>
+            </includes>
+            <outputDirectory>cmake</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/install/pkgconfig</directory>
+            <includes>
+                <include>**</include>
+            </includes>
+            <outputDirectory>pkgconfig</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/examples</directory>
+            <includes>
+                <include>CMakeLists.txt</include>
+                <include>*.c</include>
+                <include>*.cpp</include>
+                <include>README.md</include>
+                <include>README_zh.md</include>
+            </includes>
+            <outputDirectory>examples</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>

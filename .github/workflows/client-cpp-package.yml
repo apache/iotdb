@@ -54,7 +54,6 @@ jobs:
             cpp:
               - 'iotdb-client/client-cpp/**'
               - 'iotdb-client/pom.xml'
-              - 'example/client-cpp-example/**'
               - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
               - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
               - '.github/workflows/client-cpp-package.yml'
@@ -127,7 +126,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-vs2026","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-vs2022","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-vs2019","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-vs2017","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -157,7 +156,7 @@ jobs:
           fi
 
   package-linux-glibc217:
-    name: Package (linux-x86_64-glibc217)
+    name: Package (linux-x86_64-glibc2.17)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
     # Checkout/cache on host (Node actions need modern glibc); build in manylinux2014 via docker run.
@@ -186,26 +185,26 @@ jobs:
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package zip
+      - name: Resolve package tarball
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-x86_64-glibc217.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.17.tar.gz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
             exit 1
           fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -215,7 +214,7 @@ jobs:
           if-no-files-found: error
 
   package-linux-aarch64-glibc217:
-    name: Package (linux-aarch64-glibc217)
+    name: Package (linux-aarch64-glibc2.17)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
     # Checkout/cache on host; build in manylinux2014 aarch64 via docker run (glibc 2.17 baseline).
@@ -244,142 +243,26 @@ jobs:
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package zip
+      - name: Resolve package tarball
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-aarch64-glibc217.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.17.tar.gz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
             exit 1
           fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ steps.pkg.outputs.name }}
-          path: |
-            ${{ steps.pkg.outputs.path }}
-            ${{ steps.pkg.outputs.sha512_path }}
-          if-no-files-found: error
-
-  package-linux-glibc224:
-    name: Package (linux-x86_64-glibc224)
-    needs: [should-package, resolve-matrix]
-    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
-    # Checkout/cache on host; build in manylinux_2_24 via docker run (glibc 2.24, CXX11 ABI).
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Cache Maven packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.m2
-          key: linux-glibc224-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            linux-glibc224-m2-
-      - name: Package client-cpp (glibc 2.24, CXX11 ABI)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-manylinux-glibc224.sh
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -v "${HOME}/.m2:/root/.m2" \
-            -w /workspace \
-            -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux_2_24_x86_64 \
-            bash .github/scripts/package-client-cpp-manylinux-glibc224.sh
-      - name: Restore workspace ownership after container build
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package zip
-        id: pkg
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-x86_64-glibc224.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
-            exit 1
-          fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
-          if [ ! -f "${sha512}" ]; then
-            echo "Expected checksum file: ${sha512}"
-            exit 1
-          fi
-          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ steps.pkg.outputs.name }}
-          path: |
-            ${{ steps.pkg.outputs.path }}
-            ${{ steps.pkg.outputs.sha512_path }}
-          if-no-files-found: error
-
-  package-linux-aarch64-glibc224:
-    name: Package (linux-aarch64-glibc224)
-    needs: [should-package, resolve-matrix]
-    if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
-    # Checkout/cache on host; build in manylinux_2_24 aarch64 via docker run.
-    runs-on: ubuntu-22.04-arm
-    steps:
-      - uses: actions/checkout@v5
-      - name: Cache Maven packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.m2
-          key: linux-aarch64-glibc224-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            linux-aarch64-glibc224-m2-
-      - name: Package client-cpp (glibc 2.24, CXX11 ABI)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-manylinux-glibc224.sh
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -v "${HOME}/.m2:/root/.m2" \
-            -w /workspace \
-            -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux_2_24_aarch64 \
-            bash .github/scripts/package-client-cpp-manylinux-glibc224.sh
-      - name: Restore workspace ownership after container build
-        if: always()
-        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
-      - name: Resolve package zip
-        id: pkg
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*-linux-aarch64-glibc224.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
-            exit 1
-          fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
-          if [ ! -f "${sha512}" ]; then
-            echo "Expected checksum file: ${sha512}"
-            exit 1
-          fi
-          echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -433,26 +316,54 @@ jobs:
           set -euxo pipefail
           ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true
-      - name: Resolve package zip
+      - name: Verify packaged examples
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PKG_TARBALL=$(find iotdb-client/client-cpp/target -maxdepth 1 -type f -name 'iotdb-session-cpp-*.tar.gz' -print -quit)
+          test -n "${PKG_TARBALL}"
+          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
+          rm -rf "${PKG_UNPACK}"
+          mkdir -p "${PKG_UNPACK}"
+          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
+          test -n "${PKG_ROOT}"
+          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
+          cmake -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIOTDB_SDK_ROOT="${PKG_ROOT}"
+          cmake --build "${EXAMPLE_BUILD}" -j"$(sysctl -n hw.ncpu)"
+          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.sh' -print -quit | sed 's#/sbin/start-standalone.sh##')
+          test -n "${SERVER_ROOT}"
+          "${SERVER_ROOT}/sbin/start-standalone.sh"
+          trap '"${SERVER_ROOT}/sbin/stop-standalone.sh" || true' EXIT
+          sleep 30
+          "${EXAMPLE_BUILD}/SessionExample"
+          "${EXAMPLE_BUILD}/AlignedTimeseriesSessionExample"
+          "${EXAMPLE_BUILD}/TableModelSessionExample"
+          "${EXAMPLE_BUILD}/tree_example"
+          "${EXAMPLE_BUILD}/table_example"
+      - name: Resolve package tarball
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*.tar.gz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
             exit 1
           fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}
@@ -544,26 +455,58 @@ jobs:
             throw "Expected PE32+ x64 (machine=0x8664), got 0x$($machine.ToString('X4'))"
           }
           Write-Host "Verified x64 DLL: $dll"
-      - name: Resolve package zip
+      - name: Verify packaged examples
+        shell: bash
+        env:
+          CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
+        run: |
+          set -euxo pipefail
+          PKG_TARBALL=$(find iotdb-client/client-cpp/target -maxdepth 1 -type f -name 'iotdb-session-cpp-*.tar.gz' -print -quit)
+          test -n "${PKG_TARBALL}"
+          PKG_UNPACK="${RUNNER_TEMP}/client-cpp-package"
+          rm -rf "${PKG_UNPACK}"
+          mkdir -p "${PKG_UNPACK}"
+          tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+          PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name 'iotdb-session-cpp-*' -print -quit)
+          test -n "${PKG_ROOT}"
+          EXAMPLE_BUILD="${RUNNER_TEMP}/client-cpp-example-smoke"
+          CMAKE_ARGS=(-S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" -DIOTDB_SDK_ROOT="${PKG_ROOT}")
+          if [ -n "${CMAKE_GENERATOR:-}" ]; then
+            CMAKE_ARGS+=(-G "${CMAKE_GENERATOR}")
+          fi
+          cmake "${CMAKE_ARGS[@]}"
+          cmake --build "${EXAMPLE_BUILD}" --config Release
+          ./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+          SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.bat' -print -quit | sed 's#/sbin/start-standalone.bat##')
+          test -n "${SERVER_ROOT}"
+          cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/start-standalone.bat")"
+          trap 'cmd.exe /c "$(cygpath -w "${SERVER_ROOT}/sbin/stop-standalone.bat")" || true' EXIT
+          sleep 30
+          for exe in SessionExample.exe AlignedTimeseriesSessionExample.exe TableModelSessionExample.exe tree_example.exe table_example.exe; do
+            EXE=$(find "${EXAMPLE_BUILD}" -name "${exe}" -print -quit)
+            test -n "${EXE}"
+            "${EXE}"
+          done
+      - name: Resolve package tarball
         id: pkg
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
-          zips=(iotdb-client/client-cpp/target/client-cpp-*-${{ matrix.package_classifier }}.zip)
-          if [ "${#zips[@]}" -ne 1 ]; then
-            echo "Expected exactly one package zip, got: ${zips[*]:-(none)}"
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-${{ matrix.package_classifier }}.tar.gz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "Expected exactly one package tarball, got: ${packages[*]:-(none)}"
             exit 1
           fi
-          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "${zips[0]}" .zip)" >> "$GITHUB_OUTPUT"
-          sha512="${zips[0]}.sha512"
+          echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "${packages[0]}" .tar.gz)" >> "$GITHUB_OUTPUT"
+          sha512="${packages[0]}.sha512"
           if [ ! -f "${sha512}" ]; then
             echo "Expected checksum file: ${sha512}"
             exit 1
           fi
           echo "sha512_path=${sha512}" >> "$GITHUB_OUTPUT"
-      - name: Upload zip artifact
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.pkg.outputs.name }}

@@ -41,25 +41,21 @@
 ## 选择哪个 SDK 压缩包
 
 CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.yml)）
-会按平台/工具链打出多份 zip，文件名形如
-`client-cpp-<version>-<classifier>.zip`（解压后根目录即为 `include/` 与 `lib/`）。请按目标环境选择：
+会按平台/工具链打出多份 tarball，文件名形如
+`iotdb-session-cpp-<version>-<classifier>.tar.gz`（解压后根目录即为 `include/` 与 `lib/`）。请按目标环境选择：
 
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|
-| Linux x86_64，glibc ≥ 2.24，CXX11 ABI（**推荐**） | `linux-x86_64-glibc224` |
-| Linux aarch64，glibc ≥ 2.24，CXX11 ABI（**推荐**） | `linux-aarch64-glibc224` |
-| Linux x86_64，glibc ≥ 2.17，旧 libstdc++ ABI | `linux-x86_64-glibc217` |
-| Linux aarch64，glibc ≥ 2.17，旧 libstdc++ ABI | `linux-aarch64-glibc217` |
-| macOS x86_64 | `mac-x86_64` |
-| macOS arm64 | `mac-aarch64` |
-| Windows + 与工程相同的 VS 版本 | `windows-x86_64-vs2017` … `vs2026` |
+| Linux x86_64，glibc ≥ 2.17 | `linux-x86_64-glibc2.17` |
+| Linux aarch64，glibc ≥ 2.17 | `linux-aarch64-glibc2.17` |
+| macOS x86_64 | `macos-x86_64` |
+| macOS arm64 | `macos-aarch64` |
+| Windows + 与工程相同的 VS 版本 | `windows-x86_64-msvc14.1` ... `msvc14.4` |
 
 当前 CMake 构建在配置阶段从源码编译 Thrift 0.21，**不再**通过
 `-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc；
-Linux 上若部署机 glibc ≥ 2.24 且使用系统默认 `g++`，请优先选用 **`glibc224`**
-包。仅当目标机停留在 glibc 2.17（如 CentOS 7）或必须与旧 libstdc++ ABI 一致时，
-选用 **`glibc217`** 包；在 Ubuntu 22/24 上链 `glibc217` 时常需
-`-D_GLIBCXX_USE_CXX11_ABI=0`。详见 [client-cpp README](../../iotdb-client/client-cpp/README.md)。
+Linux 发版包在 `manylinux2014` 容器中构建，部署机需要 glibc 2.17 或更新版本。
+详见 [client-cpp README](../../iotdb-client/client-cpp/README.md)。
 
 ## SDK 目录结构（解压后）
 
@@ -84,23 +80,26 @@ client/
 在仓库根目录执行：
 
 ```bash
-mvn clean package -DskipTests -P with-cpp -pl example/client-cpp-example -am
+mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am
 ```
 
-Maven 会将 SDK 解压到 `example/client-cpp-example/target/client/`，并在
-`target/` 下调用 CMake。可执行文件位于 `target/`（具体路径取决于生成器；
-Windows + Visual Studio 一般为 `target/Release/`）。
+Maven 会构建 C++ client，在 verify 阶段启动本地 IoTDB，并通过 CTest 运行 C++
+测试和可自动运行的 examples。示例二进制在
+`iotdb-client/client-cpp/target/build/examples/` 下（Windows + Visual Studio
+通常在 `target/build/examples/Release/`）。
 
 ### 方式 B：仅 CMake（手动准备 SDK）
 
 1. 自行编译或下载 SDK，解压后保证存在 `client/include` 与 `client/lib`（见
    上文目录结构）。
-2. 将 `src/*.{cpp,c}` 与 `src/CMakeLists.txt` 放在同一目录（或保留 `src/`
-   结构，并在同级放置 `client/`）。
+2. 使用这个 `examples/` 目录作为源码目录，并把 `client/` 放在旁边；也可以传入
+   `-DIOTDB_SDK_ROOT=/path/to/iotdb-session-cpp-...`。
 3. 配置并编译：
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S iotdb-client/client-cpp/examples -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DIOTDB_SDK_ROOT=/path/to/iotdb-session-cpp-...
 cmake --build build
 ```
 
@@ -238,19 +237,17 @@ otool -L SessionExample
 ## 本模块目录结构
 
 ```
-client-cpp-example/
-├── pom.xml              # Maven：解压 SDK + 调用 CMake
+client-cpp/examples/
 ├── README.md            # 英文说明
 ├── README_zh.md         # 中文说明（本文件）
-└── src/
-    ├── CMakeLists.txt
-    ├── SessionExample.cpp
-    ├── AlignedTimeseriesSessionExample.cpp
-    ├── TableModelSessionExample.cpp
-    ├── MultiSvrNodeClient.cpp
-    ├── tree_example.c
-    └── table_example.c
+├── CMakeLists.txt
+├── SessionExample.cpp
+├── AlignedTimeseriesSessionExample.cpp
+├── TableModelSessionExample.cpp
+├── MultiSvrNodeClient.cpp
+├── tree_example.c
+└── table_example.c
 ```
 
-执行 `mvn package` 后，可在 `target/` 下找到源码、`client/` SDK 与 CMake
-构建产物。
+执行 `mvn verify -P with-cpp -pl iotdb-client/client-cpp -am` 后，可在
+`iotdb-client/client-cpp/target/build/examples/` 下找到构建产物。

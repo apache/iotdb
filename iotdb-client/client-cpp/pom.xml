@@ -55,12 +55,12 @@
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
         <!-- Optional convenience: when a user still passes -Dboost.include.dir=...
              (legacy CLI from the old build), feed it to CMake as BOOST_INCLUDEDIR. -->
-        <boost.include.dir></boost.include.dir>
-        <!-- Release Linux glibc224: -Diotdb.libstdcxx.cxx11.abi=ON -->
-        <iotdb.libstdcxx.cxx11.abi>OFF</iotdb.libstdcxx.cxx11.abi>
-        <iotdb.extra.cxx.flags></iotdb.extra.cxx.flags>
-        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release zips. -->
+        <boost.include.dir/>
+        <iotdb.extra.cxx.flags/>
+        <!-- Override via -Dclient.cpp.package.classifier=... for per-toolchain release tarballs. -->
         <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
+        <client.cpp.package.name>iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</client.cpp.package.name>
+        <client.cpp.ci.build.id>${env.GITHUB_RUN_ID}</client.cpp.ci.build.id>
     </properties>
     <dependencies>
         <dependency>
@@ -115,8 +115,8 @@
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DCMAKE_POLICY_DEFAULT_CMP0091=NEW</option>
-                                <option>-DIOTDB_LIBSTDCXX_CXX11_ABI=${iotdb.libstdcxx.cxx11.abi}</option>
                                 <option>-DIOTDB_EXTRA_CXX_FLAGS=${iotdb.extra.cxx.flags}</option>
+                                <option>-DIOTDB_SESSION_VERSION=${project.version}</option>
                                 <option>-DCATCH2_INCLUDE_DIR=${project.build.directory}/test/catch2</option>
                             </options>
                         </configuration>
@@ -143,7 +143,7 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <config>${cmake.build.type}</config>
-                            <projectDirectory>${cmake.project.dir}/test</projectDirectory>
+                            <projectDirectory>${cmake.project.dir}</projectDirectory>
                             <skipTests>${maven.test.skip}</skipTests>
                         </configuration>
                     </execution>
@@ -190,7 +190,28 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Zip: client-cpp-<version>-<classifier>.zip with include/ and lib/ at zip root -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-client-cpp-package-metadata</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/package-metadata</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/assembly/package-metadata</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- tar.gz: iotdb-session-cpp-<version>-<classifier>.tar.gz with a package root directory. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -202,7 +223,7 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
+                            <finalName>iotdb-session-cpp-${project.version}</finalName>
                             <descriptors>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
                             </descriptors>
@@ -210,7 +231,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Create SHA512 checksum files for the release zip. -->
+            <!-- Create SHA512 checksum files for the release tarball. -->
             <plugin>
                 <groupId>net.nicoulaj.maven.plugins</groupId>
                 <artifactId>checksum-maven-plugin</artifactId>
@@ -229,7 +250,7 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>${project.artifactId}-${project.version}-${client.cpp.package.classifier}.zip</include>
+                                        <include>${client.cpp.package.name}.tar.gz</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -253,6 +274,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.17</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -268,6 +290,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.17</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -282,6 +305,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
+                <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -296,6 +320,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
+                <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -309,6 +334,7 @@
                 <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
                 <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
+                <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
             </properties>
         </profile>
         <!-- Windows: default to x64 (VS2017 and older default to Win32 without -A x64). -->
@@ -373,6 +399,9 @@
                                     <include>src/**/*.c</include>
                                     <include>src/**/*.cc</include>
                                     <include>src/**/*.cpp</include>
+                                    <include>examples/**/*.c</include>
+                                    <include>examples/**/*.cc</include>
+                                    <include>examples/**/*.cpp</include>
                                 </includes>
                                 <excludes>
                                     <exclude>test/catch2/**</exclude>

@@ -34,23 +34,11 @@ endif()
 
 set(IOTDB_EXTRA_CXX_FLAGS ""
     CACHE STRING "Extra flags appended to CMAKE_CXX_FLAGS")
-option(IOTDB_LIBSTDCXX_CXX11_ABI
-        "Use libstdc++ dual-ABI new layout (_GLIBCXX_USE_CXX11_ABI=1); release glibc224 zips"
-        OFF)
 
 if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
-    if(IOTDB_LIBSTDCXX_CXX11_ABI)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
-    endif()
     if(IOTDB_EXTRA_CXX_FLAGS)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IOTDB_EXTRA_CXX_FLAGS}")
-    endif()
-    # CI/release scripts read this tag; nm-based checks are unreliable on some toolchains.
-    if(IOTDB_LIBSTDCXX_CXX11_ABI)
-        file(WRITE "${CMAKE_BINARY_DIR}/iotdb_libstdcxx_abi_tag" "cxx11\n")
-    else()
-        file(WRITE "${CMAKE_BINARY_DIR}/iotdb_libstdcxx_abi_tag" "legacy\n")
     endif()
 endif()
 
@@ -62,6 +50,12 @@ endif()
 option(WITH_SSL "Build with OpenSSL support" OFF)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
+set(IOTDB_SESSION_VERSION "0.0.0"
+    CACHE STRING "IoTDB C++ session package version")
+string(REGEX MATCH "^[0-9]+" IOTDB_SESSION_SOVERSION "${IOTDB_SESSION_VERSION}")
+if(NOT IOTDB_SESSION_SOVERSION)
+    set(IOTDB_SESSION_SOVERSION "0")
+endif()
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
@@ -111,6 +105,12 @@ add_library(iotdb_session SHARED
 
 if(WIN32)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
+if(UNIX AND NOT APPLE)
+    set_target_properties(iotdb_session PROPERTIES
+            VERSION "${IOTDB_SESSION_VERSION}"
+            SOVERSION "${IOTDB_SESSION_SOVERSION}")
 endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
@@ -174,7 +174,7 @@ set(IOTDB_PUBLIC_HEADERS
         ColumnDecoder.h
         TsBlock.h)
 
-# Windows: RUNTIME = iotdb_session.dll, ARCHIVE = import .lib (both under lib/ in the zip).
+# Windows: RUNTIME = iotdb_session.dll, ARCHIVE = import .lib (both under lib/ in the tarball).
 install(TARGETS iotdb_session
         RUNTIME DESTINATION lib
         LIBRARY DESTINATION lib
@@ -185,9 +185,60 @@ foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
             DESTINATION include)
 endforeach()
 
+set(IOTDB_SESSION_PC_LIBS "-liotdb_session")
+if(UNIX)
+    set(IOTDB_SESSION_PC_LIBS "${IOTDB_SESSION_PC_LIBS} -pthread")
+endif()
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session-config.cmake.in"
+        "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+        @ONLY)
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session.pc.in"
+        "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+        @ONLY)
+execute_process(
+        COMMAND git rev-parse HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE IOTDB_SESSION_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+if(NOT IOTDB_SESSION_GIT_COMMIT)
+    set(IOTDB_SESSION_GIT_COMMIT "unknown")
+endif()
+string(TIMESTAMP IOTDB_SESSION_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+set(IOTDB_SESSION_CI_BUILD_ID "$ENV{GITHUB_RUN_ID}")
+if(NOT IOTDB_SESSION_CI_BUILD_ID)
+    set(IOTDB_SESSION_CI_BUILD_ID "local")
+endif()
+file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
+        "${IOTDB_SESSION_VERSION}\n")
+file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+        "Apache IoTDB C++ session client build information\n\n"
+        "version=${IOTDB_SESSION_VERSION}\n"
+        "commit=${IOTDB_SESSION_GIT_COMMIT}\n"
+        "build.time=${IOTDB_SESSION_BUILD_TIME}\n"
+        "ci.build.id=${IOTDB_SESSION_CI_BUILD_ID}\n"
+        "compiler=${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\n"
+        "cmake.generator=${CMAKE_GENERATOR}\n"
+        "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
+        "with.ssl=${WITH_SSL}\n"
+        "iotdb.offline=${IOTDB_OFFLINE}\n"
+        "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
+install(FILES "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+        DESTINATION cmake)
+install(FILES "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+        DESTINATION pkgconfig)
+install(FILES
+        "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
+        "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+        DESTINATION .)
+
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(test)
+    set(IOTDB_EXAMPLES_REGISTER_TESTS ON)
+    add_subdirectory(examples)
 endif()
 
 message(STATUS "iotdb_session configuration summary:")
@@ -200,4 +251,3 @@ message(STATUS "    THRIFT_INCLUDE_DIR    = ${THRIFT_INCLUDE_DIR}")
 message(STATUS "    THRIFT_STATIC_LIB     = ${THRIFT_STATIC_LIB_PATH}")
 message(STATUS "    THRIFT_EXECUTABLE     = ${THRIFT_EXECUTABLE}")
 message(STATUS "    CMAKE_INSTALL_PREFIX  = ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "    IOTDB_LIBSTDCXX_CXX11_ABI = ${IOTDB_LIBSTDCXX_CXX11_ABI}")

@@ -30,10 +30,27 @@ IF(MSVC)
     SET(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 ENDIF()
 
-set(IOTDB_SDK_ROOT "${CMAKE_SOURCE_DIR}/client"
-    CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)")
+option(IOTDB_EXAMPLES_REGISTER_TESTS "Register runnable examples with ctest" OFF)
 
-INCLUDE_DIRECTORIES("${IOTDB_SDK_ROOT}/include")
+if(TARGET iotdb_session)
+    set(_iotdb_examples_in_tree ON)
+    set(_iotdb_link_lib iotdb_session)
+else()
+    set(_iotdb_examples_in_tree OFF)
+    set(IOTDB_SDK_ROOT "${CMAKE_SOURCE_DIR}/client"
+        CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)")
+
+    if(NOT EXISTS "${IOTDB_SDK_ROOT}/include" OR NOT EXISTS "${IOTDB_SDK_ROOT}/lib")
+        file(GLOB _iotdb_sdk_children LIST_DIRECTORIES true "${IOTDB_SDK_ROOT}/iotdb-session-cpp-*")
+        list(LENGTH _iotdb_sdk_children _iotdb_sdk_child_count)
+        if(_iotdb_sdk_child_count EQUAL 1)
+            list(GET _iotdb_sdk_children 0 IOTDB_SDK_ROOT)
+            message(STATUS "Using IoTDB SDK package root: ${IOTDB_SDK_ROOT}")
+        endif()
+    endif()
+
+    INCLUDE_DIRECTORIES("${IOTDB_SDK_ROOT}/include")
+endif()
 
 option(WITH_SSL "Build with SSL support" OFF)
 
@@ -51,21 +68,23 @@ ELSE()
     ADD_DEFINITIONS(-DWITH_SSL=0)
 ENDIF()
 
-if(WIN32)
-    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
-    set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")
-elseif(APPLE)
-    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.dylib")
-    set(_iotdb_runtime   "${_iotdb_link_lib}")
-else()
-    set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.so")
-    set(_iotdb_runtime   "${_iotdb_link_lib}")
-endif()
+if(NOT _iotdb_examples_in_tree)
+    if(WIN32)
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
+        set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")
+    elseif(APPLE)
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.dylib")
+        set(_iotdb_runtime   "${_iotdb_link_lib}")
+    else()
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.so")
+        set(_iotdb_runtime   "${_iotdb_link_lib}")
+    endif()
 
-if(NOT EXISTS "${_iotdb_link_lib}")
-    message(FATAL_ERROR
-        "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
-        "Unpack client-cpp-<version>-<classifier>.zip so that ${_iotdb_link_lib} exists.")
+    if(NOT EXISTS "${_iotdb_link_lib}")
+        message(FATAL_ERROR
+            "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
+            "Unpack iotdb-session-cpp-<version>-<classifier>.tar.gz so that ${_iotdb_link_lib} exists.")
+    endif()
 endif()
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
@@ -100,7 +119,12 @@ foreach(_t IN LISTS _example_targets)
           INSTALL_RPATH "\$ORIGIN")
   endif()
 
-  if(EXISTS "${_iotdb_runtime}")
+  if(_iotdb_examples_in_tree)
+      add_custom_command(TARGET ${_t} POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                  $<TARGET_FILE:iotdb_session> $<TARGET_FILE_DIR:${_t}>
+          COMMENT "Copy IoTDB runtime library next to ${_t}")
+  elseif(EXISTS "${_iotdb_runtime}")
       add_custom_command(TARGET ${_t} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy_if_different
                   "${_iotdb_runtime}" $<TARGET_FILE_DIR:${_t}>
@@ -125,4 +149,23 @@ if(EXISTS "${_iotdb_runtime}")
     add_custom_command(TARGET example-dist POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${_iotdb_runtime}" "${_example_dist_dir}/")
+endif()
+
+if(IOTDB_EXAMPLES_REGISTER_TESTS)
+    set(_runnable_example_targets
+        SessionExample
+        AlignedTimeseriesSessionExample
+        TableModelSessionExample
+        tree_example
+        table_example)
+    foreach(_t IN LISTS _runnable_example_targets)
+        add_test(NAME example_${_t} COMMAND ${_t})
+    endforeach()
+    set_tests_properties(
+        example_SessionExample
+        example_AlignedTimeseriesSessionExample
+        example_TableModelSessionExample
+        example_tree_example
+        example_table_example
+        PROPERTIES RUN_SERIAL TRUE)
 endif()

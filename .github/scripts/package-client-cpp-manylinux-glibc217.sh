@@ -22,12 +22,12 @@ case "${MACHINE}" in
   x86_64)
     CMAKE_PKG_ARCH=linux-x86_64
     JDK_API_ARCH=linux/x64
-    DEFAULT_CLASSIFIER=linux-x86_64-glibc217
+    DEFAULT_CLASSIFIER=linux-x86_64-glibc2.17
     ;;
   aarch64)
     CMAKE_PKG_ARCH=linux-aarch64
     JDK_API_ARCH=linux/aarch64
-    DEFAULT_CLASSIFIER=linux-aarch64-glibc217
+    DEFAULT_CLASSIFIER=linux-aarch64-glibc2.17
     ;;
   *)
     echo "Unsupported architecture: ${MACHINE}" >&2
@@ -93,3 +93,42 @@ if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.17) }"; then
 fi
 
 echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
+
+echo "=== Example package build/link/run smoke test ==="
+PKG_TARBALL=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.tar.gz" -print -quit)
+if [[ -z "${PKG_TARBALL}" ]]; then
+  echo "ERROR: could not find package tarball for ${PACKAGE_CLASSIFIER}"
+  exit 1
+fi
+PKG_UNPACK="/tmp/client-cpp-package-smoke-glibc217"
+rm -rf "${PKG_UNPACK}"
+mkdir -p "${PKG_UNPACK}"
+tar -xzf "${PKG_TARBALL}" -C "${PKG_UNPACK}"
+PKG_ROOT=$(find "${PKG_UNPACK}" -mindepth 1 -maxdepth 1 -type d -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}" -print -quit)
+if [[ -z "${PKG_ROOT}" ]]; then
+  echo "ERROR: could not find unpacked package directory for ${PACKAGE_CLASSIFIER}"
+  exit 1
+fi
+EXAMPLE_BUILD="/tmp/client-cpp-example-smoke-glibc217"
+rm -rf "${EXAMPLE_BUILD}"
+mkdir -p "${EXAMPLE_BUILD}"
+unset CC CXX CFLAGS CXXFLAGS
+"${CMAKE_DIR}/bin/cmake" -S "${PKG_ROOT}/examples" -B "${EXAMPLE_BUILD}" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DIOTDB_SDK_ROOT="${PKG_ROOT}"
+"${CMAKE_DIR}/bin/cmake" --build "${EXAMPLE_BUILD}" -j"$(nproc)"
+
+./mvnw -pl distribution -am -DskipTests -Dspotless.skip=true package
+SERVER_ROOT=$(find "${GITHUB_WORKSPACE}/distribution/target" -path '*/apache-iotdb-*-all-bin/sbin/start-standalone.sh' -print -quit | sed 's#/sbin/start-standalone.sh##')
+if [[ -z "${SERVER_ROOT}" ]]; then
+  echo "ERROR: could not find IoTDB distribution under distribution/target"
+  exit 1
+fi
+"${SERVER_ROOT}/sbin/start-standalone.sh"
+trap '"${SERVER_ROOT}/sbin/stop-standalone.sh" || true' EXIT
+sleep 30
+for example in SessionExample AlignedTimeseriesSessionExample TableModelSessionExample tree_example table_example; do
+  test -x "${EXAMPLE_BUILD}/${example}"
+  "${EXAMPLE_BUILD}/${example}"
+done
+echo "Example package smoke test passed"
