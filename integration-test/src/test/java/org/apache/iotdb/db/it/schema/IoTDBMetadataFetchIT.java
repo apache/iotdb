@@ -507,9 +507,13 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       statement.execute("CREATE VIEW root.count_it.dst.v1 AS SELECT s1 FROM root.count_it.src;");
 
       final long localCount = queryCount(statement, "COUNT TIMESERIES root.count_it.**");
+      final long internalDatabaseCount =
+          queryCount(statement, "COUNT TIMESERIES root.__system.**")
+              + queryCount(statement, "COUNT TIMESERIES root.__audit.**");
       assertEquals(3L, localCount);
       assertEquals(
-          baseVisibleCount + localCount, queryCount(statement, "COUNT TIMESERIES root.**"));
+          baseVisibleCount + localCount,
+          queryCount(statement, "COUNT TIMESERIES root.**") - internalDatabaseCount);
     }
   }
 
