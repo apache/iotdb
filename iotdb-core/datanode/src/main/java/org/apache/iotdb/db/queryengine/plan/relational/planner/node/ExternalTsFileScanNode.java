@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -38,13 +37,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-public class ExternalTsFileScanNode extends TableScanNode {
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+
+public class ExternalTsFileScanNode extends DeviceTableScanNode {
   private List<String> tsFilePaths;
-  private Expression timePredicate;
-  private Ordering scanOrder = Ordering.ASC;
-  private List<DeviceEntry> deviceEntries = Collections.emptyList();
   private List<List<ExternalTsFileDeviceOffset>> deviceOffsets = Collections.emptyList();
 
   protected ExternalTsFileScanNode() {}
@@ -73,7 +70,7 @@ public class ExternalTsFileScanNode extends TableScanNode {
       List<String> tsFilePaths,
       List<DeviceEntry> deviceEntries,
       List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
-    super(id, qualifiedObjectName, outputSymbols, assignments);
+    super(id, qualifiedObjectName, outputSymbols, assignments, buildTagIndexMap(assignments));
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
     this.deviceEntries = new ArrayList<>(deviceEntries);
     this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
@@ -167,18 +164,51 @@ public class ExternalTsFileScanNode extends TableScanNode {
       List<String> tsFilePaths,
       List<DeviceEntry> deviceEntries,
       List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
-    super(
+    this(
         id,
         qualifiedObjectName,
         outputSymbols,
         assignments,
         pushDownPredicate,
         pushDownLimit,
-        pushDownOffset);
-    this.timePredicate = timePredicate;
-    this.scanOrder = scanOrder;
+        pushDownOffset,
+        timePredicate,
+        scanOrder,
+        false,
+        tsFilePaths,
+        deviceEntries,
+        deviceOffsets);
+  }
+
+  public ExternalTsFileScanNode(
+      PlanNodeId id,
+      QualifiedObjectName qualifiedObjectName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      Expression pushDownPredicate,
+      long pushDownLimit,
+      long pushDownOffset,
+      Expression timePredicate,
+      Ordering scanOrder,
+      boolean pushLimitToEachDevice,
+      List<String> tsFilePaths,
+      List<DeviceEntry> deviceEntries,
+      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
+    super(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        new ArrayList<>(deviceEntries),
+        buildTagIndexMap(assignments),
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        false);
     this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
-    this.deviceEntries = new ArrayList<>(deviceEntries);
     this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
   }
 
@@ -199,6 +229,7 @@ public class ExternalTsFileScanNode extends TableScanNode {
         pushDownOffset,
         timePredicate,
         scanOrder,
+        pushLimitToEachDevice,
         tsFilePaths,
         deviceEntries,
         deviceOffsets);
@@ -206,14 +237,6 @@ public class ExternalTsFileScanNode extends TableScanNode {
 
   public List<String> getTsFilePaths() {
     return tsFilePaths;
-  }
-
-  public List<DeviceEntry> getDeviceEntries() {
-    return deviceEntries;
-  }
-
-  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
-    this.deviceEntries = new ArrayList<>(deviceEntries);
   }
 
   public List<List<ExternalTsFileDeviceOffset>> getDeviceOffsets() {
@@ -232,22 +255,6 @@ public class ExternalTsFileScanNode extends TableScanNode {
       copiedDeviceOffsets.add(new ArrayList<>(offsets));
     }
     return copiedDeviceOffsets;
-  }
-
-  public Optional<Expression> getTimePredicate() {
-    return Optional.ofNullable(timePredicate);
-  }
-
-  public void setTimePredicate(Expression timePredicate) {
-    this.timePredicate = timePredicate;
-  }
-
-  public Ordering getScanOrder() {
-    return scanOrder;
-  }
-
-  public void setScanOrder(Ordering scanOrder) {
-    this.scanOrder = scanOrder;
   }
 
   @Override
@@ -270,5 +277,16 @@ public class ExternalTsFileScanNode extends TableScanNode {
   @Override
   public String toString() {
     return "ExternalTsFileScanNode-" + this.getPlanNodeId();
+  }
+
+  private static Map<Symbol, Integer> buildTagIndexMap(Map<Symbol, ColumnSchema> assignments) {
+    Map<Symbol, Integer> tagIndexMap = new java.util.HashMap<>();
+    int tagIndex = 0;
+    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
+      if (TAG.equals(entry.getValue().getColumnCategory())) {
+        tagIndexMap.put(entry.getKey(), tagIndex++);
+      }
+    }
+    return tagIndexMap;
   }
 }

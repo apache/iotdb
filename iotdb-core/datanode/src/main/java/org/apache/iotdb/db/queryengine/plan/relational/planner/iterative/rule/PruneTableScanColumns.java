@@ -83,7 +83,32 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
           .forEach(symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol)));
     }
 
-    if (node instanceof DeviceTableScanNode) {
+    if (node instanceof ExternalTsFileScanNode) {
+      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) node;
+      externalTsFileScanNode
+          .getTimePredicate()
+          .ifPresent(
+              timePredicate ->
+                  SymbolsExtractor.extractUnique(timePredicate)
+                      .forEach(
+                          symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
+      ExternalTsFileScanNode prunedNode =
+          new ExternalTsFileScanNode(
+              externalTsFileScanNode.getPlanNodeId(),
+              externalTsFileScanNode.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              externalTsFileScanNode.getPushDownPredicate(),
+              externalTsFileScanNode.getPushDownLimit(),
+              externalTsFileScanNode.getPushDownOffset(),
+              externalTsFileScanNode.getTimePredicate().orElse(null),
+              externalTsFileScanNode.getScanOrder(),
+              externalTsFileScanNode.getTsFilePaths(),
+              externalTsFileScanNode.getDeviceEntries(),
+              externalTsFileScanNode.getDeviceOffsets());
+      prunedNode.setRegionReplicaSet(externalTsFileScanNode.getRegionReplicaSet());
+      return Optional.of(prunedNode);
+    } else if (node instanceof DeviceTableScanNode) {
       DeviceTableScanNode deviceTableScanNode = (DeviceTableScanNode) node;
       // add time entry if TimePredicate exists
       deviceTableScanNode
@@ -177,22 +202,6 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
         prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
         return Optional.of(prunedNode);
       }
-    } else if (node instanceof ExternalTsFileScanNode) {
-      ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) node;
-      return Optional.of(
-          new ExternalTsFileScanNode(
-              externalTsFileScanNode.getPlanNodeId(),
-              externalTsFileScanNode.getQualifiedObjectName(),
-              newOutputs,
-              newAssignments,
-              externalTsFileScanNode.getPushDownPredicate(),
-              externalTsFileScanNode.getPushDownLimit(),
-              externalTsFileScanNode.getPushDownOffset(),
-              externalTsFileScanNode.getTimePredicate().orElse(null),
-              externalTsFileScanNode.getScanOrder(),
-              externalTsFileScanNode.getTsFilePaths(),
-              externalTsFileScanNode.getDeviceEntries(),
-              externalTsFileScanNode.getDeviceOffsets()));
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for
       // InformationSchemaTableScanNode is

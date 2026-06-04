@@ -682,12 +682,8 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
       }
     }
     if (externalTsFileScanNode != null) {
-      boxValue.add(String.format("ScanOrder: %s", externalTsFileScanNode.getScanOrder()));
-      boxValue.add(String.format("TsFilePaths: %s", externalTsFileScanNode.getTsFilePaths()));
-      externalTsFileScanNode
-          .getTimePredicate()
-          .ifPresent(
-              timePredicate -> boxValue.add(String.format("TimePredicate: %s", timePredicate)));
+      boxValue.add(
+          String.format("TsFileNumber: %s", externalTsFileScanNode.getTsFilePaths().size()));
     }
 
     if (node.getPushDownPredicate() != null) {

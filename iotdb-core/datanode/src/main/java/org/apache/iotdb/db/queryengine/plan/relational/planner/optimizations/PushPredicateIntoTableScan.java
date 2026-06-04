@@ -517,10 +517,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
         Boolean hasValueFilter = resultPair.getRight();
-        if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
-          ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
-        } else if (tableScanNode instanceof ExternalTsFileScanNode && resultPair.left != null) {
+        if (tableScanNode instanceof ExternalTsFileScanNode && resultPair.left != null) {
           ((ExternalTsFileScanNode) tableScanNode).setTimePredicate(resultPair.left);
+        } else if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
+          ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
         }
         if (Boolean.TRUE.equals(hasValueFilter)) {
           if (pushDownPredicate instanceof LogicalExpression
@@ -536,12 +536,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      if (tableScanNode instanceof DeviceTableScanNode) {
-        getDeviceEntriesWithDataPartitions(
-            (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
-      } else if (tableScanNode instanceof ExternalTsFileScanNode) {
+      if (tableScanNode instanceof ExternalTsFileScanNode) {
         collectExternalTsFileDeviceTasks(
             (ExternalTsFileScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      } else if (tableScanNode instanceof DeviceTableScanNode) {
+        getDeviceEntriesWithDataPartitions(
+            (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
       }
 
       // exist expressions can not push down to scan operator

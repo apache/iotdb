@@ -287,7 +287,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 newAssignments.put(newSymbol, handle);
               });
 
-      return new PlanAndMappings(
+      ExternalTsFileScanNode rewrittenNode =
           new ExternalTsFileScanNode(
               node.getPlanNodeId(),
               node.getQualifiedObjectName(),
@@ -300,8 +300,9 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getScanOrder(),
               node.getTsFilePaths(),
               node.getDeviceEntries(),
-              node.getDeviceOffsets()),
-          mapping);
+              node.getDeviceOffsets());
+      rewrittenNode.setRegionReplicaSet(node.getRegionReplicaSet());
+      return new PlanAndMappings(rewrittenNode, mapping);
     }
 
     @Override

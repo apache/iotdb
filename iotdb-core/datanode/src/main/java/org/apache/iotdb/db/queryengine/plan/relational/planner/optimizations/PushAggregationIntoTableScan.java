@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
@@ -104,6 +105,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
       // only optimize AggregationNode with raw DeviceTableScanNode
       if (tableScanNode == null
+          || tableScanNode instanceof ExternalTsFileScanNode
           || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
       }
