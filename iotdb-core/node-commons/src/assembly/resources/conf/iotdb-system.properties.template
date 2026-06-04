@@ -1703,7 +1703,7 @@ region_migration_speed_limit_bytes_per_second = 50331648
 # This may reduce file copies but may also result in a worse disk load-balance
 # effectiveMode: hot_reload
 # Datatype: boolean
-keep_same_disk_when_loading_snapshot=false
+keep_same_disk_when_loading_snapshot=true
 
 ####################
 ### Blob Allocator Configuration
