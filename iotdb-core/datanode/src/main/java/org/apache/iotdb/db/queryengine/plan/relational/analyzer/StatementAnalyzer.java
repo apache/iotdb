@@ -4893,7 +4893,8 @@ public class StatementAnalyzer {
       node.parseTable(sessionContext);
       accessControl.checkCanSelectFromTable(
           sessionContext.getUserName(),
-          new QualifiedObjectName(node.getDatabase(), node.getTableName()),
+          node.getAuthorizationTableName()
+              .orElse(new QualifiedObjectName(node.getDatabase(), node.getTableName())),
           queryContext);
 
       TsTable table =

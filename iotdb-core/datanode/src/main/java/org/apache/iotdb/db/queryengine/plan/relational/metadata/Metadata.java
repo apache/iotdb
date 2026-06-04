@@ -118,6 +118,7 @@ public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
    */
   Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
+      final Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext context);

@@ -88,6 +88,8 @@ public abstract class AbstractTraverseDevice extends Statement {
   // If there are no attribute columns, we can skip returning it to save time
   private List<String> attributeColumns;
 
+  private QualifiedObjectName authorizationTableName;
+
   // For sql-input show device usage
   protected AbstractTraverseDevice(
       final NodeLocation location, final Table table, final Expression where) {
@@ -126,6 +128,14 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   public void setTableName(final String tableName) {
     this.tableName = tableName;
+  }
+
+  public Optional<QualifiedObjectName> getAuthorizationTableName() {
+    return Optional.ofNullable(authorizationTableName);
+  }
+
+  public void setAuthorizationTableName(final QualifiedObjectName authorizationTableName) {
+    this.authorizationTableName = authorizationTableName;
   }
 
   public Table getTable() {

@@ -692,6 +692,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       final Map<String, List<DeviceEntry>> deviceEntriesMap =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOriginalWritableViewName(),
               metadataExpressions.stream()
                   .map(
                       expression ->

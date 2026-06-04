@@ -281,6 +281,7 @@ public class TSBSMetadata implements Metadata {
   @Override
   public Map<String, List<DeviceEntry>> indexScan(
       QualifiedObjectName tableName,
+      Optional<QualifiedObjectName> authorizationTableName,
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context) {

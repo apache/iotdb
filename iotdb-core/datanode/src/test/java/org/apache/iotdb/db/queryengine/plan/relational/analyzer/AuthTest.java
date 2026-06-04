@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImp
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -277,6 +278,39 @@ public class AuthTest {
     }
   }
 
+  @Test
+  public void testInternalWritableViewDeviceFetchUsesViewSelectPrivilege() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+    final QualifiedObjectName writableViewName = new QualifiedObjectName(DB1, "writable_view");
+    Mockito.doThrow(
+            new AccessDeniedException(
+                String.format(
+                    "%s doesn't have %s privilege on TABLE %s.%s",
+                    user1, TableModelPrivilege.SELECT, DB1, TABLE1)))
+        .when(authChecker)
+        .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
+    Mockito.doNothing()
+        .when(authChecker)
+        .checkTablePrivilege(
+            eq(user1), eq(writableViewName), eq(TableModelPrivilege.SELECT), any());
+
+    cacheTestTable1();
+    try {
+      final ShowDevice fetchDeviceForWritableView = new ShowDevice(DB1, TABLE1);
+      fetchDeviceForWritableView.setAuthorizationTableName(writableViewName);
+
+      analyzeStatement(fetchDeviceForWritableView, user1, authChecker, DB1);
+
+      Mockito.verify(authChecker)
+          .checkTablePrivilege(
+              eq(user1), eq(writableViewName), eq(TableModelPrivilege.SELECT), any());
+      Mockito.verify(authChecker, Mockito.never())
+          .checkTablePrivilege(eq(user1), eq(testdbTable1), eq(TableModelPrivilege.SELECT), any());
+    } finally {
+      DataNodeTableCache.getInstance().invalid(DB1);
+    }
+  }
+
   private void cacheTestTable1() {
     final TsTable table = new TsTable(TABLE1);
     table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
@@ -307,6 +341,33 @@ public class AuthTest {
             new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
             new InternalTypeManager());
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
+    Analyzer analyzer =
+        new Analyzer(
+            context,
+            session,
+            statementAnalyzerFactory,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            StatementRewrite.NOOP,
+            NOOP);
+    analyzer.analyze(statement);
+  }
+
+  private void analyzeStatement(
+      Statement statement,
+      String userName,
+      ITableAuthChecker authChecker,
+      String databaseNameInSessionInfo) {
+    SessionInfo session =
+        new SessionInfo(0, userName, zoneId, databaseNameInSessionInfo, SqlDialect.TABLE);
+    StatementAnalyzerFactory statementAnalyzerFactory =
+        new StatementAnalyzerFactory(
+            TEST_MATADATA,
+            sqlParser,
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager());
+    MPPQueryContext context =
+        new MPPQueryContext(statement.toString(), QUERY_ID, 0, session, null, null);
     Analyzer analyzer =
         new Analyzer(
             context,

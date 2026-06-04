@@ -321,6 +321,7 @@ public class TestMetadata implements Metadata {
   @Override
   public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
+      final Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext context) {

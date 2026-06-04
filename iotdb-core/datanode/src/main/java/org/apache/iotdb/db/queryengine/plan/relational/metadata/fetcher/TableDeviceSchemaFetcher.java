@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -213,6 +214,7 @@ public class TableDeviceSchemaFetcher {
   public Map<String, List<DeviceEntry>> fetchDeviceSchemaForDataQuery(
       final String database,
       final String table,
+      final Optional<QualifiedObjectName> authorizationTableName,
       final List<Expression> expressionList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
@@ -224,6 +226,7 @@ public class TableDeviceSchemaFetcher {
     }
 
     final ShowDevice statement = new ShowDevice(database, table);
+    authorizationTableName.ifPresent(statement::setAuthorizationTableName);
 
     if (parseFilter4TraverseDevice(
         tableInstance,
