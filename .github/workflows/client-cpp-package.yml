@@ -518,8 +518,10 @@ jobs:
           test -n "${SERVER_ROOT}"
           START_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/start-standalone.bat")"
           STOP_BAT="$(cygpath -w "${SERVER_ROOT}/sbin/windows/stop-standalone.bat")"
-          cmd.exe //c "\"${START_BAT}\""
-          trap "cmd.exe //c '\"${STOP_BAT}\"' || true" EXIT
+          # Git Bash maps cmd /c to a path; use //c. Avoid nested \" quotes — cmd then treats
+          # the quotes as part of the executable name and fails with "not recognized".
+          cmd.exe //c "${START_BAT}"
+          trap "cmd.exe //c \"${STOP_BAT}\" || true" EXIT
           echo "Waiting for IoTDB RPC on 127.0.0.1:6667..."
           ready=0
           for _ in $(seq 1 60); do
