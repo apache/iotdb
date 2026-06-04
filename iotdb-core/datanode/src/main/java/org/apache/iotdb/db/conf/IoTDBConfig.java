@@ -1218,7 +1218,7 @@ public class IoTDBConfig {
 
   private boolean includeNullValueInWriteThroughputMetric = false;
 
-  private boolean keepSameDiskWhenLoadingSnapshot = false;
+  private boolean keepSameDiskWhenLoadingSnapshot = true;
 
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
