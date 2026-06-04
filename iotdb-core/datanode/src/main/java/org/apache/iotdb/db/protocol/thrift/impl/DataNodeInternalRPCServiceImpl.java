@@ -116,6 +116,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.iot.RegionMigrationProgressHolder;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -3515,15 +3516,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
+    if (req.isSetNeedDisconnect() && req.isNeedDisconnect()) {
+      return unlockAccountAndInvalidateCache(req);
+    }
     if (!AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
     }
-    if (req.needDisconnect) {
-      SessionManager.getInstance()
-          .removeSessions(
-              session ->
-                  session.getUsername() != null && session.getUsername().equals(req.getUsername()));
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private TSStatus unlockAccountAndInvalidateCache(TInvalidatePermissionCacheReq req) {
+    // For account-unlock broadcasts, roleName carries the optional login address.
+    AuthorityChecker.getUserId(req.getUsername())
+        .ifPresent(
+            userId ->
+                LoginLockManager.getInstance()
+                    .unlock(userId, req.getUsername(), req.getRoleName()));
+    if (!AuthorityChecker.invalidateCache(req.getUsername(), null)) {
+      return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
     }
+    SessionManager.getInstance()
+        .removeSessions(
+            session ->
+                session.getUsername() != null && session.getUsername().equals(req.getUsername()));
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

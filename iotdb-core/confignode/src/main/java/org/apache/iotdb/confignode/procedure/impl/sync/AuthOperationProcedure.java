@@ -111,7 +111,9 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
                   || plan.getAuthorType() == ConfigPhysicalPlanType.UpdateUserV2
                   || plan.getAuthorType() == ConfigPhysicalPlanType.RUpdateUserV2
                   || plan.getAuthorType() == ConfigPhysicalPlanType.RenameUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RRenameUser);
+                  || plan.getAuthorType() == ConfigPhysicalPlanType.RRenameUser
+                  || plan.getAuthorType() == ConfigPhysicalPlanType.AccountUnlock
+                  || plan.getAuthorType() == ConfigPhysicalPlanType.RAccountUnlock);
           Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
           while (it.hasNext()) {
             Pair<TDataNodeConfiguration, Long> pair = it.next();
