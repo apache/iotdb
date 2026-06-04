@@ -311,6 +311,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateUserV2:
         case CreateUserWithRawPassword:
         case RenameUser:
+        case AccountUnlock:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
         case RCreateUser:
@@ -343,6 +344,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RRevokeUserSysPri:
         case RRevokeRoleSysPri:
         case RRenameUser:
+        case RAccountUnlock:
           plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:

@@ -489,6 +489,7 @@ public class ConfigPlanExecutor {
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
       case RenameUser:
+      case AccountUnlock:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
