@@ -66,7 +66,6 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -107,7 +106,6 @@ public class UpdateLastCacheOperatorTest {
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
       TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
-      assertNotNull(result);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 
@@ -138,7 +136,6 @@ public class UpdateLastCacheOperatorTest {
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
       TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
-      assertNotNull(result);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 
@@ -169,7 +166,6 @@ public class UpdateLastCacheOperatorTest {
       assertTrue(updateLastCacheOperator.isBlocked().isDone());
       assertTrue(updateLastCacheOperator.hasNext());
       TsBlock result = nextNonNullOrEmpty(updateLastCacheOperator);
-      assertNotNull(result);
       assertEquals(1, result.getPositionCount());
       assertEquals(3, result.getValueColumnCount());
 
