@@ -28,17 +28,25 @@ public final class OperatorTestUtils {
     // Utility class.
   }
 
-  public static TsBlock nextNonNull(Operator operator) throws Exception {
+  public static TsBlock nextNonEmpty(Operator operator) throws Exception {
+    TsBlock result = nextNonEmptyOrNull(operator);
+    if (result != null) {
+      return result;
+    }
+    throw new AssertionError("Expected a non-empty TsBlock from operator");
+  }
+
+  public static TsBlock nextNonEmptyOrNull(Operator operator) throws Exception {
     while (operator.hasNext()) {
       TsBlock result = operator.next();
       if (!isNullOrEmpty(result)) {
         return result;
       }
     }
-    throw new AssertionError("Expected a non-empty TsBlock from operator");
+    return null;
   }
 
-  public static TsBlock lastNonNull(Operator operator) throws Exception {
+  public static TsBlock lastNonEmpty(Operator operator) throws Exception {
     TsBlock result = null;
     while (operator.isBlocked().isDone() && operator.hasNext()) {
       TsBlock nextResult = operator.next();
@@ -49,7 +57,7 @@ public final class OperatorTestUtils {
     return result;
   }
 
-  public static boolean isNullOrEmpty(TsBlock tsBlock) {
+  private static boolean isNullOrEmpty(TsBlock tsBlock) {
     return tsBlock == null || tsBlock.getPositionCount() == 0;
   }
 }

@@ -72,7 +72,7 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.lastNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.lastNonEmpty;
 import static org.apache.iotdb.rpc.RpcUtils.SUCCESS_STATUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -259,7 +259,7 @@ public class DeviceViewIntoOperatorTest {
     prepareDeviceData("device0", 2);
     operator = createAndInitOperatorForSingleDevices(2);
 
-    TsBlock result = lastNonNull(operator);
+    TsBlock result = lastNonEmpty(operator);
     assertNotNull(result);
     assertEquals(2, result.getPositionCount());
 
@@ -274,7 +274,7 @@ public class DeviceViewIntoOperatorTest {
     prepareDeviceData("device0", 10);
     operator = createAndInitOperatorForSingleDevices(10);
 
-    TsBlock result = lastNonNull(operator);
+    TsBlock result = lastNonEmpty(operator);
     assertNotNull(result);
     assertEquals(10, result.getPositionCount());
 
@@ -290,7 +290,7 @@ public class DeviceViewIntoOperatorTest {
     prepareDeviceData("device1", 1);
     operator = createAndInitOperatorForMultipleDevices(2, 1);
 
-    TsBlock result = lastNonNull(operator);
+    TsBlock result = lastNonEmpty(operator);
     assertNotNull(result);
     assertEquals(2, result.getPositionCount());
 

@@ -58,7 +58,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -120,7 +120,7 @@ public class SeriesScanOperatorTest {
 
       int count = 0;
       while (seriesScanOperator.hasNext()) {
-        TsBlock tsBlock = nextNonNull(seriesScanOperator);
+        TsBlock tsBlock = nextNonEmpty(seriesScanOperator);
         if (tsBlock.isEmpty()) {
           continue;
         }

@@ -65,7 +65,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmptyOrNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -169,7 +170,7 @@ public class OffsetOperatorTest {
           new LimitOperator(driverContext.getOperatorContexts().get(4), 250, offsetOperator);
       int count = 100;
       while (limitOperator.isBlocked().isDone() && limitOperator.hasNext()) {
-        TsBlock tsBlock = nextNonNull(limitOperator);
+        TsBlock tsBlock = nextNonEmpty(limitOperator);
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -277,7 +278,7 @@ public class OffsetOperatorTest {
 
       int count = 0;
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = nextNonNull(offsetOperator);
+        TsBlock tsBlock = nextNonEmpty(offsetOperator);
         assertEquals(2, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
@@ -383,14 +384,8 @@ public class OffsetOperatorTest {
           new OffsetOperator(driverContext.getOperatorContexts().get(3), 500, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = offsetOperator.next();
+        TsBlock tsBlock = nextNonEmptyOrNull(offsetOperator);
         if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(2, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        if (tsBlock.getPositionCount() == 0) {
           continue;
         }
         fail("Expected no data from offset operator");
@@ -481,14 +476,8 @@ public class OffsetOperatorTest {
               driverContext.getOperatorContexts().get(3), 98_784_247_808L, timeJoinOperator);
 
       while (offsetOperator.isBlocked().isDone() && offsetOperator.hasNext()) {
-        TsBlock tsBlock = offsetOperator.next();
+        TsBlock tsBlock = nextNonEmptyOrNull(offsetOperator);
         if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(2, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        if (tsBlock.getPositionCount() == 0) {
           continue;
         }
         fail("Expected no data from offset operator");

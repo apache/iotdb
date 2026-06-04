@@ -69,7 +69,7 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.lastNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.lastNonEmpty;
 import static org.apache.iotdb.rpc.RpcUtils.SUCCESS_STATUS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -199,7 +199,7 @@ public class TreeIntoOperatorTest {
     prepareSourceTargetPairs(2);
     operator = createAndInitOperator(2);
 
-    TsBlock result = lastNonNull(operator);
+    TsBlock result = lastNonEmpty(operator);
     assertNotNull(result);
     assertEquals(2, result.getPositionCount());
 

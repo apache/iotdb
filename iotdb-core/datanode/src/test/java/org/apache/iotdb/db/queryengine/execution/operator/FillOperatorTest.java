@@ -43,7 +43,7 @@ import org.junit.Test;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -211,7 +211,7 @@ public class FillOperatorTest {
             }
           };
       while (fillOperator.hasNext()) {
-        TsBlock block = nextNonNull(fillOperator);
+        TsBlock block = nextNonEmpty(fillOperator);
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));
@@ -384,7 +384,7 @@ public class FillOperatorTest {
             }
           };
       while (fillOperator.hasNext()) {
-        TsBlock block = nextNonNull(fillOperator);
+        TsBlock block = nextNonEmpty(fillOperator);
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));
@@ -561,7 +561,7 @@ public class FillOperatorTest {
             }
           };
       while (fillOperator.hasNext()) {
-        TsBlock block = nextNonNull(fillOperator);
+        TsBlock block = nextNonEmpty(fillOperator);
         for (int i = 0; i < block.getPositionCount(); i++) {
           long expectedTime = i + 1 + count * 10000L;
           assertEquals(expectedTime, block.getTimeByIndex(i));
