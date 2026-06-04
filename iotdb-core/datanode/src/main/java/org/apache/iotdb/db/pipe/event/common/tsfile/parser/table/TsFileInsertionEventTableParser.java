@@ -243,44 +243,24 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               new Iterator<TabletInsertionEvent>() {
 
                 private TsFileInsertionEventTableParserTabletIterator tabletIterator;
+                private PipeRawTabletInsertionEvent nextEvent;
+                private Tablet bufferedTablet;
+                private boolean iterationClosed = false;
 
                 @Override
                 public boolean hasNext() {
                   try {
-                    if (tabletIterator == null) {
-                      tabletIterator =
-                          new TsFileInsertionEventTableParserTabletIterator(
-                              tsFileSequenceReader,
-                              entry ->
-                                  matchesTablePattern(entry.getKey())
-                                      && hasTablePrivilege(entry.getKey()),
-                              allocatedMemoryBlockForTablet,
-                              allocatedMemoryBlockForBatchData,
-                              allocatedMemoryBlockForChunk,
-                              allocatedMemoryBlockForChunkMeta,
-                              allocatedMemoryBlockForTableSchemas,
-                              currentModifications,
-                              startTime,
-                              endTime,
-                              objectPathsOnly,
-                              collectObjectColumnModEntries,
-                              collectObjectColumnModEntries && objectPathsOnly
-                                  ? TsFileInsertionEventTableParser.this
-                                      ::recordTableObjectMeasurements
-                                  : null);
+                    if (nextEvent != null) {
+                      return true;
                     }
-                    final boolean hasNext = tabletIterator.hasNext();
-                    if (hasNext && !parseStartTimeRecorded) {
-                      // Record start time on first hasNext() that returns true
-                      recordParseStartTime();
-                    } else if (!hasNext && parseStartTimeRecorded && !parseEndTimeRecorded) {
-                      // Record end time on last hasNext() that returns false
-                      recordParseEndTime();
-                      close();
-                    } else if (!hasNext) {
-                      close();
+
+                    final Tablet tablet = pollNextNonEmptyTablet();
+                    if (tablet == null) {
+                      return false;
                     }
-                    return hasNext;
+
+                    nextEvent = buildTabletInsertionEvent(tablet, !prepareNextNonEmptyTablet());
+                    return true;
                   } catch (Exception e) {
                     close();
                     throw new PipeException(
@@ -325,84 +305,117 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                           PathUtils.unQualifyDatabaseName(sourceDatabaseName), tableName);
                 }
 
+                private Tablet pollNextNonEmptyTablet() throws Exception {
+                  if (!prepareNextNonEmptyTablet()) {
+                    return null;
+                  }
+
+                  final Tablet tablet = bufferedTablet;
+                  bufferedTablet = null;
+                  return tablet;
+                }
+
+                private boolean prepareNextNonEmptyTablet() throws Exception {
+                  if (bufferedTablet != null) {
+                    return true;
+                  }
+                  if (iterationClosed) {
+                    return false;
+                  }
+
+                  if (tabletIterator == null) {
+                    tabletIterator =
+                        new TsFileInsertionEventTableParserTabletIterator(
+                            tsFileSequenceReader,
+                            entry ->
+                                matchesTablePattern(entry.getKey())
+                                    && hasTablePrivilege(entry.getKey()),
+                            allocatedMemoryBlockForTablet,
+                            allocatedMemoryBlockForBatchData,
+                            allocatedMemoryBlockForChunk,
+                            allocatedMemoryBlockForChunkMeta,
+                            allocatedMemoryBlockForTableSchemas,
+                            currentModifications,
+                            startTime,
+                            endTime,
+                            objectPathsOnly,
+                            collectObjectColumnModEntries,
+                            collectObjectColumnModEntries && objectPathsOnly
+                                ? TsFileInsertionEventTableParser.this
+                                    ::recordTableObjectMeasurements
+                                : null);
+                  }
+
+                  while (tabletIterator.hasNext()) {
+                    if (!parseStartTimeRecorded) {
+                      recordParseStartTime();
+                    }
+
+                    final Tablet tablet = tabletIterator.next();
+                    recordTabletMetrics(tablet);
+                    if (!PipeRawTabletInsertionEvent.isTabletEmpty(tablet)) {
+                      bufferedTablet = tablet;
+                      return true;
+                    }
+                  }
+
+                  closeIteration();
+                  return false;
+                }
+
+                private void closeIteration() {
+                  if (iterationClosed) {
+                    return;
+                  }
+
+                  if (parseStartTimeRecorded && !parseEndTimeRecorded) {
+                    recordParseEndTime();
+                  }
+                  close();
+                  iterationClosed = true;
+                }
+
+                private PipeRawTabletInsertionEvent buildTabletInsertionEvent(
+                    final Tablet tablet, final boolean needToReport) {
+                  final PipeRawTabletInsertionEvent event =
+                      sourceEvent == null
+                          ? new PipeRawTabletInsertionEvent(
+                              Boolean.TRUE,
+                              null,
+                              null,
+                              null,
+                              tablet,
+                              true,
+                              null,
+                              0,
+                              pipeTaskMeta,
+                              sourceEvent,
+                              needToReport)
+                          : new PipeRawTabletInsertionEvent(
+                              Boolean.TRUE,
+                              sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                              sourceEvent.getRawTableModelDataBase(),
+                              sourceEvent.getRawTreeModelDataBase(),
+                              tablet,
+                              true,
+                              sourceEvent.getPipeName(),
+                              sourceEvent.getCreationTime(),
+                              pipeTaskMeta,
+                              sourceEvent,
+                              needToReport);
+                  event.setTsFileResource(tsFileResource);
+                  event.setHasObject(hasObjectData);
+                  return event;
+                }
+
                 @Override
                 public TabletInsertionEvent next() {
                   if (!hasNext()) {
-                    close();
                     throw new NoSuchElementException();
                   }
 
-                  final Tablet tablet = tabletIterator.next();
-                  // Record tablet metrics
-                  recordTabletMetrics(tablet);
-
-                  final TabletInsertionEvent next;
-                  if (!hasNext()) {
-                    final PipeRawTabletInsertionEvent event =
-                        sourceEvent == null
-                            ? new PipeRawTabletInsertionEvent(
-                                Boolean.TRUE,
-                                null,
-                                null,
-                                null,
-                                tablet,
-                                true,
-                                null,
-                                0,
-                                pipeTaskMeta,
-                                sourceEvent,
-                                true)
-                            : new PipeRawTabletInsertionEvent(
-                                Boolean.TRUE,
-                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                                sourceEvent.getRawTableModelDataBase(),
-                                sourceEvent.getRawTreeModelDataBase(),
-                                tablet,
-                                true,
-                                sourceEvent.getPipeName(),
-                                sourceEvent.getCreationTime(),
-                                pipeTaskMeta,
-                                sourceEvent,
-                                true);
-
-                    // Set tsFileResource and hasObjectData
-                    event.setTsFileResource(tsFileResource);
-                    event.setHasObject(hasObjectData);
-                    next = event;
-                    close();
-                  } else {
-                    final PipeRawTabletInsertionEvent event =
-                        sourceEvent == null
-                            ? new PipeRawTabletInsertionEvent(
-                                Boolean.TRUE,
-                                null,
-                                null,
-                                null,
-                                tablet,
-                                true,
-                                null,
-                                0,
-                                pipeTaskMeta,
-                                sourceEvent,
-                                false)
-                            : new PipeRawTabletInsertionEvent(
-                                Boolean.TRUE,
-                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                                sourceEvent.getRawTableModelDataBase(),
-                                sourceEvent.getRawTreeModelDataBase(),
-                                tablet,
-                                true,
-                                sourceEvent.getPipeName(),
-                                sourceEvent.getCreationTime(),
-                                pipeTaskMeta,
-                                sourceEvent,
-                                false);
-
-                    // Set tsFileResource and hasObjectData
-                    event.setTsFileResource(tsFileResource);
-                    event.setHasObject(hasObjectData);
-                    next = event;
-                  }
+                  final TabletInsertionEvent next = nextEvent;
+                  nextEvent = null;
                   return next;
                 }
               };

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -293,7 +294,8 @@ public class WriteBackSink implements PipeConnector {
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
             && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
-      throw new PipeException(
+      throwWriteBackExceptionIfNecessary(
+          status,
           String.format(
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, status));
@@ -415,7 +417,8 @@ public class WriteBackSink implements PipeConnector {
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
             && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
-      throw new PipeException(
+      throwWriteBackExceptionIfNecessary(
+          status,
           String.format(
               DataNodePipeMessages.WRITE_BACK_TABLET_EVENT_ERROR_STATUS, eventDescription, status));
     }
@@ -459,11 +462,21 @@ public class WriteBackSink implements PipeConnector {
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
             && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
-      throw new PipeException(
+      throwWriteBackExceptionIfNecessary(
+          status,
           String.format(
               "Write back PipeStatementInsertionEvent %s error, result status %s",
               pipeStatementInsertionEvent, status));
     }
+  }
+
+  private static void throwWriteBackExceptionIfNecessary(
+      final TSStatus status, final String exceptionMessage) {
+    if (status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
+      throw new PipeRuntimeSinkNonReportTimeConfigurableException(exceptionMessage, Long.MAX_VALUE);
+    }
+
+    throw new PipeException(exceptionMessage);
   }
 
   @Override
@@ -496,7 +509,7 @@ public class WriteBackSink implements PipeConnector {
           .status;
     } catch (final AccessDeniedException e) {
       if (!skipIfNoPrivileges) {
-        throw e;
+        throw new PipeRuntimeSinkNonReportTimeConfigurableException(e.getMessage(), Long.MAX_VALUE);
       }
       LOGGER.debug(
           DataNodePipeMessages.EXECUTE_STATEMENT_TO_DATABASE_SKIP_BECAUSE_NO,
