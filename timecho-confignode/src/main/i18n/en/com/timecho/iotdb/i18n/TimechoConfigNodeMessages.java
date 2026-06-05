@@ -74,6 +74,9 @@ public final class TimechoConfigNodeMessages {
   public static final String LICENSE_SYSTEM_INFO_VERSION_UNSUPPORTED =
       "License system info version {} is unsupported";
   public static final String VERIFY_SYSTEM_INFO_FAIL = "Verify system info fail.";
+  public static final String SYSTEM_INFO_FILE_READ_FAIL = "{} file read fail.";
+  public static final String SET_SYSTEM_INFO_FILE_ON_CONFIG_NODE_FAIL = "Set {} file on ConfigNode {} fail.";
+  public static final String SOME_CONFIG_NODES_SYSTEM_INFO_FILE_MAY_NOT_BE_UPDATED_SUCCESS = "Some ConfigNodes' {} file may not be updated successfully: {}";
 
   // License file CRUD
   public static final String SET_LICENSE_FILE_SUCCESS = "set license file success: {}";

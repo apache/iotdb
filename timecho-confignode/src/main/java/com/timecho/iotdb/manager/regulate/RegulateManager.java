@@ -20,8 +20,12 @@
 package com.timecho.iotdb.manager.regulate;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TLicense;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -53,10 +57,13 @@ import org.apache.ratis.util.AutoCloseableLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -68,6 +75,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +108,9 @@ public class RegulateManager {
       ACTIVATION_DIR_PATH + File.separatorChar + LICENSE_FILE_NAME;
   public static final String SYSTEM_INFO_FILE_PATH =
       ACTIVATION_DIR_PATH + File.separatorChar + "system_info";
+  public static final String CLUSTER_SYSTEM_INFO_FILE_NAME = "cluster_system_info";
+  public static final String CLUSTER_SYSTEM_INFO_FILE_PATH =
+      ACTIVATION_DIR_PATH + File.separatorChar + CLUSTER_SYSTEM_INFO_FILE_NAME;
   public static final String HISTORY_FILE_PATH =
       ACTIVATION_DIR_PATH + File.separatorChar + ".history";
   public static final String ENV_FILE_PATH =
@@ -123,6 +134,9 @@ public class RegulateManager {
 
   ExecutorService executor =
       IoTDBThreadPoolFactory.newFixedThreadPool(2, ThreadName.ACTIVATION_SERVICE.getName());
+
+  private static final ExecutorService CLUSTER_SYSTEM_INFO_SYNC_EXECUTOR =
+      IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon(ThreadName.ACTIVATION_SERVICE.getName());
 
   protected Lottery lottery;
 
@@ -467,31 +481,10 @@ public class RegulateManager {
     } else if ("01".equals(licenseVersion)) {
       deprecatedLicenseContent = decryptV01(encryptedLicenseContent);
     } else if ("02".equals(licenseVersion)) {
-      List<String> systemInfoList = new ArrayList<>();
-      Map<Integer, TConfigNodeLocation> configNodeLocationMap =
-          locations.stream()
-              .collect(
-                  Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-
-      ConfigNodeAsyncRequestContext<Integer, String> configNodeAsyncRequestContext =
-          new ConfigNodeAsyncRequestContext<>(
-              CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
-
-      for (TConfigNodeLocation location : locations) {
-        configNodeAsyncRequestContext.putRequest(
-            location.getConfigNodeId(), location.getConfigNodeId());
-      }
-
-      CnToCnInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
-
-      Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
-      for (TConfigNodeLocation location : locations) {
-        String systemInfoResp = systemInfoRespMap.get(location.getConfigNodeId());
-        if (systemInfoResp != null) {
-          systemInfoList.add(systemInfoResp);
-        }
-      }
+      List<String> systemInfoList =
+          (locations.size() > 1)
+              ? generateClusterSystemInfo(locations)
+              : Collections.singletonList(generateSystemInfoContentWithVersion());
       if (systemInfoList.isEmpty() || (systemInfoList.size() < locations.size())) {
         throw new IOException(
             "systemInfo fetch exception, only get " + systemInfoList.size() + " items");
@@ -713,6 +706,135 @@ public class RegulateManager {
       throw new LicenseException("Cannot remove version from system info " + contentWithVersion);
     }
     return contentWithVersion.substring(VERSION_LENGTH + 1);
+  }
+
+  public static List<String> getClusterSystemInfo() {
+    if (Files.exists(Paths.get(CLUSTER_SYSTEM_INFO_FILE_PATH))) {
+      try (FileInputStream fileInputStream = new FileInputStream(CLUSTER_SYSTEM_INFO_FILE_PATH)) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(fileInputStream))) {
+          String line;
+          if ((line = reader.readLine()) != null) {
+            return Arrays.stream(line.split(",")).collect(Collectors.toList());
+          }
+        }
+      } catch (Exception e) {
+        logger.error(
+            TimechoConfigNodeMessages.SYSTEM_INFO_FILE_READ_FAIL, CLUSTER_SYSTEM_INFO_FILE_PATH);
+      }
+    }
+    return new ArrayList<>();
+  }
+
+  public static List<String> generateClusterSystemInfo(List<TConfigNodeLocation> locations)
+      throws LicenseException {
+    List<String> systemInfoList = getClusterSystemInfo();
+    if (systemInfoList.isEmpty()) {
+      Map<Integer, TConfigNodeLocation> configNodeLocationMap =
+          locations.stream()
+              .collect(
+                  Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+
+      ConfigNodeAsyncRequestContext<Integer, String> configNodeAsyncRequestContext =
+          new ConfigNodeAsyncRequestContext<>(
+              CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
+
+      for (TConfigNodeLocation location : locations) {
+        configNodeAsyncRequestContext.putRequest(
+            location.getConfigNodeId(), location.getConfigNodeId());
+      }
+
+      CnToCnInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+
+      Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
+      for (TConfigNodeLocation location : locations) {
+        String systemInfoResp = systemInfoRespMap.get(location.getConfigNodeId());
+        if (systemInfoResp != null) {
+          systemInfoList.add(systemInfoResp);
+        }
+      }
+
+      if (!systemInfoList.isEmpty()) {
+        String content = String.join(",", systemInfoList);
+        saveClusterSystemInfoFile(content);
+        syncClusterSystemInfoFileToOtherConfigNodes(content, locations);
+      }
+    }
+    return systemInfoList;
+  }
+
+  private static void saveClusterSystemInfoFile(String content) throws LicenseException {
+    try (FileOutputStream fos = new FileOutputStream(CLUSTER_SYSTEM_INFO_FILE_PATH)) {
+      fos.write(content.getBytes());
+      fos.getFD().sync();
+      logger.info(
+          TimechoConfigNodeMessages.SYSTEM_INFO_FILE_GENERATED_SUCCESSFULLY,
+          CLUSTER_SYSTEM_INFO_FILE_PATH,
+          content);
+    } catch (Exception e) {
+      logger.error(
+          TimechoConfigNodeMessages.SYSTEM_INFO_FILE_GENERATED_FAIL, CLUSTER_SYSTEM_INFO_FILE_PATH);
+      throw new LicenseException(
+          String.format("% file generated fail", CLUSTER_SYSTEM_INFO_FILE_PATH));
+    }
+  }
+
+  private static void syncClusterSystemInfoFileToOtherConfigNodes(
+      String content, List<TConfigNodeLocation> locations) throws LicenseException {
+    if (content.isEmpty() || locations.size() <= 1) {
+      return;
+    }
+
+    int localConfigNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+    Map<Integer, TConfigNodeLocation> otherConfigNodeLocationMap =
+        locations.stream()
+            .filter(location -> location.getConfigNodeId() != localConfigNodeId)
+            .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+    if (otherConfigNodeLocationMap.isEmpty()) {
+      return;
+    }
+
+    syncClusterSystemInfoFileToOtherConfigNodes(content, otherConfigNodeLocationMap);
+  }
+
+  private static void syncClusterSystemInfoFileToOtherConfigNodes(
+      String content, Map<Integer, TConfigNodeLocation> configNodeLocationMap)
+      throws LicenseException {
+    IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager =
+        new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    List<Integer> failedConfigNodeIds = new ArrayList<>();
+    try {
+      for (TConfigNodeLocation location : configNodeLocationMap.values()) {
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(location.getInternalEndPoint())) {
+          TSStatus status = client.setLicenseFile(CLUSTER_SYSTEM_INFO_FILE_NAME, content);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedConfigNodeIds.add(location.getConfigNodeId());
+          }
+        } catch (Exception e) {
+          failedConfigNodeIds.add(location.getConfigNodeId());
+          logger.warn(
+              TimechoConfigNodeMessages.SET_SYSTEM_INFO_FILE_ON_CONFIG_NODE_FAIL,
+              CLUSTER_SYSTEM_INFO_FILE_PATH,
+              location.getConfigNodeId(),
+              e);
+        }
+      }
+    } finally {
+      clientManager.close();
+    }
+
+    if (!failedConfigNodeIds.isEmpty()) {
+      logger.error(
+          TimechoConfigNodeMessages.SOME_CONFIG_NODES_SYSTEM_INFO_FILE_MAY_NOT_BE_UPDATED_SUCCESS,
+          CLUSTER_SYSTEM_INFO_FILE_PATH,
+          failedConfigNodeIds);
+      throw new LicenseException(
+          String.format(
+              "Some ConfigNodes' %s file may not be updated successfully",
+              CLUSTER_SYSTEM_INFO_FILE_PATH));
+    }
   }
 
   private static List<Properties> getPropertiesList() throws LicenseException, IOException {

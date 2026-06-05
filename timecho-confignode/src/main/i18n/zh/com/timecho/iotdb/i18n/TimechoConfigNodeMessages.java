@@ -74,6 +74,9 @@ public final class TimechoConfigNodeMessages {
   public static final String LICENSE_SYSTEM_INFO_VERSION_UNSUPPORTED =
       "license 系统信息版本 {} 不支持";
   public static final String VERIFY_SYSTEM_INFO_FAIL = "校验系统信息失败。";
+  public static final String SYSTEM_INFO_FILE_READ_FAIL = "{} 文件读取失败。";
+  public static final String SET_SYSTEM_INFO_FILE_ON_CONFIG_NODE_FAIL = "在ConfigNode上设置 {} 文件 {} 失败。";
+  public static final String SOME_CONFIG_NODES_SYSTEM_INFO_FILE_MAY_NOT_BE_UPDATED_SUCCESS = "有些ConfigNode上的 {} 文件可能没有更新成功: {}";
 
   // license 文件管理
   public static final String SET_LICENSE_FILE_SUCCESS = "设置 license 文件成功：{}";
