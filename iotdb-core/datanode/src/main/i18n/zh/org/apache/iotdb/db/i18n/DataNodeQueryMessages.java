@@ -136,6 +136,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "释放的内存超过已预留的量。";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "估算的 mods tree 大小从 %d 减少到 %d，TsFile：%s。";
 
   // --- Execution / Operator ---
 

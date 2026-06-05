@@ -1581,7 +1581,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return entries;
   }
 
-  public class ModIterator implements Iterator<ModEntry> {
+  public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
 
     private final Iterator<ModEntry> sharedModIterator;
     private final Iterator<ModEntry> exclusiveModIterator;
@@ -1623,6 +1623,22 @@ public class TsFileResource implements PersistentResource, Cloneable {
         return sharedModIterator.next();
       }
       throw new NoSuchElementException();
+    }
+
+    @Override
+    public void close() {
+      closeModIterator(exclusiveModIterator);
+      closeModIterator(sharedModIterator);
+    }
+
+    private void closeModIterator(Iterator<ModEntry> modIterator) {
+      if (modIterator instanceof AutoCloseable) {
+        try {
+          ((AutoCloseable) modIterator).close();
+        } catch (Exception e) {
+          LOGGER.info(StorageEngineMessages.CANNOT_CLOSE_MOD_FILE_INPUT_STREAM, getTsFile(), e);
+        }
+      }
     }
   }
 
