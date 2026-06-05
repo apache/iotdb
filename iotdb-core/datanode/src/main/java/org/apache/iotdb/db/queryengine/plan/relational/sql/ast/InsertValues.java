@@ -106,6 +106,11 @@ public class InsertValues extends InsertRows {
     return statement;
   }
 
+  @Override
+  public String getDatabase() {
+    return databaseName;
+  }
+
   private static List<Expression> normalizeRow(Expression row) {
     if (row instanceof Row) {
       return ((Row) row).getItems();
@@ -137,7 +142,7 @@ public class InsertValues extends InsertRows {
         .map(
             row ->
                 toInsertRowStatement(
-                    row, timeColumnIndex, nonTimeColumnArray, plannerContext, session))
+                    row, timeColumnIndex, nonTimeColumnArray.clone(), plannerContext, session))
         .collect(Collectors.toList());
   }
 
