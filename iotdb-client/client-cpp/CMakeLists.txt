@@ -34,6 +34,8 @@ endif()
 
 set(IOTDB_EXTRA_CXX_FLAGS ""
     CACHE STRING "Extra flags appended to CMAKE_CXX_FLAGS")
+set(IOTDB_USE_CXX11_ABI ""
+    CACHE STRING "Set _GLIBCXX_USE_CXX11_ABI for GNU libstdc++ builds (empty keeps toolchain default)")
 
 if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
@@ -45,6 +47,10 @@ endif()
 if(MSVC)
     # /MD: matches default Visual Studio projects; CRT lives in the VC redistributable.
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
+if(IOTDB_USE_CXX11_ABI AND NOT IOTDB_USE_CXX11_ABI MATCHES "^[01]$")
+    message(FATAL_ERROR "IOTDB_USE_CXX11_ABI must be empty, 0, or 1")
 endif()
 
 option(WITH_SSL "Build with OpenSSL support" OFF)
@@ -116,6 +122,10 @@ endif()
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
 
 target_compile_definitions(iotdb_session PRIVATE THRIFT_STATIC_DEFINE IOTDB_BUILDING_SHARED)
+if(IOTDB_USE_CXX11_ABI AND NOT MSVC)
+    target_compile_definitions(iotdb_session PUBLIC
+            _GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI})
+endif()
 
 target_include_directories(iotdb_session
         PUBLIC
@@ -186,8 +196,15 @@ foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
 endforeach()
 
 set(IOTDB_SESSION_PC_LIBS "-liotdb_session")
+set(IOTDB_SESSION_PC_CFLAGS "")
+set(IOTDB_SESSION_CXX11_ABI_COMPILE_DEFINITION "")
 if(UNIX)
     set(IOTDB_SESSION_PC_LIBS "${IOTDB_SESSION_PC_LIBS} -pthread")
+endif()
+if(IOTDB_USE_CXX11_ABI AND NOT MSVC)
+    set(IOTDB_SESSION_PC_CFLAGS "-D_GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI}")
+    set(IOTDB_SESSION_CXX11_ABI_COMPILE_DEFINITION
+            "_GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI}")
 endif()
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session-config.cmake.in"
@@ -224,6 +241,7 @@ file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
         "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
         "with.ssl=${WITH_SSL}\n"
         "iotdb.offline=${IOTDB_OFFLINE}\n"
+        "iotdb.use.cxx11.abi=${IOTDB_USE_CXX11_ABI}\n"
         "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
 install(FILES "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
         DESTINATION cmake)
@@ -245,6 +263,7 @@ message(STATUS "iotdb_session configuration summary:")
 message(STATUS "    WITH_SSL              = ${WITH_SSL}")
 message(STATUS "    BUILD_TESTING         = ${BUILD_TESTING}")
 message(STATUS "    IOTDB_OFFLINE         = ${IOTDB_OFFLINE}")
+message(STATUS "    IOTDB_USE_CXX11_ABI   = ${IOTDB_USE_CXX11_ABI}")
 message(STATUS "    IOTDB_DEPS_DIR        = ${IOTDB_DEPS_DIR}")
 message(STATUS "    BOOST_INCLUDE_DIR     = ${BOOST_INCLUDE_DIR} (Thrift build only)")
 message(STATUS "    THRIFT_INCLUDE_DIR    = ${THRIFT_INCLUDE_DIR}")

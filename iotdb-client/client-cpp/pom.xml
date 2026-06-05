@@ -50,6 +50,7 @@
         <iotdb.deps.dir>${project.basedir}/third-party</iotdb.deps.dir>
         <iotdb.offline>OFF</iotdb.offline>
         <with.ssl>OFF</with.ssl>
+        <iotdb.cxx11.abi/>
         <!-- Switched to OFF by the .skipTests profile below. -->
         <build.tests>ON</build.tests>
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
@@ -113,6 +114,7 @@
                                 <option>-DWITH_SSL=${with.ssl}</option>
                                 <option>-DIOTDB_OFFLINE=${iotdb.offline}</option>
                                 <option>-DIOTDB_DEPS_DIR=${iotdb.deps.dir}</option>
+                                <option>-DIOTDB_USE_CXX11_ABI=${iotdb.cxx11.abi}</option>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DCMAKE_POLICY_DEFAULT_CMP0091=NEW</option>
                                 <option>-DIOTDB_EXTRA_CXX_FLAGS=${iotdb.extra.cxx.flags}</option>

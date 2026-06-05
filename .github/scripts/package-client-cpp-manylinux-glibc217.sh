@@ -69,7 +69,7 @@ cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
   -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
-  -Diotdb.extra.cxx.flags=-D_GLIBCXX_USE_CXX11_ABI=1
+  -Diotdb.cxx11.abi=1
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"

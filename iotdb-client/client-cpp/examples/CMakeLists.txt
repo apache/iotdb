@@ -78,6 +78,7 @@ ELSE()
 ENDIF()
 
 if(NOT _iotdb_examples_in_tree)
+    find_package(iotdb-session CONFIG QUIET PATHS "${IOTDB_SDK_ROOT}" NO_DEFAULT_PATH)
     if(WIN32)
         set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
         set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")
@@ -93,6 +94,10 @@ if(NOT _iotdb_examples_in_tree)
         message(FATAL_ERROR
             "IoTDB SDK not found at ${IOTDB_SDK_ROOT}. "
             "Unpack iotdb-session-cpp-<version>-<classifier>.zip so that ${_iotdb_link_lib} exists.")
+    endif()
+
+    if(TARGET IoTDB::iotdb_session)
+        set(_iotdb_link_lib IoTDB::iotdb_session)
     endif()
 endif()
 

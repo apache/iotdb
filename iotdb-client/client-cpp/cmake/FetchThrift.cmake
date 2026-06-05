@@ -123,6 +123,9 @@ if(MSVC)
             "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
 else()
     set(_thrift_cxxflags "-fPIC")
+    if(IOTDB_USE_CXX11_ABI)
+        set(_thrift_cxxflags "${_thrift_cxxflags} -D_GLIBCXX_USE_CXX11_ABI=${IOTDB_USE_CXX11_ABI}")
+    endif()
     list(APPEND _thrift_cmake_args
             "-DCMAKE_C_FLAGS=-fPIC"
             "-DCMAKE_CXX_FLAGS=${_thrift_cxxflags}")
@@ -139,7 +142,12 @@ endif()
 # invoking cmake twice via execute_process and only register a phony
 # ExternalProject for dependency ordering.
 
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-mdll")
+if(IOTDB_USE_CXX11_ABI)
+    set(_thrift_abi_stamp "-abi${IOTDB_USE_CXX11_ABI}")
+else()
+    set(_thrift_abi_stamp "-abidefault")
+endif()
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-mdll${_thrift_abi_stamp}")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")

@@ -23,4 +23,4 @@ Name: iotdb-session-cpp
 Description: Apache IoTDB C++ session client
 Version: @IOTDB_SESSION_VERSION@
 Libs: -L${libdir} @IOTDB_SESSION_PC_LIBS@
-Cflags: -I${includedir}
+Cflags: -I${includedir} @IOTDB_SESSION_PC_CFLAGS@
