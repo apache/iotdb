@@ -62,22 +62,27 @@ public class CountTimeSeriesStatement extends CountStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (hasTimeCondition()) {
-      try {
-        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-          this.authorityScope =
-              PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-                  AuthorityChecker.getAuthorizedPathTree(
-                      userName, PrivilegeType.READ_SCHEMA.ordinal()),
-                  AuthorityChecker.getAuthorizedPathTree(
-                      userName, PrivilegeType.READ_DATA.ordinal()));
-        }
-      } catch (AuthException e) {
-        return new TSStatus(e.getCode().getStatusCode());
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } else {
+    if (!hasTimeCondition()) {
       return super.checkPermissionBeforeProcess(userName);
+    }
+    try {
+      if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        setCanSeeSystemDB(true);
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      TSStatus explicitInternalDatabaseStatus = checkExplicitInternalDatabase(userName);
+      if (explicitInternalDatabaseStatus != null) {
+        return explicitInternalDatabaseStatus;
+      }
+      setCanSeeSystemDB(userName);
+      this.authorityScope =
+          PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+              AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA.ordinal()),
+              AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal()));
+      appendInternalDatabaseAuthorityScope();
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
     }
   }
 

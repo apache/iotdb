@@ -85,6 +85,13 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     return deviceToTimeseriesSchemaInfo;
   }
 
+  public boolean hasActiveLogicalViewContext() {
+    return deviceToTimeseriesSchemaInfo.values().stream()
+        .flatMap(timeseriesContextMap -> timeseriesContextMap.values().stream())
+        .flatMap(List::stream)
+        .anyMatch(context -> !context.getActiveLogicalViewContextMap().isEmpty());
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of();
