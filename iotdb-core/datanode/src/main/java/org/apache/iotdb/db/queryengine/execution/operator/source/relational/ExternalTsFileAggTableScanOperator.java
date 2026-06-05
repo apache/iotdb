@@ -22,27 +22,30 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExternalTsFileTableScanOperator extends TableScanOperator {
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
+
+public class ExternalTsFileAggTableScanOperator extends DefaultAggTableScanOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(ExternalTsFileTableScanOperator.class);
-  private static final long ABSTRACT_DEVICE_TABLE_SCAN_OPERATOR_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AbstractDeviceTableScanOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(ExternalTsFileAggTableScanOperator.class);
 
   private final String tableName;
   private final List<List<ExternalTsFileDeviceOffset>> deviceOffsets;
 
-  public ExternalTsFileTableScanOperator(
-      AbstractTableScanOperatorParameter parameter,
+  public ExternalTsFileAggTableScanOperator(
+      AbstractAggTableScanOperatorParameter parameter,
       String tableName,
       List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
     super(parameter);
@@ -67,15 +70,10 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
   @Override
   protected void constructAlignedSeriesScanUtil() {
-    if (!hasCurrentDeviceEntry()) {
-      return;
-    }
-
-    DeviceEntry deviceEntry = getCurrentDeviceEntry();
-    if (deviceEntry == null) {
-      throw new IllegalStateException("Current device entry in TableScanOperator is empty");
-    }
-
+    DeviceEntry deviceEntry =
+        deviceEntries.isEmpty() || deviceEntries.get(currentDeviceIndex) == null
+            ? new AlignedDeviceEntry(SeriesScanUtil.EMPTY_DEVICE_ID, new Binary[0])
+            : deviceEntries.get(currentDeviceIndex);
     this.seriesScanUtil =
         new ExternalTsFileSeriesScanUtil(
             constructAlignedPath(
@@ -90,11 +88,14 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
   private AbstractAlignedTimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource, AlignedFullPath alignedPath) throws IOException {
+    if (deviceEntries.isEmpty() || currentDeviceIndex >= deviceEntries.size()) {
+      return null;
+    }
     List<ExternalTsFileDeviceOffset> currentDeviceOffsets = deviceOffsets.get(currentDeviceIndex);
     return ExternalTsFileSeriesScanUtil.loadTimeSeriesMetadata(
         resource,
         alignedPath,
-        getCurrentDeviceEntry().getDeviceID(),
+        deviceEntries.get(currentDeviceIndex).getDeviceID(),
         currentDeviceOffsets,
         ((OperatorContext) operatorContext).getInstanceContext(),
         seriesScanOptions.getGlobalTimeFilter());
@@ -104,7 +105,7 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
   public long ramBytesUsed() {
     return super.ramBytesUsed()
         + INSTANCE_SIZE
-        - ABSTRACT_DEVICE_TABLE_SCAN_OPERATOR_INSTANCE_SIZE
+        - AbstractDefaultAggTableScanOperator.INSTANCE_SIZE
         + RamUsageEstimator.sizeOfCollection(deviceOffsets);
   }
 }

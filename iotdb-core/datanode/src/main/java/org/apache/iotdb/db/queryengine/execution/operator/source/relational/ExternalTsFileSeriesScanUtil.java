@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.source.FileLoaderUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -29,6 +31,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.List;
@@ -76,6 +80,44 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
   @Override
   protected void updateFilterUsingTTL(QueryDataSource dataSource) {
     // External TsFiles are not managed by IoTDB metadata, so no table/tree TTL applies here.
+  }
+
+  static AbstractAlignedTimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      AlignedFullPath alignedPath,
+      IDeviceID currentDeviceID,
+      List<ExternalTsFileDeviceOffset> currentDeviceOffsets,
+      FragmentInstanceContext context,
+      Filter globalTimeFilter)
+      throws IOException {
+    if (currentDeviceOffsets == null || !currentDeviceID.equals(alignedPath.getDeviceId())) {
+      return null;
+    }
+
+    long[] deviceMeasurementNodeOffset =
+        getDeviceMeasurementNodeOffset(currentDeviceOffsets, resource.getTsFilePath());
+    if (deviceMeasurementNodeOffset == null) {
+      return null;
+    }
+    // TODO: Use deviceMeasurementNodeOffset after FileLoaderUtils supports offset-based metadata
+    // loading in this branch.
+    return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
+        resource,
+        alignedPath,
+        context,
+        globalTimeFilter,
+        resource.isSeq(),
+        context.isIgnoreAllNullRows());
+  }
+
+  private static long[] getDeviceMeasurementNodeOffset(
+      List<ExternalTsFileDeviceOffset> currentDeviceOffsets, String tsFilePath) {
+    for (ExternalTsFileDeviceOffset offset : currentDeviceOffsets) {
+      if (tsFilePath.equals(offset.getTsFilePath())) {
+        return offset.getDeviceMeasurementNodeOffset();
+      }
+    }
+    return null;
   }
 
   @FunctionalInterface

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -70,6 +71,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         new Rewriter(),
         new Context(
             context.getQueryContext().getQueryId(),
+            context.getAnalysis(),
             context.getMetadata(),
             context.sessionInfo(),
             context.getSymbolAllocator()));
@@ -105,7 +107,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
       // only optimize AggregationNode with raw DeviceTableScanNode
       if (tableScanNode == null
-          || tableScanNode instanceof ExternalTsFileScanNode
           || tableScanNode instanceof AggregationTableScanNode) { // no need to optimize
         return node;
       }
@@ -116,6 +117,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
               node.getGroupingKeys(),
               projectNode,
               tableScanNode,
+              context.analysis,
               context.session,
               context.metadata);
       if (pushDownLevel == PushDownLevel.NOOP) { // no push-down
@@ -140,6 +142,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         List<Symbol> groupingKeys,
         ProjectNode projectNode,
         DeviceTableScanNode tableScanNode,
+        Analysis analysis,
         SessionInfo session,
         Metadata metadata) {
       boolean hasProject = projectNode != null;
@@ -195,7 +198,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return PushDownLevel.NOOP;
       } else if (singleDeviceEntry
           || ImmutableSet.copyOf(groupingKeys)
-              .containsAll(getTagColumnsInTableStore(tableScanNode, metadata, session))) {
+              .containsAll(getTagColumnsInTableStore(tableScanNode, analysis, metadata, session))) {
         // If all tag columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;
@@ -205,7 +208,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
     }
 
     private List<Symbol> getTagColumnsInTableStore(
-        DeviceTableScanNode tableScanNode, Metadata metadata, SessionInfo session) {
+        DeviceTableScanNode tableScanNode,
+        Analysis analysis,
+        Metadata metadata,
+        SessionInfo session) {
+      if (tableScanNode instanceof ExternalTsFileScanNode) {
+        return analysis
+            .getTableColumnSchema(tableScanNode.getQualifiedObjectName())
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getValue().getColumnCategory() == TAG)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+      }
       return Objects.requireNonNull(
               metadata.getTableSchema(session, tableScanNode.getQualifiedObjectName()).orElse(null))
           .getColumns()
@@ -242,13 +257,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
   private static class Context {
     private final QueryId queryId;
+    private final Analysis analysis;
     private final Metadata metadata;
     private final SessionInfo session;
     private final SymbolAllocator symbolAllocator;
 
     public Context(
-        QueryId queryId, Metadata metadata, SessionInfo session, SymbolAllocator symbolAllocator) {
+        QueryId queryId,
+        Analysis analysis,
+        Metadata metadata,
+        SessionInfo session,
+        SymbolAllocator symbolAllocator) {
       this.queryId = queryId;
+      this.analysis = analysis;
       this.metadata = metadata;
       this.session = session;
       this.symbolAllocator = symbolAllocator;

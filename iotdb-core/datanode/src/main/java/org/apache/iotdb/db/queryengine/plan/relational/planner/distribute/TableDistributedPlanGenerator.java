@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggre
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFileScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -790,6 +791,82 @@ public class TableDistributedPlanGenerator
               node.isPushLimitToEachDevice(),
               node.getTsFilePaths(),
               entries,
+              splitDeviceOffsets.get(i));
+      splitNode.setRegionReplicaSet(localRegionReplicaSet);
+      result.add(splitNode);
+    }
+    return result;
+  }
+
+  @Override
+  public List<PlanNode> visitExternalTsFileAggregationScan(
+      ExternalTsFileAggregationScanNode node, PlanContext context) {
+    TRegionReplicaSet localRegionReplicaSet =
+        new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
+    node.setRegionReplicaSet(localRegionReplicaSet);
+    context.mostUsedRegion = node.getRegionReplicaSet();
+    List<PlanNode> resultNodes =
+        splitExternalTsFileAggregationScanByDeviceEntries(node, localRegionReplicaSet);
+    if (context.hasSortProperty) {
+      processSortProperty(node, resultNodes, context);
+    }
+    return resultNodes;
+  }
+
+  private List<PlanNode> splitExternalTsFileAggregationScanByDeviceEntries(
+      final ExternalTsFileAggregationScanNode node, final TRegionReplicaSet localRegionReplicaSet) {
+    List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    if (deviceEntries.size() <= 1) {
+      return Collections.singletonList(node);
+    }
+
+    int splitCount =
+        Math.min(
+            deviceEntries.size(),
+            IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism());
+    if (splitCount <= 1) {
+      return Collections.singletonList(node);
+    }
+
+    List<List<DeviceEntry>> splitDeviceEntries = new ArrayList<>(splitCount);
+    List<List<List<ExternalTsFileDeviceOffset>>> splitDeviceOffsets = new ArrayList<>(splitCount);
+    for (int i = 0; i < splitCount; i++) {
+      splitDeviceEntries.add(new ArrayList<>());
+      splitDeviceOffsets.add(new ArrayList<>());
+    }
+    for (int i = 0; i < deviceEntries.size(); i++) {
+      splitDeviceEntries.get(i % splitCount).add(deviceEntries.get(i));
+      splitDeviceOffsets.get(i % splitCount).add(node.getDeviceOffsets().get(i));
+    }
+
+    List<PlanNode> result = new ArrayList<>(splitCount);
+    for (int i = 0; i < splitDeviceEntries.size(); i++) {
+      List<DeviceEntry> entries = splitDeviceEntries.get(i);
+      if (entries.isEmpty()) {
+        continue;
+      }
+      ExternalTsFileAggregationScanNode splitNode =
+          new ExternalTsFileAggregationScanNode(
+              queryId.genPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              entries,
+              node.getTagAndAttributeIndexMap(),
+              node.getScanOrder(),
+              node.getTimePredicate().orElse(null),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice(),
+              node.getProjection(),
+              node.getAggregations(),
+              node.getGroupingSets(),
+              node.getPreGroupedSymbols(),
+              node.getStep(),
+              node.getGroupIdSymbol(),
+              node.getTsFilePaths(),
               splitDeviceOffsets.get(i));
       splitNode.setRegionReplicaSet(localRegionReplicaSet);
       result.add(splitNode);

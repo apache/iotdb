@@ -96,7 +96,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
 
   protected SeriesScanOptions seriesScanOptions;
   private final boolean ascending;
-  private final Ordering scanOrder;
+  protected final Ordering scanOrder;
   // Some special data types(like BLOB) cannot use statistics
   protected final boolean canUseStatistics;
   private final long cachedRawDataSize;
