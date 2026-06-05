@@ -41,6 +41,19 @@ import java.util.List;
 public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModelAutoIT {
 
   private static final String DEVICE = "root.pipe_type_conversion.d";
+  private static final String ALIGNED_DEVICE = "root.pipe_type_conversion.aligned_d";
+  private static final List<TypeConversionSemanticCase> ALIGNED_STREAM_CASES =
+      getCases(
+          "bool_to_int32",
+          "bool_to_int64",
+          "bool_to_float",
+          "bool_to_double",
+          "bool_to_blob",
+          "bool_to_date",
+          "bool_to_timestamp",
+          "int32_to_boolean",
+          "int32_to_timestamp",
+          "int32_to_date");
 
   @Override
   @Before
@@ -70,31 +83,72 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModel
 
   @Test
   public void testPipeReceiverTypeConversionSemantics() {
-    createTimeseries(senderEnv, true);
-    createTimeseries(receiverEnv, false);
+    createTimeseries(senderEnv, DEVICE, TypeConversionSemanticCase.CASES, true);
+    createTimeseries(receiverEnv, DEVICE, TypeConversionSemanticCase.CASES, false);
     createPipe();
 
-    TestUtils.executeNonQueries(senderEnv, createInsertStatements(), null);
+    TestUtils.executeNonQueries(
+        senderEnv, createInsertStatements(DEVICE, TypeConversionSemanticCase.CASES, false), null);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        createQuerySql(),
-        createExpectedHeader(),
-        new HashSet<>(createExpectedRows()),
+        createQuerySql(DEVICE, TypeConversionSemanticCase.CASES),
+        createExpectedHeader(DEVICE, TypeConversionSemanticCase.CASES),
+        new HashSet<>(createExpectedRows(TypeConversionSemanticCase.CASES)),
         60);
   }
 
-  private static void createTimeseries(final BaseEnv env, final boolean useSourceType) {
+  @Test
+  public void testAlignedStreamPipeReceiverTypeConversionSemantics() {
+    createAlignedTimeseries(senderEnv, ALIGNED_DEVICE, ALIGNED_STREAM_CASES, true);
+    createAlignedTimeseries(receiverEnv, ALIGNED_DEVICE, ALIGNED_STREAM_CASES, false);
+    createStreamPipe(ALIGNED_DEVICE);
+
+    TestUtils.executeNonQueries(
+        senderEnv, createInsertStatements(ALIGNED_DEVICE, ALIGNED_STREAM_CASES, true), null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        createQuerySql(ALIGNED_DEVICE, ALIGNED_STREAM_CASES),
+        createExpectedHeader(ALIGNED_DEVICE, ALIGNED_STREAM_CASES),
+        new HashSet<>(createExpectedRows(ALIGNED_STREAM_CASES)),
+        60);
+  }
+
+  private static void createTimeseries(
+      final BaseEnv env,
+      final String device,
+      final List<TypeConversionSemanticCase> conversionCases,
+      final boolean useSourceType) {
     final List<String> sqls = new ArrayList<>();
-    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+    for (final TypeConversionSemanticCase conversionCase : conversionCases) {
       sqls.add(
           String.format(
               "create timeseries %s.%s with datatype=%s,encoding=PLAIN",
-              DEVICE,
+              device,
               conversionCase.measurement,
               useSourceType ? conversionCase.sourceType : conversionCase.targetType));
     }
     TestUtils.executeNonQueries(env, sqls, null);
+  }
+
+  private static void createAlignedTimeseries(
+      final BaseEnv env,
+      final String device,
+      final List<TypeConversionSemanticCase> conversionCases,
+      final boolean useSourceType) {
+    final List<String> measurements = new ArrayList<>();
+    for (final TypeConversionSemanticCase conversionCase : conversionCases) {
+      measurements.add(
+          String.format(
+              "%s %s encoding=PLAIN",
+              conversionCase.measurement,
+              useSourceType ? conversionCase.sourceType : conversionCase.targetType));
+    }
+    TestUtils.executeNonQuery(
+        env,
+        String.format("create aligned timeseries %s(%s)", device, String.join(",", measurements)),
+        null);
   }
 
   private void createPipe() {
@@ -109,58 +163,97 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeDualTreeModel
         null);
   }
 
-  private static List<String> createInsertStatements() {
+  private void createStreamPipe(final String device) {
+    TestUtils.executeNonQuery(
+        senderEnv,
+        String.format(
+            "create pipe aligned_type_conversion_semantic"
+                + " with source ('source'='iotdb-source','source.path'='%s.**','history.enable'='false','realtime.mode'='stream')"
+                + " with processor ('processor'='do-nothing-processor')"
+                + " with sink ('sink'='iotdb-thrift-sink','sink.node-urls'='%s')",
+            device, receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()),
+        null);
+  }
+
+  private static List<String> createInsertStatements(
+      final String device,
+      final List<TypeConversionSemanticCase> conversionCases,
+      final boolean isAligned) {
     final List<String> sqls = new ArrayList<>();
     final String measurements =
         String.join(
             ",",
-            TypeConversionSemanticCase.CASES.stream()
+            conversionCases.stream()
                 .map(conversionCase -> conversionCase.measurement)
                 .toArray(String[]::new));
     for (int row = 0; row < TypeConversionSemanticCase.ROW_COUNT; row++) {
       final List<String> values = new ArrayList<>();
-      for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      for (final TypeConversionSemanticCase conversionCase : conversionCases) {
         values.add(conversionCase.sourceSqlValues[row]);
       }
       sqls.add(
           String.format(
-              "insert into %s(time,%s) values (%d,%s)",
-              DEVICE, measurements, row + 1, String.join(",", values)));
+              "insert into %s(time,%s)%s values (%d,%s)",
+              device,
+              measurements,
+              isAligned ? " aligned" : "",
+              row + 1,
+              String.join(",", values)));
     }
     sqls.add("flush");
     return sqls;
   }
 
-  private static String createQuerySql() {
+  private static String createQuerySql(
+      final String device, final List<TypeConversionSemanticCase> conversionCases) {
     return String.format(
         "select %s from %s",
         String.join(
             ",",
-            TypeConversionSemanticCase.CASES.stream()
+            conversionCases.stream()
                 .map(conversionCase -> conversionCase.measurement)
                 .toArray(String[]::new)),
-        DEVICE);
+        device);
   }
 
-  private static String createExpectedHeader() {
+  private static String createExpectedHeader(
+      final String device, final List<TypeConversionSemanticCase> conversionCases) {
     final List<String> columns = new ArrayList<>();
     columns.add("Time");
-    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
-      columns.add(DEVICE + "." + conversionCase.measurement);
+    for (final TypeConversionSemanticCase conversionCase : conversionCases) {
+      columns.add(device + "." + conversionCase.measurement);
     }
     return String.join(",", columns) + ",";
   }
 
-  private static List<String> createExpectedRows() {
+  private static List<String> createExpectedRows(
+      final List<TypeConversionSemanticCase> conversionCases) {
     final List<String> rows = new ArrayList<>();
     for (int row = 0; row < TypeConversionSemanticCase.ROW_COUNT; row++) {
       final List<String> values = new ArrayList<>();
       values.add(Integer.toString(row + 1));
-      for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      for (final TypeConversionSemanticCase conversionCase : conversionCases) {
         values.add(conversionCase.expectedValues[row]);
       }
       rows.add(String.join(",", values) + ",");
     }
     return rows;
+  }
+
+  private static List<TypeConversionSemanticCase> getCases(final String... measurements) {
+    final List<TypeConversionSemanticCase> cases = new ArrayList<>();
+    for (final String measurement : measurements) {
+      cases.add(getCase(measurement));
+    }
+    return cases;
+  }
+
+  private static TypeConversionSemanticCase getCase(final String measurement) {
+    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      if (conversionCase.measurement.equals(measurement)) {
+        return conversionCase;
+      }
+    }
+    throw new IllegalArgumentException("Unknown type conversion semantic case: " + measurement);
   }
 }
