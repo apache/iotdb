@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -76,6 +77,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
@@ -91,6 +93,7 @@ public class FragmentInstanceContext extends QueryContext {
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
   private final FragmentInstanceId id;
@@ -397,6 +400,60 @@ public class FragmentInstanceContext extends QueryContext {
 
     // always update last execution start time
     lastExecutionStartTime.set(now);
+  }
+
+  @Override
+  public List<Modification> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    PartialPath path = new PartialPath(deviceID, measurement);
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  @Override
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, path);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.getPath().overlapWith(path),
+            mods -> getPathModifications(mods, path))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<Modification> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   @Override
