@@ -35,8 +35,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 
@@ -245,6 +247,27 @@ public class ExternalTsFileScanNode extends DeviceTableScanNode {
 
   public void setDeviceOffsets(List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
     this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
+  }
+
+  @Override
+  public void sortDeviceEntries(Comparator<DeviceEntry> comparator) {
+    int[] indexes =
+        IntStream.range(0, deviceEntries.size())
+            .boxed()
+            .sorted(
+                (left, right) ->
+                    comparator.compare(deviceEntries.get(left), deviceEntries.get(right)))
+            .mapToInt(Integer::intValue)
+            .toArray();
+    List<DeviceEntry> sortedDeviceEntries = new ArrayList<>(deviceEntries.size());
+    List<List<ExternalTsFileDeviceOffset>> sortedDeviceOffsets =
+        new ArrayList<>(deviceOffsets.size());
+    for (int index : indexes) {
+      sortedDeviceEntries.add(deviceEntries.get(index));
+      sortedDeviceOffsets.add(deviceOffsets.get(index));
+    }
+    this.deviceEntries = sortedDeviceEntries;
+    this.deviceOffsets = sortedDeviceOffsets;
   }
 
   private static List<List<ExternalTsFileDeviceOffset>> copyDeviceOffsets(

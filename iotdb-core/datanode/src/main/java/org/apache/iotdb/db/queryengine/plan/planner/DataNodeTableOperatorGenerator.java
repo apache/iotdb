@@ -1127,14 +1127,16 @@ public class DataNodeTableOperatorGenerator
   public Operator visitExternalTsFileScan(
       ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-        constructExternalTsFileTableScanOperatorParameter(node, context);
+        constructAbstractTableScanOperatorParameter(
+            node,
+            context,
+            ExternalTsFileTableScanOperator.class.getSimpleName(),
+            Collections.emptyMap(),
+            Long.MAX_VALUE);
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
         new ExternalTsFileTableScanOperator(
-            parameter,
-            node.getQualifiedObjectName().getObjectName(),
-            node.getDeviceEntries(),
-            node.getDeviceOffsets());
+            parameter, node.getQualifiedObjectName().getObjectName(), node.getDeviceOffsets());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
 
@@ -1145,63 +1147,6 @@ public class DataNodeTableOperatorGenerator
     context.getInstanceContext().addExternalTsFilePaths(node.getTsFilePaths());
 
     return externalTsFileTableScanOperator;
-  }
-
-  private AbstractTableScanOperator.AbstractTableScanOperatorParameter
-      constructExternalTsFileTableScanOperatorParameter(
-          ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
-    CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(
-            node, Collections.emptyMap(), false, buildTagAndAttributeColumnsIndexMap(node));
-    SeriesScanOptions seriesScanOptions =
-        buildSeriesScanOptions(
-            context,
-            commonParameter.columnSchemaMap,
-            commonParameter.measurementColumnNames,
-            commonParameter.measurementColumnsIndexMap,
-            commonParameter.timeColumnName,
-            node.getTimePredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            false,
-            node.getPushDownPredicate());
-
-    OperatorContext operatorContext =
-        addOperatorContext(
-            context, node.getPlanNodeId(), ExternalTsFileTableScanOperator.class.getSimpleName());
-
-    Set<String> allSensors = new HashSet<>(commonParameter.measurementColumnNames);
-    // for time column
-    allSensors.add("");
-
-    return new AbstractTableScanOperator.AbstractTableScanOperatorParameter(
-        allSensors,
-        operatorContext,
-        node.getPlanNodeId(),
-        commonParameter.columnSchemas,
-        commonParameter.columnsIndexArray,
-        Collections.emptyList(),
-        node.getScanOrder(),
-        seriesScanOptions,
-        commonParameter.measurementColumnNames,
-        commonParameter.measurementSchemas,
-        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
-  }
-
-  private static Map<Symbol, Integer> buildTagAndAttributeColumnsIndexMap(TableScanNode node) {
-    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap = new HashMap<>();
-    int index = 0;
-    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      switch (entry.getValue().getColumnCategory()) {
-        case TAG:
-        case ATTRIBUTE:
-          tagAndAttributeColumnsIndexMap.put(entry.getKey(), index++);
-          break;
-        default:
-          break;
-      }
-    }
-    return tagAndAttributeColumnsIndexMap;
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

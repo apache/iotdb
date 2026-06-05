@@ -736,23 +736,19 @@ public class TableDistributedPlanGenerator
         new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
     node.setRegionReplicaSet(localRegionReplicaSet);
     context.mostUsedRegion = node.getRegionReplicaSet();
+    List<PlanNode> resultNodes =
+        splitExternalTsFileScanByDeviceEntries(node, localRegionReplicaSet);
     if (context.hasSortProperty) {
-      processExternalTsFileSortProperty(node, context);
-      return Collections.singletonList(node);
+      processSortProperty(node, resultNodes, context);
     }
-
-    List<PlanNode> splitNodes = splitExternalTsFileScanByDeviceEntries(node, localRegionReplicaSet);
-    if (!splitNodes.isEmpty()) {
-      return splitNodes;
-    }
-    return Collections.singletonList(node);
+    return resultNodes;
   }
 
   private List<PlanNode> splitExternalTsFileScanByDeviceEntries(
       final ExternalTsFileScanNode node, final TRegionReplicaSet localRegionReplicaSet) {
     List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     if (deviceEntries.size() <= 1) {
-      return Collections.emptyList();
+      return Collections.singletonList(node);
     }
 
     int splitCount =
@@ -760,7 +756,7 @@ public class TableDistributedPlanGenerator
             deviceEntries.size(),
             IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism());
     if (splitCount <= 1) {
-      return Collections.emptyList();
+      return Collections.singletonList(node);
     }
 
     List<List<DeviceEntry>> splitDeviceEntries = new ArrayList<>(splitCount);
@@ -791,6 +787,7 @@ public class TableDistributedPlanGenerator
               node.getPushDownOffset(),
               node.getTimePredicate().orElse(null),
               node.getScanOrder(),
+              node.isPushLimitToEachDevice(),
               node.getTsFilePaths(),
               entries,
               splitDeviceOffsets.get(i));
@@ -1992,141 +1989,9 @@ public class TableDistributedPlanGenerator
       newOrderingScheme.ifPresent(
           orderingScheme -> nodeOrderingMap.put(scanNode.getPlanNodeId(), orderingScheme));
       if (comparator != null) {
-        scanNode.getDeviceEntries().sort(comparator);
+        scanNode.sortDeviceEntries(comparator);
       }
     }
-  }
-
-  private void processExternalTsFileSortProperty(
-      final ExternalTsFileScanNode externalTsFileScanNode, final PlanContext context) {
-    final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
-    final List<Symbol> newOrderingSymbols = new ArrayList<>();
-    final List<SortOrder> newSortOrders = new ArrayList<>();
-    boolean lastIsTimeRelated = false;
-
-    for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
-      if (externalTsFileScanNode.isTimeColumn(symbol)) {
-        if (!expectedOrderingScheme.getOrdering(symbol).isAscending()) {
-          externalTsFileScanNode.setScanOrder(Ordering.DESC);
-        }
-        newOrderingSymbols.add(symbol);
-        newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
-        lastIsTimeRelated = true;
-        break;
-      }
-
-      final ColumnSchema columnSchema = externalTsFileScanNode.getAssignments().get(symbol);
-      if (columnSchema == null || columnSchema.getColumnCategory() != TsTableColumnCategory.TAG) {
-        break;
-      }
-
-      newOrderingSymbols.add(symbol);
-      newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
-    }
-
-    if (newOrderingSymbols.isEmpty()) {
-      return;
-    }
-
-    OrderingScheme orderingScheme =
-        new OrderingScheme(
-            newOrderingSymbols,
-            IntStream.range(0, newOrderingSymbols.size())
-                .boxed()
-                .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get)));
-
-    Comparator<DeviceEntry> comparator =
-        createExternalTsFileDeviceEntryComparator(
-            externalTsFileScanNode, newOrderingSymbols, newSortOrders);
-    if (comparator != null) {
-      Map<IDeviceID, List<ExternalTsFileDeviceOffset>> offsetMap = new HashMap<>();
-      List<DeviceEntry> deviceEntries = externalTsFileScanNode.getDeviceEntries();
-      List<List<ExternalTsFileDeviceOffset>> deviceOffsets =
-          externalTsFileScanNode.getDeviceOffsets();
-      for (int i = 0; i < deviceEntries.size(); i++) {
-        offsetMap.put(deviceEntries.get(i).getDeviceID(), deviceOffsets.get(i));
-      }
-      externalTsFileScanNode.getDeviceEntries().sort(comparator);
-      List<List<ExternalTsFileDeviceOffset>> sortedDeviceOffsets =
-          new ArrayList<>(externalTsFileScanNode.getDeviceEntries().size());
-      for (DeviceEntry deviceEntry : externalTsFileScanNode.getDeviceEntries()) {
-        sortedDeviceOffsets.add(offsetMap.get(deviceEntry.getDeviceID()));
-      }
-      externalTsFileScanNode.setDeviceOffsets(sortedDeviceOffsets);
-    }
-
-    if (lastIsTimeRelated) {
-      if (newOrderingSymbols.size() > 1
-          && newOrderingSymbols.size() == expectedOrderingScheme.getOrderBy().size()
-          && isOrderByAllIdsAndTime(
-              analysis.getTableColumnSchema(externalTsFileScanNode.getQualifiedObjectName()),
-              externalTsFileScanNode.getAssignments(),
-              new OrderingScheme(
-                  newOrderingSymbols.subList(0, newOrderingSymbols.size() - 1),
-                  IntStream.range(0, newOrderingSymbols.size() - 1)
-                      .boxed()
-                      .collect(Collectors.toMap(newOrderingSymbols::get, newSortOrders::get))),
-              newOrderingSymbols.size() - 2)) {
-        nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), orderingScheme);
-      }
-      return;
-    }
-
-    if (newOrderingSymbols.size() == expectedOrderingScheme.getOrderBy().size()) {
-      nodeOrderingMap.put(externalTsFileScanNode.getPlanNodeId(), orderingScheme);
-    }
-  }
-
-  private Comparator<DeviceEntry> createExternalTsFileDeviceEntryComparator(
-      ExternalTsFileScanNode externalTsFileScanNode,
-      List<Symbol> orderingSymbols,
-      List<SortOrder> sortOrders) {
-    Comparator<DeviceEntry> comparator = null;
-    for (int i = 0; i < orderingSymbols.size(); i++) {
-      Symbol symbol = orderingSymbols.get(i);
-      if (externalTsFileScanNode.isTimeColumn(symbol)) {
-        break;
-      }
-      int tagIndex = getExternalTsFileTagIndex(externalTsFileScanNode, symbol);
-      final int deviceSegmentIndex = tagIndex + 1;
-      SortOrder sortOrder = sortOrders.get(i);
-      Comparator<String> valueComparator =
-          sortOrder.isNullsFirst()
-              ? Comparator.nullsFirst(Comparator.naturalOrder())
-              : Comparator.nullsLast(Comparator.naturalOrder());
-      Comparator<DeviceEntry> currentComparator =
-          Comparator.comparing(
-              deviceEntry -> getDeviceSegment(deviceEntry.getDeviceID(), deviceSegmentIndex),
-              valueComparator);
-      if (!sortOrder.isAscending()) {
-        currentComparator = currentComparator.reversed();
-      }
-      comparator =
-          comparator == null ? currentComparator : comparator.thenComparing(currentComparator);
-    }
-    return comparator == null ? null : comparator.thenComparing(DeviceEntry::getDeviceID);
-  }
-
-  private int getExternalTsFileTagIndex(
-      ExternalTsFileScanNode externalTsFileScanNode, Symbol symbol) {
-    int tagIndex = 0;
-    for (Map.Entry<Symbol, ColumnSchema> entry :
-        externalTsFileScanNode.getAssignments().entrySet()) {
-      if (entry.getValue().getColumnCategory() != TsTableColumnCategory.TAG) {
-        continue;
-      }
-      if (entry.getKey().equals(symbol)) {
-        return tagIndex;
-      }
-      tagIndex++;
-    }
-    throw new IllegalArgumentException("Unexpected external TsFile ordering symbol: " + symbol);
-  }
-
-  private String getDeviceSegment(IDeviceID deviceID, int deviceSegmentIndex) {
-    return deviceSegmentIndex < deviceID.segmentNum()
-        ? (String) deviceID.segment(deviceSegmentIndex)
-        : null;
   }
 
   private Optional<IDeviceID.TreeDeviceIdColumnValueExtractor>
