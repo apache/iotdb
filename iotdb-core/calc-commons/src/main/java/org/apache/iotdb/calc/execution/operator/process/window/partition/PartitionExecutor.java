@@ -59,6 +59,7 @@ public final class PartitionExecutor {
   private final List<Frame> frames;
 
   private final boolean needPeerGroup;
+  private boolean windowFunctionsInitialized;
 
   public PartitionExecutor(
       List<TsBlock> tsBlocks,
@@ -114,6 +115,7 @@ public final class PartitionExecutor {
     sortedColumns = partition.getSortedColumnList(sortChannels);
 
     currentPosition = partitionStart;
+    windowFunctionsInitialized = false;
     needPeerGroup =
         windowFunctions.stream().anyMatch(WindowFunction::needPeerGroup)
             || frameInfoList.stream()
@@ -212,9 +214,16 @@ public final class PartitionExecutor {
     }
   }
 
-  public void resetWindowFunctions() {
+  private void resetWindowFunctions() {
     for (WindowFunction windowFunction : windowFunctions) {
       windowFunction.reset();
+    }
+  }
+
+  public void initializeWindowFunctions() {
+    if (!windowFunctionsInitialized) {
+      resetWindowFunctions();
+      windowFunctionsInitialized = true;
     }
   }
 }
