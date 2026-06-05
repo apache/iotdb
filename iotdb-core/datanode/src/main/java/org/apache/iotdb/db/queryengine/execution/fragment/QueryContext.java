@@ -127,18 +127,24 @@ public class QueryContext {
       TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
-    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
-    while (modEntryIterator.hasNext()) {
-      ModEntry modification = modEntryIterator.next();
-      if (tables != null && modification instanceof TableDeletionEntry) {
-        String tableName = ((TableDeletionEntry) modification).getTableName();
-        if (!tables.contains(tableName)) {
+    try (TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator()) {
+      while (modEntryIterator.hasNext()) {
+        ModEntry modification = modEntryIterator.next();
+        if (shouldSkipModification(modification)) {
           continue;
         }
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
-      modifications.append(modification.keyOfPatternTree(), modification);
     }
     return modifications;
+  }
+
+  protected boolean shouldSkipModification(ModEntry modification) {
+    if (tables != null && modification instanceof TableDeletionEntry) {
+      String tableName = ((TableDeletionEntry) modification).getTableName();
+      return !tables.contains(tableName);
+    }
+    return false;
   }
 
   public List<ModEntry> getPathModifications(

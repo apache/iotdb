@@ -69,6 +69,15 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
   }
 
   @Override
+  public void reserveMemoryImmediately(final long size) {
+    if (size != 0) {
+      LOCAL_EXECUTION_PLANNER.reserveFromFreeMemoryForOperators(
+          size, reservedBytesInTotal, queryId.getId(), contextHolder);
+      reservedBytesInTotal += size;
+    }
+  }
+
+  @Override
   public void releaseMemoryCumulatively(final long size) {
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
