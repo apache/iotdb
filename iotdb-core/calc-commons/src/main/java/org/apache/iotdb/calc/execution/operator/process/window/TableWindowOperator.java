@@ -218,7 +218,7 @@ public class TableWindowOperator implements ProcessOperator {
   private TsBlock transform(long startTime) {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
-      partitionExecutor.resetWindowFunctions();
+      partitionExecutor.initializeWindowFunctions();
 
       while (System.nanoTime() - startTime < maxRuntime
           && !tsBlockBuilder.isFull()
