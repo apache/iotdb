@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -131,7 +132,8 @@ public class WriteBackSink implements PipeConnector {
     status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
+      throwWriteBackExceptionIfNecessary(
+          status,
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
               pipeInsertNodeTabletInsertionEvent, status));
@@ -162,11 +164,21 @@ public class WriteBackSink implements PipeConnector {
         statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
+      throwWriteBackExceptionIfNecessary(
+          status,
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, status));
     }
+  }
+
+  private static void throwWriteBackExceptionIfNecessary(
+      final TSStatus status, final String exceptionMessage) {
+    if (status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
+      throw new PipeRuntimeSinkNonReportTimeConfigurableException(exceptionMessage, Long.MAX_VALUE);
+    }
+
+    throw new PipeException(exceptionMessage);
   }
 
   private TSStatus executeStatement(final InsertBaseStatement statement) {
