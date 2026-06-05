@@ -42,6 +42,19 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTableModelDua
 
   private static final String DATABASE = "pipe_type_conversion";
   private static final String TABLE = "semantic_conversion";
+  private static final String STREAM_TABLE = "semantic_stream_conversion";
+  private static final List<TypeConversionSemanticCase> STREAM_CASES =
+      getCases(
+          "bool_to_int32",
+          "bool_to_int64",
+          "bool_to_float",
+          "bool_to_double",
+          "bool_to_blob",
+          "bool_to_date",
+          "bool_to_timestamp",
+          "int32_to_boolean",
+          "int32_to_timestamp",
+          "int32_to_date");
 
   @Override
   @Before
@@ -71,37 +84,68 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTableModelDua
 
   @Test
   public void testPipeReceiverTypeConversionSemantics() {
-    createDatabaseAndTable(senderEnv, true);
-    createDatabaseAndTable(receiverEnv, false);
+    createDatabaseAndTable(senderEnv, TABLE, TypeConversionSemanticCase.CASES, true);
+    createDatabaseAndTable(receiverEnv, TABLE, TypeConversionSemanticCase.CASES, false);
     createPipe();
 
     TestUtils.executeNonQueries(
-        DATABASE, BaseEnv.TABLE_SQL_DIALECT, senderEnv, createInsertStatements(), null);
+        DATABASE,
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        createInsertStatements(TABLE, TypeConversionSemanticCase.CASES),
+        null);
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        createQuerySql(),
-        createExpectedHeader(),
-        new HashSet<>(createExpectedRows()),
+        createQuerySql(TABLE, TypeConversionSemanticCase.CASES),
+        createExpectedHeader(TypeConversionSemanticCase.CASES),
+        new HashSet<>(createExpectedRows(TypeConversionSemanticCase.CASES)),
         60,
         DATABASE,
         null);
   }
 
-  private static void createDatabaseAndTable(final BaseEnv env, final boolean useSourceType) {
+  @Test
+  public void testStreamPipeReceiverTypeConversionSemantics() {
+    createDatabaseAndTable(senderEnv, STREAM_TABLE, STREAM_CASES, true);
+    createDatabaseAndTable(receiverEnv, STREAM_TABLE, STREAM_CASES, false);
+    createStreamPipe();
+
+    TestUtils.executeNonQueries(
+        DATABASE,
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        createInsertStatements(STREAM_TABLE, STREAM_CASES),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        createQuerySql(STREAM_TABLE, STREAM_CASES),
+        createExpectedHeader(STREAM_CASES),
+        new HashSet<>(createExpectedRows(STREAM_CASES)),
+        60,
+        DATABASE,
+        null);
+  }
+
+  private static void createDatabaseAndTable(
+      final BaseEnv env,
+      final String table,
+      final List<TypeConversionSemanticCase> conversionCases,
+      final boolean useSourceType) {
     final List<String> sqls = new ArrayList<>();
     sqls.add("create database if not exists " + DATABASE);
     sqls.add("use " + DATABASE);
     final List<String> columns = new ArrayList<>();
     columns.add("tag_id string tag");
-    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+    for (final TypeConversionSemanticCase conversionCase : conversionCases) {
       columns.add(
           String.format(
               "%s %s field",
               conversionCase.measurement,
               useSourceType ? conversionCase.sourceType : conversionCase.targetType));
     }
-    sqls.add(String.format("create table %s (%s)", TABLE, String.join(",", columns)));
+    sqls.add(String.format("create table %s (%s)", table, String.join(",", columns)));
     TestUtils.executeNonQueries(null, BaseEnv.TABLE_SQL_DIALECT, env, sqls, null);
   }
 
@@ -119,58 +163,93 @@ public class IoTDBPipeTypeConversionSemanticIT extends AbstractPipeTableModelDua
         null);
   }
 
-  private static List<String> createInsertStatements() {
+  private void createStreamPipe() {
+    TestUtils.executeNonQuery(
+        DATABASE,
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        String.format(
+            "create pipe stream_type_conversion_semantic"
+                + " with source ('source'='iotdb-source','history.enable'='false','realtime.enable'='true','realtime.mode'='stream')"
+                + " with processor ('processor'='do-nothing-processor')"
+                + " with sink ('sink'='iotdb-thrift-sink','sink.node-urls'='%s')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()),
+        null);
+  }
+
+  private static List<String> createInsertStatements(
+      final String table, final List<TypeConversionSemanticCase> conversionCases) {
     final List<String> sqls = new ArrayList<>();
     final String measurements =
         String.join(
             ",",
-            TypeConversionSemanticCase.CASES.stream()
+            conversionCases.stream()
                 .map(conversionCase -> conversionCase.measurement)
                 .toArray(String[]::new));
     for (int row = 0; row < TypeConversionSemanticCase.ROW_COUNT; row++) {
       final List<String> values = new ArrayList<>();
-      for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      for (final TypeConversionSemanticCase conversionCase : conversionCases) {
         values.add(conversionCase.sourceSqlValues[row]);
       }
       sqls.add(
           String.format(
               "insert into %s(time,tag_id,%s) values (%d,'d',%s)",
-              TABLE, measurements, row + 1, String.join(",", values)));
+              table, measurements, row + 1, String.join(",", values)));
     }
     sqls.add("flush");
     return sqls;
   }
 
-  private static String createQuerySql() {
+  private static String createQuerySql(
+      final String table, final List<TypeConversionSemanticCase> conversionCases) {
     return String.format(
         "select %s,time from %s where tag_id='d'",
         String.join(
             ",",
-            TypeConversionSemanticCase.CASES.stream()
+            conversionCases.stream()
                 .map(conversionCase -> conversionCase.measurement)
                 .toArray(String[]::new)),
-        TABLE);
+        table);
   }
 
-  private static String createExpectedHeader() {
+  private static String createExpectedHeader(
+      final List<TypeConversionSemanticCase> conversionCases) {
     final List<String> columns = new ArrayList<>();
-    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+    for (final TypeConversionSemanticCase conversionCase : conversionCases) {
       columns.add(conversionCase.measurement);
     }
     columns.add("time");
     return String.join(",", columns) + ",";
   }
 
-  private static List<String> createExpectedRows() {
+  private static List<String> createExpectedRows(
+      final List<TypeConversionSemanticCase> conversionCases) {
     final List<String> rows = new ArrayList<>();
     for (int row = 0; row < TypeConversionSemanticCase.ROW_COUNT; row++) {
       final List<String> values = new ArrayList<>();
-      for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      for (final TypeConversionSemanticCase conversionCase : conversionCases) {
         values.add(conversionCase.expectedValues[row]);
       }
       values.add(TypeConversionSemanticCase.timestampValue(row + 1));
       rows.add(String.join(",", values) + ",");
     }
     return rows;
+  }
+
+  private static List<TypeConversionSemanticCase> getCases(final String... measurements) {
+    final List<TypeConversionSemanticCase> cases = new ArrayList<>();
+    for (final String measurement : measurements) {
+      cases.add(getCase(measurement));
+    }
+    return cases;
+  }
+
+  private static TypeConversionSemanticCase getCase(final String measurement) {
+    for (final TypeConversionSemanticCase conversionCase : TypeConversionSemanticCase.CASES) {
+      if (conversionCase.measurement.equals(measurement)) {
+        return conversionCase;
+      }
+    }
+    throw new IllegalArgumentException("Unknown type conversion semantic case: " + measurement);
   }
 }
