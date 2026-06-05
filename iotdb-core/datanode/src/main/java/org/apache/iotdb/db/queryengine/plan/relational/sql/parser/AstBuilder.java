@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
-import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -142,12 +141,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
-import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -196,7 +192,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertValues;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
@@ -256,12 +252,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ViewFieldDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
@@ -272,7 +265,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatemen
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 
@@ -282,9 +274,7 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.Nullable;
 
@@ -829,235 +819,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       final List<Identifier> identifiers =
           visit(ctx.columnAliases().identifier(), Identifier.class);
       if (query.getQueryBody() instanceof Values) {
-        return visitInsertValues(
-            databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
+        return new InsertValues(
+            databaseName, tableName, identifiers, ((Values) query.getQueryBody()), zoneId);
       } else {
         return new Insert(new Table(qualifiedName), identifiers, query);
       }
     } else {
       return query.getQueryBody() instanceof Values
-          ? visitInsertValues(
-              databaseName,
-              DataNodeTableCache.getInstance().getTable(databaseName, tableName),
-              ((Values) query.getQueryBody()))
+          ? new InsertValues(databaseName, tableName, null, ((Values) query.getQueryBody()), zoneId)
           : new Insert(new Table(qualifiedName), query);
     }
-  }
-
-  private Node visitInsertValues(
-      final String databaseName, final TsTable table, final Values queryBody) {
-    final List<Expression> rows = queryBody.getRows();
-    final List<InsertRowStatement> rowStatements =
-        rows.stream()
-            .map(
-                r -> {
-                  List<Expression> expressions;
-                  if (r instanceof Row) {
-                    expressions = ((Row) r).getItems();
-                  } else if (r instanceof Literal) {
-                    expressions = Collections.singletonList(r);
-                  } else {
-                    throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_EXPRESSION_2 + r);
-                  }
-                  return toInsertRowStatement(expressions, table, databaseName);
-                })
-            .collect(toList());
-
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    insertRowsStatement.setInsertRowStatementList(rowStatements);
-    insertRowsStatement.setWriteToTable(true);
-    return new InsertRows(insertRowsStatement, null);
-  }
-
-  private Node visitInsertValues(
-      final String databaseName,
-      final String tableName,
-      final List<Identifier> identifiers,
-      final Values queryBody) {
-    final List<String> columnNames =
-        identifiers.stream().map(Identifier::getValue).collect(toList());
-    int timeColumnIndex = -1;
-
-    // retrieve the table schema to identify the actual time column
-    TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
-    List<TsTableColumnSchema> timeColumnCandidates =
-        table.getColumnList().stream()
-            .filter(col -> col.getColumnCategory() == TIME)
-            .collect(toList());
-    if (timeColumnCandidates.size() != 1) {
-      throw new SemanticException(
-          DataNodeQueryMessages.THE_TABLE_SHOULD_ONLY_HAVE_ONE_COLUMN_FOUND);
-    } else {
-      // locate the time column index in the input identifiers if time column exists in the schema
-      for (int i = 0; i < columnNames.size(); i++) {
-        if (timeColumnCandidates.get(0).getColumnName().equalsIgnoreCase(columnNames.get(i))) {
-          if (timeColumnIndex == -1) {
-            timeColumnIndex = i;
-          } else {
-            throw new SemanticException(
-                DataNodeQueryMessages.ONE_ROW_SHOULD_ONLY_HAVE_ONE_TIME_VALUE);
-          }
-        }
-      }
-    }
-
-    if (timeColumnIndex != -1) {
-      columnNames.remove(timeColumnIndex);
-    }
-
-    List<Expression> rows = queryBody.getRows();
-    if (timeColumnIndex == -1 && rows.size() > 1) {
-      throw new SemanticException(DataNodeQueryMessages.NEED_TIMESTAMPS_WHEN_INSERT_MULTI_ROWS);
-    }
-    int finalTimeColumnIndex = timeColumnIndex;
-    List<InsertRowStatement> rowStatements =
-        rows.stream()
-            .map(
-                r -> {
-                  List<Expression> expressions;
-                  if (r instanceof Row) {
-                    expressions = ((Row) r).getItems();
-                  } else if (r instanceof Literal) {
-                    expressions = Collections.singletonList(r);
-                  } else {
-                    throw new SemanticException(DataNodeQueryMessages.UNEXPECTED_EXPRESSION_2 + r);
-                  }
-                  String[] columnNameArray = columnNames.toArray(new String[0]);
-                  return toInsertRowStatement(
-                      expressions,
-                      finalTimeColumnIndex,
-                      columnNameArray,
-                      tableName,
-                      databaseName,
-                      columnNames.size());
-                })
-            .collect(toList());
-
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    insertRowsStatement.setInsertRowStatementList(rowStatements);
-    insertRowsStatement.setWriteToTable(true);
-    return new InsertRows(insertRowsStatement, null);
-  }
-
-  private InsertRowStatement toInsertRowStatement(
-      List<Expression> expressions, TsTable table, String databaseName) {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setWriteToTable(true);
-    insertRowStatement.setDevicePath(new PartialPath(new String[] {table.getTableName()}));
-
-    List<TsTableColumnSchema> columnList = table.getColumnList();
-    if (expressions.size() != columnList.size()) {
-      throw new SemanticException(
-          "expressions and columns do not match, expressions size: "
-              + expressions.size()
-              + ", columns size: "
-              + columnList.size());
-    }
-
-    String[] nonTimeColumnNames = new String[columnList.size() - 1];
-    Object[] nonTimeValues = new Object[columnList.size() - 1];
-    TsTableColumnCategory[] nonTimeColumnCategories =
-        new TsTableColumnCategory[columnList.size() - 1];
-    MeasurementSchema[] columnSchemas = new MeasurementSchema[columnList.size() - 1];
-    TSDataType[] dataTypes = new TSDataType[columnList.size() - 1];
-    int nonTimeColumnIndex = 0;
-    long timestamp = -1;
-    for (int i = 0; i < columnList.size(); i++) {
-      TsTableColumnSchema columnSchema = columnList.get(i);
-      Expression expression = expressions.get(i);
-
-      if (columnSchema.getColumnCategory().equals(TIME)) {
-        timestamp = AstUtil.expressionToTimestamp(expression, zoneId);
-      } else {
-        Object value = AstUtil.expressionToTsValue(expression);
-        nonTimeValues[nonTimeColumnIndex] = value;
-        nonTimeColumnNames[nonTimeColumnIndex] = columnSchema.getColumnName();
-        dataTypes[nonTimeColumnIndex] = columnSchema.getDataType();
-        nonTimeColumnCategories[nonTimeColumnIndex] = columnSchema.getColumnCategory();
-        columnSchemas[nonTimeColumnIndex] =
-            new MeasurementSchema(columnSchema.getColumnName(), columnSchema.getDataType());
-        nonTimeColumnIndex++;
-      }
-    }
-
-    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
-    insertRowStatement.setTime(timestamp);
-    insertRowStatement.setMeasurements(nonTimeColumnNames);
-    insertRowStatement.setDataTypes(dataTypes);
-    insertRowStatement.setMeasurementSchemas(columnSchemas);
-    insertRowStatement.setValues(nonTimeValues);
-    insertRowStatement.setColumnCategories(nonTimeColumnCategories);
-    insertRowStatement.setNeedInferType(false);
-    insertRowStatement.setDatabaseName(databaseName);
-
-    try {
-      insertRowStatement.transferType(zoneId);
-    } catch (QueryProcessException e) {
-      throw new SemanticException(e);
-    }
-    return insertRowStatement;
-  }
-
-  private InsertRowStatement toInsertRowStatement(
-      List<Expression> expressions,
-      int timeColumnIndex,
-      String[] nonTimeColumnNames,
-      String tableName,
-      String databaseName,
-      int columnSize) {
-    InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setWriteToTable(true);
-    insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
-    long timestamp;
-    int nonTimeColCnt;
-    if (timeColumnIndex == -1) {
-      timestamp = CommonDateTimeUtils.currentTime();
-      nonTimeColCnt = expressions.size();
-    } else {
-      if (timeColumnIndex >= expressions.size()) {
-        throw new SemanticException(
-            String.format(
-                "TimeColumnIndex out of bound: %d-%d", timeColumnIndex, expressions.size()));
-      }
-
-      Expression timeExpression = expressions.get(timeColumnIndex);
-      if (timeExpression instanceof LongLiteral) {
-        timestamp = ((LongLiteral) timeExpression).getParsedValue();
-      } else if (timeExpression instanceof NullLiteral) {
-        throw new SemanticException(DataNodeQueryMessages.TIMESTAMP_CANNOT_BE_NULL);
-      } else {
-        timestamp =
-            parseDateTimeFormat(
-                ((StringLiteral) timeExpression).getValue(),
-                CommonDateTimeUtils.currentTime(),
-                zoneId);
-      }
-      nonTimeColCnt = expressions.size() - 1;
-    }
-
-    if (nonTimeColCnt != nonTimeColumnNames.length) {
-      throw new SemanticException(
-          String.format(
-              "Inconsistent numbers of non-time column names and values: %d-%d",
-              nonTimeColumnNames.length, nonTimeColCnt));
-    }
-
-    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
-    insertRowStatement.setTime(timestamp);
-    insertRowStatement.setMeasurements(nonTimeColumnNames);
-
-    Object[] values = new Object[nonTimeColumnNames.length];
-    int valuePos = 0;
-    for (int i = 0; i < expressions.size(); i++) {
-      if (i != timeColumnIndex) {
-        values[valuePos++] = AstUtil.expressionToTsValue(expressions.get(i));
-      }
-    }
-
-    insertRowStatement.setValues(values);
-    insertRowStatement.setNeedInferType(true);
-    insertRowStatement.setDatabaseName(databaseName);
-    return insertRowStatement;
   }
 
   @Override

@@ -271,7 +271,9 @@ public class IoTDBSessionRelationalIT {
         session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
         fail("No exception thrown");
       } catch (StatementExecutionException e) {
-        assertEquals("701: Unsupported expression: (1 + 1)", e.getMessage());
+        assertEquals(
+            "701: Insert expression must be constant after constant folding: (1 + 1) (folded to (1 + 1))",
+            e.getMessage());
       }
       try {
         session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
@@ -333,6 +335,14 @@ public class IoTDBSessionRelationalIT {
                 row, "tag:" + row, "attr:" + row, row));
       }
 
+      session.executeNonQueryStatement(
+          "INSERT INTO table1 (time, tag1, attr1, m1) "
+              + "VALUES (if(true, 50, 0), if(true, 'tag:50', 'x'), "
+              + "if(false, 'x', 'attr:50'), if(true, 50.0, 0.0))");
+      session.executeNonQueryStatement(
+          "INSERT INTO table1 VALUES (if(true, 51, 0), if(true, 'tag:51', 'x'), "
+              + "if(true, 'attr:51', 'x'), if(false, 0, 51))");
+
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
@@ -343,7 +353,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
         cnt++;
       }
-      assertEquals(50, cnt);
+      assertEquals(52, cnt);
 
       // sql cannot create column
       assertThrows(
