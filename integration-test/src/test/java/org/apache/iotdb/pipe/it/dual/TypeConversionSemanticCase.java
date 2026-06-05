@@ -141,8 +141,8 @@ public class TypeConversionSemanticCase {
               "float_to_date",
               TSDataType.FLOAT,
               TSDataType.DATE,
-              values("19700102.9", "19700103.1", "42.9"),
-              values("1970-01-02", "1970-01-03", "1970-01-01")),
+              values("19700102.0", "19700104.0", "42.9"),
+              values("1970-01-02", "1970-01-04", "1970-01-01")),
           c(
               "double_to_int64",
               TSDataType.DOUBLE,
