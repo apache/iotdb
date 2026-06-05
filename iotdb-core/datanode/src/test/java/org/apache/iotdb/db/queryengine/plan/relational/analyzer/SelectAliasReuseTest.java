@@ -21,12 +21,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
@@ -46,7 +50,7 @@ import static org.junit.Assert.assertTrue;
 public class SelectAliasReuseTest {
 
   @Test
-  public void groupByAndOrderByAliasUseRewrittenExpression() {
+  public void groupByAliasUsesExpressionAndOrderByAliasUsesOutputField() {
     String sql =
         "SELECT date_bin(1h, time) AS hour_time, AVG(s1) AS avg_s1 "
             + "FROM table1 GROUP BY hour_time ORDER BY hour_time";
@@ -54,7 +58,8 @@ public class SelectAliasReuseTest {
     AnalyzedQuery analyzedQuery = analyze(sql);
     assertDateBin(
         analyzedQuery.analysis.getGroupingSets(analyzedQuery.query).getOriginalExpressions());
-    assertDateBin(analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query));
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
 
     new PlanTester().createPlan(sql);
   }
@@ -72,12 +77,27 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void groupByAliasIsNotBlockedByOuterScopeColumn() {
+    String sql =
+        "SELECT x FROM table_with_x WHERE EXISTS ("
+            + "SELECT s1 AS x, COUNT(*) FROM table1 "
+            + "WHERE table_with_x.s1 = table1.s1 GROUP BY x)";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    QuerySpecification innerQuery = getExistsSubquery(analyzedQuery.query);
+    assertIdentifier(
+        analyzedQuery.analysis.getGroupingSets(innerQuery).getOriginalExpressions().get(0), "s1");
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void orderByOutputAliasTakesPrecedenceOverInputColumn() {
     String sql = "SELECT s1 AS x FROM table_with_x ORDER BY x";
 
     AnalyzedQuery analyzedQuery = analyze(sql);
-    assertIdentifier(
-        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), "s1");
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
 
     new PlanTester().createPlan(sql);
   }
@@ -87,8 +107,26 @@ public class SelectAliasReuseTest {
     String sql = "SELECT s1 AS x FROM table1 ORDER BY x";
 
     AnalyzedQuery analyzedQuery = analyze(sql);
-    assertIdentifier(
-        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), "s1");
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
+  public void orderByWindowFunctionAliasReusesSelectOutputField() {
+    String sql = "SELECT row_number() OVER (ORDER BY s1) AS rn FROM table1 ORDER BY rn";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    OrderBy orderBy = analyzedQuery.query.getOrderBy().get();
+    List<FunctionCall> selectWindowFunctions =
+        analyzedQuery.analysis.getWindowFunctions(analyzedQuery.query);
+
+    assertEquals(1, selectWindowFunctions.size());
+    assertEquals("row_number", selectWindowFunctions.get(0).getName().getSuffix());
+    assertTrue(analyzedQuery.analysis.getOrderByWindowFunctions(orderBy).isEmpty());
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
 
     new PlanTester().createPlan(sql);
   }
@@ -161,7 +199,8 @@ public class SelectAliasReuseTest {
     assertNotNull(analyzedQuery.analysis.getGapFill(analyzedQuery.query));
     assertDateBin(
         analyzedQuery.analysis.getGroupingSets(analyzedQuery.query).getOriginalExpressions());
-    assertDateBin(analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query));
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
   }
 
   private static AnalyzedQuery analyze(String sql) {
@@ -184,6 +223,18 @@ public class SelectAliasReuseTest {
   private static void assertIdentifier(Expression expression, String name) {
     assertTrue(expression instanceof Identifier);
     assertEquals(name, ((Identifier) expression).getValue());
+  }
+
+  private static void assertFieldReference(Expression expression, int index) {
+    assertTrue(expression instanceof FieldReference);
+    assertEquals(index, ((FieldReference) expression).getFieldIndex());
+  }
+
+  private static QuerySpecification getExistsSubquery(QuerySpecification query) {
+    assertTrue(query.getWhere().get() instanceof ExistsPredicate);
+    Expression subquery = ((ExistsPredicate) query.getWhere().get()).getSubquery();
+    assertTrue(subquery instanceof SubqueryExpression);
+    return (QuerySpecification) ((SubqueryExpression) subquery).getQuery().getQueryBody();
   }
 
   private static class AnalyzedQuery {

@@ -411,7 +411,10 @@ public class StatementAnalyzer {
   }
 
   private static boolean resolvesToInputColumn(Scope scope, Identifier identifier) {
-    return scope.tryResolveField(identifier, QualifiedName.of(identifier.getValue())).isPresent();
+    return scope
+        .tryResolveField(identifier, QualifiedName.of(identifier.getValue()))
+        .filter(ResolvedField::isLocal)
+        .isPresent();
   }
 
   private static Optional<SelectAlias> resolveSelectAlias(
@@ -1652,11 +1655,12 @@ public class StatementAnalyzer {
           ImmutableList.builder();
       ImmutableList.Builder<SelectAlias> selectAliasBuilder = ImmutableList.builder();
 
-      int selectItemPosition = 1;
+      int outputPosition = 1;
       for (SelectItem item : node.getSelect().getSelectItems()) {
         if (item instanceof AllColumns) {
-          analyzeSelectAllColumns(
-              (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+          outputPosition +=
+              analyzeSelectAllColumns(
+                  (AllColumns) item, node, scope, outputExpressionBuilder, selectExpressionBuilder);
         } else if (item instanceof SingleColumn) {
           SingleColumn singleColumn = (SingleColumn) item;
           Expression selectExpression = singleColumn.getExpression();
@@ -1673,6 +1677,7 @@ public class StatementAnalyzer {
             for (Expression expression : expandedExpressions) {
               analyzeSelectSingleColumn(
                   expression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
+              outputPosition++;
             }
           } else {
             analyzeSelectSingleColumn(
@@ -1680,14 +1685,14 @@ public class StatementAnalyzer {
             if (singleColumn.getAlias().isPresent()) {
               Identifier alias = singleColumn.getAlias().get();
               selectAliasBuilder.add(
-                  new SelectAlias(alias.getCanonicalValue(), selectExpression, selectItemPosition));
+                  new SelectAlias(alias.getCanonicalValue(), selectExpression, outputPosition));
             }
+            outputPosition++;
           }
         } else {
           throw new IllegalArgumentException(
               "Unsupported SelectItem type: " + item.getClass().getName());
         }
-        selectItemPosition++;
       }
       analysis.setSelectExpressions(node, selectExpressionBuilder.build());
 
@@ -2497,7 +2502,7 @@ public class StatementAnalyzer {
       }
     }
 
-    private void analyzeSelectAllColumns(
+    private int analyzeSelectAllColumns(
         AllColumns allColumns,
         QuerySpecification node,
         Scope scope,
@@ -2543,7 +2548,7 @@ public class StatementAnalyzer {
                             () ->
                                 new NoSuchElementException(
                                     DataNodeQueryMessages.NO_VALUE_PRESENT)));
-            analyzeAllColumnsFromTable(
+            return analyzeAllColumnsFromTable(
                 fields,
                 allColumns,
                 node,
@@ -2552,7 +2557,6 @@ public class StatementAnalyzer {
                 selectExpressionBuilder,
                 relationType,
                 local);
-            return;
           }
         }
         // identifierChainBasis.get().getBasisType == FIELD or target expression isn't a
@@ -2582,7 +2586,7 @@ public class StatementAnalyzer {
               DataNodeQueryMessages.SELECT_NOT_ALLOWED_FROM_RELATION_THAT_HAS_NO);
         }
 
-        analyzeAllColumnsFromTable(
+        return analyzeAllColumnsFromTable(
             fields,
             allColumns,
             node,
@@ -2635,7 +2639,7 @@ public class StatementAnalyzer {
       return fields.stream().filter(accessibleFields.build()::contains).collect(toImmutableList());
     }
 
-    private void analyzeAllColumnsFromTable(
+    private int analyzeAllColumnsFromTable(
         List<Field> fields,
         AllColumns allColumns,
         QuerySpecification node,
@@ -2696,6 +2700,7 @@ public class StatementAnalyzer {
         }
       }
       analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
+      return fields.size();
     }
 
     //    private void analyzeAllFieldsFromRowTypeExpression(
@@ -4232,7 +4237,8 @@ public class StatementAnalyzer {
         } else {
           Optional<SelectAlias> selectAlias = resolveOrderBySelectAlias(expression, selectAliases);
           if (selectAlias.isPresent()) {
-            expression = selectAlias.get().getExpression();
+            expression = new FieldReference(selectAlias.get().getPosition() - 1);
+            expressionScope = orderByScope;
           }
         }
 
