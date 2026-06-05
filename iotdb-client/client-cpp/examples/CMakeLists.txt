@@ -78,7 +78,9 @@ ELSE()
 ENDIF()
 
 if(NOT _iotdb_examples_in_tree)
-    find_package(iotdb-session CONFIG QUIET PATHS "${IOTDB_SDK_ROOT}" NO_DEFAULT_PATH)
+    find_package(iotdb-session CONFIG QUIET
+        PATHS "${IOTDB_SDK_ROOT}/cmake" "${IOTDB_SDK_ROOT}"
+        NO_DEFAULT_PATH)
     if(WIN32)
         set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
         set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")

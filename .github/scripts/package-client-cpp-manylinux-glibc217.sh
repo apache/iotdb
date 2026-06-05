@@ -95,6 +95,14 @@ fi
 
 echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
 
+echo "=== CXX11 ABI symbols in libiotdb_session.so ==="
+abi_symbols=$(nm -D --demangle "${SO}" | grep -E 'Session::setStorageGroup\(std::__cxx11::basic_string|SessionDataSet::getColumnNames\[abi:cxx11\]|RowRecord::toString\[abi:cxx11\]' || true)
+if [[ -z "${abi_symbols}" ]]; then
+  echo "ERROR: libiotdb_session.so was not built with _GLIBCXX_USE_CXX11_ABI=1"
+  exit 1
+fi
+printf '%s\n' "${abi_symbols}" | head -20
+
 echo "=== Example package build/link/run smoke test ==="
 PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
 if [[ -z "${PKG_ZIP}" ]]; then
