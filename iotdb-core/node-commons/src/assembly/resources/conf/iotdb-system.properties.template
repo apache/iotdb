@@ -474,6 +474,26 @@ trust_store_path=
 # Datatype: String
 trust_store_pwd=
 
+# SSL protocol used by SSL services.
+# effectiveMode: restart
+# Datatype: String
+# Privilege: SECURITY
+ssl_protocol=TLS
+
+# Optional JSSE provider class used by SSL. If set, the provider is registered with highest priority.
+# Multiple provider classes can be separated by commas.
+# effectiveMode: restart
+# Datatype: String
+# Privilege: SECURITY
+ssl_provider_class=
+
+# Comma-separated SSL cipher suites.
+# Leave empty to use the provider default.
+# effectiveMode: restart
+# Datatype: String
+# Privilege: SECURITY
+ssl_cipher_suites=
+
 ####################
 ### Connection Configuration
 ####################

@@ -78,6 +78,8 @@ public class ThriftConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
+      String sslProtocol,
+      String sslProviderClass,
       String username,
       String password,
       boolean enableRPCCompression,
@@ -89,12 +91,14 @@ public class ThriftConnection {
     try {
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                sslProtocol,
+                sslProviderClass);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(

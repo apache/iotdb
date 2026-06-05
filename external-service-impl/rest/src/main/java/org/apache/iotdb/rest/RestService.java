@@ -21,6 +21,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
 import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
+import org.apache.iotdb.rpc.RpcSslUtils;
 
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -52,6 +53,8 @@ public class RestService implements IExternalService {
       String trustStorePath,
       String keyStorePwd,
       String trustStorePwd,
+      String sslProtocol,
+      String sslProviderClass,
       int idleTime,
       boolean clientAuth) {
     server = new Server();
@@ -61,6 +64,7 @@ public class RestService implements IExternalService {
     httpsConfig.addCustomizer(new SecureRequestCustomizer());
 
     SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+    configureSSL(sslContextFactory, sslProtocol, sslProviderClass);
     sslContextFactory.setKeyStorePath(keyStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
     if (clientAuth) {
@@ -125,6 +129,8 @@ public class RestService implements IExternalService {
           config.getTrustStorePath(),
           config.getKeyStorePwd(),
           config.getTrustStorePwd(),
+          config.getSslProtocol(),
+          config.getSslProviderClass(),
           config.getIdleTimeoutInSeconds(),
           config.isClientAuth());
     } else {
@@ -141,5 +147,23 @@ public class RestService implements IExternalService {
     } finally {
       server.destroy();
     }
+  }
+
+  private void configureSSL(
+      SslContextFactory.Server sslContextFactory, String sslProtocol, String sslProviderClass) {
+    String protocol = trimToEmpty(sslProtocol);
+    try {
+      RpcSslUtils.ensureProvider(protocol, sslProviderClass);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to initialize SSL provider for REST service", e);
+    }
+    if (!protocol.isEmpty()) {
+      sslContextFactory.setProtocol(protocol);
+      sslContextFactory.setIncludeProtocols(protocol);
+    }
+  }
+
+  private String trimToEmpty(String value) {
+    return value == null ? "" : value.trim();
   }
 }

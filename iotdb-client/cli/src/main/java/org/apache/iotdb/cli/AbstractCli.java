@@ -77,12 +77,18 @@ public abstract class AbstractCli {
 
   static final String TRUST_STORE_PWD_ARGS = "tpw";
 
+  static final String SSL_PROTOCOL_ARGS = "ssl_protocol";
+
+  static final String SSL_PROVIDER_CLASS_ARGS = "ssl_provider_class";
+
   private static final String EXECUTE_NAME = "execute";
 
   private static final String USE_SSL = "use_ssl";
   private static final String TRUST_STORE = "trust_store";
 
   private static final String TRUST_STORE_PWD = "trust_store_pwd";
+  private static final String SSL_PROTOCOL = "ssl_protocol";
+  private static final String SSL_PROVIDER_CLASS = "ssl_provider_class";
   private static final String NULL = "null";
 
   static final int CODE_OK = 0;
@@ -132,6 +138,10 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
+  // TODO: Make non-static
+  static String sslProtocol;
+  // TODO: Make non-static
+  static String sslProviderClass;
 
   static String execute;
   static boolean hasExecuteSQL = false;
@@ -156,6 +166,10 @@ public abstract class AbstractCli {
     keywordSet.add("-" + USE_SSL_ARGS);
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
+    keywordSet.add("-" + SSL_PROTOCOL_ARGS);
+    keywordSet.add("--" + SSL_PROTOCOL_ARGS);
+    keywordSet.add("-" + SSL_PROVIDER_CLASS_ARGS);
+    keywordSet.add("--" + SSL_PROVIDER_CLASS_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
@@ -213,6 +227,24 @@ public abstract class AbstractCli {
             .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
+
+    Option sslProtocol =
+        Option.builder(SSL_PROTOCOL_ARGS)
+            .longOpt(SSL_PROTOCOL)
+            .argName(SSL_PROTOCOL)
+            .hasArg()
+            .desc("SSL protocol. (optional)")
+            .build();
+    options.addOption(sslProtocol);
+
+    Option sslProviderClass =
+        Option.builder(SSL_PROVIDER_CLASS_ARGS)
+            .longOpt(SSL_PROVIDER_CLASS)
+            .argName(SSL_PROVIDER_CLASS)
+            .hasArg()
+            .desc("JSSE provider class for SSL. (optional)")
+            .build();
+    options.addOption(sslProviderClass);
 
     Option execute =
         Option.builder(EXECUTE_ARGS)

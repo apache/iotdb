@@ -82,6 +82,14 @@ public class Config {
 
   public static final String TRUST_STORE_PWD = "trust_store_pwd";
 
+  public static final String SSL_PROTOCOL = "ssl_protocol";
+
+  public static final String SSL_PROVIDER_CLASS = "ssl_provider_class";
+
+  static final String DEFAULT_SSL_PROTOCOL = "TLS";
+
+  static final String DEFAULT_SSL_PROVIDER_CLASS = "";
+
   public static final String SQL_DIALECT = "sql_dialect";
 
   public static final String DATABASE = "db";

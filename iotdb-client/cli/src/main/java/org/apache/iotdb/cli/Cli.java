@@ -111,6 +111,12 @@ public class Cli extends AbstractCli {
       info.setProperty("use_ssl", useSsl);
       info.setProperty("trust_store", trustStore);
       info.setProperty("trust_store_pwd", trustStorePwd);
+      if (sslProtocol != null) {
+        info.setProperty(Config.SSL_PROTOCOL, sslProtocol);
+      }
+      if (sslProviderClass != null) {
+        info.setProperty(Config.SSL_PROVIDER_CLASS, sslProviderClass);
+      }
     }
     info.setProperty("user", username);
     info.setProperty("password", password);
@@ -159,6 +165,8 @@ public class Cli extends AbstractCli {
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
+      sslProtocol = commandLine.getOptionValue(SSL_PROTOCOL_ARGS);
+      sslProviderClass = commandLine.getOptionValue(SSL_PROVIDER_CLASS_ARGS);
       if (Boolean.parseBoolean(useSsl)) {
         trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
         trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');

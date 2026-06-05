@@ -62,6 +62,8 @@ public abstract class AbstractSessionBuilder {
   public boolean useSSL = false;
   public String trustStore;
   public String trustStorePwd;
+  public String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
+  public String sslProviderClass = SessionConfig.DEFAULT_SSL_PROVIDER_CLASS;
 
   // max retry count, if set to 0, means that we won't do any retry
   // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,

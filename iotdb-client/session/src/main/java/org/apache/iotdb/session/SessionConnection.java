@@ -151,7 +151,13 @@ public class SessionConnection {
     this.sqlDialect = sqlDialect;
     this.database = database;
     try {
-      init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+      init(
+          endPoint,
+          session.useSSL,
+          session.trustStore,
+          session.trustStorePwd,
+          session.sslProtocol,
+          session.sslProviderClass);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -179,7 +185,13 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
+  private void init(
+      TEndPoint endPoint,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      String sslProtocol,
+      String sslProviderClass)
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
@@ -189,12 +201,14 @@ public class SessionConnection {
       }
       if (useSSL) {
         transport =
-            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransportWithSSLConfig(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
                 trustStore,
-                trustStorePwd);
+                trustStorePwd,
+                sslProtocol,
+                sslProviderClass);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -262,7 +276,13 @@ public class SessionConnection {
     for (TEndPoint tEndPoint : endPointList) {
       try {
         session.defaultEndPoint = tEndPoint;
-        init(tEndPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+        init(
+            tEndPoint,
+            session.useSSL,
+            session.trustStore,
+            session.trustStorePwd,
+            session.sslProtocol,
+            session.sslProviderClass);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error(SessionMessages.CLUSTER_NO_NODES);
@@ -1079,7 +1099,13 @@ public class SessionConnection {
           }
           tryHostNum++;
           try {
-            init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
+            init(
+                endPoint,
+                session.useSSL,
+                session.trustStore,
+                session.trustStorePwd,
+                session.sslProtocol,
+                session.sslProviderClass);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);

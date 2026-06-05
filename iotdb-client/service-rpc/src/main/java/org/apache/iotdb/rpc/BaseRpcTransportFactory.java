@@ -84,8 +84,24 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String ip, int port, int timeout, String trustStore, String trustStorePwd)
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
-    params.setTrustStore(trustStore, trustStorePwd);
+        RpcSslUtils.createTSSLTransportParameters();
+    RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
+    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
+    return inner.getTransport(transport);
+  }
+
+  public TTransport getTransportWithSSLConfig(
+      String ip,
+      int port,
+      int timeout,
+      String trustStore,
+      String trustStorePwd,
+      String sslProtocol,
+      String sslProviderClass)
+      throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params =
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass, null);
+    RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol, sslProviderClass);
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
   }
@@ -100,10 +116,33 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String keyStorePwd)
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        new TSSLTransportFactory.TSSLTransportParameters();
+        RpcSslUtils.createTSSLTransportParameters();
     if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
-      params.setTrustStore(trustStore, trustStorePwd);
-      params.setKeyStore(keyStore, keyStorePwd);
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
+      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd);
+    } else {
+      throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
+    }
+    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
+    return inner.getTransport(transport);
+  }
+
+  public TTransport getTransport(
+      String ip,
+      int port,
+      int timeout,
+      String trustStore,
+      String trustStorePwd,
+      String keyStore,
+      String keyStorePwd,
+      String sslProtocol,
+      String sslProviderClass)
+      throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params =
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass, null);
+    if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
+      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol, sslProviderClass);
+      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd, sslProtocol, sslProviderClass);
     } else {
       throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
     }
