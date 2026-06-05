@@ -627,6 +627,18 @@ public final class PipeMessages {
       "Receiver id = %s: File offset reset requested by receiver, response status = %s.";
   public static final String RECEIVER_FAILED_WRITE_FILE_PIECE =
       "Receiver id = %s: Failed to write file piece from req %s.";
+  public static final String RECEIVER_FAILED_WRITE_OBJECT_FILE_PIECE =
+      "Receiver id = %s: Failed to write object file piece, relative path = %s.";
+  public static final String RECEIVER_FAILED_CLOSE_OBJECT_FILE_WRITER =
+      "Receiver id = {}: Failed to close object file writer for {}.";
+  public static final String FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE =
+      "Failed to create parent directory for file: %s";
+  public static final String REQUEST_SENDER_RESET_OBJECT_FILE_OFFSET =
+      "Request sender to reset object file reader's offset from %s to %s.";
+  public static final String OBJECT_FILE_PIECE_EXCEEDS_TOTAL_LENGTH =
+      "Object file piece exceeds total length, offset=%s, piece=%s, total=%s.";
+  public static final String FAILED_TO_WRITE_OBJECT_FILE_PIECE =
+      "Failed to write object file piece, because %s";
   public static final String FAILED_TO_WRITE_FILE_PIECE =
       "Failed to write file piece, because %s";
   public static final String RECEIVER_WRITING_FILE_NOT_EXIST =

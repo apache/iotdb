@@ -30,6 +30,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -181,6 +182,7 @@ public class ActiveLoadTsFileLoader {
                 "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
                 loadEntry.get().getFile(),
                 loadEntry.get().isGeneratedByPipe());
+            cleanupObjectFileDir(loadEntry.get());
           } else {
             handleLoadFailure(loadEntry.get(), result);
           }
@@ -276,6 +278,7 @@ public class ActiveLoadTsFileLoader {
           entry.isGeneratedByPipe(),
           status);
       removeFileAndResourceAndModsToFailDir(entry.getFile());
+      removeObjectFileDirToFailDir(entry);
     }
   }
 
@@ -285,6 +288,7 @@ public class ActiveLoadTsFileLoader {
         entry.getFile(),
         entry.isGeneratedByPipe());
     removeFileAndResourceAndModsToFailDir(entry.getFile());
+    removeObjectFileDirToFailDir(entry);
   }
 
   private void handleOtherException(
@@ -296,7 +300,61 @@ public class ActiveLoadTsFileLoader {
           entry.isGeneratedByPipe(),
           e);
       removeFileAndResourceAndModsToFailDir(entry.getFile());
+      removeObjectFileDirToFailDir(entry);
     }
+  }
+
+  private File getObjectFileDir(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final File tsFile = new File(entry.getFile());
+    final File parentDir = tsFile.getParentFile();
+    if (parentDir == null) {
+      return null;
+    }
+    return new File(parentDir, PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName()));
+  }
+
+  private void cleanupObjectFileDir(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final File objectFileDir = getObjectFileDir(entry);
+    if (objectFileDir == null || !objectFileDir.exists() || !objectFileDir.isDirectory()) {
+      return;
+    }
+
+    try {
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(objectFileDir);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages.FAILED_TO_CLEANUP_ACTIVE_LOAD_OBJECT_FILE_DIR,
+          objectFileDir.getAbsolutePath(),
+          e);
+    }
+  }
+
+  private void removeObjectFileDirToFailDir(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
+    final File objectFileDir = getObjectFileDir(entry);
+    if (objectFileDir == null || !objectFileDir.exists() || !objectFileDir.isDirectory()) {
+      return;
+    }
+
+    final File targetObjectFileDir =
+        getNonConflictingTargetObjectFileDir(new File(failDir.get()), objectFileDir.getName());
+    try {
+      org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(
+          objectFileDir, targetObjectFileDir);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          StorageEngineMessages.FAILED_TO_MOVE_ACTIVE_LOAD_OBJECT_FILE_DIR_TO_FAIL_DIR,
+          objectFileDir.getAbsolutePath(),
+          e);
+    }
+  }
+
+  private File getNonConflictingTargetObjectFileDir(final File targetDir, final String dirName) {
+    File targetObjectFileDir = new File(targetDir, dirName);
+    int suffix = 0;
+    while (targetObjectFileDir.exists()) {
+      targetObjectFileDir = new File(targetDir, dirName + "_" + (++suffix));
+    }
+    return targetObjectFileDir;
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {

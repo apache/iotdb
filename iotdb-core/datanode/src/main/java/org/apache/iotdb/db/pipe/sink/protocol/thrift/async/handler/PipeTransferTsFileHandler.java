@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFi
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.pipe.sink.util.PipeTsFileObjectBatchTransfer;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -52,13 +54,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
@@ -75,6 +80,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private final File tsFile;
   private final File modFile;
+  private final File objectDir;
+  private final Stream<Pair<Path, File>> objectFileStream;
+  private Iterator<PipeTsFileObjectBatchTransfer.ObjectBatch> objectBatchIterator;
+  private final String tsFileNameWithoutSuffix;
+  private boolean transferringModFile;
+  private boolean transferringTsFile;
   private File currentFile;
 
   private final boolean transferMod;
@@ -100,6 +111,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
+      final File objectDir,
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
@@ -113,9 +125,28 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
     this.tsFile = tsFile;
     this.modFile = modFile;
+    this.objectDir = objectDir;
+    this.tsFileNameWithoutSuffix = PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName());
+    try {
+      this.objectFileStream =
+          PipeObjectPathUtil.getObjectFileStream(objectDir == null ? null : objectDir.toPath());
+      if (objectDir != null && objectDir.isDirectory()) {
+        this.objectBatchIterator =
+            PipeTsFileObjectBatchTransfer.batchIterator(
+                tsFileNameWithoutSuffix,
+                objectFileStream,
+                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                PipeTsFileObjectBatchTransfer.defaultMaxBatchSerializedSumBytes());
+      } else {
+        this.objectBatchIterator = null;
+      }
+    } catch (final IOException e) {
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_CREATE_OBJECT_FILE_STREAM, e);
+    }
     this.transferMod = transferMod;
     this.dataBaseName = dataBaseName;
-    currentFile = transferMod ? modFile : tsFile;
+    this.transferringModFile = false;
+    this.transferringTsFile = false;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
     // TsFile events are producing and consuming at the same time, and the memory of a TsFile
@@ -143,20 +174,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
     // Delay creation of resources to avoid OOM or too many open files
-    if (readBuffer == null) {
-      memoryBlock =
-          PipeDataNodeResourceManager.memory()
-              .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
-                      ? readFileBufferSize
-                      : 0);
-      readBuffer = new byte[readFileBufferSize];
-    }
-
-    if (reader == null) {
-      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
-    }
-
     this.clientManager = clientManager;
     this.client = client;
 
@@ -176,24 +193,57 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (sink.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
+    // Reserve read buffer up-front (same as legacy): object batch path does not use it, but TsFile
+    // slicing memory is held for the whole handler lifetime once transfer starts.
+    if (readBuffer == null) {
+      memoryBlock =
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTsFileWithRetry(
+                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
+                      ? readFileBufferSize
+                      : 0);
+      readBuffer = new byte[readFileBufferSize];
     }
+
+    if (objectBatchIterator != null) {
+      if (objectBatchIterator.hasNext()) {
+        final PipeTsFileObjectBatchTransfer.ObjectBatch batch = objectBatchIterator.next();
+        final TPipeTransferReq uncompressedReq = batch.toThrift(tsFileNameWithoutSuffix);
+        final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
+        pipeName2WeightMap.forEach(
+            (pipePair, weight) ->
+                sink.rateLimitIfNeeded(
+                    pipePair.getLeft(),
+                    pipePair.getRight(),
+                    client.getEndPoint(),
+                    (long) (req.getBody().length * weight)));
+        if (!tryTransfer(client, req)) {
+          return;
+        }
+        return;
+      }
+      objectBatchIterator = null;
+    }
+
+    if (reader == null) {
+      if (currentFile == null) {
+        currentFile = transferMod ? modFile : tsFile;
+      }
+      reader = new RandomAccessFile(currentFile, "r");
+    }
+
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
-      if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
+      if (advanceToNextFile()) {
         try {
           reader.close();
         } catch (final IOException e) {
           LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_WHEN_SUCCESSFULLY, e);
         }
-        reader = new RandomAccessFile(tsFile, "r");
+        reader = new RandomAccessFile(currentFile, "r");
         transfer(clientManager, client);
-      } else if (currentFile == tsFile) {
+      } else {
         isSealSignalSent.set(true);
 
         final TPipeTransferReq uncompressedReq =
@@ -221,6 +271,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         }
       }
       return;
+    }
+    PipeResourceMetrics.getInstance().recordDiskIO(readLength);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(readLength);
     }
 
     final byte[] payload =
@@ -288,11 +342,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
         // Delete current file when using tsFile as batch
         if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.delete(currentFile);
-                return null;
-              });
+          cleanupBatchFiles();
         }
       } catch (final IOException e) {
         LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE_1, e);
@@ -335,6 +385,16 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final long code = resp.getStatus().getCode();
 
       if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+        if (reader == null) {
+          sink.statusHandler()
+              .handle(
+                  resp.getStatus(),
+                  String.format(
+                      DataNodePipeMessages.OBJECT_BATCH_TRANSFER_OFFSET_RESET_NOT_RESUMABLE,
+                      tsFile.getName()),
+                  tsFile.getName());
+          return false;
+        }
         position = resp.getEndWritingOffset();
         reader.seek(position);
         LOGGER.info(DataNodePipeMessages.REDIRECT_FILE_POSITION_TO, position);
@@ -402,11 +462,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
       // Delete current file when using tsFile as batch
       if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        RetryUtils.retryOnException(
-            () -> {
-              FileUtils.delete(currentFile);
-              return null;
-            });
+        cleanupBatchFiles();
       }
     } catch (final IOException e) {
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_FILE_READER_OR_DELETE, e);
@@ -470,9 +526,38 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
   }
 
+  private boolean advanceToNextFile() {
+    if (transferMod && !transferringModFile && modFile != null) {
+      transferringModFile = true;
+      currentFile = modFile;
+      position = 0;
+      return true;
+    }
+    if (!transferringTsFile) {
+      transferringTsFile = true;
+      currentFile = tsFile;
+      position = 0;
+      return true;
+    }
+    return false;
+  }
+
+  private void cleanupBatchFiles() throws IOException {
+    RetryUtils.retryOnException(
+        () -> {
+          FileUtils.delete(tsFile);
+          if (objectDir != null && objectDir.exists()) {
+            FileUtils.deleteDirectory(objectDir);
+          }
+          return null;
+        });
+  }
+
   @Override
   public void close() {
     super.close();
+
+    objectFileStream.close();
 
     if (memoryBlock != null) {
       memoryBlock.close();

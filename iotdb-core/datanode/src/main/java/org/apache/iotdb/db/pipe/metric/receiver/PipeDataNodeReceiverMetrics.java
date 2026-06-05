@@ -45,6 +45,7 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
   private Timer transferTsFilePieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFileSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferTsFileObjectBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFileSealWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -107,6 +108,10 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
 
   public void recordTransferTsFilePieceWithModTimer(final long costTimeInNanos) {
     transferTsFilePieceWithModTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferTsFileObjectBatchTimer(final long costTimeInNanos) {
+    transferTsFileObjectBatchTimer.updateNanos(costTimeInNanos);
   }
 
   public void recordTransferTsFileSealWithModTimer(final long costTimeInNanos) {
@@ -247,6 +252,14 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferTsFilePieceWithMod");
+    transferTsFileObjectBatchTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferTsFileObjectBatch");
     transferTsFileSealWithModTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -324,6 +337,7 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     transferTsFilePieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFileSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferTsFileObjectBatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFileSealWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -423,6 +437,13 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
         RECEIVER,
         Tag.TYPE.toString(),
         "transferTsFilePieceWithMod");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferTsFileObjectBatch");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_DATANODE_RECEIVER.toString(),

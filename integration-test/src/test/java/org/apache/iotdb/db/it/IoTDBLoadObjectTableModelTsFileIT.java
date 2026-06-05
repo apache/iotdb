@@ -26,10 +26,12 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -384,6 +387,42 @@ public class IoTDBLoadObjectTableModelTsFileIT {
       session.executeNonQueryStatement(String.format("LOAD '%s'", tsFile.getAbsolutePath()));
 
       assertDeviceDataContent(session, "device_01", expectedDevice1Times);
+    }
+  }
+
+  @Test
+  public void testAsyncLoadObjectTsFileWithDefaultObjectDirectory() throws Exception {
+    final File tsFile = new File(tmpDir, "table-model-async-load.tsfile");
+    final List<Long> expectedTimes;
+
+    try (StandardObjectTableModelTsFileGenerator generator =
+        new StandardObjectTableModelTsFileGenerator(tsFile)) {
+      generator.writeDeviceData(
+          TABLE_NAME, "device_01", BASE_TIME, BASE_TIME + 10 * HOUR_MS, HOUR_MS);
+      expectedTimes = generateExpectedTimes(BASE_TIME, BASE_TIME + 10 * HOUR_MS, HOUR_MS);
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      initDatabase(session);
+
+      session.executeNonQueryStatement(
+          String.format("LOAD '%s' WITH ('async'='true')", tsFile.getAbsolutePath()));
+
+      Awaitility.await()
+          .atMost(90, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                try {
+                  assertDeviceDataContent(session, "device_01", expectedTimes);
+                  return true;
+                } catch (final StatementExecutionException e) {
+                  if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
+                    return false;
+                  }
+                  throw e;
+                }
+              });
     }
   }
 

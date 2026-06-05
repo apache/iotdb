@@ -1345,5 +1345,31 @@ public final class DataNodePipeMessages {
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
       "传输分片时 TPipeTransferResp 为空。";
 
+  // ---------------------------------------------------------------------------
+  // pipe – IoTDBDataRegionAirGapSink / IoTDBDataRegionSyncSink
+  // ---------------------------------------------------------------------------
+  public static final String TRANSFER_OBJECT_BATCH_ERROR_SOCKET =
+      "传输对象批次 (tsFile=%s) 出错。Socket %s。";
+  public static final String TRANSFER_OBJECT_BATCH_NETWORK_ERROR =
+      "传输对象批次 (tsFile=%s) 时发生网络错误，原因：%s。";
+  public static final String TRANSFER_OBJECT_BATCH_NEEDS_OFFSET_RESET =
+      "传输对象批次 (tsFile=%s) 需要重置偏移量；事件应重试。";
+  public static final String TRANSFER_OBJECT_BATCH_ERROR_STATUS =
+      "传输对象批次 (tsFile=%s) 出错，结果状态 %s。";
+  public static final String EMPTY_TRANSFER_TS_FILE_OBJECT_BATCH =
+      "TRANSFER_TS_FILE_OBJECT_BATCH 为空";
+  public static final String FAILED_TO_CREATE_OBJECT_FILE_STREAM = "创建对象文件流失败";
+  public static final String OBJECT_BATCH_TRANSFER_OFFSET_RESET_NOT_RESUMABLE =
+      "对象批次传输偏移量重置不可恢复 (tsFile=%s)。";
+  public static final String FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_SYNCHRONOUSLY =
+      "同步传输 tablet insertion event %s 失败，原因：%s。";
+  public static final String FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_SYNCHRONOUSLY =
+      "同步传输 tsfile insertion event %s 失败，原因：%s。";
+  public static final String TRANSFER_TABLET_EVENT_ERROR_SOCKET =
+      "传输 tablet event %s 出错。Socket: %s。";
+  public static final String WRITE_BACK_TABLET_EVENT_ERROR_STATUS =
+      "Write back tablet event %s 出错，结果状态 %s";
+  public static final String CANNOT_CREATE_PARENT_DIRECTORIES_FOR = "无法为 %s 创建父目录。";
+
   private DataNodePipeMessages() {}
 }

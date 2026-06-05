@@ -609,6 +609,17 @@ public final class PipeMessages {
       "接收器 id = %s：接收器请求文件偏移量重置，响应状态 = %s。";
   public static final String RECEIVER_FAILED_WRITE_FILE_PIECE =
       "接收器 id = %s：写入文件片段失败，请求 %s。";
+  public static final String RECEIVER_FAILED_WRITE_OBJECT_FILE_PIECE =
+      "接收器 id = %s：写入对象文件片段失败，相对路径 = %s。";
+  public static final String RECEIVER_FAILED_CLOSE_OBJECT_FILE_WRITER =
+      "接收器 id = {}：关闭对象文件 writer {} 失败。";
+  public static final String FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE =
+      "为文件创建父目录失败: %s";
+  public static final String REQUEST_SENDER_RESET_OBJECT_FILE_OFFSET =
+      "请求发送方将对象文件 reader 的偏移量从 %s 重置为 %s。";
+  public static final String OBJECT_FILE_PIECE_EXCEEDS_TOTAL_LENGTH =
+      "对象文件片段超出总长度，offset=%s, piece=%s, total=%s。";
+  public static final String FAILED_TO_WRITE_OBJECT_FILE_PIECE = "写入对象文件片段失败，原因：%s";
   public static final String FAILED_TO_WRITE_FILE_PIECE =
       "写入文件片段失败，原因：%s";
   public static final String RECEIVER_WRITING_FILE_NOT_EXIST =

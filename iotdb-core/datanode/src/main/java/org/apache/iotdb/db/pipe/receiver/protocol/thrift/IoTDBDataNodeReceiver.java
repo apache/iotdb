@@ -51,6 +51,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
@@ -76,6 +77,8 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileObjectBatchReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileObjectBatchReq.ObjectFilePieceChunk;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
@@ -358,6 +361,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTsFilePieceWithModTimer(System.nanoTime() - startTime);
               }
             }
+          case TRANSFER_TS_FILE_OBJECT_BATCH:
+            {
+              try {
+                return handleTransferTsFileObjectBatch(
+                    PipeTransferTsFileObjectBatchReq.fromTPipeTransferReq(req),
+                    req instanceof AirGapPseudoTPipeTransferRequest);
+              } finally {
+                PipeDataNodeReceiverMetrics.getInstance()
+                    .recordTransferTsFileObjectBatchTimer(System.nanoTime() - startTime);
+              }
+            }
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
             {
               try {
@@ -481,6 +495,44 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatementAndClassifyExceptions(statement));
+  }
+
+  private TPipeTransferResp handleTransferTsFileObjectBatch(
+      final PipeTransferTsFileObjectBatchReq req, final boolean isRequestThroughAirGap)
+      throws IOException {
+    final List<ObjectFilePieceChunk> chunks = req.getChunks();
+    if (chunks == null || chunks.isEmpty()) {
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              DataNodePipeMessages.EMPTY_TRANSFER_TS_FILE_OBJECT_BATCH));
+    }
+    TPipeTransferResp last = null;
+    for (final ObjectFilePieceChunk chunk : chunks) {
+      final String relativePath =
+          PipeObjectPathUtil.combineTsFileBaseWithPortableRelative(
+              req.getTsFileNameWithoutSuffix(), chunk.getRelativePathSegments());
+      final byte[] piece =
+          chunk.getObjectPieceLength() == chunk.getObjectPiece().length
+              ? chunk.getObjectPiece()
+              : Arrays.copyOf(chunk.getObjectPiece(), chunk.getObjectPieceLength());
+      last =
+          handleTransferObjectFilePiece(
+              relativePath,
+              chunk.getStartWritingOffset(),
+              chunk.getTotalLength(),
+              piece,
+              isRequestThroughAirGap);
+      final int code = last.getStatus().getCode();
+      if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+        return last;
+      }
+      if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return last;
+      }
+    }
+    return Objects.requireNonNull(last);
   }
 
   private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {

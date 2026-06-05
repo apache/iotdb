@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -138,10 +137,7 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public synchronized void close() {
     super.close();
-    if (treeModelObjectTempDir != null) {
-      FileUtils.deleteFileOrDirectory(treeModelObjectTempDir, true);
-      treeModelObjectTempDir = null;
-    }
+    treeModelObjectTempDir = null;
     tabletList.clear();
     isTabletAlignedList.clear();
   }

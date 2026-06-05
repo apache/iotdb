@@ -1724,6 +1724,70 @@ public class DataRegion implements IDataRegionForQuery {
         Triple.of(version.getLeft(), version.getRight(), tableSchema));
   }
 
+  private TableSchema getAnyTableSchemaFromCache(final String database, final String tableName) {
+    final Triple<Long, Long, TableSchema> cached =
+        TABLE_SCHEMA_CACHE.getIfPresent(new TableSchemaCacheKey(database, tableName));
+    return cached == null ? null : cached.getRight();
+  }
+
+  private TableSchema resolveTableDefinitionForTsFileAndObjectWrite(
+      final String tableName, final boolean generatedByRemoteConsensusLeader) {
+    final String database = getDatabaseName();
+
+    final TsTable cachedTable =
+        DataNodeTableCache.getInstance().getTable(database, tableName, false);
+    if (cachedTable != null) {
+      return resolveSchemaFromCache(database, tableName, cachedTable);
+    }
+
+    if (generatedByRemoteConsensusLeader) {
+      final TableSchema cachedSchema = getAnyTableSchemaFromCache(database, tableName);
+      if (cachedSchema != null) {
+        return cachedSchema;
+      }
+      final byte[] tableInfoBytes = fetchTableInfoBytesFromConfigNode(database, tableName);
+      return TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
+          ByteBuffer.wrap(tableInfoBytes));
+    }
+    logger.error(
+        StorageEngineMessages.TSTABLE_NULL_CANNOT_RETRIEVE_FROM_CACHE, database, tableName);
+    throw new TableLostRuntimeException(database, tableName);
+  }
+
+  private TableSchema resolveTableSchemaForTsFileWrite(
+      final String tableName, final boolean generatedByRemoteConsensusLeader) {
+    return resolveTableDefinitionForTsFileAndObjectWrite(
+        tableName, generatedByRemoteConsensusLeader);
+  }
+
+  private TableSchema resolveSchemaFromCache(
+      final String database, final String tableName, final TsTable tsTable) {
+    final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
+    final TableSchema cachedSchema = getTableSchemaFromCache(database, tableName, currentVersion);
+    if (cachedSchema != null) {
+      return cachedSchema;
+    }
+    final TableSchema schema = TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
+    cacheTableSchema(database, tableName, currentVersion, schema);
+    return schema;
+  }
+
+  private byte[] fetchTableInfoBytesFromConfigNode(final String database, final String tableName) {
+    try (ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TDescTableResp resp = client.describeTable(database, tableName, false);
+      if (resp == null || resp.getTableInfo() == null) {
+        CommonMetadataUtils.throwTableNotExistsException(database, tableName);
+      }
+      return resp.getTableInfo();
+    } catch (TException | ClientManagerException e) {
+      logger.error(
+          StorageEngineMessages.FAILED_TO_DESCRIBE_TABLE_FROM_CONFIG_NODE, database, tableName, e);
+      CommonMetadataUtils.throwTableNotExistsException(database, tableName);
+      return null;
+    }
+  }
+
   private static final class TableSchemaCacheKey {
     private final String database;
     private final String tableName;
@@ -1768,57 +1832,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (tableName != null) {
       tsFileProcessor.registerToTsFile(
           tableName,
-          t -> {
-            final String database = getDatabaseName();
-
-            TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
-            if (tsTable == null) {
-              // There is a high probability that the leader node has been executed and is currently
-              // located in the follower node.
-              if (node.isGeneratedByRemoteConsensusLeader()) {
-                // If current node is follower, after request config node and get the answer that
-                // table is exist or not, then tell leader node when table is not exist.
-                TDescTableResp resp;
-                try (ConfigNodeClient client =
-                    ConfigNodeClientManager.getInstance()
-                        .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-                  resp = client.describeTable(getDatabaseName(), tableName, false);
-                  if (resp == null || resp.tableInfo == null) {
-                    CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
-                  }
-                  // For table schema from ConfigNode, we cannot get version info,
-                  // so we don't cache it to avoid version mismatch
-                  final TableSchema schema =
-                      TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
-                          ByteBuffer.wrap(resp.getTableInfo()));
-                  return schema;
-                } catch (TException | ClientManagerException e) {
-                  logger.error(
-                      "Remote request config node failed that judgment if table is exist, occur exception. {}",
-                      e.getMessage());
-                  CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
-                  return null; // unreachable, throwTableNotExistsException always throws
-                }
-              } else {
-                // Here may be invoked by leader node, the table is very unexpected not exist in the
-                // DataNodeTableCache
-                logger.error(
-                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
-                throw new TableLostRuntimeException(getDatabaseName(), tableName);
-              }
-            }
-
-            final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
-            final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
-            if (cachedSchema != null) {
-              return cachedSchema;
-            }
-
-            final TableSchema schema =
-                TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
-            cacheTableSchema(database, t, currentVersion, schema);
-            return schema;
-          });
+          t -> resolveTableSchemaForTsFileWrite(t, node.isGeneratedByRemoteConsensusLeader()));
     }
   }
 
@@ -4152,6 +4166,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void writeObject(ObjectNode objectNode) throws Exception {
     writeLock("writeObject");
+    final boolean isGeneratedByPipe = objectNode.isGeneratedByPipe();
     try {
       String relativeTmpPathString =
           objectNode.getFilePathString() + ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX;
@@ -4208,7 +4223,15 @@ public class DataRegion implements IDataRegionForQuery {
           Files.move(
               objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
-        RelationalInsertRowNode valueNode = objectNode.genValueInsertRowNode();
+        final TableSchema tableSchemaForObjectRow =
+            resolveTableDefinitionForTsFileAndObjectWrite(
+                objectNode.getFilePath().getDeviceID().getTableName(),
+                objectNode.isGeneratedByRemoteConsensusLeader());
+        RelationalInsertRowNode valueNode =
+            objectNode.genValueInsertRowNode(tableSchemaForObjectRow);
+        if (isGeneratedByPipe) {
+          valueNode.markAsGeneratedByPipe();
+        }
         insert(valueNode);
         long fileLength = objectFile.length();
         FileMetrics.getInstance().increaseObjectFileNum(databaseName, dataRegionIdString, 1);

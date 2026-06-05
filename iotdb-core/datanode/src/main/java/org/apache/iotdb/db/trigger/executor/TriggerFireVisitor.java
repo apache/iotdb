@@ -38,6 +38,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -265,6 +266,12 @@ public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, Trigge
   public TriggerFireResult visitPipeEnrichedInsertNode(
       PipeEnrichedInsertNode node, TriggerEvent context) {
     return node.getInsertNode().accept(this, context);
+  }
+
+  @Override
+  public TriggerFireResult visitPipeEnrichedObjectNode(
+      PipeEnrichedObjectNode node, TriggerEvent context) {
+    return node.getObjectNode().accept(this, context);
   }
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(

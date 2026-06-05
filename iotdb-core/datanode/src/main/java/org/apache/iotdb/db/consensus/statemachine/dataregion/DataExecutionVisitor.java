@@ -34,6 +34,7 @@ import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -240,6 +241,12 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, DataRegion context) {
     node.getInsertNode().markAsGeneratedByPipe();
     return node.getInsertNode().accept(this, context);
+  }
+
+  @Override
+  public TSStatus visitPipeEnrichedObjectNode(PipeEnrichedObjectNode node, DataRegion context) {
+    node.getObjectNode().markAsGeneratedByPipe();
+    return node.getObjectNode().accept(this, context);
   }
 
   @Override

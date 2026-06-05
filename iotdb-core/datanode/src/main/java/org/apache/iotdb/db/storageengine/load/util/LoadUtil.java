@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +130,7 @@ public class LoadUtil {
         Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
+    loadObjectFileDirAsyncToTargetDir(file, targetDir, isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
         targetDir, new File(getTsFileResourcePath(file.getAbsolutePath())), isDeleteAfterLoad);
     loadTsFileAsyncToTargetDir(
@@ -166,9 +169,58 @@ public class LoadUtil {
     final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
 
     for (final String file : files) {
-      loadTsFileAsyncToTargetDir(targetDir, new File(file), isDeleteAfterLoad);
+      final File tsFile = new File(file);
+      loadObjectFileDirAsyncToTargetDir(tsFile, targetDir, isDeleteAfterLoad);
+      loadTsFileAsyncToTargetDir(targetDir, tsFile, isDeleteAfterLoad);
     }
     return true;
+  }
+
+  private static void loadObjectFileDirAsyncToTargetDir(
+      final File tsFile, final File targetDir, final boolean isDeleteAfterLoad) throws IOException {
+    if (tsFile == null || !tsFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return;
+    }
+
+    final File objectFileSearchRoot =
+        new File(
+            tsFile.getParentFile(),
+            PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFile.getName()));
+    if (!objectFileSearchRoot.exists() || !objectFileSearchRoot.isDirectory()) {
+      return;
+    }
+    loadDirAsyncToTargetDir(
+        objectFileSearchRoot,
+        new File(targetDir, objectFileSearchRoot.getName()),
+        isDeleteAfterLoad);
+  }
+
+  private static void loadDirAsyncToTargetDir(
+      final File sourceDir, final File targetDir, final boolean isDeleteAfterLoad)
+      throws IOException {
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      if (!targetDir.exists()) {
+        throw new IOException(
+            StorageEngineMessages.FAILED_TO_CREATE_TARGET_DIR + targetDir.getAbsolutePath());
+      }
+    }
+
+    final File[] files = sourceDir.listFiles();
+    if (files != null) {
+      for (final File file : files) {
+        if (file.isDirectory()) {
+          loadDirAsyncToTargetDir(file, new File(targetDir, file.getName()), isDeleteAfterLoad);
+        } else {
+          loadTsFileAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
+        }
+      }
+    }
+
+    if (isDeleteAfterLoad && !sourceDir.delete() && sourceDir.exists()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.FAILED_TO_DELETE_SOURCE_OBJECT_FILE_DIRECTORY, sourceDir));
+    }
   }
 
   private static void loadTsFileAsyncToTargetDir(

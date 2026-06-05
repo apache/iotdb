@@ -69,6 +69,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
   private final boolean useLeaderCache;
+  private final boolean usingTsFileBatch;
 
   private final int requestMaxDelayInMs;
   private final long requestMaxBatchSizeInBytes;
@@ -90,7 +91,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
       new ConcurrentHashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    final boolean usingTsFileBatch =
+    usingTsFileBatch =
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY), CONNECTOR_FORMAT_HYBRID_VALUE)
@@ -196,6 +197,21 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
     return nonEmptyAndShouldEmitBatches;
   }
 
+  /** Get all batches that have at least 1 event. */
+  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>> getAllNonEmptyBatches() {
+    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyBatches = new ArrayList<>();
+    if (!defaultBatch.isEmpty()) {
+      nonEmptyBatches.add(new Pair<>(null, defaultBatch));
+    }
+    endPointToBatch.forEach(
+        (endPoint, batch) -> {
+          if (!batch.isEmpty()) {
+            nonEmptyBatches.add(new Pair<>(endPoint, batch));
+          }
+        });
+    return nonEmptyBatches;
+  }
+
   public boolean isEmpty() {
     return defaultBatch.isEmpty()
         && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
@@ -224,6 +240,10 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetr
           e);
       return 0;
     }
+  }
+
+  public boolean isTsFileBatchMode() {
+    return usingTsFileBatch;
   }
 
   @Override

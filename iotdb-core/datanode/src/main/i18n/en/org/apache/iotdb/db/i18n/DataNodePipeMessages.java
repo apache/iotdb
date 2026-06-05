@@ -1395,5 +1395,33 @@ public final class DataNodePipeMessages {
   public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
       "TPipeTransferResp is null when transferring slice.";
 
+  // ---------------------------------------------------------------------------
+  // pipe – IoTDBDataRegionAirGapSink / IoTDBDataRegionSyncSink
+  // ---------------------------------------------------------------------------
+  public static final String TRANSFER_OBJECT_BATCH_ERROR_SOCKET =
+      "Transfer object batch (tsFile=%s) error. Socket %s.";
+  public static final String TRANSFER_OBJECT_BATCH_NETWORK_ERROR =
+      "Network error when transfer object batch (tsFile=%s), because %s.";
+  public static final String TRANSFER_OBJECT_BATCH_NEEDS_OFFSET_RESET =
+      "Transfer object batch (tsFile=%s) needs offset reset; event should retry.";
+  public static final String TRANSFER_OBJECT_BATCH_ERROR_STATUS =
+      "Transfer object batch (tsFile=%s) error, result status %s.";
+  public static final String EMPTY_TRANSFER_TS_FILE_OBJECT_BATCH =
+      "empty TRANSFER_TS_FILE_OBJECT_BATCH";
+  public static final String FAILED_TO_CREATE_OBJECT_FILE_STREAM =
+      "Failed to create object file stream";
+  public static final String OBJECT_BATCH_TRANSFER_OFFSET_RESET_NOT_RESUMABLE =
+      "Object batch transfer offset reset is not resumable for tsFile %s.";
+  public static final String FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_SYNCHRONOUSLY =
+      "Failed to transfer tablet insertion event %s synchronously, because %s.";
+  public static final String FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_SYNCHRONOUSLY =
+      "Failed to transfer tsfile insertion event %s synchronously, because %s.";
+  public static final String TRANSFER_TABLET_EVENT_ERROR_SOCKET =
+      "Transfer tablet event %s error. Socket: %s.";
+  public static final String WRITE_BACK_TABLET_EVENT_ERROR_STATUS =
+      "Write back tablet event %s error, result status %s";
+  public static final String CANNOT_CREATE_PARENT_DIRECTORIES_FOR =
+      "Cannot create parent directories for %s.";
+
   private DataNodePipeMessages() {}
 }

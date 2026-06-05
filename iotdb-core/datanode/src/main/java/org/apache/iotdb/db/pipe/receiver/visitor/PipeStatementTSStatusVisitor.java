@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -52,6 +53,9 @@ import java.util.stream.Collectors;
  * the processes that generate the following {@link TSStatus}es in the class.
  */
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
+
+  private static final String OBJECT_FILE_LENGTH_OFFSET_MISMATCH_MESSAGE =
+      DataNodeMiscMessages.OBJECT_FILE_LENGTH_OFFSET_MISMATCH_PREFIX;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -136,6 +140,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
                 TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
             .setMessage(status.getMessage());
       }
+    } else if (status.getCode() == TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode()
+        && status.isSetMessage()
+        && status.getMessage().contains(OBJECT_FILE_LENGTH_OFFSET_MISMATCH_MESSAGE)) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(status.getMessage());
     }
     return visitStatement(insertBaseStatement, status);
   }

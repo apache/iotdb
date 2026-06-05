@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
@@ -659,6 +660,10 @@ public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   default R visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  default R visitPipeEnrichedObjectNode(PipeEnrichedObjectNode node, C context) {
     return visitPlan(node, context);
   }
 

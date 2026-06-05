@@ -515,4 +515,27 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败, 因为 DataRegion 没找到。";
 
   public static final String DATA_REGION_IS_NULL = "Data region 是空";
+
+  public static final String FAILED_TO_CLEANUP_ACTIVE_LOAD_OBJECT_FILE_DIR =
+      "清理 active-load 对象文件目录失败: {}";
+  public static final String FAILED_TO_MOVE_ACTIVE_LOAD_OBJECT_FILE_DIR_TO_FAIL_DIR =
+      "将 active-load 对象文件目录 {} 移动到失败目录失败。";
+  public static final String TSTABLE_NULL_CANNOT_RETRIEVE_FROM_CACHE =
+      "TsTable 为空且无法从缓存中获取。"
+          + "Leader 节点遇到需要处理的特殊情况。Database: {}, Table: {}";
+  public static final String FAILED_TO_DESCRIBE_TABLE_FROM_CONFIG_NODE =
+      "从 ConfigNode 获取表描述失败。Database: {}, Table: {}";
+  public static final String FAILED_TO_READ_OBJECT_CONTENT_VIA_OBJECT_TYPE_UTILS =
+      "通过 ObjectTypeUtils 读取对象内容失败。";
+  public static final String FAILED_TO_DELETE_SOURCE_OBJECT_FILE_DIRECTORY =
+      "删除源对象文件目录 %s 失败";
+  public static final String INVALID_OBJECT_VALUE_CONTENT_BINARY_EOF_AND_OFFSET =
+      "无效的 OBJECT 值内容二进制，期望 EOF 标志和 offset。";
+  public static final String INVALID_OBJECT_VALUE_CONTENT_BINARY_NEGATIVE_OFFSET =
+      "无效的 OBJECT 值内容二进制，负 offset: %s";
+  public static final String UNSUPPORTED_TABLET_COLUMN_ARRAY_TYPE =
+      "不支持的 tablet 列数组类型: %s, type: %s";
+  public static final String INVALID_OBJECT_CONTENT_LENGTH =
+      "无效的对象内容长度，期望 %d 字节但得到 %d 字节，"
+          + "relativePath=%s, offset=%d, declaredFileLength=%d。";
 }

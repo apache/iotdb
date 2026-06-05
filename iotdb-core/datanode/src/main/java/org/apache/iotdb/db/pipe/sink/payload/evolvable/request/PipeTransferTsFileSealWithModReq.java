@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
 
@@ -86,6 +87,21 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
             .convertToTPipeTransferReq(
                 Collections.singletonList(tsFileName),
                 Collections.singletonList(tsFileLength),
+                Collections.singletonMap(
+                    generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
+  }
+
+  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+      final List<String> fileNames,
+      final List<Long> fileLengths,
+      final String tsFileName,
+      final String dataBaseName)
+      throws IOException {
+    return (PipeTransferTsFileSealWithModReq)
+        new PipeTransferTsFileSealWithModReq()
+            .convertToTPipeTransferReq(
+                fileNames,
+                fileLengths,
                 Collections.singletonMap(
                     generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }

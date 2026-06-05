@@ -389,7 +389,7 @@ public class IoTDBObjectInsertIT {
         Assert.assertEquals(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getStatusCode());
         Assert.assertEquals(
             String.format(
-                "741: The file length %d is not equal to the offset %d",
+                "741: OBJECT_FILE_LENGTH_OFFSET_MISMATCH: The file length %d is not equal to the offset %d",
                 ((objectSegments.size() - 1) * 512), 512L),
             e.getMessage());
       } finally {
@@ -531,7 +531,7 @@ public class IoTDBObjectInsertIT {
         Assert.assertEquals(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getStatusCode());
         Assert.assertEquals(
             String.format(
-                "741: The file length %d is not equal to the offset %d",
+                "741: OBJECT_FILE_LENGTH_OFFSET_MISMATCH: The file length %d is not equal to the offset %d",
                 ((objectSegments.size() - 1) * 512), 512L),
             e.getMessage());
       } finally {

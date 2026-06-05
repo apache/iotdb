@@ -920,6 +920,10 @@ public final class DataNodeMiscMessages {
   public static final String INVALID_REQUEST = "Invalid request ";
   public static final String PREPARED_STMT_NOT_SUPPORTED_FOR_TREE = "PreparedStatement is not supported for Tree model";
   public static final String FILE_LENGTH_LARGER_THAN_MAX = "The file length is larger than max_object_file_size_in_bytes";
+  public static final String OBJECT_FILE_LENGTH_OFFSET_MISMATCH_PREFIX =
+      "OBJECT_FILE_LENGTH_OFFSET_MISMATCH";
+  public static final String OBJECT_FILE_LENGTH_NOT_EQUAL_TO_OFFSET =
+      "OBJECT_FILE_LENGTH_OFFSET_MISMATCH: The file length %s is not equal to the offset %s";
   public static final String UNKNOWN_CONSENSUS_GROUP_TYPE = "Unknown consensus group type: ";
   public static final String UNKNOWN_DATA_TYPE = "Unknown data type: ";
   public static final String UNKNOWN_PARAMETER_TYPE = "Unknown parameter type: ";

@@ -86,6 +86,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   // TSFile resource, used for Object file management
   private TsFileResource tsFileResource;
 
+  // True means Object columns in this event carry content bytes (split payload), not path refs.
+  private boolean objectValueContentEvent = false;
+
   private PipeRawTabletInsertionEvent(
       final Boolean isTableModelEvent,
       final String databaseName,
@@ -299,7 +302,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
-    if (pipeName != null && Objects.equals(hasObjectData, Boolean.TRUE) && tsFileResource != null) {
+    if (pipeName != null
+        && !objectValueContentEvent
+        && Objects.equals(hasObjectData, Boolean.TRUE)
+        && tsFileResource != null) {
       PipeDataNodeResourceManager.object().decreaseReference(tsFileResource, pipeName);
     }
 
@@ -402,6 +408,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
     copiedEvent.setTsFileResource(this.tsFileResource);
     copiedEvent.hasObjectData = this.hasObjectData;
+    copiedEvent.objectValueContentEvent = this.objectValueContentEvent;
 
     return copiedEvent;
   }
@@ -614,8 +621,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Set tsFileResource
     event.setTsFileResource(tsFileResource);
     event.setHasObject(hasObjectData);
+    event.setObjectValueContentEvent(objectValueContentEvent);
 
     return event;
+  }
+
+  @Override
+  public boolean isObjectValueContentEvent() {
+    return objectValueContentEvent;
+  }
+
+  @Override
+  public void setObjectValueContentEvent(final boolean isObjectValueContentEvent) {
+    this.objectValueContentEvent = isObjectValueContentEvent;
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
@@ -634,8 +652,14 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
-            tablet, isAligned, sourceEvent, needToReport, allocatedMemoryBlock, eventParser)
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, objectValueContentEvent=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s, eventParser=%s}",
+            tablet,
+            isAligned,
+            objectValueContentEvent,
+            sourceEvent,
+            needToReport,
+            allocatedMemoryBlock,
+            eventParser)
         + " - "
         + super.toString();
   }
@@ -643,9 +667,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public String coreReportMessage() {
     return String.format(
-            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s}",
+            "PipeRawTabletInsertionEvent{tablet=%s, isAligned=%s, objectValueContentEvent=%s, sourceEvent=%s, needToReport=%s, allocatedMemoryBlock=%s}",
             tablet,
             isAligned,
+            objectValueContentEvent,
             sourceEvent == null ? "null" : sourceEvent.coreReportMessage(),
             needToReport,
             allocatedMemoryBlock)

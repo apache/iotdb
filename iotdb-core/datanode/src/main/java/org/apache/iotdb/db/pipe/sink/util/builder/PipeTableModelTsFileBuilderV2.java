@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
@@ -156,7 +155,6 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
-    deleteAllObjectTempDirsRecursively();
     dataBase2TabletList.clear();
     dataBase2ObjectTempDir.clear();
   }
@@ -164,22 +162,8 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public synchronized void close() {
     super.close();
-    deleteAllObjectTempDirsRecursively();
     dataBase2TabletList.clear();
     dataBase2ObjectTempDir.clear();
-  }
-
-  /**
-   * Removes every per-database object temp dir (all files/subdirs and the dir itself) via {@link
-   * FileUtils#deleteFileOrDirectory(File, boolean)}. {@code quietForNoSuchFile=true} avoids noise
-   * when the dir was already renamed/moved after successful transfer.
-   */
-  private void deleteAllObjectTempDirsRecursively() {
-    for (final File dir : dataBase2ObjectTempDir.values()) {
-      if (dir != null) {
-        FileUtils.deleteFileOrDirectory(dir, true);
-      }
-    }
   }
 
   private List<Pair<String, Pair<File, File>>> writeTabletsToTsFiles(final String dataBase)

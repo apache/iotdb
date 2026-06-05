@@ -34,6 +34,7 @@ import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
+import org.apache.iotdb.db.storageengine.load.converter.TabletObjectSplitIterator;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -69,12 +71,14 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -262,6 +266,11 @@ public class WriteBackSink implements PipeConnector {
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    if (shouldWriteBackInsertNodeAsObjectTablets(pipeInsertNodeTabletInsertionEvent)) {
+      writeBackInsertNodeAsObjectTablets(pipeInsertNodeTabletInsertionEvent);
+      return;
+    }
+
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final String dataBaseName =
         pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
@@ -291,6 +300,43 @@ public class WriteBackSink implements PipeConnector {
     }
   }
 
+  private boolean shouldWriteBackInsertNodeAsObjectTablets(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent) {
+    if (!pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+        || pipeInsertNodeTabletInsertionEvent.getTsFileResource() == null) {
+      return false;
+    }
+    return pipeInsertNodeTabletInsertionEvent.hasObjectData();
+  }
+
+  private void writeBackInsertNodeAsObjectTablets(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws PipeException {
+    final List<Tablet> tablets = pipeInsertNodeTabletInsertionEvent.convertToTablets();
+    for (int i = 0; i < tablets.size(); i++) {
+      final Tablet tablet = tablets.get(i);
+      try (final TabletObjectSplitIterator splitIterator =
+          new TabletObjectSplitIterator(
+              tablet,
+              pipeInsertNodeTabletInsertionEvent.getTsFileResource() == null
+                  ? null
+                  : pipeInsertNodeTabletInsertionEvent.getTsFileResource().getTsFile(),
+              PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                  pipeInsertNodeTabletInsertionEvent.getTsFileResource(),
+                  pipeInsertNodeTabletInsertionEvent.getPipeName()),
+              true)) {
+        while (splitIterator.hasNext()) {
+          executeTabletWithStatusCheck(
+              splitIterator.next(),
+              pipeInsertNodeTabletInsertionEvent.isAligned(i),
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName(),
+              pipeInsertNodeTabletInsertionEvent.getUserName(),
+              pipeInsertNodeTabletInsertionEvent.toString());
+        }
+      }
+    }
+  }
+
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     // We increase the reference count for this event to determine if the event may be released.
@@ -306,32 +352,72 @@ public class WriteBackSink implements PipeConnector {
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
+    final Tablet tablet = pipeRawTabletInsertionEvent.convertToTablet();
+    if (shouldWriteBackRawTabletAsObjectTablets(pipeRawTabletInsertionEvent)) {
+      try (final TabletObjectSplitIterator splitIterator =
+          new TabletObjectSplitIterator(
+              tablet,
+              pipeRawTabletInsertionEvent.getTsFileResource() == null
+                  ? null
+                  : pipeRawTabletInsertionEvent.getTsFileResource().getTsFile(),
+              PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                  pipeRawTabletInsertionEvent.getTsFileResource(),
+                  pipeRawTabletInsertionEvent.getPipeName()),
+              true)) {
+        while (splitIterator.hasNext()) {
+          executeTabletWithStatusCheck(
+              splitIterator.next(),
+              pipeRawTabletInsertionEvent.isAligned(),
+              pipeRawTabletInsertionEvent.getTableModelDatabaseName(),
+              pipeRawTabletInsertionEvent.getUserName(),
+              pipeRawTabletInsertionEvent.toString());
+        }
+      }
+      return;
+    }
+
     final String dataBaseName =
         pipeRawTabletInsertionEvent.isTableModelEvent()
             ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
             : pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
+    executeTabletWithStatusCheck(
+        tablet,
+        pipeRawTabletInsertionEvent.isAligned(),
+        dataBaseName,
+        pipeRawTabletInsertionEvent.getUserName(),
+        pipeRawTabletInsertionEvent.toString());
+  }
 
+  private boolean shouldWriteBackRawTabletAsObjectTablets(
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent) {
+    return pipeRawTabletInsertionEvent.isTableModelEvent()
+        && pipeRawTabletInsertionEvent.hasObjectData()
+        && pipeRawTabletInsertionEvent.getTsFileResource() != null
+        && pipeRawTabletInsertionEvent.getTsFileResource().getTsFile() != null;
+  }
+
+  private void executeTabletWithStatusCheck(
+      final Tablet tablet,
+      final boolean isAligned,
+      final String dataBaseName,
+      final String userName,
+      final String eventDescription)
+      throws PipeException {
     final InsertTabletStatement insertTabletStatement =
-        PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned(),
-                dataBaseName)
+        PipeTransferTabletRawReqV2.toTPipeTransferRawReq(tablet, isAligned, dataBaseName)
             .constructStatement();
 
     final TSStatus status =
         insertTabletStatement.isWriteToTable()
-            ? executeStatementForTableModel(
-                insertTabletStatement, dataBaseName, pipeRawTabletInsertionEvent.getUserName())
-            : executeStatementForTreeModel(
-                insertTabletStatement, pipeRawTabletInsertionEvent.getUserName());
+            ? executeStatementForTableModel(insertTabletStatement, dataBaseName, userName)
+            : executeStatementForTreeModel(insertTabletStatement, userName);
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && !(skipIfNoPrivileges
             && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
-              "Write back PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, status));
+              DataNodePipeMessages.WRITE_BACK_TABLET_EVENT_ERROR_STATUS, eventDescription, status));
     }
   }
 

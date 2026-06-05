@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
@@ -141,10 +142,18 @@ public class PipeEnrichedInsertNode extends InsertNode {
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return insertNode.splitByPartition(analysis).stream()
         .map(
-            plan ->
-                plan instanceof PipeEnrichedInsertNode
-                    ? plan
-                    : new PipeEnrichedInsertNode((InsertNode) plan))
+            plan -> {
+              final WritePlanNode split;
+              if (plan instanceof PipeEnrichedInsertNode
+                  || plan instanceof PipeEnrichedObjectNode) {
+                split = plan;
+              } else if (plan instanceof ObjectNode) {
+                split = new PipeEnrichedObjectNode((ObjectNode) plan);
+              } else {
+                split = new PipeEnrichedInsertNode((InsertNode) plan);
+              }
+              return split;
+            })
         .collect(Collectors.toList());
   }
 

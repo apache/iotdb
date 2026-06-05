@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
@@ -74,9 +75,14 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
   private Tablet nextTabletCache = null;
 
   public TabletObjectSplitIterator(final Tablet tablet, final File tsFile, final File objectDir) {
-    this.originalTablet = tablet;
-    this.rowSize = tablet.getRowSize();
-    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    this(tablet, tsFile, objectDir, false);
+  }
+
+  public TabletObjectSplitIterator(
+      final Tablet tablet, final File tsFile, final File objectDir, final boolean copyTablet) {
+    this.originalTablet = copyTabletIfNecessary(tablet, copyTablet);
+    this.rowSize = originalTablet.getRowSize();
+    List<IMeasurementSchema> schemas = originalTablet.getSchemas();
 
     if (schemas == null || schemas.isEmpty()) {
       this.searchRoot = null;
@@ -98,7 +104,9 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
       this.searchRoot = null;
       this.hasNonObjectField = true;
       this.insertTargetName =
-          tablet.getTableName() != null ? tablet.getTableName() : tablet.getDeviceId();
+          originalTablet.getTableName() != null
+              ? originalTablet.getTableName()
+              : originalTablet.getDeviceId();
       this.chunkObjColIdx = 0;
       return;
     }
@@ -114,17 +122,19 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
               : tsFile.getName();
       this.searchRoot = new File(tsFile.getParent(), dirName);
     } else {
-      throw new IllegalArgumentException(
-          "objectDir and tsFile cannot both be null when Tablet contains OBJECT columns.");
+      this.searchRoot = null;
     }
 
     this.insertTargetName =
-        tablet.getTableName() != null ? tablet.getTableName() : tablet.getDeviceId();
+        originalTablet.getTableName() != null
+            ? originalTablet.getTableName()
+            : originalTablet.getDeviceId();
 
     // Extract common Tag columns
-    if (tablet.getColumnTypes() != null) {
+    if (originalTablet.getColumnTypes() != null) {
       for (int i = 0; i < schemas.size(); i++) {
-        if (schemas.get(i) != null && tablet.getColumnTypes().get(i) == ColumnCategory.TAG) {
+        if (schemas.get(i) != null
+            && originalTablet.getColumnTypes().get(i) == ColumnCategory.TAG) {
           tagColumnSchemas.add(schemas.get(i));
           tagColumnCategories.add(ColumnCategory.TAG);
           tagColumnIndexes.add(i);
@@ -147,31 +157,32 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
       if (schema.getType() == TSDataType.OBJECT) {
         objectColIndices.add(i);
 
-        Binary[] originalValues = (Binary[]) tablet.getValues()[i];
-        extractedObjectValues.add(Arrays.copyOf(originalValues, tablet.getRowSize()));
+        Binary[] originalValues = (Binary[]) originalTablet.getValues()[i];
+        extractedObjectValues.add(Arrays.copyOf(originalValues, originalTablet.getRowSize()));
 
-        BitMap originalBm = tablet.getBitMaps() != null ? tablet.getBitMaps()[i] : null;
+        BitMap originalBm =
+            originalTablet.getBitMaps() != null ? originalTablet.getBitMaps()[i] : null;
         extractedObjectBitMaps.add(
             originalBm != null
                 ? new BitMap(
-                    tablet.getMaxRowNumber(),
+                    originalTablet.getMaxRowNumber(),
                     Arrays.copyOf(originalBm.getByteArray(), originalBm.getByteArray().length))
                 : null);
 
         // Clear original array elegantly
         Arrays.fill(originalValues, Binary.EMPTY_VALUE);
 
-        if (tablet.getBitMaps() == null) {
-          tablet.initBitMaps();
+        if (originalTablet.getBitMaps() == null) {
+          originalTablet.initBitMaps();
         }
-        if (tablet.getBitMaps()[i] == null) {
-          tablet.getBitMaps()[i] = new BitMap(tablet.getMaxRowNumber());
+        if (originalTablet.getBitMaps()[i] == null) {
+          originalTablet.getBitMaps()[i] = new BitMap(originalTablet.getMaxRowNumber());
         }
-        tablet.getBitMaps()[i].markAll();
+        originalTablet.getBitMaps()[i].markAll();
 
       } else {
-        if (tablet.getColumnTypes() == null
-            || tablet.getColumnTypes().get(i) == ColumnCategory.FIELD) {
+        if (originalTablet.getColumnTypes() == null
+            || originalTablet.getColumnTypes().get(i) == ColumnCategory.FIELD) {
           nonObjectFieldFound = true;
         }
       }
@@ -280,6 +291,25 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
           continue;
         }
 
+        if (searchRoot == null) {
+          final ObjectChunk objectChunk = parseObjectValueContentBinary(val);
+          appendTagColumns(chunkTablet, chunkRowCount);
+          chunkTablet.getTimestamps()[chunkRowCount] = originalTablet.getTimestamps()[currentRow];
+          chunkTablet.addValue(
+              chunkRowCount,
+              chunkObjColIdx,
+              objectChunk.isEOF,
+              objectChunk.offset,
+              objectChunk.content);
+          chunkTablet.getBitMaps()[chunkObjColIdx].unmark(chunkRowCount);
+
+          currentChunkSize += objectChunk.content.length;
+          chunkRowCount++;
+          currentRow++;
+          currentFileOffset = 0;
+          continue;
+        }
+
         Pair<Long, String> sizeAndPath = ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(val);
         long fileLength = sizeAndPath.getLeft();
         String relativePath = sizeAndPath.getRight();
@@ -302,8 +332,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
             if (byteBuffer.remaining() != bytesToRead) {
               throw new IllegalStateException(
                   String.format(
-                      "Invalid object content length, expected %d bytes but got %d bytes, "
-                          + "relativePath=%s, offset=%d, declaredFileLength=%d.",
+                      StorageEngineMessages.INVALID_OBJECT_CONTENT_LENGTH,
                       bytesToRead,
                       byteBuffer.remaining(),
                       relativePath,
@@ -313,8 +342,10 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
             content = byteBuffer.array();
           } catch (Exception e) {
-            LOGGER.warn("Failed to read object content via ObjectTypeUtils.", e);
-            throw new RuntimeException("Failed to read object content via ObjectTypeUtils.", e);
+            LOGGER.warn(
+                StorageEngineMessages.FAILED_TO_READ_OBJECT_CONTENT_VIA_OBJECT_TYPE_UTILS, e);
+            throw new RuntimeException(
+                StorageEngineMessages.FAILED_TO_READ_OBJECT_CONTENT_VIA_OBJECT_TYPE_UTILS, e);
           }
         } else {
           content = new byte[0];
@@ -322,20 +353,7 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
 
         boolean isEOF = currentFileOffset + totalBytesRead >= fileLength;
 
-        for (int t = 0; t < tagColumnIndexes.size(); t++) {
-          int origTagIdx = tagColumnIndexes.get(t);
-          boolean tagIsNull =
-              originalTablet.getBitMaps() != null
-                  && originalTablet.getBitMaps()[origTagIdx] != null
-                  && originalTablet.getBitMaps()[origTagIdx].isMarked(currentRow);
-
-          if (!tagIsNull) {
-            chunkTablet.getBitMaps()[t].unmark(chunkRowCount);
-            Object srcArray = originalTablet.getValues()[origTagIdx];
-            Object destArray = chunkTablet.getValues()[t];
-            ((Binary[]) destArray)[chunkRowCount] = ((Binary[]) srcArray)[currentRow];
-          }
-        }
+        appendTagColumns(chunkTablet, chunkRowCount);
 
         chunkTablet.getTimestamps()[chunkRowCount] = originalTablet.getTimestamps()[currentRow];
         chunkTablet.addValue(chunkRowCount, chunkObjColIdx, isEOF, currentFileOffset, content);
@@ -363,5 +381,156 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
   @Override
   public void close() {
     nextTabletCache = null;
+  }
+
+  private static Tablet copyTabletIfNecessary(final Tablet tablet, final boolean copyTablet) {
+    if (!copyTablet || tablet == null) {
+      return tablet;
+    }
+    return cloneTablet(tablet);
+  }
+
+  private void appendTagColumns(final Tablet chunkTablet, final int chunkRowCount) {
+    for (int t = 0; t < tagColumnIndexes.size(); t++) {
+      int origTagIdx = tagColumnIndexes.get(t);
+      boolean tagIsNull =
+          originalTablet.getBitMaps() != null
+              && originalTablet.getBitMaps()[origTagIdx] != null
+              && originalTablet.getBitMaps()[origTagIdx].isMarked(currentRow);
+
+      if (!tagIsNull) {
+        chunkTablet.getBitMaps()[t].unmark(chunkRowCount);
+        Object srcArray = originalTablet.getValues()[origTagIdx];
+        Object destArray = chunkTablet.getValues()[t];
+        ((Binary[]) destArray)[chunkRowCount] = ((Binary[]) srcArray)[currentRow];
+      }
+    }
+  }
+
+  private static ObjectChunk parseObjectValueContentBinary(final Binary binary) {
+    final byte[] values = binary.getValues();
+    if (values.length < 9 || (values[0] != 0 && values[0] != 1)) {
+      throw new IllegalArgumentException(
+          StorageEngineMessages.INVALID_OBJECT_VALUE_CONTENT_BINARY_EOF_AND_OFFSET);
+    }
+
+    final ByteBuffer buffer = ByteBuffer.wrap(values);
+    final boolean isEOF = buffer.get() == 1;
+    final long offset = buffer.getLong();
+    if (offset < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              StorageEngineMessages.INVALID_OBJECT_VALUE_CONTENT_BINARY_NEGATIVE_OFFSET, offset));
+    }
+
+    final byte[] content = new byte[buffer.remaining()];
+    buffer.get(content);
+    return new ObjectChunk(isEOF, offset, content);
+  }
+
+  private static boolean containsObjectColumn(final List<IMeasurementSchema> schemas) {
+    if (schemas == null || schemas.isEmpty()) {
+      return false;
+    }
+    for (IMeasurementSchema schema : schemas) {
+      if (schema != null && schema.getType() == TSDataType.OBJECT) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static Tablet cloneTablet(final Tablet source) {
+    final Tablet clonedTablet =
+        new Tablet(source.getDeviceId(), source.getSchemas(), source.getRowSize());
+    final int targetMaxRowNumber = clonedTablet.getMaxRowNumber();
+    final int copyRowSize = Math.min(source.getRowSize(), targetMaxRowNumber);
+
+    if (source.getColumnTypes() != null) {
+      clonedTablet.setColumnCategories(new ArrayList<>(source.getColumnTypes()));
+    }
+
+    final long[] sourceTimestamps = source.getTimestamps();
+    final long[] clonedTimestamps = clonedTablet.getTimestamps();
+    if (sourceTimestamps != null && clonedTimestamps != null) {
+      final int timestampCopyLength =
+          Math.min(copyRowSize, Math.min(sourceTimestamps.length, clonedTimestamps.length));
+      System.arraycopy(sourceTimestamps, 0, clonedTimestamps, 0, timestampCopyLength);
+    }
+
+    final Object[] sourceValues = source.getValues();
+    final Object[] clonedValues = clonedTablet.getValues();
+    final List<IMeasurementSchema> schemas = source.getSchemas();
+    if (sourceValues != null && clonedValues != null) {
+      for (int i = 0; i < sourceValues.length; i++) {
+        final TSDataType type =
+            schemas != null && i < schemas.size() && schemas.get(i) != null
+                ? schemas.get(i).getType()
+                : null;
+        clonedValues[i] = cloneArray(sourceValues[i], type, copyRowSize);
+      }
+    }
+
+    if (source.getBitMaps() != null) {
+      clonedTablet.initBitMaps();
+      for (int i = 0; i < source.getBitMaps().length; i++) {
+        final BitMap bitMap = source.getBitMaps()[i];
+        if (bitMap != null) {
+          final int bitmapByteLength = (targetMaxRowNumber + 7) / 8;
+          clonedTablet.getBitMaps()[i] =
+              new BitMap(
+                  targetMaxRowNumber, Arrays.copyOf(bitMap.getByteArray(), bitmapByteLength));
+        } else {
+          clonedTablet.getBitMaps()[i] = null;
+        }
+      }
+    }
+
+    clonedTablet.setRowSize(copyRowSize);
+    return clonedTablet;
+  }
+
+  private static Object cloneArray(
+      final Object sourceArray, final TSDataType type, final int copyLength) {
+    if (sourceArray == null) {
+      return null;
+    }
+    switch (type) {
+      case BOOLEAN:
+        return Arrays.copyOf((boolean[]) sourceArray, copyLength);
+      case INT32:
+      case DATE:
+        return Arrays.copyOf((int[]) sourceArray, copyLength);
+      case INT64:
+      case TIMESTAMP:
+        return Arrays.copyOf((long[]) sourceArray, copyLength);
+      case FLOAT:
+        return Arrays.copyOf((float[]) sourceArray, copyLength);
+      case DOUBLE:
+        return Arrays.copyOf((double[]) sourceArray, copyLength);
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case OBJECT:
+        return Arrays.copyOf((Binary[]) sourceArray, copyLength);
+      default:
+        throw new IllegalArgumentException(
+            String.format(
+                StorageEngineMessages.UNSUPPORTED_TABLET_COLUMN_ARRAY_TYPE,
+                sourceArray.getClass().getName(),
+                type));
+    }
+  }
+
+  private static final class ObjectChunk {
+    private final boolean isEOF;
+    private final long offset;
+    private final byte[] content;
+
+    private ObjectChunk(final boolean isEOF, final long offset, final byte[] content) {
+      this.isEOF = isEOF;
+      this.offset = offset;
+      this.content = content;
+    }
   }
 }

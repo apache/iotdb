@@ -61,6 +61,14 @@ public enum PipeRequestType {
 
   // Fallback Handling
   TRANSFER_SLICE((short) 400),
+
+  // ---------------------------------------------------------------------------
+  // Timecho-specific request types (negative ordinals).
+  // Reserved for extensions that are not present in Apache IoTDB, to avoid
+  // conflicting with upstream positive type codes.
+  // ---------------------------------------------------------------------------
+  /** Multiple object file pieces (path + offset + length + payload) in one request. */
+  TRANSFER_TS_FILE_OBJECT_BATCH((short) -1),
   ;
 
   private final short type;

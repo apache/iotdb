@@ -41,9 +41,14 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +59,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +82,19 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   private TRegionReplicaSet dataRegionReplicaSet;
 
   private boolean isGeneratedByRemoteConsensusLeader;
+
+  /**
+   * Subclass-only constructor for delegation wrappers (e.g. pipe). Base field values are
+   * placeholders; the subclass must override instance behavior to forward to the wrapped node.
+   */
+  protected ObjectNode(final PlanNodeId planNodeId) {
+    super(planNodeId);
+    this.isEOF = false;
+    this.offset = 0L;
+    this.filePath = null;
+    this.content = null;
+    this.contentLength = 0;
+  }
 
   public ObjectNode(boolean isEOF, long offset, byte[] content, IObjectPath filePath) {
     super(new PlanNodeId(""));
@@ -323,20 +342,123 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     }
   }
 
-  public RelationalInsertRowNode genValueInsertRowNode() throws IllegalPathException {
-    RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(this.getPlanNodeId());
+  public RelationalInsertRowNode genValueInsertRowNode(final TableSchema tableSchema)
+      throws IllegalPathException {
+    return genValueInsertRowNodeWithTableSchema(tableSchema);
+  }
+
+  private RelationalInsertRowNode genValueInsertRowNodeWithTableSchema(
+      final TableSchema tableSchema) throws IllegalPathException {
+    final IDeviceID deviceID = filePath.getDeviceID();
+    final List<IMeasurementSchema> allColumns = tableSchema.getColumnSchemas();
+    final List<ColumnCategory> categories = tableSchema.getColumnTypes();
+    final int validColCount = countValidColumns(allColumns, categories);
+    final String[] measurements = new String[validColCount];
+    final TSDataType[] dataTypes = new TSDataType[validColCount];
+    final MeasurementSchema[] measurementSchemas = new MeasurementSchema[validColCount];
+    final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[validColCount];
+    final Object[] values = new Object[validColCount];
+    int idx = 0;
+    int tagOrdinal = 0;
+    for (int i = 0; i < allColumns.size(); i++) {
+      final IMeasurementSchema col = allColumns.get(i);
+      final ColumnCategory category = categories.get(i);
+      if (!includeInObjectValueRow(category, col.getMeasurementName())) {
+        if (category == ColumnCategory.TAG) {
+          tagOrdinal++;
+        }
+        continue;
+      }
+      final String colName = col.getMeasurementName();
+      final TSDataType dataType = col.getType();
+      measurements[idx] = colName;
+      dataTypes[idx] = dataType;
+      measurementSchemas[idx] = new MeasurementSchema(colName, dataType);
+      columnCategories[idx] = TsTableColumnCategory.fromTsFileColumnCategory(category);
+      values[idx] = extractColumnValue(category, colName, tagOrdinal, deviceID);
+      if (category == ColumnCategory.TAG) {
+        tagOrdinal++;
+      }
+      idx++;
+    }
+    return buildInsertRowNode(
+        deviceID, measurements, dataTypes, measurementSchemas, columnCategories, values);
+  }
+
+  private int countValidColumns(
+      final List<IMeasurementSchema> columns, final List<ColumnCategory> categories) {
+    int count = 0;
+    for (int i = 0; i < columns.size(); i++) {
+      if (includeInObjectValueRow(categories.get(i), columns.get(i).getMeasurementName())) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private boolean includeInObjectValueRow(final ColumnCategory category, final String columnName) {
+    if (category == ColumnCategory.TIME || category == ColumnCategory.ATTRIBUTE) {
+      return false;
+    }
+    return category == ColumnCategory.TAG || columnName.equals(filePath.getMeasurement());
+  }
+
+  private Object extractColumnValue(
+      final ColumnCategory category,
+      final String columnName,
+      final int tagOrdinal,
+      final IDeviceID deviceID) {
+    switch (category) {
+      case TAG:
+        return extractTagValue(tagOrdinal, deviceID);
+      case FIELD:
+        return extractFieldValue(columnName);
+      default:
+        return null;
+    }
+  }
+
+  private Binary extractTagValue(final int tagOrdinal, final IDeviceID deviceID) {
+    if (deviceID == null) {
+      return Binary.EMPTY_VALUE;
+    }
+    if (tagOrdinal >= 0 && tagOrdinal + 1 < deviceID.segmentNum()) {
+      final Object segment = deviceID.segment(tagOrdinal + 1);
+      if (segment != null) {
+        return new Binary(segment.toString().getBytes(StandardCharsets.UTF_8));
+      }
+    }
+    return Binary.EMPTY_VALUE;
+  }
+
+  private Object extractFieldValue(final String columnName) {
+    if (columnName.equals(filePath.getMeasurement())) {
+      return generateObjectBinary(offset + contentLength, filePath);
+    }
+    return null;
+  }
+
+  private RelationalInsertRowNode buildInsertRowNode(
+      final IDeviceID deviceID,
+      final String[] measurements,
+      final TSDataType[] dataTypes,
+      final MeasurementSchema[] measurementSchemas,
+      final TsTableColumnCategory[] columnCategories,
+      final Object[] values)
+      throws IllegalPathException {
+    final RelationalInsertRowNode insertRowNode = new RelationalInsertRowNode(this.getPlanNodeId());
     insertRowNode.setAligned(true);
-    insertRowNode.setDeviceID(filePath.getDeviceID());
-    insertRowNode.setTargetPath(new PartialPath(filePath.getDeviceID().getTableName()));
+    insertRowNode.setDeviceID(deviceID);
+    insertRowNode.setTargetPath(new PartialPath(deviceID.getTableName()));
     insertRowNode.setTime(filePath.getTime());
-    insertRowNode.setMeasurements(new String[] {filePath.getMeasurement()});
-    insertRowNode.setDataTypes(new TSDataType[] {TSDataType.OBJECT});
-    insertRowNode.setMeasurementSchemas(
-        new MeasurementSchema[] {
-          new MeasurementSchema(filePath.getMeasurement(), TSDataType.OBJECT)
-        });
-    insertRowNode.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
-    insertRowNode.setValues(new Object[] {generateObjectBinary(offset + content.length, filePath)});
+    insertRowNode.setMeasurements(measurements);
+    insertRowNode.setDataTypes(dataTypes);
+    insertRowNode.setMeasurementSchemas(measurementSchemas);
+    insertRowNode.setColumnCategories(columnCategories);
+    insertRowNode.setValues(values);
+    if (isGeneratedByPipe()) {
+      insertRowNode.markAsGeneratedByPipe();
+    }
     return insertRowNode;
   }
 

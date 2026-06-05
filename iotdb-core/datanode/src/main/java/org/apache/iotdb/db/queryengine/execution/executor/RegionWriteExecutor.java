@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -271,6 +272,17 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitPipeEnrichedInsertNode(
         final PipeEnrichedInsertNode node, final WritePlanNodeExecutionContext context) {
       return executeDataInsert(node, context);
+    }
+
+    @Override
+    public RegionExecutionResult visitPipeEnrichedObjectNode(
+        final PipeEnrichedObjectNode node, final WritePlanNodeExecutionContext context) {
+      context.getRegionWriteValidationRWLock().writeLock().lock();
+      try {
+        return PlanVisitor.super.visitPipeEnrichedObjectNode(node, context);
+      } finally {
+        context.getRegionWriteValidationRWLock().writeLock().unlock();
+      }
     }
 
     private RegionExecutionResult executeDataInsert(

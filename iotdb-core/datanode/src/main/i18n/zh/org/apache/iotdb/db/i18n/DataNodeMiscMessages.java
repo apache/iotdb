@@ -919,6 +919,10 @@ public final class DataNodeMiscMessages {
   public static final String INVALID_REQUEST = "无效请求 ";
   public static final String PREPARED_STMT_NOT_SUPPORTED_FOR_TREE = "Tree 模型不支持 PreparedStatement";
   public static final String FILE_LENGTH_LARGER_THAN_MAX = "文件长度超过 max_object_file_size_in_bytes";
+  public static final String OBJECT_FILE_LENGTH_OFFSET_MISMATCH_PREFIX =
+      "OBJECT_FILE_LENGTH_OFFSET_MISMATCH";
+  public static final String OBJECT_FILE_LENGTH_NOT_EQUAL_TO_OFFSET =
+      "OBJECT_FILE_LENGTH_OFFSET_MISMATCH: 文件长度 %s 与偏移量 %s 不一致";
   public static final String UNKNOWN_CONSENSUS_GROUP_TYPE = "未知共识组类型：";
   public static final String UNKNOWN_DATA_TYPE = "未知数据类型：";
   public static final String UNKNOWN_PARAMETER_TYPE = "未知参数类型：";

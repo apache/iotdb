@@ -515,4 +515,27 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_FIND_DATA_REGION = "Failed to create state machine for consensus group %s, because data region does not exist";
 
   public static final String DATA_REGION_IS_NULL = "Data region is null";
+
+  public static final String FAILED_TO_CLEANUP_ACTIVE_LOAD_OBJECT_FILE_DIR =
+      "Failed to cleanup active-load object file directory: {}";
+  public static final String FAILED_TO_MOVE_ACTIVE_LOAD_OBJECT_FILE_DIR_TO_FAIL_DIR =
+      "Failed to move active-load object file directory {} to fail directory.";
+  public static final String TSTABLE_NULL_CANNOT_RETRIEVE_FROM_CACHE =
+      "TsTable is null and cannot be retrieved from cache. "
+          + "Leader node encountered a special situation requiring resolution. Database: {}, Table: {}";
+  public static final String FAILED_TO_DESCRIBE_TABLE_FROM_CONFIG_NODE =
+      "Failed to describe table from ConfigNode. Database: {}, Table: {}";
+  public static final String FAILED_TO_READ_OBJECT_CONTENT_VIA_OBJECT_TYPE_UTILS =
+      "Failed to read object content via ObjectTypeUtils.";
+  public static final String FAILED_TO_DELETE_SOURCE_OBJECT_FILE_DIRECTORY =
+      "Failed to delete source object file directory %s";
+  public static final String INVALID_OBJECT_VALUE_CONTENT_BINARY_EOF_AND_OFFSET =
+      "Invalid OBJECT value content binary, expected EOF flag and offset.";
+  public static final String INVALID_OBJECT_VALUE_CONTENT_BINARY_NEGATIVE_OFFSET =
+      "Invalid OBJECT value content binary, negative offset: %s";
+  public static final String UNSUPPORTED_TABLET_COLUMN_ARRAY_TYPE =
+      "Unsupported tablet column array type: %s, type: %s";
+  public static final String INVALID_OBJECT_CONTENT_LENGTH =
+      "Invalid object content length, expected %d bytes but got %d bytes, "
+          + "relativePath=%s, offset=%d, declaredFileLength=%d.";
 }

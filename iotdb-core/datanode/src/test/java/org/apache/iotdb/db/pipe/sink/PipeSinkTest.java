@@ -25,14 +25,19 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -43,12 +48,32 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PipeSinkTest {
+
+  private static class TrackingIoTDBDataRegionAsyncSink extends IoTDBDataRegionAsyncSink {
+
+    private boolean hasSynchronouslyTransferredTablet;
+    private boolean hasSynchronouslyTransferredTsFile;
+
+    @Override
+    protected void transferTabletInsertionEventSynchronously(
+        final TabletInsertionEvent tabletInsertionEvent) {
+      hasSynchronouslyTransferredTablet = true;
+    }
+
+    @Override
+    protected void transferTsFileInsertionEventSynchronously(
+        final TsFileInsertionEvent tsFileEvent) {
+      hasSynchronouslyTransferredTsFile = true;
+    }
+  }
 
   @Test
   public void testIoTDBLegacyPipeConnectorToOthers() {
@@ -277,6 +302,117 @@ public class PipeSinkTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testAsyncSinkTransferObjectTabletSynchronouslyInTsFileFormat() throws Exception {
+    try (final TrackingIoTDBDataRegionAsyncSink sink = new TrackingIoTDBDataRegionAsyncSink()) {
+      final PipeParameters parameters = createAsyncSinkParameters(true);
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(parameters, createRuntimeConfiguration());
+
+      final PipeRawTabletInsertionEvent event =
+          new PipeRawTabletInsertionEvent(
+              true,
+              "root.db",
+              "db",
+              "root.db",
+              createTablet(),
+              false,
+              "pipe",
+              0L,
+              null,
+              null,
+              false);
+      event.setHasObject(true);
+      event.setTsFileResource(new TsFileResource(new File("1.tsfile")));
+
+      sink.transfer(event);
+
+      Assert.assertTrue(sink.hasSynchronouslyTransferredTablet);
+      Assert.assertFalse(sink.hasSynchronouslyTransferredTsFile);
+    }
+  }
+
+  @Test
+  public void testAsyncSinkTransferObjectTsFileSynchronously() throws Exception {
+    try (final TrackingIoTDBDataRegionAsyncSink sink = new TrackingIoTDBDataRegionAsyncSink()) {
+      final PipeParameters parameters = createAsyncSinkParameters(false);
+      sink.validate(new PipeParameterValidator(parameters));
+      sink.customize(parameters, createRuntimeConfiguration());
+
+      final PipeTsFileInsertionEvent event =
+          new PipeTsFileInsertionEvent(true, "db", new TsFileResource(new File("1.tsfile")), false);
+      event.setHasObject(true);
+
+      sink.transfer(event);
+
+      Assert.assertFalse(sink.hasSynchronouslyTransferredTablet);
+      Assert.assertTrue(sink.hasSynchronouslyTransferredTsFile);
+    }
+  }
+
+  @Test
+  public void testPipeTransferBatchReqBuilderGetAllNonEmptyBatches() throws Exception {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, "1000000");
+    attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY, "1048576");
+
+    try (final PipeTransferBatchReqBuilder builder =
+        new PipeTransferBatchReqBuilder(new PipeParameters(attributes))) {
+      builder.onEvent(
+          new PipeRawTabletInsertionEvent(
+              false,
+              "root.db",
+              "db",
+              "root.db",
+              createTablet(),
+              false,
+              "pipe",
+              0L,
+              null,
+              null,
+              false));
+
+      Assert.assertTrue(builder.getAllNonEmptyAndShouldEmitBatches().isEmpty());
+      Assert.assertEquals(1, builder.getAllNonEmptyBatches().size());
+    }
+  }
+
+  private static PipeParameters createAsyncSinkParameters(final boolean isTsFileFormat) {
+    return new PipeParameters(
+        new HashMap<String, String>() {
+          {
+            put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
+            put(
+                PipeSinkConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY,
+                PipeSinkConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY);
+            if (isTsFileFormat) {
+              put(
+                  PipeSinkConstant.CONNECTOR_FORMAT_KEY,
+                  PipeSinkConstant.CONNECTOR_FORMAT_TS_FILE_VALUE);
+            } else {
+              put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
+            }
+          }
+        });
+  }
+
+  private static PipeTaskRuntimeConfiguration createRuntimeConfiguration() {
+    return new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("temp", 0, 1));
+  }
+
+  private static Tablet createTablet() {
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT64),
+            new MeasurementSchema("s2", TSDataType.INT64));
+
+    final Tablet tablet = new Tablet("root.db.d1", schemaList, 1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("s1", 0, 1L);
+    tablet.addValue("s2", 0, 2L);
+    return tablet;
   }
 
   private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(

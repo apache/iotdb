@@ -216,6 +216,22 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     return false;
   }
 
+  /**
+   * Whether this insertion event already carries Object value content (fragment bytes) rather than
+   * Object path references.
+   */
+  public boolean isObjectValueContentEvent() {
+    return false;
+  }
+
+  /**
+   * Mark whether this insertion event carries Object value content (fragment bytes) rather than
+   * Object path references.
+   */
+  public void setObjectValueContentEvent(final boolean isObjectValueContentEvent) {
+    // Default implementation does nothing
+  }
+
   /////////////////////////// TsFile resource (Object file linkage) ///////////////////////////
 
   /**

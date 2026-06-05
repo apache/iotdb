@@ -435,6 +435,83 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  protected final TPipeTransferResp handleTransferObjectFilePiece(
+      final String receiverRelativePath,
+      final long startWritingOffset,
+      final long totalLength,
+      final byte[] objectPiece,
+      final boolean isRequestThroughAirGap)
+      throws IOException {
+    RandomAccessFile objectFileWriter = null;
+    try {
+      final File objectFile = resolveReceiverFilePath(receiverRelativePath).toFile();
+      final File parent = objectFile.getParentFile();
+      if (parent != null && !parent.exists() && !parent.mkdirs()) {
+        throw new IOException(
+            String.format(
+                PipeMessages.FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE, objectFile.getPath()));
+      }
+
+      objectFileWriter = new RandomAccessFile(objectFile, "rw");
+
+      if (startWritingOffset < objectFileWriter.length()) {
+        objectFileWriter.setLength(startWritingOffset);
+      }
+
+      if (objectFileWriter.length() != startWritingOffset) {
+        final TSStatus status =
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
+                String.format(
+                    PipeMessages.REQUEST_SENDER_RESET_OBJECT_FILE_OFFSET,
+                    startWritingOffset,
+                    objectFileWriter.length()));
+        return PipeTransferFilePieceResp.toTPipeTransferResp(status, objectFileWriter.length());
+      }
+
+      if (startWritingOffset + objectPiece.length > totalLength) {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    PipeMessages.OBJECT_FILE_PIECE_EXCEEDS_TOTAL_LENGTH,
+                    startWritingOffset,
+                    objectPiece.length,
+                    totalLength)),
+            PipeTransferFilePieceResp.ERROR_END_OFFSET);
+      }
+
+      objectFileWriter.write(objectPiece);
+      return PipeTransferFilePieceResp.toTPipeTransferResp(
+          RpcUtils.SUCCESS_STATUS, objectFileWriter.length());
+    } catch (final Exception e) {
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          PipeMessages.RECEIVER_FAILED_WRITE_OBJECT_FILE_PIECE,
+          receiverId.get(),
+          receiverRelativePath);
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format(PipeMessages.FAILED_TO_WRITE_OBJECT_FILE_PIECE, e.getMessage()));
+      return PipeTransferFilePieceResp.toTPipeTransferResp(
+          status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
+    } finally {
+      if (objectFileWriter != null) {
+        try {
+          objectFileWriter.close();
+        } catch (final IOException e) {
+          LOGGER.warn(
+              PipeMessages.RECEIVER_FAILED_CLOSE_OBJECT_FILE_WRITER,
+              receiverId.get(),
+              receiverRelativePath,
+              e);
+        }
+      }
+    }
+  }
+
   protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
       throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
@@ -472,6 +549,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     final Path targetPath = resolveReceiverFilePath(fileName);
 
     writingFile = targetPath.toFile();
+    final File parent = writingFile.getParentFile();
+    if (parent != null && !parent.exists() && !parent.mkdirs()) {
+      throw new IOException(
+          String.format(
+              PipeMessages.FAILED_TO_CREATE_PARENT_DIRECTORY_FOR_FILE, writingFile.getPath()));
+    }
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
     LOGGER.info(
         PipeMessages.RECEIVER_WRITING_FILE_CREATED, receiverId.get(), writingFile.getPath());

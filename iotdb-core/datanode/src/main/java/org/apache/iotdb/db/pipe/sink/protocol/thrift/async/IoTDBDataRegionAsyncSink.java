@@ -29,12 +29,14 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
@@ -51,6 +53,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferT
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.load.converter.TabletObjectSplitIterator;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -68,6 +71,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,6 +229,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       return;
     }
 
+    if (shouldTransferAsObjectTablet(tabletInsertionEvent)) {
+      transferAllBatchedEventsIfNecessary();
+      transferTabletInsertionEventSynchronously(tabletInsertionEvent);
+      return;
+    }
+
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder.onEvent(tabletInsertionEvent);
       transferBatchedEventsIfNecessary();
@@ -266,6 +276,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   eventsHadBeenAddedToRetryQueue,
                   tsFile,
                   null,
+                  sealedFile.right.right,
                   false,
                   sealedFile.left));
         }
@@ -294,6 +305,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      if (shouldTransferAsObjectTablet(pipeInsertNodeTabletInsertionEvent)) {
+        transferTabletInsertionEventSynchronously(pipeInsertNodeTabletInsertionEvent);
+        return true;
+      }
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncSink.class.getName())) {
@@ -318,6 +333,10 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+      if (shouldTransferAsObjectTablet(pipeRawTabletInsertionEvent)) {
+        transferTabletInsertionEventSynchronously(pipeRawTabletInsertionEvent);
+        return true;
+      }
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncSink.class.getName())) {
@@ -393,6 +412,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       return;
     }
 
+    if (shouldTransferAsObjectTsFile(tsFileInsertionEvent)) {
+      transferAllBatchedEventsIfNecessary();
+      transferTsFileInsertionEventSynchronously(tsFileInsertionEvent);
+      return;
+    }
+
     transferWithoutCheck(tsFileInsertionEvent);
   }
 
@@ -426,6 +451,9 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
               new AtomicBoolean(false),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
+              PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                  pipeTsFileInsertionEvent.getTsFileResource(),
+                  pipeTsFileInsertionEvent.getPipeName()),
               pipeTsFileInsertionEvent.isWithMod()
                   && clientManager.supportModsIfIsDataNodeReceiver(),
               pipeTsFileInsertionEvent.isTableModelEvent()
@@ -512,12 +540,27 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
   private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
-    if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
+    if (!isTabletBatchModeEnabled
+        || Objects.isNull(tabletBatchBuilder)
+        || tabletBatchBuilder.isEmpty()) {
       return;
     }
 
     for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
         tabletBatchBuilder.getAllNonEmptyAndShouldEmitBatches()) {
+      transferInBatchWithoutCheck(endPointAndBatch);
+    }
+  }
+
+  private void transferAllBatchedEventsIfNecessary() throws IOException, WriteProcessException {
+    if (!isTabletBatchModeEnabled
+        || Objects.isNull(tabletBatchBuilder)
+        || tabletBatchBuilder.isEmpty()) {
+      return;
+    }
+
+    for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
+        tabletBatchBuilder.getAllNonEmptyBatches()) {
       transferInBatchWithoutCheck(endPointAndBatch);
     }
   }
@@ -651,6 +694,20 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   private void retryTransfer(final TabletInsertionEvent tabletInsertionEvent) {
+    if (shouldTransferAsObjectTablet(tabletInsertionEvent)) {
+      try {
+        transferAllBatchedEventsIfNecessary();
+        transferTabletInsertionEventSynchronously(tabletInsertionEvent);
+        if (tabletInsertionEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) tabletInsertionEvent)
+              .decreaseReferenceCount(IoTDBDataRegionAsyncSink.class.getName(), false);
+        }
+      } catch (final Exception e) {
+        addFailureEventToRetryQueue(tabletInsertionEvent, e);
+      }
+      return;
+    }
+
     if (isTabletBatchModeEnabled) {
       try {
         tabletBatchBuilder.onEvent(tabletInsertionEvent);
@@ -686,7 +743,11 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   private void retryTransfer(final PipeTsFileInsertionEvent tsFileInsertionEvent) {
     try {
-      if (transferWithoutCheck(tsFileInsertionEvent)) {
+      final boolean isTransferred =
+          shouldTransferAsObjectTsFile(tsFileInsertionEvent)
+              ? transferTsFileInsertionEventSynchronouslyWithResult(tsFileInsertionEvent)
+              : transferWithoutCheck(tsFileInsertionEvent);
+      if (isTransferred) {
         tsFileInsertionEvent.decreaseReferenceCount(
             IoTDBDataRegionAsyncSink.class.getName(), false);
       } else {
@@ -695,6 +756,226 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     } catch (final Exception e) {
       addFailureEventToRetryQueue(tsFileInsertionEvent, e);
     }
+  }
+
+  private boolean shouldTransferAsObjectTablet(final TabletInsertionEvent tabletInsertionEvent) {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      return shouldTransferInsertNodeAsObjectTablets(
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    }
+    if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      return shouldTransferRawTabletAsObjectTablets(
+          (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    }
+    return false;
+  }
+
+  private boolean shouldTransferAsObjectTabletInCurrentMode(
+      final TabletInsertionEvent tabletInsertionEvent) {
+    return shouldTransferAsObjectTablet(tabletInsertionEvent)
+        && (!isTabletBatchModeEnabled || !tabletBatchBuilder.isTsFileBatchMode());
+  }
+
+  private boolean shouldTransferAsObjectTsFile(final TsFileInsertionEvent tsFileInsertionEvent) {
+    return tsFileInsertionEvent instanceof PipeTsFileInsertionEvent
+        && ((PipeTsFileInsertionEvent) tsFileInsertionEvent).isTableModelEvent()
+        && ((PipeTsFileInsertionEvent) tsFileInsertionEvent).hasObjectData();
+  }
+
+  protected void transferTabletInsertionEventSynchronously(
+      final TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    syncSink.transferTabletInsertionEventSynchronously(tabletInsertionEvent);
+  }
+
+  protected void transferTsFileInsertionEventSynchronously(final TsFileInsertionEvent tsFileEvent)
+      throws Exception {
+    syncSink.transferTsFileInsertionEventSynchronously(tsFileEvent);
+  }
+
+  private boolean transferTsFileInsertionEventSynchronouslyWithResult(
+      final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    transferAllBatchedEventsIfNecessary();
+    transferTsFileInsertionEventSynchronously(tsFileInsertionEvent);
+    return true;
+  }
+
+  private void transferObjectTabletWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
+      throws Exception {
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent event =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      if (isTabletBatchModeEnabled) {
+        splitInsertNodeObjectTabletToBatch(event);
+        transferBatchedEventsIfNecessary();
+      } else {
+        splitInsertNodeObjectTabletToAsync(event);
+      }
+      return;
+    }
+    final PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+    if (event.isObjectValueContentEvent()) {
+      if (isTabletBatchModeEnabled) {
+        tabletBatchBuilder.onEvent(event);
+        transferBatchedEventsIfNecessary();
+      } else {
+        // We increase the reference count for this event to determine if the event may be released.
+        if (!event.increaseReferenceCount(IoTDBDataRegionAsyncSink.class.getName())) {
+          return;
+        }
+        final TPipeTransferReq pipeTransferTabletRawReq =
+            compressIfNeeded(
+                PipeTransferTabletRawReqV2.toTPipeTransferReq(
+                    event.convertToTablet(),
+                    event.isAligned(),
+                    event.isTableModelEvent() ? event.getTableModelDatabaseName() : null));
+        final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
+            new PipeTransferTabletRawEventHandler(event, pipeTransferTabletRawReq, this);
+        transfer(event.getDeviceId(), pipeTransferTabletReqHandler);
+      }
+      return;
+    }
+
+    if (isTabletBatchModeEnabled) {
+      splitRawObjectTabletToBatch(event);
+      transferBatchedEventsIfNecessary();
+    } else {
+      splitRawObjectTabletToAsync(event);
+    }
+  }
+
+  private void splitInsertNodeObjectTabletToBatch(final PipeInsertNodeTabletInsertionEvent event)
+      throws Exception {
+    if (tabletBatchBuilder.isTsFileBatchMode()) {
+      tabletBatchBuilder.onEvent(event);
+      transferBatchedEventsIfNecessary();
+      return;
+    }
+
+    final List<Tablet> tablets = event.convertToTablets();
+    for (int i = 0; i < tablets.size(); i++) {
+      final Tablet tablet = tablets.get(i);
+      try (final TabletObjectSplitIterator splitIterator =
+          new TabletObjectSplitIterator(
+              tablet,
+              event.getTsFileResource() == null ? null : event.getTsFileResource().getTsFile(),
+              PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                  event.getTsFileResource(), event.getPipeName()),
+              true)) {
+        while (splitIterator.hasNext()) {
+          offerSplitTabletEventAndFlushIfNecessary(
+              createSplitRawTabletEvent(event, splitIterator.next(), event.isAligned(i)));
+        }
+      }
+    }
+  }
+
+  private void splitRawObjectTabletToBatch(final PipeRawTabletInsertionEvent event)
+      throws Exception {
+    if (tabletBatchBuilder.isTsFileBatchMode()) {
+      tabletBatchBuilder.onEvent(event);
+      transferBatchedEventsIfNecessary();
+      return;
+    }
+
+    try (final TabletObjectSplitIterator splitIterator =
+        new TabletObjectSplitIterator(
+            event.convertToTablet(),
+            event.getTsFileResource() == null ? null : event.getTsFileResource().getTsFile(),
+            PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                event.getTsFileResource(), event.getPipeName()),
+            true)) {
+      while (splitIterator.hasNext()) {
+        offerSplitTabletEventAndFlushIfNecessary(
+            createSplitRawTabletEvent(event, splitIterator.next(), event.isAligned()));
+      }
+    }
+  }
+
+  private void offerSplitTabletEventAndFlushIfNecessary(
+      final PipeRawTabletInsertionEvent splitEvent) throws Exception {
+    tabletBatchBuilder.onEvent(splitEvent);
+    transferBatchedEventsIfNecessary();
+  }
+
+  private void splitInsertNodeObjectTabletToAsync(final PipeInsertNodeTabletInsertionEvent event)
+      throws Exception {
+    for (int i = 0; i < event.convertToTablets().size(); i++) {
+      final Tablet tablet = event.convertToTablets().get(i);
+      try (final TabletObjectSplitIterator splitIterator =
+          new TabletObjectSplitIterator(
+              tablet,
+              event.getTsFileResource() == null ? null : event.getTsFileResource().getTsFile(),
+              PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                  event.getTsFileResource(), event.getPipeName()),
+              true)) {
+        while (splitIterator.hasNext()) {
+          transferInEventWithoutCheck(
+              createSplitRawTabletEvent(event, splitIterator.next(), event.isAligned(i)));
+        }
+      }
+    }
+  }
+
+  private void splitRawObjectTabletToAsync(final PipeRawTabletInsertionEvent event)
+      throws Exception {
+    try (final TabletObjectSplitIterator splitIterator =
+        new TabletObjectSplitIterator(
+            event.convertToTablet(),
+            event.getTsFileResource() == null ? null : event.getTsFileResource().getTsFile(),
+            PipeObjectPathUtil.resolveLinkedObjectDirectory(
+                event.getTsFileResource(), event.getPipeName()),
+            true)) {
+      while (splitIterator.hasNext()) {
+        transferInEventWithoutCheck(
+            createSplitRawTabletEvent(event, splitIterator.next(), event.isAligned()));
+      }
+    }
+  }
+
+  private PipeRawTabletInsertionEvent createSplitRawTabletEvent(
+      final PipeInsertionEvent sourceEvent, final Tablet splitTablet, final boolean aligned) {
+    final PipeRawTabletInsertionEvent splitEvent =
+        new PipeRawTabletInsertionEvent(
+            sourceEvent.getRawIsTableModelEvent(),
+            sourceEvent.getSourceDatabaseNameFromDataRegion(),
+            sourceEvent.getRawTableModelDataBase(),
+            sourceEvent.getRawTreeModelDataBase(),
+            splitTablet,
+            aligned,
+            sourceEvent.getPipeName(),
+            sourceEvent.getCreationTime(),
+            sourceEvent.getPipeTaskMeta(),
+            sourceEvent,
+            true,
+            sourceEvent.getUserId(),
+            sourceEvent.getUserName(),
+            sourceEvent.getCliHostname());
+    if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      splitEvent.setTsFileResource(
+          ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getTsFileResource());
+    } else if (sourceEvent instanceof PipeRawTabletInsertionEvent) {
+      splitEvent.setTsFileResource(((PipeRawTabletInsertionEvent) sourceEvent).getTsFileResource());
+    }
+    splitEvent.setObjectValueContentEvent(true);
+    return splitEvent;
+  }
+
+  private boolean shouldTransferInsertNodeAsObjectTablets(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent) {
+    if (!pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+        || pipeInsertNodeTabletInsertionEvent.getTsFileResource() == null
+        || pipeInsertNodeTabletInsertionEvent.getTsFileResource().getTsFile() == null) {
+      return false;
+    }
+    return pipeInsertNodeTabletInsertionEvent.hasObjectData();
+  }
+
+  private boolean shouldTransferRawTabletAsObjectTablets(
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent) {
+    return pipeRawTabletInsertionEvent.isTableModelEvent()
+        && pipeRawTabletInsertionEvent.hasObjectData()
+        && pipeRawTabletInsertionEvent.getTsFileResource() != null
+        && pipeRawTabletInsertionEvent.getTsFileResource().getTsFile() != null;
   }
 
   /**

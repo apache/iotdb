@@ -33,6 +33,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -275,21 +276,10 @@ public class IoTDBLegacyPipeReceiverAgent {
     final String tsFileName = tsFilePipeData.getTsFileName();
     final File tsFile = resolveFileInFileDataDir(fileDir, tsFileName);
     final File dir = tsFile.getParentFile();
-    final File[] targetFiles =
-        dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
-    if (targetFiles != null) {
-      for (final File targetFile : targetFiles) {
-        final File newFile =
-            new File(
-                dir,
-                targetFile
-                    .getName()
-                    .substring(0, targetFile.getName().length() - PATCH_SUFFIX.length()));
-        if (!targetFile.renameTo(newFile)) {
-          LOGGER.error(DataNodePipeMessages.FAIL_TO_RENAME_FILE_TO, targetFile, newFile);
-        }
-      }
-    }
+    renamePatchedFileIfExists(resolveFileInFileDataDir(fileDir, tsFileName + PATCH_SUFFIX));
+    renamePatchedFilesRecursively(
+        resolveFileInFileDataDir(
+            fileDir, PipeObjectPathUtil.tsFileBaseNameWithoutSuffix(tsFileName)));
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
   }
 
@@ -325,6 +315,13 @@ public class IoTDBLegacyPipeReceiverAgent {
       LOGGER.warn(e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
     }
+    final File parent = file.getParentFile();
+    if (parent != null && !parent.exists() && !parent.mkdirs()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SYNC_FILE_ERROR,
+          String.format(
+              DataNodePipeMessages.CANNOT_CREATE_PARENT_DIRECTORIES_FOR, file.getAbsolutePath()));
+    }
 
     // step2. check startIndex
     final IndexCheckResult result = checkStartIndexValid(fileWithoutPatch, startIndex);
@@ -348,6 +345,40 @@ public class IoTDBLegacyPipeReceiverAgent {
     }
 
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
+  }
+
+  private void renamePatchedFileIfExists(final File patchedFile) {
+    if (!patchedFile.exists() || !patchedFile.isFile()) {
+      return;
+    }
+    final String fileName = patchedFile.getName();
+    if (!fileName.endsWith(PATCH_SUFFIX)) {
+      return;
+    }
+    final File newFile =
+        new File(
+            patchedFile.getParentFile(),
+            fileName.substring(0, fileName.length() - PATCH_SUFFIX.length()));
+    if (!patchedFile.renameTo(newFile)) {
+      LOGGER.error(DataNodePipeMessages.FAIL_TO_RENAME_FILE_TO, patchedFile, newFile);
+    }
+  }
+
+  private void renamePatchedFilesRecursively(final File current) {
+    if (!current.exists()) {
+      return;
+    }
+    if (current.isFile()) {
+      renamePatchedFileIfExists(current);
+      return;
+    }
+    final File[] children = current.listFiles();
+    if (children == null) {
+      return;
+    }
+    for (final File child : children) {
+      renamePatchedFilesRecursively(child);
+    }
   }
 
   private static File resolveFileInFileDataDir(final String fileDir, final String fileName)
