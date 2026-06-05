@@ -20,12 +20,209 @@
 -->
 # Apache IoTDB C++ Client
 
+[中文说明](README_zh.md)
+
+This directory builds and packages the Apache IoTDB C++ Session SDK. If you
+already have an `iotdb-session-cpp-<version>-<classifier>.zip` package, you do
+not need Maven, Thrift, Boost, or this source tree to use it in your own
+application. Unpack the zip, point your build system at its `include/` and
+`lib/` directories, and deploy the IoTDB runtime library with your executable.
+
+## Use a packaged SDK in your project
+
+### 1. Pick and unpack the right package
+
+Choose the zip whose classifier matches the machine where the application will
+run:
+
+| Target environment | Zip classifier (suffix) |
+|--------------------|-------------------------|
+| Linux x86_64, glibc >= 2.17 | `linux-x86_64-glibc2.17` |
+| Linux aarch64, glibc >= 2.17 | `linux-aarch64-glibc2.17` |
+| macOS x86_64 | `macos-x86_64` |
+| macOS arm64 | `macos-aarch64` |
+| Windows + Visual Studio 2017 | `windows-x86_64-msvc14.1` |
+| Windows + Visual Studio 2019 | `windows-x86_64-msvc14.2` |
+| Windows + Visual Studio 2022 | `windows-x86_64-msvc14.3` |
+| Windows + Visual Studio 2026 | `windows-x86_64-msvc14.4` |
+
+Example:
+
+```bash
+unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17
+```
+
+The unpacked SDK contains public headers, one runtime library, CMake and
+pkg-config metadata, and examples:
+
+```
+include/                         public C and C++ API headers
+lib/                             libiotdb_session.so/.dylib or iotdb_session.dll + .lib
+cmake/iotdb-session-config.cmake CMake package config
+pkgconfig/iotdb-session.pc       pkg-config metadata
+examples/                        sample source files and an example CMakeLists.txt
+third_party/DEPENDENCIES.md      bundled third-party dependency notes
+```
+
+Thrift and Boost are embedded into `iotdb_session`; applications do not install
+separate Thrift or Boost headers/libraries for normal SDK use.
+
+### 2. Link with CMake
+
+```cmake
+cmake_minimum_required(VERSION 3.15)
+project(my_iotdb_app LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(iotdb-session REQUIRED CONFIG)
+
+add_executable(my_iotdb_app main.cpp)
+target_link_libraries(my_iotdb_app PRIVATE IoTDB::iotdb_session)
+```
+
+Configure with the SDK prefix:
+
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH="$IOTDB_SESSION_HOME"
+cmake --build build
+```
+
+On Windows, use the same Visual Studio generation as the SDK package. For
+example, link a `windows-x86_64-msvc14.3` package with Visual Studio 2022.
+
+Visual Studio users can either open the project folder and add the unpacked SDK
+directory to `CMAKE_PREFIX_PATH` in CMake cache settings, or configure from a
+Developer Command Prompt:
+
+```bat
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
+  -DCMAKE_PREFIX_PATH="%IOTDB_SESSION_HOME%"
+cmake --build build --config Release
+copy "%IOTDB_SESSION_HOME%\lib\iotdb_session.dll" build\Release\
+```
+
+### 3. Link with pkg-config on Linux/macOS
+
+```bash
+export PKG_CONFIG_PATH="$IOTDB_SESSION_HOME/pkgconfig:$PKG_CONFIG_PATH"
+c++ -std=c++11 main.cpp $(pkg-config --cflags --libs iotdb-session) -o my_iotdb_app
+```
+
+When running from a directory that does not already know where the shared
+library is, either copy the runtime library next to the executable or set the
+library search path:
+
+```bash
+cp -P "$IOTDB_SESSION_HOME"/lib/libiotdb_session.so* .
+./my_iotdb_app
+
+# Or:
+LD_LIBRARY_PATH="$IOTDB_SESSION_HOME/lib:$LD_LIBRARY_PATH" ./my_iotdb_app
+```
+
+### 4. Link manually
+
+Linux:
+
+```bash
+c++ -std=c++11 main.cpp \
+  -I"$IOTDB_SESSION_HOME/include" \
+  -L"$IOTDB_SESSION_HOME/lib" \
+  -liotdb_session -pthread \
+  -Wl,-rpath,"$IOTDB_SESSION_HOME/lib" \
+  -o my_iotdb_app
+```
+
+macOS:
+
+```bash
+c++ -std=c++11 main.cpp \
+  -I"$IOTDB_SESSION_HOME/include" \
+  -L"$IOTDB_SESSION_HOME/lib" \
+  -liotdb_session \
+  -Wl,-rpath,"$IOTDB_SESSION_HOME/lib" \
+  -o my_iotdb_app
+```
+
+Windows with MSVC:
+
+```bat
+cl /std:c++14 /EHsc main.cpp /I "%IOTDB_SESSION_HOME%\include" ^
+  /link /LIBPATH:"%IOTDB_SESSION_HOME%\lib" iotdb_session.lib
+copy "%IOTDB_SESSION_HOME%\lib\iotdb_session.dll" .
+```
+
+### 5. Build the bundled examples
+
+The package includes example sources under `examples/`. From the unpacked SDK
+root:
+
+```bash
+cmake -S examples -B examples-build -DCMAKE_BUILD_TYPE=Release
+cmake --build examples-build
+```
+
+On Windows:
+
+```bat
+cmake -S examples -B examples-build -G "Visual Studio 17 2022" -A x64
+cmake --build examples-build --config Release
+```
+
+The example build copies the IoTDB runtime library next to each example
+executable. `cmake --build examples-build --target example-dist` also creates a
+`dist/` folder containing the examples and runtime library.
+
+### 6. Minimal C++ program
+
+```cpp
+#include "Session.h"
+
+#include <iostream>
+#include <memory>
+
+int main() {
+  auto session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
+  session->open(false);
+
+  session->setStorageGroup("root.test");
+  if (!session->checkTimeseriesExists("root.test.d0.s0")) {
+    session->createTimeseries(
+        "root.test.d0.s0", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+  }
+
+  session->close();
+  std::cout << "IoTDB C++ session is ready." << std::endl;
+  return 0;
+}
+```
+
+The examples in the package connect to `127.0.0.1:6667` with `root` / `root`
+by default. Start IoTDB before running them.
+
+### Runtime deployment notes
+
+- Linux release packages are built in the `manylinux2014` container and require
+  glibc 2.17 or newer.
+- Windows packages use the dynamic MSVC runtime (`/MD`). Install the Microsoft
+  Visual C++ Redistributable matching your Visual Studio generation on target
+  machines that do not already have it.
+- Put `libiotdb_session.so`, `libiotdb_session.dylib`, or `iotdb_session.dll`
+  next to your executable, or configure the platform library search path. On
+  Linux, keep the `libiotdb_session.so*` symlink chain together when copying
+  files manually.
+
+## Build the SDK from source
+
 The C++ client is built by a single top-level `CMakeLists.txt` in this
 directory. The outer Maven POM is a thin wrapper that invokes CMake; you can
 also build the client standalone with just `cmake` if you don't have Maven
 available.
 
-## Build layout at a glance
+### Build layout at a glance
 
 ```
 iotdb-client/client-cpp/
@@ -55,7 +252,7 @@ During configure CMake will, in order:
 6. `cmake --install` lays out the SDK under `target/install/{include,lib}`,
    which Maven's assembly step packages into a zip.
 
-## Build matrix
+### Build matrix
 
 | Goal                          | Command                                                                                                |
 |-------------------------------|--------------------------------------------------------------------------------------------------------|
@@ -309,6 +506,7 @@ A successful `mvn ... package` produces
 
 ```
 README.md
+README_zh.md
 LICENSE
 NOTICE
 VERSION
@@ -334,38 +532,5 @@ examples/
 
 Thrift is embedded inside `iotdb_session` on all platforms; it is not shipped
 as a separate install artifact.
-
-## Using the C++ client
-
-```cpp
-#include "Session.h"
-    #include <memory>
-    #include <iostream>
-
-    int main() {
-    auto session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
-        session->open(false);
-        session->setStorageGroup("root.test01");
-        if (!session->checkTimeseriesExists("root.test01.d0.s0")) {
-        session->createTimeseries(
-            "root.test01.d0.s0",
-            TSDataType::INT64,
-            TSEncoding::RLE,
-            CompressionType::SNAPPY);
-    }
-        session->close();
-    }
-```
-
-Compile against the produced SDK:
-
-```bash
-clang++ -O2 user-cpp-code.cpp \
-    -I/path/to/sdk/include \
-    -L/path/to/sdk/lib \
-    -liotdb_session -lpthread \
-    -Wl,-rpath,/path/to/sdk/lib \
-    -std=c++11
-```
 
 For full API documentation see the [C++ Native API guide](https://iotdb.apache.org/UserGuide/latest/API/Programming-Cpp-Native-API.html).

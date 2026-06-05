@@ -42,7 +42,11 @@ if(TARGET iotdb_session)
     set(_iotdb_link_lib iotdb_session)
 else()
     set(_iotdb_examples_in_tree OFF)
-    set(IOTDB_SDK_ROOT "${CMAKE_SOURCE_DIR}/client"
+    set(_iotdb_default_sdk_root "${CMAKE_CURRENT_LIST_DIR}/..")
+    if(NOT EXISTS "${_iotdb_default_sdk_root}/include" OR NOT EXISTS "${_iotdb_default_sdk_root}/lib")
+        set(_iotdb_default_sdk_root "${CMAKE_SOURCE_DIR}/client")
+    endif()
+    set(IOTDB_SDK_ROOT "${_iotdb_default_sdk_root}"
         CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)")
 
     if(NOT EXISTS "${IOTDB_SDK_ROOT}/include" OR NOT EXISTS "${IOTDB_SDK_ROOT}/lib")
@@ -139,7 +143,7 @@ foreach(_t IN LISTS _example_targets)
   endif()
 endforeach()
 
-# Optional: stage a self-contained folder for copying to another machine (see README).
+# Optional: stage a self-contained folder for copying to another machine (see package README).
 set(_example_dist_dir "${CMAKE_BINARY_DIR}/dist")
 add_custom_target(example-dist DEPENDS ${_example_targets}
     COMMENT "Collect example binaries and IoTDB runtime into ${_example_dist_dir}")

@@ -44,6 +44,7 @@
             <directory>${project.basedir}</directory>
             <includes>
                 <include>README.md</include>
+                <include>README_zh.md</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
@@ -96,8 +97,6 @@
                 <include>CMakeLists.txt</include>
                 <include>*.c</include>
                 <include>*.cpp</include>
-                <include>README.md</include>
-                <include>README_zh.md</include>
             </includes>
             <outputDirectory>examples</outputDirectory>
         </fileSet>

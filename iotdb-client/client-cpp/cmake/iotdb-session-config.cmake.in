@@ -17,6 +17,11 @@
 
 get_filename_component(_IOTDB_SESSION_PACKAGE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
+if(UNIX)
+    include(CMakeFindDependencyMacro)
+    find_dependency(Threads)
+endif()
+
 if(WIN32)
     set(_IOTDB_SESSION_LIBRARY "${_IOTDB_SESSION_PACKAGE_ROOT}/lib/iotdb_session.lib")
 elseif(APPLE)
@@ -29,6 +34,10 @@ if(NOT TARGET IoTDB::iotdb_session)
     add_library(IoTDB::iotdb_session SHARED IMPORTED)
     set_target_properties(IoTDB::iotdb_session PROPERTIES
             INTERFACE_INCLUDE_DIRECTORIES "${_IOTDB_SESSION_PACKAGE_ROOT}/include")
+    if(UNIX)
+        set_target_properties(IoTDB::iotdb_session PROPERTIES
+                INTERFACE_LINK_LIBRARIES Threads::Threads)
+    endif()
     if(WIN32)
         set_target_properties(IoTDB::iotdb_session PROPERTIES
                 IMPORTED_IMPLIB "${_IOTDB_SESSION_LIBRARY}"
