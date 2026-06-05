@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -51,6 +52,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
@@ -275,12 +277,30 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
           reader.getIChunkMetadataList(deviceId, measurement);
       Assert.assertFalse(chunkMetadataList.isEmpty());
 
-      final long chunkHeaderOffset = chunkMetadataList.get(0).getOffsetOfChunkHeader();
+      final long chunkHeaderOffset =
+          getTargetChunkMetadata(chunkMetadataList.get(0), measurement).getOffsetOfChunkHeader();
       try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
         randomAccessFile.seek(chunkHeaderOffset + 64);
         randomAccessFile.write(new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
       }
     }
+  }
+
+  private IChunkMetadata getTargetChunkMetadata(
+      final IChunkMetadata chunkMetadata, final String measurement) {
+    if (!(chunkMetadata instanceof AbstractAlignedChunkMetadata)) {
+      return chunkMetadata;
+    }
+
+    final IChunkMetadata valueChunkMetadata =
+        ((AbstractAlignedChunkMetadata) chunkMetadata)
+            .getValueChunkMetadataList().stream()
+                .filter(Objects::nonNull)
+                .filter(metadata -> measurement.equals(metadata.getMeasurementUid()))
+                .findFirst()
+                .orElse(null);
+    Assert.assertNotNull(valueChunkMetadata);
+    return valueChunkMetadata;
   }
 
   private void assertMeasurementLoadedCompletely(
