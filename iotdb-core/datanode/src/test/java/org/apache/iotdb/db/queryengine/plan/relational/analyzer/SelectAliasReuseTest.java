@@ -114,6 +114,17 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void selectDistinctOrderByAliasUsesOutputField() {
+    String sql = "SELECT DISTINCT s1 AS x FROM table1 ORDER BY x";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertFieldReference(
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0), 0);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void orderByWindowFunctionAliasReusesSelectOutputField() {
     String sql = "SELECT row_number() OVER (ORDER BY s1) AS rn FROM table1 ORDER BY rn";
 
