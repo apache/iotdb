@@ -50,6 +50,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
@@ -268,6 +269,26 @@ public class WritableViewPipeReplayTest {
     Assert.assertFalse(
         IoTDBConfigNodeReceiver.shouldReplaySenderSourceForWritableViewPlan(
             plan, true, "receiver_db", "receiver_source"));
+  }
+
+  @Test
+  public void testViewOnlyAddWritableViewColumnPlanSerDe() throws IOException {
+    final AddWritableViewColumnPlan plan =
+        new AddWritableViewColumnPlan(
+            "view_db",
+            "view_table",
+            Collections.singletonList(new FieldColumnSchema("view_col", TSDataType.INT32)),
+            false,
+            null,
+            null,
+            null);
+
+    final AddWritableViewColumnPlan deserializedPlan =
+        (AddWritableViewColumnPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+
+    Assert.assertNull(deserializedPlan.getOriginalDatabase());
+    Assert.assertNull(deserializedPlan.getOriginalTableName());
+    Assert.assertTrue(deserializedPlan.getOriginalColumnSchemaList().isEmpty());
   }
 
   @Test

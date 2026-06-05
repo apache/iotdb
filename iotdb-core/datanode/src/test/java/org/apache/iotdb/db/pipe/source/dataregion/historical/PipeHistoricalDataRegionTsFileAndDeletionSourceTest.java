@@ -74,7 +74,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     Assert.assertEquals(false, getPrivateField(source, "shouldExtractInsertion"));
     Assert.assertEquals(true, getPrivateField(source, "shouldExtractDeletion"));
     Assert.assertNotNull(getPrivateField(source, "treePattern"));
-    Assert.assertNotNull(getPrivateField(source, "tablePattern"));
+    Assert.assertNotNull(getPrivateField(source, "dataTablePattern"));
   }
 
   @Test

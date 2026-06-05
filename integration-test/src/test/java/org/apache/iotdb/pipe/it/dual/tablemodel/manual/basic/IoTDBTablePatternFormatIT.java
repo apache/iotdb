@@ -26,6 +26,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -429,6 +430,62 @@ public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelDualManualI
 
       TableModelUtils.hasDataBase("pattern", receiverEnv);
       TableModelUtils.hasDataBase("pattern1", receiverEnv);
+    }
+  }
+
+  @Test
+  public void testWritableViewSourcePatternByRealtime() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+    final String database = "writable_view_pipe";
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
+
+    TableModelUtils.createDataBaseAndTable(senderEnv, "source_table", database);
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "source_table", database);
+    TestUtils.executeNonQuery(
+        database,
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        "create writable view writable_view as select * from source_table");
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("source.database-name", database);
+      extractorAttributes.put("source.table-name", "writable_view");
+      extractorAttributes.put("source.inclusion", "data.insert");
+      extractorAttributes.put("source.capture.table", "true");
+      extractorAttributes.put("source.capture.tree", "false");
+      extractorAttributes.put("user", "root");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      TableModelUtils.insertData(database, "source_table", 0, 100, senderEnv);
+
+      TableModelUtils.assertData(database, "source_table", 0, 100, receiverEnv, handleFailure);
     }
   }
 

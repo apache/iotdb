@@ -1307,6 +1307,10 @@ public class ClusterSchemaManager {
         usingTableMap, preCreateTableMap);
   }
 
+  public Map<String, List<TsTable>> getAllUsingTables() {
+    return clusterSchemaInfo.getAllUsingTables();
+  }
+
   // endregion
 
   /**

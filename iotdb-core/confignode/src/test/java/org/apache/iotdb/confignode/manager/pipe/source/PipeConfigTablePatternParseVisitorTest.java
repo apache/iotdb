@@ -47,6 +47,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCom
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.CommitDeleteWritableViewPlan;
+import com.timecho.iotdb.confignode.consensus.request.write.table.view.writable.SetWritableViewPropertiesPlan;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
@@ -165,6 +167,67 @@ public class PipeConfigTablePatternParseVisitorTest {
         new CommitDeleteViewPlan("db1", "ab"),
         new CommitDeleteViewPlan("db1", "ac"),
         new CommitDeleteViewPlan("da", "ac"));
+  }
+
+  @Test
+  public void testCommitDeleteWritableViewOnlyMatchesViewTable() {
+    final ConfigPhysicalPlan result =
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new CommitDeleteWritableViewPlan("db1", "ab", "source_db", "source_table"),
+                tablePattern)
+            .orElseThrow(AssertionError::new);
+
+    Assert.assertEquals(new CommitDeleteWritableViewPlan("db1", "ab", null, null), result);
+    Assert.assertNull(((CommitDeleteWritableViewPlan) result).getOriginalDatabase());
+    Assert.assertNull(((CommitDeleteWritableViewPlan) result).getOriginalTableName());
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(new CommitDeleteWritableViewPlan("da", "ac", "db1", "ab"), tablePattern)
+            .isPresent());
+  }
+
+  @Test
+  public void testWritableViewPlanKeepsOriginalWhenWholeDatabaseCovered() {
+    final TablePattern databasePattern = new TablePattern(true, "db1", null);
+
+    final ConfigPhysicalPlan result =
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new SetWritableViewPropertiesPlan(
+                    "db1", "view1", Collections.singletonMap("ttl", "2"), "db1", "table1"),
+                databasePattern)
+            .orElseThrow(AssertionError::new);
+
+    Assert.assertTrue(result instanceof SetWritableViewPropertiesPlan);
+    Assert.assertEquals("db1", ((SetWritableViewPropertiesPlan) result).getOriginalDatabase());
+    Assert.assertEquals("table1", ((SetWritableViewPropertiesPlan) result).getOriginalTableName());
+  }
+
+  @Test
+  public void testWritableViewPlanDropsOriginalWhenTablePatternSpecified() {
+    final TablePattern viewOnlyPattern = new TablePattern(true, "db1", "view.*");
+
+    final ConfigPhysicalPlan result =
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new SetWritableViewPropertiesPlan(
+                    "db1", "view1", Collections.singletonMap("ttl", "2"), "db1", "table1"),
+                viewOnlyPattern)
+            .orElseThrow(AssertionError::new);
+
+    Assert.assertTrue(result instanceof SetWritableViewPropertiesPlan);
+    Assert.assertNull(((SetWritableViewPropertiesPlan) result).getOriginalDatabase());
+    Assert.assertNull(((SetWritableViewPropertiesPlan) result).getOriginalTableName());
+
+    final TablePattern sourceOnlyPattern = new TablePattern(true, "db1", "table.*");
+    Assert.assertFalse(
+        IoTDBConfigRegionSource.TABLE_PATTERN_PARSE_VISITOR
+            .process(
+                new SetWritableViewPropertiesPlan(
+                    "db1", "view1", Collections.singletonMap("ttl", "2"), "db1", "table1"),
+                sourceOnlyPattern)
+            .isPresent());
   }
 
   // Match the oldName instead of the new one

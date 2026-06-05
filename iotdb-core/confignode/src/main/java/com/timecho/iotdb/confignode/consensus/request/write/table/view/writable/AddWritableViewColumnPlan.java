@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
 public class AddWritableViewColumnPlan extends AddTableColumnPlan {
@@ -68,7 +69,9 @@ public class AddWritableViewColumnPlan extends AddTableColumnPlan {
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     super.serializeImpl(stream);
-    TsTableColumnSchemaUtil.serialize(originalColumnSchemaList, stream);
+    TsTableColumnSchemaUtil.serialize(
+        originalColumnSchemaList == null ? Collections.emptyList() : originalColumnSchemaList,
+        stream);
   }
 
   @Override

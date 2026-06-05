@@ -131,6 +131,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(
           env, alterPipeRequest.getExtractorAttributes());
     }
+    CreatePipeProcedureV2.checkAndEnrichWritableViewSourcePattern(
+        env, alterPipeRequest.getExtractorAttributes());
     if (checkSink) {
       CreatePipeProcedureV2.checkAndEnrichSinkAuthentication(
           env, alterPipeRequest.getConnectorAttributes());

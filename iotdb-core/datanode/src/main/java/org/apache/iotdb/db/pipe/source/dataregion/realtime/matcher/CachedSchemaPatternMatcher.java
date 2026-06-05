@@ -303,7 +303,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         continue;
       }
 
-      final TablePattern tablePattern = source.getTablePattern();
+      final TablePattern tablePattern = source.getDataTablePattern();
       if (matchesTablePattern(tablePattern, databaseNameAndTableName)
           && (!source.isSkipIfNoPrivileges()
               || notFilteredByAccess(
@@ -320,8 +320,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       final TablePattern tablePattern, final Pair<String, IDeviceID> databaseNameAndTableName) {
     return Objects.isNull(tablePattern)
         || (tablePattern.isTableModelDataAllowedToBeCaptured()
-            && tablePattern.matchesDatabase(databaseNameAndTableName.getLeft())
-            && tablePattern.matchesTable(databaseNameAndTableName.getRight().getTableName()));
+            && tablePattern.matchesDatabaseAndTable(
+                databaseNameAndTableName.getLeft(),
+                databaseNameAndTableName.getRight().getTableName()));
   }
 
   private boolean notFilteredByAccess(

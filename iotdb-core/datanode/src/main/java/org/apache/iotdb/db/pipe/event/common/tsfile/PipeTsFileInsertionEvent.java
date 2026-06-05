@@ -610,8 +610,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       if (isTableModelEvent()) {
         for (final String table : tableNames) {
-          if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
-              || !tablePattern.matchesTable(table)) {
+          if (!tablePattern.matchesDatabaseAndTable(getTableModelDatabaseName(), table)) {
             continue;
           }
           if (!AuthorityChecker.getAccessControl()

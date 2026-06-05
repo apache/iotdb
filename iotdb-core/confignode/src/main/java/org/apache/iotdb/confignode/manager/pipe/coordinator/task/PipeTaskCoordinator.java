@@ -117,7 +117,7 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    if (!isPipeExistedForOperation(pipeName, req.isTableModel, req.isSetIsTableModel())) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -149,7 +149,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(TStartPipeReq req) {
     final String pipeName = req.getPipeName();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    if (!isPipeExistedForOperation(pipeName, req.isTableModel, req.isSetIsTableModel())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
@@ -175,7 +175,7 @@ public class PipeTaskCoordinator {
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(TStopPipeReq req) {
     final String pipeName = req.getPipeName();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    if (!isPipeExistedForOperation(pipeName, req.isTableModel, req.isSetIsTableModel())) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_NOT_EXIST_ERROR,
           String.format(
@@ -189,7 +189,7 @@ public class PipeTaskCoordinator {
     final String pipeName = req.getPipeName();
     final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+    if (!isPipeExistedForOperation(pipeName, req.isTableModel, req.isSetIsTableModel())) {
       return isSetIfExistsCondition
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
           : RpcUtils.getStatus(
@@ -207,6 +207,13 @@ public class PipeTaskCoordinator {
       LOGGER.warn(ManagerMessages.FAILED_TO_DROP_PIPE_RESULT_STATUS, pipeName, status);
     }
     return status;
+  }
+
+  private boolean isPipeExistedForOperation(
+      final String pipeName, final boolean isTableModel, final boolean isSetIsTableModel) {
+    return isSetIsTableModel
+        ? pipeTaskInfo.isPipeExisted(pipeName, isTableModel)
+        : pipeTaskInfo.isPipeExisted(pipeName);
   }
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {

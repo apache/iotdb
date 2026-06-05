@@ -106,6 +106,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected TreePattern treePattern;
   protected TablePattern tablePattern;
+  protected TablePattern dataTablePattern;
   private boolean isDbNameCoveredByPattern = false;
 
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
@@ -237,6 +238,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    dataTablePattern = TablePattern.parsePipeDataPatternFromSourceParameters(parameters);
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
@@ -244,7 +246,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       final String databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
         if (PathUtils.isTableModelDatabase(databaseName)) {
-          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+          isDbNameCoveredByPattern = dataTablePattern.coversDb(databaseName);
         } else {
           isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
         }
@@ -560,6 +562,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return tablePattern;
   }
 
+  public final TablePattern getDataTablePattern() {
+    return dataTablePattern;
+  }
+
   public long getUserId() {
     return userId;
   }
@@ -651,6 +657,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         .add("shouldExtractDeletion", shouldExtractDeletion)
         .add("treePattern", treePattern)
         .add("tablePattern", tablePattern)
+        .add("dataTablePattern", dataTablePattern)
         .add("isDbNameCoveredByPattern", isDbNameCoveredByPattern)
         .add("realtimeDataExtractionStartTime", realtimeDataExtractionStartTime)
         .add("realtimeDataExtractionEndTime", realtimeDataExtractionEndTime)

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -31,6 +32,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,5 +119,38 @@ public class PipeTableRespTest {
 
     PipeTableResp allPipeTableResp = pipeTableResp.filter(true, null);
     Assert.assertEquals(3, allPipeTableResp.getAllPipeMeta().size());
+  }
+
+  @Test
+  public void testShowPipeHidesOriginalTablePattern() {
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "db");
+    extractorAttributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "writable_view");
+    extractorAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY, "source_db");
+    extractorAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY, "source_table");
+    extractorAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY, "hidden");
+
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testPipe",
+            121,
+            extractorAttributes,
+            new HashMap<>(),
+            Collections.singletonMap("connector", "iotdb-thrift-connector"));
+    final PipeTableResp pipeTableResp =
+        new PipeTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            Collections.singletonList(
+                new PipeMeta(pipeStaticMeta, new PipeRuntimeMeta(new ConcurrentHashMap<>()))));
+
+    final String shownSource =
+        pipeTableResp.convertToTShowPipeResp().getPipeInfoList().get(0).pipeExtractor;
+    Assert.assertTrue(shownSource.contains(PipeSourceConstant.SOURCE_TABLE_NAME_KEY));
+    Assert.assertTrue(shownSource.contains("writable_view"));
+    Assert.assertFalse(shownSource.contains(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY));
+    Assert.assertFalse(shownSource.contains(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY));
+    Assert.assertFalse(
+        shownSource.contains(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY));
+    Assert.assertFalse(shownSource.contains("source_table"));
   }
 }

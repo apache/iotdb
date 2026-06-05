@@ -21,12 +21,17 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -35,10 +40,14 @@ import org.mockito.Mockito;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class CreatePipeProcedureV2Test {
@@ -128,5 +137,118 @@ public class CreatePipeProcedureV2Test {
         "hashed-password", sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
     Mockito.verify(permissionManager).login("user", "raw-password", true);
     Mockito.verify(permissionManager).login4Pipe("user", "raw-password");
+  }
+
+  @Test
+  public void testCheckAndEnrichWritableViewSourcePattern() throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = Mockito.mock(ClusterSchemaManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    Mockito.when(clusterSchemaManager.getTableIfExists("db", "view"))
+        .thenReturn(Optional.of(new WritableView("view", "source_db", "source_table", true)));
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    sourceAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "db");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "view");
+
+    CreatePipeProcedureV2.checkAndEnrichWritableViewSourcePattern(env, sourceAttributes);
+
+    assertEquals(
+        "source_db", sourceAttributes.get(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY));
+    assertEquals(
+        "source_table", sourceAttributes.get(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY));
+  }
+
+  @Test
+  public void testCheckAndEnrichWritableViewSourcePatternStaticMatchesRegexAndRemovesStaleKeys()
+      throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = Mockito.mock(ClusterSchemaManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    final Map<String, List<TsTable>> allUsingTables = new HashMap<>();
+    allUsingTables.put(
+        "root.db",
+        Arrays.asList(
+            new WritableView("view1", "source_db", "source_table", true), new TsTable("table")));
+    Mockito.when(clusterSchemaManager.getAllUsingTables()).thenReturn(allUsingTables);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    sourceAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "db");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "view.*");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY, "stale_db");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY, "stale_table");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY, "stale");
+
+    CreatePipeProcedureV2.checkAndEnrichWritableViewSourcePattern(env, sourceAttributes);
+
+    assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY));
+    assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY));
+    assertFalse(
+        "stale"
+            .equals(sourceAttributes.get(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY)));
+    final TablePattern dataTablePattern =
+        TablePattern.parsePipeDataPatternFromSourceParameters(new PipeParameters(sourceAttributes));
+    org.junit.Assert.assertTrue(
+        dataTablePattern.matchesDatabaseAndTable("source_db", "source_table"));
+    Mockito.verify(clusterSchemaManager, Mockito.never())
+        .getTableIfExists(Mockito.anyString(), Mockito.anyString());
+  }
+
+  @Test
+  public void testCheckAndEnrichWritableViewSourcePatternStaticMatchEscapedTableName()
+      throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = Mockito.mock(ClusterSchemaManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    final Map<String, List<TsTable>> allUsingTables = new HashMap<>();
+    allUsingTables.put(
+        "root.db",
+        Arrays.asList(
+            new WritableView("view.1", "source.db", "source.table(1)", true),
+            new WritableView("viewX1", "source_db", "source_table_2", true)));
+    Mockito.when(clusterSchemaManager.getAllUsingTables()).thenReturn(allUsingTables);
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    sourceAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "db");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "view\\.1");
+
+    CreatePipeProcedureV2.checkAndEnrichWritableViewSourcePattern(env, sourceAttributes);
+
+    final TablePattern dataTablePattern =
+        TablePattern.parsePipeDataPatternFromSourceParameters(new PipeParameters(sourceAttributes));
+    org.junit.Assert.assertTrue(
+        dataTablePattern.matchesDatabaseAndTable("source.db", "source.table(1)"));
+    org.junit.Assert.assertFalse(
+        dataTablePattern.matchesDatabaseAndTable("source_db", "source_table_2"));
+  }
+
+  @Test
+  public void testCheckAndEnrichWritableViewSourcePatternSkipsBaseTable() throws Exception {
+    final ConfigNodeProcedureEnv env = Mockito.mock(ConfigNodeProcedureEnv.class);
+    final ConfigManager configManager = Mockito.mock(ConfigManager.class);
+    final ClusterSchemaManager clusterSchemaManager = Mockito.mock(ClusterSchemaManager.class);
+    Mockito.when(env.getConfigManager()).thenReturn(configManager);
+    Mockito.when(configManager.getClusterSchemaManager()).thenReturn(clusterSchemaManager);
+    Mockito.when(clusterSchemaManager.getTableIfExists("db", "table"))
+        .thenReturn(Optional.of(new TsTable("table")));
+
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, Boolean.TRUE.toString());
+    sourceAttributes.put(PipeSourceConstant.SOURCE_DATABASE_NAME_KEY, "db");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_TABLE_NAME_KEY, "table");
+
+    CreatePipeProcedureV2.checkAndEnrichWritableViewSourcePattern(env, sourceAttributes);
+
+    assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY));
+    assertFalse(sourceAttributes.containsKey(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY));
   }
 }

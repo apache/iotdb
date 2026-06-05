@@ -251,8 +251,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                           new TsFileInsertionEventTableParserTabletIterator(
                               tsFileSequenceReader,
                               entry ->
-                                  (Objects.isNull(tablePattern)
-                                          || tablePattern.matchesTable(entry.getKey()))
+                                  matchesTablePattern(entry.getKey())
                                       && hasTablePrivilege(entry.getKey()),
                               allocatedMemoryBlockForTablet,
                               allocatedMemoryBlockForBatchData,
@@ -309,6 +308,17 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                             tableName));
                   }
                   return false;
+                }
+
+                private boolean matchesTablePattern(final String tableName) {
+                  if (Objects.isNull(tablePattern)) {
+                    return true;
+                  }
+                  return Objects.isNull(sourceEvent)
+                          || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                      ? tablePattern.matchesTable(tableName)
+                      : tablePattern.matchesDatabaseAndTable(
+                          sourceEvent.getTableModelDatabaseName(), tableName);
                 }
 
                 @Override

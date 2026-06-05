@@ -39,6 +39,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -661,8 +662,79 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
           receiverEnv,
           "show tables details from " + sourceOnlyDb,
           "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
-          Collections.singleton("table1,300,USING,null,BASE TABLE,null,"),
+          Collections.singleton("table1,100,USING,null,BASE TABLE,null,"),
           sourceOnlyDb);
+    }
+  }
+
+  @Test
+  public void testWritableViewPipeUsesViewPatternForShowAndOriginalPatternForData()
+      throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final String dbName = "writable_view_pipe_pattern";
+      final String sourceTableName = "source_table";
+      final String viewName = "view1";
+      final String createSourceTableSql =
+          "create table " + sourceTableName + "(dev tag, label attribute, temp int32)";
+
+      TableModelUtils.createDatabase(receiverEnv, dbName);
+      TestUtils.executeNonQuery(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, createSourceTableSql, null);
+
+      TableModelUtils.createDatabase(senderEnv, dbName);
+      TestUtils.executeNonQuery(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, createSourceTableSql, null);
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "create writable view "
+              + viewName
+              + " as select * from "
+              + sourceTableName
+              + " with (schema_cascade=false)",
+          null);
+
+      createTableModelPipe(client, "viewPipe", dbName, viewName);
+      assertShownPipeSourceKeepsWritableViewAndHidesOriginalTable(
+          "viewPipe", viewName, sourceTableName);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show tables details from " + dbName,
+          "TableName,TTL(ms),Status,Comment,TableType,OriginalTableName,",
+          new HashSet<>(
+              Arrays.asList(
+                  "source_table,INF,USING,null,BASE TABLE,null,",
+                  "view1,INF,USING,null,WRITABLE VIEW,source_table,")),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "insert into source_table(time, dev, label, temp) values (1, 'd1', 'A', 10)",
+          null);
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from source_table",
+          "_col0,",
+          Collections.singleton("1,"),
+          dbName);
+
+      TestUtils.executeNonQuery(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "delete from source_table where time <= 1",
+          null);
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from source_table",
+          "_col0,",
+          Collections.singleton("0,"),
+          dbName);
     }
   }
 
@@ -951,5 +1023,26 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
                 .setExtractorAttributes(extractorAttributes)
                 .setProcessorAttributes(processorAttributes));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+  }
+
+  private void assertShownPipeSourceKeepsWritableViewAndHidesOriginalTable(
+      final String pipeName, final String viewName, final String sourceTableName) throws Exception {
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery("show pipes")) {
+      while (resultSet.next()) {
+        if (!pipeName.equals(resultSet.getString("ID"))) {
+          continue;
+        }
+
+        final String pipeSource = resultSet.getString("PipeSource");
+        Assert.assertTrue(pipeSource.contains(viewName));
+        Assert.assertFalse(pipeSource.contains(sourceTableName));
+        Assert.assertFalse(pipeSource.contains("__system.source.original.database-name"));
+        Assert.assertFalse(pipeSource.contains("__system.source.original.table-name"));
+        return;
+      }
+      fail("Cannot find pipe " + pipeName);
+    }
   }
 }

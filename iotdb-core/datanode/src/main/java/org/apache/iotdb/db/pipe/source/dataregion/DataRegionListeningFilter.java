@@ -72,9 +72,9 @@ public class DataRegionListeningFilter {
       final String databaseTableModel =
           databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
       final TablePattern tablePattern =
-          TablePattern.parsePipePatternFromSourceParameters(parameters);
+          TablePattern.parsePipeDataPatternFromSourceParameters(parameters);
       return tablePattern.isTableModelDataAllowedToBeCaptured()
-          && tablePattern.matchesDatabase(databaseTableModel);
+          && tablePattern.mayMatchDatabase(databaseTableModel);
     } else {
       final String databaseTreeModel =
           databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
@@ -107,12 +107,13 @@ public class DataRegionListeningFilter {
         databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
 
     final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
-    final TablePattern tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
+    final TablePattern tablePattern =
+        TablePattern.parsePipeDataPatternFromSourceParameters(parameters);
 
     return treePattern.isTreeModelDataAllowedToBeCaptured()
             && treePattern.mayOverlapWithDb(databaseTreeModel)
         || tablePattern.isTableModelDataAllowedToBeCaptured()
-            && tablePattern.matchesDatabase(databaseTableModel);
+            && tablePattern.mayMatchDatabase(databaseTableModel);
   }
 
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(

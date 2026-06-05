@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.source.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -258,7 +259,7 @@ public class PipeTableResp implements DataSet {
               staticMeta.getPipeName(),
               staticMeta.getCreationTime(),
               runtimeMeta.getStatus().get().name(),
-              SystemConstant.addSystemKeysIfNecessary(staticMeta.getSourceParameters()).toString(),
+              getShownSourceParameters(staticMeta.getSourceParameters()).toString(),
               staticMeta.getProcessorParameters().toString(),
               staticMeta.getSinkParameters().toString(),
               exceptionMessageBuilder.toString());
@@ -278,13 +279,28 @@ public class PipeTableResp implements DataSet {
     return new TShowPipeResp().setStatus(status).setPipeInfoList(showPipeInfoList);
   }
 
+  private PipeParameters getShownSourceParameters(final PipeParameters sourceParameters) {
+    final Map<String, String> attributes =
+        new HashMap<>(SystemConstant.addSystemKeysIfNecessary(sourceParameters).getAttribute());
+    attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY);
+    attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY);
+    attributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY);
+    return new PipeParameters(attributes);
+  }
+
   private boolean canCalculateOnLocal(final PipeMeta pipeMeta) {
+    final ConfigNode configNode = ConfigNode.getInstance();
+    if (Objects.isNull(configNode)) {
+      return false;
+    }
+
+    final ConfigManager configManager = configNode.getConfigManager();
+    if (Objects.isNull(configManager)) {
+      return false;
+    }
+
     try {
-      return ConfigNode.getInstance()
-                  .getConfigManager()
-                  .getNodeManager()
-                  .getRegisteredDataNodeCount()
-              == 1
+      return configManager.getNodeManager().getRegisteredDataNodeCount() == 1
           && ConfigRegionListeningFilter.parseListeningPlanTypeSet(
                   pipeMeta.getStaticMeta().getSourceParameters())
               .isEmpty();

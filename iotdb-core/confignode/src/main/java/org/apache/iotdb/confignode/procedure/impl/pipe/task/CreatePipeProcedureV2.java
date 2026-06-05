@@ -33,8 +33,12 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.WritableView;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -65,8 +69,11 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -152,6 +159,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getConnectorAttributes());
 
     checkAndEnrichSourceAuthentication(env, createPipeRequest.getExtractorAttributes());
+    checkAndEnrichWritableViewSourcePattern(env, createPipeRequest.getExtractorAttributes());
     checkAndEnrichSinkAuthentication(env, createPipeRequest.getConnectorAttributes());
 
     return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
@@ -214,6 +222,150 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               Collections.singletonMap(
                   PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
     }
+  }
+
+  public static void checkAndEnrichWritableViewSourcePattern(
+      final ConfigNodeProcedureEnv env, final Map<String, String> sourceAttributes) {
+    if (Objects.isNull(sourceAttributes)) {
+      return;
+    }
+
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY);
+    sourceAttributes.remove(PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY);
+
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+    if (!TablePattern.isTableModelDataAllowToBeCaptured(sourceParameters)) {
+      return;
+    }
+
+    final String databaseName =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_DATABASE_NAME_KEY,
+            PipeSourceConstant.SOURCE_DATABASE_NAME_KEY,
+            PipeSourceConstant.EXTRACTOR_DATABASE_KEY,
+            PipeSourceConstant.SOURCE_DATABASE_KEY);
+    final String tableName =
+        sourceParameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_TABLE_NAME_KEY,
+            PipeSourceConstant.SOURCE_TABLE_NAME_KEY,
+            PipeSourceConstant.EXTRACTOR_TABLE_KEY,
+            PipeSourceConstant.SOURCE_TABLE_KEY);
+
+    if (Objects.nonNull(databaseName)
+        && Objects.nonNull(tableName)
+        && !isRegexPattern(databaseName)
+        && !isRegexPattern(tableName)
+        && checkAndEnrichSingleWritableViewSourcePattern(
+            env, sourceAttributes, databaseName, tableName)) {
+      return;
+    }
+
+    checkAndEnrichRegexMatchedWritableViewSourcePattern(env, sourceAttributes, sourceParameters);
+  }
+
+  private static boolean checkAndEnrichSingleWritableViewSourcePattern(
+      final ConfigNodeProcedureEnv env,
+      final Map<String, String> sourceAttributes,
+      final String databaseName,
+      final String tableName) {
+    final Optional<TsTable> table;
+    try {
+      table =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .getTableIfExists(databaseName, tableName);
+    } catch (final Exception ignored) {
+      return false;
+    }
+    if (!table.isPresent() || !(table.get() instanceof WritableView)) {
+      return false;
+    }
+
+    final WritableView writableView = (WritableView) table.get();
+    sourceAttributes.put(
+        PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_KEY, writableView.getSourceTableDatabase());
+    sourceAttributes.put(
+        PipeSourceConstant.SOURCE_ORIGINAL_TABLE_KEY, writableView.getSourceTableName());
+    return true;
+  }
+
+  private static void checkAndEnrichRegexMatchedWritableViewSourcePattern(
+      final ConfigNodeProcedureEnv env,
+      final Map<String, String> sourceAttributes,
+      final PipeParameters sourceParameters) {
+    final TablePattern sourcePattern =
+        TablePattern.parsePipePatternFromSourceParameters(sourceParameters);
+    if (!sourcePattern.hasUserSpecifiedDatabasePatternOrTablePattern()) {
+      return;
+    }
+
+    final Map<String, Set<String>> matchedOriginalDatabaseTables = new HashMap<>();
+    try {
+      env.getConfigManager()
+          .getClusterSchemaManager()
+          .getAllUsingTables()
+          .forEach(
+              (database, tables) -> {
+                final String unqualifiedDatabaseName = PathUtils.unQualifyDatabaseName(database);
+                tables.stream()
+                    .filter(table -> table instanceof WritableView)
+                    .filter(
+                        table ->
+                            sourcePattern.matchesDatabaseAndTable(
+                                unqualifiedDatabaseName, table.getTableName()))
+                    .map(WritableView.class::cast)
+                    .forEach(
+                        writableView ->
+                            matchedOriginalDatabaseTables
+                                .computeIfAbsent(
+                                    writableView.getSourceTableDatabase(), key -> new HashSet<>())
+                                .add(writableView.getSourceTableName()));
+              });
+    } catch (final Exception ignored) {
+      return;
+    }
+
+    if (!matchedOriginalDatabaseTables.isEmpty()) {
+      sourceAttributes.put(
+          PipeSourceConstant.SOURCE_ORIGINAL_DATABASE_TABLES_KEY,
+          TablePattern.serializeDatabaseTablePairs(matchedOriginalDatabaseTables));
+    }
+  }
+
+  private static boolean isRegexPattern(final String value) {
+    for (int i = 0; i < value.length(); ++i) {
+      switch (value.charAt(i)) {
+        case '\\':
+        case '^':
+        case '$':
+        case '.':
+        case '*':
+        case '+':
+        case '?':
+        case '(':
+        case ')':
+        case '[':
+        case ']':
+        case '{':
+        case '}':
+        case '|':
+          return true;
+        default:
+          break;
+      }
+    }
+    return false;
   }
 
   public static void checkAndEnrichSinkAuthentication(

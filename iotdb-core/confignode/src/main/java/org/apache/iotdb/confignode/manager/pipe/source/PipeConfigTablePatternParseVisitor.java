@@ -72,14 +72,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(addWritableViewColumnPlan.getOriginalDatabase())
                   ? getAddWritableViewColumnPlan(
                       addWritableViewColumnPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  addWritableViewColumnPlan.getDatabase()))
-                          && pattern.matchesTable(addWritableViewColumnPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  addWritableViewColumnPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(addWritableViewColumnPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          addWritableViewColumnPlan.getDatabase(),
+                          addWritableViewColumnPlan.getTableName()),
+                      coversOriginalDatabase(pattern, addWritableViewColumnPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       addWritableViewColumnPlan, pattern);
             }
@@ -91,15 +88,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(setWritableViewPropertiesPlan.getOriginalDatabase())
                   ? getSetWritableViewPropertiesPlan(
                       setWritableViewPropertiesPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewPropertiesPlan.getDatabase()))
-                          && pattern.matchesTable(setWritableViewPropertiesPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewPropertiesPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              setWritableViewPropertiesPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          setWritableViewPropertiesPlan.getDatabase(),
+                          setWritableViewPropertiesPlan.getTableName()),
+                      coversOriginalDatabase(pattern, setWritableViewPropertiesPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       setWritableViewPropertiesPlan, pattern);
             }
@@ -111,16 +104,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(commitDeleteWritableViewColumnPlan.getOriginalDatabase())
                   ? getCommitDeleteWritableViewColumnPlan(
                       commitDeleteWritableViewColumnPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  commitDeleteWritableViewColumnPlan.getDatabase()))
-                          && pattern.matchesTable(
-                              commitDeleteWritableViewColumnPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  commitDeleteWritableViewColumnPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              commitDeleteWritableViewColumnPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          commitDeleteWritableViewColumnPlan.getDatabase(),
+                          commitDeleteWritableViewColumnPlan.getTableName()),
+                      coversOriginalDatabase(pattern, commitDeleteWritableViewColumnPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       commitDeleteWritableViewColumnPlan, pattern);
             }
@@ -132,16 +120,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(alterWritableViewColumnDataTypePlan.getOriginalDatabase())
                   ? getAlterWritableViewColumnDataTypePlan(
                       alterWritableViewColumnDataTypePlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  alterWritableViewColumnDataTypePlan.getDatabase()))
-                          && pattern.matchesTable(
-                              alterWritableViewColumnDataTypePlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  alterWritableViewColumnDataTypePlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              alterWritableViewColumnDataTypePlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          alterWritableViewColumnDataTypePlan.getDatabase(),
+                          alterWritableViewColumnDataTypePlan.getTableName()),
+                      coversOriginalDatabase(pattern, alterWritableViewColumnDataTypePlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       alterWritableViewColumnDataTypePlan, pattern);
             }
@@ -153,15 +136,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(commitDeleteWritableViewPlan.getOriginalDatabase())
                   ? getCommitDeleteWritableViewPlan(
                       commitDeleteWritableViewPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  commitDeleteWritableViewPlan.getDatabase()))
-                          && pattern.matchesTable(commitDeleteWritableViewPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  commitDeleteWritableViewPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              commitDeleteWritableViewPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          commitDeleteWritableViewPlan.getDatabase(),
+                          commitDeleteWritableViewPlan.getTableName()),
+                      coversOriginalDatabase(pattern, commitDeleteWritableViewPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       commitDeleteWritableViewPlan, pattern);
             }
@@ -173,15 +152,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(setWritableViewCommentPlan.getOriginalDatabase())
                   ? getSetWritableViewCommentPlan(
                       setWritableViewCommentPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewCommentPlan.getDatabase()))
-                          && pattern.matchesTable(setWritableViewCommentPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewCommentPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              setWritableViewCommentPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          setWritableViewCommentPlan.getDatabase(),
+                          setWritableViewCommentPlan.getTableName()),
+                      coversOriginalDatabase(pattern, setWritableViewCommentPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       setWritableViewCommentPlan, pattern);
             }
@@ -193,15 +168,11 @@ public class PipeConfigTablePatternParseVisitor
               return Objects.nonNull(setWritableViewColumnCommentPlan.getOriginalDatabase())
                   ? getSetWritableViewColumnCommentPlan(
                       setWritableViewColumnCommentPlan,
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewColumnCommentPlan.getDatabase()))
-                          && pattern.matchesTable(setWritableViewColumnCommentPlan.getTableName()),
-                      pattern.matchesDatabase(
-                              PathUtils.unQualifyDatabaseName(
-                                  setWritableViewColumnCommentPlan.getOriginalDatabase()))
-                          && pattern.matchesTable(
-                              setWritableViewColumnCommentPlan.getOriginalTableName()))
+                      matchesTablePattern(
+                          pattern,
+                          setWritableViewColumnCommentPlan.getDatabase(),
+                          setWritableViewColumnCommentPlan.getTableName()),
+                      coversOriginalDatabase(pattern, setWritableViewColumnCommentPlan))
                   : PipeConfigTablePatternParseVisitor.this.visitAbstractTablePlan(
                       setWritableViewColumnCommentPlan, pattern);
             }
@@ -319,10 +290,21 @@ public class PipeConfigTablePatternParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitAbstractTablePlan(
       final AbstractTablePlan plan, final TablePattern pattern) {
-    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(plan.getDatabase()))
-            && pattern.matchesTable(plan.getTableName())
+    return matchesTablePattern(pattern, plan.getDatabase(), plan.getTableName())
         ? Optional.of(plan)
         : Optional.empty();
+  }
+
+  private static boolean matchesTablePattern(
+      final TablePattern pattern, final String database, final String table) {
+    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(database))
+        && pattern.matchesTable(table);
+  }
+
+  private static boolean coversOriginalDatabase(
+      final TablePattern pattern, final AbstractTablePlan plan) {
+    return Objects.nonNull(plan.getOriginalDatabase())
+        && pattern.coversDb(PathUtils.unQualifyDatabaseName(plan.getOriginalDatabase()));
   }
 
   @Override

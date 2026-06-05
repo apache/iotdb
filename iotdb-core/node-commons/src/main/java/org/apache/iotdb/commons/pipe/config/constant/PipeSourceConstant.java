@@ -79,6 +79,11 @@ public class PipeSourceConstant {
   public static final String SOURCE_DATABASE_KEY = "source.database";
   public static final String EXTRACTOR_TABLE_KEY = "extractor.table";
   public static final String SOURCE_TABLE_KEY = "source.table";
+  public static final String SOURCE_ORIGINAL_DATABASE_KEY =
+      "__system.source.original.database-name";
+  public static final String SOURCE_ORIGINAL_TABLE_KEY = "__system.source.original.table-name";
+  public static final String SOURCE_ORIGINAL_DATABASE_TABLES_KEY =
+      "__system.source.original.database-tables";
 
   public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
       "extractor.forwarding-pipe-requests";

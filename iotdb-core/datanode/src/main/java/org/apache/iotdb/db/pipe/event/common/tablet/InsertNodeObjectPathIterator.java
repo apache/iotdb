@@ -270,7 +270,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
 
     if (Boolean.TRUE.equals(isTableModelEvent)
         && tablePattern != null
-        && (!tablePattern.matchesDatabase(databaseName) || !tablePattern.matchesTable(tableName))) {
+        && !tablePattern.matchesDatabaseAndTable(databaseName, tableName)) {
       return Stream.empty();
     }
 
@@ -321,8 +321,7 @@ public class InsertNodeObjectPathIterator implements Iterator<String> {
 
     if (Boolean.TRUE.equals(isTableModelEvent)
         && tablePattern != null
-        && (!tablePattern.matchesDatabase(tableModelDatabaseName)
-            || !tablePattern.matchesTable(node.getTableName()))) {
+        && !tablePattern.matchesDatabaseAndTable(tableModelDatabaseName, node.getTableName())) {
       return Stream.empty();
     }
 

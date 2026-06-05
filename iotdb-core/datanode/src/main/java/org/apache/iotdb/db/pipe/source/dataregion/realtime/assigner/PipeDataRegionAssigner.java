@@ -195,7 +195,7 @@ public class PipeDataRegionAssigner implements Closeable {
                       source.getCreationTime(),
                       source.getPipeTaskMeta(),
                       source.getTreePattern(),
-                      source.getTablePattern(),
+                      source.getDataTablePattern(),
                       String.valueOf(source.getUserId()),
                       source.getUserName(),
                       source.getCliHostname(),
