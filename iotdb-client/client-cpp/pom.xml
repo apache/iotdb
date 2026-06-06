@@ -219,6 +219,7 @@
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
+                                <option>-DCMAKE_BUILD_TYPE=${cmake.build.type}</option>
                             </options>
                         </configuration>
                     </execution>

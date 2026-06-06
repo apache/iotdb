@@ -22,8 +22,18 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 IF(NOT MSVC)
+    # Single-config generators (e.g. "Unix Makefiles") leave CMAKE_BUILD_TYPE empty
+    # unless told otherwise; default to Release to preserve the historical behavior.
+    IF(NOT CMAKE_BUILD_TYPE)
+        SET(CMAKE_BUILD_TYPE Release)
+    ENDIF()
     # Keep GCC/Clang style flags off on MSVC to avoid invalid-option build errors.
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+    # -g is kept for all build types so Release still ships debug symbols (unchanged).
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
+    # Release keeps the previous flags exactly (-O2, no -DNDEBUG); Debug is unoptimized
+    # (-O0) so the packaged library can be stepped through in a debugger.
+    SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0")
 ENDIF()
 
 # Add Thrift include directory
