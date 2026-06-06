@@ -50,6 +50,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -191,6 +192,10 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
   private static final String DEFAULT_FUTURE_COVS = "";
   private static final String AUTO_ADAPT_PARAMETER_NAME = "AUTO_ADAPT";
   private static final Boolean DEFAULT_AUTO_ADAPT = Boolean.TRUE;
+  private static final String AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME = "AUTO_ADAPT_FILL_VALUE";
+  private static final String AUTO_ADAPT_FILL_VALUE_OPTION_KEY = "auto_adapt_fill_value";
+  private static final String DEFAULT_AUTO_ADAPT_FILL_VALUE = "0";
+  private static final String NAN_AUTO_ADAPT_FILL_VALUE = "NaN";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -239,6 +244,11 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
             .name(AUTO_ADAPT_PARAMETER_NAME)
             .type(Type.BOOLEAN)
             .defaultValue(DEFAULT_AUTO_ADAPT)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_AUTO_ADAPT_FILL_VALUE)
             .build(),
         ScalarParameterSpecification.builder()
             .name(OPTIONS_PARAMETER_NAME)
@@ -324,7 +334,11 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
         (String) ((ScalarArgument) arguments.get(HISTORY_COVS_PARAMETER_NAME)).getValue();
     String futureCovs =
         (String) ((ScalarArgument) arguments.get(FUTURE_COVS_PARAMETER_NAME)).getValue();
+    String autoAdaptFillValue =
+        (String) ((ScalarArgument) arguments.get(AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME)).getValue();
     String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
+    Map<String, String> parsedOptions =
+        parseOptionsWithAutoAdaptFillValue(options, autoAdaptFillValue);
 
     ForecastTableFunctionHandle functionHandle =
         new TimechoForecastTableFunctionHandle(
@@ -332,7 +346,7 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
             keepInput,
             MAX_INPUT_LENGTH,
             modelId,
-            parseOptions(options),
+            parsedOptions,
             historyCovs,
             futureCovs,
             outputLength,
@@ -351,6 +365,38 @@ public class TimechoForecastTableFunction extends ForecastTableFunction {
   @Override
   public TableFunctionHandle createTableFunctionHandle() {
     return new TimechoForecastTableFunctionHandle();
+  }
+
+  private static Map<String, String> parseOptionsWithAutoAdaptFillValue(
+      String options, String autoAdaptFillValue) {
+    Map<String, String> parsedOptions = new HashMap<>(parseOptions(options));
+    if (parsedOptions.containsKey(AUTO_ADAPT_FILL_VALUE_OPTION_KEY)) {
+      parsedOptions.put(
+          AUTO_ADAPT_FILL_VALUE_OPTION_KEY,
+          normalizeAutoAdaptFillValue(parsedOptions.get(AUTO_ADAPT_FILL_VALUE_OPTION_KEY)));
+    }
+    String normalizedAutoAdaptFillValue = normalizeAutoAdaptFillValue(autoAdaptFillValue);
+    if (!DEFAULT_AUTO_ADAPT_FILL_VALUE.equals(normalizedAutoAdaptFillValue)) {
+      parsedOptions.put(AUTO_ADAPT_FILL_VALUE_OPTION_KEY, normalizedAutoAdaptFillValue);
+    }
+    return parsedOptions;
+  }
+
+  private static String normalizeAutoAdaptFillValue(String fillValue) {
+    if (fillValue == null) {
+      return DEFAULT_AUTO_ADAPT_FILL_VALUE;
+    }
+    String normalizedFillValue = fillValue.trim().toLowerCase(Locale.ENGLISH);
+    if (DEFAULT_AUTO_ADAPT_FILL_VALUE.equals(normalizedFillValue)
+        || "0.0".equals(normalizedFillValue)
+        || "zero".equals(normalizedFillValue)) {
+      return DEFAULT_AUTO_ADAPT_FILL_VALUE;
+    }
+    if ("nan".equals(normalizedFillValue)) {
+      return NAN_AUTO_ADAPT_FILL_VALUE;
+    }
+    throw new SemanticException(
+        String.format("%s should be either '0' or 'NaN'", AUTO_ADAPT_FILL_VALUE_PARAMETER_NAME));
   }
 
   @Override

@@ -30,6 +30,44 @@ from iotdb.ainode.core.model.model_loader import load_model
 BACKEND = DeviceManager()
 logger = Logger()
 
+AUTO_ADAPT_FILL_VALUE_KEY = "auto_adapt_fill_value"
+_AUTO_ADAPT_ZERO_VALUES = {"0", "0.0", "zero"}
+_AUTO_ADAPT_NAN_VALUES = {"nan"}
+
+
+def _parse_auto_adapt_fill_value(infer_kwargs: dict) -> float:
+    raw_fill_value = infer_kwargs.get(AUTO_ADAPT_FILL_VALUE_KEY)
+    if raw_fill_value is None:
+        raw_fill_value = next(
+            (
+                value
+                for key, value in infer_kwargs.items()
+                if str(key).lower() == AUTO_ADAPT_FILL_VALUE_KEY
+            ),
+            "0",
+        )
+    if raw_fill_value is None:
+        return 0.0
+    normalized_fill_value = str(raw_fill_value).strip().lower()
+    if normalized_fill_value in _AUTO_ADAPT_ZERO_VALUES:
+        return 0.0
+    if normalized_fill_value in _AUTO_ADAPT_NAN_VALUES:
+        return torch.nan
+    raise ValueError(
+        f"Unsupported {AUTO_ADAPT_FILL_VALUE_KEY}: {raw_fill_value}. "
+        "Expected one of ['0', 'NaN']."
+    )
+
+
+def _pad_1d_tensor(
+    tensor: torch.Tensor, left_pad_size: int, right_pad_size: int, fill_value: float
+) -> torch.Tensor:
+    if left_pad_size == 0 and right_pad_size == 0:
+        return tensor
+    if torch.isnan(torch.tensor(fill_value)) and not torch.is_floating_point(tensor):
+        tensor = tensor.to(torch.float32)
+    return F.pad(tensor, (left_pad_size, right_pad_size), value=fill_value)
+
 
 class BasicPipeline(ABC):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
@@ -95,6 +133,12 @@ class ForecastPipeline(BasicPipeline):
         if isinstance(inputs, list):
             output_length = infer_kwargs.get("output_length", 96)
             auto_adapt = infer_kwargs.get("auto_adapt", True)
+            if auto_adapt is None:
+                auto_adapt = True
+            auto_adapt_fill_value = _parse_auto_adapt_fill_value(infer_kwargs)
+            auto_adapt_fill_value_name = (
+                "NaN" if torch.isnan(torch.tensor(auto_adapt_fill_value)) else "0"
+            )
             for idx, input_dict in enumerate(inputs):
                 # Check if the dictionary contains the expected keys
                 if not isinstance(input_dict, dict):
@@ -150,11 +194,11 @@ class ForecastPipeline(BasicPipeline):
                                 past_covariates[cov_key] = cov_value[-input_length:]
                             else:
                                 logger.warning(
-                                    f"Past covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {input_length}), which will be padded with zeros at the beginning."
+                                    f"Past covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {input_length}), which will be padded with {auto_adapt_fill_value_name} at the beginning."
                                 )
                                 pad_size = input_length - cov_value.shape[0]
-                                past_covariates[cov_key] = F.pad(
-                                    cov_value, (pad_size, 0)
+                                past_covariates[cov_key] = _pad_1d_tensor(
+                                    cov_value, pad_size, 0, auto_adapt_fill_value
                                 )
                         else:
                             raise ValueError(
@@ -205,11 +249,11 @@ class ForecastPipeline(BasicPipeline):
                                     ]
                                 else:
                                     logger.warning(
-                                        f"Future covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {output_length}), which will be padded with zeros at the end."
+                                        f"Future covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {output_length}), which will be padded with {auto_adapt_fill_value_name} at the end."
                                     )
                                     pad_size = output_length - cov_value.shape[0]
-                                    future_covariates[cov_key] = F.pad(
-                                        cov_value, (0, pad_size)
+                                    future_covariates[cov_key] = _pad_1d_tensor(
+                                        cov_value, 0, pad_size, auto_adapt_fill_value
                                     )
                             else:
                                 raise ValueError(

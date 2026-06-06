@@ -118,6 +118,8 @@ class IoTDBDataFetcher:
                     value_col_field: Field = cur_data.get_fields()[value_col]
                     col_name = column_names[value_col]
                     value = get_field_value(value_col_field)
+                    if value is None:
+                        value = torch.nan
 
                     if col_name not in series_map[tag_values]:
                         series_map[tag_values][col_name] = []
@@ -146,5 +148,5 @@ class IoTDBDataFetcher:
             timestamps_map[tag_values] = [timestamps[i] for i in sorted_indices]
             for col_name, values_list in cov_map.items():
                 sorted_values = [values_list[i] for i in sorted_indices]
-                cov_map[col_name] = torch.tensor(sorted_values)
+                cov_map[col_name] = torch.tensor(sorted_values, dtype=torch.float32)
         return series_map, timestamps_map

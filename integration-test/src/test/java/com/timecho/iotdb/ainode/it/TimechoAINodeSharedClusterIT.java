@@ -60,6 +60,17 @@ public class TimechoAINodeSharedClusterIT {
           + "output_length=>%d, "
           + "auto_adapt=>%s"
           + ")";
+  private static final String FORECAST_TABLE_FUNCTION_WITH_COVARIATE_FILL_SQL_TEMPLATE =
+      "SELECT * FROM FORECAST("
+          + "model_id=>'%s', "
+          + "targets=>(SELECT time, %s FROM db.AI WHERE time<%d ORDER BY time DESC LIMIT %d) ORDER BY time, "
+          + "history_covs=>'%s',"
+          + "future_covs=>'%s',"
+          + "output_start_time=>%d, "
+          + "output_length=>%d, "
+          + "auto_adapt=>%s, "
+          + "auto_adapt_fill_value=>'%s'"
+          + ")";
   private static final String HISTORY_COVS_TEMPLATE =
       "(SELECT time, %s FROM db.AI WHERE time < %d ORDER BY time DESC LIMIT %d) ORDER BY time";
   private static final String FUTURE_COVS_TEMPLATE =
@@ -155,6 +166,27 @@ public class TimechoAINodeSharedClusterIT {
               480,
               "true");
       try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQLAutoAdapt)) {
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        Assert.assertEquals(480, count);
+      }
+
+      String forecastTableFunctionSQLAutoAdaptWithNaN =
+          String.format(
+              FORECAST_TABLE_FUNCTION_WITH_COVARIATE_FILL_SQL_TEMPLATE,
+              modelInfo.getModelId(),
+              "s0,s1",
+              2880,
+              2880,
+              historyCovsSQLAutoAdapt,
+              futureCovsSQLAutoAdapt,
+              2880,
+              480,
+              "true",
+              "NaN");
+      try (ResultSet resultSet = statement.executeQuery(forecastTableFunctionSQLAutoAdaptWithNaN)) {
         int count = 0;
         while (resultSet.next()) {
           count++;

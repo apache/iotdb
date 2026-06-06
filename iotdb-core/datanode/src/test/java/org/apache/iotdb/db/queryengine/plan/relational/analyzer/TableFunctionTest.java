@@ -474,6 +474,52 @@ public class TableFunctionTest {
   }
 
   @Test
+  public void testForecastFunctionWithAutoAdaptFillValue() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM FORECAST("
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl', auto_adapt_fill_value => 'NaN')";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "s3_1", "s3"));
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("forecast")
+                .properOutputs("time", "s3")
+                .requiredSymbols("time_0", "s3_1")
+                .handle(
+                    new TimechoForecastTableFunction.TimechoForecastTableFunctionHandle(
+                        true,
+                        false,
+                        2880,
+                        "timer_xl",
+                        ImmutableMap.of("auto_adapt_fill_value", "NaN"),
+                        "",
+                        "",
+                        96,
+                        DEFAULT_OUTPUT_START_TIME,
+                        DEFAULT_OUTPUT_INTERVAL,
+                        Collections.singletonList(DOUBLE)));
+
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                sort(
+                    ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
+                    topK(
+                        1440,
+                        ImmutableList.of(sort("time_0", DESCENDING, LAST)),
+                        false,
+                        tableScan)))));
+  }
+
+  @Test
   public void testForecastFunctionAbnormal() {
     // default order by time asc
     String sql =
@@ -485,6 +531,17 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals("TIMECOL should never be null or empty.", e.getMessage());
+    }
+
+    sql =
+        "SELECT * FROM FORECAST("
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl', auto_adapt_fill_value => '1')";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals("AUTO_ADAPT_FILL_VALUE should be either '0' or 'NaN'", e.getMessage());
     }
   }
 }
