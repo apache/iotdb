@@ -40,7 +40,6 @@ import java.util.Optional;
 
 public class LimitNode extends SingleChildProcessNode {
   private final long count;
-  // TODO(beyyes) useless variable?
   private final Optional<OrderingScheme> tiesResolvingScheme;
 
   // private final boolean partial;
@@ -85,18 +84,27 @@ public class LimitNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TABLE_LIMIT_NODE.serialize(byteBuffer);
     ReadWriteIOUtils.write(count, byteBuffer);
+    ReadWriteIOUtils.write(tiesResolvingScheme.isPresent(), byteBuffer);
+    tiesResolvingScheme.ifPresent(scheme -> scheme.serialize(byteBuffer));
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TABLE_LIMIT_NODE.serialize(stream);
     ReadWriteIOUtils.write(count, stream);
+    ReadWriteIOUtils.write(tiesResolvingScheme.isPresent(), stream);
+    if (tiesResolvingScheme.isPresent()) {
+      tiesResolvingScheme.get().serialize(stream);
+    }
   }
 
   public static LimitNode deserialize(ByteBuffer byteBuffer) {
     long count = ReadWriteIOUtils.readLong(byteBuffer);
+    Optional<OrderingScheme> tiesResolvingScheme = ReadWriteIOUtils.readBool(byteBuffer)
+        ? Optional.of(OrderingScheme.deserialize(byteBuffer))
+        : Optional.empty();
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LimitNode(planNodeId, null, count, null);
+    return new LimitNode(planNodeId, null, count, tiesResolvingScheme);
   }
 
   @Override
@@ -115,16 +123,19 @@ public class LimitNode extends SingleChildProcessNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
+    if (!super.equals(o))
+      return false;
     LimitNode limitNode = (LimitNode) o;
-    return Objects.equal(count, limitNode.count);
+    return count == limitNode.count && Objects.equal(tiesResolvingScheme, limitNode.tiesResolvingScheme);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), count);
+    return Objects.hashCode(super.hashCode(), count, tiesResolvingScheme);
   }
 
   @Override
