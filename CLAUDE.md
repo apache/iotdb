@@ -186,3 +186,10 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 ## Git Commit
 
 - Do NOT add `Co-Authored-By` trailer to commit messages.
+
+## Security
+
+Security model: [SECURITY.md](./SECURITY.md)
+
+Agents that scan this repository should consult `SECURITY.md` and the
+threat model it links before reporting issues.
