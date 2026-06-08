@@ -632,7 +632,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table test100"),
           "Table,Create Table,",
           Collections.singleton(
-              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF'),"));
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF', need_last_cache=true),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
