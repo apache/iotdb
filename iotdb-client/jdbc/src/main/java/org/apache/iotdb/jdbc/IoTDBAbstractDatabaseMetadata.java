@@ -606,12 +606,12 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public int getDriverMajorVersion() {
-    return 4;
+    return Config.DRIVER_MAJOR_VERSION;
   }
 
   @Override
   public int getDriverMinorVersion() {
-    return 3;
+    return Config.DRIVER_MINOR_VERSION;
   }
 
   @Override
