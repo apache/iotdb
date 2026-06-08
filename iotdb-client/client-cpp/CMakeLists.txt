@@ -187,6 +187,14 @@ if(UNIX)
     target_link_libraries(iotdb_session PUBLIC pthread)
 endif()
 
+if(IOTDB_USE_CXX11_ABI STREQUAL "1" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_custom_command(TARGET iotdb_session POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                    -DIOTDB_SESSION_LIBRARY=$<TARGET_FILE:iotdb_session>
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCxx11Abi.cmake"
+            COMMENT "Verifying _GLIBCXX_USE_CXX11_ABI=1 symbols in libiotdb_session")
+endif()
+
 include(GNUInstallDirs)
 
 set(IOTDB_PUBLIC_HEADERS
