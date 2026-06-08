@@ -23,15 +23,16 @@ import org.apache.tsfile.external.commons.lang3.SystemUtils;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public class WindowsOSUtils {
   private static final String ILLEGAL_WINDOWS_CHARS = "\\/:*?\"<>|";
   private static final Set<String> ILLEGAL_WINDOWS_NAMES =
-      new HashSet<>(Arrays.asList("CON", "PRN", "AUX", "NUL", "COM1-COM9, LPT1-LPT9"));
+      new HashSet<>(Arrays.asList("CON", "PRN", "AUX", "NUL"));
 
   static {
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 1; i < 10; ++i) {
       ILLEGAL_WINDOWS_NAMES.add("COM" + i);
       ILLEGAL_WINDOWS_NAMES.add("LPT" + i);
     }
@@ -39,7 +40,7 @@ public class WindowsOSUtils {
 
   public static final String OS_SEGMENT_ERROR =
       String.format(
-          "In Windows System, the path shall not contains %s, equals one of %s, or ends with '.' or ' '.",
+          "In Windows System, the path shall not contains %s, equals one of %s with or without an extension, or ends with '.' or ' '.",
           ILLEGAL_WINDOWS_CHARS, ILLEGAL_WINDOWS_NAMES);
 
   public static boolean isLegalPathSegment4Windows(final String pathSegment) {
@@ -54,11 +55,16 @@ public class WindowsOSUtils {
     if (pathSegment.endsWith(".") || pathSegment.endsWith(" ")) {
       return false;
     }
-    for (final String illegalName : ILLEGAL_WINDOWS_NAMES) {
-      if (pathSegment.equalsIgnoreCase(illegalName)) {
-        return false;
-      }
+    if (isIllegalWindowsName(pathSegment)) {
+      return false;
     }
     return true;
+  }
+
+  private static boolean isIllegalWindowsName(final String pathSegment) {
+    final int extensionStartIndex = pathSegment.indexOf('.');
+    final String nameWithoutExtension =
+        extensionStartIndex < 0 ? pathSegment : pathSegment.substring(0, extensionStartIndex);
+    return ILLEGAL_WINDOWS_NAMES.contains(nameWithoutExtension.toUpperCase(Locale.ENGLISH));
   }
 }
