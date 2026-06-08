@@ -62,6 +62,12 @@ public class IoTDBRestServiceConfig {
   /** Is client authentication required. */
   private boolean clientAuth = false;
 
+  /** IoTDB user the OTLP receiver logs in as when writing telemetry data. */
+  private String otlpUsername = "root";
+
+  /** Password paired with {@link #otlpUsername}. */
+  private String otlpPassword = "root";
+
   public boolean isClientAuth() {
     return clientAuth;
   }
@@ -172,5 +178,21 @@ public class IoTDBRestServiceConfig {
 
   public void setRestQueryDefaultRowSizeLimit(int restQueryDefaultRowSizeLimit) {
     this.restQueryDefaultRowSizeLimit = restQueryDefaultRowSizeLimit;
+  }
+
+  public String getOtlpUsername() {
+    return otlpUsername;
+  }
+
+  public void setOtlpUsername(String otlpUsername) {
+    this.otlpUsername = otlpUsername;
+  }
+
+  public String getOtlpPassword() {
+    return otlpPassword;
+  }
+
+  public void setOtlpPassword(String otlpPassword) {
+    this.otlpPassword = otlpPassword;
   }
 }
