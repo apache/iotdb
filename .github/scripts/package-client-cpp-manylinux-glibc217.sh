@@ -36,10 +36,11 @@ case "${MACHINE}" in
 esac
 
 PACKAGE_CLASSIFIER="${PACKAGE_CLASSIFIER:-${DEFAULT_CLASSIFIER}}"
+IOTDB_CXX11_ABI="${IOTDB_CXX11_ABI:-0}"
 
-# manylinux2014 is glibc 2.17 based, but its system GCC may be too old to
-# provide libstdc++'s dual ABI. Use the newest available devtoolset so
-# _GLIBCXX_USE_CXX11_ABI=1 produces std::__cxx11 symbols.
+# manylinux2014 is glibc 2.17 based. Its devtoolset libstdc++ is built with
+# the old string ABI, so the glibc2.17 package defaults to
+# _GLIBCXX_USE_CXX11_ABI=0 and exports that requirement to consumers.
 for devtoolset in devtoolset-12 devtoolset-11 devtoolset-10 devtoolset-9 devtoolset-8 devtoolset-7; do
   if [[ -f "/opt/rh/${devtoolset}/enable" ]]; then
     # shellcheck disable=SC1090
@@ -79,13 +80,13 @@ gcc --version
 c++ --version
 gcc_major=$(gcc -dumpversion | cut -d. -f1)
 if (( gcc_major < 5 )); then
-  echo "ERROR: GCC >= 5 is required for _GLIBCXX_USE_CXX11_ABI=1; got $(gcc -dumpversion)"
+  echo "ERROR: GCC >= 5 is required; got $(gcc -dumpversion)"
   exit 1
 fi
 cmake --version
 java -version
 
-check_cxx11_abi_link() {
+check_glibcxx_abi_link() {
   local sdk_root="$1"
   local smoke_dir="$2"
   rm -rf "${smoke_dir}"
@@ -102,7 +103,7 @@ int main() {
 }
 EOF
 
-  c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 \
+  c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI="${IOTDB_CXX11_ABI}" \
     -I"${sdk_root}/include" \
     "${smoke_dir}/main.cpp" \
     -L"${sdk_root}/lib" \
@@ -115,7 +116,7 @@ cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
   -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
-  -Diotdb.cxx11.abi=1
+  -Diotdb.cxx11.abi="${IOTDB_CXX11_ABI}"
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
@@ -141,19 +142,19 @@ fi
 
 echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
 
-echo "=== CXX11 ABI symbols in libiotdb_session.so ==="
+echo "=== GLIBCXX ABI symbols in libiotdb_session.so ==="
 abi_symbol_sample=$(nm -D --demangle "${SO}" | awk '/std::__cxx11|\[abi:cxx11\]/ { print; if (++count >= 20) exit }' || true)
 if [[ -n "${abi_symbol_sample}" ]]; then
   printf '%s\n' "${abi_symbol_sample}"
 else
-  echo "No std::__cxx11 symbols found in the dynamic symbol table; verifying by link test."
+  echo "No std::__cxx11 symbols found in the dynamic symbol table."
 fi
 
-if ! check_cxx11_abi_link "iotdb-client/client-cpp/target/install" "/tmp/client-cpp-abi-smoke-glibc217-install"; then
-  echo "ERROR: libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=1"
+if ! check_glibcxx_abi_link "iotdb-client/client-cpp/target/install" "/tmp/client-cpp-abi-smoke-glibc217-install"; then
+  echo "ERROR: libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=${IOTDB_CXX11_ABI}"
   exit 1
 fi
-echo "CXX11 ABI link check passed for target/install"
+echo "GLIBCXX ABI link check passed for target/install (abi=${IOTDB_CXX11_ABI})"
 
 echo "=== Example package build/link/run smoke test ==="
 PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
@@ -170,11 +171,11 @@ if [[ -z "${PKG_ROOT}" ]]; then
   echo "ERROR: could not find unpacked package directory for ${PACKAGE_CLASSIFIER}"
   exit 1
 fi
-if ! check_cxx11_abi_link "${PKG_ROOT}" "/tmp/client-cpp-abi-smoke-glibc217-package"; then
-  echo "ERROR: packaged libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=1"
+if ! check_glibcxx_abi_link "${PKG_ROOT}" "/tmp/client-cpp-abi-smoke-glibc217-package"; then
+  echo "ERROR: packaged libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=${IOTDB_CXX11_ABI}"
   exit 1
 fi
-echo "CXX11 ABI link check passed for packaged SDK"
+echo "GLIBCXX ABI link check passed for packaged SDK (abi=${IOTDB_CXX11_ABI})"
 EXAMPLE_BUILD="/tmp/client-cpp-example-smoke-glibc217"
 rm -rf "${EXAMPLE_BUILD}"
 mkdir -p "${EXAMPLE_BUILD}"
