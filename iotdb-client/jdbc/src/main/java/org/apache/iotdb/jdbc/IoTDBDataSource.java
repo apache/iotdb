@@ -28,6 +28,7 @@ import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 
 public class IoTDBDataSource implements DataSource {
@@ -99,13 +100,13 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public Connection getConnection(String username, String password) {
+  public Connection getConnection(String username, String password) throws SQLException {
     try {
       Properties newProp = new Properties();
       setProperty(newProp, Config.AUTH_USER, username);
       setProperty(newProp, Config.AUTH_PASSWORD, password);
       return new IoTDBConnection(url, newProp);
-    } catch (Exception e) {
+    } catch (TTransportException e) {
       LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
     }
     return null;
@@ -132,18 +133,21 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public java.util.logging.Logger getParentLogger() {
-    return null;
+  public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
+    throw new SQLFeatureNotSupportedException(JdbcMessages.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  public <T> T unwrap(Class<T> aClass) {
-    return null;
+  public <T> T unwrap(Class<T> aClass) throws SQLException {
+    if (isWrapperFor(aClass)) {
+      return aClass.cast(this);
+    }
+    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + aClass);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> aClass) {
-    return false;
+    return aClass != null && aClass.isInstance(this);
   }
 
   private void setProperty(String key, String value) {
