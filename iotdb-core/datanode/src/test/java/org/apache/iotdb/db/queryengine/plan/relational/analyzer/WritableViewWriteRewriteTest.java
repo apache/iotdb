@@ -48,6 +48,7 @@ import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -1051,6 +1052,7 @@ public class WritableViewWriteRewriteTest {
   private static TsTable createSourceTable(
       final boolean includeAttribute, final boolean includeField) {
     final TsTable tsTable = new TsTable(SOURCE_TABLE);
+    tsTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
     tsTable.addColumnSchema(new TagColumnSchema(SOURCE_TAG, TSDataType.STRING));
     if (includeAttribute) {
       tsTable.addColumnSchema(new AttributeColumnSchema(SOURCE_ATTR, TSDataType.STRING));
@@ -1074,6 +1076,7 @@ public class WritableViewWriteRewriteTest {
   private static WritableView createWritableView(
       final org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema extraColumn) {
     final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
+    writableView.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
     writableView.addColumnSchema(new TagColumnSchema(VIEW_TAG, TSDataType.STRING));
     writableView.addColumnSchema(new AttributeColumnSchema(VIEW_ATTR, TSDataType.STRING));
     writableView.addColumnSchema(
@@ -1088,6 +1091,7 @@ public class WritableViewWriteRewriteTest {
 
   private static WritableView createIdentityWritableView() {
     final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
+    writableView.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
     writableView.addColumnSchema(new TagColumnSchema(SOURCE_TAG, TSDataType.STRING));
     writableView.addColumnSchema(new AttributeColumnSchema(SOURCE_ATTR, TSDataType.STRING));
     writableView.addColumnSchema(
