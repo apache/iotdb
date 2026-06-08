@@ -43,17 +43,21 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   }
 
   public void setProperties(IoTDBDataSource ds, Properties prop) {
-    Properties properties = (Properties) prop.clone();
+    Properties properties = prop == null ? new Properties() : (Properties) prop.clone();
     String url = (String) properties.remove(DataSourceFactory.JDBC_URL);
     if (url != null) {
       ds.setUrl(url);
     }
 
     String user = (String) properties.remove(DataSourceFactory.JDBC_USER);
-    ds.setUser(user);
+    if (user != null) {
+      ds.setUser(user);
+    }
 
     String password = (String) properties.remove(DataSourceFactory.JDBC_PASSWORD);
-    ds.setPassword(password);
+    if (password != null) {
+      ds.setPassword(password);
+    }
 
     logger.info(JdbcMessages.REMAINING_PROPERTIES, properties.size());
 
