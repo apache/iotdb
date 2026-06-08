@@ -93,6 +93,19 @@ public class TsFileSplitter {
     this.consumer = consumer;
   }
 
+  public TsFileSplitter(
+      File tsFile, TsFileDataConsumer consumer, boolean fileContainsObjectColumns) {
+    this(tsFile, consumer);
+  }
+
+  public TsFileSplitter(
+      File tsFile,
+      TsFileDataConsumer consumer,
+      boolean fileContainsObjectColumns,
+      File objectFileSearchRoot) {
+    this(tsFile, consumer);
+  }
+
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
       throws IOException, LoadFileException, IllegalStateException {

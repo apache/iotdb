@@ -70,6 +70,15 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   private boolean isGeneratedByRemoteConsensusLeader;
 
+  protected ObjectNode(final PlanNodeId planNodeId) {
+    super(planNodeId);
+    this.isEOF = false;
+    this.offset = 0;
+    this.filePath = null;
+    this.content = null;
+    this.contentLength = 0;
+  }
+
   public ObjectNode(boolean isEOF, long offset, byte[] content, IObjectPath filePath) {
     super(new PlanNodeId(""));
     this.isEOF = isEOF;
@@ -101,6 +110,10 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   public void setFilePath(IObjectPath filePath) {
     this.filePath = filePath;
+  }
+
+  public IObjectPath getFilePath() {
+    return filePath;
   }
 
   public String getFilePathString() {

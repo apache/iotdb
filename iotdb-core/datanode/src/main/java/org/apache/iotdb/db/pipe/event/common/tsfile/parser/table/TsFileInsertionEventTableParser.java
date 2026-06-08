@@ -71,6 +71,35 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        false,
+        false);
+  }
+
+  public TsFileInsertionEventTableParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries)
+      throws IOException {
     super(
         tsFile,
         pipeName,
@@ -83,6 +112,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         entity,
         true,
         sourceEvent,
+        null,
+        objectPathsOnly,
         isWithMod);
 
     this.isWithMod = isWithMod;
@@ -138,6 +169,32 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       throws IOException {
     this(
         null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent, isWithMod);
+  }
+
+  public TsFileInsertionEventTableParser(
+      final File tsFile,
+      final TablePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
+      throws IOException {
+    this(
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        objectPathsOnly,
+        false);
   }
 
   @Override
@@ -229,7 +286,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                             allocatedMemoryBlockForTableSchemas,
                             currentModifications,
                             startTime,
-                            endTime);
+                            endTime,
+                            objectPathsOnly);
                   }
 
                   while (tabletIterator.hasNext()) {

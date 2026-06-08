@@ -62,6 +62,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -83,6 +84,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
+
+  private final boolean objectPathsOnly;
 
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
@@ -128,10 +131,69 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final long startTime,
       final long endTime)
       throws IOException {
+    this(
+        tsFileSequenceReader,
+        predicate,
+        allocatedMemoryBlockForTablet,
+        allocatedMemoryBlockForBatchData,
+        allocatedMemoryBlockForChunk,
+        allocatedMemoryBlockForChunkMeta,
+        allocatedMemoryBlockForTableSchema,
+        modifications,
+        startTime,
+        endTime,
+        false);
+  }
+
+  public TsFileInsertionEventTableParserTabletIterator(
+      final TsFileSequenceReader tsFileSequenceReader,
+      final Predicate<Map.Entry<String, TableSchema>> predicate,
+      final PipeMemoryBlock allocatedMemoryBlockForTablet,
+      final PipeMemoryBlock allocatedMemoryBlockForBatchData,
+      final PipeMemoryBlock allocatedMemoryBlockForChunk,
+      final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
+      final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      final long startTime,
+      final long endTime,
+      final boolean objectPathsOnly)
+      throws IOException {
+    this(
+        tsFileSequenceReader,
+        predicate,
+        allocatedMemoryBlockForTablet,
+        allocatedMemoryBlockForBatchData,
+        allocatedMemoryBlockForChunk,
+        allocatedMemoryBlockForChunkMeta,
+        allocatedMemoryBlockForTableSchema,
+        modifications,
+        startTime,
+        endTime,
+        objectPathsOnly,
+        false,
+        null);
+  }
+
+  public TsFileInsertionEventTableParserTabletIterator(
+      final TsFileSequenceReader tsFileSequenceReader,
+      final Predicate<Map.Entry<String, TableSchema>> predicate,
+      final PipeMemoryBlock allocatedMemoryBlockForTablet,
+      final PipeMemoryBlock allocatedMemoryBlockForBatchData,
+      final PipeMemoryBlock allocatedMemoryBlockForChunk,
+      final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
+      final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
+      final long startTime,
+      final long endTime,
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries,
+      final BiConsumer<String, List<String>> tableObjectMeasurementsSink)
+      throws IOException {
 
     this.startTime = startTime;
     this.endTime = endTime;
     this.modifications = modifications;
+    this.objectPathsOnly = objectPathsOnly;
 
     this.reader = tsFileSequenceReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
@@ -222,6 +284,22 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 if (areAllFieldsDeletedByMods(pair.getLeft(), alignedChunkMetadata)) {
                   chunkMetadataIterator.remove();
                   continue;
+                }
+
+                if (objectPathsOnly) {
+                  final Iterator<IChunkMetadata> valueChunkMetadataIterator =
+                      alignedChunkMetadata.getValueChunkMetadataList().iterator();
+                  while (valueChunkMetadataIterator.hasNext()) {
+                    final IChunkMetadata valueChunkMetadata = valueChunkMetadataIterator.next();
+                    if (valueChunkMetadata == null
+                        || valueChunkMetadata.getDataType() != TSDataType.OBJECT) {
+                      valueChunkMetadataIterator.remove();
+                    }
+                  }
+                  if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
+                    chunkMetadataIterator.remove();
+                    continue;
+                  }
                 }
 
                 size +=
@@ -395,10 +473,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
-    boolean hasSelectedField = fieldSchemaList.isEmpty();
+    boolean hasSelectedField = !objectPathsOnly && fieldSchemaList.isEmpty();
     boolean hasSelectedNonNullChunk = false;
     for (; offset < fieldSchemaList.size(); ++offset) {
       final IMeasurementSchema schema = fieldSchemaList.get(offset);
+      if (objectPathsOnly && schema.getType() != TSDataType.OBJECT) {
+        continue;
+      }
       final String measurementName = internMeasurementName(schema);
       if (isFieldDeletedByMods(
           measurementName,
@@ -499,7 +580,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             PipeTabletUtils.putValue(tablet, rowIndex, i, dataTypeList.get(i), Binary.EMPTY_VALUE);
+            break;
+          default:
+            break;
         }
         PipeTabletUtils.markNullValue(tablet, rowIndex, i);
         continue;
@@ -539,6 +624,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary binary = primitiveType.getBinary();
           PipeTabletUtils.putValue(
               tablet,

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
@@ -78,6 +80,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
+  protected final boolean objectPathsOnly;
+
   protected TsFileInsertionEventParser(
       final File tsFile,
       final String pipeName,
@@ -90,6 +94,38 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final IAuditEntity entity,
       final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod) {
+    this(
+        tsFile,
+        pipeName,
+        creationTime,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        null,
+        false,
+        isWithMod);
+  }
+
+  protected TsFileInsertionEventParser(
+      final File tsFile,
+      final String pipeName,
+      final long creationTime,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final TsFileResource tsFileResource,
+      final boolean objectPathsOnly,
       final boolean isWithMod) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
@@ -107,6 +143,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    this.objectPathsOnly = objectPathsOnly;
 
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()
@@ -129,6 +166,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
    * @return {@link TabletInsertionEvent} in a streaming way
    */
   public abstract Iterable<TabletInsertionEvent> toTabletInsertionEvents();
+
+  public void drainGeneratedObjectColumnModEntriesTo(final List<ModEntry> modEntries) {}
 
   /**
    * Record parse start time when hasNext() is called for the first time and returns true. Should be

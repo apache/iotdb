@@ -103,6 +103,31 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
+    this(
+        connector,
+        pipeName2WeightMap,
+        events,
+        eventsReferenceCount,
+        eventsHadBeenAddedToRetryQueue,
+        tsFile,
+        modFile,
+        null,
+        transferMod,
+        dataBaseName);
+  }
+
+  public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncSink connector,
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final AtomicInteger eventsReferenceCount,
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue,
+      final File tsFile,
+      final File modFile,
+      final File objectDir,
+      final boolean transferMod,
+      final String dataBaseName)
+      throws InterruptedException {
     super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;

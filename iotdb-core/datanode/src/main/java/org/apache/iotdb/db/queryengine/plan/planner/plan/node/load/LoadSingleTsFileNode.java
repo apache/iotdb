@@ -63,6 +63,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
+  private final boolean tsFileContainsObjectColumn;
+  private File objectFileSearchRoot;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
@@ -74,6 +76,28 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final boolean deleteAfterLoad,
       final long writePointCount,
       final boolean needDecodeTsFile) {
+    this(
+        id,
+        resource,
+        isTableModel,
+        database,
+        deleteAfterLoad,
+        writePointCount,
+        needDecodeTsFile,
+        false,
+        null);
+  }
+
+  public LoadSingleTsFileNode(
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecode4TimeColumn,
+      final boolean tsFileContainsObjectColumn,
+      final File objectFileSearchRoot) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -81,7 +105,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
-    this.needDecodeTsFile = needDecodeTsFile;
+    this.needDecodeTsFile = needDecode4TimeColumn;
+    this.tsFileContainsObjectColumn = tsFileContainsObjectColumn;
+    this.objectFileSearchRoot = objectFileSearchRoot;
   }
 
   public boolean isTsFileEmpty() {
@@ -121,6 +147,18 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     }
 
     return needDecodeTsFile;
+  }
+
+  public boolean isTsFileContainsObjectColumn() {
+    return tsFileContainsObjectColumn;
+  }
+
+  public File getObjectFileSearchRoot() {
+    return objectFileSearchRoot;
+  }
+
+  public void setObjectFileSearchRoot(final File objectFileSearchRoot) {
+    this.objectFileSearchRoot = objectFileSearchRoot;
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
@@ -262,6 +300,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
         && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
+        && Objects.equals(
+            tsFileContainsObjectColumn, loadSingleTsFileNode.tsFileContainsObjectColumn)
+        && Objects.equals(objectFileSearchRoot, loadSingleTsFileNode.objectFileSearchRoot)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
   }
@@ -274,6 +315,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         isTableModel,
         database,
         needDecodeTsFile,
+        tsFileContainsObjectColumn,
+        objectFileSearchRoot,
         deleteAfterLoad,
         localRegionReplicaSet);
   }

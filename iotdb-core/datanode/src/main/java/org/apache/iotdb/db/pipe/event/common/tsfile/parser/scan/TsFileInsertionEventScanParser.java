@@ -123,6 +123,35 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
+    this(
+        pipeName,
+        creationTime,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        skipIfNoPrivileges,
+        sourceEvent,
+        isWithMod,
+        false);
+  }
+
+  public TsFileInsertionEventScanParser(
+      final String pipeName,
+      final long creationTime,
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final IAuditEntity entity,
+      final boolean skipIfNoPrivileges,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
+      throws IOException, IllegalPathException {
     super(
         tsFile,
         pipeName,
@@ -135,6 +164,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         entity,
         skipIfNoPrivileges,
         sourceEvent,
+        null,
+        objectPathsOnly,
         isWithMod);
 
     this.startTime = startTime;
@@ -181,6 +212,19 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod)
       throws IOException, IllegalPathException {
+    this(tsFile, pattern, startTime, endTime, pipeTaskMeta, sourceEvent, isWithMod, false);
+  }
+
+  public TsFileInsertionEventScanParser(
+      final File tsFile,
+      final TreePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
+      throws IOException, IllegalPathException {
     this(
         null,
         0,
@@ -192,7 +236,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         null,
         false,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        objectPathsOnly);
   }
 
   @Override
@@ -416,8 +461,12 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               PipeTabletUtils.putValue(
                   tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), Binary.EMPTY_VALUE);
+              break;
+            default:
+              break;
           }
           PipeTabletUtils.markNullValue(tablet, rowIndex, i);
           continue;
@@ -469,6 +518,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             final Binary binary = primitiveType.getBinary();
             PipeTabletUtils.putValue(
                 tablet,
@@ -524,6 +574,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           final Binary binary = data.getBinary();
           PipeTabletUtils.putValue(
               tablet,
@@ -769,6 +820,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    if (objectPathsOnly && chunkHeader.getDataType() != TSDataType.OBJECT) {
       tsFileSequenceReader.position(nextMarkerOffset);
       return true;
     }
