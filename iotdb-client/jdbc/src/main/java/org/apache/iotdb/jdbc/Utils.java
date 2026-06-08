@@ -162,7 +162,7 @@ public class Utils {
       return true;
     }
     String paramURL = subURL.substring(subURL.indexOf('?') + 1);
-    String[] params = paramURL.split("&");
+    String[] params = paramURL.split("&", -1);
     for (String tmpParam : params) {
       int separatorIndex = tmpParam.indexOf('=');
       if (separatorIndex <= 0 || separatorIndex == tmpParam.length() - 1) {
@@ -172,18 +172,42 @@ public class Utils {
       String value = tmpParam.substring(separatorIndex + 1);
       switch (key) {
         case RPC_COMPRESS:
-          if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+          if (isBoolean(value)) {
             Config.rpcThriftCompressionEnable = Boolean.parseBoolean(value);
           } else {
             return false;
           }
           break;
-        case Config.USE_SSL:
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
+          info.put(key, value);
+          break;
+        case Config.USE_SSL:
+          if (!isBoolean(value)) {
+            return false;
+          }
+          info.put(key, value);
+          break;
         case Config.VERSION:
+          try {
+            Constant.Version.valueOf(value);
+          } catch (IllegalArgumentException e) {
+            return false;
+          }
+          info.put(key, value);
+          break;
         case Config.NETWORK_TIMEOUT:
+          try {
+            Integer.parseInt(value);
+          } catch (NumberFormatException e) {
+            return false;
+          }
+          info.put(key, value);
+          break;
         case Config.SQL_DIALECT:
+          if (!Constant.TREE.equals(value) && !Constant.TABLE.equals(value)) {
+            return false;
+          }
           info.put(key, value);
           break;
         case Config.TIME_ZONE:
@@ -208,6 +232,10 @@ public class Utils {
       }
     }
     return true;
+  }
+
+  private static boolean isBoolean(String value) {
+    return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
   }
 
   private Utils() {}

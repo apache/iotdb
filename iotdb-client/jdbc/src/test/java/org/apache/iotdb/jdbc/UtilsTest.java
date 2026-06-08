@@ -188,4 +188,29 @@ public class UtilsTest {
   public void testParseUrlParamRejectsEmptyValue() throws IoTDBURLException {
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=", new Properties());
   }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsTrailingSeparator() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=true&", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidBooleanValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=abc", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidVersionValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?version=bad", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidNetworkTimeoutValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=bad", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidSqlDialectValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?sql_dialect=bad", new Properties());
+  }
 }
