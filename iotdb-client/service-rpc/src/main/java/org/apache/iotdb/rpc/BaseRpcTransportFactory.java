@@ -83,11 +83,7 @@ public class BaseRpcTransportFactory extends TTransportFactory {
   public TTransport getTransport(
       String ip, int port, int timeout, String trustStore, String trustStorePwd)
       throws TTransportException {
-    TSSLTransportFactory.TSSLTransportParameters params =
-        RpcSslUtils.createTSSLTransportParameters();
-    RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
-    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
-    return inner.getTransport(transport);
+    return getTransportWithSSLConfig(ip, port, timeout, trustStore, trustStorePwd, null, null);
   }
 
   public TTransport getTransportWithSSLConfig(
@@ -115,16 +111,8 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String keyStore,
       String keyStorePwd)
       throws TTransportException {
-    TSSLTransportFactory.TSSLTransportParameters params =
-        RpcSslUtils.createTSSLTransportParameters();
-    if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
-      RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd);
-      RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd);
-    } else {
-      throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
-    }
-    TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
-    return inner.getTransport(transport);
+    return getTransport(
+        ip, port, timeout, trustStore, trustStorePwd, keyStore, keyStorePwd, null, null);
   }
 
   public TTransport getTransport(
