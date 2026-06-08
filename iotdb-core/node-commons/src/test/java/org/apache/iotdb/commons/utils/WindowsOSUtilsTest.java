@@ -41,8 +41,13 @@ public class WindowsOSUtilsTest {
     Assert.assertFalse(isLegalPathSegment4Windows("COM1.txt"));
     Assert.assertFalse(isLegalPathSegment4Windows("NUL.log"));
     Assert.assertFalse(isLegalPathSegment4Windows("LPT9.tmp"));
+    Assert.assertFalse(isLegalPathSegment4Windows("COM\u00B9"));
+    Assert.assertFalse(isLegalPathSegment4Windows("LPT\u00B2.log"));
+    Assert.assertFalse(isLegalPathSegment4Windows("name\tpart"));
+    Assert.assertFalse(isLegalPathSegment4Windows("name" + Character.toString((char) 0) + "part"));
 
     Assert.assertTrue(isLegalPathSegment4Windows("COM0"));
     Assert.assertTrue(isLegalPathSegment4Windows("LPT0"));
+    Assert.assertTrue(isLegalPathSegment4Windows("COM\u00B4"));
   }
 }
