@@ -48,11 +48,14 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2DeleteEventHandler;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2ObjectFileInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2TabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2TabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2TsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2AsyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFileUtils;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFileUtils.ObjectFileDescriptor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -71,6 +74,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -335,20 +339,43 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
             pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-    final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
-    final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-    final TIoTConsensusV2TransferReq iotConsensusV2TransferReq =
-        IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-            insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
-    final IoTConsensusV2TabletInsertNodeEventHandler iotConsensusV2InsertNodeReqHandler =
-        new IoTConsensusV2TabletInsertNodeEventHandler(
-            pipeInsertNodeTabletInsertionEvent,
-            iotConsensusV2TransferReq,
-            this,
-            iotConsensusV2SinkMetrics);
+    try {
+      final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
+      final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
+      final List<ObjectFileDescriptor> objectFileDescriptors =
+          IoTConsensusV2ObjectFileUtils.collectObjectFileDescriptors(insertNode);
+      if (!objectFileDescriptors.isEmpty()) {
+        transfer(
+            new IoTConsensusV2ObjectFileInsertNodeEventHandler(
+                pipeInsertNodeTabletInsertionEvent,
+                insertNode,
+                objectFileDescriptors,
+                this,
+                tCommitId,
+                tConsensusGroupId,
+                progressIndex,
+                thisDataNodeId,
+                iotConsensusV2SinkMetrics));
+        return true;
+      }
 
-    transfer(iotConsensusV2InsertNodeReqHandler);
-    return true;
+      final TIoTConsensusV2TransferReq iotConsensusV2TransferReq =
+          IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
+              insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
+      final IoTConsensusV2TabletInsertNodeEventHandler iotConsensusV2InsertNodeReqHandler =
+          new IoTConsensusV2TabletInsertNodeEventHandler(
+              pipeInsertNodeTabletInsertionEvent,
+              iotConsensusV2TransferReq,
+              this,
+              iotConsensusV2SinkMetrics);
+
+      transfer(iotConsensusV2InsertNodeReqHandler);
+      return true;
+    } catch (final Exception e) {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          IoTConsensusV2AsyncSink.class.getName(), false);
+      throw e;
+    }
   }
 
   private void transfer(
@@ -360,6 +387,19 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     } catch (final Exception ex) {
       logOnClientException(client, ex);
       iotConsensusV2InsertNodeReqHandler.onError(ex);
+    }
+  }
+
+  private void transfer(
+      final IoTConsensusV2ObjectFileInsertNodeEventHandler
+          iotConsensusV2ObjectFileInsertNodeEventHandler) {
+    AsyncIoTConsensusV2ServiceClient client = null;
+    try {
+      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
+      iotConsensusV2ObjectFileInsertNodeEventHandler.transfer(client);
+    } catch (final Exception ex) {
+      logOnClientException(client, ex);
+      iotConsensusV2ObjectFileInsertNodeEventHandler.onError(ex);
     }
   }
 
@@ -415,6 +455,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
               tConsensusGroupId,
               consensusPipeName,
               thisDataNodeId,
+              IoTConsensusV2ObjectFileUtils.collectObjectFileDescriptors(pipeTsFileInsertionEvent),
               iotConsensusV2SinkMetrics);
 
       transfer(iotConsensusV2TsFileInsertionEventHandler);

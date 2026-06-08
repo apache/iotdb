@@ -499,6 +499,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             PipeTabletUtils.putValue(tablet, rowIndex, i, dataTypeList.get(i), Binary.EMPTY_VALUE);
         }
         PipeTabletUtils.markNullValue(tablet, rowIndex, i);
@@ -539,6 +540,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary binary = primitiveType.getBinary();
           PipeTabletUtils.putValue(
               tablet,

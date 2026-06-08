@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
@@ -31,8 +32,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -177,6 +181,8 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
 
+      handleObjectValue(insertRowNode, dataRegionReplicaSet, writePlanNodeList);
+
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -193,6 +199,45 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     writePlanNodeList.addAll(splitMap.values());
 
     return writePlanNodeList;
+  }
+
+  private void handleObjectValue(
+      InsertRowNode insertRowNode,
+      TRegionReplicaSet dataRegionReplicaSet,
+      List<WritePlanNode> writePlanNodeList) {
+    for (int i = 0; i < insertRowNode.getDataTypes().length; i++) {
+      if (insertRowNode.getDataTypes()[i] != TSDataType.OBJECT) {
+        continue;
+      }
+      final Object[] values = insertRowNode.getValues();
+      if (values[i] == null) {
+        continue;
+      }
+      final byte[] binary = ((Binary) values[i]).getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
+      if (binary.length < Byte.BYTES + Long.BYTES) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Malformed OBJECT binary for measurement %s, length is %d",
+                insertRowNode.getMeasurements()[i], binary.length));
+      }
+      final ByteBuffer buffer = ByteBuffer.wrap(binary);
+      final boolean isEOF = buffer.get() == 1;
+      final long offset = buffer.getLong();
+      final byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+      final IObjectPath relativePath =
+          IObjectPath.Factory.FACTORY.create(
+              dataRegionReplicaSet.getRegionId().getId(),
+              insertRowNode.getTime(),
+              insertRowNode.getDeviceID(),
+              insertRowNode.getMeasurements()[i]);
+      final ObjectNode objectNode = new ObjectNode(isEOF, offset, content, relativePath);
+      objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+      writePlanNodeList.add(objectNode);
+      values[i] = null;
+    }
   }
 
   public RelationalInsertRowsNode emptyClone() {

@@ -90,7 +90,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -164,6 +166,7 @@ import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -197,6 +200,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -4029,6 +4033,59 @@ public class DataRegion implements IDataRegionForQuery {
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
+      writeUnlock();
+    }
+  }
+
+  public void writeObject(final ObjectNode objectNode) throws Exception {
+    writeLock("writeObject");
+    try {
+      final String relativeObjectPath = objectNode.getFilePathString();
+      final Optional<File> existingObjectFile =
+          TierManager.getInstance().getAbsoluteObjectFilePath(relativeObjectPath, true);
+      final File objectFile;
+      if (existingObjectFile.isPresent()) {
+        objectFile = existingObjectFile.get();
+      } else {
+        objectFile =
+            FSFactoryProducer.getFSFactory()
+                .getFile(
+                    TierManager.getInstance().getNextFolderForObjectFile(), relativeObjectPath);
+      }
+      final File objectTmpFile =
+          FSFactoryProducer.getFSFactory().getFile(objectFile.getPath() + ".tmp");
+
+      try (final ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
+        writer.write(
+            objectNode.isGeneratedByRemoteConsensusLeader(),
+            objectNode.getOffset(),
+            objectNode.getContent());
+      }
+
+      if (objectNode.isEOF()) {
+        if (objectFile.exists()) {
+          final File objectBackFile =
+              FSFactoryProducer.getFSFactory().getFile(objectFile.getPath() + ".back");
+          Files.move(
+              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          FileMetrics.getInstance().decreaseObjectFileNum(1);
+          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
+          Files.delete(objectBackFile.toPath());
+        } else {
+          Files.move(
+              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        final RelationalInsertRowNode valueNode = objectNode.genValueInsertRowNode();
+        insert(valueNode);
+        FileMetrics.getInstance().increaseObjectFileNum(1);
+        FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
+      }
+
+      getWALNode()
+          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
+    } finally {
       writeUnlock();
     }
   }

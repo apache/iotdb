@@ -41,12 +41,16 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2SyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFileUtils;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2ObjectFileUtils.ObjectFileDescriptor;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFileSealReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -75,6 +79,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
   private static final String IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT =
       "IoTConsensusV2: syncClient connection to %s:%s failed when %s, because: %s";
   private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
+  private static final String OBJECT_FILE_SCENARIO = "transfer object file";
   private static final String TSFILE_SCENARIO = "transfer tsfile";
   private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
   private static final String DELETION_SCENARIO = "transfer deletion";
@@ -326,6 +331,12 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
+      for (final ObjectFileDescriptor descriptor :
+          IoTConsensusV2ObjectFileUtils.collectObjectFileDescriptors(insertNode)) {
+        transferObjectFilePieces(
+            descriptor, syncIoTConsensusV2ServiceClient, tCommitId, tConsensusGroupId);
+      }
+
       resp =
           syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
               IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
@@ -354,6 +365,56 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
     }
   }
 
+  private void transferObjectFilePieces(
+      final ObjectFileDescriptor descriptor,
+      final SyncIoTConsensusV2ServiceClient syncIoTConsensusV2ServiceClient,
+      final TCommitId tCommitId,
+      final TConsensusGroupId tConsensusGroupId)
+      throws PipeException {
+    final int readFileBufferSize =
+        Math.max(1, PipeConfig.getInstance().getPipeSinkReadFileBufferSize());
+    final long objectSize = descriptor.getObjectSize();
+    long offset = 0;
+
+    do {
+      final int pieceLength =
+          objectSize == 0 ? 0 : (int) Math.min(readFileBufferSize, objectSize - offset);
+      final boolean isEOF = objectSize == 0 || offset + pieceLength >= objectSize;
+      final TIoTConsensusV2TransferResp resp;
+      try {
+        resp =
+            syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
+                IoTConsensusV2ObjectFilePieceReq.toTIoTConsensusV2TransferReq(
+                    new ObjectNode(isEOF, offset, pieceLength, descriptor.getObjectPath()),
+                    tCommitId,
+                    tConsensusGroupId,
+                    thisDataNodeId));
+      } catch (final Exception e) {
+        throw new PipeRuntimeSinkRetryTimesConfigurableException(
+            String.format(
+                IOT_CONSENSUS_V2_SYNC_CONNECTION_FAILED_FORMAT,
+                getFollowerUrl().getIp(),
+                getFollowerUrl().getPort(),
+                OBJECT_FILE_SCENARIO,
+                e.getMessage()),
+            Integer.MAX_VALUE);
+      }
+
+      final TSStatus status = resp.getStatus();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        receiverStatusHandler.handle(
+            status,
+            String.format(
+                "Transfer object file %s error, result status %s.",
+                descriptor.getObjectPathString(), status),
+            descriptor.getObjectPathString());
+      }
+
+      offset += pieceLength;
+    } while (offset < objectSize);
+  }
+
   private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
@@ -369,6 +430,12 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
               pipeTsFileInsertionEvent.getRebootTimes());
       final TConsensusGroupId tConsensusGroupId =
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
+
+      for (final ObjectFileDescriptor descriptor :
+          IoTConsensusV2ObjectFileUtils.collectObjectFileDescriptors(pipeTsFileInsertionEvent)) {
+        transferObjectFilePieces(
+            descriptor, syncIoTConsensusV2ServiceClient, tCommitId, tConsensusGroupId);
+      }
 
       // 1. Transfer tsFile, and mod file if exists
       if (pipeTsFileInsertionEvent.isWithMod()) {

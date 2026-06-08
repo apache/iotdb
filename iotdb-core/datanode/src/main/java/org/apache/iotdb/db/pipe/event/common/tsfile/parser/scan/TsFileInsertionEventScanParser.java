@@ -416,6 +416,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               PipeTabletUtils.putValue(
                   tablet, rowIndex, i, tablet.getSchemas().get(i).getType(), Binary.EMPTY_VALUE);
           }
@@ -469,6 +470,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             final Binary binary = primitiveType.getBinary();
             PipeTabletUtils.putValue(
                 tablet,
@@ -524,6 +526,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           final Binary binary = data.getBinary();
           PipeTabletUtils.putValue(
               tablet,

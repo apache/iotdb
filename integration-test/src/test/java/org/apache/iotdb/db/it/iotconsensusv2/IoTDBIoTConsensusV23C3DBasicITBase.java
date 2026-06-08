@@ -21,27 +21,37 @@ package org.apache.iotdb.db.it.iotconsensusv2;
 
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -84,6 +94,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
   protected static final String SHOW_TIMESERIES_D1 = "SHOW TIMESERIES root.sg.d1.*";
   protected static final String SELECT_SURVIVING_QUERY =
       "SELECT temperature, power FROM root.sg.d1";
+  protected static final String OBJECT_DATABASE = "object_db";
+  protected static final String OBJECT_TABLE = "object_table";
+  protected static final long OBJECT_TIMESTAMP = 1L;
 
   /**
    * Returns IoTConsensusV2 mode: {@link ConsensusFactory#IOT_CONSENSUS_V2_BATCH_MODE} or {@link
@@ -353,6 +366,355 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       LOGGER.info(
           "DELETE TIMESERIES replica consistency test passed for mode: {}",
           getIoTConsensusV2Mode());
+    }
+  }
+
+  /**
+   * Test that OBJECT values written as object-file pieces are replicated to every IoTConsensusV2
+   * replica, and that a follower can still serve the object metadata after the former leader stops.
+   */
+  public void testObjectReplicaConsistency() throws Exception {
+    final byte[] objectBytes = readObjectExampleBytes();
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS " + OBJECT_DATABASE);
+      session.executeNonQueryStatement("USE " + OBJECT_DATABASE);
+      session.executeNonQueryStatement(
+          "CREATE TABLE "
+              + OBJECT_TABLE
+              + " (region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, "
+              + "temperature FLOAT FIELD, file OBJECT FIELD)");
+      insertObjectTablet(session, objectBytes);
+      session.executeNonQueryStatement("FLUSH");
+    }
+
+    final int targetRegionId;
+    final int leaderDataNodeId;
+    final DataNodeWrapper leaderNode;
+    final DataNodeWrapper followerNode;
+    try (Connection tableConnection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement tableStatement = tableConnection.createStatement()) {
+      tableStatement.execute("USE " + OBJECT_DATABASE);
+      verifyObjectLength(tableStatement, "initial table connection", objectBytes.length);
+
+      final Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
+          waitForDataRegionMap(tableStatement);
+      final Set<Integer> leaderNodeIds = new HashSet<>();
+      for (final Pair<Integer, Set<Integer>> leaderAndReplicas : dataRegionMap.values()) {
+        if (leaderAndReplicas.getLeft() > 0) {
+          leaderNodeIds.add(leaderAndReplicas.getLeft());
+        }
+      }
+      for (final int leaderNodeId : leaderNodeIds) {
+        EnvFactory.getEnv()
+            .dataNodeIdToWrapper(leaderNodeId)
+            .ifPresent(this::waitForReplicationComplete);
+      }
+
+      final ObjectRegionSelection targetRegion = waitForObjectRegion(dataRegionMap, objectBytes);
+      targetRegionId = targetRegion.regionId;
+      leaderDataNodeId = targetRegion.leaderDataNodeId;
+      final int followerDataNodeId = targetRegion.followerDataNodeId;
+      verifyObjectFileOnReplicas(targetRegionId, targetRegion.replicaDataNodeIds, objectBytes);
+
+      leaderNode =
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(leaderDataNodeId)
+              .orElseThrow(() -> new AssertionError("Leader DataNode not found"));
+      followerNode =
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(followerDataNodeId)
+              .orElseThrow(() -> new AssertionError("Follower DataNode not found"));
+    }
+
+    LOGGER.info(
+        "Stopping object-region leader DataNode {} (region {})", leaderDataNodeId, targetRegionId);
+    leaderNode.stopForcibly();
+    Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
+
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try (Connection followerConnection =
+                      EnvFactory.getEnv()
+                          .getConnection(
+                              followerNode,
+                              SessionConfig.DEFAULT_USER,
+                              SessionConfig.DEFAULT_PASSWORD,
+                              BaseEnv.TABLE_SQL_DIALECT);
+                  Statement followerStatement = followerConnection.createStatement()) {
+                followerStatement.execute("USE " + OBJECT_DATABASE);
+                verifyObjectLength(
+                    followerStatement, "follower after object leader stop", objectBytes.length);
+              }
+            });
+  }
+
+  private Map<Integer, Pair<Integer, Set<Integer>>> waitForDataRegionMap(
+      final Statement statement) {
+    final AtomicReference<Map<Integer, Pair<Integer, Set<Integer>>>> dataRegionMapReference =
+        new AtomicReference<>(Collections.emptyMap());
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              final Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
+                  getDataRegionMapWithLeader(statement);
+              Assert.assertFalse(
+                  "Expected at least one non-system DataRegion", dataRegionMap.isEmpty());
+              dataRegionMapReference.set(dataRegionMap);
+            });
+    return dataRegionMapReference.get();
+  }
+
+  private ObjectRegionSelection waitForObjectRegion(
+      final Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap, final byte[] objectBytes) {
+    final AtomicReference<ObjectRegionSelection> targetRegionReference = new AtomicReference<>();
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              final ObjectRegionSelection targetRegion =
+                  selectObjectRegion(dataRegionMap, objectBytes);
+              Assert.assertNotNull(
+                  "Should find a replicated data region containing the object file. "
+                      + describeObjectFiles(dataRegionMap, objectBytes),
+                  targetRegion);
+              targetRegionReference.set(targetRegion);
+            });
+    return targetRegionReference.get();
+  }
+
+  private ObjectRegionSelection selectObjectRegion(
+      final Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap, final byte[] objectBytes)
+      throws IOException {
+    for (final Map.Entry<Integer, Pair<Integer, Set<Integer>>> entry : dataRegionMap.entrySet()) {
+      final Pair<Integer, Set<Integer>> leaderAndReplicas = entry.getValue();
+      if (leaderAndReplicas.getRight().size() > 1
+          && leaderAndReplicas.getRight().size() <= DATA_REPLICATION_FACTOR
+          && leaderAndReplicas.getLeft() > 0
+          && containsObjectFileInAnyReplica(
+              entry.getKey(), leaderAndReplicas.getRight(), objectBytes)) {
+        final int leaderDataNodeId = leaderAndReplicas.getLeft();
+        final int followerDataNodeId =
+            leaderAndReplicas.getRight().stream()
+                .filter(i -> i != leaderDataNodeId)
+                .findAny()
+                .orElse(-1);
+        if (followerDataNodeId > 0) {
+          return new ObjectRegionSelection(
+              entry.getKey(), leaderDataNodeId, followerDataNodeId, leaderAndReplicas.getRight());
+        }
+      }
+    }
+    return null;
+  }
+
+  private byte[] readObjectExampleBytes() throws IOException {
+    final String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+    return Files.readAllBytes(Paths.get(testObject));
+  }
+
+  private void insertObjectTablet(final ITableSession session, final byte[] objectBytes)
+      throws Exception {
+    final Tablet tablet =
+        new Tablet(
+            OBJECT_TABLE,
+            Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file"),
+            Arrays.asList(
+                TSDataType.STRING,
+                TSDataType.STRING,
+                TSDataType.STRING,
+                TSDataType.FLOAT,
+                TSDataType.OBJECT),
+            Arrays.asList(
+                ColumnCategory.TAG,
+                ColumnCategory.TAG,
+                ColumnCategory.TAG,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD),
+            1);
+    final int rowIndex = tablet.getRowSize();
+    tablet.addTimestamp(rowIndex, OBJECT_TIMESTAMP);
+    tablet.addValue(rowIndex, 0, "1");
+    tablet.addValue(rowIndex, 1, "5");
+    tablet.addValue(rowIndex, 2, "3");
+    tablet.addValue(rowIndex, 3, 37.6F);
+    tablet.addValue(rowIndex, 4, true, 0, objectBytes);
+    session.insert(tablet);
+  }
+
+  private void verifyObjectLength(
+      final Statement statement, final String context, final long expectedObjectLength)
+      throws Exception {
+    try (ResultSet resultSet =
+        statement.executeQuery(
+            "SELECT length(file) FROM "
+                + OBJECT_TABLE
+                + " WHERE time = "
+                + OBJECT_TIMESTAMP
+                + " AND region_id = '1' AND plant_id = '5' AND device_id = '3'")) {
+      Assert.assertTrue("[" + context + "] OBJECT row should exist", resultSet.next());
+      Assert.assertEquals(
+          "[" + context + "] Unexpected OBJECT length",
+          expectedObjectLength,
+          parseLongFromString(resultSet.getString(1)));
+      Assert.assertFalse("[" + context + "] Only one OBJECT row is expected", resultSet.next());
+    }
+  }
+
+  private boolean containsObjectFileInAnyReplica(
+      final int regionId, final Set<Integer> replicaIds, final byte[] expectedContent)
+      throws IOException {
+    for (final int dataNodeId : replicaIds) {
+      final DataNodeWrapper wrapper =
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(dataNodeId)
+              .orElseThrow(() -> new AssertionError("DataNode not found: " + dataNodeId));
+      if (containsObjectFile(wrapper, regionId, expectedContent)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void verifyObjectFileOnReplicas(
+      final int regionId, final Set<Integer> replicaIds, final byte[] expectedContent) {
+    Awaitility.await()
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              for (final int dataNodeId : replicaIds) {
+                final DataNodeWrapper wrapper =
+                    EnvFactory.getEnv()
+                        .dataNodeIdToWrapper(dataNodeId)
+                        .orElseThrow(() -> new AssertionError("DataNode not found: " + dataNodeId));
+                Assert.assertTrue(
+                    "Expected object file on DataNode "
+                        + dataNodeId
+                        + " for region "
+                        + regionId
+                        + ". "
+                        + describeObjectDir(
+                            new File(wrapper.getDataNodeObjectDir(), String.valueOf(regionId)),
+                            expectedContent),
+                    containsObjectFile(wrapper, regionId, expectedContent));
+              }
+            });
+  }
+
+  private boolean containsObjectFile(
+      final DataNodeWrapper wrapper, final int regionId, final byte[] expectedContent)
+      throws IOException {
+    final File objectRegionDir = new File(wrapper.getDataNodeObjectDir(), String.valueOf(regionId));
+    return containsObjectFile(objectRegionDir, expectedContent);
+  }
+
+  private boolean containsObjectFile(final File file, final byte[] expectedContent)
+      throws IOException {
+    if (!file.exists()) {
+      return false;
+    }
+    if (file.isFile()) {
+      return file.getName().endsWith(".bin")
+          && (expectedContent == null
+              || Arrays.equals(expectedContent, Files.readAllBytes(file.toPath())));
+    }
+    final File[] children = file.listFiles();
+    if (children == null) {
+      return false;
+    }
+    for (final File child : children) {
+      if (containsObjectFile(child, expectedContent)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String describeObjectFiles(
+      final Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap, final byte[] expectedContent)
+      throws IOException {
+    final StringBuilder builder = new StringBuilder("Object files by region:");
+    for (final Map.Entry<Integer, Pair<Integer, Set<Integer>>> entry : dataRegionMap.entrySet()) {
+      builder.append(" region ").append(entry.getKey()).append(" ->");
+      for (final int dataNodeId : entry.getValue().getRight()) {
+        final DataNodeWrapper wrapper =
+            EnvFactory.getEnv()
+                .dataNodeIdToWrapper(dataNodeId)
+                .orElseThrow(() -> new AssertionError("DataNode not found: " + dataNodeId));
+        builder
+            .append(" DataNode ")
+            .append(dataNodeId)
+            .append(": ")
+            .append(
+                describeObjectDir(
+                    new File(wrapper.getDataNodeObjectDir(), String.valueOf(entry.getKey())),
+                    expectedContent));
+      }
+    }
+    return builder.toString();
+  }
+
+  private String describeObjectDir(final File file, final byte[] expectedContent)
+      throws IOException {
+    if (!file.exists()) {
+      return "missing(" + file.getPath() + ")";
+    }
+    if (file.isFile()) {
+      if (!file.getName().endsWith(".bin")) {
+        return "non-object-file(" + file.getPath() + ")";
+      }
+      final byte[] content = Files.readAllBytes(file.toPath());
+      return file.getPath()
+          + "[length="
+          + content.length
+          + ", match="
+          + Arrays.equals(expectedContent, content)
+          + "]";
+    }
+    final File[] children = file.listFiles();
+    if (children == null || children.length == 0) {
+      return "empty(" + file.getPath() + ")";
+    }
+    final StringBuilder builder = new StringBuilder();
+    for (final File child : children) {
+      final String childDescription = describeObjectDir(child, expectedContent);
+      if (childDescription.contains(".bin") || childDescription.startsWith("missing")) {
+        if (builder.length() > 0) {
+          builder.append(", ");
+        }
+        builder.append(childDescription);
+      }
+    }
+    return builder.length() == 0 ? "no-bin-under(" + file.getPath() + ")" : builder.toString();
+  }
+
+  private static class ObjectRegionSelection {
+
+    private final int regionId;
+    private final int leaderDataNodeId;
+    private final int followerDataNodeId;
+    private final Set<Integer> replicaDataNodeIds;
+
+    private ObjectRegionSelection(
+        final int regionId,
+        final int leaderDataNodeId,
+        final int followerDataNodeId,
+        final Set<Integer> replicaDataNodeIds) {
+      this.regionId = regionId;
+      this.leaderDataNodeId = leaderDataNodeId;
+      this.followerDataNodeId = followerDataNodeId;
+      this.replicaDataNodeIds = replicaDataNodeIds;
     }
   }
 

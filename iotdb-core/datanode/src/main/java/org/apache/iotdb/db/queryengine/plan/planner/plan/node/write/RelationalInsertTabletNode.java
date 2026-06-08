@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -230,8 +231,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         subRanges.add(splitInfo.ranges.get(2 * i + 1));
       }
     }
-    final List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
-    for (int i = 0; i < times.length; i++) {
+    final List<TEndPoint> redirectNodeList = new ArrayList<>(rowCount);
+    for (int i = 0; i < rowCount; i++) {
       final IDeviceID deviceId = getDeviceID(i);
       redirectNodeList.add(endPointMap.get(deviceId));
     }
@@ -410,6 +411,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         // Avoid using system arraycopy when there is no need to split
         setRange(entry.getValue());
         setDataRegionReplicaSet(entry.getKey());
+        for (int i = 0; i < columns.length; i++) {
+          if (dataTypes[i] == TSDataType.OBJECT) {
+            handleObjectValue(i, 0, rowCount, entry, result);
+          }
+        }
         result.add(this);
         return result;
       }
@@ -446,12 +452,19 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       System.arraycopy(times, start, subNode.times, destLoc, length);
       for (int i = 0; i < subNode.columns.length; i++) {
         if (dataTypes[i] != null) {
-          System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
+          if (dataTypes[i] == TSDataType.OBJECT) {
+            handleObjectValue(i, start, end, entry, result);
+          } else {
+            System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
+          }
         }
-        if (subNode.bitMaps != null
-            && subNode.bitMaps[i] != null
-            && i < this.bitMaps.length
-            && this.bitMaps[i] != null) {
+        if (this.bitMaps != null && i < this.bitMaps.length && this.bitMaps[i] != null) {
+          if (subNode.bitMaps == null) {
+            subNode.bitMaps = new BitMap[subNode.columns.length];
+          }
+          if (subNode.bitMaps[i] == null) {
+            subNode.bitMaps[i] = new BitMap(count);
+          }
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }
@@ -463,6 +476,53 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     result.add(subNode);
     return result;
+  }
+
+  private void handleObjectValue(
+      int column,
+      int startRow,
+      int endRow,
+      Map.Entry<TRegionReplicaSet, List<Integer>> entry,
+      List<WritePlanNode> result) {
+    for (int row = startRow; row < endRow; row++) {
+      if (bitMaps != null && bitMaps[column] != null && bitMaps[column].isMarked(row)) {
+        continue;
+      }
+      if (((Binary[]) columns[column])[row] == null) {
+        continue;
+      }
+      final byte[] binary = ((Binary[]) columns[column])[row].getValues();
+      if (binary == null || binary.length == 0) {
+        continue;
+      }
+      if (binary.length < Byte.BYTES + Long.BYTES) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Malformed OBJECT binary for measurement %s, length is %d",
+                measurements[column], binary.length));
+      }
+      final ByteBuffer buffer = ByteBuffer.wrap(binary);
+      final boolean isEOF = buffer.get() == 1;
+      final long offset = buffer.getLong();
+      final byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
+      final IObjectPath relativePath =
+          IObjectPath.Factory.FACTORY.create(
+              entry.getKey().getRegionId().getId(),
+              times[row],
+              getDeviceID(row),
+              measurements[column]);
+      final ObjectNode objectNode = new ObjectNode(isEOF, offset, content, relativePath);
+      objectNode.setDataRegionReplicaSet(entry.getKey());
+      result.add(objectNode);
+      ((Binary[]) columns[column])[row] = null;
+      if (bitMaps == null) {
+        bitMaps = new BitMap[columns.length];
+      }
+      if (bitMaps[column] == null) {
+        bitMaps[column] = new BitMap(rowCount);
+      }
+      bitMaps[column].mark(row);
+    }
   }
 
   @Override

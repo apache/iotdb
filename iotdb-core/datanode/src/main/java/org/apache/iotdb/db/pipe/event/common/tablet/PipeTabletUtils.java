@@ -190,6 +190,7 @@ public final class PipeTabletUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         ((Binary[]) tablet.getValues()[columnIndex])[rowIndex] = toBinary(value);
         break;
       default:

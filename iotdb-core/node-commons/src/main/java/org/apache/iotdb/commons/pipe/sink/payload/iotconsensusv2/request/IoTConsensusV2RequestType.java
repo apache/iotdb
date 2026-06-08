@@ -35,6 +35,7 @@ public enum IoTConsensusV2RequestType {
   TRANSFER_TS_FILE_PIECE_WITH_MOD((short) 105),
   TRANSFER_TS_FILE_SEAL_WITH_MOD((short) 106),
   TRANSFER_DELETION((short) 107),
+  TRANSFER_OBJECT_FILE_PIECE((short) 108),
 
 // Note: temporarily IoTConsensusV2 only support data region. But we put this class in `node-common`
 // to reserve the scalability

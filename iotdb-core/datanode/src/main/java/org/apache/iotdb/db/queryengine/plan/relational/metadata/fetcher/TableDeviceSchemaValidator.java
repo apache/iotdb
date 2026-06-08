@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -296,7 +299,24 @@ public class TableDeviceSchemaValidator {
   }
 
   public static void checkObject4DeviceId(final Object[] deviceId) {
-    throw new SemanticException(DataNodeQueryMessages.THE_OBJECT_TYPE_COLUMN_IS_NOT_SUPPORTED);
+    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
+      return;
+    }
+    if (hasMultipleTiers()) {
+      throw new SemanticException("The tiered storage does not support object type yet.");
+    }
+    for (final Object part : deviceId) {
+      final String value = (String) part;
+      if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {
+        throw new SemanticException(
+            TsTable.getObjectStringError("deviceId", Arrays.toString(deviceId)));
+      }
+    }
+  }
+
+  public static boolean hasMultipleTiers() {
+    final String[][] tierDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    return tierDataDirs.length > 1;
   }
 
   private static class ValidateResult {
