@@ -37,6 +37,20 @@ esac
 
 PACKAGE_CLASSIFIER="${PACKAGE_CLASSIFIER:-${DEFAULT_CLASSIFIER}}"
 
+# manylinux2014 is glibc 2.17 based, but its system GCC may be too old to
+# provide libstdc++'s dual ABI. Use the newest available devtoolset so
+# _GLIBCXX_USE_CXX11_ABI=1 produces std::__cxx11 symbols.
+for devtoolset in devtoolset-12 devtoolset-11 devtoolset-10 devtoolset-9 devtoolset-8 devtoolset-7; do
+  if [[ -f "/opt/rh/${devtoolset}/enable" ]]; then
+    # shellcheck disable=SC1090
+    set +u
+    source "/opt/rh/${devtoolset}/enable"
+    set -u
+    echo "Enabled ${devtoolset}"
+    break
+  fi
+done
+
 CMAKE_VERSION=3.28.4
 CMAKE_DIR="/opt/cmake-${CMAKE_VERSION}"
 if [[ ! -x "${CMAKE_DIR}/bin/cmake" ]]; then
@@ -62,6 +76,12 @@ export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 export JAVA_HOME
 
 gcc --version
+c++ --version
+gcc_major=$(gcc -dumpversion | cut -d. -f1)
+if (( gcc_major < 5 )); then
+  echo "ERROR: GCC >= 5 is required for _GLIBCXX_USE_CXX11_ABI=1; got $(gcc -dumpversion)"
+  exit 1
+fi
 cmake --version
 java -version
 
