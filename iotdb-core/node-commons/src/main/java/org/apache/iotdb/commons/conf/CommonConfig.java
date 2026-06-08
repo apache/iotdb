@@ -473,9 +473,6 @@ public class CommonConfig {
   /** SSL provider class. */
   private String sslProviderClass = "";
 
-  /** SSL cipher suites. */
-  private String sslCipherSuites = "";
-
   private String userEncryptTokenHint = "not set yet";
 
   private boolean enforceStrongPassword = false;
@@ -2836,14 +2833,6 @@ public class CommonConfig {
 
   public void setSslProviderClass(String sslProviderClass) {
     this.sslProviderClass = sslProviderClass;
-  }
-
-  public String getSslCipherSuites() {
-    return sslCipherSuites;
-  }
-
-  public void setSslCipherSuites(String sslCipherSuites) {
-    this.sslCipherSuites = sslCipherSuites;
   }
 
   public boolean isEnforceStrongPassword() {

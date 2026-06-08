@@ -39,7 +39,6 @@ import java.security.KeyStore;
 import java.security.Provider;
 import java.security.Security;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.stream.Stream;
@@ -50,17 +49,17 @@ public final class RpcSslUtils {
   private static final String PKCS12_STORE_TYPE = "PKCS12";
   private static final String JKS_STORE_TYPE = "JKS";
 
-  private static volatile SslConfig config = new SslConfig(DEFAULT_PROTOCOL, "", null);
+  private static volatile SslConfig config = new SslConfig(DEFAULT_PROTOCOL, "");
 
   private RpcSslUtils() {}
 
-  public static void configure(String protocol, String providerClass, String cipherSuites) {
-    config = newSslConfig(protocol, providerClass, cipherSuites);
+  public static void configure(String protocol, String providerClass) {
+    config = newSslConfig(protocol, providerClass);
   }
 
   public static void ensureProvider(String protocol, String providerClass)
       throws TTransportException {
-    ensureProvider(newSslConfig(protocol, providerClass, null));
+    ensureProvider(newSslConfig(protocol, providerClass));
   }
 
   public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters()
@@ -71,15 +70,15 @@ public final class RpcSslUtils {
   }
 
   public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters(
-      String protocol, String providerClass, String cipherSuites) throws TTransportException {
-    SslConfig current = newSslConfig(protocol, providerClass, cipherSuites);
+      String protocol, String providerClass) throws TTransportException {
+    SslConfig current = newSslConfig(protocol, providerClass);
     ensureProvider(current);
     return createTSSLTransportParameters(current);
   }
 
   private static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters(
       SslConfig current) {
-    return new TSSLTransportFactory.TSSLTransportParameters(current.protocol, current.cipherSuites);
+    return new TSSLTransportFactory.TSSLTransportParameters(current.protocol, null);
   }
 
   public static void setKeyStore(
@@ -95,7 +94,7 @@ public final class RpcSslUtils {
       String protocol,
       String providerClass)
       throws TTransportException {
-    setKeyStore(params, keyStorePath, keyStorePwd, newSslConfig(protocol, providerClass, null));
+    setKeyStore(params, keyStorePath, keyStorePwd, newSslConfig(protocol, providerClass));
   }
 
   private static void setKeyStore(
@@ -131,8 +130,7 @@ public final class RpcSslUtils {
       String protocol,
       String providerClass)
       throws TTransportException {
-    setTrustStore(
-        params, trustStorePath, trustStorePwd, newSslConfig(protocol, providerClass, null));
+    setTrustStore(params, trustStorePath, trustStorePwd, newSslConfig(protocol, providerClass));
   }
 
   private static void setTrustStore(
@@ -169,15 +167,14 @@ public final class RpcSslUtils {
       String trustStorePath,
       String trustStorePassword,
       String protocol,
-      String providerClass,
-      String cipherSuites)
+      String providerClass)
       throws GeneralSecurityException, IOException, TTransportException {
     return createSSLContext(
         keyStorePath,
         keyStorePassword,
         trustStorePath,
         trustStorePassword,
-        newSslConfig(protocol, providerClass, cipherSuites));
+        newSslConfig(protocol, providerClass));
   }
 
   private static SSLContext createSSLContext(
@@ -211,13 +208,6 @@ public final class RpcSslUtils {
 
   public static String getProtocol() {
     return config.protocol;
-  }
-
-  public static String[] getCipherSuites() {
-    SslConfig current = config;
-    return current.cipherSuites == null
-        ? null
-        : Arrays.copyOf(current.cipherSuites, current.cipherSuites.length);
   }
 
   public static boolean hasConfiguredProvider() {
@@ -372,13 +362,6 @@ public final class RpcSslUtils {
     return value != null && !value.trim().isEmpty();
   }
 
-  private static String[] splitCipherSuites(String cipherSuites) {
-    if (!hasText(cipherSuites)) {
-      return null;
-    }
-    return splitCommaSeparated(cipherSuites);
-  }
-
   private static String[] splitProviderClasses(String providerClasses) {
     return splitCommaSeparated(providerClasses);
   }
@@ -399,24 +382,17 @@ public final class RpcSslUtils {
         .toArray(String[]::new);
   }
 
-  private static SslConfig newSslConfig(
-      String protocol, String providerClass, String cipherSuites) {
-    return new SslConfig(
-        trimToDefault(protocol, DEFAULT_PROTOCOL),
-        trimToEmpty(providerClass),
-        splitCipherSuites(cipherSuites));
+  private static SslConfig newSslConfig(String protocol, String providerClass) {
+    return new SslConfig(trimToDefault(protocol, DEFAULT_PROTOCOL), trimToEmpty(providerClass));
   }
 
   private static final class SslConfig {
     private final String protocol;
     private final String providerClass;
-    private final String[] cipherSuites;
 
-    private SslConfig(String protocol, String providerClass, String[] cipherSuites) {
+    private SslConfig(String protocol, String providerClass) {
       this.protocol = protocol;
       this.providerClass = providerClass;
-      this.cipherSuites =
-          cipherSuites == null ? null : Arrays.copyOf(cipherSuites, cipherSuites.length);
     }
   }
 }

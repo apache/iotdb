@@ -525,13 +525,10 @@ public class CommonDescriptor {
     config.setSslProtocol(properties.getProperty("ssl_protocol", config.getSslProtocol()));
     config.setSslProviderClass(
         properties.getProperty("ssl_provider_class", config.getSslProviderClass()));
-    config.setSslCipherSuites(
-        properties.getProperty("ssl_cipher_suites", config.getSslCipherSuites()));
     configureRpcSsl();
   }
 
   public void configureRpcSsl() {
-    RpcSslUtils.configure(
-        config.getSslProtocol(), config.getSslProviderClass(), config.getSslCipherSuites());
+    RpcSslUtils.configure(config.getSslProtocol(), config.getSslProviderClass());
   }
 }

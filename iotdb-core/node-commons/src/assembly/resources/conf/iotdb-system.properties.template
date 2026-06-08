@@ -487,13 +487,6 @@ ssl_protocol=TLS
 # Privilege: SECURITY
 ssl_provider_class=
 
-# Comma-separated SSL cipher suites.
-# Leave empty to use the provider default.
-# effectiveMode: restart
-# Datatype: String
-# Privilege: SECURITY
-ssl_cipher_suites=
-
 ####################
 ### Connection Configuration
 ####################

@@ -100,7 +100,7 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String sslProviderClass)
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass, null);
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass);
     RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol, sslProviderClass);
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
@@ -139,7 +139,7 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       String sslProviderClass)
       throws TTransportException {
     TSSLTransportFactory.TSSLTransportParameters params =
-        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass, null);
+        RpcSslUtils.createTSSLTransportParameters(sslProtocol, sslProviderClass);
     if (Files.exists(Paths.get(trustStore)) && Files.exists(Paths.get(keyStore))) {
       RpcSslUtils.setTrustStore(params, trustStore, trustStorePwd, sslProtocol, sslProviderClass);
       RpcSslUtils.setKeyStore(params, keyStore, keyStorePwd, sslProtocol, sslProviderClass);
