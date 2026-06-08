@@ -24,7 +24,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.HashSet;
 import java.util.List;

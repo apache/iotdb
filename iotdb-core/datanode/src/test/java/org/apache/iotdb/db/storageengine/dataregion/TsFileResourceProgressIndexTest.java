@@ -42,7 +42,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.File;
 import java.io.IOException;

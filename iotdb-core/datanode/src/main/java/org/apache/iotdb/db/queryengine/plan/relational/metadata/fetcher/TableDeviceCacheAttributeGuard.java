@@ -28,7 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 
 import org.apache.tsfile.utils.Pair;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.Collections;
 import java.util.HashSet;

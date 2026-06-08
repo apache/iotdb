@@ -37,7 +37,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

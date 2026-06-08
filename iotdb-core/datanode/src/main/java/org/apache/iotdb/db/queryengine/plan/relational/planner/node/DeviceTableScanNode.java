@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

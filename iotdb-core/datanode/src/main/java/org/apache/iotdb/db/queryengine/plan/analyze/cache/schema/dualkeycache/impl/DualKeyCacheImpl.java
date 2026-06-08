@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;

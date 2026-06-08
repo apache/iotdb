@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -286,7 +286,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.net.URI;
 import java.net.URISyntaxException;

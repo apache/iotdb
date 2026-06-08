@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 

@@ -58,7 +58,7 @@ import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;

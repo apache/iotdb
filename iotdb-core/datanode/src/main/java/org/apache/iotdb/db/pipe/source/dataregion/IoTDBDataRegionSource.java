@@ -63,7 +63,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.time.ZoneId;
 import java.util.Arrays;

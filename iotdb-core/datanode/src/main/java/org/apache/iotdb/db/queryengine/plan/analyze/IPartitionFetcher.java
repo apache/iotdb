@@ -28,7 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

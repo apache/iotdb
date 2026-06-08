@@ -32,7 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Collection;
 import java.util.List;

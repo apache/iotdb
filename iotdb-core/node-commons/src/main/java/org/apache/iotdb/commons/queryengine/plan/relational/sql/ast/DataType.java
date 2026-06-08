@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 public abstract class DataType extends Expression {
   DataType(@Nullable NodeLocation location) {

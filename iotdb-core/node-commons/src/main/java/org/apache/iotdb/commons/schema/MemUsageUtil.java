@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.schema;
 
 import org.apache.tsfile.utils.Binary;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 public class MemUsageUtil {
 

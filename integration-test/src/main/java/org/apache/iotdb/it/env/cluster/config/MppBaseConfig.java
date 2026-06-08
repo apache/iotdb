@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.it.env.cluster.config;
 
-import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
+
+import javax.annotation.Nullable;
 
 import java.io.FileWriter;
 import java.io.IOException;

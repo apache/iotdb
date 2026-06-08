@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;

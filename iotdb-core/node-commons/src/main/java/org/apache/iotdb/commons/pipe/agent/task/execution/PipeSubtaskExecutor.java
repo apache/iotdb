@@ -31,7 +31,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Map;
 import java.util.Objects;

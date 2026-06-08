@@ -24,7 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePl
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

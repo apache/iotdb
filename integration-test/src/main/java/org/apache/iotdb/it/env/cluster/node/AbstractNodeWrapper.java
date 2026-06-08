@@ -33,8 +33,7 @@ import org.apache.tsfile.external.commons.io.file.PathUtils;
 import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
-import jakarta.annotation.Nullable;
-
+import javax.annotation.Nullable;
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;

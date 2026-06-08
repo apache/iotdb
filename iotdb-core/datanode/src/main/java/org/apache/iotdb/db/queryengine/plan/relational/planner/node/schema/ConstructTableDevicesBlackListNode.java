@@ -29,7 +29,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

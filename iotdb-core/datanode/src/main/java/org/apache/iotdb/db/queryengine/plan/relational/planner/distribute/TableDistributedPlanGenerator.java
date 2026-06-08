@@ -124,7 +124,7 @@ import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Collection;

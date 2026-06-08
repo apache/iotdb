@@ -60,7 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import com.google.common.collect.ImmutableList;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

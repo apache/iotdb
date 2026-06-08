@@ -35,7 +35,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.Arrays;
 import java.util.Objects;

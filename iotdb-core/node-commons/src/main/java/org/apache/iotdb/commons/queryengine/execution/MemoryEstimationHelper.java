@@ -27,7 +27,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

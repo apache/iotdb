@@ -44,7 +44,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

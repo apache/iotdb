@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
     implements PlanVisitor<R, ConsensusGroupId> {

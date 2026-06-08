@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;

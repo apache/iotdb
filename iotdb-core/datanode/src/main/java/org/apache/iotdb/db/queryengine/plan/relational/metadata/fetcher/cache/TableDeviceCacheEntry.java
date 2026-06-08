@@ -29,8 +29,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
-import jakarta.annotation.Nonnull;
-
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Collections;

@@ -32,7 +32,7 @@ import org.apache.tsfile.external.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Iterator;
 import java.util.List;

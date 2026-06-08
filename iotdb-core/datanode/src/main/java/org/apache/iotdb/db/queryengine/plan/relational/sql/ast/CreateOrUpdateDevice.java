@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.Arrays;
 import java.util.Collections;

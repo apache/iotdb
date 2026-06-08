@@ -34,7 +34,7 @@ import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;

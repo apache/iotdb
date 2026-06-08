@@ -59,7 +59,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.nio.file.Paths;

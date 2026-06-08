@@ -217,7 +217,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;

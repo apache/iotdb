@@ -25,7 +25,7 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -85,7 +85,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.TimeDuration;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;

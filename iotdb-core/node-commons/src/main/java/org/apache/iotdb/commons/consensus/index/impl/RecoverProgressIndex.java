@@ -26,7 +26,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.io.InputStream;

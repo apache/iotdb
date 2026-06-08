@@ -30,7 +30,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;

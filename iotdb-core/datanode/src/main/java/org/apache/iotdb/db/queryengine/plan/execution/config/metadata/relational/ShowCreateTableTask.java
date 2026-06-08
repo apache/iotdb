@@ -38,7 +38,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.util.List;
 import java.util.Objects;

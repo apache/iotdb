@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ExpressionF
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

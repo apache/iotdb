@@ -50,7 +50,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

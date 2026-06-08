@@ -67,7 +67,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.nio.file.Paths;

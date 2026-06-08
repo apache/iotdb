@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;

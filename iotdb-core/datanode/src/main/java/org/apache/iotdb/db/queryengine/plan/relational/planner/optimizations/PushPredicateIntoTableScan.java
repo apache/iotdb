@@ -82,7 +82,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;

@@ -35,7 +35,7 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.Collections;

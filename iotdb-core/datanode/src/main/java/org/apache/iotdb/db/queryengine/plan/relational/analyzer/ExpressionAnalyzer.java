@@ -114,7 +114,7 @@ import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

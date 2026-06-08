@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
-import jakarta.annotation.Nonnull;
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.io.InputStream;

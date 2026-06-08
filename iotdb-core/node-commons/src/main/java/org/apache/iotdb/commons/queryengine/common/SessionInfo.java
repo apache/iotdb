@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

@@ -41,7 +41,7 @@ import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

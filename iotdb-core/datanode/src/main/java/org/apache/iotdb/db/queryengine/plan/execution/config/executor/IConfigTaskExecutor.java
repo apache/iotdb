@@ -105,7 +105,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

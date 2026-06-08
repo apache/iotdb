@@ -21,7 +21,7 @@ package org.apache.iotdb.it.env.cluster.config;
 
 import org.apache.iotdb.itbase.env.JVMConfig;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 public class MppJVMConfig implements JVMConfig {
 

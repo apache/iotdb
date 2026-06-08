@@ -25,7 +25,7 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

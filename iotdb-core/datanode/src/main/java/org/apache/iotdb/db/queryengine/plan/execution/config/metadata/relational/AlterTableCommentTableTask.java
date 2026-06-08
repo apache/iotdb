@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 public class AlterTableCommentTableTask extends AbstractAlterOrDropTableTask {
   @Nullable private final String comment;

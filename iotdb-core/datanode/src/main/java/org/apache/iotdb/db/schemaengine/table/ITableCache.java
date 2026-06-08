@@ -21,7 +21,7 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 public interface ITableCache {
 

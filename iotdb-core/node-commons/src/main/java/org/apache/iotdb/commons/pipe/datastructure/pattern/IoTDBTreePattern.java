@@ -32,7 +32,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -82,8 +82,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

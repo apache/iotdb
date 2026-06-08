@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToO
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;

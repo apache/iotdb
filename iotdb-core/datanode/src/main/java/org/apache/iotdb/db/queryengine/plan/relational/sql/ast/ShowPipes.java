@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.Objects;
 

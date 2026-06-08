@@ -39,7 +39,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.utils.Accountable;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Optional;

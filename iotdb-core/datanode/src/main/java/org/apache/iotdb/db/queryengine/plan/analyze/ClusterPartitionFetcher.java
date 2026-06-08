@@ -54,7 +54,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;

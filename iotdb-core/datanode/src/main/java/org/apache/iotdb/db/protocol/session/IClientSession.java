@@ -29,7 +29,7 @@ import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.Objects;

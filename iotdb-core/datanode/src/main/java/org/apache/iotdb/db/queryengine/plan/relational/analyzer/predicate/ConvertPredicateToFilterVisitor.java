@@ -65,7 +65,7 @@ import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.apache.tsfile.utils.Binary;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.HashSet;

@@ -39,7 +39,7 @@ import org.apache.tsfile.external.commons.collections4.map.LRUMap;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 
-import jakarta.annotation.Nullable;
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
