@@ -59,7 +59,7 @@ public class IoTDBDriver implements Driver {
     }
   }
 
-  private static final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
+  private static final String IOTDB_URL_PATTERN = Config.IOTDB_URL_PREFIX + ".*";
 
   public IoTDBDriver() {
     // This is a constructor.
@@ -67,7 +67,7 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public boolean acceptsURL(String url) {
-    return url != null && Pattern.matches(TSFILE_URL_PREFIX, url);
+    return url != null && Pattern.matches(IOTDB_URL_PATTERN, url);
   }
 
   @Override

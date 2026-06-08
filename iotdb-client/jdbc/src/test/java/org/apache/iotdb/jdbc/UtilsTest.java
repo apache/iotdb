@@ -105,6 +105,16 @@ public class UtilsTest {
     assertEquals(6667, params.getPort());
   }
 
+  @Test
+  public void testParseUrlAllowsNullProperties() throws IoTDBURLException {
+    IoTDBConnectionParams params = Utils.parseUrl("jdbc:iotdb://test:6667", null);
+
+    assertEquals("test", params.getHost());
+    assertEquals(6667, params.getPort());
+    assertEquals(Config.DEFAULT_USER, params.getUsername());
+    assertEquals(Config.DEFAULT_PASSWORD, params.getPassword());
+  }
+
   @Test(expected = IoTDBURLException.class)
   public void testParseWrongUrl2() throws IoTDBURLException {
     Properties properties = new Properties();
@@ -121,6 +131,11 @@ public class UtilsTest {
   public void testParseWrongUrl4() throws IoTDBURLException {
     Properties properties = new Properties();
     Utils.parseUrl("jdbc:iotdb//6667?rpc_compress=true&aaa=bbb", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrlWithoutPort() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://test", new Properties());
   }
 
   @Test(expected = IoTDBURLException.class)

@@ -127,9 +127,10 @@ public class IoTDBConnection implements Connection {
     if (url == null) {
       throw new IoTDBURLException(JdbcMessages.INPUT_URL_NULL);
     }
-    params = Utils.parseUrl(url, info);
+    Properties properties = info == null ? new Properties() : info;
+    params = Utils.parseUrl(url, properties);
     this.url = url;
-    this.userName = info.get("user").toString();
+    this.userName = params.getUsername();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
