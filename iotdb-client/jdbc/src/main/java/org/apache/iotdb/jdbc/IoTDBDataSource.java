@@ -49,7 +49,7 @@ public class IoTDBDataSource implements DataSource {
     this.properties = new Properties();
     setUser(user);
     setPassword(password);
-    if (port != 0) {
+    if (port != null && port != 0) {
       this.port = port;
     }
   }

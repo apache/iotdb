@@ -174,4 +174,18 @@ public class UtilsTest {
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
     assertTrue(Config.rpcThriftCompressionEnable);
   }
+
+  @Test
+  public void testParseUrlParamValueAllowsEqualsSign() throws IoTDBURLException {
+    Properties properties = new Properties();
+
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?trust_store_pwd=a=b=c", properties);
+
+    assertEquals("a=b=c", properties.getProperty(Config.TRUST_STORE_PWD));
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsEmptyValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?use_ssl=", new Properties());
+  }
 }

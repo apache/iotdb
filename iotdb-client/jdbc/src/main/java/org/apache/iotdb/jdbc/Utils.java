@@ -164,12 +164,12 @@ public class Utils {
     String paramURL = subURL.substring(subURL.indexOf('?') + 1);
     String[] params = paramURL.split("&");
     for (String tmpParam : params) {
-      String[] paramSplit = tmpParam.split("=");
-      if (paramSplit.length != 2) {
+      int separatorIndex = tmpParam.indexOf('=');
+      if (separatorIndex <= 0 || separatorIndex == tmpParam.length() - 1) {
         return false;
       }
-      String key = tmpParam.split("=")[0];
-      String value = tmpParam.split("=")[1];
+      String key = tmpParam.substring(0, separatorIndex);
+      String value = tmpParam.substring(separatorIndex + 1);
       switch (key) {
         case RPC_COMPRESS:
           if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {

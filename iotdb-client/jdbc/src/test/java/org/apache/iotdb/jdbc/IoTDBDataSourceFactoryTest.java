@@ -70,4 +70,12 @@ public class IoTDBDataSourceFactoryTest {
     assertNull(dataSource.getUser());
     assertNull(dataSource.getPassword());
   }
+
+  @Test
+  public void testDataSourceConstructorAllowsNullPort() {
+    IoTDBDataSource dataSource =
+        new IoTDBDataSource("jdbc:iotdb://localhost:6667", null, null, null);
+
+    assertEquals(Integer.valueOf(6667), dataSource.getPort());
+  }
 }
