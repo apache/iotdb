@@ -65,6 +65,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,6 +79,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private final AtomicBoolean leaderServicesReady;
+  private final AtomicLong leaderServicesEpoch;
+  private final Object leaderServicesLock;
   private ConfigManager configManager;
 
   /** Variables for {@link ConfigNode} Simple Consensus. */
@@ -101,6 +104,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
     this.leaderServicesReady = new AtomicBoolean(false);
+    this.leaderServicesEpoch = new AtomicLong(0);
+    this.leaderServicesLock = new Object();
     this.configManager = configManager;
     this.currentNodeTEndPoint =
         new TEndPoint()
@@ -234,11 +239,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-    leaderServicesReady.set(false);
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
+      invalidateLeaderServices();
       LOGGER.info(
           ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
               + "the new leader is [nodeId:{}]",
@@ -250,7 +255,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyNotLeader() {
-    leaderServicesReady.set(false);
+    invalidateLeaderServices();
     // We get currentNodeId here because the currentNodeId
     // couldn't initialize earlier than the ConfigRegionStateMachine
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
@@ -259,25 +264,30 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             + "start cleaning up related services",
         currentNodeId,
         currentNodeTEndPoint);
-    // Stop leader scheduling services
-    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
-    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
-    configManager.getSubscriptionManager().getSubscriptionCoordinator().stopSubscriptionMetaSync();
-    configManager.getLoadManager().stopTopologyService();
-    configManager.getLoadManager().stopLoadServices();
-    configManager.getProcedureManager().stopExecutor();
-    configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-    configManager.getPartitionManager().stopRegionCleaner();
-    configManager.getCQManager().stopCQScheduler();
-    configManager.getClusterSchemaManager().clearSchemaQuotaCache();
-    // Remove Metric after leader change
-    configManager.removeMetrics();
+    synchronized (leaderServicesLock) {
+      // Stop leader scheduling services
+      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
+      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
+      configManager
+          .getSubscriptionManager()
+          .getSubscriptionCoordinator()
+          .stopSubscriptionMetaSync();
+      configManager.getLoadManager().stopTopologyService();
+      configManager.getLoadManager().stopLoadServices();
+      configManager.getProcedureManager().stopExecutor();
+      configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
+      configManager.getPartitionManager().stopRegionCleaner();
+      configManager.getCQManager().stopCQScheduler();
+      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+      // Remove Metric after leader change
+      configManager.removeMetrics();
 
-    // Shutdown leader related service for config pipe
-    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
+      // Shutdown leader related service for config pipe
+      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
 
-    // Clean receiver file dir
-    PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+      // Clean receiver file dir
+      PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+    }
 
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
@@ -288,7 +298,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void notifyLeaderReady() {
-    leaderServicesReady.set(false);
+    final long epoch = nextLeaderServicesEpoch();
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_BECOMES_CONFIG_REGION_LEADER,
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
@@ -301,10 +311,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getLoadManager().startTopologyService();
     }
 
-    threadPool.submit(this::startLeaderServicesAfterLoadReady);
+    threadPool.submit(() -> startLeaderServicesAfterLoadReady(epoch));
   }
 
-  private void startLeaderServicesAfterLoadReady() {
+  private void startLeaderServicesAfterLoadReady(final long epoch) {
     if (!configManager.getLoadManager().isLoadReady()) {
       LOGGER.info(
           "Current ConfigNode(nodeId: {}, ip: {}) starts leader services while load warm-up is"
@@ -312,64 +322,110 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint);
     }
-    if (!configManager.getConsensusManager().isLeaderReady()) {
-      LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + "skip starting leader services because consensus leader is no longer ready",
-          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          currentNodeTEndPoint);
-      return;
+    synchronized (leaderServicesLock) {
+      if (!isCurrentLeaderServicesEpoch(epoch)) {
+        LOGGER.info(
+            ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
+                + "skip starting leader services because the leader epoch is stale",
+            ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+            currentNodeTEndPoint);
+        return;
+      }
+
+      // Start leader scheduling services
+      submitIfLeaderServicesEpochCurrent(
+          epoch, () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
+      configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
+      configManager.getPartitionManager().startRegionCleaner();
+      // Add Metric after leader ready
+      configManager.addMetrics();
+
+      // Activate leader related service for config pipe
+      PipeConfigNodeAgent.runtime().notifyLeaderReady();
+
+      // we do cq recovery async for performance:
+      // cq recovery may be time-consuming, we use another thread to do it in
+      // make notifyLeaderChanged not blocked by it
+      submitIfLeaderServicesEpochCurrent(
+          epoch, () -> configManager.getCQManager().startCQScheduler());
+
+      submitIfLeaderServicesEpochCurrent(
+          epoch,
+          () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
+      submitIfLeaderServicesEpochCurrent(
+          epoch,
+          () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
+      submitIfLeaderServicesEpochCurrent(
+          epoch,
+          () ->
+              configManager
+                  .getPipeManager()
+                  .getPipeRuntimeCoordinator()
+                  .onConfigRegionGroupLeaderChanged());
+
+      submitIfLeaderServicesEpochCurrent(
+          epoch,
+          () ->
+              configManager
+                  .getSubscriptionManager()
+                  .getSubscriptionCoordinator()
+                  .startSubscriptionMetaSync());
+
+      // To adapt old version, we check cluster ID after state machine has been fully recovered.
+      // Do check async because sync will be slow and block every other things.
+      submitIfLeaderServicesEpochCurrent(
+          epoch, () -> configManager.getClusterManager().checkClusterId());
+
+      if (!isCurrentLeaderServicesEpoch(epoch)) {
+        return;
+      }
+      configManager
+          .getProcedureManager()
+          .startExecutor(
+              () -> {
+                if (isCurrentLeaderServicesEpoch(epoch)) {
+                  leaderServicesReady.set(true);
+                }
+              });
+      if (!leaderServicesReady.get()) {
+        return;
+      }
     }
 
-    // Start leader scheduling services
-    configManager.getProcedureManager().startExecutor();
-    threadPool.submit(
-        () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
-    configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
-    configManager.getPartitionManager().startRegionCleaner();
-    // Add Metric after leader ready
-    configManager.addMetrics();
-
-    // Activate leader related service for config pipe
-    PipeConfigNodeAgent.runtime().notifyLeaderReady();
-
-    // we do cq recovery async for performance:
-    // cq recovery may be time-consuming, we use another thread to do it in
-    // make notifyLeaderChanged not blocked by it
-    threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
-
-    threadPool.submit(
-        () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
-    threadPool.submit(
-        () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
-    threadPool.submit(
-        () ->
-            configManager
-                .getPipeManager()
-                .getPipeRuntimeCoordinator()
-                .onConfigRegionGroupLeaderChanged());
-
-    threadPool.submit(
-        () ->
-            configManager
-                .getSubscriptionManager()
-                .getSubscriptionCoordinator()
-                .startSubscriptionMetaSync());
-
-    // To adapt old version, we check cluster ID after state machine has been fully recovered.
-    // Do check async because sync will be slow and block every other things.
-    threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
-
-    leaderServicesReady.set(true);
-
-    LOGGER.info(
-        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
-        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-        currentNodeTEndPoint);
+    if (isCurrentLeaderServicesEpoch(epoch)) {
+      LOGGER.info(
+          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          currentNodeTEndPoint);
+    }
   }
 
   public boolean areLeaderServicesReady() {
     return leaderServicesReady.get();
+  }
+
+  private long nextLeaderServicesEpoch() {
+    leaderServicesReady.set(false);
+    return leaderServicesEpoch.incrementAndGet();
+  }
+
+  private void invalidateLeaderServices() {
+    leaderServicesReady.set(false);
+    leaderServicesEpoch.incrementAndGet();
+  }
+
+  private boolean isCurrentLeaderServicesEpoch(final long epoch) {
+    return leaderServicesEpoch.get() == epoch
+        && configManager.getConsensusManager().isLeaderReady();
+  }
+
+  private void submitIfLeaderServicesEpochCurrent(final long epoch, final Runnable task) {
+    threadPool.submit(
+        () -> {
+          if (isCurrentLeaderServicesEpoch(epoch)) {
+            task.run();
+          }
+        });
   }
 
   @Override

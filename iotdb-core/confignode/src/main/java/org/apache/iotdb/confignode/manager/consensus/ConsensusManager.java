@@ -447,6 +447,14 @@ public class ConsensusManager {
    *     NEED_REDIRECTION otherwise
    */
   public TSStatus confirmLeader() {
+    return confirmLeader(true);
+  }
+
+  public TSStatus confirmLeaderForInternalProcedure() {
+    return confirmLeader(false);
+  }
+
+  private TSStatus confirmLeader(final boolean checkLoadReady) {
     if (!isLeader()) {
       TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       result.setMessage(
@@ -481,7 +489,7 @@ public class ConsensusManager {
       return getLeaderWarmingUpStatus(
           "The current ConfigNode is leader but leader services are not ready yet.");
     }
-    if (!configManager.getLoadManager().isLoadReady()) {
+    if (checkLoadReady && !configManager.getLoadManager().isLoadReady()) {
       return getLeaderWarmingUpStatus(configManager.getLoadManager().getLoadReadyReason());
     }
 

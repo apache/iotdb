@@ -343,6 +343,24 @@ public class LoadManagerTest {
   }
 
   @Test
+  public void testDisabledConsensusCachingDoesNotBlockLaterLogicalSample() {
+    LoadCache loadCache = new LoadCache();
+    TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 102);
+    int dataNodeId = 41;
+
+    loadCache.createRegionGroupHeartbeatCache(
+        "root.warmup", regionGroupId, Collections.singleton(dataNodeId));
+    loadCache.cacheConsensusGroupHeartbeatSample(
+        regionGroupId, dataNodeId, false, System.nanoTime(), false);
+    loadCache.cacheConsensusGroupHeartbeatSample(regionGroupId, dataNodeId, true, 1, true);
+    loadCache.updateConsensusGroupStatistics();
+
+    Assert.assertEquals(
+        dataNodeId,
+        loadCache.getCurrentConsensusGroupStatisticsMap().get(regionGroupId).getLeaderId());
+  }
+
+  @Test
   public void testLoadWarmUpToleratesMissingFirstHeartbeatAfterThirtySeconds() {
     LOAD_CACHE.clearHeartbeatCache();
     LOAD_CACHE.createNodeHeartbeatCache(NodeType.DataNode, 31);

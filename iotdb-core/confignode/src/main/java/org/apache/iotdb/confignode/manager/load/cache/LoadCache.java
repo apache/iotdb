@@ -385,7 +385,8 @@ public class LoadCache {
     if (cacheLeader && isLeader) {
       cacheConsensusSample(
           regionGroupId, new ConsensusGroupHeartbeatSample(logicalTimestamp, nodeId));
-    } else if (isConsensusGroupHeartbeatFullySampled(regionGroupId)
+    } else if (cacheLeader
+        && isConsensusGroupHeartbeatFullySampled(regionGroupId)
         && !Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
             .map(AbstractLoadCache::hasHeartbeatSample)
             .orElse(false)) {

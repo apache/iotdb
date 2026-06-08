@@ -120,9 +120,11 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
                       && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
                   || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
                       && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE);
-          long logicalTimestamp =
+          boolean hasConsensusLogicalTimestamp =
               heartbeatResp.isSetConsensusLogicalTimeMap()
-                      && heartbeatResp.getConsensusLogicalTimeMap().containsKey(regionGroupId)
+                  && heartbeatResp.getConsensusLogicalTimeMap().containsKey(regionGroupId);
+          long logicalTimestamp =
+              hasConsensusLogicalTimestamp
                   ? heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId)
                   : heartbeatResp.getHeartbeatTimestamp();
           loadManager
@@ -132,7 +134,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
                   nodeId,
                   Boolean.TRUE.equals(isLeader),
                   logicalTimestamp,
-                  shouldCacheConsensusSample);
+                  shouldCacheConsensusSample && hasConsensusLogicalTimestamp);
         });
     loadManager
         .getLoadCache()
