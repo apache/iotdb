@@ -32,6 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
@@ -42,7 +43,10 @@ public class TableDeletionEntryTest {
   @Test
   public void testSerialization() throws IOException {
     TableDeletionEntry entry =
-        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(1, 5));
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "表格一", new SegmentExactMatch("区域一", 1), Arrays.asList("温度值", "状态值")),
+            new TimeRange(1, 5));
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
     buffer.flip();

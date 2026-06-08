@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -220,8 +221,16 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (TableDeletionEntry modEntry : modEntries) {
       size += modEntry.serializedSize();
     }
-    size += ReadWriteIOUtils.sizeToWrite(databaseName);
+    size += sizeToWriteVarString(databaseName);
     return size;
+  }
+
+  private static int sizeToWriteVarString(final String value) {
+    if (value == null) {
+      return ReadWriteForEncodingUtils.varIntSize(-1);
+    }
+    final int byteLength = value.getBytes(TSFileConfig.STRING_CHARSET).length;
+    return ReadWriteForEncodingUtils.varIntSize(byteLength) + byteLength;
   }
 
   @Override

@@ -34,7 +34,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,11 +84,7 @@ public class TreeDeletionEntry extends ModEntry {
 
   @Override
   public int serializedSize() {
-    String patternFullPath = pathPattern.getFullPath();
-    int length = patternFullPath.length();
-    return super.serializedSize()
-        + ReadWriteForEncodingUtils.varIntSize(length)
-        + length * Character.BYTES;
+    return super.serializedSize() + sizeToWriteVarString(pathPattern.getFullPath());
   }
 
   @Override

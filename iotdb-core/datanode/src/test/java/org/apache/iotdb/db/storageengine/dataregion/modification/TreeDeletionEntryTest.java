@@ -37,7 +37,7 @@ public class TreeDeletionEntryTest {
 
   @Test
   public void testSerialization() throws IllegalPathException, IOException {
-    TreeDeletionEntry entry = new TreeDeletionEntry(new MeasurementPath("root.db1.d1.s1"), 1, 5);
+    TreeDeletionEntry entry = new TreeDeletionEntry(new MeasurementPath("root.数据库.d1.温度"), 1, 5);
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
     buffer.flip();
