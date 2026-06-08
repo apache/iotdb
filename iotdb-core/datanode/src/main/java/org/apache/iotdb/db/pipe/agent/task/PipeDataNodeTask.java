@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,34 +33,34 @@ public class PipeDataNodeTask implements PipeTask {
   private final String pipeName;
   private final int regionId;
 
-  private final PipeTaskStage extractorStage;
+  private final PipeTaskStage sourceStage;
   private final PipeTaskStage processorStage;
-  private final PipeTaskStage connectorStage;
+  private final PipeTaskStage sinkStage;
 
   private volatile boolean isCompleted = false;
 
   public PipeDataNodeTask(
       final String pipeName,
       final int regionId,
-      final PipeTaskStage extractorStage,
+      final PipeTaskStage sourceStage,
       final PipeTaskStage processorStage,
-      final PipeTaskStage connectorStage) {
+      final PipeTaskStage sinkStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
-    this.extractorStage = extractorStage;
+    this.sourceStage = sourceStage;
     this.processorStage = processorStage;
-    this.connectorStage = connectorStage;
+    this.sinkStage = sinkStage;
   }
 
   @Override
   public void create() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.create();
+    sourceStage.create();
     processorStage.create();
-    connectorStage.create();
+    sinkStage.create();
     LOGGER.info(
-        "Create pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.CREATE_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -67,11 +68,11 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void drop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.drop();
+    sourceStage.drop();
     processorStage.drop();
-    connectorStage.drop();
+    sinkStage.drop();
     LOGGER.info(
-        "Drop pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.DROP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -79,11 +80,11 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void start() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.start();
+    sourceStage.start();
     processorStage.start();
-    connectorStage.start();
+    sinkStage.start();
     LOGGER.info(
-        "Start pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.START_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }
@@ -91,11 +92,11 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void stop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.stop();
+    sourceStage.stop();
     processorStage.stop();
-    connectorStage.stop();
+    sinkStage.stop();
     LOGGER.info(
-        "Stop pipe DN task {} successfully within {} ms",
+        DataNodePipeMessages.STOP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
         System.currentTimeMillis() - startTime);
   }

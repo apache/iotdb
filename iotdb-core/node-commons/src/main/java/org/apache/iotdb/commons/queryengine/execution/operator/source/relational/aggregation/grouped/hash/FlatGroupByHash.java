@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 
@@ -166,7 +167,7 @@ public class FlatGroupByHash implements GroupByHash {
     while (remainingPositions != 0) {
       int batchSize = min(remainingPositions, hashes.length);
       if (!flatHash.ensureAvailableCapacity(batchSize)) {
-        throw new RuntimeException("Memory for flatHash is not enough");
+        throw new RuntimeException(QueryMessages.MEMORY_FOR_FLAT_HASH_NOT_ENOUGH);
       }
 
       flatHash.computeHashes(columns, hashes, lastPosition, batchSize);
@@ -193,7 +194,7 @@ public class FlatGroupByHash implements GroupByHash {
     while (remainingPositions != 0) {
       int batchSize = min(remainingPositions, hashes.length);
       if (!flatHash.ensureAvailableCapacity(batchSize)) {
-        throw new RuntimeException("Memory for flatHash is not enough");
+        throw new RuntimeException(QueryMessages.MEMORY_FOR_FLAT_HASH_NOT_ENOUGH);
       }
 
       flatHash.computeHashes(columns, hashes, lastPosition, batchSize);

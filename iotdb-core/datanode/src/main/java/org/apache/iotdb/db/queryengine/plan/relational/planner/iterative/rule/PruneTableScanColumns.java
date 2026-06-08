@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -27,8 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -91,7 +93,51 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                       .forEach(
                           symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
 
-      if (node instanceof TreeDeviceViewScanNode) {
+      if (node instanceof TreeAlignedDeviceViewScanNode) {
+        TreeAlignedDeviceViewScanNode treeDeviceViewScanNode =
+            (TreeAlignedDeviceViewScanNode) deviceTableScanNode;
+        TreeAlignedDeviceViewScanNode prunedNode =
+            new TreeAlignedDeviceViewScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice(),
+                treeDeviceViewScanNode.getTreeDBName(),
+                treeDeviceViewScanNode.getMeasurementColumnNameMap());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(prunedNode);
+      } else if (node instanceof TreeNonAlignedDeviceViewScanNode) {
+        TreeNonAlignedDeviceViewScanNode treeDeviceViewScanNode =
+            (TreeNonAlignedDeviceViewScanNode) deviceTableScanNode;
+        TreeNonAlignedDeviceViewScanNode prunedNode =
+            new TreeNonAlignedDeviceViewScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getTagAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice(),
+                treeDeviceViewScanNode.getTreeDBName(),
+                treeDeviceViewScanNode.getMeasurementColumnNameMap());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(prunedNode);
+      } else if (node instanceof TreeDeviceViewScanNode) {
         TreeDeviceViewScanNode treeDeviceViewScanNode =
             (TreeDeviceViewScanNode) deviceTableScanNode;
         return Optional.of(
@@ -112,7 +158,7 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 treeDeviceViewScanNode.getTreeDBName(),
                 treeDeviceViewScanNode.getMeasurementColumnNameMap()));
       } else {
-        return Optional.of(
+        DeviceTableScanNode prunedNode =
             new DeviceTableScanNode(
                 deviceTableScanNode.getPlanNodeId(),
                 deviceTableScanNode.getQualifiedObjectName(),
@@ -126,7 +172,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                 deviceTableScanNode.getPushDownLimit(),
                 deviceTableScanNode.getPushDownOffset(),
                 deviceTableScanNode.isPushLimitToEachDevice(),
-                deviceTableScanNode.containsNonAlignedDevice()));
+                deviceTableScanNode.containsNonAlignedDevice());
+        prunedNode.setRegionReplicaSet(deviceTableScanNode.getRegionReplicaSet());
+        return Optional.of(prunedNode);
       }
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for

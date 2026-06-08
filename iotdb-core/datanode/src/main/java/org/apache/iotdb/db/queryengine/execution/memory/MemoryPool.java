@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -363,7 +364,8 @@ public class MemoryPool {
               planNodeId,
               (k, reservedMemory) -> {
                 if (reservedMemory < bytes) {
-                  throw new IllegalArgumentException("Free more memory than has been reserved.");
+                  throw new IllegalArgumentException(
+                      DataNodeQueryMessages.FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED);
                 }
                 return reservedMemory - bytes;
               });

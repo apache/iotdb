@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,6 @@ public class IoTDBDefaultThreadExceptionHandler implements Thread.UncaughtExcept
 
   @Override
   public void uncaughtException(Thread t, Throwable e) {
-    logger.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
+    logger.error(CommonMessages.EXCEPTION_IN_THREAD, t.getName(), t.getId(), e);
   }
 }

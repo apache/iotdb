@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.task;
 
+import org.apache.iotdb.calc.execution.schedule.queue.ID;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.ID;
 
 import javax.validation.constraints.NotNull;
 

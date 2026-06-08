@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +82,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
           } catch (Exception e) {
             // Do nothing since new CN leader can converge to the correct state when restore this
             // procedure.
-            LOGGER.warn("Failed to update procedure {}", procedure, e);
+            LOGGER.warn(ProcedureMessages.FAILED_TO_UPDATE_PROCEDURE, procedure, e);
           }
           executor.getScheduler().addFront(procedure);
         }

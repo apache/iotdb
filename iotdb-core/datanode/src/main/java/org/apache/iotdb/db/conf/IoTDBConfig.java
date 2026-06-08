@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
@@ -60,8 +61,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -84,8 +87,7 @@ public class IoTDBConfig {
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  private static final String MULTI_DIR_STRATEGY_PREFIX =
-      "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
+  private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
       new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
@@ -136,9 +138,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Rpc Selector thread num */
-  private int rpcSelectorThreadCount = 1;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 1000;
@@ -300,6 +299,14 @@ public class IoTDBConfig {
   private String[] loadTsFileDirs = {
     tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
   };
+
+  private String[] loadTsFileAllowedDirs = new String[0];
+
+  private CanonicalPaths loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+
+  private CanonicalPaths loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+
+  private boolean loadTsFileSourcePathCheckEnabled = false;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -953,6 +960,8 @@ public class IoTDBConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
+
   /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
@@ -988,9 +997,6 @@ public class IoTDBConfig {
 
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
-
-  /** ThreadPool size for write operation in coordinator */
-  private int coordinatorWriteExecutorSize = 50;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1212,6 +1218,8 @@ public class IoTDBConfig {
 
   private boolean includeNullValueInWriteThroughputMetric = false;
 
+  private boolean keepSameDiskWhenLoadingSnapshot = true;
+
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
           Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
@@ -1359,6 +1367,10 @@ public class IoTDBConfig {
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
       loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
     }
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -1424,8 +1436,7 @@ public class IoTDBConfig {
                 newDir ->
                     Objects.equals(
                         new File(newDir).getAbsolutePath(), new File(oldDir).getAbsolutePath()))) {
-          String msg =
-              String.format("%s is removed from data_dirs parameter, please add it back.", oldDir);
+          String msg = String.format(DataNodeMiscMessages.DIR_REMOVED_FROM_DATA_DIRS, oldDir);
           logger.error(msg);
           throw new LoadConfigurationException(msg);
         }
@@ -1461,7 +1472,7 @@ public class IoTDBConfig {
     try {
       dataHomeDir = dataHomeFile.getCanonicalPath();
     } catch (IOException e) {
-      logger.error("Fail to get canonical path of {}", dataHomeFile, e);
+      logger.error(DataNodeMiscMessages.FAIL_GET_CANONICAL_PATH, dataHomeFile, e);
     }
     return FileUtils.addPrefix2FilePath(dataHomeDir, dir);
   }
@@ -1564,9 +1575,39 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public String[] getLoadTsFileAllowedDirs() {
+    return this.loadTsFileAllowedDirs.length == 0
+        ? getLoadTsFileDirs()
+        : this.loadTsFileAllowedDirs;
+  }
+
+  public Path[] getLoadTsFileAllowedDirCanonicalPaths() throws FileNotFoundException {
+    return (this.loadTsFileAllowedDirs.length == 0
+            ? this.loadTsFileDirCanonicalPaths
+            : this.loadTsFileAllowedDirCanonicalPaths)
+        .getPaths();
+  }
+
+  public boolean isLoadTsFileSourcePathCheckEnabled() {
+    return loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileSourcePathCheckEnabled(boolean loadTsFileSourcePathCheckEnabled) {
+    this.loadTsFileSourcePathCheckEnabled = loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileAllowedDirs(String[] loadTsFileAllowedDirs) {
+    final String[] newLoadTsFileAllowedDirs = new String[loadTsFileAllowedDirs.length];
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      newLoadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    this.loadTsFileAllowedDirs = newLoadTsFileAllowedDirs;
+    this.loadTsFileAllowedDirCanonicalPaths = canonicalPaths(newLoadTsFileAllowedDirs);
+  }
+
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
     if (tierDataDirs.length < 1) {
-      logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
+      logger.warn(DataNodeMiscMessages.NO_DATA_DIR_SET);
       return;
     }
 
@@ -1581,6 +1622,45 @@ public class IoTDBConfig {
     // or the newLoadTsFileDirs will be used in the middle of the process
     // and cause the undefined behavior.
     this.loadTsFileDirs = newLoadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(newLoadTsFileDirs);
+  }
+
+  private static CanonicalPaths canonicalPaths(final String[] dirs) {
+    final Path[] paths = new Path[dirs.length];
+    for (int i = 0; i < dirs.length; i++) {
+      try {
+        paths[i] = new File(dirs[i]).getCanonicalFile().toPath();
+      } catch (final IOException e) {
+        return new CanonicalPaths(
+            String.format(
+                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
+                dirs[i], e.getMessage()));
+      }
+    }
+    return new CanonicalPaths(paths);
+  }
+
+  private static class CanonicalPaths {
+
+    private final Path[] paths;
+    private final String errorMessage;
+
+    private CanonicalPaths(final Path[] paths) {
+      this.paths = paths;
+      this.errorMessage = null;
+    }
+
+    private CanonicalPaths(final String errorMessage) {
+      this.paths = new Path[0];
+      this.errorMessage = errorMessage;
+    }
+
+    private Path[] getPaths() throws FileNotFoundException {
+      if (errorMessage != null) {
+        throw new FileNotFoundException(errorMessage);
+      }
+      return paths;
+    }
   }
 
   public String getSchemaDir() {
@@ -1821,14 +1901,6 @@ public class IoTDBConfig {
 
   public void setUnSeqTsFileSize(long unSeqTsFileSize) {
     this.unSeqTsFileSize = unSeqTsFileSize;
-  }
-
-  public int getRpcSelectorThreadCount() {
-    return rpcSelectorThreadCount;
-  }
-
-  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
-    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -3202,6 +3274,14 @@ public class IoTDBConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public void setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+  }
+
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -3347,14 +3427,6 @@ public class IoTDBConfig {
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
-  }
-
-  public int getCoordinatorWriteExecutorSize() {
-    return coordinatorWriteExecutorSize;
-  }
-
-  public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
-    this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
   }
 
   public TEndPoint getAddressAndPort() {
@@ -3545,7 +3617,7 @@ public class IoTDBConfig {
             .append(configContent)
             .append(";");
       } catch (Exception e) {
-        logger.warn("Failed to get field {}", configField, e);
+        logger.warn(DataNodeMiscMessages.FAILED_GET_FIELD, configField, e);
       }
     }
     return configMessage.toString();
@@ -4035,7 +4107,7 @@ public class IoTDBConfig {
       return;
     }
     this.skipFailedTableSchemaCheck = skipFailedTableSchemaCheck;
-    logger.info("skipFailedTableSchemaCheck is set to {}.", skipFailedTableSchemaCheck);
+    logger.info(DataNodeMiscMessages.SKIP_FAILED_TABLE_SCHEMA_CHECK, skipFailedTableSchemaCheck);
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {
@@ -4228,7 +4300,7 @@ public class IoTDBConfig {
   }
 
   public String getObjectStorageBucket() {
-    throw new UnsupportedOperationException("object storage is not supported yet");
+    throw new UnsupportedOperationException(DataNodeMiscMessages.OBJECT_STORAGE_NOT_SUPPORTED_YET);
   }
 
   public long getDataRatisPeriodicSnapshotInterval() {
@@ -4361,6 +4433,14 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public boolean isKeepSameDiskWhenLoadingSnapshot() {
+    return keepSameDiskWhenLoadingSnapshot;
+  }
+
+  public void setKeepSameDiskWhenLoadingSnapshot(boolean keepSameDiskWhenLoadingSnapshot) {
+    this.keepSameDiskWhenLoadingSnapshot = keepSameDiskWhenLoadingSnapshot;
   }
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.twostage.exchange.receiver;
 
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
@@ -59,13 +60,13 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
         }
       }
 
-      LOGGER.warn("Unknown request type {}: {}.", rawRequestType, req);
+      LOGGER.warn(DataNodePipeMessages.UNKNOWN_REQUEST_TYPE, rawRequestType, req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unknown request type %s.", rawRequestType)));
     } catch (Exception e) {
-      LOGGER.warn("Error occurs when receiving request: {}.", req, e);
+      LOGGER.warn(DataNodePipeMessages.ERROR_OCCURS_WHEN_RECEIVING_REQUEST, req, e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_ERROR,
@@ -76,7 +77,7 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
   @Override
   public void handleExit() {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Two stage aggregate receiver is exiting.");
+      LOGGER.debug(DataNodePipeMessages.TWO_STAGE_AGGREGATE_RECEIVER_IS_EXITING);
     }
   }
 }

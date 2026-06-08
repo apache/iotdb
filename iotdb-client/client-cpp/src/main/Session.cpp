@@ -263,14 +263,14 @@ void Tablet::setAligned(bool isAligned) {
 }
 
 std::shared_ptr<storage::IDeviceID> Tablet::getDeviceID(int row) {
-  std::vector<std::string> id_array(idColumnIndexes.size() + 1);
-  size_t idArrayIdx = 0;
-  id_array[idArrayIdx++] = this->deviceId;
-  for (auto idColumnIndex : idColumnIndexes) {
-    void* strPtr = getValue(idColumnIndex, row, TSDataType::TEXT);
-    id_array[idArrayIdx++] = *static_cast<std::string*>(strPtr);
+  std::vector<std::string> deviceIdSegments(tagColumnIndexes.size() + 1);
+  size_t deviceIdSegmentIndex = 0;
+  deviceIdSegments[deviceIdSegmentIndex++] = this->deviceId;
+  for (auto tagColumnIndex : tagColumnIndexes) {
+    void* strPtr = getValue(tagColumnIndex, row, TSDataType::TEXT);
+    deviceIdSegments[deviceIdSegmentIndex++] = *static_cast<std::string*>(strPtr);
   }
-  return std::make_shared<storage::StringArrayDeviceID>(id_array);
+  return std::make_shared<storage::StringArrayDeviceID>(deviceIdSegments);
 }
 
 string SessionUtils::getTime(const Tablet& tablet) {
@@ -986,7 +986,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1014,7 +1014,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1040,7 +1040,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1069,7 +1069,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1237,7 +1237,7 @@ void Session::insertRecordsOfOneDevice(const string& deviceId, vector<int64_t>& 
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1291,7 +1291,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId, vector<int
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1343,7 +1343,7 @@ void Session::insertTablet(TSInsertTabletReq request) {
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1953,7 +1953,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
 void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "127.0.0.1")
+  if (endPoint.ip == "0.0.0.0")
     return;
   deviceIdToEndpoint[deviceId] = endPoint;
 
@@ -1978,7 +1978,7 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
                                 TEndPoint endPoint) {
   if (!enableRedirection_)
     return;
-  if (endPoint.ip == "127.0.0.1")
+  if (endPoint.ip == "0.0.0.0")
     return;
   tableModelDeviceIdToEndpoint[deviceId] = endPoint;
 
@@ -2019,7 +2019,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
     }
   } catch (exception& e) {
     log_error("Exception while executing query statement: %s", e.what());
-    throw e;
+    throw;
   }
 }
 

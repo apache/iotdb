@@ -295,6 +295,7 @@ public enum ConfigPhysicalPlanType {
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
   OperateMultiplePipesV2((short) 1505),
+  SetPipeStatusWithStoppedByRuntimeExceptionV2((short) 1506),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -332,6 +333,7 @@ public enum ConfigPhysicalPlanType {
   RDropUserV2((short) 2103),
   RenameUser((short) 2104),
   RRenameUser((short) 2105),
+  AccountUnlock((short) 2106),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

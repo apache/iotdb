@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTab
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -76,33 +77,35 @@ public class CreateTableProcedure
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.CHECK_THE_EXISTENCE_OF_TABLE, database, table.getTableName());
           checkTableExistence(env);
           break;
         case PRE_CREATE:
-          LOGGER.info("Pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_CREATE_TABLE, database, table.getTableName());
           preCreateTable(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.PRE_RELEASE_TABLE, database, table.getTableName());
           preReleaseTable(env);
           break;
         case COMMIT_CREATE:
-          LOGGER.info("Commit create table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_CREATE_TABLE, database, table.getTableName());
           commitCreateTable(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release table {}.{}", database, table.getTableName());
+          LOGGER.info(ProcedureMessages.COMMIT_RELEASE_TABLE, database, table.getTableName());
           commitReleaseTable(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(
+              new ProcedureException(ProcedureMessages.UNRECOGNIZED_CREATETABLESTATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "CreateTable-{}.{}-{} costs {}ms",
+          ProcedureMessages.CREATETABLE_COSTS_MS,
           database,
           table.getTableName(),
           state,
@@ -119,7 +122,8 @@ public class CreateTableProcedure
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
+                    String.format(
+                        ProcedureMessages.TABLE_ALREADY_EXISTS, database, table.getTableName()),
                     TABLE_ALREADY_EXISTS.getStatusCode())));
       } else {
         final TDatabaseSchema schema =
@@ -157,11 +161,12 @@ public class CreateTableProcedure
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to sync table {}.{} pre-create info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_PRE_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
-      setFailure(new ProcedureException(new MetadataException("Pre create table failed")));
+      setFailure(
+          new ProcedureException(new MetadataException(ProcedureMessages.PRE_CREATE_TABLE_FAILED)));
       return;
     }
 
@@ -190,7 +195,7 @@ public class CreateTableProcedure
 
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to sync table {}.{} commit-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_COMMIT_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
@@ -209,17 +214,21 @@ public class CreateTableProcedure
     try {
       switch (state) {
         case PRE_CREATE:
-          LOGGER.info("Start rollback pre create table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_CREATE_TABLE, database, table.getTableName());
           rollbackCreate(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Start rollback pre release table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              ProcedureMessages.START_ROLLBACK_PRE_RELEASE_TABLE, database, table.getTableName());
           rollbackPreRelease(env);
           break;
       }
     } finally {
       LOGGER.info(
-          "Rollback CreateTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          ProcedureMessages.ROLLBACK_CREATETABLE_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -228,7 +237,8 @@ public class CreateTableProcedure
         SchemaUtils.executeInConsensusLayer(
             new RollbackCreateTablePlan(database, table.getTableName()), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_ROLLBACK_TABLE_CREATION, database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
@@ -241,11 +251,13 @@ public class CreateTableProcedure
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to sync table {}.{} rollback-create info to DataNode {}, failure results: ",
+          ProcedureMessages.FAILED_TO_SYNC_TABLE_ROLLBACK_CREATE_INFO_TO_DATANODE_FAILURE,
           database,
           table.getTableName(),
           failedResults);
-      setFailure(new ProcedureException(new MetadataException("Rollback create table failed")));
+      setFailure(
+          new ProcedureException(
+              new MetadataException(ProcedureMessages.ROLLBACK_CREATE_TABLE_FAILED)));
     }
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -127,20 +128,15 @@ public class IoTDBJDBCDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
-      for (int i = 0; i < deduplicatedColumnSize; i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
+      this.columnTypeDeduplicatedList =
+          initDeduplicatedColumnTypes(getDeduplicatedColumnSize(columnNameIndex));
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
-            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-          }
+          setColumnTypeIfAbsent(columnTypeDeduplicatedList, index, columnTypeList.get(i));
           columnOrdinalMap.put(name, index + START_INDEX);
         }
       }
@@ -242,11 +238,8 @@ public class IoTDBJDBCDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
-      for (int i = 0; i < deduplicatedColumnSize; i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
+      this.columnTypeDeduplicatedList =
+          initDeduplicatedColumnTypes(getDeduplicatedColumnSize(columnNameIndex));
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = "";
         if (sgList != null
@@ -262,9 +255,7 @@ public class IoTDBJDBCDataSet {
         // "Time".equals(name) -> to allow the Time column appear in value columns
         if (!columnOrdinalMap.containsKey(name) || "Time".equals(name)) {
           int index = columnNameIndex.get(name);
-          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
-            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-          }
+          setColumnTypeIfAbsent(columnTypeDeduplicatedList, index, columnTypeList.get(i));
           columnOrdinalMap.put(name, index + START_INDEX);
         }
       }
@@ -320,6 +311,31 @@ public class IoTDBJDBCDataSet {
     this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
+  private static int getDeduplicatedColumnSize(Map<String, Integer> columnNameIndex) {
+    int deduplicatedColumnSize = 0;
+    for (Integer index : columnNameIndex.values()) {
+      if (index != null && index + 1 > deduplicatedColumnSize) {
+        deduplicatedColumnSize = index + 1;
+      }
+    }
+    return deduplicatedColumnSize;
+  }
+
+  private static List<TSDataType> initDeduplicatedColumnTypes(int deduplicatedColumnSize) {
+    List<TSDataType> columnTypes = new ArrayList<>(deduplicatedColumnSize);
+    for (int i = 0; i < deduplicatedColumnSize; i++) {
+      columnTypes.add(null);
+    }
+    return columnTypes;
+  }
+
+  private static void setColumnTypeIfAbsent(
+      List<TSDataType> columnTypeDeduplicatedList, int index, String columnType) {
+    if (columnTypeDeduplicatedList.get(index) == null) {
+      columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnType));
+    }
+  }
+
   public void close() throws StatementExecutionException, TException {
     if (isClosed) {
       return;
@@ -332,10 +348,9 @@ public class IoTDBJDBCDataSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
-        throw new StatementExecutionException(
-            "Error occurs for close operation in server side because ", e);
+        throw new StatementExecutionException(RpcMessages.CLOSE_OPERATION_SERVER_ERROR, e);
       } catch (TException e) {
-        throw new TException("Error occurs when connecting to server for close operation ", e);
+        throw new TException(RpcMessages.CLOSE_OPERATION_CONNECTION_ERROR, e);
       }
     }
     client = null;
@@ -352,8 +367,7 @@ public class IoTDBJDBCDataSet {
         close();
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
     if (fetchResults() && hasCachedResults()) {
@@ -364,8 +378,7 @@ public class IoTDBJDBCDataSet {
         close();
         return false;
       } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot close dataset, because of network connection: {} ", e);
+        throw new IoTDBConnectionException(RpcMessages.CANNOT_CLOSE_DATASET, e);
       }
     }
   }
@@ -653,18 +666,18 @@ public class IoTDBJDBCDataSet {
 
   public String findColumnNameByIndex(int columnIndex) throws StatementExecutionException {
     if (columnIndex <= 0) {
-      throw new StatementExecutionException("column index should start from 1");
+      throw new StatementExecutionException(RpcMessages.COLUMN_INDEX_SHOULD_START_FROM_1);
     }
     if (columnIndex > columnNameList.size()) {
       throw new StatementExecutionException(
-          String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
+          String.format(RpcMessages.COLUMN_INDEX_OUT_OF_RANGE, columnIndex, columnNameList.size()));
     }
     return columnNameList.get(columnIndex - 1);
   }
 
   public void checkRecord() throws StatementExecutionException {
     if (Objects.isNull(tsQueryDataSet)) {
-      throw new StatementExecutionException("No record remains");
+      throw new StatementExecutionException(RpcMessages.NO_RECORD_REMAINS);
     }
   }
 

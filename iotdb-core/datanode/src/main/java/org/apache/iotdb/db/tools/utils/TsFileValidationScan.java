@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -334,7 +335,7 @@ public class TsFileValidationScan extends TsFileSequenceScan {
 
   @Override
   protected void onException(Throwable t) {
-    LOGGER.error("Meet errors in reading file {} , skip it.", file.getAbsolutePath(), t);
+    LOGGER.error(DataNodeMiscMessages.MEET_ERRORS_READING_FILE, file.getAbsolutePath(), t);
     if (!Boolean.TRUE.equals(isBadFileMap.get(file.getName()))) {
       if (printDetails) {
         printBoth(

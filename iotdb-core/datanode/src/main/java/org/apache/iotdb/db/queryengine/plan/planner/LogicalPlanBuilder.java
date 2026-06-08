@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Multi
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -222,7 +223,7 @@ public class LogicalPlanBuilder {
                     null,
                     lastLevelUseWildcard)));
       } else {
-        throw new IllegalArgumentException("Unexpected path type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PATH_TYPE_2);
       }
     }
 
@@ -1175,7 +1176,9 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1183,7 +1186,9 @@ public class LogicalPlanBuilder {
             prefixPath,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 
@@ -1193,7 +1198,9 @@ public class LogicalPlanBuilder {
       int level,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean includeSystemDatabase,
+      boolean includeAuditDatabase) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1202,7 +1209,9 @@ public class LogicalPlanBuilder {
             level,
             schemaFilter,
             templateMap,
-            scope);
+            scope,
+            includeSystemDatabase,
+            includeAuditDatabase);
     return this;
   }
 

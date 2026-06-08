@@ -22,12 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.offset;

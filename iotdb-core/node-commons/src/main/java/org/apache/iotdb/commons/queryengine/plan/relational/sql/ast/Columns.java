@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -89,12 +91,12 @@ public final class Columns extends Expression {
   // =============== serialize =================
   @Override
   public TableExpressionType getExpressionType() {
-    throw new UnsupportedOperationException("Columns should be expanded in Analyze stage");
+    throw new UnsupportedOperationException(QueryMessages.COLUMNS_SHOULD_BE_EXPANDED);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("Columns should be expanded in Analyze stage");
+    throw new UnsupportedOperationException(QueryMessages.COLUMNS_SHOULD_BE_EXPANDED);
   }
 
   @Override

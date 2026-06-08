@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -290,7 +291,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcSystemConfigurationResp();
 
     // Print log to record the ConfigNode that performs the GetConfigurationRequest
-    LOGGER.info("Execute GetSystemConfiguration with result {}", resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GETSYSTEMCONFIGURATION_WITH_RESULT, resp);
     return resp;
   }
 
@@ -299,12 +300,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TGetClusterIdResp resp = new TGetClusterIdResp();
     String clusterId = configManager.getClusterManager().getClusterId();
     if (clusterId == null) {
-      LOGGER.error("clusterId not generated yet, should never happen.");
+      LOGGER.error(ConfigNodeMessages.CLUSTERID_NOT_GENERATED_YET_SHOULD_NEVER_HAPPEN);
       return resp.setClusterId("")
           .setStatus(new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode()));
     }
     resp.setClusterId(clusterId).setStatus(RpcUtils.SUCCESS_STATUS);
-    LOGGER.info("Execute getClusterId with result {}", resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_GETCLUSTERID_WITH_RESULT, resp);
     return resp;
   }
 
@@ -315,7 +316,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
-    LOGGER.info("Execute RegisterDataNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERDATANODEREQUEST_WITH_RESULT, req, resp);
 
     return resp;
   }
@@ -325,7 +326,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeRestartResp resp = configManager.restartDataNode(req);
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
-    LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_RESTARTDATANODEREQUEST_WITH_RESULT, req, resp);
 
     return resp;
   }
@@ -334,22 +335,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) {
     TAINodeRegisterResp resp =
         ((AINodeRegisterResp) configManager.registerAINode(req)).convertToAINodeRegisterResp();
-    LOGGER.info("Execute RegisterAINodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERAINODEREQUEST_WITH_RESULT, req, resp);
     return resp;
   }
 
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) {
     TAINodeRestartResp resp = configManager.restartAINode(req);
-    LOGGER.info("Execute RestartAINodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_RESTARTAINODEREQUEST_WITH_RESULT, req, resp);
     return resp;
   }
 
   @Override
   public TSStatus removeAINode(TAINodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove AINode");
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_AINODE);
     TSStatus status = configManager.removeAINode();
-    LOGGER.info("ConfigNode RPC Service finished to remove AINode, result: {}", status);
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_AINODE_RESULT, status);
     return status;
   }
 
@@ -371,13 +372,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) {
-    LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
+    LOGGER.info(ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_START_TO_REMOVE_DATANODE_REQ, req);
     RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
     DataNodeToStatusResp removeResp =
         (DataNodeToStatusResp) configManager.removeDataNode(removeDataNodePlan);
     TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
     LOGGER.info(
-        "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
+        ConfigNodeMessages.CONFIGNODE_RPC_SERVICE_FINISHED_TO_REMOVE_DATANODE_REQ_RESULT,
+        req,
+        resp);
     return resp;
   }
 
@@ -420,7 +423,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final TSStatus resp = configManager.setDatabase(setPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
-    LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_SETDATABASE_WITH_RESULT, databaseSchema, resp);
 
     return resp;
   }
@@ -433,7 +436,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (databaseSchema.isSetTTL() && !databaseSchema.isIsTableModel()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+              .setMessage(
+                  ConfigNodeMessages.FAILED_TO_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TTL_YET);
     }
     if (databaseSchema.isSetSchemaReplicationFactor()) {
       errorResp =
@@ -463,7 +467,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     if (errorResp != null) {
-      LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);
+      LOGGER.warn(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, errorResp);
       return errorResp;
     }
 
@@ -472,7 +476,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final TSStatus resp = configManager.alterDatabase(alterPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
-    LOGGER.info("Execute AlterDatabase: {} with result: {}", databaseSchema, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_ALTERDATABASE_WITH_RESULT, databaseSchema, resp);
 
     return resp;
   }
@@ -627,6 +631,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
     ConfigPhysicalPlanType configPhysicalPlanType =
         AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());
@@ -654,7 +663,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
       if (registeredAINodes == null || registeredAINodes.isEmpty()) {
         status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
-        status.setMessage("No registered AINode found");
+        status.setMessage(ConfigNodeMessages.NO_REGISTERED_AINODE_FOUND);
         resp.setStatus(status);
         return resp;
       }
@@ -662,11 +671,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       final TAINodeLocation loc = registeredAINodes.get(0).getLocation();
       resp.setAiNodeLocation(loc);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("AINode location resolved");
+      status.setMessage(ConfigNodeMessages.AINODE_LOCATION_RESOLVED);
 
     } catch (Exception e) {
       status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage("getAINodeLocation failed: " + e.getMessage());
+      status.setMessage(ConfigNodeMessages.GETAINODELOCATION_FAILED + e.getMessage());
     }
     resp.setStatus(status);
     return resp;
@@ -699,7 +708,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus operateRPermission(final TAuthorizerRelationalReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     ConfigPhysicalPlanType configPhysicalPlanType =
         AuthorInfo.getConfigPhysicalPlanTypeFromAuthorRType(req.getAuthorType());
@@ -720,7 +729,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TAuthorizerResp queryRPermission(final TAuthorizerRelationalReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorRType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
@@ -807,7 +816,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
+    LOGGER.info(ConfigNodeMessages.EXECUTE_REGISTERCONFIGNODEREQUEST_WITH_RESULT, req, resp);
 
     return resp;
   }
@@ -822,13 +831,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     try {
       SystemPropertiesUtils.storeSystemParameters();
     } catch (IOException e) {
-      LOGGER.error("Write confignode-system.properties failed", e);
+      LOGGER.error(ConfigNodeMessages.WRITE_CONFIGNODE_SYSTEM_PROPERTIES_FAILED, e);
       return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
     }
 
     // The initial startup of Non-Seed-ConfigNode finished
     LOGGER.info(
-        "{} has successfully started and joined the cluster: {}.",
+        ConfigNodeMessages.HAS_SUCCESSFULLY_STARTED_AND_JOINED_THE_CLUSTER,
         ConfigNodeConstant.GLOBAL_NAME,
         configNodeConfig.getClusterName());
     return StatusUtils.OK;
@@ -841,7 +850,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
     LOGGER.info(
-        "The result of submitting RemoveConfigNode job is {}. RemoveConfigNodeRequest: {}",
+        ConfigNodeMessages.THE_RESULT_OF_SUBMITTING_REMOVECONFIGNODE_JOB_IS_REMOVECONFIGNODEREQUEST,
         status,
         configNodeLocation);
 
@@ -866,7 +875,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("remove ConsensusGroup success.");
+        .setMessage(ConfigNodeMessages.REMOVE_CONSENSUSGROUP_SUCCESS);
   }
 
   @Override
@@ -897,7 +906,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop And Clear ConfigNode Success.");
+        .setMessage(ConfigNodeMessages.STOP_AND_CLEAR_CONFIGNODE_SUCCESS);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 
 import org.apache.thrift.TException;
@@ -68,7 +69,7 @@ import java.util.Map;
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
@@ -544,7 +545,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
                 break;
               default:
-                logger.error("No type was matched");
+                logger.error(JdbcMessages.NO_TYPE_MATCHED);
                 break;
             }
 
@@ -1017,11 +1018,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (logger.isDebugEnabled()) {
-        logger.debug("SQL {}", sql);
-        logger.debug("parameters {}", parameters.size());
+        logger.debug(JdbcMessages.SQL_DEBUG, sql);
+        logger.debug(JdbcMessages.PARAMETERS_DEBUG, parameters.size());
       }
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.resource;
 import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ public class PipeConfigNodeCopiedFileDirStartupCleaner {
                 + File.separator
                 + PipeSnapshotResourceManager.PIPE_SNAPSHOT_DIR_NAME);
     if (iotConsensusV2Dir.isDirectory()) {
-      LOGGER.info("Pipe snapshot dir found, deleting it: {},", iotConsensusV2Dir);
+      LOGGER.info(ManagerMessages.PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT, iotConsensusV2Dir);
       FileUtils.deleteFileOrDirectory(iotConsensusV2Dir);
     }
   }

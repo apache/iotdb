@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
@@ -85,7 +87,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMVALIDATE);
+
+    alterConsumerGroupProcedure = null;
+    createPipeProcedures = new ArrayList<>();
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
@@ -140,7 +145,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected void executeFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES);
 
     // Execute AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
@@ -157,23 +162,23 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
               .getConsensusManager()
               .write(new OperateMultiplePipesPlanV2(createPipePlans));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to create subscription with request %s on config nodes, because %s",
-              subscribeReq, response));
+              ProcedureMessages.FAILED_TO_CREATE_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES_BECAUSE,
+              subscribeReq,
+              response));
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     // Push consumer group meta to data nodes
     alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
@@ -190,20 +195,23 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to create pipes %s when creating subscription with request %s, details: %s, metadata will be synchronized later.",
-              pipeNames, subscribeReq, exceptionMessage));
+              ProcedureMessages
+                  .FAILED_TO_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST_DETAILS,
+              pipeNames,
+              subscribeReq,
+              exceptionMessage));
     }
   }
 
   @Override
   protected void rollbackFromValidate(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMVALIDATE);
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES);
 
     // Rollback CreatePipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
@@ -217,15 +225,17 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
               .getConsensusManager()
               .write(new OperateMultiplePipesPlanV2(dropPipePlans));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback creating subscription with request %s on config nodes, because %s",
-              subscribeReq, response));
+              ProcedureMessages
+                  .FAILED_TO_ROLLBACK_CREATING_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES,
+              subscribeReq,
+              response));
     }
 
     // Rollback AlterConsumerGroupProcedure
@@ -235,7 +245,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
@@ -245,8 +255,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback create pipes when creating subscription with request %s, because %s",
-              subscribeReq, exceptionMessage));
+              ProcedureMessages
+                  .FAILED_TO_ROLLBACK_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST,
+              subscribeReq,
+              exceptionMessage));
     }
 
     // Rollback AlterConsumerGroupProcedure

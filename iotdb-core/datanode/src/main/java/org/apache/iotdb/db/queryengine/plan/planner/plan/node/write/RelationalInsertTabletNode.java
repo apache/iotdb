@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -180,7 +181,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
             getPlanNodeId(),
@@ -277,7 +278,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    super.subSerialize(buffer, rangeList);
+    subSerialize(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  @Override
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
+    super.subSerialize(buffer, rangeList, encodedSearchIndex);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         buffer.put(columnCategories[i].getCategory());
@@ -371,6 +377,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
 
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
@@ -381,7 +391,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
       for (int i = 0; i < rawMeasurements.length; i++) {
-        timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
+        timeValuePairs[i] = composeLastTimeValuePair(i, results, startOffset, endOffset);
       }
       TableDeviceSchemaCache.getInstance()
           .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
@@ -438,7 +448,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         if (dataTypes[i] != null) {
           System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[i] != null) {
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[i] != null
+            && i < this.bitMaps.length
+            && this.bitMaps[i] != null) {
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }
@@ -447,6 +460,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     result.add(subNode);
     return result;
   }

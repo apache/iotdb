@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
@@ -148,12 +149,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector {
+public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
-  private static final String PARSE_URL_ERROR_FORMATTER =
-      "Exception occurred while parsing node urls from target servers: {}";
-  private static final String PARSE_URL_ERROR_MESSAGE =
-      "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
+  private static final String PARSE_URL_ERROR_FORMATTER = PipeMessages.PARSE_URL_ERROR;
+  private static final String PARSE_URL_ERROR_MESSAGE = PipeMessages.PARSE_URL_ERROR_MESSAGE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSink.class);
 
@@ -190,6 +189,7 @@ public abstract class IoTDBSink implements PipeConnector {
   private final AtomicLong totalUncompressedSize = new AtomicLong(0);
   private final AtomicLong totalCompressedSize = new AtomicLong(0);
   protected String attributeSortedString;
+  protected String sinkTaskId;
   protected Timer compressionTimer;
   protected boolean isRealtimeFirst;
 
@@ -392,13 +392,15 @@ public abstract class IoTDBSink implements PipeConnector {
       throws Exception {
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
-      attributeSortedString =
-          ((PipeTaskSinkRuntimeEnvironment) environment).getAttributeSortedString();
+      final PipeTaskSinkRuntimeEnvironment sinkEnvironment =
+          (PipeTaskSinkRuntimeEnvironment) environment;
+      attributeSortedString = sinkEnvironment.getAttributeSortedString();
+      sinkTaskId = sinkEnvironment.getSinkTaskId();
     }
 
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
-    LOGGER.info("IoTDBSink nodeUrls: {}", nodeUrls);
+    LOGGER.info(PipeMessages.IOTDB_SINK_NODE_URLS, nodeUrls);
 
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
@@ -410,7 +412,7 @@ public abstract class IoTDBSink implements PipeConnector {
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
                 .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
-    LOGGER.info("IoTDBSink isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    LOGGER.info(PipeMessages.IOTDB_SINK_TABLET_BATCH_MODE, isTabletBatchModeEnabled);
 
     final boolean shouldMarkAsGeneralWriteRequest =
         parameters.getBooleanOrDefault(
@@ -426,7 +428,7 @@ public abstract class IoTDBSink implements PipeConnector {
               Arrays.asList(CONNECTOR_MARK_AS_PIPE_REQUEST_KEY, SINK_MARK_AS_PIPE_REQUEST_KEY),
               CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
     }
-    LOGGER.info("IoTDBSink shouldMarkAsPipeRequest: {}", shouldMarkAsPipeRequest);
+    LOGGER.info(PipeMessages.IOTDB_SINK_MARK_AS_PIPE_REQUEST, shouldMarkAsPipeRequest);
 
     final String connectorSkipIfValue =
         parameters
@@ -445,7 +447,7 @@ public abstract class IoTDBSink implements PipeConnector {
       throw new PipeParameterNotValidException(
           String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
     }
-    LOGGER.info("IoTDBSink skipIfNoPrivileges: {}", skipIfNoPrivileges);
+    LOGGER.info(PipeMessages.IOTDB_SINK_SKIP_IF_NO_PRIVILEGES, skipIfNoPrivileges);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(
@@ -567,11 +569,11 @@ public abstract class IoTDBSink implements PipeConnector {
   private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.HOST_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.PORT_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
@@ -641,7 +643,8 @@ public abstract class IoTDBSink implements PipeConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
    * its batched or queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
+  public synchronized void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
     // Do nothing by default
   }
 

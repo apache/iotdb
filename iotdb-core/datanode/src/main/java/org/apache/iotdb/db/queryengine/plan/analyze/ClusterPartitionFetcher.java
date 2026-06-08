@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -414,7 +415,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       return new TSchemaPartitionReq(patternTree.serialize());
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 
@@ -435,7 +437,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaNodeManagementReq;
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 

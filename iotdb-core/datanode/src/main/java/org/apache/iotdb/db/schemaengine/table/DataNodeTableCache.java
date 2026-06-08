@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -118,7 +119,7 @@ public class DataNodeTableCache implements ITableCache {
                               table -> new Pair<>(table, 0L),
                               (v1, v2) -> v2,
                               ConcurrentHashMap::new))));
-      LOGGER.info("Init DataNodeTableCache successfully");
+      LOGGER.info(DataNodeSchemaMessages.INIT_TABLE_CACHE_SUCCESS);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -142,7 +143,7 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
-      LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
+      LOGGER.info(DataNodeSchemaMessages.PRE_UPDATE_TABLE_SUCCESS, database, table.getTableName());
 
       // If rename table
       if (Objects.nonNull(oldName)) {
@@ -160,7 +161,7 @@ public class DataNodeTableCache implements ITableCache {
                     return v;
                   }
                 });
-        LOGGER.info("Pre-rename old table {}.{} successfully", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.PRE_RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -173,7 +174,7 @@ public class DataNodeTableCache implements ITableCache {
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
-      LOGGER.info("Rollback-update table {}.{} successfully", database, tableName);
+      LOGGER.info(DataNodeSchemaMessages.ROLLBACK_UPDATE_TABLE_SUCCESS, database, tableName);
 
       // If rename table
       if (Objects.nonNull(oldName)) {
@@ -190,7 +191,7 @@ public class DataNodeTableCache implements ITableCache {
         databaseTableMap
             .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
             .put(tableName, oldTable);
-        LOGGER.info("Rollback renaming old table {}.{} successfully.", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.ROLLBACK_RENAME_OLD_TABLE_SUCCESS, database, oldName);
         removeTableFromPreUpdateMap(database, oldName);
       }
     } finally {
@@ -231,17 +232,17 @@ public class DataNodeTableCache implements ITableCache {
               .put(tableName, newTable);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Commit-update table {}.{} successfully, {}",
+            DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL,
             database,
             tableName,
             compareTable(oldTable, newTable));
       } else if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("Commit-update table {}.{} successfully.", database, tableName);
+        LOGGER.info(DataNodeSchemaMessages.COMMIT_UPDATE_TABLE_SUCCESS, database, tableName);
       }
       removeTableFromPreUpdateMap(database, tableName);
       if (Objects.nonNull(oldName)) {
         removeTableFromPreUpdateMap(database, oldName);
-        LOGGER.info("Rename old table {}.{} successfully.", database, oldName);
+        LOGGER.info(DataNodeSchemaMessages.RENAME_OLD_TABLE_SUCCESS, database, oldName);
       }
       instanceVersion.incrementAndGet();
     } finally {
@@ -386,8 +387,7 @@ public class DataNodeTableCache implements ITableCache {
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
+      LOGGER.warn(DataNodeSchemaMessages.INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES);
     } catch (final Exception e) {
       fetchTableSemaphore.release();
       throw e;
@@ -420,7 +420,7 @@ public class DataNodeTableCache implements ITableCache {
                     isUpdated.set(true);
                     if (LOGGER.isDebugEnabled()) {
                       LOGGER.debug(
-                          "Update table {}.{} by table fetch, {}",
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH_WITH_DETAIL,
                           database,
                           tableName,
                           compareTable(
@@ -429,7 +429,8 @@ public class DataNodeTableCache implements ITableCache {
                                   .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                                   .get(tableName)));
                     } else if (LOGGER.isInfoEnabled()) {
-                      LOGGER.info("Update table {}.{} by table fetch.", database, tableName);
+                      LOGGER.info(
+                          DataNodeSchemaMessages.UPDATE_TABLE_BY_FETCH, database, tableName);
                     }
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
@@ -452,13 +453,14 @@ public class DataNodeTableCache implements ITableCache {
 
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
     if (Objects.isNull(oldTable)) {
-      return "Added table: " + newTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_ADDED + newTable;
     }
     if (Objects.isNull(newTable)) {
-      return "Removed table: " + oldTable;
+      return DataNodeSchemaMessages.COMPARE_TABLE_REMOVED + oldTable;
     }
     boolean modified = false;
-    final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
+    final StringBuilder builder =
+        new StringBuilder(DataNodeSchemaMessages.COMPARE_TABLE_NAME + oldTable.getTableName());
     final Map<String, String> oldProps =
         Objects.nonNull(oldTable.getProps())
             ? new HashMap<>(oldTable.getProps())
@@ -479,10 +481,10 @@ public class DataNodeTableCache implements ITableCache {
                 return false;
               });
       if (!oldProps.isEmpty()) {
-        builder.append(" Removed props: ").append(oldProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_PROPS).append(oldProps);
       }
       if (!newProps.isEmpty()) {
-        builder.append(" Added props: ").append(newProps);
+        builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_PROPS).append(newProps);
       }
       modified = true;
     }
@@ -517,14 +519,14 @@ public class DataNodeTableCache implements ITableCache {
             .collect(Collectors.toList());
 
     if (!oldSchema.isEmpty()) {
-      builder.append(" Removed column(s): ").append(oldSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_REMOVED_COLUMNS).append(oldSchema);
       modified = true;
     }
     if (!newSchema.isEmpty()) {
-      builder.append(" Added column(s): ").append(newSchema);
+      builder.append(DataNodeSchemaMessages.COMPARE_TABLE_ADDED_COLUMNS).append(newSchema);
       modified = true;
     }
-    return modified ? builder.toString() : " Not modified";
+    return modified ? builder.toString() : DataNodeSchemaMessages.COMPARE_TABLE_NOT_MODIFIED;
   }
 
   private TsTable getTableInCache(final String database, final String tableName) {

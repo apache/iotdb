@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 
 import org.slf4j.Logger;
@@ -65,7 +66,7 @@ public class StatisticsService {
                 0,
                 STATISTICS_UPDATE_INTERVAL,
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("LoadStatistics service is started successfully.");
+        LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -76,7 +77,7 @@ public class StatisticsService {
       if (currentLoadStatisticsFuture != null) {
         currentLoadStatisticsFuture.cancel(false);
         currentLoadStatisticsFuture = null;
-        LOGGER.info("LoadStatistics service is stopped successfully.");
+        LOGGER.info(ManagerMessages.LOADSTATISTICS_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
     }
   }

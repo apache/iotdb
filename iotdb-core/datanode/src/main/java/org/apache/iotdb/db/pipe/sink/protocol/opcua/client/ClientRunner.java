@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -74,13 +75,13 @@ public class ClientRunner {
   private OpcUaClient createClient() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
-      throw new Exception("unable to create security dir: " + securityDir);
+      throw new Exception(DataNodePipeMessages.UNABLE_TO_CREATE_SECURITY_DIR + securityDir);
     }
 
     final File pkiDir = securityDir.resolve("pki").toFile();
 
-    logger.info("security dir: {}", securityDir.toAbsolutePath());
-    logger.info("security pki dir: {}", pkiDir.getAbsolutePath());
+    logger.info(DataNodePipeMessages.SECURITY_DIR, securityDir.toAbsolutePath());
+    logger.info(DataNodePipeMessages.SECURITY_PKI_DIR, pkiDir.getAbsolutePath());
 
     final IoTDBKeyStoreLoaderClient loader =
         new IoTDBKeyStoreLoaderClient().load(securityDir, password.toCharArray());
@@ -116,11 +117,19 @@ public class ClientRunner {
         configurableUaClient.run(client);
       } catch (final Exception e) {
         throw new PipeException(
-            "Error running opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+            DataNodePipeMessages.ERROR_RUNNING_OPC_CLIENT
+                + e.getClass().getSimpleName()
+                + ": "
+                + e.getMessage(),
+            e);
       }
     } catch (final Exception e) {
       throw new PipeException(
-          "Error getting opc client: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+          DataNodePipeMessages.ERROR_GETTING_OPC_CLIENT
+              + e.getClass().getSimpleName()
+              + ": "
+              + e.getMessage(),
+          e);
     }
   }
 

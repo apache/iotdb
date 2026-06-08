@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -200,6 +201,13 @@ public class SlidingWindowAggregatorFactory {
       case VARIANCE:
       case VAR_POP:
       case VAR_SAMP:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
+      case SKEWNESS:
+      case KURTOSIS:
       case UDAF: // Currently UDAF belongs to SmoothQueueSlidingWindowAggregator
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
@@ -228,13 +236,17 @@ public class SlidingWindowAggregatorFactory {
         return new MonotonicQueueSlidingWindowAggregator(
             accumulator, inputLocationList, step, minByComparators.get(dataTypes.get(1)));
       case COUNT_IF:
-        throw new SemanticException("COUNT_IF with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.COUNT_IF_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       case TIME_DURATION:
-        throw new SemanticException("TIME_DURATION with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.TIME_DURATION_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       case MODE:
-        throw new SemanticException("MODE with slidingWindow is not supported now");
+        throw new SemanticException(
+            DataNodeQueryMessages.MODE_WITH_SLIDINGWINDOW_IS_NOT_SUPPORTED_NOW);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.INVALID_AGGREGATION_TYPE + aggregationType);
     }
   }
 }

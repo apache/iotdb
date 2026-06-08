@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
@@ -61,22 +62,23 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
         case REMOVE_PEER:
           env.removeConfigNodePeer(removedConfigNode);
           setNextState(RemoveConfigNodeState.DELETE_PEER);
-          LOG.info("Remove peer for ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.REMOVE_PEER_FOR_CONFIGNODE, removedConfigNode);
           break;
         case DELETE_PEER:
           env.deleteConfigNodePeer(removedConfigNode);
           setNextState(RemoveConfigNodeState.STOP_AND_CLEAR_CONFIG_NODE);
-          LOG.info("Delete peer for ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.DELETE_PEER_FOR_CONFIGNODE, removedConfigNode);
           break;
         case STOP_AND_CLEAR_CONFIG_NODE:
           env.stopAndClearConfigNode(removedConfigNode);
-          LOG.info("Stop and clear ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.STOP_AND_CLEAR_CONFIGNODE, removedConfigNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         setFailure(
-            new ProcedureException("Remove Config Node" + removedConfigNode + " failed " + state));
+            new ProcedureException(
+                ProcedureMessages.REMOVE_CONFIG_NODE + removedConfigNode + " failed " + state));
       } else {
         LOG.error(
             "Retrievable error trying to remove config node {}, state {}",
@@ -84,7 +86,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("State stuck at " + state));
+          setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
         }
       }
     }
@@ -128,7 +130,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
     try {
       removedConfigNode = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_REMOVECONFIGNODEPROCEDURE, e);
     }
   }
 
