@@ -23,7 +23,7 @@ public final class JdbcMessages {
 
   // IoTDBDriver
   public static final String REGISTER_DRIVER_ERROR =
-      "注册 TsFile 驱动时发生错误";
+      "注册 IoTDB 驱动时发生错误";
   public static final String METHOD_NOT_SUPPORTED = "不支持此方法";
 
   // StringUtils

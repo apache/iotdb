@@ -26,7 +26,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Utils to convert between thrift format and TsFile format. */
+/** Utilities for JDBC URL parsing. */
 public class Utils {
 
   @SuppressWarnings({

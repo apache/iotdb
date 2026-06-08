@@ -39,7 +39,7 @@ public class Config {
   /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 
-  /** TsFile's default series name. */
+  /** Default series name. */
   static final String DEFAULT_SERIES_NAME = "default";
 
   static final String AUTH_USER = "user";
