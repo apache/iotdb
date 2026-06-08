@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.confignode.manager.node;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -94,9 +100,56 @@ public class NodeManagerTest {
         .write(Mockito.isA(UpdateVersionInfoPlan.class));
   }
 
+  @Test
+  public void updateAINodeIfNecessaryShouldRejectUnknownAINode() {
+    IManager configManager = Mockito.mock(IManager.class);
+    NodeInfo nodeInfo = Mockito.mock(NodeInfo.class);
+    Mockito.when(nodeInfo.getRegisteredAINode(3)).thenReturn(null);
+    NodeManager nodeManager = new NodeManager(configManager, nodeInfo);
+
+    TAINodeRestartResp resp =
+        nodeManager.updateAINodeIfNecessary(aiNodeRestartReq(3, "127.0.0.1", 10810));
+
+    Assert.assertEquals(TSStatusCode.REJECT_NODE_START.getStatusCode(), resp.getStatus().getCode());
+  }
+
+  @Test
+  public void updateAINodeIfNecessaryShouldReturnFailureWhenAINodeUpdateConsensusThrows()
+      throws Exception {
+    ConsensusManager consensusManager = Mockito.mock(ConsensusManager.class);
+    IManager configManager = Mockito.mock(IManager.class);
+    NodeInfo nodeInfo = Mockito.mock(NodeInfo.class);
+    Mockito.when(configManager.getConsensusManager()).thenReturn(consensusManager);
+    Mockito.when(nodeInfo.getRegisteredAINode(3))
+        .thenReturn(aiNodeConfiguration(3, "127.0.0.1", 10810));
+    Mockito.when(consensusManager.write(Mockito.isA(UpdateAINodePlan.class)))
+        .thenThrow(new ConsensusException("update failed"));
+    NodeManager nodeManager = new NodeManager(configManager, nodeInfo);
+
+    TAINodeRestartResp resp =
+        nodeManager.updateAINodeIfNecessary(aiNodeRestartReq(3, "127.0.0.1", 10811));
+
+    Assert.assertEquals(
+        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), resp.getStatus().getCode());
+    Mockito.verify(consensusManager, Mockito.never())
+        .write(Mockito.isA(UpdateVersionInfoPlan.class));
+  }
+
   private TConfigNodeLocation configNodeLocation() {
     return new TConfigNodeLocation(
         0, new TEndPoint("127.0.0.1", 10710), new TEndPoint("127.0.0.1", 10720));
+  }
+
+  private TAINodeRestartReq aiNodeRestartReq(int aiNodeId, String ip, int port) {
+    TAINodeRestartReq req =
+        new TAINodeRestartReq("defaultCluster", aiNodeConfiguration(aiNodeId, ip, port));
+    req.setVersionInfo(versionInfo());
+    return req;
+  }
+
+  private TAINodeConfiguration aiNodeConfiguration(int aiNodeId, String ip, int port) {
+    return new TAINodeConfiguration(
+        new TAINodeLocation(aiNodeId, new TEndPoint(ip, port)), new TNodeResource(1, 1024));
   }
 
   private TNodeVersionInfo versionInfo() {

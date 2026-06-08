@@ -17,6 +17,7 @@
 #
 import os
 import signal
+import shutil
 import threading
 from datetime import datetime
 
@@ -83,6 +84,42 @@ def _generate_system_properties(ainode_id: int):
     }
 
 
+def _backup_system_properties(system_properties_file: str):
+    if not os.path.exists(system_properties_file):
+        return None
+    backup_file = "{}.{}.bak".format(
+        system_properties_file, datetime.now().strftime("%Y%m%d%H%M%S%f")
+    )
+    shutil.copy2(system_properties_file, backup_file)
+    logger.warning("Backed up AINode system properties to", backup_file)
+    return backup_file
+
+
+def _write_system_properties(system_properties_file: str, system_properties):
+    tmp_file = system_properties_file + ".tmp"
+    try:
+        with open(tmp_file, "w") as f:
+            f.write("#" + str(datetime.now()) + "\n")
+            for key, value in system_properties.items():
+                f.write(key + "=" + str(value) + "\n")
+        os.replace(tmp_file, system_properties_file)
+    except Exception:
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+        raise
+
+
+def _verify_registered_ainode_id(system_properties_file: str):
+    ainode_id = AINodeDescriptor().get_config().get_ainode_id()
+    if ainode_id < 0:
+        _backup_system_properties(system_properties_file)
+        raise RuntimeError(
+            "AINode system.properties exists but does not contain a valid ainode_id. "
+            "Please restore the local system.properties or explicitly remove it before "
+            "registering a new AINode."
+        )
+
+
 class AINode:
     def __init__(self):
         self._rpc_service = None
@@ -110,10 +147,7 @@ class AINode:
                 )
                 AINodeDescriptor().get_config().set_ainode_id(ainode_id)
                 system_properties = _generate_system_properties(ainode_id)
-                with open(system_properties_file, "w") as f:
-                    f.write("#" + str(datetime.now()) + "\n")
-                    for key, value in system_properties.items():
-                        f.write(key + "=" + str(value) + "\n")
+                _write_system_properties(system_properties_file, system_properties)
             except Exception as e:
                 logger.error(
                     "IoTDB-AINode failed to register to IoTDB cluster: {}".format(e)
@@ -122,6 +156,7 @@ class AINode:
         else:
             # If the system.properties file does exist, the AINode will just restart.
             try:
+                _verify_registered_ainode_id(system_properties_file)
                 logger.info("IoTDB-AINode is restarting...")
                 ClientManager().borrow_config_node_client().node_restart(
                     AINodeDescriptor().get_config().get_cluster_name(),
@@ -129,6 +164,13 @@ class AINode:
                     _generate_version_info(),
                 )
             except Exception as e:
+                if AINodeDescriptor().get_config().get_ainode_id() >= 0:
+                    try:
+                        _backup_system_properties(system_properties_file)
+                    except Exception as backup_error:
+                        logger.warning(
+                            "Failed to back up AINode system properties:", backup_error
+                        )
                 logger.error("IoTDB-AINode failed to restart: {}".format(e))
                 raise e
 

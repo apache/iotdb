@@ -59,7 +59,7 @@ class AINodeConfig(object):
         self._build_info = AINODE_BUILD_INFO
 
         # Cluster configuration
-        self._ainode_id = 0
+        self._ainode_id = -1
         self._cluster_name = AINODE_CLUSTER_NAME
         self._ain_target_config_node_list: TEndPoint = AINODE_TARGET_CONFIG_NODE_LIST
         self._ain_rpc_address: str = AINODE_RPC_ADDRESS
@@ -294,14 +294,6 @@ class AINodeDescriptor(object):
         logger.info("AINodeDescriptor is init successfully.")
 
     def _load_config_from_file(self) -> None:
-        system_properties_file = os.path.join(
-            self._config.get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME
-        )
-        if os.path.exists(system_properties_file):
-            system_configs = load_properties(system_properties_file)
-            if "ainode_id" in system_configs:
-                self._config.set_ainode_id(int(system_configs["ainode_id"]))
-
         git_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_GIT_FILE_NAME)
         if os.path.exists(git_file):
             git_configs = load_properties(git_file)
@@ -325,112 +317,126 @@ class AINodeDescriptor(object):
                     conf_file
                 )
             )
-            return
+        else:
+            # noinspection PyBroadException
+            try:
+                file_configs = load_properties(conf_file)
 
-        # noinspection PyBroadException
-        try:
-            file_configs = load_properties(conf_file)
+                config_keys = file_configs.keys()
 
-            config_keys = file_configs.keys()
+                if "ain_rpc_address" in config_keys:
+                    self._config.set_ain_rpc_address(file_configs["ain_rpc_address"])
 
-            if "ain_rpc_address" in config_keys:
-                self._config.set_ain_rpc_address(file_configs["ain_rpc_address"])
+                if "ain_rpc_port" in config_keys:
+                    self._config.set_ain_rpc_port(int(file_configs["ain_rpc_port"]))
 
-            if "ain_rpc_port" in config_keys:
-                self._config.set_ain_rpc_port(int(file_configs["ain_rpc_port"]))
+                if "ain_inference_batch_interval_in_ms" in config_keys:
+                    self._config.set_ain_inference_batch_interval_in_ms(
+                        int(file_configs["ain_inference_batch_interval_in_ms"])
+                    )
 
-            if "ain_inference_batch_interval_in_ms" in config_keys:
-                self._config.set_ain_inference_batch_interval_in_ms(
-                    int(file_configs["ain_inference_batch_interval_in_ms"])
+                if "ain_inference_model_mem_usage_map" in config_keys:
+                    self._config.set_ain_inference_model_mem_usage_map(
+                        eval(file_configs["ain_inference_model_mem_usage_map"])
+                    )
+
+                if "ain_inference_memory_usage_ratio" in config_keys:
+                    self._config.set_ain_inference_memory_usage_ratio(
+                        float(file_configs["ain_inference_memory_usage_ratio"])
+                    )
+
+                if "ain_inference_extra_memory_ratio" in config_keys:
+                    self._config.set_ain_inference_extra_memory_ratio(
+                        float(file_configs["ain_inference_extra_memory_ratio"])
+                    )
+
+                if "ain_models_dir" in config_keys:
+                    self._config.set_ain_models_dir(file_configs["ain_models_dir"])
+
+                if "ain_models_builtin_dir" in config_keys:
+                    self._config.set_ain_models_builtin_dir(
+                        file_configs["ain_models_builtin_dir"]
+                    )
+
+                if "ain_system_dir" in config_keys:
+                    self._config.set_ain_system_dir(file_configs["ain_system_dir"])
+
+                if "ain_seed_config_node" in config_keys:
+                    self._config.set_ain_target_config_node_list(
+                        file_configs["ain_seed_config_node"]
+                    )
+
+                if "cluster_name" in config_keys:
+                    self._config.set_cluster_name(file_configs["cluster_name"])
+
+                if "ain_thrift_compression_enabled" in config_keys:
+                    self._config.set_ain_thrift_compression_enabled(
+                        int(file_configs["ain_thrift_compression_enabled"])
+                    )
+
+                if "ain_cluster_ingress_ssl_enabled" in config_keys:
+                    self._config.set_ain_cluster_ingress_ssl_enabled(
+                        int(file_configs["ain_cluster_ingress_ssl_enabled"])
+                    )
+
+                if "ain_thrift_ssl_cert_file" in config_keys:
+                    self._config.set_ain_thrift_ssl_cert_file(
+                        file_configs["ain_thrift_ssl_cert_file"]
+                    )
+
+                if "ain_thrift_ssl_key_file" in config_keys:
+                    self._config.set_ain_thrift_ssl_key_file(
+                        file_configs["ain_thrift_ssl_key_file"]
+                    )
+
+                if "ain_logs_dir" in config_keys:
+                    log_dir = file_configs["ain_logs_dir"]
+                    self._config.set_ain_logs_dir(log_dir)
+
+                if "ain_cluster_ingress_address" in config_keys:
+                    self._config.set_ain_cluster_ingress_address(
+                        file_configs["ain_cluster_ingress_address"]
+                    )
+
+                if "ain_cluster_ingress_port" in config_keys:
+                    self._config.set_ain_cluster_ingress_port(
+                        int(file_configs["ain_cluster_ingress_port"])
+                    )
+
+                if "ain_cluster_ingress_username" in config_keys:
+                    self._config.set_ain_cluster_ingress_username(
+                        file_configs["ain_cluster_ingress_username"]
+                    )
+
+                if "ain_cluster_ingress_password" in config_keys:
+                    self._config.set_ain_cluster_ingress_password(
+                        file_configs["ain_cluster_ingress_password"]
+                    )
+
+            except BadNodeUrlException:
+                logger.warning("Cannot load AINode conf file, use default configuration.")
+
+            except Exception as e:
+                logger.warning(
+                    "Cannot load AINode conf file caused by: {}, use default configuration. ".format(
+                        e
+                    )
                 )
 
-            if "ain_inference_model_mem_usage_map" in config_keys:
-                self._config.set_ain_inference_model_mem_usage_map(
-                    eval(file_configs["ain_inference_model_mem_usage_map"])
-                )
-
-            if "ain_inference_memory_usage_ratio" in config_keys:
-                self._config.set_ain_inference_memory_usage_ratio(
-                    float(file_configs["ain_inference_memory_usage_ratio"])
-                )
-
-            if "ain_inference_extra_memory_ratio" in config_keys:
-                self._config.set_ain_inference_extra_memory_ratio(
-                    float(file_configs["ain_inference_extra_memory_ratio"])
-                )
-
-            if "ain_models_dir" in config_keys:
-                self._config.set_ain_models_dir(file_configs["ain_models_dir"])
-
-            if "ain_models_builtin_dir" in config_keys:
-                self._config.set_ain_models_builtin_dir(
-                    file_configs["ain_models_builtin_dir"]
-                )
-
-            if "ain_system_dir" in config_keys:
-                self._config.set_ain_system_dir(file_configs["ain_system_dir"])
-
-            if "ain_seed_config_node" in config_keys:
-                self._config.set_ain_target_config_node_list(
-                    file_configs["ain_seed_config_node"]
-                )
-
-            if "cluster_name" in config_keys:
-                self._config.set_cluster_name(file_configs["cluster_name"])
-
-            if "ain_thrift_compression_enabled" in config_keys:
-                self._config.set_ain_thrift_compression_enabled(
-                    int(file_configs["ain_thrift_compression_enabled"])
-                )
-
-            if "ain_cluster_ingress_ssl_enabled" in config_keys:
-                self._config.set_ain_cluster_ingress_ssl_enabled(
-                    int(file_configs["ain_cluster_ingress_ssl_enabled"])
-                )
-
-            if "ain_thrift_ssl_cert_file" in config_keys:
-                self._config.set_ain_thrift_ssl_cert_file(
-                    file_configs["ain_thrift_ssl_cert_file"]
-                )
-
-            if "ain_thrift_ssl_key_file" in config_keys:
-                self._config.set_ain_thrift_ssl_key_file(
-                    file_configs["ain_thrift_ssl_key_file"]
-                )
-
-            if "ain_logs_dir" in config_keys:
-                log_dir = file_configs["ain_logs_dir"]
-                self._config.set_ain_logs_dir(log_dir)
-
-            if "ain_cluster_ingress_address" in config_keys:
-                self._config.set_ain_cluster_ingress_address(
-                    file_configs["ain_cluster_ingress_address"]
-                )
-
-            if "ain_cluster_ingress_port" in config_keys:
-                self._config.set_ain_cluster_ingress_port(
-                    int(file_configs["ain_cluster_ingress_port"])
-                )
-
-            if "ain_cluster_ingress_username" in config_keys:
-                self._config.set_ain_cluster_ingress_username(
-                    file_configs["ain_cluster_ingress_username"]
-                )
-
-            if "ain_cluster_ingress_password" in config_keys:
-                self._config.set_ain_cluster_ingress_password(
-                    file_configs["ain_cluster_ingress_password"]
-                )
-
-        except BadNodeUrlException:
-            logger.warning("Cannot load AINode conf file, use default configuration.")
-
-        except Exception as e:
-            logger.warning(
-                "Cannot load AINode conf file caused by: {}, use default configuration. ".format(
-                    e
-                )
-            )
+        system_properties_file = os.path.join(
+            self._config.get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME
+        )
+        if os.path.exists(system_properties_file):
+            system_configs = load_properties(system_properties_file)
+            if "ainode_id" in system_configs:
+                try:
+                    self._config.set_ainode_id(int(system_configs["ainode_id"]))
+                except ValueError:
+                    logger.warning(
+                        "Cannot load ainode_id from '{}', keep AINode unregistered.".format(
+                            system_properties_file
+                        )
+                    )
 
     def get_config(self) -> AINodeConfig:
         return self._config

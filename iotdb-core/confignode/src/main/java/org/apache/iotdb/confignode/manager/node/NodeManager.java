@@ -585,24 +585,53 @@ public class NodeManager {
   public TAINodeRestartResp updateAINodeIfNecessary(TAINodeRestartReq req) {
     int nodeId = req.getAiNodeConfiguration().getLocation().getAiNodeId();
     TAINodeConfiguration aiNodeConfiguration = getRegisteredAINode(nodeId);
+    if (aiNodeConfiguration == null) {
+      return new TAINodeRestartResp()
+          .setStatus(
+              new TSStatus(TSStatusCode.REJECT_NODE_START.getStatusCode())
+                  .setMessage("Reject AINode restart because the AINode is not registered."))
+          .setConfigNodeList(getRegisteredConfigNodes());
+    }
     if (!req.getAiNodeConfiguration().equals(aiNodeConfiguration)) {
       // Update AINodeConfiguration when modified during restart
       UpdateAINodePlan updateAINodePlan = new UpdateAINodePlan(req.getAiNodeConfiguration());
+      TSStatus status;
       try {
-        getConsensusManager().write(updateAINodePlan);
+        status = getConsensusManager().write(updateAINodePlan);
       } catch (ConsensusException e) {
         LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+        return new TAINodeRestartResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .setMessage(e.getMessage()))
+            .setConfigNodeList(getRegisteredConfigNodes());
+      }
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return new TAINodeRestartResp()
+            .setStatus(status)
+            .setConfigNodeList(getRegisteredConfigNodes());
       }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
-    if (!req.getVersionInfo().equals(versionInfo)) {
+    if (req.getVersionInfo() != null && !req.getVersionInfo().equals(versionInfo)) {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateVersionInfoPlan =
           new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
+      TSStatus status;
       try {
-        getConsensusManager().write(updateVersionInfoPlan);
+        status = getConsensusManager().write(updateVersionInfoPlan);
       } catch (ConsensusException e) {
         LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+        return new TAINodeRestartResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .setMessage(e.getMessage()))
+            .setConfigNodeList(getRegisteredConfigNodes());
+      }
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return new TAINodeRestartResp()
+            .setStatus(status)
+            .setConfigNodeList(getRegisteredConfigNodes());
       }
     }
 
