@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
@@ -89,7 +88,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefi
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -116,6 +114,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
@@ -1459,7 +1459,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
   @Override
   public RelationPlan visitTableFunctionInvocation(TableFunctionInvocation node, Void context) {
     TableFunctionInvocationAnalysis functionAnalysis = analysis.getTableFunctionAnalysis(node);
-    if (TableBuiltinTableFunction.READ_TSFILE
+    if (DataNodeTableBuiltinTableFunction.READ_TSFILE
         .getFunctionName()
         .equalsIgnoreCase(functionAnalysis.getFunctionName())) {
       return planExternalTsFileScan(node, functionAnalysis);

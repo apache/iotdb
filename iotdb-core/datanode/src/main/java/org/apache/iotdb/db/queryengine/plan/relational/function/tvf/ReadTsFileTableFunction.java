@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -48,6 +49,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -64,37 +66,38 @@ import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 /** Reads one or more TsFiles as a table function source. */
 public class ReadTsFileTableFunction implements TableFunction {
   private static final String TABLE_NAME_PARAMETER_NAME = "TABLE_NAME";
-  private static final String TSFILE_PATHS_PARAMETER_NAME = "TSFILE_PATHS";
+  private static final String PATHS_PARAMETER_NAME = "PATHS";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
+        ScalarParameterSpecification.builder().name(PATHS_PARAMETER_NAME).type(Type.STRING).build(),
         ScalarParameterSpecification.builder()
             .name(TABLE_NAME_PARAMETER_NAME)
             .type(Type.STRING)
-            .build(),
-        ScalarParameterSpecification.builder()
-            .name(TSFILE_PATHS_PARAMETER_NAME)
-            .type(Type.STRING)
+            .defaultValue("")
             .build());
   }
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    String tableName = getRequiredStringArgument(arguments, TABLE_NAME_PARAMETER_NAME);
+    String tableName = getOptionalStringArgument(arguments, TABLE_NAME_PARAMETER_NAME);
     List<String> tsFilePaths =
-        parseTsFilePaths(getRequiredStringArgument(arguments, TSFILE_PATHS_PARAMETER_NAME));
+        parseTsFilePaths(getRequiredStringArgument(arguments, PATHS_PARAMETER_NAME));
+    checkTsFilePathsAreOutsideDataDirs(tsFilePaths);
     TsFileSchemaCollection schemaCollection =
-        collectTsFilesAndResolveSchema(tableName, tsFilePaths);
+        collectTsFilesAndResolveSchema(tableName.isEmpty() ? null : tableName, tsFilePaths);
     if (schemaCollection.mergedTableSchema == null) {
       throw new UDFArgumentNotValidException(
-          "No table schema found for table " + tableName + " in TsFiles");
+          tableName.isEmpty()
+              ? "No table schema found in TsFiles"
+              : "No table schema found for table " + tableName + " in TsFiles");
     }
     DescribedSchema outputSchema = convertToDescribedSchema(schemaCollection.mergedTableSchema);
 
     ReadTsFileTableFunctionHandle handle =
         new ReadTsFileTableFunctionHandle(
-            tableName,
+            schemaCollection.tableName,
             schemaCollection.tsFiles.stream()
                 .map(File::getAbsolutePath)
                 .collect(Collectors.toList()),
@@ -130,6 +133,21 @@ public class ReadTsFileTableFunction implements TableFunction {
     return ((String) value).trim();
   }
 
+  private static String getOptionalStringArgument(Map<String, Argument> arguments, String name) {
+    Argument argument = arguments.get(name);
+    if (argument == null) {
+      return "";
+    }
+    if (!(argument instanceof ScalarArgument)) {
+      throw new UDFArgumentNotValidException("Invalid scalar argument: " + name);
+    }
+    Object value = ((ScalarArgument) argument).getValue();
+    if (!(value instanceof String)) {
+      throw new UDFArgumentNotValidException("Argument " + name + " should be a string");
+    }
+    return ((String) value).trim();
+  }
+
   private static List<String> parseTsFilePaths(String tsFilePaths) {
     List<String> paths =
         Arrays.stream(tsFilePaths.split(","))
@@ -138,15 +156,44 @@ public class ReadTsFileTableFunction implements TableFunction {
             .collect(Collectors.toList());
     if (paths.isEmpty()) {
       throw new UDFArgumentNotValidException(
-          "Argument " + TSFILE_PATHS_PARAMETER_NAME + " should contain at least one path");
+          "Argument " + PATHS_PARAMETER_NAME + " should contain at least one path");
     }
     return paths;
   }
 
+  private static void checkTsFilePathsAreOutsideDataDirs(List<String> tsFilePaths) {
+    List<Path> dataDirs =
+        Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getDataDirs())
+            .map(ReadTsFileTableFunction::normalizePath)
+            .collect(Collectors.toList());
+    for (String tsFilePath : tsFilePaths) {
+      Path normalizedTsFilePath = normalizePath(tsFilePath);
+      for (Path dataDir : dataDirs) {
+        if (normalizedTsFilePath.startsWith(dataDir) || dataDir.startsWith(normalizedTsFilePath)) {
+          throw new UDFArgumentNotValidException(
+              String.format(
+                  "read_tsfile path %s is not allowed because it may access IoTDB data directory %s",
+                  tsFilePath, dataDir));
+        }
+      }
+    }
+  }
+
+  private static Path normalizePath(String path) {
+    Path normalizedPath = Paths.get(path).toAbsolutePath().normalize();
+    try {
+      return normalizedPath.toRealPath();
+    } catch (IOException e) {
+      return normalizedPath;
+    }
+  }
+
   private static TsFileSchemaCollection collectTsFilesAndResolveSchema(
-      String tableName, List<String> tsFilePaths) {
+      String specifiedTableName, List<String> tsFilePaths) {
     List<File> tsFiles = new ArrayList<>();
     MergedTableSchemaBuilder schemaBuilder = null;
+    String resolvedTableName =
+        specifiedTableName == null ? null : specifiedTableName.toLowerCase(Locale.ENGLISH);
     for (String tsFilePath : tsFilePaths) {
       Path path = new File(tsFilePath).toPath();
       if (!Files.exists(path)) {
@@ -156,13 +203,25 @@ public class ReadTsFileTableFunction implements TableFunction {
         Iterator<Path> iterator = walkedPaths.filter(Files::isRegularFile).iterator();
         while (iterator.hasNext()) {
           Path filePath = iterator.next();
-          TableSchema tableSchema = tryReadTableSchema(tableName, filePath.toFile());
+          TableSchema tableSchema =
+              specifiedTableName == null
+                  ? tryInferTableSchema(filePath.toFile())
+                  : tryReadTableSchema(specifiedTableName, filePath.toFile());
           if (tableSchema == null) {
             continue;
           }
+          String currentTableName = tableSchema.getTableName().toLowerCase(Locale.ENGLISH);
+          if (resolvedTableName == null) {
+            resolvedTableName = currentTableName;
+          } else if (!resolvedTableName.equals(currentTableName)) {
+            throw new UDFArgumentNotValidException(
+                String.format(
+                    "Cannot infer table name from TsFiles because multiple tables are found: %s and %s",
+                    resolvedTableName, currentTableName));
+          }
           tsFiles.add(filePath.toFile());
           if (schemaBuilder == null) {
-            schemaBuilder = new MergedTableSchemaBuilder(tableName, tableSchema);
+            schemaBuilder = new MergedTableSchemaBuilder(resolvedTableName, tableSchema);
           } else {
             schemaBuilder.merge(tableSchema);
           }
@@ -174,8 +233,7 @@ public class ReadTsFileTableFunction implements TableFunction {
     if (tsFiles.isEmpty()) {
       throw new UDFArgumentNotValidException("No valid TsFiles found");
     }
-    return new TsFileSchemaCollection(
-        tsFiles, schemaBuilder == null ? null : schemaBuilder.build());
+    return new TsFileSchemaCollection(resolvedTableName, tsFiles, schemaBuilder.build());
   }
 
   private static TableSchema tryReadTableSchema(String tableName, File tsFile) {
@@ -193,11 +251,41 @@ public class ReadTsFileTableFunction implements TableFunction {
     }
   }
 
+  private static TableSchema tryInferTableSchema(File tsFile) {
+    if (!tsFile.canRead()) {
+      return null;
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      if (!reader.isComplete() || reader.readVersionNumber() != TSFileConfig.VERSION_NUMBER) {
+        return null;
+      }
+      Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+      if (tableSchemaMap.isEmpty()) {
+        throw new UDFArgumentNotValidException(
+            "Cannot infer table name from TsFile because no table schema is found in "
+                + tsFile.getAbsolutePath());
+      }
+      if (tableSchemaMap.size() > 1) {
+        throw new UDFArgumentNotValidException(
+            "Cannot infer table name from TsFile because multiple tables are found in "
+                + tsFile.getAbsolutePath());
+      }
+      return tableSchemaMap.values().iterator().next();
+    } catch (UDFArgumentNotValidException e) {
+      throw e;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   private static class TsFileSchemaCollection {
+    private final String tableName;
     private final List<File> tsFiles;
     private final TableSchema mergedTableSchema;
 
-    private TsFileSchemaCollection(List<File> tsFiles, TableSchema mergedTableSchema) {
+    private TsFileSchemaCollection(
+        String tableName, List<File> tsFiles, TableSchema mergedTableSchema) {
+      this.tableName = tableName;
       this.tsFiles = tsFiles;
       this.mergedTableSchema = mergedTableSchema;
     }

@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.Pattern
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CapacityTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.CumulateTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
@@ -46,8 +45,7 @@ public enum TableBuiltinTableFunction {
   CAPACITY("capacity"),
   FORECAST("forecast"),
   PATTERN_MATCH("pattern_match"),
-  CLASSIFY("classify"),
-  READ_TSFILE("read_tsfile");
+  CLASSIFY("classify");
 
   private final String functionName;
 
@@ -93,8 +91,6 @@ public enum TableBuiltinTableFunction {
         return new ForecastTableFunction();
       case "classify":
         return new ClassifyTableFunction();
-      case "read_tsfile":
-        return new ReadTsFileTableFunction();
       default:
         throw new UnsupportedOperationException(
             String.format(QueryMessages.UNSUPPORTED_TABLE_FUNCTION, functionName));
