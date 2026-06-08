@@ -259,6 +259,7 @@ During configure CMake will, in order:
 | Library only (Linux/macOS)    | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package`                                  |
 | Debug library (Linux/macOS)   | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package`          |
 | Library only (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
+| Debug library (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
@@ -322,6 +323,22 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dcmake.build.type=Debug package
 ```
 
+Direct CMake Debug builds use the same build type. On Linux/macOS, pass
+`-DCMAKE_BUILD_TYPE=Debug` during configure. On Windows with Visual Studio,
+also pass `-DCMAKE_BUILD_TYPE=Debug` during configure so the bundled Thrift
+static library is built with the Debug MSVC runtime, then build with
+`--config Debug`:
+
+```bash
+# Linux/macOS
+cmake -S iotdb-client/client-cpp -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --target install
+
+# Windows / Visual Studio
+cmake -S iotdb-client/client-cpp -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --config Debug --target install
+```
+
 Windows (match the Visual Studio version you use to build your application):
 
 ```powershell
@@ -372,6 +389,11 @@ etc. directly.
 | `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
 | `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
+
+For Visual Studio generators on Windows, still set `CMAKE_BUILD_TYPE=Debug`
+when configuring a Debug SDK build. The top-level project uses that value to
+build bundled third-party static libraries, while `cmake --build --config Debug`
+selects the final Visual Studio configuration.
 
 ## Online build (default)
 

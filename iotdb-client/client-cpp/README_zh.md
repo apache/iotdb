@@ -223,6 +223,7 @@ CMake 的包装；没有 Maven 时也可以直接使用 CMake。
 | 只构建库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package` |
 | 构建 Debug 库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package` |
 | 只构建库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
+| 构建 Debug 库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | 直接使用 CMake | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install` |
 
 Maven 构建会把 SDK 安装到 `target/install/`，并生成
@@ -243,6 +244,19 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
 直接使用 CMake 时传入 `-DWITH_SSL=ON`、`-DIOTDB_OFFLINE=ON` 等即可。
+Debug 构建请在配置阶段传入 `-DCMAKE_BUILD_TYPE=Debug`。Windows 使用 Visual
+Studio 生成器时也需要传入该选项，以便内置 Thrift 静态库使用 Debug MSVC 运行时；
+随后用 `cmake --build build --config Debug --target install` 构建安装。
+
+```bash
+# Linux/macOS
+cmake -S iotdb-client/client-cpp -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --target install
+
+# Windows / Visual Studio
+cmake -S iotdb-client/client-cpp -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --config Debug --target install
+```
 
 ### 离线构建
 
