@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
@@ -212,10 +212,12 @@ public class TableDeviceSchemaCache {
    *
    * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
-   * TimeValuePair}s shall never be or contain {@code null}, if a measurement is with all {@code
-   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
-   * For time column, the input measurement shall be "", and the value shall be {@link
-   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
+   * TimeValuePair}s shall never be or contain {@code null}. If a measurement is with all {@code
+   * null}s, its {@link TimeValuePair} shall be {@link
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}; if it is known to be {@code null} at a concrete
+   * last-row time, preserve that time and use {@link TableDeviceLastCache#PLACEHOLDER_NO_VALUE} as
+   * the value. For time column, the input measurement shall be "", and the value shall be {@link
+   * TableDeviceLastCache#PLACEHOLDER_NO_VALUE}. If the time column is not explicitly specified, the
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
    *
@@ -306,8 +308,8 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
    * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} iff
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
       final @Nullable String database, final IDeviceID deviceId, final String measurement) {
@@ -323,8 +325,8 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
    * @param measurements the measurements to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN} iff
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair[] getLastEntries(
       final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
@@ -347,8 +349,10 @@ public class TableDeviceSchemaCache {
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
    *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
    *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is without any
-   *     values when last by the source measurement's time, and the result value otherwise.
+   *     TableDeviceLastCache#PLACEHOLDER_NO_VALUE} iff cache hit and the measurement is known to be
+   *     {@code null} when last by the source measurement's time, {@link
+   *     TableDeviceLastCache#PLACEHOLDER_STALE_VALUE} iff cache hit but the target measurement is
+   *     stale under a newer source time, and the result value otherwise.
    */
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,
@@ -484,7 +488,7 @@ public class TableDeviceSchemaCache {
           },
           cachedDeviceID -> {
             try {
-              return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
+              return devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
@@ -523,8 +527,8 @@ public class TableDeviceSchemaCache {
           cachedDeviceID -> {
             try {
               return isMultiLevelWildcardMeasurement
-                  ? devicePath.matchPrefixPath(new PartialPath(cachedDeviceID))
-                  : devicePath.matchFullPath(new PartialPath(cachedDeviceID));
+                  ? devicePath.matchPrefixPath(cachedDeviceID)
+                  : devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",

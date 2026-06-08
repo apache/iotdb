@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.library.dlearn.util.cluster;
 
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,7 +50,7 @@ public class MedoidShape {
 
   public void setSampleRate(double sampleRate) {
     if (sampleRate <= 0 || sampleRate > 1.0) {
-      throw new IllegalArgumentException("sampleRate must be in (0, 1].");
+      throw new IllegalArgumentException(LibraryUdfMessages.SAMPLE_RATE_MUST_BE_IN_RANGE);
     }
     this.sampleRate = sampleRate;
   }
@@ -134,7 +136,7 @@ public class MedoidShape {
         }
       }
       if (pool.isEmpty()) {
-        throw new IllegalStateException("fastKShape: empty candidate pool.");
+        throw new IllegalStateException(LibraryUdfMessages.FAST_KSHAPE_EMPTY_CANDIDATE_POOL);
       }
       int sampleCount = Math.max(1, (int) (r * n));
       sampleCount = Math.min(sampleCount, pool.size());
@@ -158,7 +160,7 @@ public class MedoidShape {
       }
 
       if (bestSeg == null) {
-        throw new IllegalStateException("fastKShape: no candidate selected.");
+        throw new IllegalStateException(LibraryUdfMessages.FAST_KSHAPE_NO_CANDIDATE_SELECTED);
       }
       picked.add(bestSeg);
       coresetIdx.add(bestIdx);
@@ -189,24 +191,24 @@ public class MedoidShape {
 
   private static void validate(double[][] samples, int k, int maxIterations) {
     if (samples == null || samples.length == 0) {
-      throw new IllegalArgumentException("samples must be non-empty.");
+      throw new IllegalArgumentException(LibraryUdfMessages.SAMPLES_MUST_BE_NON_EMPTY);
     }
     if (k < 2) {
-      throw new IllegalArgumentException("k must be at least 2.");
+      throw new IllegalArgumentException(LibraryUdfMessages.K_MUST_BE_AT_LEAST_2);
     }
     if (k > samples.length) {
-      throw new IllegalArgumentException("k must not exceed the number of samples.");
+      throw new IllegalArgumentException(LibraryUdfMessages.K_MUST_NOT_EXCEED_SAMPLES);
     }
     if (maxIterations < 1) {
-      throw new IllegalArgumentException("maxIterations must be at least 1.");
+      throw new IllegalArgumentException(LibraryUdfMessages.MAX_ITERATIONS_MUST_BE_AT_LEAST_1);
     }
     int dim = samples[0].length;
     if (dim == 0) {
-      throw new IllegalArgumentException("sample dimension must be positive.");
+      throw new IllegalArgumentException(LibraryUdfMessages.SAMPLE_DIMENSION_MUST_BE_POSITIVE);
     }
     for (double[] row : samples) {
       if (row == null || row.length != dim) {
-        throw new IllegalArgumentException("All samples must have the same length.");
+        throw new IllegalArgumentException(LibraryUdfMessages.ALL_SAMPLES_MUST_HAVE_SAME_LENGTH);
       }
     }
   }

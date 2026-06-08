@@ -22,6 +22,7 @@ package org.apache.iotdb.library.drepair;
 import org.apache.iotdb.library.drepair.util.LsGreedy;
 import org.apache.iotdb.library.drepair.util.Screen;
 import org.apache.iotdb.library.drepair.util.ValueRepair;
+import org.apache.iotdb.library.i18n.LibraryUdfMessages;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -89,7 +90,7 @@ public class UDTFValueRepair implements UDTF {
       lsGreedy.setCenter(center);
       vr = lsGreedy;
     } else {
-      throw new UDFException("Illegal method.");
+      throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD_WITH_DOT);
     }
     vr.repair();
     double[] repaired = vr.getRepaired();

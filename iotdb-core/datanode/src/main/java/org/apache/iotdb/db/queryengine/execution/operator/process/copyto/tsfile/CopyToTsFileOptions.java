@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
@@ -175,7 +176,7 @@ public class CopyToTsFileOptions implements CopyToOptions {
       if (!generateNewTimeColumn
           && columnHeader.getColumnName().equals(targetTimeColumn)
           && columnHeader.getColumnType() != TSDataType.TIMESTAMP) {
-        throw new SemanticException("Data type of target time column is not TIMESTAMP");
+        throw new SemanticException(DataNodeQueryMessages.DATA_TYPE_OF_TARGET_TIME_COLUMN_IS_NOT);
       }
       if (targetTagColumns.contains(columnHeader.getColumnName())) {
         if (columnHeader.getColumnType() != TSDataType.STRING) {
@@ -187,13 +188,15 @@ public class CopyToTsFileOptions implements CopyToOptions {
       columns.add(columnHeader.getColumnName());
     }
     if (columns.size() != columnHeaders.size()) {
-      throw new SemanticException("Duplicate column names in query dataset.");
+      throw new SemanticException(DataNodeQueryMessages.DUPLICATE_COLUMN_NAMES_IN_QUERY_DATASET);
     }
     if (foundTagColumns != targetTagColumns.size()) {
-      throw new SemanticException("Some specified tag columns are not exist in query dataset.");
+      throw new SemanticException(
+          DataNodeQueryMessages.SOME_SPECIFIED_TAG_COLUMNS_ARE_NOT_EXIST_IN);
     }
     if (foundTagColumns + (generateNewTimeColumn ? 0 : 1) == columns.size()) {
-      throw new SemanticException("Number of field columns should be larger than 0.");
+      throw new SemanticException(
+          DataNodeQueryMessages.NUMBER_OF_FIELD_COLUMNS_SHOULD_BE_LARGER_THAN);
     }
   }
 

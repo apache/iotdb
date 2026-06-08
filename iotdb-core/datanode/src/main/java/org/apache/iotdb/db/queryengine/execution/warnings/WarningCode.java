@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.warnings;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -29,7 +31,7 @@ public class WarningCode {
 
   public WarningCode(int code, String name) {
     if (code < 0) {
-      throw new IllegalArgumentException("code is negative");
+      throw new IllegalArgumentException(DataNodeQueryMessages.CODE_IS_NEGATIVE);
     }
     this.code = code;
     this.name = requireNonNull(name, "name is null");

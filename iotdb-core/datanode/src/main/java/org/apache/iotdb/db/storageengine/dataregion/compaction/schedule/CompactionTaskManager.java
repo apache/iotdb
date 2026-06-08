@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -125,7 +126,7 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
-    logger.info("Compaction task manager started.");
+    logger.info(StorageEngineMessages.COMPACTION_TASK_MANAGER_STARTED);
   }
 
   public boolean isInit() {
@@ -157,7 +158,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
-      logger.info("Waiting for task taskExecutionPool to shut down");
+      logger.info(StorageEngineMessages.WAITING_TASK_EXECUTION_POOL_SHUTDOWN);
       waitTermination();
       storageGroupTasks.clear();
       candidateCompactionTaskQueue.clear();
@@ -170,7 +171,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
-      logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
+      logger.info(StorageEngineMessages.WAITING_TASK_EXECUTION_POOL_SHUTDOWN_MS, milliseconds);
       waitTermination();
       storageGroupTasks.clear();
     }
@@ -192,7 +193,7 @@ public class CompactionTaskManager implements IService {
           try {
             Thread.sleep(100);
           } catch (InterruptedException e) {
-            logger.error("Interrupted when waiting all task finish", e);
+            logger.error(StorageEngineMessages.INTERRUPTED_WAITING_ALL_TASK_FINISH, e);
             break;
           }
         } else {
@@ -201,7 +202,7 @@ public class CompactionTaskManager implements IService {
       }
       storageGroupTasks.clear();
       taskExecutionPool = tmpThreadPool;
-      logger.info("All compaction task finish");
+      logger.info(StorageEngineMessages.ALL_COMPACTION_TASK_FINISH);
     }
   }
 
@@ -217,14 +218,14 @@ public class CompactionTaskManager implements IService {
       timeMillis += 200;
       long time = System.currentTimeMillis() - startTime;
       if (timeMillis % 60_000 == 0) {
-        logger.info("CompactionManager has wait for {} seconds to stop", time / 1000);
+        logger.info(StorageEngineMessages.COMPACTION_MANAGER_WAIT_TO_STOP, time / 1000);
       }
     }
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
     init = false;
     storageGroupTasks.clear();
-    logger.info("CompactionManager stopped");
+    logger.info(StorageEngineMessages.COMPACTION_MANAGER_STOPPED);
   }
 
   private void awaitTermination(ExecutorService service, long milliseconds) {
@@ -232,7 +233,7 @@ public class CompactionTaskManager implements IService {
       service.shutdownNow();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      logger.warn("CompactionThreadPool can not be closed in {} ms", milliseconds);
+      logger.warn(StorageEngineMessages.COMPACTION_THREAD_POOL_CANNOT_CLOSE, milliseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();
@@ -468,7 +469,7 @@ public class CompactionTaskManager implements IService {
     }
     init = true;
     stopAllCompactionWorker = false;
-    logger.info("Compaction task manager started.");
+    logger.info(StorageEngineMessages.COMPACTION_TASK_MANAGER_STARTED);
   }
 
   @TestOnly
@@ -485,7 +486,7 @@ public class CompactionTaskManager implements IService {
         || !storageGroupTasks.get(regionWithSG).containsKey(task)) {
       Thread.sleep(10);
       if (System.currentTimeMillis() - startTime > 20_000) {
-        throw new TimeoutException("Timeout when waiting for task future");
+        throw new TimeoutException(StorageEngineMessages.TIMEOUT_WAITING_TASK_FUTURE);
       }
     }
     return storageGroupTasks.get(regionWithSG).get(task);

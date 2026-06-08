@@ -31,6 +31,7 @@
 #include <thread>
 #include <stdexcept>
 #include <cstdlib>
+#include <cstdio>
 #include <future>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <thrift/protocol/TBinaryProtocol.h>
@@ -135,7 +136,7 @@ public:
   size_t rowSize;      //the number of rows to include in this tablet
   size_t maxRowNumber; // the maximum number of rows for this tablet
   bool isAligned;      // whether this tablet store data of aligned timeseries or not
-  std::vector<int> idColumnIndexes;
+  std::vector<int> tagColumnIndexes;
 
   Tablet() = default;
 
@@ -183,10 +184,10 @@ public:
     // create value columns
     values.resize(schemas.size());
     createColumns();
-    // init idColumnIndexs
+    // init tagColumnIndexes
     for (size_t i = 0; i < this->columnTypes.size(); i++) {
       if (this->columnTypes[i] == ColumnCategory::TAG) {
-        idColumnIndexes.push_back(i);
+        tagColumnIndexes.push_back(i);
       }
     }
     // create bitMaps
@@ -205,7 +206,7 @@ public:
       : deviceId(other.deviceId), schemas(other.schemas), schemaNameIndex(other.schemaNameIndex),
         columnTypes(other.columnTypes), timestamps(other.timestamps),
         maxRowNumber(other.maxRowNumber), bitMaps(other.bitMaps), rowSize(other.rowSize),
-        isAligned(other.isAligned), idColumnIndexes(other.idColumnIndexes) {
+        isAligned(other.isAligned), tagColumnIndexes(other.tagColumnIndexes) {
     values.resize(other.values.size());
     for (size_t i = 0; i < other.values.size(); ++i) {
       if (!other.values[i])
@@ -226,7 +227,7 @@ public:
       maxRowNumber = other.maxRowNumber;
       rowSize = other.rowSize;
       isAligned = other.isAligned;
-      idColumnIndexes = other.idColumnIndexes;
+      tagColumnIndexes = other.tagColumnIndexes;
       bitMaps = other.bitMaps;
       values.resize(other.values.size());
       for (size_t i = 0; i < other.values.size(); ++i) {
@@ -258,16 +259,17 @@ public:
   template <typename T> void addValue(size_t schemaId, size_t rowIndex, const T& value) {
     if (schemaId >= schemas.size()) {
       char tmpStr[100];
-      sprintf(tmpStr,
-              "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.",
-              schemaId, schemas.size());
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, schemas.size()=%ld.",
+               (long)schemaId, (long)schemas.size());
       throw std::out_of_range(tmpStr);
     }
 
     if (rowIndex >= rowSize) {
       char tmpStr[100];
-      sprintf(tmpStr, "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.",
-              rowIndex, rowSize);
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, rowSize.size()=%ld.",
+               (long)rowIndex, (long)rowSize);
       throw std::out_of_range(tmpStr);
     }
 
@@ -317,19 +319,19 @@ public:
     // Check schemaId bounds
     if (schemaId >= schemas.size()) {
       char tmpStr[100];
-      sprintf(tmpStr,
-              "Tablet::addBinaryValueWithMeta(), schemaId >= schemas.size(). schemaId=%ld, "
-              "schemas.size()=%ld.",
-              schemaId, schemas.size());
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addBinaryValueWithMeta(), schemaId >= schemas.size(). schemaId=%ld, "
+               "schemas.size()=%ld.",
+               (long)schemaId, (long)schemas.size());
       throw std::out_of_range(tmpStr);
     }
 
     // Check rowIndex bounds
     if (rowIndex >= rowSize) {
       char tmpStr[100];
-      sprintf(tmpStr,
-              "Tablet::addBinaryValueWithMeta(), rowIndex >= rowSize. rowIndex=%ld, rowSize=%ld.",
-              rowIndex, rowSize);
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addBinaryValueWithMeta(), rowIndex >= rowSize. rowIndex=%ld, rowSize=%ld.",
+               (long)rowIndex, (long)rowSize);
       throw std::out_of_range(tmpStr);
     }
 
@@ -1066,19 +1068,19 @@ void Session::insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, 
   auto req = insertGroup.begin()->second;
   try {
     insertConsumer(connection, req);
-  } catch (RedirectException e) {
+  } catch (const RedirectException& e) {
     for (const auto& deviceEndPoint : e.deviceEndPointMap) {
       handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
     }
-  } catch (IoTDBConnectionException e) {
+  } catch (const IoTDBConnectionException& e) {
     if (endPointToSessionConnection.size() > 1) {
       removeBrokenSessionConnection(connection);
       try {
         insertConsumer(defaultSessionConnection_, req);
-      } catch (RedirectException e) {
+      } catch (const RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }

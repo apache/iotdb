@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Singl
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -75,6 +76,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -87,7 +89,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
@@ -107,7 +108,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -187,7 +187,7 @@ public class TableDistributedPlanGenerator
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
-      throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+      throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
     }
   }
 
@@ -321,7 +321,22 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
+    boolean containsDiff =
+        node.getAssignments().getMap().values().stream()
+            .anyMatch(expression -> containsDiffFunction(expression));
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     boolean containAllSortItem = false;
     if (childOrdering != null) {
@@ -378,9 +393,6 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    boolean containsDiff =
-        node.getAssignments().getMap().values().stream()
-            .anyMatch(PushPredicateIntoTableScan::containsDiffFunction);
     if (containsDiff) {
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -583,7 +595,20 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
+    boolean containsDiff = containsDiffFunction(node.getPredicate());
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -594,7 +619,7 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    if (containsDiffFunction(node.getPredicate())) {
+    if (containsDiff) {
       node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     }
@@ -651,7 +676,8 @@ public class TableDistributedPlanGenerator
           throw new IllegalStateException(
               "RIGHT Join should be transformed to LEFT Join in previous process");
         default:
-          throw new UnsupportedOperationException("Unsupported Join Type: " + node.getJoinType());
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
       }
     }
     return Collections.singletonList(node);
@@ -1318,7 +1344,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
@@ -1500,7 +1527,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }

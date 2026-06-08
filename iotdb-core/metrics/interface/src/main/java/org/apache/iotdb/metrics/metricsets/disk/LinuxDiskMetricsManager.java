@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.disk;
 
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.i18n.MetricsMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -348,7 +349,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           diskSectorSizeMap.put(diskId, DEFAULT_SECTOR_SIZE);
         }
       } catch (IOException e) {
-        LOGGER.warn("Failed to get the sector size of {}", diskId, e);
+        LOGGER.warn(MetricsMessages.FAILED_TO_GET_SECTOR_SIZE, diskId, e);
         // use DEFAULT_SECTOR_SIZE bytes as default value
         diskSectorSizeMap.put(diskId, DEFAULT_SECTOR_SIZE);
       }
@@ -366,7 +367,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private void updateDiskInfo() {
     File diskStatsFile = new File(DISK_STATUS_FILE_PATH);
     if (!diskStatsFile.exists()) {
-      LOGGER.warn("Cannot find disk io status file {}", DISK_STATUS_FILE_PATH);
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE, DISK_STATUS_FILE_PATH);
       return;
     }
 
@@ -419,7 +420,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Meets error while updating disk io info", e);
+      LOGGER.error(MetricsMessages.ERROR_UPDATING_DISK_IO_INFO, e);
     }
   }
 
@@ -444,7 +445,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private void updateProcessInfo() {
     File processStatInfoFile = new File(processIoStatusPath);
     if (!processStatInfoFile.exists()) {
-      LOGGER.warn("Cannot find process io status file {}", processIoStatusPath);
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE, processIoStatusPath);
     }
 
     try (Scanner processStatsScanner =
@@ -466,7 +467,7 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Meets error while updating process io info", e);
+      LOGGER.error(MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO, e);
     }
   }
 

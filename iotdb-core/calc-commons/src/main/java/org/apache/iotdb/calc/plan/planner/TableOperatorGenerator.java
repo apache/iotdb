@@ -92,6 +92,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.calc.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -175,12 +176,14 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
@@ -212,6 +215,7 @@ import static org.apache.iotdb.calc.execution.operator.source.relational.aggrega
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.IDENTITY_FILL;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getLinearFill;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.getPreviousFill;
@@ -246,7 +250,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitPlan(PlanNode node, C context) {
-    throw new UnsupportedOperationException("should call the concrete visitXX() method");
+    throw new UnsupportedOperationException(CalcMessages.SHOULD_CALL_THE_CONCRETE_VISIT_XX_METHOD);
   }
 
   public static Map<Symbol, List<InputLocation>> makeLayout(final List<PlanNode> children) {
@@ -975,7 +979,8 @@ public abstract class TableOperatorGenerator<
     for (int i = 0; i < equiSize; i++) {
       Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(i).getLeft());
       if (leftJoinKeyPosition == null) {
-        throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
+        throw new IllegalStateException(
+            CalcMessages.LEFT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_LEFT_JOIN_KEY);
       }
       leftJoinKeyPositions[i] = leftJoinKeyPosition;
     }
@@ -985,7 +990,8 @@ public abstract class TableOperatorGenerator<
     for (int i = 0; i < equiSize; i++) {
       Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(i).getRight());
       if (rightJoinKeyPosition == null) {
-        throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
+        throw new IllegalStateException(
+            CalcMessages.RIGHT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_RIGHT_JOIN_KEY);
       }
       rightJoinKeyPositions[i] = rightJoinKeyPosition;
 
@@ -1012,11 +1018,11 @@ public abstract class TableOperatorGenerator<
       rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
 
       if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
-        throw new IllegalStateException("Type of left ASOF Join key is not TIMESTAMP");
+        throw new IllegalStateException(CalcMessages.TYPE_OF_LEFT_ASOF_JOIN_KEY_IS_NOT_TIMESTAMP);
       }
       if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getRight())
           != TIMESTAMP) {
-        throw new IllegalStateException("Type of right ASOF Join key is not TIMESTAMP");
+        throw new IllegalStateException(CalcMessages.TYPE_OF_RIGHT_ASOF_JOIN_KEY_IS_NOT_TIMESTAMP);
       }
 
       ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
@@ -1060,7 +1066,8 @@ public abstract class TableOperatorGenerator<
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
       } else {
-        throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
+        throw new IllegalStateException(
+            CalcMessages.UNSUPPORTED_ASOF_JOIN_TYPE + node.getJoinType());
       }
     }
 
@@ -1109,7 +1116,7 @@ public abstract class TableOperatorGenerator<
           dataTypes);
     }
 
-    throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+    throw new IllegalStateException(CalcMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
   }
 
   protected void semanticCheckForJoin(JoinNode node) {
@@ -1157,7 +1164,7 @@ public abstract class TableOperatorGenerator<
         return (inputColumn, rowIndex) ->
             new BinaryColumn(1, Optional.empty(), new Binary[] {inputColumn.getBinary(rowIndex)});
       default:
-        throw new UnsupportedOperationException("Unsupported data type: " + joinKeyType);
+        throw new UnsupportedOperationException(CalcMessages.UNSUPPORTED_DATA_TYPE + joinKeyType);
     }
   }
 
@@ -2090,7 +2097,8 @@ public abstract class TableOperatorGenerator<
             WindowFunctionFactory.createBuiltinWindowFunction(
                 functionName, argumentChannels, function.isIgnoreNulls());
       } else {
-        throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_FUNCTION_KIND + functionKind);
       }
 
       windowFunctions.add(windowFunction);
@@ -2174,8 +2182,22 @@ public abstract class TableOperatorGenerator<
             context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
 
     // Currently we only support empty values operator
-    assert node.getRowCount() == 0;
-    return new ValuesOperator(operatorContext, ImmutableList.of());
+    if (node.getRowCount() == 0) {
+      return new ValuesOperator(operatorContext, ImmutableList.of());
+    }
+
+    // No-FROM query (e.g. SELECT 1+1): produce rowCount rows with no value columns so that the
+    // upstream ProjectNode can evaluate expressions once per row.
+    if (node.getRowCount() == 1) {
+      TsBlock oneRowWithoutColumnsBlock =
+          new TsBlock(
+              node.getRowCount(),
+              new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, node.getRowCount()),
+              new Column[0]);
+      return new ValuesOperator(operatorContext, ImmutableList.of(oneRowWithoutColumnsBlock));
+    } else {
+      throw new IllegalArgumentException("Row count must be 0 or 1");
+    }
   }
 
   @Override

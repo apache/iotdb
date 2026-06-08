@@ -127,7 +127,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
             new TimeValuePair[] {
               Objects.nonNull(value)
                   ? new TimeValuePair(time, value)
-                  : needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null
+                  : needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null
             },
             fullPath.isUnderAlignedEntity(),
             new IMeasurementSchema[] {fullPath.getMeasurementSchema()});
@@ -139,7 +139,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
           seriesScanInfo.right = new TimeValuePair(time, value);
         } else {
           seriesScanInfo.right =
-              needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null;
+              needUpdateNullEntry ? TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN : null;
         }
       }
 

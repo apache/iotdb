@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class PipeTsFileResourceSegmentLock {
                       SEGMENT_LOCK_MAX_SIZE);
             } catch (final Exception e) {
               LOGGER.warn(
-                  "Cannot get data region ids, use default lock segment size: {}", lockSegmentSize);
+                  DataNodePipeMessages.CANNOT_GET_DATA_REGION_IDS_USE_DEFAULT, lockSegmentSize);
               lockSegmentSize = SEGMENT_LOCK_MIN_SIZE;
             }
           }

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
@@ -270,7 +271,8 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       index++;
       deduplicatedMeasurements.add(measurement);
       if (deduplicatedMeasurements.size() != index) {
-        throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
+        throw new SemanticException(
+            DataNodeQueryMessages.INSERTION_CONTAINS_DUPLICATED_MEASUREMENT + measurement);
       }
     }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -49,7 +50,7 @@ public class FloatLiteral extends Literal {
 
   public FloatLiteral(NodeLocation location, String value) {
     super(null);
-    throw new SemanticException("Currently the FloatLiteral cannot be created from NodeLocation");
+    throw new SemanticException(QueryMessages.FLOAT_LITERAL_CANNOT_CREATE_FROM_LOCATION);
   }
 
   public float getValue() {

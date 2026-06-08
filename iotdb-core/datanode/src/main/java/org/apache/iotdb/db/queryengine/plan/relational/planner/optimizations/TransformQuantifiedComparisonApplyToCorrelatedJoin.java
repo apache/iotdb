@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter;
@@ -298,7 +299,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return false;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         case ANY:
         case SOME:
@@ -310,7 +311,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
             case GREATER_THAN_OR_EQUAL:
               return true;
             default:
-              throw new IllegalArgumentException("Unexpected value: " + operator);
+              throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_VALUE + operator);
           }
         default:
           throw new IllegalArgumentException(

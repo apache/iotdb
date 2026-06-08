@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -196,6 +197,10 @@ public class RestApiServiceImpl extends RestApiService {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
+            if (tvPair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || tvPair.getValue() == null) {
+              continue;
+            }
             valueList.add(tvPair.getValue().getStringValue());
             dataTypeList.add(tvPair.getValue().getDataType().name());
             targetDataSet.addTimestampsItem(tvPair.getTimestamp());

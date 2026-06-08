@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -239,7 +240,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.SERVICES:
           return new ServicesSupplier(dataTypes, userEntity);
         default:
-          throw new UnsupportedOperationException("Unknown table: " + tableName);
+          throw new UnsupportedOperationException(DataNodeQueryMessages.UNKNOWN_TABLE + tableName);
       }
     } catch (final Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -1422,12 +1423,13 @@ public class InformationSchemaContentSupplierFactory {
         }
         totalValidTableCount++;
         if (pushDownFilter != null) {
-          Object[] row = new Object[5];
+          Object[] row = new Object[6];
           row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
           row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
-          row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-          row[3] = dataRegion.getDataRegionId();
-          row[4] = timePartition;
+          row[2] = new Binary(getTableTypeName(tTableInfo), TSFileConfig.STRING_CHARSET);
+          row[3] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+          row[4] = dataRegion.getDataRegionId();
+          row[5] = timePartition;
           if (!pushDownFilter.satisfyRow(0, row)) {
             continue;
           }
@@ -1444,6 +1446,25 @@ public class InformationSchemaContentSupplierFactory {
       }
       currentDatabaseOnlyHasOneTable = totalValidTableCount == 1;
       return tablesToScan;
+    }
+
+    private String getTableTypeName(final TTableInfo tableInfo) {
+      if (tableInfo.isSetType()) {
+        return TableType.values()[tableInfo.getType()].getName();
+      }
+      return TableType.BASE_TABLE.getName();
+    }
+
+    private String getTableTypeName(final String databaseName, final String tableName) {
+      final List<TTableInfo> tableInfos = databaseTableInfoMap.get(databaseName);
+      if (tableInfos != null) {
+        for (TTableInfo tableInfo : tableInfos) {
+          if (tableName.equals(tableInfo.getTableName())) {
+            return getTableTypeName(tableInfo);
+          }
+        }
+      }
+      return TableType.BASE_TABLE.getName();
     }
 
     @Override
@@ -1533,10 +1554,14 @@ public class InformationSchemaContentSupplierFactory {
           columns[0].writeBinary(
               new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
           columns[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
-          columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-          columns[3].writeInt(currentDataRegion.getDataRegionId());
-          columns[4].writeLong(timePartition);
-          columns[5].writeLong(size);
+          columns[2].writeBinary(
+              new Binary(
+                  getTableTypeName(currentDataRegion.getDatabaseName(), tableName),
+                  TSFileConfig.STRING_CHARSET));
+          columns[3].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+          columns[4].writeInt(currentDataRegion.getDataRegionId());
+          columns[5].writeLong(timePartition);
+          columns[6].writeLong(size);
           builder.declarePosition();
         }
       }
@@ -1557,7 +1582,7 @@ public class InformationSchemaContentSupplierFactory {
         currentDataRegionCacheReader.close();
         currentDataRegionCacheReader = null;
       } catch (IOException e) {
-        LOGGER.error("Failed to close reader in TableDiskUsageSupplier", e);
+        LOGGER.error(DataNodeQueryMessages.FAILED_TO_CLOSE_READER_IN_TABLEDISKUSAGESUPPLIER, e);
       }
     }
   }

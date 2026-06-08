@@ -28,7 +28,10 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -484,6 +487,76 @@ public class IoTDBLoadTsFileIT {
         String.format("create table %s(%s)", tableName, String.join(", ", columns));
     LOGGER.info("schema execute: {}", tableCreation);
     return tableCreation;
+  }
+
+  @Test
+  public void testLoadWithAllFieldsNullRows() throws Exception {
+    final List<IMeasurementSchema> schemas =
+        Arrays.asList(
+            new MeasurementSchema("f1", TSDataType.INT32),
+            new MeasurementSchema("f2", TSDataType.INT64));
+    final List<ColumnCategory> columnCategories =
+        Arrays.asList(ColumnCategory.FIELD, ColumnCategory.FIELD);
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+    final int totalRows = 20;
+
+    try (final TsFileWriter tsFileWriter = new TsFileWriter(file)) {
+      tsFileWriter.registerTableSchema(
+          new TableSchema(SchemaConfig.TABLE_0, schemas, columnCategories));
+
+      final List<String> columnNames = Arrays.asList("f1", "f2");
+      final List<TSDataType> dataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT64);
+      final Tablet tablet =
+          new Tablet(SchemaConfig.TABLE_0, columnNames, dataTypes, columnCategories);
+
+      for (int r = 0; r < totalRows; r++) {
+        final int row = tablet.getRowSize();
+        tablet.addTimestamp(row, (r + 1) * 1000L);
+      }
+      tsFileWriter.writeTable(tablet);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(totalRows, resultSet.getLong(1));
+      }
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              String.format("select count(f1), count(f2) from %s", SchemaConfig.TABLE_0))) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(0, resultSet.getLong(1));
+        Assert.assertEquals(0, resultSet.getLong(2));
+      }
+
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              String.format("select time, f1, f2 from %s order by time", SchemaConfig.TABLE_0))) {
+        int count = 0;
+        while (resultSet.next()) {
+          final long time = resultSet.getLong("time");
+          final int expectedTime = (count + 1) * 1000;
+          Assert.assertEquals(expectedTime, time);
+          resultSet.getInt("f1");
+          Assert.assertTrue(resultSet.wasNull());
+          resultSet.getLong("f2");
+          Assert.assertTrue(resultSet.wasNull());
+          count++;
+        }
+        Assert.assertEquals(totalRows, count);
+      }
+    }
   }
 
   private static class SchemaConfig {

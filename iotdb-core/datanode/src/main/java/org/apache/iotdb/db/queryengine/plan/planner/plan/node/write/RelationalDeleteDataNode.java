@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -129,7 +130,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
     RelationalDeleteDataNode deleteDataNode =
         new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -144,7 +145,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
     RelationalDeleteDataNode deleteDataNode =
         new RelationalDeleteDataNode(new PlanNodeId(""), modEntries, databaseName);
-    deleteDataNode.setSearchIndex(searchIndex);
+    deleteDataNode.setSearchIndexFromWAL(searchIndex);
     return deleteDataNode;
   }
 
@@ -224,15 +225,19 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(PlanNodeType.RELATIONAL_DELETE_DATA.getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     try {
       ReadWriteForEncodingUtils.writeVarInt(modEntries.size(), buffer);
       for (TableDeletionEntry modEntry : modEntries) {
         modEntry.serialize(buffer);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize modEntry to WAL", e);
+      LOGGER.error(DataNodeQueryMessages.FAILED_TO_SERIALIZE_MODENTRY_TO_WAL, e);
     }
   }
 
@@ -323,7 +328,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
                 this.getDatabaseName() != null
                     && !this.getDatabaseName()
                         .equals(relationalDeleteDataNode.getDatabaseName()))) {
-      throw new IllegalArgumentException("All database name need to be same");
+      throw new IllegalArgumentException(DataNodeQueryMessages.ALL_DATABASE_NAME_NEED_TO_BE_SAME);
     }
     List<TableDeletionEntry> allTableDeletionEntries =
         relationalDeleteDataNodeList.stream()

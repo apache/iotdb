@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +38,10 @@ public class ThreadUtils {
       pool.shutdownNow();
       try {
         if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {
-          logger.warn("Waiting {} to be terminated is timeout", poolName.getName());
+          logger.warn(DataNodeMiscMessages.WAITING_TERMINATED_TIMEOUT, poolName.getName());
         }
       } catch (InterruptedException e) {
-        logger.warn("{} still doesn't exit after 60s", poolName.getName());
+        logger.warn(DataNodeMiscMessages.POOL_NOT_EXIT_AFTER_TIMEOUT, poolName.getName());
         Thread.currentThread().interrupt();
         throw new StorageEngineFailureException(
             String.format("StorageEngine failed to stop because of %s.", poolName.getName()), e);

@@ -55,6 +55,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALCULATION
     | CALL
     | CASE
     | CAST
@@ -181,6 +182,8 @@ keyWords
     | PIPESINKTYPE
     | PIPEPLUGIN
     | PIPEPLUGINS
+    | POINT
+    | POINTS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST

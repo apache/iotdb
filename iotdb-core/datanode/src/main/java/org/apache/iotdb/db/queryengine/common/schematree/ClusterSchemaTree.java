@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
@@ -662,7 +663,8 @@ public class ClusterSchemaTree implements ISchemaTree {
         return database;
       }
     }
-    throw new SemanticException("No matched database. Please check the path " + deviceID);
+    throw new SemanticException(
+        DataNodeQueryMessages.NO_MATCHED_DATABASE_PLEASE_CHECK_THE_PATH + deviceID);
   }
 
   @Override

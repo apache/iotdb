@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 
 import org.slf4j.Logger;
@@ -96,7 +97,7 @@ public class ConfigurationFileUtils {
     try {
       loadConfigurationDefaultValueFromTemplate();
     } catch (IOException e) {
-      logger.error("Failed to update applied properties", e);
+      logger.error(ConfigMessages.FAILED_TO_UPDATE_APPLIED_PROPERTIES, e);
       return;
     }
     for (Map.Entry<Object, Object> entry : properties.entrySet()) {
@@ -237,7 +238,7 @@ public class ConfigurationFileUtils {
     try {
       configuration2DefaultValue = getConfigurationItemsFromTemplate(false);
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
   }
@@ -286,7 +287,7 @@ public class ConfigurationFileUtils {
         content.append(line).append(lineSeparator);
       }
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
     return content.toString();
@@ -369,7 +370,7 @@ public class ConfigurationFileUtils {
         // No configuration needs to be modified
         return;
       }
-      logger.info("Updating configuration file {}", file.getAbsolutePath());
+      logger.info(ConfigMessages.UPDATING_CONFIGURATION_FILE, file.getAbsolutePath());
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
         // Properties.store is not used as Properties.store may generate '\' automatically
@@ -412,7 +413,7 @@ public class ConfigurationFileUtils {
       Thread.sleep(waitTimeMillsPerCheck);
     }
     logger.warn(
-        "Waiting for {} seconds to acquire configuration file update lock."
+        ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK
             + " There may have been an unexpected interruption in the last"
             + " configuration file update. Ignore temporary file {}",
         totalWaitTime / 1000,
@@ -511,7 +512,7 @@ public class ConfigurationFileUtils {
         }
       }
     } catch (IOException e) {
-      logger.warn("Failed to read configuration template", e);
+      logger.warn(ConfigMessages.FAILED_TO_READ_CONFIGURATION_TEMPLATE, e);
       throw e;
     }
     return items;

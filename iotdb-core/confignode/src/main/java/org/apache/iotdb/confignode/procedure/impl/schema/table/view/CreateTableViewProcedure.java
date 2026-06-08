@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.PreCreateTableViewPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.schema.TreeDeviceViewFieldDetector;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -85,7 +86,7 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
                 new ProcedureException(
                     new IoTDBException(
                         String.format(
-                            "Table '%s.%s' already exists.", database, table.getTableName()),
+                            ProcedureMessages.TABLE_ALREADY_EXISTS, database, table.getTableName()),
                         TABLE_ALREADY_EXISTS.getStatusCode())));
             return;
           } else {
@@ -139,7 +140,8 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
         SchemaUtils.executeInConsensusLayer(
             new PreCreateTableViewPlan(database, oldView, oldStatus), env, LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to rollback table creation {}.{}", database, table.getTableName());
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_ROLLBACK_TABLE_CREATION, database, table.getTableName());
       setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }

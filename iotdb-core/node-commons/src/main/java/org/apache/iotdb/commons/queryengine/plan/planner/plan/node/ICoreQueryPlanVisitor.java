@@ -90,6 +90,10 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
   }
 
   // =============================== Used for Table Model ====================================
+  default R visitTableScan(TableScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   default R visitFilter(FilterNode node, C context) {
     return visitSingleChildProcess(node, context);
   }

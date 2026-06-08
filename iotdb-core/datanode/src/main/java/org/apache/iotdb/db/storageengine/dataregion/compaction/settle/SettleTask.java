@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
@@ -62,10 +63,10 @@ public class SettleTask extends WrappedRunnable {
     TsFileAndModSettleTool tsFileAndModSettleTool = TsFileAndModSettleTool.getInstance();
     try {
       if (tsFileAndModSettleTool.isSettledFileGenerated(resourceToBeSettled)) {
-        logger.info("find settled file for {}", resourceToBeSettled.getTsFile());
+        logger.info(StorageEngineMessages.FIND_SETTLED_FILE, resourceToBeSettled.getTsFile());
         settledResources = tsFileAndModSettleTool.findSettledFile(resourceToBeSettled);
       } else {
-        logger.info("generate settled file for {}", resourceToBeSettled.getTsFile());
+        logger.info(StorageEngineMessages.GENERATE_SETTLED_FILE, resourceToBeSettled.getTsFile());
         // Write Settle Log, Status 1
         SettleLog.writeSettleLog(
             resourceToBeSettled.getTsFile().getAbsolutePath()
@@ -103,7 +104,7 @@ public class SettleTask extends WrappedRunnable {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() == 0) {
       SettleLog.closeLogWriter();
       SettleService.getINSTANCE().stop();
-      logger.info("All files settled successfully! ");
+      logger.info(StorageEngineMessages.ALL_FILES_SETTLED_SUCCESSFULLY);
     }
   }
 }

@@ -41,9 +41,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -73,10 +73,10 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBRestServiceIT {
 
-  private int port = 18080;
+  private static int port = 18080;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
@@ -85,9 +85,35 @@ public class IoTDBRestServiceIT {
     port = portConflictDataNodeWrapper.getRestServicePort();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupAllData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.**");
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void dropUserQuietly(String username) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      executeQuietly(statement, "DROP USER " + username);
+    } catch (SQLException ignored) {
+      // ignore
+    }
   }
 
   public static String getAuthorization(String username, String password) {
@@ -258,62 +284,66 @@ public class IoTDBRestServiceIT {
   public void errorInsertRecords() throws SQLException {
     CloseableHttpResponse response = null;
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    for (int i = 0; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
-      DataNodeWrapper wrapper = EnvFactory.getEnv().getDataNodeWrapperList().get(i);
-      try {
-        HttpPost httpPost =
-            getHttpPost(
-                "http://"
-                    + wrapper.getIp()
-                    + ":"
-                    + wrapper.getRestServicePort()
-                    + "/rest/v2/insertRecords");
-        String json =
-            "{\"timestamps\":["
-                + i
-                + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
-        httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-        for (int j = 0; j < 30; j++) {
-          try {
-            response = httpClient.execute(httpPost);
-            break;
-          } catch (Exception e) {
-            if (i == 29) {
-              throw e;
-            }
-            try {
-              TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException ex) {
-              throw new RuntimeException(ex);
-            }
-          }
-        }
-        HttpEntity responseEntity = response.getEntity();
-        String message = EntityUtils.toString(responseEntity, "utf-8");
-        JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-        assertEquals(507, Integer.parseInt(result.get("code").toString()));
-      } catch (IOException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      } finally {
+    try {
+      for (int i = 0; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
+        DataNodeWrapper wrapper = EnvFactory.getEnv().getDataNodeWrapperList().get(i);
         try {
-          if (response != null) {
-            response.close();
+          HttpPost httpPost =
+              getHttpPost(
+                  "http://"
+                      + wrapper.getIp()
+                      + ":"
+                      + wrapper.getRestServicePort()
+                      + "/rest/v2/insertRecords");
+          String json =
+              "{\"timestamps\":["
+                  + i
+                  + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
+          httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+          for (int j = 0; j < 30; j++) {
+            try {
+              response = httpClient.execute(httpPost);
+              break;
+            } catch (Exception e) {
+              if (i == 29) {
+                throw e;
+              }
+              try {
+                TimeUnit.SECONDS.sleep(1);
+              } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+              }
+            }
           }
+          HttpEntity responseEntity = response.getEntity();
+          String message = EntityUtils.toString(responseEntity, "utf-8");
+          JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+          assertEquals(507, Integer.parseInt(result.get("code").toString()));
         } catch (IOException e) {
           e.printStackTrace();
           fail(e.getMessage());
+        } finally {
+          try {
+            if (response != null) {
+              response.close();
+            }
+          } catch (IOException e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+          }
         }
       }
-    }
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select count(s33) from root.s1");
-      resultSet.next();
-      assertEquals(
-          EnvFactory.getEnv().getDataNodeWrapperList().size(),
-          resultSet.getInt("count(root.s1.s33)"));
+        ResultSet resultSet = statement.executeQuery("select count(s33) from root.s1");
+        resultSet.next();
+        assertEquals(
+            EnvFactory.getEnv().getDataNodeWrapperList().size(),
+            resultSet.getInt("count(root.s1.s33)"));
+      }
+    } finally {
+      cleanupAllData();
     }
   }
 
@@ -460,353 +490,363 @@ public class IoTDBRestServiceIT {
   @Test
   public void insertAndQuery() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-    query(httpClient);
-    queryGroupByLevel(httpClient);
-    queryRowLimit(httpClient);
-    queryShowChildPaths(httpClient);
-    queryShowNodes(httpClient);
-    showAllTTL(httpClient);
-    showDatabase(httpClient);
-    showFunctions(httpClient);
-    showTimeseries(httpClient);
-
-    showLastTimeseries(httpClient);
-    countTimeseries(httpClient);
-    countNodes(httpClient);
-    showDevices(httpClient);
-
-    showDevicesWithStroage(httpClient);
-    listUser(httpClient);
-    selectCount(httpClient);
-    selectLast(httpClient);
-    queryWithValidTimeZoneHeader(httpClient);
-    nonQueryWithValidTimeZoneHeader(httpClient);
-    queryWithInvalidTimeZoneHeader(httpClient);
-    nonQueryWithValidTimeZoneHeaderTableV1(httpClient);
-    queryWithValidTimeZoneHeaderTableV1(httpClient);
-    queryWithInvalidTimeZoneHeaderTableV1(httpClient);
-
-    queryV2(httpClient);
-    selectFastLast(httpClient);
-    queryGroupByLevelV2(httpClient);
-    queryRowLimitV2(httpClient);
-    queryShowChildPathsV2(httpClient);
-    queryShowNodesV2(httpClient);
-    showAllTTLV2(httpClient);
-    showDatabaseV2(httpClient);
-    showFunctionsV2(httpClient);
-    showTimeseriesV2(httpClient);
-
-    showLastTimeseriesV2(httpClient);
-    countTimeseriesV2(httpClient);
-    countNodesV2(httpClient);
-    showDevicesV2(httpClient);
-
-    showDevicesWithStroageV2(httpClient);
-    listUserV2(httpClient);
-    selectCountV2(httpClient);
-    selectLastV2(httpClient);
-    queryWithValidTimeZoneHeaderV2(httpClient);
-    nonQueryWithValidTimeZoneHeaderV2(httpClient);
-    queryWithInvalidTimeZoneHeaderV2(httpClient);
-    perData(httpClient);
-    List<String> insertTablet_right_json_list = new ArrayList<>();
-    List<String> insertTablet_error_json_list = new ArrayList<>();
-
-    List<String> insertRecords_right_json_list = new ArrayList<>();
-    List<String> insertRecords_error_json_list = new ArrayList<>();
-
-    List<String> nonQuery_right_json_list = new ArrayList<>();
-    List<String> nonQuery_error_json_list = new ArrayList<>();
-
-    List<String> insertTablet_right_json_list_v2 = new ArrayList<>();
-    List<String> insertTablet_error_json_list_v2 = new ArrayList<>();
-
-    List<String> insertRecords_right_json_list_v2 = new ArrayList<>();
-    List<String> insertRecords_error_json_list_v2 = new ArrayList<>();
-
-    List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
-    List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
-    for (int i = 0; i <= 1; i++) {
-      boolean isAligned = false;
-      if (i == 0) {
-        isAligned = true;
-      }
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg22"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg24"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.sg25"
-              + i
-              + "\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.sg36"
-              + i
-              + "\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.`sg46"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
-              + isAligned
-              + ",\"deviceId\":\"root.`3333a"
-              + i
-              + "`\"}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"isAligned\":"
-              + isAligned
-              + "}");
-
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
-
-      nonQuery_error_json_list.add("{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
-      nonQuery_error_json_list.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_error_json_list.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_error_json_list.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
-
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":\""
-              + isAligned
-              + "\",\"device\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg22"
-              + i
-              + "\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg24"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg25"
-              + i
-              + "\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.sg26"
-              + i
-              + "\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`sg26"
-              + i
-              + "`\"}");
-      insertTablet_error_json_list_v2.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
-              + isAligned
-              + ",\"device\":\"root.`3333a"
-              + i
-              + "`\"}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_right_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-      insertRecords_error_json_list_v2.add(
-          "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
-              + isAligned
-              + "}");
-
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add(
-          "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
-
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add(
-          "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
-      nonQuery_error_json_list_v2.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
-    }
-    HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
-    HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
-
-    List<HttpPost> httpPosts = new ArrayList<>();
-    httpPosts.add(httpPost);
-    httpPosts.add(httpPost1);
-    for (HttpPost hp : httpPosts) {
-      for (String json : insertTablet_right_json_list) {
-        rightInsertTablet(httpClient, json, hp);
-      }
-      for (String json : insertTablet_error_json_list) {
-        errorInsertTablet(json, hp);
-      }
-    }
-
-    HttpPost httpPost3 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    HttpPost httpPost4 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
-    List<HttpPost> httpPosts1 = new ArrayList<>();
-    httpPosts1.add(httpPost3);
-    httpPosts1.add(httpPost4);
-
-    for (HttpPost hp : httpPosts1) {
-      for (String json : nonQuery_right_json_list) {
-        nonQuery(httpClient, json, hp);
-      }
-      for (String json : nonQuery_error_json_list) {
-        errorNonQuery(httpClient, json, hp);
-      }
-    }
-
-    HttpPost httpPost5 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
-    HttpPost httpPost6 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
-    List<HttpPost> httpPosts2 = new ArrayList<>();
-    httpPosts2.add(httpPost5);
-    httpPosts2.add(httpPost6);
-
-    HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
-    HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
-
-    List<HttpPost> httpPostsV2 = new ArrayList<>();
-    httpPostsV2.add(httpPostV2);
-    httpPostsV2.add(httpPost1V2);
-    for (HttpPost hp : httpPostsV2) {
-      for (String json : insertTablet_right_json_list_v2) {
-        rightInsertTablet(httpClient, json, hp);
-      }
-      for (String json : insertTablet_error_json_list_v2) {
-        errorInsertTablet(json, hp);
-      }
-    }
-
-    HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
-    HttpPost httpPost4V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
-    List<HttpPost> httpPosts1V2 = new ArrayList<>();
-    httpPosts1V2.add(httpPost3V2);
-    httpPosts1V2.add(httpPost4V2);
-    for (HttpPost hp : httpPosts1V2) {
-      for (String json : nonQuery_right_json_list_v2) {
-        nonQuery(httpClient, json, hp);
-      }
-      for (String json : nonQuery_error_json_list_v2) {
-        errorNonQuery(httpClient, json, hp);
-      }
-    }
-
-    HttpPost httpPost5V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
-    HttpPost httpPost6V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
-    List<HttpPost> httpPosts2V2 = new ArrayList<>();
-    httpPosts2V2.add(httpPost5V2);
-    httpPosts2V2.add(httpPost6V2);
-    for (HttpPost hp : httpPosts2V2) {
-      for (String json : insertRecords_right_json_list_v2) {
-        rightInsertRecords(httpClient, json, hp);
-      }
-      for (String json : insertRecords_error_json_list_v2) {
-        errorInsertRecords(httpClient, json, hp);
-      }
-    }
-    insertDate();
     try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      rightInsertTablet(httpClient);
+      query(httpClient);
+      queryGroupByLevel(httpClient);
+      queryRowLimit(httpClient);
+      queryShowChildPaths(httpClient);
+      queryShowNodes(httpClient);
+      showAllTTL(httpClient);
+      showDatabase(httpClient);
+      showFunctions(httpClient);
+      showTimeseries(httpClient);
+
+      showLastTimeseries(httpClient);
+      countTimeseries(httpClient);
+      countNodes(httpClient);
+      showDevices(httpClient);
+
+      showDevicesWithStroage(httpClient);
+      listUser(httpClient);
+      selectCount(httpClient);
+      selectLast(httpClient);
+      queryWithValidTimeZoneHeader(httpClient);
+      nonQueryWithValidTimeZoneHeader(httpClient);
+      queryWithInvalidTimeZoneHeader(httpClient);
+      nonQueryWithValidTimeZoneHeaderTableV1(httpClient);
+      queryWithValidTimeZoneHeaderTableV1(httpClient);
+      queryWithInvalidTimeZoneHeaderTableV1(httpClient);
+
+      queryV2(httpClient);
+      selectFastLast(httpClient);
+      queryGroupByLevelV2(httpClient);
+      queryRowLimitV2(httpClient);
+      queryShowChildPathsV2(httpClient);
+      queryShowNodesV2(httpClient);
+      showAllTTLV2(httpClient);
+      showDatabaseV2(httpClient);
+      showFunctionsV2(httpClient);
+      showTimeseriesV2(httpClient);
+
+      showLastTimeseriesV2(httpClient);
+      countTimeseriesV2(httpClient);
+      countNodesV2(httpClient);
+      showDevicesV2(httpClient);
+
+      showDevicesWithStroageV2(httpClient);
+      listUserV2(httpClient);
+      selectCountV2(httpClient);
+      selectLastV2(httpClient);
+      queryWithValidTimeZoneHeaderV2(httpClient);
+      nonQueryWithValidTimeZoneHeaderV2(httpClient);
+      queryWithInvalidTimeZoneHeaderV2(httpClient);
+      perData(httpClient);
+      List<String> insertTablet_right_json_list = new ArrayList<>();
+      List<String> insertTablet_error_json_list = new ArrayList<>();
+
+      List<String> insertRecords_right_json_list = new ArrayList<>();
+      List<String> insertRecords_error_json_list = new ArrayList<>();
+
+      List<String> nonQuery_right_json_list = new ArrayList<>();
+      List<String> nonQuery_error_json_list = new ArrayList<>();
+
+      List<String> insertTablet_right_json_list_v2 = new ArrayList<>();
+      List<String> insertTablet_error_json_list_v2 = new ArrayList<>();
+
+      List<String> insertRecords_right_json_list_v2 = new ArrayList<>();
+      List<String> insertRecords_error_json_list_v2 = new ArrayList<>();
+
+      List<String> nonQuery_right_json_list_v2 = new ArrayList<>();
+      List<String> nonQuery_error_json_list_v2 = new ArrayList<>();
+      for (int i = 0; i <= 1; i++) {
+        boolean isAligned = false;
+        if (i == 0) {
+          isAligned = true;
+        }
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.sg21"
+                + i
+                + "\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.sg22"
+                + i
+                + "\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.`sg23"
+                + i
+                + "`\"}");
+        insertTablet_right_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
+                + isAligned
+                + "\",\"deviceId\":\"root.`sg24"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.sg25"
+                + i
+                + "\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.sg36"
+                + i
+                + "\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.`sg46"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+                + isAligned
+                + ",\"deviceId\":\"root.`3333a"
+                + i
+                + "`\"}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"time\",\"a12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"isAligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurementsList\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"dataTypesList\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"valuesList\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"deviceIds\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"isAligned\":"
+                + isAligned
+                + "}");
+
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_right_json_list.add(
+            "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
+
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_error_json_list.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_error_json_list.add("{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
+
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":\""
+                + isAligned
+                + "\",\"device\":\"root.sg21"
+                + i
+                + "\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg22"
+                + i
+                + "\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg23"
+                + i
+                + "`\"}");
+        insertTablet_right_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg24"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg25"
+                + i
+                + "\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.sg26"
+                + i
+                + "\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"cc123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`sg26"
+                + i
+                + "`\"}");
+        insertTablet_error_json_list_v2.add(
+            "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231cc`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"data_types\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"is_aligned\":"
+                + isAligned
+                + ",\"device\":\"root.`3333a"
+                + i
+                + "`\"}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_right_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`s33`\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[1,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.`s11`\",\"root.s11\",\"root.s1\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"root\",\"442\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"123123\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.s1\",\"root.time\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"time\",\"12321\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.111\",\"root.`s11`\",\"root.s1\",\"root.s3\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+        insertRecords_error_json_list_v2.add(
+            "{\"timestamps\":[1635232113960,1635232151960,1123,10],\"measurements_list\":[[\"`root`\",\"1111\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"float\",\"double\"],[\"float\",\"double\"],[\"boolean\",\"text\"]],\"values_list\":[[true,11],[2.1,2],[4,6],[false,\"cccccc\"]],\"devices\":[\"root.s11\",\"root.s11\",\"root.time\",\"root.`s3`\"],\"is_aligned\":"
+                + isAligned
+                + "}");
+
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.aa(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add(
+            "{\"sql\":\"insert into root.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_right_json_list_v2.add("{\"sql\":\"insert into root.aa(time,bb) values(111,1)\"}");
+
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time(time,1`bb`) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,bb) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.time.`aa`(time,`bb`) values(111,1)\"}");
+        nonQuery_error_json_list_v2.add(
+            "{\"sql\":\"insert into root.aa(time,root) values(111,1)\"}");
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+      HttpPost httpPost1 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
+
+      List<HttpPost> httpPosts = new ArrayList<>();
+      httpPosts.add(httpPost);
+      httpPosts.add(httpPost1);
+      for (HttpPost hp : httpPosts) {
+        for (String json : insertTablet_right_json_list) {
+          rightInsertTablet(httpClient, json, hp);
+        }
+        for (String json : insertTablet_error_json_list) {
+          errorInsertTablet(json, hp);
+        }
+      }
+
+      HttpPost httpPost3 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      HttpPost httpPost4 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      List<HttpPost> httpPosts1 = new ArrayList<>();
+      httpPosts1.add(httpPost3);
+      httpPosts1.add(httpPost4);
+
+      for (HttpPost hp : httpPosts1) {
+        for (String json : nonQuery_right_json_list) {
+          nonQuery(httpClient, json, hp);
+        }
+        for (String json : nonQuery_error_json_list) {
+          errorNonQuery(httpClient, json, hp);
+        }
+      }
+
+      HttpPost httpPost5 = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
+      HttpPost httpPost6 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v1/insertRecords");
+      List<HttpPost> httpPosts2 = new ArrayList<>();
+      httpPosts2.add(httpPost5);
+      httpPosts2.add(httpPost6);
+
+      HttpPost httpPostV2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+      HttpPost httpPost1V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+
+      List<HttpPost> httpPostsV2 = new ArrayList<>();
+      httpPostsV2.add(httpPostV2);
+      httpPostsV2.add(httpPost1V2);
+      for (HttpPost hp : httpPostsV2) {
+        for (String json : insertTablet_right_json_list_v2) {
+          rightInsertTablet(httpClient, json, hp);
+        }
+        for (String json : insertTablet_error_json_list_v2) {
+          errorInsertTablet(json, hp);
+        }
+      }
+
+      HttpPost httpPost3V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      HttpPost httpPost4V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      List<HttpPost> httpPosts1V2 = new ArrayList<>();
+      httpPosts1V2.add(httpPost3V2);
+      httpPosts1V2.add(httpPost4V2);
+      for (HttpPost hp : httpPosts1V2) {
+        for (String json : nonQuery_right_json_list_v2) {
+          nonQuery(httpClient, json, hp);
+        }
+        for (String json : nonQuery_error_json_list_v2) {
+          errorNonQuery(httpClient, json, hp);
+        }
+      }
+
+      HttpPost httpPost5V2 = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
+      HttpPost httpPost6V2 = getHttpPost_1("http://127.0.0.1:" + port + "/rest/v2/insertRecords");
+      List<HttpPost> httpPosts2V2 = new ArrayList<>();
+      httpPosts2V2.add(httpPost5V2);
+      httpPosts2V2.add(httpPost6V2);
+      for (HttpPost hp : httpPosts2V2) {
+        for (String json : insertRecords_right_json_list_v2) {
+          rightInsertRecords(httpClient, json, hp);
+        }
+        for (String json : insertRecords_error_json_list_v2) {
+          errorInsertRecords(httpClient, json, hp);
+        }
+      }
+      insertDate();
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    } finally {
+      dropUserQuietly("root1");
+      cleanupAllData();
     }
   }
 
@@ -964,6 +1004,7 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+      dropUserQuietly("abcd");
     }
   }
 

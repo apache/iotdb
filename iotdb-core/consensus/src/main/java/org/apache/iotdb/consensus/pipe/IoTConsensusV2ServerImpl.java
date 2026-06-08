@@ -39,6 +39,8 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config.ReplicateMode;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCheckConsensusPipeCompletedResp;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TNotifyPeerToCreateConsensusPipeReq;
@@ -200,18 +202,16 @@ public class IoTConsensusV2ServerImpl {
         if (!RpcUtils.SUCCESS_STATUS.equals(res.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
               String.format(
-                  "error when set peer %s to active %s. result status: %s",
-                  peer, isActive, res.getStatus()));
+                  IoTConsensusV2Messages.ERROR_SET_PEER_ACTIVE, peer, isActive, res.getStatus()));
         }
       } catch (Exception e) {
         throw new ConsensusGroupModifyPeerException(
-            String.format("error when set peer %s to active %s", peer, isActive), e);
+            String.format(IoTConsensusV2Messages.ERROR_SET_PEER_ACTIVE_SHORT, peer, isActive), e);
       }
     } catch (ClientManagerException e) {
       if (isForDeletionPurpose) {
         // for remove peer, if target peer is already down, we can skip this step.
-        LOGGER.warn(
-            "target peer may be down, error when set peer {} to active {}", peer, isActive, e);
+        LOGGER.warn(IoTConsensusV2Messages.TARGET_PEER_MAY_BE_DOWN, peer, isActive, e);
       } else {
         // for add peer, if target peer is down, we need to throw exception to identify the failure
         // of this addPeerProcedure.
@@ -237,14 +237,10 @@ public class IoTConsensusV2ServerImpl {
                     targetPeer.getNodeId()));
         if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
-              String.format("error when notify peer %s to create consensus pipe", peer));
+              String.format(IoTConsensusV2Messages.ERROR_NOTIFY_PEER_CREATE_PIPE, peer));
         }
       } catch (Exception e) {
-        LOGGER.warn(
-            "{} cannot notify peer {} to create consensus pipe, may because that peer is unknown currently, please manually check!",
-            thisNode,
-            peer,
-            e);
+        LOGGER.warn(IoTConsensusV2Messages.CANNOT_NOTIFY_PEER_CREATE_PIPE, thisNode, peer, e);
       }
     }
 
@@ -253,11 +249,7 @@ public class IoTConsensusV2ServerImpl {
       // target.
       createConsensusPipeToTargetPeer(targetPeer);
     } catch (Exception e) {
-      LOGGER.warn(
-          "{} cannot create consensus pipe to {}, may because target peer is unknown currently, please manually check!",
-          thisNode,
-          targetPeer,
-          e);
+      LOGGER.warn(IoTConsensusV2Messages.CANNOT_CREATE_CONSENSUS_PIPE, thisNode, targetPeer, e);
       throw new ConsensusGroupModifyPeerException(e);
     }
   }
@@ -286,25 +278,17 @@ public class IoTConsensusV2ServerImpl {
                     targetPeer.getNodeId()));
         if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
-              String.format("error when notify peer %s to drop consensus pipe", peer));
+              String.format(IoTConsensusV2Messages.ERROR_NOTIFY_PEER_DROP_PIPE, peer));
         }
       } catch (Exception e) {
-        LOGGER.warn(
-            "{} cannot notify peer {} to drop consensus pipe, may because that peer is unknown currently, please manually check!",
-            thisNode,
-            peer,
-            e);
+        LOGGER.warn(IoTConsensusV2Messages.CANNOT_NOTIFY_PEER_DROP_PIPE, thisNode, peer, e);
       }
     }
 
     try {
       dropConsensusPipeToTargetPeer(targetPeer);
     } catch (Exception e) {
-      LOGGER.warn(
-          "{} cannot drop consensus pipe to {}, may because target peer is unknown currently, please manually check!",
-          thisNode,
-          targetPeer,
-          e);
+      LOGGER.warn(IoTConsensusV2Messages.CANNOT_DROP_CONSENSUS_PIPE, thisNode, targetPeer, e);
       throw new ConsensusGroupModifyPeerException(e);
     }
   }
@@ -346,10 +330,10 @@ public class IoTConsensusV2ServerImpl {
         isFirstCheckForCurrentPeer = false;
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("{} is interrupted when waiting for transfer completed", thisNode, e);
+      LOGGER.warn(IoTConsensusV2Messages.INTERRUPTED_WAITING_TRANSFER, thisNode, e);
       Thread.currentThread().interrupt();
       throw new ConsensusGroupModifyPeerException(
-          String.format("%s is interrupted when waiting for transfer completed", thisNode), e);
+          String.format(IoTConsensusV2Messages.INTERRUPTED_WAITING_TRANSFER_FMT, thisNode), e);
     }
   }
 
@@ -375,10 +359,10 @@ public class IoTConsensusV2ServerImpl {
         isFirstCheck = false;
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("{} is interrupted when waiting for transfer completed", thisNode, e);
+      LOGGER.warn(IoTConsensusV2Messages.INTERRUPTED_WAITING_TRANSFER, thisNode, e);
       Thread.currentThread().interrupt();
       throw new ConsensusGroupModifyPeerException(
-          String.format("%s is interrupted when waiting for transfer completed", thisNode), e);
+          String.format(IoTConsensusV2Messages.INTERRUPTED_WAITING_TRANSFER_FMT, thisNode), e);
     }
   }
 
@@ -393,17 +377,13 @@ public class IoTConsensusV2ServerImpl {
                   consensusPipeNames,
                   refreshCachedProgressIndex));
       if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
-        LOGGER.warn(
-            "{} cannot check consensus pipes transmission completed to peer {}",
-            thisNode,
-            targetPeer);
+        LOGGER.warn(IoTConsensusV2Messages.CANNOT_CHECK_PIPE_TRANSMISSION, thisNode, targetPeer);
         throw new ConsensusGroupModifyPeerException(
-            String.format(
-                "error when check consensus pipes transmission completed to peer %s", targetPeer));
+            String.format(IoTConsensusV2Messages.ERROR_CHECK_PIPE_TRANSMISSION, targetPeer));
       }
       return resp.isCompleted;
     } catch (Exception e) {
-      LOGGER.warn("{} cannot check consensus pipes transmission completed", thisNode, e);
+      LOGGER.warn(IoTConsensusV2Messages.CANNOT_CHECK_PIPE_TRANSMISSION_SHORT, thisNode, e);
       return true;
     }
   }
@@ -448,25 +428,25 @@ public class IoTConsensusV2ServerImpl {
                 new TWaitReleaseAllRegionRelatedResourceReq(
                     targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.releaseAllResource) {
-          LOGGER.info("[WAIT RELEASE] {} has released all region related resource", targetPeer);
+          LOGGER.info(ConsensusMessages.WAIT_RELEASE_HAS_RELEASED, targetPeer);
           return;
         }
-        LOGGER.info("[WAIT RELEASE] {} is still releasing all region related resource", targetPeer);
+        LOGGER.info(ConsensusMessages.WAIT_RELEASE_STILL_RELEASING, targetPeer);
         Thread.sleep(checkIntervalInMs);
       }
     } catch (ClientManagerException | TException e) {
       // in case of target peer is down or can not serve, we simply skip it.
       LOGGER.warn(
           String.format(
-              "error when waiting %s to release all region related resource. %s",
-              targetPeer, e.getMessage()),
+              ConsensusMessages.ERROR_WAITING_RELEASE_RESOURCE, targetPeer, e.getMessage()),
           e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ConsensusGroupModifyPeerException(
           String.format(
-              "thread interrupted when waiting %s to release all region related resource. %s",
-              targetPeer, e.getMessage()),
+              ConsensusMessages.THREAD_INTERRUPTED_WAITING_RELEASE_RESOURCE,
+              targetPeer,
+              e.getMessage()),
           e);
     }
   }
@@ -484,7 +464,7 @@ public class IoTConsensusV2ServerImpl {
   }
 
   public void setActive(boolean active) {
-    LOGGER.info("set {} active status to {}", this.thisNode, active);
+    LOGGER.info(ConsensusMessages.SET_ACTIVE_STATUS, this.thisNode, active);
     this.active.set(active);
   }
 

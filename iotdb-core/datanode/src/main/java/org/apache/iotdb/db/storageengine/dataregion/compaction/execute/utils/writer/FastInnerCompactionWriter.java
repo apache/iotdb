@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -66,7 +67,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
 
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
-    throw new RuntimeException("Does not support this method in FastInnerCompactionWriter");
+    throw new RuntimeException(StorageEngineMessages.METHOD_NOT_SUPPORTED_FAST_INNER_WRITER);
   }
 
   /**

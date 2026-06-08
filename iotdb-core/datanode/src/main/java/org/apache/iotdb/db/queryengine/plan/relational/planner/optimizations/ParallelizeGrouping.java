@@ -122,6 +122,16 @@ public class ParallelizeGrouping implements PlanOptimizer {
 
     @Override
     public PlanNode visitGroup(GroupNode node, Context context) {
+      // A GroupNode without partition keys is a pure global ordering requirement.
+      if (node.getPartitionKeyCount() == 0) {
+        return new SortNode(
+            node.getPlanNodeId(),
+            node.getChild().accept(this, new Context(null, 0)),
+            node.getOrderingScheme(),
+            false,
+            false);
+      }
+
       checkPrefixMatch(
           context, node.getOrderingScheme().getOrderBy().subList(0, node.getPartitionKeyCount()));
       Context newContext = new Context(node.getOrderingScheme(), node.getPartitionKeyCount());

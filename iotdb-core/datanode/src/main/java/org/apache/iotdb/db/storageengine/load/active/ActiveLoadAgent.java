@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,7 @@ public class ActiveLoadAgent {
               continue;
             }
           } catch (Exception e) {
-            LOGGER.debug("Failed to check directory: {}", dirPath, e);
+            LOGGER.debug(StorageEngineMessages.FAILED_TO_CHECK_DIRECTORY, dirPath, e);
             continue;
           }
 
@@ -110,7 +111,7 @@ public class ActiveLoadAgent {
           try {
             files = dir.listFiles();
           } catch (Exception e) {
-            LOGGER.warn("Failed to list files in directory: {}", dirPath, e);
+            LOGGER.warn(StorageEngineMessages.FAILED_TO_LIST_FILES_IN_DIR, dirPath, e);
             continue;
           }
 
@@ -122,20 +123,21 @@ public class ActiveLoadAgent {
               try {
                 FileUtils.deleteFileOrDirectory(file, true);
               } catch (Exception e) {
-                LOGGER.debug("Failed to delete file or directory: {}", file.getAbsolutePath(), e);
+                LOGGER.debug(
+                    StorageEngineMessages.FAILED_TO_DELETE_FILE_OR_DIR, file.getAbsolutePath(), e);
               }
             }
           }
         } catch (Exception e) {
-          LOGGER.warn("Failed to cleanup directory: {}", dirPath, e);
+          LOGGER.warn(StorageEngineMessages.FAILED_TO_CLEANUP_DIRECTORY, dirPath, e);
         }
       }
 
-      LOGGER.info("Cleaned up active load listening directories");
+      LOGGER.info(StorageEngineMessages.CLEANED_UP_ACTIVE_LOAD_DIRS);
     } catch (Throwable t) {
       // Catch all exceptions and errors (including OutOfMemoryError, etc.)
       // to ensure startup process is not affected
-      LOGGER.warn("Unexpected error during cleanup of active load listening directories", t);
+      LOGGER.warn(StorageEngineMessages.UNEXPECTED_ERROR_CLEANUP_ACTIVE_DIRS, t);
     }
   }
 }

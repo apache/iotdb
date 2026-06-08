@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -55,14 +56,20 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully check schema region using template on DataNode: {}", targetNode);
+      LOGGER.info(
+          ConfigNodeMessages.SUCCESSFULLY_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       nodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     } else {
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
+          ConfigNodeMessages.FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE,
+          targetNode,
+          tsStatus);
     }
     countDownLatch.countDown();
   }

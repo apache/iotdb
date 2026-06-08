@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -168,21 +170,17 @@ public abstract class TabletInsertionEventParser {
         } else {
           this.valueColumns[filteredColumnIndex] =
               filterValueColumnsByRowIndexList(
-                  originValueDataTypes[i],
-                  originValues[i],
-                  rowIndexList,
-                  true,
-                  bitMap, // use the output bitmap since there is no bitmap in InsertRowNode
-                  bitMap);
+                  originValueDataTypes[i], originValues[i], rowIndexList, true, null, bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
       }
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertRowNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTROWNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertRowNode,
           getPattern(),
           this.sourceEvent.getStartTime(),
@@ -201,7 +199,6 @@ public abstract class TabletInsertionEventParser {
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
-    final int originRowSize = originTimestampColumn.length;
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
@@ -227,18 +224,7 @@ public abstract class TabletInsertionEventParser {
     final TsTableColumnCategory[] originColumnCategories = insertTabletNode.getColumnCategories();
     final TSDataType[] originValueColumnDataTypes = insertTabletNode.getDataTypes();
     final Object[] originValueColumns = insertTabletNode.getColumns();
-    final BitMap[] originBitMapList =
-        (insertTabletNode.getBitMaps() == null
-            ? IntStream.range(0, originColumnSize)
-                .boxed()
-                .map(o -> new BitMap(originRowSize))
-                .toArray(BitMap[]::new)
-            : insertTabletNode.getBitMaps());
-    for (int i = 0; i < originBitMapList.length; i++) {
-      if (originBitMapList[i] == null) {
-        originBitMapList[i] = new BitMap(originRowSize);
-      }
-    }
+    final BitMap[] originBitMapList = insertTabletNode.getBitMaps();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -266,7 +252,7 @@ public abstract class TabletInsertionEventParser {
                   originValueColumns[i],
                   rowIndexList,
                   false,
-                  originBitMapList[i],
+                  getBitMap(originBitMapList, i),
                   bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
@@ -274,9 +260,10 @@ public abstract class TabletInsertionEventParser {
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "InsertTabletNode({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.INSERTTABLETNODE_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           insertTabletNode,
           getPattern(),
           sourceEvent.getStartTime(),
@@ -336,18 +323,7 @@ public abstract class TabletInsertionEventParser {
     }
     final Object[] originValueColumns =
         tablet.getValues(); // we do not reduce value columns here by origin row size
-    final BitMap[] originBitMapList =
-        tablet.getBitMaps() == null
-            ? IntStream.range(0, originColumnSize)
-                .boxed()
-                .map(o -> new BitMap(tablet.getMaxRowNumber()))
-                .toArray(BitMap[]::new)
-            : tablet.getBitMaps(); // We do not reduce bitmaps here by origin row size
-    for (int i = 0; i < originBitMapList.length; i++) {
-      if (originBitMapList[i] == null) {
-        originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());
-      }
-    }
+    final BitMap[] originBitMapList = tablet.getBitMaps();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -373,7 +349,7 @@ public abstract class TabletInsertionEventParser {
                   originValueColumns[i],
                   rowIndexList,
                   false,
-                  originBitMapList[i],
+                  getBitMap(originBitMapList, i),
                   bitMap);
         }
         this.nullValueColumnBitmaps[filteredColumnIndex] = bitMap;
@@ -381,9 +357,10 @@ public abstract class TabletInsertionEventParser {
     }
 
     this.rowCount = this.timestampColumn.length;
+    this.nullValueColumnBitmaps = PipeTabletUtils.compactBitMaps(nullValueColumnBitmaps, rowCount);
     if (this.rowCount == 0 && LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Tablet({}) is parsed to zero rows according to the pattern({}) and time range [{}, {}], the corresponding source event({}) will be ignored.",
+          DataNodePipeMessages.TABLET_IS_PARSED_TO_ZERO_ROWS_ACCORDING,
           tablet,
           getPattern(),
           this.sourceEvent.getStartTime(),
@@ -442,7 +419,7 @@ public abstract class TabletInsertionEventParser {
                   : (int[]) originValueColumn;
           final int[] valueColumns = new int[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -464,7 +441,7 @@ public abstract class TabletInsertionEventParser {
                     : (LocalDate[]) originValueColumn;
 
             for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
                 valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
@@ -478,7 +455,7 @@ public abstract class TabletInsertionEventParser {
                     ? new int[] {(int) originValueColumn}
                     : (int[]) originValueColumn;
             for (int i = 0; i < rowIndexList.size(); ++i) {
-              if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+              if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
                 valueColumns[i] = EMPTY_LOCALDATE;
                 nullValueColumnBitmap.mark(i);
               } else {
@@ -498,7 +475,7 @@ public abstract class TabletInsertionEventParser {
                   : (long[]) originValueColumn;
           final long[] valueColumns = new long[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0L;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -515,7 +492,7 @@ public abstract class TabletInsertionEventParser {
                   : (float[]) originValueColumn;
           final float[] valueColumns = new float[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0F;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -532,7 +509,7 @@ public abstract class TabletInsertionEventParser {
                   : (double[]) originValueColumn;
           final double[] valueColumns = new double[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = 0D;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -549,7 +526,7 @@ public abstract class TabletInsertionEventParser {
                   : (boolean[]) originValueColumn;
           final boolean[] valueColumns = new boolean[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
-            if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+            if (isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = false;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -570,7 +547,7 @@ public abstract class TabletInsertionEventParser {
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (Objects.isNull(binaryValueColumns[rowIndexList.get(i)])
                 || Objects.isNull(binaryValueColumns[rowIndexList.get(i)].getValues())
-                || originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
+                || isNullValue(originNullValueColumnBitmap, rowIndexList.get(i))) {
               valueColumns[i] = Binary.EMPTY_VALUE;
               nullValueColumnBitmap.mark(i);
             } else {
@@ -628,6 +605,14 @@ public abstract class TabletInsertionEventParser {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", type));
     }
+  }
+
+  private static BitMap getBitMap(final BitMap[] bitMaps, final int index) {
+    return Objects.nonNull(bitMaps) && index < bitMaps.length ? bitMaps[index] : null;
+  }
+
+  private static boolean isNullValue(final BitMap bitMap, final int rowIndex) {
+    return Objects.nonNull(bitMap) && bitMap.isMarked(rowIndex);
   }
 
   ////////////////////////////  process  ////////////////////////////

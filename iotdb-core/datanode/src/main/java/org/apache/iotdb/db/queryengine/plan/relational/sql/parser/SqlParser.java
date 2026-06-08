@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.CaseInsensitiveStream;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseListener;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
@@ -205,7 +206,8 @@ public class SqlParser {
 
       return new AstBuilder(location.orElse(null), zoneId, clientSession).visit(tree);
     } catch (StackOverflowError e) {
-      throw new ParsingException(name + " is too large (stack overflow while parsing)");
+      throw new ParsingException(
+          name + DataNodeQueryMessages.IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING);
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     }

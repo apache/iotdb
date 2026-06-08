@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.isession.template;
 
+import org.apache.iotdb.isession.i18n.ISessionMessages;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -75,7 +76,7 @@ public class Template {
 
   public void addToTemplate(TemplateNode child) throws StatementExecutionException {
     if (children.containsKey(child.getName())) {
-      throw new StatementExecutionException("Duplicated child of node in template.");
+      throw new StatementExecutionException(ISessionMessages.DUPLICATED_CHILD_IN_TEMPLATE);
     }
     children.put(child.getName(), child);
   }
@@ -84,7 +85,7 @@ public class Template {
     if (children.containsKey(name)) {
       children.remove(name);
     } else {
-      throw new StatementExecutionException("It is not a direct child of the template: " + name);
+      throw new StatementExecutionException(ISessionMessages.NOT_DIRECT_CHILD_OF_TEMPLATE + name);
     }
   }
 

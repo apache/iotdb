@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 
 import org.slf4j.Logger;
@@ -47,7 +48,7 @@ public abstract class StartupChecks {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
 
     if (jmxLocal) {
-      logger.info("Start JMX locally.");
+      logger.info(ServiceMessages.START_JMX_LOCALLY);
       return;
     }
 
@@ -57,13 +58,12 @@ public abstract class StartupChecks {
               ? IoTDBConstant.DN_ENV_FILE_NAME
               : IoTDBConstant.CN_ENV_FILE_NAME;
       logger.warn(
-          "{} missing from {}.sh(Unix or OS X, if you use Windows, check conf/{}.bat)",
+          ServiceMessages.JMX_PORT_MISSING_FROM_ENV,
           IoTDBConstant.IOTDB_JMX_PORT,
           filename,
           filename);
     } else {
-      logger.info(
-          "Start JMX remotely: JMX is enabled to receive remote connection on port {}", jmxPort);
+      logger.info(ServiceMessages.START_JMX_REMOTELY, jmxPort);
     }
   }
 
@@ -72,24 +72,24 @@ public abstract class StartupChecks {
     if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
       throw new StartupException(
           String.format(
-              "Requires JDK version >= %d, current version is %d.",
-              IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
+              ServiceMessages.JDK_VERSION_TOO_LOW,
+              IoTDBConstant.MIN_SUPPORTED_JDK_VERSION,
+              version));
     } else {
-      logger.info("JDK version is {}.", version);
+      logger.info(ServiceMessages.JDK_VERSION_IS, version);
     }
   }
 
   private void checkJVM() {
     RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-    logger.info("JVM version is {} {}.", bean.getVmName(), bean.getVmVersion());
+    logger.info(ServiceMessages.JVM_VERSION_IS, bean.getVmName(), bean.getVmVersion());
     try {
       // For more information, visit https://github.com/oracle/graal/issues/8638
       Class.forName("org.graalvm.home.Version");
     } catch (ClassNotFoundException e) {
       return;
     }
-    logger.warn(
-        "Perhaps you are using GraalVM, which is strongly not recommended. Using GraalVM may cause strange problems after the system runs for a while. Please check your JVM version.");
+    logger.warn(ServiceMessages.GRAALVM_NOT_RECOMMENDED);
   }
 
   protected void envCheck() {

@@ -76,6 +76,8 @@ ddlStatement
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
     | createTableView
+    // for calculation point
+    | createCalcPoint | alterCalcPoint | dropCalcPoint | showCalcPoint
     ;
 
 dmlStatement
@@ -94,6 +96,7 @@ utilityStatement
     | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
+    | repairDataPartitionTable
     ;
 
 /**
@@ -855,6 +858,30 @@ createTableView
         AS prefixPath
     ;
 
+createCalcPoint
+    : CREATE CALCULATION POINT fullPath
+        AS expression
+        STRING_LITERAL
+        comment?
+    ;
+
+alterCalcPoint
+    : ALTER CALCULATION POINT fullPath
+       (AS expression)?
+       (STRING_LITERAL)?
+       comment?
+       (DROP COMMENT)?
+    ;
+
+dropCalcPoint
+    : DROP CALCULATION POINTS prefixPath
+    ;
+
+showCalcPoint
+    : SHOW CALCULATION POINTS prefixPath
+      rowPaginationClause?
+    ;
+
 viewColumnDefinition
     : identifier columnCategory=(TAG | TIME | FIELD) comment?
     | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
@@ -1239,6 +1266,11 @@ stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
+    ;
+
 // Explain
 explain
     : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
@@ -1478,6 +1510,7 @@ expression
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
+
 
 caseWhenThenExpression
     : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END

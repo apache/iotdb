@@ -296,6 +296,9 @@ private:
   std::string message;
 };
 
+std::string extractExceptionMessage(const std::exception& exception);
+std::string extractExceptionMessage(const std::exception_ptr& exceptionPtr);
+
 class DateTimeParseException : public IoTDBException {
 private:
   std::string parsedString;

@@ -132,4 +132,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   void setWorkingTVList(TVList list);
 
   void setEncryptParameter(EncryptParameter encryptParameter);
+
+  TVList initWorkingListForFlushIfNecessary(
+      TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList);
 }
