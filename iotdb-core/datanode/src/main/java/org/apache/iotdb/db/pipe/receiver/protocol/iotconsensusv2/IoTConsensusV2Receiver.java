@@ -872,15 +872,14 @@ public class IoTConsensusV2Receiver {
     }
 
     LOGGER.info(
-        "IoTConsensusV2-PipeName-{}: Writing file {} is not existed or name is not correct, try to create it. "
-            + "Current writing file is {}.",
+        DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_EXISTED,
         consensusPipeName,
         fileName,
         tsFileWriter.getWritingFile() == null ? "null" : tsFileWriter.getWritingFile().getPath());
 
     closeCurrentWritingFileWriter(tsFileWriter, !isSingleFile);
-    // If there are multiple files we can not delete the current file
-    // instead they will be deleted after seal request
+    // If there are multiple files, the current file cannot be deleted here. It will be deleted
+    // after the seal request.
     if (tsFileWriter.getWritingFile() != null && isSingleFile) {
       deleteFileOrDirectoryIfExists(
           tsFileWriter.getWritingFile(),
@@ -888,9 +887,8 @@ public class IoTConsensusV2Receiver {
           String.format("Update TsFileWriter-%s", tsFileWriter.index));
     }
 
-    // Make sure receiver file dir exists
-    // This may be useless, because receiver file dir is created when receiver is initiated. just in
-    // case.
+    // Make sure the receiver file dir exists. This may be redundant because the receiver file dir
+    // is created during receiver initialization, but keep it as a fallback.
     if (!tsFileWriter.getLocalWritingDir().exists()) {
       if (tsFileWriter.getLocalWritingDir().mkdirs()) {
         LOGGER.info(
@@ -904,8 +902,8 @@ public class IoTConsensusV2Receiver {
             tsFileWriter.getLocalWritingDir().getPath());
       }
     }
-    // Every tsFileWriter has its own writing path.
-    // 1 Thread --> 1 connection --> 1 tsFileWriter --> 1 path
+    // Every TsFileWriter has its own writing path.
+    // 1 thread -> 1 connection -> 1 TsFileWriter -> 1 path.
     tsFileWriter.setWritingFile(resolveWritingFilePath(tsFileWriter, fileName).toFile());
     tsFileWriter.setWritingFileWriter(new RandomAccessFile(tsFileWriter.getWritingFile(), "rw"));
     LOGGER.info(
@@ -1080,7 +1078,7 @@ public class IoTConsensusV2Receiver {
         Thread.currentThread().interrupt();
         final String errorStr =
             String.format(
-                "IoTConsensusV2%s: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
+                "IoTConsensusV2%s: receiver thread was interrupted while waiting to borrow a TsFileWriter.",
                 consensusPipeName);
         LOGGER.warn(errorStr);
         throw new RuntimeException(errorStr);
@@ -1136,8 +1134,8 @@ public class IoTConsensusV2Receiver {
     private File localWritingDir;
     private File writingFile;
     private RandomAccessFile writingFileWriter;
-    // whether this buffer is used. this will be updated when first transfer tsFile piece or
-    // when transfer seal.
+    // Whether this buffer is used. This is updated when the first TsFile piece or seal is
+    // transferred.
     private volatile boolean isUsed = false;
     // If isUsed is true, this variable will be set to the TCommitId of holderEvent
     private volatile TCommitId commitIdOfCorrespondingHolderEvent;
@@ -1259,15 +1257,14 @@ public class IoTConsensusV2Receiver {
 
     public void returnSelf(ConsensusPipeName consensusPipeName)
         throws DiskSpaceInsufficientException, IOException {
-      // if config multi-disks, tsFileWriter will roll to new writing path.
-      // must roll before set used to false, because the writing file may be deleted if other event
-      // uses this tsfileWriter.
+      // If multiple disk dirs are configured, the TsFileWriter rolls to a new writing path. Roll
+      // before setting used to false because the writing file may be deleted if another event uses
+      // this TsFileWriter.
       if (receiveDirs.size() > 1) {
         rollToNextWritingPath();
       }
-      // must set used to false after set commitIdOfCorrespondingHolderEvent to null to avoid the
-      // situation that tsfileWriter is used by other event before set
-      // commitIdOfCorrespondingHolderEvent to null
+      // Set used to false only after clearing commitIdOfCorrespondingHolderEvent to avoid another
+      // event using this TsFileWriter before commitIdOfCorrespondingHolderEvent is cleared.
       this.commitIdOfCorrespondingHolderEvent = null;
       this.isUsed = false;
       LOGGER.info(
@@ -1322,10 +1319,9 @@ public class IoTConsensusV2Receiver {
                   return null;
                 });
           } else {
-            // There may be multiple files such as mods and tsfile pieces in the dir. Here we clean
-            // the
-            // dir instead of deleting it to avoid repeatedly deleting and creating the base dir for
-            // tsfile writer
+            // There may be multiple files such as mods and TsFile pieces in the dir. Clean the dir
+            // instead of deleting it to avoid repeatedly deleting and creating the base dir for the
+            // TsFile writer.
             RetryUtils.retryOnException(
                 () -> {
                   FileUtils.cleanDirectory(file);
@@ -1473,8 +1469,8 @@ public class IoTConsensusV2Receiver {
             DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_START_TO_RECEIVE_NO_EVENT,
             consensusPipeName,
             tCommitId);
-        // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
-        // connectorRebootTimes, need to reset receiver because connector has been restarted.
+        // Check whether the connector has rebooted. If rebootTimes is greater than
+        // connectorRebootTimes, reset the receiver because the connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes());
         }
@@ -1484,7 +1480,7 @@ public class IoTConsensusV2Receiver {
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
-          // only update tsFileEventCount when tsFileEvent is first enqueue.
+          // Update tsFileEventCount only when the TsFileEvent is first enqueued.
           tsFileEventCount.incrementAndGet();
         }
         if (!isTransferTsFileSeal && !isTransferTsFilePiece) {
@@ -1722,7 +1718,7 @@ public class IoTConsensusV2Receiver {
               RpcUtils.getStatus(
                   TSStatusCode.IOT_CONSENSUS_V2_DEPRECATED_REQUEST,
                   String.format(
-                      "IoTConsensusV2 receiver received a deprecated request, which may because %s. Consider to discard it.",
+                      "IoTConsensusV2 receiver received a deprecated request, possibly because %s. Consider discarding it.",
                       msg)));
       LOGGER.info(
           DataNodePipeMessages.IOTCONSENSUSV2_PIPENAME_RECEIVED_A_DEPRECATED_REQUEST_WHICH,

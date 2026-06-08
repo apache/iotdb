@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -54,10 +56,10 @@ import java.util.stream.Collectors;
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
  * total number of running compaction task. There are three compaction strategy: BALANCE,
- * INNER_CROSS, CROSS_INNER. Difference strategies will lead to different compaction preferences.
- * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
- * the corresponding {@link ICompactionSelector selector} according to the compaction machanism of
- * the task(e.g. LevelCompaction, SizeTiredCompaction), and the selection and submission process is
+ * INNER_CROSS, CROSS_INNER. Different strategies lead to different compaction preferences. For
+ * different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call the
+ * corresponding {@link ICompactionSelector selector} according to the compaction mechanism of the
+ * task(e.g. LevelCompaction, SizeTieredCompaction), and the selection and submission process is
  * carried out in the {@link ICompactionSelector#selectInnerSpaceTask(List)} () and {@link
  * ICompactionSelector#selectCrossSpaceTask(List, List)}} in selector.
  */
@@ -65,6 +67,9 @@ public class CompactionScheduler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final long DISK_SPACE_CHECK_FAIL_LOG_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
+  private static final AtomicLong LAST_DISK_SPACE_CHECK_FAIL_LOG_TIME = new AtomicLong(0);
+  private static final AtomicLong SUPPRESSED_DISK_SPACE_CHECK_FAIL_LOG_COUNT = new AtomicLong(0);
 
   private CompactionScheduler() {}
 
@@ -207,11 +212,30 @@ public class CompactionScheduler {
     }
     // check disk space
     if (!task.isDiskSpaceCheckPassed()) {
-      LOGGER.info(
-          "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
+      logDiskSpaceCheckFailure(task);
       return false;
     }
     return true;
+  }
+
+  private static void logDiskSpaceCheckFailure(AbstractCompactionTask task) {
+    long now = System.currentTimeMillis();
+    long lastLogTime = LAST_DISK_SPACE_CHECK_FAIL_LOG_TIME.get();
+    if (now - lastLogTime >= DISK_SPACE_CHECK_FAIL_LOG_INTERVAL_MS
+        && LAST_DISK_SPACE_CHECK_FAIL_LOG_TIME.compareAndSet(lastLogTime, now)) {
+      long suppressedCount = SUPPRESSED_DISK_SPACE_CHECK_FAIL_LOG_COUNT.getAndSet(0);
+      LOGGER.info(
+          "Skip compaction task because the disk free ratio is lower than disk_space_warning_threshold, "
+              + "taskType={}, storageGroup={}, dataRegion={}, timePartition={}, processedFileNum={}, suppressedSimilarLogs={}",
+          task.getCompactionTaskType(),
+          task.getStorageGroupName(),
+          task.getDataRegionId(),
+          task.getTimePartition(),
+          task.getProcessedFileNum(),
+          suppressedCount);
+    } else {
+      SUPPRESSED_DISK_SPACE_CHECK_FAIL_LOG_COUNT.incrementAndGet();
+    }
   }
 
   public static int scheduleInsertionCompaction(

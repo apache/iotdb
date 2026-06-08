@@ -147,10 +147,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       if (!Files.isReadable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
-          LOGGER.error(
-              "Current dir path is not readable: {}."
-                  + "Skip scanning this dir. Please check the permission.",
-              listeningDirPath);
+          LOGGER.error(StorageEngineMessages.ACTIVE_LOAD_DIR_NOT_READABLE, listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
         return false;
@@ -158,10 +155,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       if (!Files.isWritable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
-          LOGGER.error(
-              "Current dir path is not writable: {}."
-                  + "Skip scanning this dir. Please check the permission.",
-              listeningDirPath);
+          LOGGER.error(StorageEngineMessages.ACTIVE_LOAD_DIR_NOT_WRITABLE, listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
         return false;
@@ -170,10 +164,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       noPermissionDirs.remove(listeningDir);
       return true;
     } catch (final Exception e) {
-      LOGGER.error(
-          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
-          listeningDir,
-          e);
+      LOGGER.error(StorageEngineMessages.ACTIVE_LOAD_CHECK_DIR_PERMISSION_ERROR, listeningDir, e);
       return false;
     }
   }
@@ -214,11 +205,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       ActiveLoadingFilesNumberMetricsSet.getInstance().updatePendingDirList(listeningDirs);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Error occurred during hot reload active load dirs. "
-              + "Current active load listening dirs: {}.",
-          listeningDirs,
-          e);
+      LOGGER.warn(StorageEngineMessages.ACTIVE_LOAD_HOT_RELOAD_DIRS_ERROR, listeningDirs, e);
     }
   }
 

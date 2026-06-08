@@ -420,11 +420,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       throw new SubscriptionConnectionException(
           String.format(
-              "Failed to handshake with subscription provider %s because of %s", provider, e),
+              "Failed to perform handshake with subscription provider %s because %s", provider, e),
           e);
     }
 
-    // update consumer id and consumer group id if not exist
+    // Update consumer id and consumer group id if they are absent.
     if (Objects.isNull(this.consumerId)) {
       this.consumerId = provider.getConsumerId();
     }
@@ -470,14 +470,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         if (allowFileAlreadyExistsException) {
           if (inFlightFilesCommitContextSet.contains(commitContext)) {
             LOGGER.info(
-                "Detect already existed file {} when polling topic {}, resume consumption",
+                "Detected existing file {} when polling topic {}, resuming consumption",
                 fileName,
                 topicName);
             return filePath;
           }
           final String suffix = RandomStringGenerator.generate(16);
           LOGGER.warn(
-              "Detect already existed file {} when polling topic {}, add random suffix {} to filename",
+              "Detected existing file {} when polling topic {}, adding random suffix {} to filename",
               fileName,
               topicName,
               suffix);
@@ -522,7 +522,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         final SubscriptionCommitContext commitContext = resp.getCommitContext();
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
-                            "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
+                            "Termination occurred while SubscriptionConsumer {} was polling topics, unsubscribing from topic {} automatically",
                             coreReportMessage(),
                             topicNameToUnsubscribe);
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
@@ -541,11 +541,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final int availableCount =
         SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
     if (availableCount == 0) {
-      // non-strict timeout
+      // Use non-strict timeout.
       return singlePoll(topicNames, timeoutMs);
     }
 
-    // dividing topics
+    // Divide topics.
     final List<PollTask> tasks = new ArrayList<>();
     final List<Set<String>> partitionedTopicNames =
         partition(topicNames, Math.min(maxPollParallelism, availableCount));
@@ -553,7 +553,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       tasks.add(new PollTask(partition, timeoutMs));
     }
 
-    // submit multiple tasks to poll messages
+    // Submit multiple tasks to poll messages.
     final List<SubscriptionMessage> messages = new ArrayList<>();
     SubscriptionRuntimeCriticalException lastSubscriptionRuntimeCriticalException = null;
     try {
@@ -573,14 +573,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             final SubscriptionRuntimeCriticalException ex =
                 (SubscriptionRuntimeCriticalException) cause;
             LOGGER.warn(
-                "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+                "SubscriptionRuntimeCriticalException occurred while SubscriptionConsumer {} was polling topics {}",
                 this,
                 topicNames,
                 ex);
             lastSubscriptionRuntimeCriticalException = ex;
           } else {
             LOGGER.warn(
-                "ExecutionException occurred when SubscriptionConsumer {} polling topics {}",
+                "ExecutionException occurred while SubscriptionConsumer {} was polling topics {}",
                 this,
                 topicNames,
                 e);
@@ -589,17 +589,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
     } catch (final InterruptedException e) {
       LOGGER.warn(
-          "InterruptedException occurred when SubscriptionConsumer {} polling topics {}",
+          "InterruptedException occurred while SubscriptionConsumer {} was polling topics {}",
           this,
           topicNames,
           e);
       Thread.currentThread().interrupt(); // restore interrupted state
     }
 
-    // TODO: ignore possible interrupted state?
-
-    // even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
-    // the client
+    // Preserve the interrupted flag; any messages collected before interruption are still returned.
+    // Even if a SubscriptionRuntimeCriticalException is encountered, try to deliver the message to
+    // the client.
     if (messages.isEmpty() && Objects.nonNull(lastSubscriptionRuntimeCriticalException)) {
       throw lastSubscriptionRuntimeCriticalException;
     }
@@ -660,7 +659,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                   .ifPresent(currentMessages::add);
             } catch (final SubscriptionRuntimeNonCriticalException e) {
               LOGGER.warn(
-                  "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+                  "SubscriptionRuntimeNonCriticalException occurred while SubscriptionConsumer {} was polling topics {}",
                   this,
                   topicNames,
                   e);
@@ -669,17 +668,17 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           }
         } catch (final SubscriptionRuntimeCriticalException e) {
           LOGGER.warn(
-              "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+              "SubscriptionRuntimeCriticalException occurred while SubscriptionConsumer {} was polling topics {}",
               this,
               topicNames,
               e);
-          // nack and clear current responses
+          // Nack and clear current responses.
           try {
             nack(currentResponses);
             currentResponses.clear();
           } catch (final Exception ignored) {
           }
-          // nack and clear result messages
+          // Nack and clear result messages.
           try {
             nack(messages);
             messages.clear();
@@ -718,13 +717,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
 
     if (Thread.currentThread().isInterrupted()) {
-      // nack and clear current responses
+      // Nack and clear current responses.
       try {
         nack(currentResponses);
         currentResponses.clear();
       } catch (final Exception ignored) {
       }
-      // nack and clear result messages
+      // Nack and clear result messages.
       try {
         nack(messages);
         messages.clear();
@@ -783,7 +782,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         inFlightFilesCommitContextSet.add(commitContext);
         final String message =
             String.format(
-                "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                "Timeout occurred while SubscriptionConsumer %s was polling file %s with commit context %s, recording writing offset %s for the next poll",
                 this, file.getAbsolutePath(), commitContext, writingOffset);
         LOGGER.info(message);
         throw new SubscriptionRuntimeNonCriticalException(message);
@@ -897,7 +896,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             fileWriter.close();
 
             LOGGER.info(
-                "SubscriptionConsumer {} successfully poll file {} with commit context {}",
+                "SubscriptionConsumer {} successfully polled file {} with commit context {}",
                 this,
                 file.getAbsolutePath(),
                 commitContext);
@@ -923,13 +922,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               inFlightFilesCommitContextSet.add(commitContext);
               final String message =
                   String.format(
-                      "Timeout occurred when SubscriptionConsumer %s polling file %s with commit context %s, record writing offset %s for subsequent poll",
+                      "Timeout occurred while SubscriptionConsumer %s was polling file %s with commit context %s, recording writing offset %s for the next poll",
                       this, file.getAbsolutePath(), commitContext, writingOffset);
               LOGGER.info(message);
               throw new SubscriptionPollTimeoutException(message);
             } else {
               LOGGER.warn(
-                  "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
+                  "Error occurred while SubscriptionConsumer {} was polling file {} with commit context {}: {}, critical: {}",
                   this,
                   file.getAbsolutePath(),
                   commitContext,
@@ -1051,7 +1050,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               return Optional.empty();
             }
             LOGGER.warn(
-                "Error occurred when SubscriptionConsumer {} polling tablets with commit context {}: {}, critical: {}",
+                "Error occurred while SubscriptionConsumer {} was polling tablets with commit context {}: {}, critical: {}",
                 this,
                 commitContext,
                 errorMessage,
@@ -1081,10 +1080,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
         throw new SubscriptionConnectionException(
             String.format(
-                "Cluster has no available subscription providers when %s poll topic %s",
+                "Cluster has no available subscription providers when %s polls topics %s",
                 this, topicNames));
       }
-      // ignore SubscriptionConnectionException to improve poll auto retry
+      // Ignore SubscriptionConnectionException to improve poll auto retry.
       try {
         return provider.poll(topicNames, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
@@ -1108,10 +1107,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
         throw new SubscriptionConnectionException(
             String.format(
-                "something unexpected happened when %s poll file from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                "Unexpected exception when %s polls file from subscription provider with data node id %s; the subscription provider may be unavailable or absent",
                 this, dataNodeId));
       }
-      // ignore SubscriptionConnectionException to improve poll auto retry
+      // Ignore SubscriptionConnectionException to improve poll auto retry.
       try {
         return provider.pollFile(commitContext, writingOffset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
@@ -1135,10 +1134,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
         throw new SubscriptionConnectionException(
             String.format(
-                "something unexpected happened when %s poll tablets from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                "Unexpected exception when %s polls tablets from subscription provider with data node id %s; the subscription provider may be unavailable or absent",
                 this, dataNodeId));
       }
-      // ignore SubscriptionConnectionException to improve poll auto retry
+      // Ignore SubscriptionConnectionException to improve poll auto retry.
       try {
         return provider.pollTablets(commitContext, offset, timeoutMs);
       } catch (final SubscriptionConnectionException ignored) {
@@ -1225,7 +1224,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
         throw new SubscriptionConnectionException(
             String.format(
-                "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                "Unexpected exception when %s commits (nack: %s) messages to subscription provider with data node id %s; the subscription provider may be unavailable or absent",
                 this, nack, dataNodeId));
       }
       provider.commit(subscriptionCommitContexts, nack);
@@ -1342,12 +1341,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         if (e instanceof SubscriptionPipeTimeoutException) {
-          // degrade exception to log for pipe timeout
+          // Downgrade pipe timeout exceptions to logs.
           LOGGER.warn(e.getMessage());
           return;
         }
         LOGGER.warn(
-            "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
+            "{} failed to subscribe to topics {} through subscription provider {}, trying the next subscription provider...",
             this,
             topicNames,
             provider,
@@ -1356,7 +1355,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     final String errorMessage =
         String.format(
-            "%s failed to subscribe topics %s from all available subscription providers %s",
+            "%s failed to subscribe to topics %s through all available subscription providers %s",
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
@@ -1368,7 +1367,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
-              "Cluster has no available subscription providers when %s unsubscribe topic %s",
+              "Cluster has no available subscription providers when %s unsubscribes from topics %s",
               this, topicNames));
     }
     for (final AbstractSubscriptionProvider provider : providers) {
@@ -1377,12 +1376,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         if (e instanceof SubscriptionPipeTimeoutException) {
-          // degrade exception to log for pipe timeout
+          // Downgrade pipe timeout exceptions to logs.
           LOGGER.warn(e.getMessage());
           return;
         }
         LOGGER.warn(
-            "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
+            "{} failed to unsubscribe from topics {} through subscription provider {}, trying the next subscription provider...",
             this,
             topicNames,
             provider,
@@ -1391,7 +1390,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
     final String errorMessage =
         String.format(
-            "%s failed to unsubscribe topics %s from all available subscription providers %s",
+            "%s failed to unsubscribe from topics %s through all available subscription providers %s",
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
@@ -1402,14 +1401,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
-              "Cluster has no available subscription providers when %s fetch all endpoints", this));
+              "Cluster has no available subscription providers when %s fetches all endpoints",
+              this));
     }
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         return provider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",
+            "{} failed to fetch all endpoints from subscription provider {}, trying the next subscription provider...",
             this,
             provider,
             e);

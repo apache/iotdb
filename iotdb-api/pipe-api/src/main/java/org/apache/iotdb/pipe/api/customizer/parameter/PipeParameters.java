@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.pipe.api.customizer.parameter;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.PipeSink;
+import org.apache.iotdb.pipe.api.PipeSource;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeSinkRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeSourceRuntimeConfiguration;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,9 +38,9 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
- * Used in {@link PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} ,
- * {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} and {@link
- * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
+ * Used in {@link PipeSource#customize(PipeParameters, PipeSourceRuntimeConfiguration)}, {@link
+ * PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} and {@link
+ * PipeSink#customize(PipeParameters, PipeSinkRuntimeConfiguration)}.
  *
  * <p>This class is used to parse the parameters in WITH SOURCE, WITH PROCESSOR and WITH SINK when
  * creating a pipe.

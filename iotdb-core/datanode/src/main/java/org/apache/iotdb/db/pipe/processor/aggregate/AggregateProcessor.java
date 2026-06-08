@@ -552,8 +552,8 @@ public class AggregateProcessor implements PipeProcessor {
     } finally {
       tsFileInsertionEvent.close();
     }
-    // The timeProgressIndex shall only be reported by the output events
-    // whose progressIndex is bounded with tablet events
+    // The timeProgressIndex shall only be reported by output events whose progressIndex is bound to
+    // tablet events.
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
       ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
     }

@@ -224,7 +224,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     } catch (Exception e) {
       final String exceptionMessage =
           String.format(
-              "Auto create or verify schema error when executing statement %s. Detail: %s.",
+              DataNodeQueryMessages
+                  .LOAD_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT,
               getStatementString(),
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
@@ -257,14 +258,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.LOAD_FILE_ERROR,
-              "TsFile encryption is enabled, and the Load TsFile function is disabled"));
+              DataNodeQueryMessages.TSFILE_ENCRYPTION_ENABLED_LOAD_DISABLED));
       return false;
     }
 
     // check if the system is read only
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      LOGGER.info(
-          "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
+      LOGGER.info(DataNodeQueryMessages.LOAD_DATANODE_READ_ONLY_CONVERT_TO_TABLETS);
     }
 
     return true;
@@ -316,8 +316,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+              DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_PROGRESS,
+              i + 1,
+              tsfileNum,
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
         continue;
       }
@@ -327,8 +329,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         analyzeSingleTsFile(tsFile, i);
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+              DataNodeQueryMessages.LOAD_ANALYSIS_STAGE_PROGRESS,
+              i + 1,
+              tsfileNum,
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
@@ -340,16 +344,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
-            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+            DataNodeQueryMessages.FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT, tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
-                "The file %s is not a valid tsfile. Please check the input file.",
-                tsFile.getPath()));
+                DataNodeQueryMessages.FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT_S, tsFile.getPath()));
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
-                "Loading file %s failed. Detail: %s",
-                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+                DataNodeQueryMessages.LOADING_FILE_FAILED_DETAIL,
+                tsFile.getPath(),
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
@@ -370,7 +374,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
       final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
       LOGGER.info(
-          "TsFile {} is a {}-model file.", tsFile.getPath(), isTableModelFile ? "table" : "tree");
+          DataNodeQueryMessages.TSFILE_MODEL_FILE,
+          tsFile.getPath(),
+          isTableModelFile
+              ? DataNodeQueryMessages.TSFILE_TABLE_MODEL
+              : DataNodeQueryMessages.TSFILE_TREE_MODEL);
 
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -461,7 +469,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
         LOGGER.warn(
-            "Load: Failed to convert mini tsfile {} to tablets from statement {}. Status: {}.",
+            DataNodeQueryMessages.FAILED_CONVERT_MINI_TSFILE_TO_TABLETS,
             tsFiles.get(i).getPath(),
             isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
             status);
@@ -695,7 +703,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         getFileModelInfoBeforeTabletConversion();
       } catch (Exception e1) {
         LOGGER.warn(
-            "Load: Failed to convert to tablets from statement {} because failed to read model info from file, message: {}.",
+            DataNodeQueryMessages.FAILED_CONVERT_TO_TABLETS_READ_MODEL_INFO,
             isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
             e1.getMessage());
         analysis.setFailStatus(
@@ -731,7 +739,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
         if (status == null) {
           LOGGER.warn(
-              "Load: Failed to convert to tablets from statement {}. Status is null.",
+              DataNodeQueryMessages.FAILED_CONVERT_TO_TABLETS_STATUS_NULL,
               isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
           analysis.setFailStatus(
               new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
@@ -739,7 +747,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           break;
         } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
           LOGGER.warn(
-              "Load: Failed to convert to tablets from statement {}. Status: {}",
+              DataNodeQueryMessages.FAILED_CONVERT_TO_TABLETS_STATUS,
               isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
               status);
           analysis.setFailStatus(status);
@@ -747,7 +755,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } catch (final Exception e2) {
         LOGGER.warn(
-            "Load: Failed to convert to tablets from statement {} because exception: {}",
+            DataNodeQueryMessages.FAILED_CONVERT_TO_TABLETS_EXCEPTION,
             isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
             e2.getMessage());
         analysis.setFailStatus(

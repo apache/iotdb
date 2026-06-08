@@ -102,12 +102,12 @@ public class SubscriptionConsumerAgent {
       return;
     }
 
-    // if the creation time of consumer group meta on local agent is inconsistent with meta from
-    // coordinator
+    // If the creation time of consumer group meta on the local agent is inconsistent with meta from
+    // the coordinator, drop the stale broker.
     if (metaInAgent.getCreationTime() != metaFromCoordinator.getCreationTime()) {
       if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
         LOGGER.warn(
-            "Subscription: broker bound to consumer group [{}] has already existed when the creation time of consumer group meta on local agent {} is inconsistent with meta from coordinator {}, drop it",
+            "Subscription: broker bound to consumer group [{}] already exists while the creation time of consumer group meta on the local agent {} is inconsistent with meta from the coordinator {}, dropping it",
             consumerGroupId,
             metaInAgent,
             metaFromCoordinator);
@@ -195,7 +195,7 @@ public class SubscriptionConsumerAgent {
       }
     } else {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not existed when the corresponding consumer group meta has already existed on local agent, ignore it",
+          "Subscription: broker bound to consumer group [{}] does not exist while the corresponding consumer group meta already exists on the local agent, ignoring it",
           consumerGroupId);
     }
 

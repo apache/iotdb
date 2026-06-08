@@ -943,8 +943,7 @@ public abstract class PipeTaskAgent {
   }
 
   private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
-    // exceptions.
+    // 1. Track critical exceptions in all pipe tasks that share the same sink.
     final Map<PipeParameters, PipeRuntimeSinkCriticalException>
         reusedConnectorParameters2ExceptionMap = new HashMap<>();
 

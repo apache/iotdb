@@ -244,7 +244,7 @@ public class LoadTsFileScheduler implements IScheduler {
           if (RegionMigrateService.getInstance().getLastNotifyMigratingTime() > startTimeMs
               || RegionMigrateService.getInstance().mayHaveMigratingRegions()) {
             LOGGER.warn(
-                "LoadTsFileScheduler: Region migration was detected during loading TsFile {}, will convert to insertion to avoid data loss",
+                DataNodeQueryMessages.LOAD_REGION_MIGRATION_DETECTED_CONVERT_TO_INSERTION,
                 filePath);
             isLoadSingleTsFileSuccess = false;
           }
@@ -252,7 +252,7 @@ public class LoadTsFileScheduler implements IScheduler {
           if (isLoadSingleTsFileSuccess) {
             node.clean();
             LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
+                DataNodeQueryMessages.LOAD_TSFILE_SUCCESSFULLY_PROCESS,
                 filePath,
                 i + 1,
                 tsFileNodeListSize);
@@ -260,7 +260,7 @@ public class LoadTsFileScheduler implements IScheduler {
             isLoadSuccess = false;
             failedTsFileNodeIndexes.add(i);
             LOGGER.warn(
-                "Can not Load TsFile {}, load process [{}/{}]",
+                DataNodeQueryMessages.CANNOT_LOAD_TSFILE_PROCESS,
                 filePath,
                 i + 1,
                 tsFileNodeListSize);
@@ -299,8 +299,7 @@ public class LoadTsFileScheduler implements IScheduler {
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
           LOGGER.info(
-              "Load TsFile(s) failed, will try to convert to tablets and insert. Failed TsFiles: {}",
-              failedTsFiles);
+              DataNodeQueryMessages.LOAD_TSFILES_FAILED_TRY_CONVERT_TO_TABLETS, failedTsFiles);
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
@@ -324,13 +323,16 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (IllegalStateException e) {
       LOGGER.warn(
           String.format(
-              "Dispatch TsFileData error when parsing TsFile %s.",
+              DataNodeQueryMessages.DISPATCH_TSFILE_DATA_ERROR_WHEN_PARSING,
               node.getTsFileResource().getTsFile()),
           e);
       return false;
     } catch (Exception e) {
       LOGGER.warn(
-          String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
+          String.format(
+              DataNodeQueryMessages.PARSE_OR_SEND_TSFILE_ERROR,
+              node.getTsFileResource().getTsFile()),
+          e);
       return false;
     } finally {
       tsFileDataManager.clear();
@@ -361,8 +363,7 @@ public class LoadTsFileScheduler implements IScheduler {
               CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
       if (!result.isSuccessful()) {
         LOGGER.warn(
-            "Dispatch one piece to ReplicaSet {} error. Result status code {}. "
-                + "Result status message {}. Dispatch piece node error:%n{}",
+            DataNodeQueryMessages.DISPATCH_ONE_PIECE_ERROR,
             replicaSet,
             TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
             result.getFailureStatus().getMessage(),
@@ -370,14 +371,14 @@ public class LoadTsFileScheduler implements IScheduler {
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             LOGGER.warn(
-                "Sub status code {}. Sub status message {}.",
+                DataNodeQueryMessages.SUB_STATUS_CODE_MESSAGE,
                 TSStatusCode.representOf(status.getCode()).toString(),
                 status.getMessage());
           }
         }
         TSStatus status = result.getFailureStatus();
         status.setMessage(
-            String.format("Load %s piece error in 1st phase. Because ", pieceNode.getTsFile())
+            String.format(DataNodeQueryMessages.LOAD_PIECE_ERROR_FIRST_PHASE, pieceNode.getTsFile())
                 + status.getMessage());
         return false;
       }
@@ -390,7 +391,9 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (TimeoutException e) {
       dispatchResultFuture.cancel(true);
       LOGGER.warn(
-          String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
+          String.format(
+              DataNodeQueryMessages.WAIT_FOR_LOADING_TIMEOUT, LoadTsFilePieceNode.class.getName()),
+          e);
       return false;
     }
     return true;
@@ -421,8 +424,10 @@ public class LoadTsFileScheduler implements IScheduler {
                         } catch (final IOException e) {
                           throw new RuntimeException(
                               String.format(
-                                  "Serialize Progress Index error, isFirstPhaseSuccess: %s, uuid: %s, tsFile: %s",
-                                  isFirstPhaseSuccess, uuid, tsFile.getAbsolutePath()),
+                                  DataNodeQueryMessages.SERIALIZE_PROGRESS_INDEX_ERROR,
+                                  isFirstPhaseSuccess,
+                                  uuid,
+                                  tsFile.getAbsolutePath()),
                               e);
                         }
                       })));
@@ -432,8 +437,7 @@ public class LoadTsFileScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         LOGGER.warn(
-            "Dispatch load command {} of TsFile {} error to replicaSets {} error. "
-                + "Result status code {}. Result status message {}.",
+            DataNodeQueryMessages.DISPATCH_LOAD_COMMAND_ERROR,
             loadCommandReq,
             tsFile,
             allReplicaSets,
@@ -442,8 +446,12 @@ public class LoadTsFileScheduler implements IScheduler {
         TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format(
-                "Load %s error in second phase. Because %s, first phase is %s",
-                tsFile, status.getMessage(), isFirstPhaseSuccess ? "success" : "failed"));
+                DataNodeQueryMessages.LOAD_TSFILE_ERROR_SECOND_PHASE,
+                tsFile,
+                status.getMessage(),
+                isFirstPhaseSuccess
+                    ? DataNodeQueryMessages.LOAD_FIRST_PHASE_SUCCESS
+                    : DataNodeQueryMessages.LOAD_FIRST_PHASE_FAILED));
         return false;
       }
     } catch (InterruptedException | ExecutionException e) {
@@ -516,8 +524,7 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (FragmentInstanceDispatchException e) {
       LOGGER.warn(
           String.format(
-              "Dispatch tsFile %s error to local error. Result status code %s. "
-                  + "Result status message %s.",
+              DataNodeQueryMessages.DISPATCH_TSFILE_TO_LOCAL_ERROR,
               node.getTsFileResource().getTsFile(),
               TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
               e.getFailureStatus().getMessage()));
@@ -605,17 +612,17 @@ public class LoadTsFileScheduler implements IScheduler {
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
           iterator.remove();
           LOGGER.info(
-              "Load: Successfully converted TsFile {} into tablets and inserted.",
+              DataNodeQueryMessages.SUCCESS_CONVERT_TSFILE_TO_TABLETS,
               failedNode.getTsFileResource().getTsFilePath());
         } else {
           LOGGER.warn(
-              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
+              DataNodeQueryMessages.FAILED_CONVERT_TSFILE_TO_TABLETS_STATUS,
               failedNode.getTsFileResource().getTsFilePath(),
               status);
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
+            DataNodeQueryMessages.FAILED_CONVERT_TSFILE_TO_TABLETS_EXCEPTION,
             failedNode.getTsFileResource().getTsFilePath(),
             e.getMessage(),
             e);
@@ -629,10 +636,11 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFinished();
     } else {
       final String errorMsg =
-          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
-              + failedTsFileNodeIndexes.stream()
+          String.format(
+              DataNodeQueryMessages.FAILED_LOAD_BY_CONVERTING_TO_TABLETS,
+              failedTsFileNodeIndexes.stream()
                   .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-                  .collect(Collectors.joining(", "));
+                  .collect(Collectors.joining(", ")));
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
@@ -836,7 +844,7 @@ public class LoadTsFileScheduler implements IScheduler {
             && !scheduler.dispatchOnePieceNode(
                 entry.getValue().getRight(), entry.getValue().getLeft())) {
           LOGGER.warn(
-              "Dispatch piece node {} of TsFile {} error.",
+              DataNodeQueryMessages.DISPATCH_PIECE_NODE_OF_TSFILE_ERROR,
               entry.getValue(),
               singleTsFileNode.getTsFileResource().getTsFile());
           isAllSuccess = false;

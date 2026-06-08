@@ -139,7 +139,7 @@ public class IoTConsensusV2ServerImpl {
     try {
       long consensusWriteStartTime = System.nanoTime();
       long getStateMachineLockTime = System.nanoTime();
-      // statistic the time of acquiring stateMachine lock
+      // Record the time spent acquiring the stateMachine lock.
       iotConsensusV2ServerMetrics.recordGetStateMachineLockTime(
           getStateMachineLockTime - consensusWriteStartTime);
       long writeToStateMachineStartTime = System.nanoTime();
@@ -151,7 +151,7 @@ public class IoTConsensusV2ServerImpl {
       long writeToStateMachineEndTime = System.nanoTime();
       PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
-      // statistic the time of writing request into stateMachine
+      // Record the time spent writing the request into the stateMachine.
       iotConsensusV2ServerMetrics.recordUserWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       return result;
@@ -165,7 +165,7 @@ public class IoTConsensusV2ServerImpl {
     try {
       long consensusWriteStartTime = System.nanoTime();
       long getStateMachineLockTime = System.nanoTime();
-      // statistic the time of acquiring stateMachine lock
+      // Record the time spent acquiring the stateMachine lock.
       iotConsensusV2ServerMetrics.recordGetStateMachineLockTime(
           getStateMachineLockTime - consensusWriteStartTime);
 
@@ -175,7 +175,7 @@ public class IoTConsensusV2ServerImpl {
 
       PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
-      // statistic the time of writing request into stateMachine
+      // Record the time spent writing the request into the stateMachine.
       iotConsensusV2ServerMetrics.recordReplicaWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       return result;
@@ -210,11 +210,10 @@ public class IoTConsensusV2ServerImpl {
       }
     } catch (ClientManagerException e) {
       if (isForDeletionPurpose) {
-        // for remove peer, if target peer is already down, we can skip this step.
+        // For removePeer, skip this step if the target peer is already down.
         LOGGER.warn(IoTConsensusV2Messages.TARGET_PEER_MAY_BE_DOWN, peer, isActive, e);
       } else {
-        // for add peer, if target peer is down, we need to throw exception to identify the failure
-        // of this addPeerProcedure.
+        // For addPeer, fail the procedure if the target peer is down.
         throw new ConsensusGroupModifyPeerException(e);
       }
     }
@@ -245,7 +244,7 @@ public class IoTConsensusV2ServerImpl {
     }
 
     try {
-      // This node which acts as coordinator will transfer complete historical snapshot to new
+      // This node acts as the coordinator and transfers the complete historical snapshot to the new
       // target.
       createConsensusPipeToTargetPeer(targetPeer);
     } catch (Exception e) {
@@ -299,7 +298,7 @@ public class IoTConsensusV2ServerImpl {
     peerManager.removePeer(targetPeer);
   }
 
-  /** Wait for the user written data up to firstCheck to be replicated */
+  /** Wait for user-written data up to the first check to be replicated. */
   public void waitPeersToTargetPeerTransmissionCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     boolean isTransmissionCompleted = false;
@@ -337,7 +336,7 @@ public class IoTConsensusV2ServerImpl {
     }
   }
 
-  /** Wait for the user written data up to firstCheck to be replicated */
+  /** Wait for user-written data up to the first check to be replicated. */
   public void waitTargetPeerToPeersTransmissionCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     boolean isTransmissionCompleted = false;
@@ -435,7 +434,7 @@ public class IoTConsensusV2ServerImpl {
         Thread.sleep(checkIntervalInMs);
       }
     } catch (ClientManagerException | TException e) {
-      // in case of target peer is down or can not serve, we simply skip it.
+      // Skip this step if the target peer is down or cannot serve requests.
       LOGGER.warn(
           String.format(
               ConsensusMessages.ERROR_WAITING_RELEASE_RESOURCE, targetPeer, e.getMessage()),

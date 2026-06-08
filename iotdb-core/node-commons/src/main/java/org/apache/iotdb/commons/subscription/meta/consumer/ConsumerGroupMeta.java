@@ -104,7 +104,8 @@ public class ConsumerGroupMeta {
       return Collections.emptySet();
     }
 
-    // no need to check consumerIdToConsumerMeta here to avoid potential inconsistent meta
+    // No need to check consumerIdToConsumerMeta here; this avoids potentially inconsistent
+    // metadata.
 
     final Set<String> unsubscribedTopicNames = new HashSet<>();
     currentMeta
@@ -133,7 +134,7 @@ public class ConsumerGroupMeta {
     if (!match) {
       final String exceptionMessage =
           String.format(
-              "Failed to create consumer %s because inconsistent username & password under the same consumer group, expected %s:%s, actual %s:%s",
+              "Failed to create consumer %s because of inconsistent username and password under the same consumer group, expected %s:%s, actual %s:%s",
               consumerMeta.getConsumerId(),
               existedConsumerMeta.getUsername(),
               existedConsumerMeta.getPassword(),

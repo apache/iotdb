@@ -100,8 +100,8 @@ public final class StorageEngineMessages {
   public static final String FAIL_TO_CLOSE_TSFILE_WHEN_RECOVERING = "恢复过程中关闭 TsFile {} 失败";
   public static final String FAIL_TO_RECOVER_SEALED_TSFILE_SKIP = "恢复已封闭的 TsFile {} 失败，跳过该文件。";
   public static final String DATA_INCONSISTENT_NOT_TRIGGER_TWICE = "数据不一致异常不应被触发两次";
-  public static final String INSERT_TO_TSFILE_PROCESSOR_REJECTED = "写入 TsFileProcessor 被拒绝, {}";
-  public static final String INSERT_TO_TSFILE_PROCESSOR_ERROR = "写入 TsFileProcessor 出错 ";
+  public static final String INSERT_TO_TSFILE_PROCESSOR_REJECTED = "写入 TsFileProcessor 被拒绝，{}";
+  public static final String INSERT_TO_TSFILE_PROCESSOR_ERROR = "写入 TsFileProcessor 时出错";
   public static final String IOEXCEPTION_CREATING_TSFILE_PROCESSOR_RETRY = "创建 TsFileProcessor 时遇到 IOException，正在重试";
   public static final String CANNOT_CLOSE_TSFILE_RESOURCE = "无法关闭 TsFileResource {}";
   public static final String CANNOT_REMOVE_MOD_FILE = "无法删除修改文件 {}";
@@ -236,9 +236,9 @@ public final class StorageEngineMessages {
   public static final String DELETION_WRITTEN_WHEN_FLUSH = "[Deletion] flush memtable 时写入删除: {}";
   public static final String FSYNC_MEMTABLE_TO_DISK_ERROR = "将 memtable 数据同步到磁盘出错，";
   public static final String FLUSHING_MEMTABLES_CLEAR = "{} 的 flushing memtable 已清空";
-  public static final String START_TO_END_FILE = "开始结束文件 {}";
-  public static final String ENDED_FILE = "已结束文件 {}";
-  public static final String START_TO_END_EMPTY_FILE = "开始结束空文件 {}";
+  public static final String START_TO_END_FILE = "开始封闭文件 {}";
+  public static final String ENDED_FILE = "已封闭文件 {}";
+  public static final String START_TO_END_EMPTY_FILE = "开始封闭空文件 {}";
   public static final String TIME_CHUNK_METADATA_SHOULD_NOT_BE_EMPTY = "对齐设备中的 TimeChunkMetadata 不应为空";
   public static final String WRITABLE_MEM_CHUNK_UNSUPPORTED_TYPE = "WritableMemChunk 不支持数据类型: {}";
 
@@ -345,16 +345,16 @@ public final class StorageEngineMessages {
   // ======================== Read ========================
 
   public static final String MEM_CHUNK_READER_NOT_SUPPORT_METHOD = "内存 Chunk 读取器不支持此方法";
-  public static final String MEM_ALIGNED_PAGE_READER_TSBLOCK = "[memAlignedPageReader] TsBlock:{}";
+  public static final String MEM_ALIGNED_PAGE_READER_TSBLOCK = "[内存对齐页读取器] TsBlock:{}";
   public static final String AFTER_FILTER_CHUNK_METADATA_LIST = "按过滤器移除后的 Chunk 元数据列表: ";
   public static final String AFTER_MODIFICATION_CHUNK_METADATA_LIST = "修改后的 Chunk 元数据列表: ";
   public static final String TIME_DATA_SIZE_NOT_MATCH = "时间数据大小不匹配";
   public static final String QUERY_OPENED_FILES = "查询已打开 {} 个文件！";
   public static final String CANNOT_CLOSE_TSFILE_SEQUENCE_READER = "无法关闭 TsFileSequenceReader {}！";
-  public static final String QUERY_SEALED_FILE_INFO = "[Query Sealed File Info]\n";
-  public static final String QUERY_ID_FORMAT = "\t[queryId: {}]\n";
+  public static final String QUERY_SEALED_FILE_INFO = "[已封闭文件查询信息]\n";
+  public static final String QUERY_ID_FORMAT = "\t[查询 ID: {}]\n";
   public static final String QUERY_FILE_PATH_FORMAT = "\t\t{}\n";
-  public static final String QUERY_UNSEALED_FILE_INFO = "[Query Unsealed File Info]\n";
+  public static final String QUERY_UNSEALED_FILE_INFO = "[未封闭文件查询信息]\n";
 
   // ======================== Snapshot ========================
 
@@ -399,7 +399,7 @@ public final class StorageEngineMessages {
   public static final String FAILED_TO_GET_SHARED_MOD_FILE = "获取共享修改文件失败";
   public static final String UPGRADING_MOD_FILE_INTERRUPTED = "升级修改文件被中断";
   public static final String CANNOT_UPGRADE_MOD_FILE = "无法升级修改文件";
-  public static final String TIME_INDEX_VALUE = "TimeIndex = {}";
+  public static final String TIME_INDEX_VALUE = "时间索引 = {}";
   public static final String RESOURCE_FILE_NOT_FOUND = "资源文件未找到";
   public static final String CANNOT_BUILD_DEVICE_TIME_INDEX = "无法从资源文件构建 DeviceTimeIndex: ";
   public static final String TSFILE_CANNOT_BE_DELETED = "TsFile {} 无法删除: {}";
@@ -439,7 +439,7 @@ public final class StorageEngineMessages {
   public static final String EXCEPTION_APPLY_TABLE_DISK_USAGE_INDEX = "应用 TableDiskUsageIndex 操作时遇到异常。";
   public static final String FAILED_RECOVER_TABLE_DISK_USAGE_INDEX = "恢复 TableDiskUsageIndex 失败";
   public static final String FAILED_SYNC_TABLE_SIZE_INDEX = "同步 TsFile 表大小索引失败。";
-  public static final String WRITE_OBJECT_DELTA = "writeObjectDelta";
+  public static final String WRITE_OBJECT_DELTA = "写入对象增量";
   public static final String EXCEPTION_REMOVE_TABLE_DISK_USAGE_INDEX = "移除 TableDiskUsageIndex 时遇到异常。";
   public static final String INTERRUPTED_ADDING_OP_TO_QUEUE = "将操作 {} 添加到队列时被中断。";
   public static final String FAILED_TO_MOVE_FILE = "移动 {} 到 {} 失败";
@@ -469,7 +469,7 @@ public final class StorageEngineMessages {
   public static final String EXCEED_TOTAL_MEMORY_SIZE = "{} 已超出总内存大小";
   public static final String REDUCE_MEMORY_USAGE_TO_NEGATIVE = "{} 的内存使用量已降为负数";
   public static final String FORCE_ALLOCATE_INTERRUPTED = "forceAllocate: 等待可用内存时被中断";
-  public static final String LOAD_ALLOCATED_MEMORY_BLOCK = "Load: 从查询引擎分配内存块，大小: {}";
+  public static final String LOAD_ALLOCATED_MEMORY_BLOCK = "加载：从查询引擎分配内存块，大小：{}";
   public static final String RELEASE_DATA_CACHE_MEMORY_BLOCK = "释放数据缓存内存块 {}";
   public static final String START_DATA_TYPE_CONVERSION_DOT = "开始对 LoadTsFileStatement: {} 进行数据类型转换。";
   public static final String START_DATA_TYPE_CONVERSION = "开始对 LoadTsFileStatement: {} 进行数据类型转换";
@@ -507,6 +507,85 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active 加载定期任务执行器已成功停止。";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "将文件 {} 移动到失败目录时发生错误。";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
+  public static final String NEXT_LOAD_CLEANUP_TASK_NOT_READY =
+      "下一个加载清理任务 {} 尚未就绪，至少等待 {} 毫秒（{} 秒）。";
+  public static final String WRITER_MANAGER_HAS_BEEN_CLOSED =
+      "%s 对应的 TsFileWriterManager 已关闭。";
+  public static final String FAILED_TO_DELETE_LOAD_TASK_DIR = "删除加载任务目录 {} 失败。";
+  public static final String WRITER_ALREADY_WRITING_CHUNK_GROUP =
+      "写入器 {} 已经在为分区 {} 写入设备 {} 的 ChunkGroup，但上一个设备是 {}。";
+  public static final String CANNOT_CREATE_MODIFICATION_FILE_FOR_WRITING =
+      "无法创建 ModificationFile {} 用于写入。";
+  public static final String ACTIVE_LOAD_CREATE_FAIL_DIR_ERROR =
+      "为 Active 加载创建失败目录 {} 时发生错误。";
+  public static final String ACTIVE_LOAD_TSFILE_SUCCESS =
+      "成功自动加载 TsFile {}（isGeneratedByPipe = {}）";
+  public static final String ACTIVE_LOAD_TSFILE_FAILED_STATUS_MOVE_FAIL_DIR =
+      "自动加载 TsFile {} 失败（isGeneratedByPipe = {}），状态：{}。文件将移动到失败目录。";
+  public static final String ACTIVE_LOAD_TSFILE_FILE_NOT_FOUND_SKIP =
+      "自动加载 TsFile {} 失败（isGeneratedByPipe = {}），原因是文件不存在。将跳过该文件。";
+  public static final String ACTIVE_LOAD_TSFILE_UNEXPECTED_EXCEPTION_MOVE_FAIL_DIR =
+      "自动加载 TsFile {} 失败（isGeneratedByPipe = {}），发生意外异常。文件将移动到失败目录。";
+  public static final String ACTIVE_LOAD_REJECT_MEMORY =
+      "因内存受限拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_REJECT_READ_ONLY =
+      "因系统处于只读模式拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_REJECT_PROCEDURE_RETURN_TIMEOUT =
+      "因等待 procedure 返回超时拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_REJECT_DATANODE_NOT_ENOUGH =
+      "因 DataNode 数量不足拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_REJECT_CONFIG_NODE_CONNECTION =
+      "因无法连接任意 ConfigNode 拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_REJECT_QUERY_TIMEOUT =
+      "因当前查询超时拒绝自动加载 TsFile {}（isGeneratedByPipe = {}）。稍后重试。";
+  public static final String ACTIVE_LOAD_DIR_NOT_READABLE =
+      "当前目录路径不可读：{}。跳过扫描该目录，请检查权限。";
+  public static final String ACTIVE_LOAD_DIR_NOT_WRITABLE =
+      "当前目录路径不可写：{}。跳过扫描该目录，请检查权限。";
+  public static final String ACTIVE_LOAD_CHECK_DIR_PERMISSION_ERROR =
+      "检查目录读写权限时发生错误：{}。跳过扫描该目录。";
+  public static final String ACTIVE_LOAD_HOT_RELOAD_DIRS_ERROR =
+      "热加载 Active 加载目录时发生错误。当前 Active 加载监听目录：{}。";
+  public static final String FAILED_FIND_MOUNT_POINT =
+      "未找到 {} 的挂载点，跳过注册";
+  public static final String EXCEPTION_READING_DATA_DIR_MOUNT_POINT =
+      "读取数据目录的挂载点 {} 时发生异常";
+  public static final String EXCEPTION_READING_TARGET_FILE_MOUNT_POINT =
+      "读取目标文件的挂载点 {} 时发生异常";
+  public static final String RELEASE_MORE_MEMORY_THAN_ALLOCATED =
+      "加载：尝试释放的内存 ({}) 超过已分配内存 ({})";
+  public static final String ALLOCATED_MEMORY_BLOCK_FROM_DATA_CACHE =
+      "加载：查询引擎内存不足，已从 DataCacheMemoryBlock 分配 MemoryBlock，大小：{}";
+  public static final String RESIZE_MEMORY_BLOCK_FAILED =
+      "加载：无法将内存块 {} 的总内存大小设置为 {} 字节，当前内存使用量为 {} 字节";
+  public static final String FORCE_RESIZED_MEMORY_BLOCK_FROM_QUERY =
+      "加载：使用查询引擎内存强制扩容 LoadTsFileMemoryBlock，新增大小：{}，新大小：{}";
+  public static final String FORCE_RESIZED_MEMORY_BLOCK_FROM_DATA_CACHE =
+      "加载：查询引擎内存不足，使用 DataCacheMemoryBlock 强制扩容 LoadTsFileMemoryBlock，新增大小：{}，新大小：{}";
+  public static final String CREATE_DATA_CACHE_MEMORY_BLOCK =
+      "已创建数据缓存内存块 {}，分配内存 {}";
+  public static final String RELEASE_MEMORY_BLOCK_WITH_USAGE =
+      "尝试释放内存块 {}，但该内存块尚未释放全部内存";
+  public static final String SHRINK_NEGATIVE_MEMORY =
+      "尝试收缩负数大小的内存 {}，内存块 {}";
+  public static final String CAST_TABLET_TYPE =
+      "加载：向 {}.{} 插入 Tablet，将类型从 {} 转换为 {}。";
+  public static final String DATABASE_NAME_NULL_SKIP_DATA_TYPE_CONVERSION =
+      "LoadTsFileStatement 的数据库名称意外为 null：%s。跳过数据类型转换。";
+  public static final String FAILED_CONVERT_DATA_TYPE_FOR_LOAD_TSFILE_STATEMENT =
+      "转换 LoadTsFileStatement 的数据类型失败：{}。";
+  public static final String DATA_TYPE_CONVERSION_SUCCESS =
+      "LoadTsFileStatement {} 的数据类型转换成功。";
+  public static final String FAILED_CONVERT_DATA_TYPE_STATUS_CODE =
+      "转换 LoadTsFileStatement 的数据类型失败：{}，状态码：{}。";
+  public static final String FAILED_CONVERT_DATA_TYPES_FOR_TABLE_MODEL =
+      "转换表模型语句 {} 的数据类型失败。";
+  public static final String FAILED_CONVERT_DATA_TYPES_FOR_TREE_MODEL =
+      "转换树模型语句 {} 的数据类型失败。";
+  public static final String TRY_LOAD_TSFILE_V3_TO_CURRENT_V4 =
+      "尝试将 TsFile V3 加载到当前版本（V4），文件路径：{}";
+  public static final String FILE_VERSION_HIGHER_THAN_CURRENT =
+      "文件版本号高于当前版本，文件路径：{}";
 
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "字符串 '%s' 不是合法的修复日志";
 

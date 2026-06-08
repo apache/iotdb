@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -49,7 +50,7 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
     }
 
     LOGGER.info(
-        "Load: Inserting tablet to {}.{}. Casting type from {} to {}.",
+        StorageEngineMessages.CAST_TABLET_TYPE,
         devicePath,
         measurements[columnIndex],
         dataTypes[columnIndex],

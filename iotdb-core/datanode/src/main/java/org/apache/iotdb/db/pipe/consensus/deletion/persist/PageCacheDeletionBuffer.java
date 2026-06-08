@@ -53,9 +53,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * The core idea of this buffer is to write deletion to the Page cache and fsync them to disk when
- * certain conditions are met. This design does not decouple serialization and writing, but provides
- * an easier way to maintain and understand.
+ * This buffer writes deletions to the page cache and fsyncs them to disk when certain conditions
+ * are met. This design does not decouple serialization and writing, but it is easier to maintain
+ * and understand.
  */
 public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
@@ -64,10 +64,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
-  // Buffer config keep consistent with WAL.
+  // Keep the buffer config consistent with WAL.
   public static int DAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
 
-  // DeletionResources received from storage engine, which is waiting to be persisted.
+  // DeletionResources received from the storage engine and waiting to be persisted.
   private final BlockingQueue<DeletionResource> deletionResources =
       new PriorityBlockingQueue<>(
           QUEUE_CAPACITY,
@@ -77,21 +77,21 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   : (o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1));
   // Data region id
   private final int dataRegionId;
-  // directory to store .deletion files
+  // Directory for storing .deletion files.
   private final String baseDirectory;
-  // single thread to serialize WALEntry to workingBuffer
+  // Single thread for serializing deletions to the buffer.
   private final ExecutorService persistThread;
   private final Lock buffersLock = new ReentrantLock();
   // Total size of this batch.
   private final AtomicInteger totalSize = new AtomicInteger(0);
-  // All deletions that will be handled in a single persist task
+  // All deletions that will be handled in a single persist task.
   private final List<DeletionResource> pendingDeletionsInOneTask = new CopyOnWriteArrayList<>();
 
-  // whether close method is called
+  // Whether the close method is called.
   private volatile boolean isClosed = false;
-  // Serialize buffer in current persist task
+  // Serialization buffer in the current persist task.
   private volatile ByteBuffer serializeBuffer;
-  // Current Logging file.
+  // Current logging file.
   private volatile File logFile;
   private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;
@@ -116,14 +116,14 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   public void start() {
     persistThread.submit(new PersistTask());
     try {
-      // initial file is the minimumProgressIndex
+      // The initial file uses the minimum ProgressIndex.
       this.logFile =
           new File(
               baseDirectory,
               String.format("_%d-%d%s", 0, 0, DeletionResourceManager.DELETION_FILE_SUFFIX));
       this.logStream = new FileOutputStream(logFile, true);
       this.logChannel = logStream.getChannel();
-      // Create file && write magic string
+      // Create the file and write the magic string.
       if (!logFile.exists() || logFile.length() == 0) {
         this.logChannel.write(
             ByteBuffer.wrap(
@@ -185,7 +185,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void closeCurrentLoggingFile(boolean notifySuccess) throws IOException {
     LOGGER.info(DataNodePipeMessages.DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED, dataRegionId);
-    // Close old resource to fsync.
+    // Close the current file handles.
     if (this.logStream != null) {
       this.logStream.close();
     }
@@ -245,7 +245,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   DeletionResourceManager.DELETION_FILE_SUFFIX));
       this.logStream = new FileOutputStream(logFile, true);
       this.logChannel = logStream.getChannel();
-      // Create file && write magic string
+      // Create the file and write the magic string.
       if (!logFile.exists() || logFile.length() == 0) {
         this.logChannel.write(
             ByteBuffer.wrap(
@@ -262,7 +262,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   public void close() {
     isClosed = true;
     // Force sync existing data in memory to disk.
-    // first waiting serialize and sync tasks finished, then release all resources
+    // First wait for serialization and sync tasks to finish, then release resources.
     waitUntilFlushAllDeletionsOrTimeOut();
     if (persistThread != null) {
       persistThread.shutdownNow();
@@ -271,17 +271,18 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
           LOGGER.warn(DataNodePipeMessages.PERSISTTHREAD_DID_NOT_TERMINATE_WITHIN_S, 30);
         }
       } catch (InterruptedException e) {
-        LOGGER.warn(DataNodePipeMessages.DAL_THREAD_STILL_DOESN_T_EXIT_AFTER, dataRegionId);
+        LOGGER.warn(
+            DataNodePipeMessages.INTERRUPTED_WHILE_WAITING_FOR_DAL_THREAD_TO_EXIT, dataRegionId, e);
         Thread.currentThread().interrupt();
       }
     }
-    // close file handler
+    // Close file handles.
     try {
       closeCurrentLoggingFile(false);
     } catch (IOException e) {
       LOGGER.error(DataNodePipeMessages.FAIL_TO_CLOSE_CURRENT_LOGGING_FILE_WHEN, e);
     }
-    // clean buffer
+    // Clean buffer.
     MmapUtil.clean(serializeBuffer);
     serializeBuffer = null;
   }
@@ -293,7 +294,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       try {
         Thread.sleep(50);
       } catch (InterruptedException e) {
-        LOGGER.error(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED);
+        LOGGER.error(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED, e);
         Thread.currentThread().interrupt();
       }
     }
@@ -325,7 +326,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
           dataRegionId,
           deletionResource);
       ByteBuffer buffer = deletionResource.serialize();
-      // if working buffer doesn't have enough space
+      // If the serialization buffer does not have enough space.
       if (buffer.position() > serializeBuffer.remaining()) {
         return false;
       }
@@ -339,8 +340,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       // For first deletion we use blocking take() method.
       try {
         DeletionResource firstDeletionResource = deletionResources.take();
-        // Serialize deletion. The first serialization cannot fail because a deletion cannot exceed
-        // size of serializeBuffer.
+        // A single deletion is expected not to exceed the serialization buffer.
         serializeDeletionToBatchBuffer(firstDeletionResource);
         pendingDeletionsInOneTask.add(firstDeletionResource);
         maxProgressIndexInCurrentFile =
@@ -352,21 +352,21 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         return;
       }
 
-      // For further deletion, we use non-blocking poll() method to persist existing deletion of
-      // current batch in time.
+      // For subsequent deletions, use non-blocking poll() to persist the current batch in time.
       while (totalSize.get() < DAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         DeletionResource deletionResource = null;
         try {
-          // Timeout config keep consistent with WAL async mode.
+          // Keep the timeout config consistent with WAL async mode.
           deletionResource =
               deletionResources.poll(config.getWalAsyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-          LOGGER.warn(DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM);
+          LOGGER.warn(
+              DataNodePipeMessages.INTERRUPTED_WHEN_WAITING_FOR_POLLING_DELETIONRESOURCE_FROM);
           Thread.currentThread().interrupt();
         }
         // If timeout, flush deletions to disk.
         if (deletionResource == null) {
-          // append to current file and not switch file
+          // Append to the current file without switching files.
           appendCurrentBatch();
           fsyncCurrentLoggingFile();
           resetTaskAttribute();
@@ -374,7 +374,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         }
         // Serialize deletion
         if (!serializeDeletionToBatchBuffer(deletionResource)) {
-          // if working buffer is exhausted, which means serialization failed.
+          // If the serialization buffer is exhausted, put it back and roll to a new file.
           // 1. roll back
           deletionResources.add(deletionResource);
           // 2. fsync immediately and roll to a new file.

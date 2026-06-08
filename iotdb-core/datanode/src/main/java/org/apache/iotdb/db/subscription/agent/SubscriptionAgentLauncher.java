@@ -63,7 +63,7 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all topic info in config node, status is %s",
+                  "Failed to get all topic info from ConfigNode, status is %s",
                   getAllTopicInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
@@ -77,7 +77,7 @@ class SubscriptionAgentLauncher {
                             byteBuffer -> {
                               final TopicMeta topicMeta = TopicMeta.deserialize(byteBuffer);
                               LOGGER.info(
-                                  "Pulled topic meta from config node: {}, recovering ...",
+                                  "Pulled topic meta from ConfigNode: {}, recovering...",
                                   topicMeta);
                               return topicMeta;
                             })
@@ -91,7 +91,7 @@ class SubscriptionAgentLauncher {
       } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
-            "Failed to get topic meta from config node for {} times, will retry at most {} times.",
+            "Failed to get topic meta from ConfigNode on attempt {}, will retry up to {} attempts.",
             retry,
             MAX_RETRY_TIMES,
             e);
@@ -100,7 +100,7 @@ class SubscriptionAgentLauncher {
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
-              "Interrupted while sleeping, will retry to get topic meta from config node.",
+              "Interrupted while sleeping, will retry getting topic meta from ConfigNode.",
               interruptedException);
           Thread.currentThread().interrupt();
         }
@@ -121,7 +121,7 @@ class SubscriptionAgentLauncher {
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           final String exceptionMessage =
               String.format(
-                  "Failed to get all subscription info in config node, status is %s",
+                  "Failed to get all subscription info from ConfigNode, status is %s",
                   getAllSubscriptionInfoResp.getStatus());
           LOGGER.warn(exceptionMessage);
           throw new SubscriptionException(exceptionMessage);
@@ -136,7 +136,7 @@ class SubscriptionAgentLauncher {
                               final ConsumerGroupMeta consumerGroupMeta =
                                   ConsumerGroupMeta.deserialize(byteBuffer);
                               LOGGER.info(
-                                  "Pulled consumer group meta from config node: {}, recovering ...",
+                                  "Pulled consumer group meta from ConfigNode: {}, recovering...",
                                   consumerGroupMeta);
                               return consumerGroupMeta;
                             })
@@ -150,7 +150,7 @@ class SubscriptionAgentLauncher {
       } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
-            "Failed to get consumer group meta from config node for {} times, will retry at most {} times.",
+            "Failed to get consumer group meta from ConfigNode on attempt {}, will retry up to {} attempts.",
             retry,
             MAX_RETRY_TIMES,
             e);
@@ -159,7 +159,7 @@ class SubscriptionAgentLauncher {
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
-              "Interrupted while sleeping, will retry to get consumer group meta from config node.",
+              "Interrupted while sleeping, will retry getting consumer group meta from ConfigNode.",
               interruptedException);
           Thread.currentThread().interrupt();
         }

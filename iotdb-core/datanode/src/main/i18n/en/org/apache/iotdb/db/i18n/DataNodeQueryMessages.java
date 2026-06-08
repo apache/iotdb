@@ -296,7 +296,7 @@ public final class DataNodeQueryMessages {
   public static final String FAILED_TO_GET_DATABASE_MAP =
       "Failed to get database Map";
   public static final String LOAD_ANALYSIS_STAGE_ALL_TSFILES_HAVE_BEEN_ANALYZED =
-      "Load - Analysis Stage: all tsfiles have been analyzed.";
+      "Load - Analysis Stage: all TsFiles have been analyzed.";
   public static final String ASYNC_LOAD_HAS_FAILED_AND_IS_NOW_TRYING =
       "Async Load has failed, and is now trying to load sync";
   public static final String TSFILE_IS_EMPTY =
@@ -311,6 +311,56 @@ public final class DataNodeQueryMessages {
       "Failed to find tag column mapping for table {}";
   public static final String AUTO_CREATE_DATABASE_FAILED_BECAUSE =
       "Auto create database failed because: ";
+  public static final String LOAD_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT =
+      "Auto create or verify schema error when executing statement %s. Detail: %s.";
+  public static final String TSFILE_ENCRYPTION_ENABLED_LOAD_DISABLED =
+      "TsFile encryption is enabled, and the Load TsFile function is disabled";
+  public static final String LOAD_DATANODE_READ_ONLY_CONVERT_TO_TABLETS =
+      "LoadTsFileAnalyzer: Current DataNode is read-only. It will try to convert to tablets and insert later.";
+  public static final String LOAD_ANALYSIS_STAGE_PROGRESS =
+      "Load - Analysis Stage: {}/{} TsFiles have been analyzed, progress: {}%";
+  public static final String FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT =
+      "The file {} is not a valid TsFile. Please check the input file.";
+  public static final String FILE_IS_NOT_VALID_TSFILE_CHECK_INPUT_S =
+      "The file %s is not a valid TsFile. Please check the input file.";
+  public static final String LOADING_FILE_FAILED_DETAIL =
+      "Loading file %s failed. Detail: %s";
+  public static final String TSFILE_MODEL_FILE =
+      "TsFile {} is a {}-model file.";
+  public static final String TSFILE_TABLE_MODEL = "table";
+  public static final String TSFILE_TREE_MODEL = "tree";
+  public static final String FAILED_CONVERT_MINI_TSFILE_TO_TABLETS =
+      "Load: Failed to convert mini TsFile {} to tablets from statement {}. Status: {}.";
+  public static final String FAILED_CONVERT_TO_TABLETS_READ_MODEL_INFO =
+      "Load: Failed to convert to tablets from statement {} because model info could not be read from file, message: {}.";
+  public static final String FAILED_CONVERT_TO_TABLETS_STATUS_NULL =
+      "Load: Failed to convert to tablets from statement {}. Status is null.";
+  public static final String FAILED_CONVERT_TO_TABLETS_STATUS =
+      "Load: Failed to convert to tablets from statement {}. Status: {}";
+  public static final String FAILED_CONVERT_TO_TABLETS_EXCEPTION =
+      "Load: Failed to convert to tablets from statement {} because of exception: {}";
+  public static final String SKIP_FAILED_TABLE_SCHEMA_CHECK =
+      "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true, message: {}";
+  public static final String FAILED_CHECK_DEVICE_DELETED_BY_MODS =
+      "Failed to check if device {} is deleted by mods. Treat it as not deleted.";
+  public static final String FAILED_CHECK_TIMESERIES_DELETED_BY_MODS =
+      "Failed to check if device {}, timeseries {} is deleted by mods. Treat it as not deleted.";
+  public static final String AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_DETAIL =
+      "Auto create or verify schema error. Detail: %s.";
+  public static final String DATA_TYPE_MISMATCH_FOR_COLUMN =
+      "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}";
+  public static final String CREATE_DATABASE_ERROR =
+      "Failed to create database, statement: {}, result status is: {}";
+  public static final String CREATE_DATABASE_ERROR_S =
+      "Failed to create database, statement: %s, result status is: %s";
+  public static final String MEASUREMENT_DATATYPE_NOT_MATCH =
+      "Measurement {}{}{} data type does not match, TsFile: {}, IoTDB: {}";
+  public static final String ENCODING_TYPE_NOT_MATCH =
+      "Encoding type does not match, measurement: {}{}{}, TsFile encoding: {}, IoTDB encoding: {}";
+  public static final String COMPRESSOR_NOT_MATCH =
+      "Compressor does not match, measurement: {}{}{}, TsFile compressor: {}, IoTDB compressor: {}";
+  public static final String DEVICE_NOT_IN_TSFILE_DEVICE_IS_ALIGNED_CACHE =
+      "Device {} is not in the tsFileDevice2IsAligned cache {}.";
 
   // --- Plan / Execution ---
 
@@ -964,6 +1014,56 @@ public final class DataNodeQueryMessages {
       "Start load TsFile {} locally.";
   public static final String LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS =
       "Load: all failed TsFiles are converted to tablets and inserted.";
+  public static final String LOAD_REGION_MIGRATION_DETECTED_CONVERT_TO_INSERTION =
+      "LoadTsFileScheduler: Region migration was detected while loading TsFile {}. It will convert to insertion to avoid data loss.";
+  public static final String LOAD_TSFILE_SUCCESSFULLY_PROCESS =
+      "Loaded TsFile {} successfully, progress [{}/{}]";
+  public static final String CANNOT_LOAD_TSFILE_PROCESS =
+      "Cannot load TsFile {}, progress [{}/{}]";
+  public static final String LOAD_TSFILES_FAILED_TRY_CONVERT_TO_TABLETS =
+      "Failed to load TsFiles. Will try to convert them to tablets and insert. Failed TsFiles: {}";
+  public static final String DISPATCH_TSFILE_DATA_ERROR_WHEN_PARSING =
+      "Failed to dispatch TsFileData when parsing TsFile %s.";
+  public static final String PARSE_OR_SEND_TSFILE_ERROR =
+      "Failed to parse or send TsFile %s.";
+  public static final String DISPATCH_ONE_PIECE_ERROR =
+      "Failed to dispatch one piece to replica set {}. Result status code {}. "
+          + "Result status message {}. Failed piece node:%n{}";
+  public static final String SUB_STATUS_CODE_MESSAGE =
+      "Sub status code {}. Sub status message {}.";
+  public static final String LOAD_PIECE_ERROR_FIRST_PHASE =
+      "Failed to load piece %s in the first phase because ";
+  public static final String WAIT_FOR_LOADING_TIMEOUT =
+      "Timed out waiting for %s to load.";
+  public static final String SERIALIZE_PROGRESS_INDEX_ERROR =
+      "Failed to serialize ProgressIndex, isFirstPhaseSuccess: %s, uuid: %s, TsFile: %s";
+  public static final String DISPATCH_LOAD_COMMAND_ERROR =
+      "Failed to dispatch load command {} of TsFile {} to replica sets {}. "
+          + "Result status code {}. Result status message {}.";
+  public static final String LOAD_TSFILE_ERROR_SECOND_PHASE =
+      "Failed to load %s in the second phase because %s. First phase is %s";
+  public static final String LOAD_FIRST_PHASE_SUCCESS = "success";
+  public static final String LOAD_FIRST_PHASE_FAILED = "failed";
+  public static final String DISPATCH_TSFILE_TO_LOCAL_ERROR =
+      "Dispatch TsFile %s to local failed. Result status code %s. Result status message %s.";
+  public static final String SUCCESS_CONVERT_TSFILE_TO_TABLETS =
+      "Load: Successfully converted TsFile {} into tablets and inserted.";
+  public static final String FAILED_CONVERT_TSFILE_TO_TABLETS_STATUS =
+      "Load: Failed to convert to tablets from TsFile {}. Status: {}";
+  public static final String FAILED_CONVERT_TSFILE_TO_TABLETS_EXCEPTION =
+      "Load: Failed to convert to tablets from TsFile {}. Exception: {}";
+  public static final String FAILED_LOAD_BY_CONVERTING_TO_TABLETS =
+      "Load: Failed to load some TsFiles by converting them into tablets. Failed TsFiles: %s";
+  public static final String DISPATCH_PIECE_NODE_OF_TSFILE_ERROR =
+      "Failed to dispatch piece node {} of TsFile {}.";
+  public static final String FAILED_DISPATCH_LOAD_COMMAND_TO_NODE =
+      "Failed to dispatch load command %s to node %s because of exception: %s";
+  public static final String CANNOT_DISPATCH_LOAD_COMMAND =
+      "Cannot dispatch LoadCommand for load operation {}";
+  public static final String SERIALIZE_TSFILE_DATA_ERROR_SKIP =
+      "Failed to serialize data of TsFile {}, skipping TsFileData {}";
+  public static final String LOAD_RPC_CONNECTION_TIMEOUT_ADJUSTED =
+      "Load RPC connection timeout is adjusted to {} ms ({} minutes)";
 
   // --- Plan / Statement ---
 

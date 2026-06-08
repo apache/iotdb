@@ -146,9 +146,7 @@ public class LoadTsFileTableSchemaCache {
       createTableAndDatabaseIfNecessary(device.getTableName());
     } catch (final Exception e) {
       if (IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck()) {
-        LOGGER.info(
-            "Failed to check table schema, will skip because skipFailedTableSchemaCheck is set to true, message: {}",
-            e.getMessage());
+        LOGGER.info(DataNodeQueryMessages.SKIP_FAILED_TABLE_SCHEMA_CHECK, e.getMessage());
       } else {
         throw e;
       }
@@ -166,10 +164,7 @@ public class LoadTsFileTableSchemaCache {
       return ModificationUtils.isDeviceDeletedByMods(
           currentModifications, currentTimeIndex, device);
     } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
-          device,
-          e);
+      LOGGER.warn(DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS, device, e);
       return false;
     }
   }
@@ -211,7 +206,8 @@ public class LoadTsFileTableSchemaCache {
     } catch (Exception e) {
       LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
       throw new SemanticException(
-          String.format("Auto create or verify schema error.  Detail: %s.", e.getMessage()));
+          String.format(
+              DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_DETAIL, e.getMessage()));
     }
   }
 
@@ -392,7 +388,7 @@ public class LoadTsFileTableSchemaCache {
         if (LOGGER.isDebugEnabled()
             && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
           LOGGER.debug(
-              "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
+              DataNodeQueryMessages.DATA_TYPE_MISMATCH_FOR_COLUMN,
               fileColumn.getName(),
               realSchema.getTableName(),
               fileColumn.getType(),

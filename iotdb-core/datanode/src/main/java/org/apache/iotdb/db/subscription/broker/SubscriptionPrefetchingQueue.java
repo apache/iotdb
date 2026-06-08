@@ -249,7 +249,7 @@ public abstract class SubscriptionPrefetchingQueue {
                       TimeUnit.MILLISECONDS))) {
         if (event.isCommitted()) {
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
+              "Subscription: SubscriptionPrefetchingQueue {} polled committed event {} from prefetching queue (broken invariant), removing it",
               this,
               event);
           // no need to update inFlightEvents
@@ -258,7 +258,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
         if (!event.pollable()) {
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
+              "Subscription: SubscriptionPrefetchingQueue {} polled non-pollable event {} from prefetching queue (broken invariant), nacking and removing it",
               this,
               event);
           event.nack(); // now pollable
@@ -318,7 +318,7 @@ public abstract class SubscriptionPrefetchingQueue {
                         TimeUnit.MILLISECONDS))) {
           if (event.isCommitted()) {
             LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
+                "Subscription: SubscriptionPrefetchingQueue {} polled committed event {} from prefetching queue (broken invariant), removing it",
                 this,
                 event);
             // no need to update inFlightEvents
@@ -327,7 +327,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
           if (!event.pollable()) {
             LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
+                "Subscription: SubscriptionPrefetchingQueue {} polled non-pollable event {} from prefetching queue (broken invariant), nacking and removing it",
                 this,
                 event);
             event.nack(); // now pollable
@@ -447,7 +447,7 @@ public abstract class SubscriptionPrefetchingQueue {
     final Event polledEvent = inputPendingQueue.waitedPoll();
     if (!Objects.equals(peekedEvent, polledEvent)) {
       LOGGER.warn(
-          "Subscription: inconsistent heartbeat event when {} peeking (broken invariant), expected {}, actual {}, offer back",
+          "Subscription: inconsistent heartbeat event while {} was peeking (broken invariant), expected {}, actual {}, offering it back",
           this,
           peekedEvent,
           polledEvent);
@@ -490,7 +490,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
       if (!(event instanceof EnrichedEvent)) {
         LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+            "Subscription: SubscriptionPrefetchingQueue {} only supports prefetching EnrichedEvent. Ignoring {}.",
             this,
             event);
         continue;
@@ -530,12 +530,12 @@ public abstract class SubscriptionPrefetchingQueue {
         continue;
       }
 
-      // TODO:
-      //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-      //  - UserDefinedEnrichedEvent: ignored?
-      //  - Others: events related to meta sync, safe to ignore
+      // Unhandled enriched events are ignored here:
+      //  - PipeHeartbeatEvent may affect pipe metrics.
+      //  - UserDefinedEnrichedEvent has no subscription payload.
+      //  - Other events are related to meta sync and are safe to ignore.
       LOGGER.info(
-          "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+          "Subscription: SubscriptionPrefetchingQueue {} ignores EnrichedEvent {} when prefetching.",
           this,
           event);
       ((EnrichedEvent) event)
@@ -606,7 +606,7 @@ public abstract class SubscriptionPrefetchingQueue {
 
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+          "Subscription: SubscriptionPrefetchingQueue {} only supports prefetching EnrichedEvent. Ignoring {}.",
           this,
           event);
       return;
@@ -639,7 +639,7 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       if (Objects.nonNull(currentToTabletIterator)) {
         LOGGER.warn(
-            "Subscription: SubscriptionPrefetchingQueue {} prefetch TsFileInsertionEvent when ToTabletIterator is not null (broken invariant). Ignore {}.",
+            "Subscription: SubscriptionPrefetchingQueue {} received TsFileInsertionEvent while ToTabletIterator is not null (broken invariant). Ignoring {}.",
             this,
             event);
       } else {
@@ -648,12 +648,12 @@ public abstract class SubscriptionPrefetchingQueue {
       }
     }
 
-    // TODO:
-    //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
-    //  - UserDefinedEnrichedEvent: ignored?
-    //  - Others: events related to meta sync, safe to ignore
+    // Unhandled enriched events are ignored here:
+    //  - PipeHeartbeatEvent may affect pipe metrics.
+    //  - UserDefinedEnrichedEvent has no subscription payload.
+    //  - Other events are related to meta sync and are safe to ignore.
     LOGGER.info(
-        "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
+        "Subscription: SubscriptionPrefetchingQueue {} ignores EnrichedEvent {} when prefetching.",
         this,
         event);
     ((EnrichedEvent) event)
@@ -705,7 +705,10 @@ public abstract class SubscriptionPrefetchingQueue {
           : RetryableState.NO_RETRY;
     } catch (final Exception e) {
       LOGGER.warn(
-          "Exception occurred when {} on retryable TabletInsertionEvent {}", this, event, e);
+          "Exception occurred while {} was handling retryable TabletInsertionEvent {}",
+          this,
+          event,
+          e);
       currentTabletInsertionEvent = retryableEvent;
       return RetryableState.RETRY;
     }
@@ -734,7 +737,7 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
-   * @return {@code true} if ack successfully
+   * @return {@code true} if ack succeeds
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {
     acquireReadLock();
@@ -746,7 +749,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
-   * @return {@code true} if ack successfully
+   * @return {@code true} if ack succeeds
    */
   private boolean ackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
@@ -756,7 +759,7 @@ public abstract class SubscriptionPrefetchingQueue {
         (key, ev) -> {
           if (Objects.isNull(ev)) {
             LOGGER.warn(
-                "Subscription: subscription commit context {} does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                "Subscription: subscription commit context {} does not exist; it may have been committed or an unexpected error may have occurred, prefetching queue: {}",
                 commitContext,
                 this);
             return null;
@@ -786,7 +789,7 @@ public abstract class SubscriptionPrefetchingQueue {
           final String consumerGroupId = commitContext.getConsumerGroupId();
           if (!Objects.equals(consumerGroupId, brokerId)) {
             LOGGER.warn(
-                "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                "inconsistent consumer group when acking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, committing it anyway",
                 brokerId,
                 consumerGroupId,
                 consumerId,
@@ -807,7 +810,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
-   * @return {@code true} if nack successfully
+   * @return {@code true} if nack succeeds
    */
   public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
     acquireReadLock();
@@ -819,7 +822,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
-   * @return {@code true} if nack successfully
+   * @return {@code true} if nack succeeds
    */
   public boolean nackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
@@ -829,7 +832,7 @@ public abstract class SubscriptionPrefetchingQueue {
         (key, ev) -> {
           if (Objects.isNull(ev)) {
             LOGGER.warn(
-                "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+                "Subscription: subscription commit context [{}] does not exist; it may have been committed or an unexpected error may have occurred, prefetching queue: {}",
                 commitContext,
                 this);
             return null;
@@ -839,7 +842,7 @@ public abstract class SubscriptionPrefetchingQueue {
           final String consumerGroupId = commitContext.getConsumerGroupId();
           if (!Objects.equals(consumerGroupId, brokerId)) {
             LOGGER.warn(
-                "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, commit it anyway...",
+                "inconsistent consumer group when nacking event, current: {}, incoming: {}, consumer id: {}, event commit context: {}, prefetching queue: {}, committing it anyway",
                 brokerId,
                 consumerGroupId,
                 consumerId,
@@ -1025,7 +1028,7 @@ public abstract class SubscriptionPrefetchingQueue {
           ev.nack(); // now pollable
           prefetchEvent(ev);
           LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
+              "Subscription: SubscriptionPrefetchingQueue {} is recycling event {} from in-flight events, nacking and enqueuing it to prefetching queue",
               this,
               ev);
           return null; // remove this entry

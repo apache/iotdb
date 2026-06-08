@@ -43,7 +43,7 @@ public final class CommonMessages {
   public static final String IOTV2_BG_NOT_TERMINATED =
       "IoTV2 background service did not terminate within {}s";
   public static final String IOTV2_BG_STILL_RUNNING =
-      "IoTV2 background Thread still doesn't exit after 30s";
+      "IoTV2 background thread still has not exited after 30s";
 
   // --- cq ---
   public static final String UNKNOWN_TIMEOUT_POLICY = "Unknown TimeoutPolicy: %s";

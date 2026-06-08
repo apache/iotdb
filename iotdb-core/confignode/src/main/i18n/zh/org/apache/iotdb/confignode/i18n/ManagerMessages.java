@@ -24,15 +24,15 @@ public final class ManagerMessages {
   public static final String ACTIVATEDATAALLOTTABLE_ACTIVATE_SERIESPARTITIONSLOT =
       "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} ";
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS =
-      "After this successful sync, if PipeTaskInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped";
+      "本次同步成功后，如果 PipeTaskInfo 在本次同步期间为空且之后未被修改，则后续所有同步都将被跳过";
   public static final String AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS =
-      "After this successful sync, if SubscriptionInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped";
+      "本次同步成功后，如果本轮同步期间 SubscriptionInfo 为空且之后没有被修改，则后续所有同步都会被跳过";
   public static final String ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA =
-      "尝试向空的 PipeTaskMeta 上报 pipe 异常。";
+      "尝试向空 PipeTaskMeta 上报 pipe 异常。";
   public static final String AUTH_RUN_AUTH_PLAN = "Auth: run auth plan: {}";
   public static final String CLUSTERID = "clusterID: {}";
   public static final String COLLECTING_PIPE_HEARTBEAT_FROM_DATA_NODES =
-      "正在从 data nodes 收集 pipe 心跳 {}";
+      "正在从 DataNode 收集 pipe 心跳 {}";
   public static final String CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN =
       "Connection from DataNode {} to DataNode {} is broken";
   public static final String CONSENSUSGROUPSTATISTICS = "[ConsensusGroupStatistics]\t {}: {} -> {}";
@@ -41,9 +41,9 @@ public final class ManagerMessages {
   public static final String CONSENSUSMANAGER_GETLEADERPEER_BEEN_INTERRUPTED =
       "ConsensusManager getLeaderPeer been interrupted, ";
   public static final String CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_SUBSCRIBE_TOPICS_RESULT_STATUS =
-      "Consumer {} in consumer group {} failed to subscribe topics {}. Result status: {}.";
+      "消费者 {} 在消费者组 {} 中订阅 Topic {} 失败。结果状态：{}。";
   public static final String CONSUMER_IN_CONSUMER_GROUP_FAILED_TO_UNSUBSCRIBE_TOPICS_RESULT_STATUS =
-      "Consumer {} in consumer group {} failed to unsubscribe topics {}. Result status: {}.";
+      "消费者 {} 在消费者组 {} 中取消订阅 Topic {} 失败。结果状态：{}。";
   public static final String CREATEPEERFORCONSENSUSGROUP = "createPeerForConsensusGroup {}...";
   public static final String CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS =
       "[CreateRegionGroups] Starting to create the following RegionGroups:";
@@ -64,20 +64,20 @@ public final class ManagerMessages {
       "Decrease reference count for snapshot {} error.";
   public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
-      "Detected completion of pipe {}, static meta: {}, remove it.";
+      "检测到 pipe {} 已完成，static meta：{}，将移除。";
   public static final String DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
-      "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.";
+      "从 agent 检测到 PipeRuntimeCriticalException {}，停止 pipe {}。";
   public static final String ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED = "不支持启用权力分离";
   public static final String ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS =
       "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}";
   public static final String ERROR_HAPPENED_WHILE_SHUTTING_DOWN_PREVIOUS_CQ_SCHEDULE_THREAD_POOL =
       "Error happened while shutting down previous cq schedule thread pool.";
   public static final String ERROR_OCCURRED_DURING_CLOSING_PIPECONNECTOR =
-      "Error occurred during closing PipeConnector.";
+      "关闭 PipeConnector 时发生错误。";
   public static final String ERROR_OCCURRED_DURING_CLOSING_PIPEEXTRACTOR =
-      "Error occurred during closing PipeExtractor.";
+      "关闭 PipeExtractor 时发生错误。";
   public static final String ERROR_OCCURRED_DURING_CLOSING_PIPEPROCESSOR =
-      "Error occurred during closing PipeProcessor.";
+      "关闭 PipeProcessor 时发生错误。";
   public static final String ERROR_WHEN_COUNTING_DATAREGIONGROUPS_IN_DATABASE =
       "Error when counting DataRegionGroups in Database: {}";
   public static final String ERROR_WHEN_COUNTING_SCHEMAREGIONGROUPS_IN_DATABASE =
@@ -91,7 +91,7 @@ public final class ManagerMessages {
   public static final String EXECUTE_CQ_FAILED = "Execute CQ {} failed";
   public static final String EXECUTE_CQ_FAILED_TSSTATUS_IS = "Execute CQ {} failed, TSStatus is {}";
   public static final String EXPECTED_PIPE_HEARTBEAT_NODE_COUNT_IS_FALLBACK_TO_1 =
-      "Expected pipe heartbeat node count is {}, fallback to 1.";
+      "预期 pipe 心跳节点数为 {}，回退为 1。";
   public static final String EXTENDREGION_SUBMIT_ADDREGIONPEERPROCEDURE_SUCCESSFULLY =
       "[ExtendRegion] Submit AddRegionPeerProcedure successfully: {}";
   public static final String EXTEND_REGION_GROUP_FAILED = "Extend region group failed";
@@ -100,97 +100,96 @@ public final class ManagerMessages {
   public static final String FAILED_TO_ACQUIRE_LOCK_WHEN_PARSEHEARTBEAT_FROM_NODE_ID =
       "Failed to acquire lock when parseHeartbeat from node (id={}).";
   public static final String FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK =
-      "Failed to acquire pipe lock for auto restart pipe task.";
+      "为自动重启 pipe 任务获取 pipe 锁失败。";
   public static final String FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART =
-      "Failed to acquire pipe lock for handling successful restart.";
+      "为处理重启成功获取 pipe 锁失败。";
   public static final String FAILED_TO_ALTER_PIPE_RESULT_STATUS =
-      "Failed to alter pipe {}. Result status: {}.";
+      "修改 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES =
-      "Failed to check and repair consensus pipes";
+      "检查并修复 consensus pipe 失败";
   public static final String FAILED_TO_CHECK_PASSWORD_FOR_PIPE =
-      "Failed to check password for pipe %s.";
+      "检查 pipe %s 密码失败。";
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
-      "Failed to close consumer {} in consumer group {}. Result status: {}.";
+      "关闭消费者 {}（消费者组 {}）失败。结果状态：{}。";
   public static final String FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR =
-      "Failed to close extractor after failed to initialize extractor. ";
+      "初始化 extractor 失败后关闭 extractor 失败。";
   public static final String FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE =
-      "Failed to close sink after failed to initialize it. Ignore this exception.";
+      "初始化 sink 失败后关闭 sink 失败。忽略此异常。";
   public static final String FAILED_TO_COLLECT_COMMITCREATETABLEPLAN =
       "Failed to collect CommitCreateTablePlan";
   public static final String FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK =
-      "Failed to collect pipe meta list from config node task agent";
+      "从 ConfigNode task agent 收集 pipe 元数据列表失败";
   public static final String FAILED_TO_COLLECT_UNSETTEMPLATEPLAN =
       "Failed to collect UnsetTemplatePlan";
   public static final String FAILED_TO_COLLECT_USER_NAME_FOR_USER_ID =
       "Failed to collect user name for user id {}";
   public static final String FAILED_TO_CREATE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
-      "Failed to create consumer {} in consumer group {}. Result status: {}.";
+      "创建消费者 {}（消费者组 {}）失败。结果状态：{}。";
   public static final String FAILED_TO_CREATE_PEER_FOR_CONSENSUS_GROUP =
       "Failed to create peer for consensus group";
   public static final String FAILED_TO_CREATE_PIPE_RESULT_STATUS =
       "创建 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_CREATE_SUBTASK_FOR_PIPE_CREATION_TIME =
-      "Failed to create subtask for pipe %s, creation time %d";
+      "为 pipe %s 创建子任务失败，创建时间 %d";
   public static final String FAILED_TO_CREATE_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS =
-      "Failed to create topic {} with attributes {}. Result status: {}.";
+      "创建 Topic {} 失败，属性：{}，结果状态：{}。";
   public static final String FAILED_TO_DEEP_COPY_PIPEMETA = "深拷贝 pipeMeta 失败";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_CONNECTOR =
-      "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist";
+      "注销 pipe config region connector 指标失败，PipeConfigNodeSubtask({}) 不存在";
   public static final String FAILED_TO_DEREGISTER_PIPE_CONFIG_REGION_EXTRACTOR =
-      "Failed to deregister pipe config region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist";
+      "注销 pipe config region extractor 指标失败，IoTDBConfigRegionExtractor({}) 不存在";
   public static final String FAILED_TO_DEREGISTER_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_DOES_NOT =
-      "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist";
+      "注销 pipe remaining time 指标失败，RemainingTimeOperator({}) 不存在";
   public static final String FAILED_TO_DEREGISTER_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_DOES_NOT =
-      "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist";
+      "注销 pipe temporary meta 指标失败，PipeTemporaryMeta({}) 不存在";
   public static final String FAILED_TO_DROP_PIPE_RESULT_STATUS =
       "删除 pipe {} 失败。结果状态：{}。";
-  public static final String FAILED_TO_GET_ALL_PIPE_INFO = "Failed to get all pipe info.";
-  public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO =
-      "Failed to get all subscription info.";
-  public static final String FAILED_TO_GET_ALL_TOPIC_INFO = "Failed to get all topic info.";
+  public static final String FAILED_TO_GET_ALL_PIPE_INFO = "获取所有 pipe 信息失败。";
+  public static final String FAILED_TO_GET_ALL_SUBSCRIPTION_INFO = "获取所有订阅信息失败。";
+  public static final String FAILED_TO_GET_ALL_TOPIC_INFO = "获取所有 Topic 信息失败。";
   public static final String FAILED_TO_HANDLE_PIPE_META_CHANGES = "处理 pipe 元数据变更失败";
   public static final String FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS =
-      "Failed to handle pipe meta change. Result status: {}.";
+      "处理 pipe 元数据变更失败。结果状态：{}。";
   public static final String FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER =
       "Failed to load snapshot from byteBuffer {}.";
   public static final String FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_A_NORMAL =
       "Failed to load snapshot,snapshot file [{}] is not a normal file.";
   public static final String FAILED_TO_MARK_PIPE_CONFIG_REGION_WRITE_PLAN_EVENT_PIPECONFIGNODESUBTASK =
-      "Failed to mark pipe config region write plan event, PipeConfigNodeSubtask({}) does not exist";
+      "标记 pipe config region write plan 事件失败，PipeConfigNodeSubtask({}) 不存在";
   public static final String FAILED_TO_MARK_PIPE_REGION_COMMIT_REMAININGTIMEOPERATOR_DOES_NOT_EXIST =
-      "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist";
-  public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "Failed to show subscription info.";
-  public static final String FAILED_TO_SHOW_TOPIC_INFO = "Failed to show topic info.";
+      "标记 pipe region commit 失败，RemainingTimeOperator({}) 不存在";
+  public static final String FAILED_TO_SHOW_SUBSCRIPTION_INFO = "查询订阅信息失败。";
+  public static final String FAILED_TO_SHOW_TOPIC_INFO = "查询 Topic 信息失败。";
   public static final String FAILED_TO_START_PIPE_RESULT_STATUS =
       "启动 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_STOP_PIPE_RESULT_STATUS =
       "停止 pipe {} 失败。结果状态：{}。";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_CREATION_FOR =
-      "Failed to submit async consensus pipe creation for {}: {}";
+      "为 {} 提交异步 consensus pipe 创建任务失败：{}";
   public static final String FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_DROP_FOR =
-      "Failed to submit async consensus pipe drop for {}: {}";
+      "为 {} 提交异步 consensus pipe 删除任务失败：{}";
   public static final String FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS =
-      "Failed to sync consumer group meta. Result status: {}.";
+      "同步消费者组元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_PIPE_META_RESULT_STATUS =
       "同步 pipe 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_SYNC_TEMPLATE_EXTENSION_INFO_TO_DATANODE =
       "Failed to sync template {} extension info to DataNode {}";
   public static final String FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS =
-      "Failed to sync topic meta. Result status: {}.";
+      "同步 Topic 元数据失败。结果状态：{}。";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_CONNECTOR_METRICS_CONNECTOR =
-      "Failed to unbind from pipe config region connector metrics, connector map not empty";
+      "从 pipe config region connector 指标解绑失败，connector map 非空";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_CONFIG_REGION_EXTRACTOR_METRICS_EXTRACTOR =
-      "Failed to unbind from pipe config region extractor metrics, extractor map not empty";
+      "从 pipe config region extractor 指标解绑失败，extractor map 非空";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_REMAINING_TIME_METRICS_REMAININGTIMEOPERATOR_MAP =
-      "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty";
+      "从 pipe remaining time 指标解绑失败，RemainingTimeOperator map 非空";
   public static final String FAILED_TO_UNBIND_FROM_PIPE_TEMPORARY_META_METRICS_PIPETEMPORARYMETA_MAP =
-      "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty";
+      "从 pipe temporary meta 指标解绑失败，PipeTemporaryMeta map 非空";
   public static final String FAILED_TO_UPDATE_PIPE_PROCEDURE_TIMER_PIPEPROCEDURE_DOES_NOT_EXIST =
-      "Failed to update pipe procedure timer, PipeProcedure({}) does not exist";
+      "更新 pipe procedure 计时器失败，PipeProcedure({}) 不存在";
   public static final String FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE =
       "Failed to update the last execution time {} of CQ {}, because {}";
   public static final String FAIL_TO_GET_ALLUDFTABLE = "Fail to get AllUDFTable";
-  public static final String FAIL_TO_GET_PIPEPLUGINTABLE = "Fail to get PipePluginTable";
+  public static final String FAIL_TO_GET_PIPEPLUGINTABLE = "获取 PipePluginTable 失败";
   public static final String FAIL_TO_GET_TRIGGERTABLE = "Fail to get TriggerTable";
   public static final String FAIL_TO_GET_UDFTABLE = "Fail to get UDFTable";
   public static final String FAIL_TO_TRANSFER_BECAUSE_WILL_RETRY =
@@ -218,7 +217,7 @@ public final class ManagerMessages {
   public static final String INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED =
       "Init ConsensusManager successfully when restarted";
   public static final String INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD =
-      "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}";
+      "等待 PipeTaskCoordinator 锁时被中断，当前线程：{}";
   public static final String INTERRUPT_WHEN_WAIT_FOR_CALCULATING_REGION_PRIORITY =
       "Interrupt when wait for calculating Region priority";
   public static final String INTERRUPT_WHEN_WAIT_FOR_LEADER_ELECTION =
@@ -229,21 +228,21 @@ public final class ManagerMessages {
   public static final String IOTCONSENSUSV2_LEADER_CHANGED_SUCCESSFULLY_FLUSH_OLD_LEADER_FOR_REGION =
       "[IoTConsensusV2 Leader Changed] Successfully flush old leader {} for region {}";
   public static final String IOTDBCONFIGNODERECEIVER_DOES_NOT_SUPPORT_LOAD_FILE_V1 =
-      "IoTDBConfigNodeReceiver does not support load file V1.";
+      "IoTDBConfigNodeReceiver 不支持 load file V1。";
   public static final String IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
-      "IoTDBConfigRegionAirGapConnector can't transfer TabletInsertionEvent.";
+      "IoTDBConfigRegionAirGapConnector 无法传输 TabletInsertionEvent。";
   public static final String IOTDBCONFIGREGIONAIRGAPCONNECTOR_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
-      "IoTDBConfigRegionAirGapConnector can't transfer TsFileInsertionEvent.";
+      "IoTDBConfigRegionAirGapConnector 无法传输 TsFileInsertionEvent。";
   public static final String IOTDBCONFIGREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
-      "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.";
+      "IoTDBConfigRegionAirGapConnector 不支持传输 generic event：{}。";
   public static final String IOTDBCONFIGREGIONSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
-      "IoTDBConfigRegionSink can't transfer TabletInsertionEvent.";
+      "IoTDBConfigRegionSink 无法传输 TabletInsertionEvent。";
   public static final String IOTDBCONFIGREGIONSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
-      "IoTDBConfigRegionSink can't transfer TsFileInsertionEvent.";
+      "IoTDBConfigRegionSink 无法传输 TsFileInsertionEvent。";
   public static final String IOTDBCONFIGREGIONSINK_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
-      "IoTDBConfigRegionSink does not support transferring generic event: {}.";
+      "IoTDBConfigRegionSink 不支持传输 generic event：{}。";
   public static final String IOTDBCONFIGREGIONSOURCE_DOES_NOT_TRANSFERRING_EVENTS_UNDER_SIMPLE_CONSENSUS =
-      "IoTDBConfigRegionSource does not transferring events under simple consensus";
+      "IoTDBConfigRegionSource 在 simple consensus 下不传输事件";
   public static final String LEADERBALANCER_FAILED_TO_CHANGE_THE_LEADER_OF_REGION_TO_DATANODE =
       "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}";
   public static final String LEADERBALANCER_REGION_NOT_IN_DATABASEREGIONGROUPMAP =
@@ -267,11 +266,11 @@ public final class ManagerMessages {
   public static final String MISMATCHED_CRC32_CODE_WHEN_DESERIALIZING_SERVICE_INFO =
       "Mismatched CRC32 code when deserializing service info.";
   public static final String NETWORK_ERROR_WHEN_SEAL_CONFIG_REGION_SNAPSHOT_BECAUSE =
-      "Network error when seal config region snapshot %s, because %s.";
+      "封存 config region 快照 %s 时发生网络错误，原因：%s。";
   public static final String NETWORK_ERROR_WHEN_TRANSFER_CONFIG_REGION_WRITE_PLAN_BECAUSE =
-      "Network error when transfer config region write plan %s, because %s.";
+      "传输 config region write plan %s 时发生网络错误，原因：%s。";
   public static final String NETWORK_ERROR_WHEN_TRANSFER_EVENT_BECAUSE =
-      "Network error when transfer event %s, because %s.";
+      "传输事件 %s 时发生网络错误，原因：%s。";
   public static final String NODEMANAGER_START_TO_REMOVE_DATANODE =
       "NodeManager start to remove DataNode {}";
   public static final String NODEMANAGER_SUBMIT_REMOVEAINODEPLAN_FINISHED =
@@ -284,7 +283,7 @@ public final class ManagerMessages {
   public static final String NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN = "没有传输计划的权限：";
   public static final String NOT_IMPLEMENT_YET = "尚未实现";
   public static final String NO_CORRESPONDING_PIPE_IS_RUNNING_IN_THE_REPORTED_DATAREGION_RUNTIMEMETAFROMAGENT =
-      "No corresponding Pipe is running in the reported DataRegion. runtimeMetaFromAgent is null, runtimeMetaFromCoordinator: {}";
+      "上报的 DataRegion 中没有对应的 Pipe 正在运行。runtimeMetaFromAgent 为空，runtimeMetaFromCoordinator：{}";
   public static final String PARTITIONBALANCER_THE_SERIESSLOT_IN_TIMESLOT_WILL_BE =
       "[PartitionBalancer] The SeriesSlot: {} in TimeSlot: {} will be allocated to DataRegionGroup: {}, because the original target: {} is currently unavailable.";
   public static final String PHIACCRUALDETECTOR_TOPOLOGY_IS_BROKEN_HEARTBEAT_HISTORY_MS =
@@ -292,57 +291,57 @@ public final class ManagerMessages {
   public static final String PHIACCRUALDETECTOR_TOPOLOGY_IS_RECOVERED_HEARTBEAT_HISTORY_MS =
       "[PhiAccrualDetector] Topology {} is recovered, heartbeat history (ms): {}";
   public static final String PIPEHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_TO_SUBMIT =
-      "PipeHandleLeaderChangeProcedure was failed to submit.";
+      "提交 PipeHandleLeaderChangeProcedure 失败。";
   public static final String PIPEHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID =
-      "PipeHandleLeaderChangeProcedure was submitted, procedureId: {}.";
+      "已提交 PipeHandleLeaderChangeProcedure，procedureId：{}。";
   public static final String PIPEHANDLEMETACHANGEPROCEDURE_WAS_FAILED_TO_SUBMIT =
-      "PipeHandleMetaChangeProcedure was failed to submit.";
+      "提交 PipeHandleMetaChangeProcedure 失败。";
   public static final String PIPEHANDLEMETACHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID =
-      "PipeHandleMetaChangeProcedure was submitted, procedureId: {}.";
+      "已提交 PipeHandleMetaChangeProcedure，procedureId：{}。";
   public static final String PIPEHEARTBEAT_IS_STARTED_SUCCESSFULLY =
-      "PipeHeartbeat is started successfully.";
+      "PipeHeartbeat 启动成功。";
   public static final String PIPEHEARTBEAT_IS_STOPPED_SUCCESSFULLY =
-      "PipeHeartbeat is stopped successfully.";
+      "PipeHeartbeat 停止成功。";
   public static final String PIPEMETASYNCER_IS_STARTED_SUCCESSFULLY =
-      "PipeMetaSyncer is started successfully.";
+      "PipeMetaSyncer 启动成功。";
   public static final String PIPEMETASYNCER_IS_STOPPED_SUCCESSFULLY =
-      "PipeMetaSyncer is stopped successfully.";
+      "PipeMetaSyncer 停止成功。";
   public static final String PIPERUNTIMECONFIGNODEAGENT_STARTED =
-      "PipeRuntimeConfigNodeAgent started";
+      "PipeRuntimeConfigNodeAgent 已启动";
   public static final String PIPERUNTIMECONFIGNODEAGENT_STOPPED =
-      "PipeRuntimeConfigNodeAgent stopped";
+      "PipeRuntimeConfigNodeAgent 已停止";
   public static final String PIPERUNTIMECOORDINATOR_MEETS_ERROR_IN_UPDATING_PIPEMETAKEEPER =
-      "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, ";
+      "PipeRuntimeCoordinator 更新 pipeMetaKeeper 时发生错误，";
   public static final String PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF =
-      "PipeTaskCoordinatorLock is held by another thread, skip this round of heartbeat to avoid procedure and rpc accumulation as much as possible";
+      "PipeTaskCoordinatorLock 已被其他线程持有，跳过本轮心跳以尽量避免 procedure 和 RPC 堆积";
   public static final String PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2 =
-      "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible";
+      "PipeTaskCoordinatorLock 已被其他线程持有，跳过本轮同步以尽量避免 procedure 和 RPC 堆积";
   public static final String PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD =
-      "PipeTaskCoordinator lock acquired by thread {}";
+      "线程 {} 已获取 PipeTaskCoordinator 锁";
   public static final String PIPETASKCOORDINATOR_LOCK_FAILED_TO_ACQUIRE_BY_THREAD_BECAUSE_OF_TIMEOUT =
-      "PipeTaskCoordinator lock failed to acquire by thread {} because of timeout";
+      "线程 {} 因超时获取 PipeTaskCoordinator 锁失败";
   public static final String PIPETASKCOORDINATOR_LOCK_RELEASED_BY_THREAD =
-      "PipeTaskCoordinator lock released by thread {}";
+      "线程 {} 已释放 PipeTaskCoordinator 锁";
   public static final String PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD =
-      "PipeTaskCoordinator lock waiting for thread {}";
+      "PipeTaskCoordinator 锁正在等待线程 {}";
   public static final String PIPE_SNAPSHOT_DIR_FOUND_DELETING_IT =
-      "Pipe snapshot dir found, deleting it: {},";
+      "发现 Pipe 快照目录，正在删除：{}，";
   public static final String PROCEDUREMANAGER_IS_STARTED_SUCCESSFULLY = "ProcedureManager 已成功启动。";
   public static final String PROCEDUREMANAGER_IS_STOPPED_SUCCESSFULLY = "ProcedureManager 已成功停止。";
   public static final String PROCEDURE_DETAILS_ARE = "[{}] procedure details are {}";
   public static final String REBALANCEDATAALLOTTABLE_DATABASE =
       "[ReBalanceDataAllotTable] Database: {}, ";
   public static final String RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_COORDINATOR =
-      "Received pipe heartbeat request {} from config coordinator.";
-  public static final String RECEIVER_ID = "Receiver id = {}: {}";
+      "收到来自 config coordinator 的 pipe 心跳请求 {}。";
+  public static final String RECEIVER_ID = "接收器 id = {}：{}";
   public static final String RECEIVER_ID_EXCEPTION_ENCOUNTERED_WHILE_EXECUTING_PLAN =
-      "Receiver id = {}: Exception encountered while executing plan {}: ";
+      "Receiver id = {}：执行 plan {} 时遇到异常：";
   public static final String RECEIVER_ID_FAILURE_STATUS_ENCOUNTERED_WHILE_EXECUTING_PLAN =
-      "Receiver id = {}: Failure status encountered while executing plan {}: {}";
+      "Receiver id = {}：执行 plan {} 时遇到失败状态：{}";
   public static final String RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN =
-      "Receiver id = {}: Permission check failed while executing plan {}: {}";
+      "Receiver id = {}：执行 plan {} 时权限检查失败：{}";
   public static final String RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS =
-      "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.";
+      "Receiver id = {}：ConfigNode 不支持的 PipeRequestType，响应状态 = {}。";
   public static final String RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY =
       "[ReconstructRegion] Submit ReconstructRegionProcedure successfully, {}";
   public static final String REGIONCLEANER_IS_STARTED_SUCCESSFULLY =
@@ -382,21 +381,21 @@ public final class ManagerMessages {
   public static final String REMOVE_REGION_TARGET_DATANODE_NOT_FOUND_WILL_SIMPLY_CLEAN_UP =
       "Remove region: Target DataNode {} not found, will simply clean up the partition table of region {} and do nothing else.";
   public static final String REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE =
-      "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}";
+      "向本地 PipeTaskMeta({}) 上报 PipeRuntimeException，异常消息：{}";
   public static final String RETRYFAILMISSIONS_SERVICE_IS_STARTED_SUCCESSFULLY =
       "RetryFailMissions service is started successfully.";
   public static final String RETRYFAILMISSIONS_SERVICE_IS_STOPPED_SUCCESSFULLY =
       "RetryFailMissions service is stopped successfully.";
   public static final String SERIALIZATION_FAILED_FOR_THE_ALTER_ENCODING_TIME_SERIES_PLAN_IN =
-      "Serialization failed for the alter encoding time series plan in pipe transmission, skip transfer";
+      "pipe 传输中序列化 alter encoding time series plan 失败，跳过传输";
   public static final String SERIALIZATION_FAILED_FOR_THE_DELETE_LOGICAL_VIEW_PLAN_IN_PIPE =
-      "Serialization failed for the delete logical view plan in pipe transmission, skip transfer";
+      "pipe 传输中序列化 delete logical view plan 失败，跳过传输";
   public static final String SERIALIZATION_FAILED_FOR_THE_DELETE_TIME_SERIES_PLAN_IN_PIPE =
-      "Serialization failed for the delete time series plan in pipe transmission, skip transfer";
+      "pipe 传输中序列化 delete time series plan 失败，跳过传输";
   public static final String SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_CREATELOCALPEER_API =
       "Something wrong happened while calling consensus layer's createLocalPeer API.";
   public static final String SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC =
-      "Some pipes need restarting, will restart them after this sync";
+      "部分 pipe 需要重启，将在本次同步后重启";
   public static final String STARTEXECUTECQ_EXECUTE_CQ_ON_DATANODE_TIME_RANGE_IS_CURRENT_TIME =
       "[StartExecuteCQ] execute CQ {} on DataNode[{}], time range is [{}, {}), current time is {}";
   public static final String START_TO_ACTIVATE_UDF_IN_UDF_TABLE_ON_CONFIG_NODES =
@@ -414,9 +413,9 @@ public final class ManagerMessages {
   public static final String STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR =
       "Stop submitting CQ {} because current node is not leader or current scheduled thread pool is shut down.";
   public static final String SUBMITTED_ASYNC_CONSENSUS_PIPE_CREATION =
-      "Submitted async consensus pipe creation: {}";
+      "已提交异步 consensus pipe 创建任务：{}";
   public static final String SUBMITTED_ASYNC_CONSENSUS_PIPE_DROP =
-      "Submitted async consensus pipe drop: {}";
+      "已提交异步 consensus pipe 删除任务：{}";
   public static final String SUBMIT_REMOVEAINODEPROCEDURE_SUCCESSFULLY =
       "Submit RemoveAINodeProcedure successfully, {}";
   public static final String SUBMIT_REMOVECONFIGNODEPROCEDURE_SUCCESSFULLY =
@@ -424,25 +423,25 @@ public final class ManagerMessages {
   public static final String SUBMIT_REMOVEDATANODESPROCEDURE_SUCCESSFULLY =
       "Submit RemoveDataNodesProcedure successfully, {}";
   public static final String SUBSCRIPTIONCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF =
-      "SubscriptionCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible";
+      "SubscriptionCoordinatorLock 被其他线程持有，跳过本轮同步以尽量避免 Procedure 和 RPC 堆积";
   public static final String SUBSCRIPTIONMETASYNCER_IS_STARTED_SUCCESSFULLY =
-      "SubscriptionMetaSyncer is started successfully.";
+      "SubscriptionMetaSyncer 启动成功。";
   public static final String SUBSCRIPTIONMETASYNCER_IS_STOPPED_SUCCESSFULLY =
-      "SubscriptionMetaSyncer is stopped successfully.";
+      "SubscriptionMetaSyncer 停止成功。";
   public static final String SUCCESSFULLY_TRANSFERRED_CONFIG_EVENT =
-      "Successfully transferred config event {}.";
+      "成功传输 config 事件 {}。";
   public static final String SUCCESSFULLY_TRANSFERRED_CONFIG_REGION_SNAPSHOT =
-      "Successfully transferred config region snapshot {}.";
+      "成功传输 config region 快照 {}。";
   public static final String THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ =
       "There is no RUNNING DataNode to execute CQ {}";
   public static final String THE_CONFIGNODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =
       "The ConfigNode-{} will be shutdown soon, mark it as Unknown";
   public static final String THE_CONFIG_REGION_AIR_GAP_CONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING =
-      "The config region air gap connector does not support transferring single file piece bytes.";
+      "config region air gap connector 不支持传输 single file piece bytes。";
   public static final String THE_CONFIG_REGION_SINK_DOES_NOT_SUPPORT_TRANSFERRING_SINGLE_FILE =
-      "The config region sink does not support transferring single file piece req.";
+      "config region sink 不支持传输 single file piece req。";
   public static final String THE_CONFIG_REGION_SNAPSHOTS_CANNOT_BE_PARSED =
-      "The config region snapshots %s cannot be parsed.";
+      "无法解析 config region 快照 %s。";
   public static final String THE_DATABASE_DOESN_T_EXIST_MAYBE_IT_HAS_BEEN_PRE =
       "The Database: {} doesn't exist. Maybe it has been pre-deleted.";
   public static final String THE_DATANODE_WILL_BE_SHUTDOWN_SOON_MARK_IT_AS_UNKNOWN =

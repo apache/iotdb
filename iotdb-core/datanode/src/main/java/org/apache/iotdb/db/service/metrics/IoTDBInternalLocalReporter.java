@@ -74,6 +74,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
@@ -82,11 +83,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalLocalReporter.class);
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
+  private static final long METRIC_UPDATE_FAILURE_LOG_INTERVAL_MS = TimeUnit.MINUTES.toMillis(1);
   private final SessionInfo sessionInfo;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final AtomicLong lastMetricUpdateFailureLogTime = new AtomicLong(0);
+  private final AtomicLong suppressedMetricUpdateFailureLogCount = new AtomicLong(0);
 
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -174,16 +178,58 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
               result = insertRecord(valueMap, prefix, time);
             }
             if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result);
+              logFailedUpdateMetricValue(result);
             }
           } catch (IoTDBConnectionException e1) {
-            LOGGER.warn(
-                "Failed to update the value of metric because of connection failure, because ", e1);
+            logMetricUpdateConnectionFailure(e1);
           } catch (IllegalPathException | QueryProcessException e2) {
-            LOGGER.warn(
-                "Failed to update the value of metric because of internal error, because ", e2);
+            logMetricUpdateInternalFailure(e2);
           }
         });
+  }
+
+  private long getMetricUpdateFailureSuppressedCountIfShouldLog() {
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastMetricUpdateFailureLogTime.get();
+    if (now - lastLogTime >= METRIC_UPDATE_FAILURE_LOG_INTERVAL_MS
+        && lastMetricUpdateFailureLogTime.compareAndSet(lastLogTime, now)) {
+      return suppressedMetricUpdateFailureLogCount.getAndSet(0);
+    }
+    suppressedMetricUpdateFailureLogCount.incrementAndGet();
+    return -1;
+  }
+
+  private void logFailedUpdateMetricValue(TSStatus result) {
+    long suppressedCount = getMetricUpdateFailureSuppressedCountIfShouldLog();
+    if (suppressedCount < 0) {
+      return;
+    }
+    LOGGER.warn(
+        DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE + ", suppressedSimilarLogs={}",
+        result,
+        suppressedCount);
+  }
+
+  private void logMetricUpdateConnectionFailure(IoTDBConnectionException e) {
+    long suppressedCount = getMetricUpdateFailureSuppressedCountIfShouldLog();
+    if (suppressedCount < 0) {
+      return;
+    }
+    LOGGER.warn(
+        "Failed to update the value of metric because of connection failure, suppressedSimilarLogs={}",
+        suppressedCount,
+        e);
+  }
+
+  private void logMetricUpdateInternalFailure(Exception e) {
+    long suppressedCount = getMetricUpdateFailureSuppressedCountIfShouldLog();
+    if (suppressedCount < 0) {
+      return;
+    }
+    LOGGER.warn(
+        "Failed to update the value of metric because of internal error, suppressedSimilarLogs={}",
+        suppressedCount,
+        e);
   }
 
   private TSStatus insertRecord(Map<String, Object> valueMap, String prefix, long time)
@@ -242,7 +288,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         COORDINATOR.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
+      long suppressedCount = getMetricUpdateFailureSuppressedCountIfShouldLog();
+      if (suppressedCount >= 0) {
+        LOGGER.warn(
+            DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES + ", suppressedSimilarLogs={}",
+            paths,
+            result.status,
+            suppressedCount);
+      }
     }
   }
 

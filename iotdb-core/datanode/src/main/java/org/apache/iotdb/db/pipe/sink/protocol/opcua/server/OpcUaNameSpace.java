@@ -305,9 +305,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 new DateTime(utcTimestamp),
                 new DateTime());
         measurementNode = addNode(name, currentFolder, folderNode, dataValue, type);
-        if (Objects.isNull(measurementNode.getValue())
-            || Objects.isNull(measurementNode.getValue().getSourceTime())
-            || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
+        if (shouldNotifyNodeValueChange(measurementNode, utcTimestamp)) {
           notifyNodeValueChange(measurementNode.getNodeId(), dataValue, measurementNode);
         }
       } else {
@@ -325,9 +323,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
               new DataValue(
                   new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()),
               dataType);
-      if (Objects.isNull(valueNode.getValue())
-          || Objects.isNull(valueNode.getValue().getSourceTime())
-          || valueNode.getValue().getSourceTime().getUtcTime() < timestamp) {
+      if (shouldNotifyNodeValueChange(valueNode, timestamp)) {
         notifyNodeValueChange(
             valueNode.getNodeId(),
             new DataValue(
@@ -335,6 +331,26 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             valueNode);
       }
     }
+  }
+
+  private boolean shouldNotifyNodeValueChange(
+      final UaVariableNode variableNode, final long candidateUtcTime) {
+    final DataValue currentValue = variableNode.getValue();
+    if (Objects.isNull(currentValue) || Objects.isNull(currentValue.getSourceTime())) {
+      return true;
+    }
+    final long currentUtcTime = currentValue.getSourceTime().getUtcTime();
+    if (currentUtcTime < candidateUtcTime) {
+      return true;
+    }
+    if (candidateUtcTime < currentUtcTime) {
+      LOGGER.debug(
+          "Reject stale value update: nodeId={}, candidateSourceTime={}, currentSourceTime={}.",
+          variableNode.getNodeId(),
+          candidateUtcTime,
+          currentUtcTime);
+    }
+    return false;
   }
 
   private UaVariableNode addNode(
@@ -639,18 +655,22 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final NodeId nodeId = readValueId.getNodeId();
 
       // 1. Add the new subscription item to the subscription mapping
-      nodeSubscriptions.compute(
+      final List<DataItem> subscribedItems =
+          nodeSubscriptions.compute(
+              nodeId,
+              (k, existingList) -> {
+                List<DataItem> list =
+                    existingList != null ? existingList : new CopyOnWriteArrayList<>();
+                list.add(item);
+                return list;
+              });
+      LOGGER.debug(
+          "Registered data item subscription: nodeId={}, subscriptionCount={}.",
           nodeId,
-          (k, existingList) -> {
-            List<DataItem> list =
-                existingList != null ? existingList : new CopyOnWriteArrayList<>();
-            list.add(item);
-            return list;
-          });
+          subscribedItems.size());
 
-      // 2. 【Key Optimization】Proactively push the current node's initial value when the new
-      // subscription item is created
-      // Eliminate Bad_WaitingForInitialData, no need to wait for any polling
+      // 2. Proactively push the current node's initial value when the new subscription item is
+      // created. This avoids Bad_WaitingForInitialData without waiting for polling.
       try {
         UaVariableNode node = (UaVariableNode) getNodeManager().getNode(nodeId).orElse(null);
         if (node != null && node.getValue() != null) {
@@ -680,13 +700,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final NodeId nodeId = readValueId.getNodeId();
 
       // When the client cancels the subscription, remove this subscription item from the mapping
-      nodeSubscriptions.computeIfPresent(
+      final List<DataItem> remainingItems =
+          nodeSubscriptions.computeIfPresent(
+              nodeId,
+              (k, existingList) -> {
+                existingList.remove(item);
+                // Automatically clean up the key when there are no subscribers to save memory.
+                return existingList.isEmpty() ? null : existingList;
+              });
+      LOGGER.debug(
+          "Removed data item subscription: nodeId={}, subscriptionCount={}.",
           nodeId,
-          (k, existingList) -> {
-            existingList.remove(item);
-            // Automatically clean up the key when there are no subscribers, save memory
-            return existingList.isEmpty() ? null : existingList;
-          });
+          Objects.isNull(remainingItems) ? 0 : remainingItems.size());
     }
   }
 

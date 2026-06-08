@@ -96,7 +96,7 @@ public abstract class SubscriptionPipeEventBatch {
       enrichedEvents.add(event);
     } else {
       LOGGER.warn(
-          "SubscriptionPipeEventBatch {} ignore EnrichedEvent {} when batching.", this, event);
+          "SubscriptionPipeEventBatch {} ignores EnrichedEvent {} when batching.", this, event);
     }
     return onEvent(consumer);
   }

@@ -70,13 +70,12 @@ public class TTLScheduleTask implements Callable<Void> {
       } catch (StopTTLCheckException | InterruptedException ignored) {
         boolean isStoppedByUser =
             CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
-        logger.info(
-            "[TTLCheckTask-{}] TTL checker is interrupted, isStoppedByUser: {}",
-            workerId,
-            isStoppedByUser);
         if (isStoppedByUser) {
+          logger.debug("[TTLCheckTask-{}] TTL checker is interrupted by stop signal", workerId);
           return null;
         }
+        logger.info(
+            "[TTLCheckTask-{}] TTL checker is interrupted, stoppedByUser: {}", workerId, false);
       } catch (Exception e) {
         logger.error(StorageEngineMessages.TTL_CHECK_TASK_FAILED, workerId, e);
       } catch (Throwable t) {

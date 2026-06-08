@@ -228,8 +228,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadTsFileReq, endPoint, e);
+              DataNodeQueryMessages.FAILED_DISPATCH_LOAD_COMMAND_TO_NODE,
+              loadTsFileReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -264,11 +266,11 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
       } catch (FragmentInstanceDispatchException e) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, e);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOAD_COMMAND, duplicatedLoadCommandReq, e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, t);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOAD_COMMAND, duplicatedLoadCommandReq, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -323,8 +325,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
       final String exceptionMessage =
           String.format(
-              "failed to dispatch load command %s to node %s because of exception: %s",
-              loadCommandReq, endPoint, e);
+              DataNodeQueryMessages.FAILED_DISPATCH_LOAD_COMMAND_TO_NODE,
+              loadCommandReq,
+              endPoint,
+              e);
       LOGGER.warn(exceptionMessage, e);
       throw new FragmentInstanceDispatchException(
           new TSStatus()
@@ -355,7 +359,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
           CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
-              "Load remote procedure call connection timeout is adjusted to {} ms ({} mins)",
+              DataNodeQueryMessages.LOAD_RPC_CONNECTION_TIMEOUT_ADJUSTED,
               newConnectionTimeout,
               newConnectionTimeout / 60000.0);
         }

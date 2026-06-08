@@ -204,7 +204,7 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize handshake request {}",
+          "IOException occurred while SubscriptionProvider {} was serializing handshake request {}",
           this,
           consumerConfig,
           e);
@@ -214,9 +214,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was handshaking with request {}, setting SubscriptionProvider unavailable",
           this,
           consumerConfig,
           e);
@@ -246,9 +246,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was closing, setting SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
@@ -264,9 +264,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was sending heartbeat, setting SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
@@ -282,7 +282,7 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize subscribe request {}",
+          "IOException occurred while SubscriptionProvider {} was serializing subscribe request {}",
           this,
           topicNames,
           e);
@@ -292,9 +292,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was subscribing with request {}, setting SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
@@ -313,7 +313,7 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize unsubscribe request {}",
+          "IOException occurred while SubscriptionProvider {} was serializing unsubscribe request {}",
           this,
           topicNames,
           e);
@@ -323,9 +323,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was unsubscribing with request {}, setting SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
@@ -377,7 +377,7 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize poll request {}",
+          "IOException occurred while SubscriptionProvider {} was serializing poll request {}",
           this,
           pollMessage,
           e);
@@ -387,9 +387,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was polling with request {}, setting SubscriptionProvider unavailable",
           this,
           pollMessage,
           e);
@@ -408,7 +408,7 @@ public abstract class AbstractSubscriptionProvider {
       req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize commit request {}",
+          "IOException occurred while SubscriptionProvider {} was serializing commit request {}",
           this,
           subscriptionCommitContexts,
           e);
@@ -418,9 +418,9 @@ public abstract class AbstractSubscriptionProvider {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
-      // Assume provider unavailable
+      // Assume the provider is unavailable.
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred while SubscriptionProvider {} was committing with request {}, setting SubscriptionProvider unavailable",
           this,
           subscriptionCommitContexts,
           e);

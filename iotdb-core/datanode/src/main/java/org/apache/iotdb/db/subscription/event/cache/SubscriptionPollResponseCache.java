@@ -69,7 +69,7 @@ public class SubscriptionPollResponseCache {
       return Optional.of(serialize(response));
     } catch (final IOException e) {
       LOGGER.warn(
-          "Subscription: something unexpected happened when serializing CachedSubscriptionPollResponse: {}",
+          "Subscription: unexpected exception while serializing CachedSubscriptionPollResponse: {}",
           response,
           e);
       return Optional.empty();

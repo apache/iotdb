@@ -97,15 +97,15 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   @Override
   public void prefetchRemainingResponses() {
-    // do nothing
+    // No remaining responses are prefetched for tablet responses.
   }
 
   @Override
   public void fetchNextResponse(final long offset /* unused */) throws Exception {
-    // generate and offer next response
+    // Generate and offer next response.
     offer(generateNextTabletResponse());
 
-    // poll and clean previous response
+    // Poll and clean previous response.
     final CachedSubscriptionPollResponse previousResponse;
     if (Objects.isNull(previousResponse = poll())) {
       LOGGER.warn(
@@ -120,7 +120,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   public synchronized void nack() {
     cleanUp();
 
-    // should not reset the iterator of batch when init
+    // Do not reset the batch iterator during init.
     // TODO: avoid completely rewinding the iterator
     batch.resetForIteration();
     init();
@@ -165,11 +165,11 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse()
       throws InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     if (availableForNext) {
-      // generate next subscription event with the same batch
+      // Generate next subscription event with the same batch.
       queue.prefetchEvent(new SubscriptionEvent(batch, queue, rootCommitContext));
-      // frozen iterated enriched events
+      // Freeze iterated enriched events.
       transportIterationSnapshot();
-      // return last response of this subscription event
+      // Return last response of this subscription event.
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),
@@ -180,7 +180,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final Map<String, List<Tablet>> currentTablets = new HashMap<>();
     long currentBufferSize = 0;
 
-    // TODO: TBD.
+    // Resource waiting is currently disabled; the buffer-size checks below provide backpressure.
     // waitForResourceEnough4Parsing(SubscriptionAgent.receiver().remainingMs());
 
     while (batch.hasNext()) {
@@ -202,9 +202,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       currentBufferSize += bufferSize;
 
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        // TODO: split tablets
+        // TODO: split large tablets.
         LOGGER.warn(
-            "Detect large tablets with {} byte(s), current tablets size {} byte(s)",
+            "Detected large tablets with {} byte(s), current tablets size {} byte(s)",
             bufferSize,
             currentTablets);
         response =
@@ -216,7 +216,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       }
 
       if (currentBufferSize > READ_TABLET_BUFFER_SIZE) {
-        // TODO: split tablets
+        // TODO: split large tablets.
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
@@ -225,9 +225,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
         break;
       }
 
-      // limit control for large message
+      // Limit control for large messages.
       if (totalBufferSize > PREFETCH_TABLET_BUFFER_SIZE && batch.hasNext()) {
-        // we generate seal signal at next round
+        // Generate the seal signal in the next round.
         availableForNext = true;
         break;
       }

@@ -134,9 +134,9 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support "
+          "IoTDBThriftSyncConnector supports only "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-              + "Ignore {}.",
+              + "Ignoring {}.",
           tabletInsertionEvent);
       return;
     }

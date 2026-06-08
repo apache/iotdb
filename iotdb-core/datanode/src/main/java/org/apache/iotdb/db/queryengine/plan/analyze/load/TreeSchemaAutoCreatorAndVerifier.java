@@ -119,10 +119,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           continue;
         }
       } catch (IllegalPathException e) {
-        LOGGER.warn(
-            "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
-            device,
-            e);
+        LOGGER.warn(DataNodeQueryMessages.FAILED_CHECK_DEVICE_DELETED_BY_MODS, device, e);
       }
 
       for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
@@ -135,7 +132,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // IllegalPathException.
           if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
             LOGGER.warn(
-                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                DataNodeQueryMessages.FAILED_CHECK_TIMESERIES_DELETED_BY_MODS,
                 device,
                 timeseriesMetadata.getMeasurementId(),
                 e);
@@ -248,8 +245,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
     LOGGER.warn(DataNodeQueryMessages.AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR, e);
     throw new SemanticException(
         String.format(
-            "Auto create or verify schema error when executing statement %s.  Detail: %s.",
-            statementString, e.getMessage()));
+            DataNodeQueryMessages.LOAD_AUTO_CREATE_OR_VERIFY_SCHEMA_ERROR_WHEN_EXECUTING_STATEMENT,
+            statementString,
+            e.getMessage()));
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
@@ -383,12 +381,9 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /
         // root.db.ss.a) conflicts with the created database. just do not throw exception here.
         && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
-      LOGGER.warn(
-          "Create database error, statement: {}, result status is: {}", statement, result.status);
+      LOGGER.warn(DataNodeQueryMessages.CREATE_DATABASE_ERROR, statement, result.status);
       throw new LoadFileException(
-          String.format(
-              "Create database error, statement: %s, result status is: %s",
-              statement, result.status));
+          String.format(DataNodeQueryMessages.CREATE_DATABASE_ERROR_S, statement, result.status));
     }
   }
 
@@ -485,7 +480,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         // check datatype
         if (LOGGER.isDebugEnabled() && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
           LOGGER.debug(
-              "Measurement {}{}{} datatype not match, TsFile: {}, IoTDB: {}",
+              DataNodeQueryMessages.MEASUREMENT_DATATYPE_NOT_MATCH,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),
@@ -498,8 +493,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.debug(
-              "Encoding type not match, measurement: {}{}{}, "
-                  + "TsFile encoding: {}, IoTDB encoding: {}",
+              DataNodeQueryMessages.ENCODING_TYPE_NOT_MATCH,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),
@@ -512,8 +506,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
             && !tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.debug(
-              "Compressor not match, measurement: {}{}{}, "
-                  + "TsFile compressor: {}, IoTDB compressor: {}",
+              DataNodeQueryMessages.COMPRESSOR_NOT_MATCH,
               device,
               TsFileConstant.PATH_SEPARATOR,
               iotdbSchema.getMeasurementName(),

@@ -78,7 +78,7 @@ public class SubscriptionBroker {
 
     this.consumerIdToSubscriptionStates =
         Caffeine.newBuilder()
-            // TODO: config
+            // TODO: make the subscription state cache TTL configurable.
             .expireAfterAccess(60L, TimeUnit.SECONDS)
             .build(consumerId -> new SubscriptionStates());
   }
@@ -188,7 +188,7 @@ public class SubscriptionBroker {
       if (Objects.isNull(prefetchingQueue)) {
         if (completedTopicNames.containsKey(topicName)) {
           LOGGER.info(
-              "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, return termination response to client",
+              "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, returning termination response to client",
               topicName,
               brokerId);
           // Add a termination event for the completed topic
@@ -367,7 +367,7 @@ public class SubscriptionBroker {
       // If there is no prefetching queue for the topic, check if it's completed
       if (Objects.isNull(prefetchingQueue) && completedTopicNames.containsKey(topicName)) {
         LOGGER.info(
-            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, reply to client heartbeat request",
+            "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is completed, replying to client heartbeat request",
             topicName,
             brokerId);
         topicNamesToUnsubscribe.add(topicName);
@@ -383,7 +383,7 @@ public class SubscriptionBroker {
       final String topicName, final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     if (Objects.nonNull(topicNameToPrefetchingQueue.get(topicName))) {
       LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] has already existed",
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] already exists",
           topicName,
           brokerId);
       return;
@@ -462,7 +462,7 @@ public class SubscriptionBroker {
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
       LOGGER.info(
-          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbind it before closing",
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] still exists, unbinding it before closing",
           topicName,
           brokerId);
       // TODO: consider more robust metadata semantics

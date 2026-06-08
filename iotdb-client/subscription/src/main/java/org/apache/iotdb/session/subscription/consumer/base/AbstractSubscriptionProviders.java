@@ -87,8 +87,7 @@ final class AbstractSubscriptionProviders {
       try {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
-        LOGGER.warn(
-            "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+        LOGGER.warn("{} failed to create connection with {} because {}", consumer, endPoint, e, e);
         continue; // try next endpoint
       }
       defaultDataNodeId = defaultProvider.getDataNodeId();
@@ -99,7 +98,7 @@ final class AbstractSubscriptionProviders {
         allEndPoints = defaultProvider.heartbeat().getEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to fetch all endpoints from {} because of {}", consumer, endPoint, e, e);
+            "{} failed to fetch all endpoints from {} because {}", consumer, endPoint, e, e);
         break;
       }
 
@@ -113,7 +112,7 @@ final class AbstractSubscriptionProviders {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}",
+              "{} failed to create connection with {} because {}",
               consumer,
               entry.getValue(),
               e,
@@ -249,10 +248,10 @@ final class AbstractSubscriptionProviders {
         final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
         // update subscribed topics
         consumer.subscribedTopics = resp.getTopics();
-        // unsubscribe completed topics
+        // Unsubscribe from completed topics.
         for (final String topicName : resp.getTopicNamesToUnsubscribe()) {
           LOGGER.info(
-              "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
+              "Termination occurred while SubscriptionConsumer {} was polling topics, unsubscribing from topic {} automatically",
               consumer.coreReportMessage(),
               topicName);
           consumer.unsubscribe(topicName);
@@ -260,7 +259,7 @@ final class AbstractSubscriptionProviders {
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
+            "{} failed to send heartbeat to subscription provider {} because {}, setting subscription provider unavailable",
             consumer,
             provider,
             e,
@@ -303,42 +302,42 @@ final class AbstractSubscriptionProviders {
       return;
     }
 
-    // add new providers or handshake existing providers
+    // Add new providers or handshake existing providers.
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
       final AbstractSubscriptionProvider provider = getProvider(entry.getKey());
       if (Objects.isNull(provider)) {
-        // new provider
+        // New provider.
         final TEndPoint endPoint = entry.getValue();
         final AbstractSubscriptionProvider newProvider;
         try {
           newProvider = consumer.constructProviderAndHandshake(endPoint);
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+              "{} failed to create connection with {} because {}", consumer, endPoint, e, e);
           continue;
         }
         addProvider(entry.getKey(), newProvider);
       } else {
-        // existing provider
+        // Existing provider.
         try {
           consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
+              "{} failed to send heartbeat to subscription provider {} because {}, setting subscription provider unavailable",
               consumer,
               provider,
               e,
               e);
           provider.setUnavailable();
         }
-        // close and remove unavailable provider (reset the connection as much as possible)
+        // Close and remove unavailable provider, resetting the connection as much as possible.
         if (!provider.isAvailable()) {
           try {
             closeAndRemoveProvider(entry.getKey());
           } catch (final Exception e) {
             LOGGER.warn(
-                "Exception occurred when {} closing and removing subscription provider {} because of {}",
+                "Exception occurred while {} was closing and removing subscription provider {} because {}",
                 consumer,
                 provider,
                 e,
@@ -348,7 +347,7 @@ final class AbstractSubscriptionProviders {
       }
     }
 
-    // close and remove stale providers
+    // Close and remove stale providers.
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       final int dataNodeId = provider.getDataNodeId();
       if (!allEndPoints.containsKey(dataNodeId)) {
@@ -356,7 +355,7 @@ final class AbstractSubscriptionProviders {
           closeAndRemoveProvider(dataNodeId);
         } catch (final Exception e) {
           LOGGER.warn(
-              "Exception occurred when {} closing and removing subscription provider {} because of {}",
+              "Exception occurred while {} was closing and removing subscription provider {} because {}",
               consumer,
               provider,
               e,

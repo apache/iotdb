@@ -55,9 +55,9 @@ public final class ConfigNodeMessages {
   public static final String CHANGE_REGIONS_LEADER_ERROR_ON_DATE_NODE =
       "Change regions leader error on Date node: {}";
   public static final String CHECK_BEFORE_DROPPING_TOPIC_TOPIC_EXISTS =
-      "Check before dropping topic: {}, topic exists: {}";
+      "删除 Topic 前检查：Topic {} 是否存在：{}";
   public static final String CHECK_BEFORE_DROP_PIPE_PIPE_EXISTS =
-      "Check before drop pipe {}, pipe exists: {}.";
+      "删除 pipe 前检查，pipe {} 是否存在：{}。";
   public static final String CLUSTERID_HAS_BEEN_GENERATED = "已生成 clusterID：{}";
   public static final String CLUSTERID_HAS_BEEN_RECOVERED_FROM_SNAPSHOT = "已从快照恢复 clusterID：{}";
   public static final String CLUSTERID_NOT_GENERATED_YET_SHOULD_NEVER_HAPPEN =
@@ -89,9 +89,9 @@ public final class ConfigNodeMessages {
   public static final String CONFIGNODE_SIMPLECONSENSUSFILE_HAS_EXISTED_FILEPATH =
       "ConfigNode SimpleConsensusFile has existed，filePath:{}";
   public static final String CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_THE_HISTORICAL =
-      "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.";
+      "Config Region Listening Queue 监听快照失败，历史数据可能无法传输。";
   public static final String CONFIG_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_WHEN_STARTUP =
-      "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes";
+      "Config Region Listening Queue 启动时监听快照失败，将在启动 schema 传输 pipe 时重试监听快照";
   public static final String CONTINUOUS_QUERY_MIN_EVERY_INTERVAL_IN_MS_SHOULD_BE_GREATER =
       "continuous_query_min_every_interval_in_ms 应大于 0，但当前值为 {}，忽略并使用默认值 {}";
   public static final String CONTINUOUS_QUERY_SUBMIT_THREAD_SHOULD_BE_GREATER_THAN_0 =
@@ -174,23 +174,23 @@ public final class ConfigNodeMessages {
   public static final String FAILED_ON_DATANODE = "{} failed on DataNode {}";
   public static final String FAILED_ON_DATANODE_RETRYING =
       "{} failed on DataNode {}, retrying {}...";
-  public static final String FAILED_TO_ALTER_PIPE = "Failed to alter pipe";
+  public static final String FAILED_TO_ALTER_PIPE = "修改 pipe 失败";
   public static final String FAILED_TO_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE =
-      "Failed to check schema region using template on DataNode {}, {}";
+      "在 DataNode {} 上检查正在使用模板的 SchemaRegion 失败，{}";
   public static final String FAILED_TO_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE =
       "Failed to check timeseries existence on DataNode {}, {}";
   public static final String FAILED_TO_COUNT_PATHS_USING_TEMPLATE_ON_DATANODE =
       "Failed to count paths using template on DataNode {}, {}";
-  public static final String FAILED_TO_CREATE_MULTIPLE_PIPES = "Failed to create multiple pipes";
-  public static final String FAILED_TO_CREATE_PIPE = "Failed to create pipe";
+  public static final String FAILED_TO_CREATE_MULTIPLE_PIPES = "批量创建 pipe 失败";
+  public static final String FAILED_TO_CREATE_PIPE = "创建 pipe 失败";
   public static final String FAILED_TO_CREATE_PIPEPLUGIN_SOURCE_PIPEPLUGIN_FAILED_TO_LOAD =
-      "Failed to create PipePlugin [%s], source PipePlugin [%s] failed to load: %s";
+      "创建 PipePlugin [%s] 失败，源 PipePlugin [%s] 加载失败：%s";
   public static final String FAILED_TO_CREATE_PIPEPLUGIN_SOURCE_PIPEPLUGIN_JAR_DOES_NOT_EXIST =
-      "Failed to create PipePlugin [%s], source PipePlugin [%s] jar [%s] does not exist in install dir.";
+      "创建 PipePlugin [%s] 失败，源 PipePlugin [%s] jar [%s] 在安装目录中不存在。";
   public static final String FAILED_TO_CREATE_PIPEPLUGIN_THE_SAME_NAME_PIPEPLUGIN_HAS_BEEN =
-      "Failed to create PipePlugin [%s], the same name PipePlugin has been created";
+      "创建 PipePlugin [%s] 失败，同名 PipePlugin 已创建";
   public static final String FAILED_TO_CREATE_PIPEPLUGIN_THIS_PIPEPLUGIN_EXISTS_BUT_FAILED_TO =
-      "Failed to create PipePlugin [%s], this PipePlugin exists but failed to load: %s";
+      "创建 PipePlugin [%s] 失败，该 PipePlugin 已存在但加载失败：%s";
   public static final String FAILED_TO_CREATE_TEMPLATE_BECAUSE_TEMPLATE_NAME_EXISTS =
       "Failed to create template, because template name {} exists";
   public static final String FAILED_TO_CREATE_TRIGGER_THE_SAME_NAME_JAR_BUT_DIFFERENT =
@@ -203,11 +203,11 @@ public final class ConfigNodeMessages {
       "Failed to create UDF [%s], the same name UDF has been created";
   public static final String FAILED_TO_DECREASE_LISTENER_REFERENCE =
       "Failed to decrease listener reference";
-  public static final String FAILED_TO_DROP_PIPE = "Failed to drop pipe";
+  public static final String FAILED_TO_DROP_PIPE = "删除 pipe 失败";
   public static final String FAILED_TO_DROP_PIPEPLUGIN_THE_PIPEPLUGIN_IS_A_BUILT_IN =
-      "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin";
+      "删除 PipePlugin [%s] 失败，该 PipePlugin 是内置 PipePlugin";
   public static final String FAILED_TO_DROP_PIPEPLUGIN_THIS_PIPEPLUGIN_HAS_NOT_BEEN_CREATED =
-      "Failed to drop PipePlugin [%s], this PipePlugin has not been created";
+      "删除 PipePlugin [%s] 失败，该 PipePlugin 尚未创建";
   public static final String FAILED_TO_DROP_TRIGGER_THIS_TRIGGER_HAS_NOT_BEEN_CREATED =
       "Failed to drop trigger [%s], this trigger has not been created";
   public static final String FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED =
@@ -220,11 +220,11 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_INCREASE_LISTENER_REFERENCE =
       "Failed to increase listener reference";
   public static final String FAILED_TO_LOAD_PIPE_INFO_FROM_SNAPSHOT =
-      "Failed to load pipe info from snapshot, ";
+      "从快照加载 pipe 信息失败，";
   public static final String FAILED_TO_LOAD_PIPE_PLUGIN_INFO_FROM_SNAPSHOT =
-      "Failed to load pipe plugin info from snapshot";
+      "从快照加载 pipe 插件信息失败";
   public static final String FAILED_TO_LOAD_PIPE_TASK_INFO_FROM_SNAPSHOT =
-      "Failed to load pipe task info from snapshot";
+      "从快照加载 pipe 任务信息失败";
   public static final String FAILED_TO_LOAD_PLUGIN_CLASS_FOR_PLUGIN_WHEN_LOADING_SNAPSHOT =
       "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ";
   public static final String FAILED_TO_LOAD_SNAPSHOT_BECAUSE_GET_NULL_DATABASE_NAME =
@@ -242,18 +242,18 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2 =
       "Failed to load snapshot,snapshot file [{}] is not exist.";
   public static final String FAILED_TO_LOAD_SUBSCRIPTION_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST =
-      "Failed to load subscription snapshot, snapshot file {} is not exist.";
+      "加载订阅快照失败，快照文件 {} 不存在。";
   public static final String FAILED_TO_ON_CONFIGNODE_RESPONSE =
       "Failed to {} on ConfigNode: {}, response: {}";
   public static final String FAILED_TO_ON_DATANODE = "Failed to {} on DataNode {}, {}";
   public static final String FAILED_TO_ON_DATANODE_EXCEPTION =
       "Failed to {} on DataNode: {}, exception: {}";
   public static final String FAILED_TO_ON_DATANODE_RESPONSE =
-      "Failed to {} on DataNode: {}, response: {}";
-  public static final String FAILED_TO_OPERATE_PIPE = "Failed to operate pipe";
-  public static final String FAILED_TO_SET_PIPE_STATUS = "Failed to set pipe status";
+      "执行 {} 失败，目标 DataNode：{}，响应：{}";
+  public static final String FAILED_TO_OPERATE_PIPE = "操作 pipe 失败";
+  public static final String FAILED_TO_SET_PIPE_STATUS = "设置 pipe 状态失败";
   public static final String FAILED_TO_SET_PIPE_STATUS_WITH_STOPPED_BY_RUNTIME_EXCEPTION =
-      "Failed to set pipe status with stopped-by-runtime-exception flag";
+      "设置带 stopped-by-runtime-exception 标记的 pipe 状态失败";
   public static final String FAILED_TO_TAKE_SNAPSHOT_BECAUSE_CREATE_TMP_DIR_FAIL =
       "Failed to take snapshot, because create tmp dir [{}] fail.";
   public static final String FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_DIR_IS_ALREADY_EXIST =
@@ -267,22 +267,22 @@ public final class ConfigNodeMessages {
   public static final String FAILED_TO_TAKE_SNAPSHOT_OF_TTLINFO_BECAUSE_SNAPSHOT_FILE_IS =
       "Failed to take snapshot of TTLInfo, because snapshot file [{}] is already exist.";
   public static final String FAILED_TO_TAKE_SUBSCRIPTION_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY =
-      "Failed to take subscription snapshot, because snapshot file {} is already exist.";
+      "生成订阅快照失败，因为快照文件 {} 已存在。";
   public static final String FAILED_TO_UPDATE_CONFIG_FILE = "更新配置文件失败";
   public static final String FILE_NOT_EXISTS = "File {} not exists";
   public static final String FOR_RECEIVES = "{} for {} receives: {}";
   public static final String GET_DATANODE_CPU_CORE_FAIL_WILL_BE_TREATED_AS_ZERO =
       "Get DataNode {} cpu core fail, will be treated as zero.";
-  public static final String GET_PIPEPLUGIN_JAR_FAILED = "Get PipePlugin_Jar failed";
+  public static final String GET_PIPEPLUGIN_JAR_FAILED = "获取 PipePlugin Jar 失败";
   public static final String GET_TRIGGERJAR_FAILED = "Get TriggerJar failed";
   public static final String GET_UDF_JAR_FAILED = "Get UDF_Jar failed";
   public static final String GET_URL_FAILED = "获取 URL 失败";
   public static final String GET_USER_OR_ROLE_PERMISSIONINFO_FAILED_BECAUSE =
       "get user or role permissionInfo failed because ";
   public static final String HANDLING_CONSUMER_GROUP_META_CHANGES =
-      "Handling consumer group meta changes ...";
-  public static final String HANDLING_PIPE_META_CHANGES = "Handling pipe meta changes ...";
-  public static final String HANDLING_TOPIC_META_CHANGES = "Handling topic meta changes ...";
+      "正在处理消费者组元数据变更 ...";
+  public static final String HANDLING_PIPE_META_CHANGES = "正在处理 pipe 元数据变更 ...";
+  public static final String HANDLING_TOPIC_META_CHANGES = "正在处理 Topic 元数据变更 ...";
   public static final String HAS_REGISTERED_SUCCESSFULLY_WAITING_FOR_THE_LEADER_S_SCHEDULING_TO =
       "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.";
   public static final String HAS_SUCCESSFULLY_RESTARTED_AND_JOINED_THE_CLUSTER =
@@ -320,19 +320,19 @@ public final class ConfigNodeMessages {
       "[PartitionTableCleaner] The TimePartitions: {} are removed from Database: {}";
   public static final String PATH1_SHOULD_NOT_BE_NULL = "Path1 should not be null";
   public static final String PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES =
-      "PipeMetaSyncer is trying to restart the pipes: {}";
+      "PipeMetaSyncer 正在尝试重启 pipe：{}";
   public static final String PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION =
-      "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}";
+      "Pipe {} 使用外部 source，跳过 region leader 变更。PipeHandleLeaderChangePlan：{}";
   public static final String PLAN_TYPE_IS_NOT_SUPPORTED = "Plan type %s is not supported.";
   public static final String PLEASE_SET_THE_CN_SEED_CONFIG_NODE_PARAMETER_IN_IOTDB =
       "Please set the cn_seed_config_node parameter in iotdb-system.properties file.";
   public static final String PORTS_USED_IN_CONFIGNODE_HAVE_REPEAT =
       "ports used in configNode have repeat.";
   public static final String REACH_EOF = "Reach eof";
-  public static final String RECORDING_CONSUMER_GROUP_META = "Recording consumer group meta: {}";
-  public static final String RECORDING_TOPIC_META = "Recording topic meta: {}";
+  public static final String RECORDING_CONSUMER_GROUP_META = "记录消费者组元数据：{}";
+  public static final String RECORDING_TOPIC_META = "记录 Topic 元数据：{}";
   public static final String RECOVERED_CONSENSUS_PIPES_AS_RUNNING_DURING_SNAPSHOT_LOAD =
-      "Recovered consensus pipes {} as RUNNING during snapshot load.";
+      "快照加载期间已将 consensus pipe {} 恢复为 RUNNING 状态。";
   public static final String RELEASE_TRIGGERTABLELOCK = "release TriggerTableLock";
   public static final String RELEASE_UDFTABLELOCK = "release UDFTableLock";
   public static final String REMOVED_THE_AINODE_FROM_CLUSTER = "Removed the AINode {} from cluster";
@@ -367,7 +367,7 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_APPLY_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}";
   public static final String SUCCESSFULLY_CHECK_SCHEMA_REGION_USING_TEMPLATE_ON_DATANODE =
-      "Successfully check schema region using template on DataNode: {}";
+      "成功在 DataNode 上检查正在使用模板的 SchemaRegion：{}";
   public static final String SUCCESSFULLY_CHECK_TIMESERIES_EXISTENCE_ON_DATANODE =
       "Successfully check timeseries existence on DataNode: {}";
   public static final String SUCCESSFULLY_COUNT_PATHS_USING_TEMPLATE_ON_DATANODE =
@@ -377,7 +377,7 @@ public final class ConfigNodeMessages {
   public static final String SUCCESSFULLY_INITIALIZE_CONFIGMANAGER =
       "Successfully initialize ConfigManager.";
   public static final String SUCCESSFULLY_ON_CONFIGNODE = "Successfully {} on ConfigNode: {}";
-  public static final String SUCCESSFULLY_ON_DATANODE = "Successfully {} on DataNode: {}";
+  public static final String SUCCESSFULLY_ON_DATANODE = "执行 {} 成功，目标 DataNode：{}";
   public static final String SUCCESSFULLY_REMOVE_CONFIGNODE_CURRENT_CONFIGNODEGROUP =
       "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}";
   public static final String SUCCESSFULLY_SETUP_INTERNAL_SERVICES =
@@ -442,14 +442,14 @@ public final class ConfigNodeMessages {
   public static final String THE_SEEDCONFIGNODE_SETTING_IN_CONF_IS_EMPTY =
       "The seedConfigNode setting in conf is empty";
   public static final String THE_S_CREATION_HAS_NOT_PASSED_IN_JARNAME_WHICH_DOES =
-      "The %s's creation has not passed in jarName, which does not exist in other pipePlugins. Please check";
+      "%s 创建时未传入 jarName，且其他 pipePlugin 中也不存在该 jarName。请检查";
   public static final String THE_TIMESTAMP_PRECISION_SHOULD_BE_MS_US_OR_NS =
       "The timestamp_precision should be ms, us or ns";
   public static final String THE_TIME_PARTITION_INTERVAL_SHOULD_BE_POSITIVE =
       "The time_partition_interval should be positive";
   public static final String THE_TIME_PARTITION_ORIGIN_SHOULD_BE_NON_NEGATIVE =
       "The time_partition_origin should be non-negative";
-  public static final String TRY_LISTEN_TO_PLAN_FAILED = "Try listen to plan failed";
+  public static final String TRY_LISTEN_TO_PLAN_FAILED = "尝试监听 plan 失败";
   public static final String UNDEFINED_TEMPLATE = "Undefined template {}";
   public static final String UNEXPECTED_INTERRUPTION_DURING_THE_CLOSE_METHOD_OF_LOGWRITER =
       "Unexpected interruption during the close method of logWriter";

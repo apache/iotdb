@@ -70,7 +70,7 @@ public class PipeExternalSourceLoadBalancer {
    * Balances the given number of parallel tasks across available nodes.
    *
    * @param parallelCount number of external source tasks to distribute
-   * @param pipeStaticMeta metadata about the pipe extractor
+   * @param pipeStaticMeta metadata about the pipe source
    * @param configManager reference to ConfigManager for cluster information
    * @return a mapping from task index to leader node id
    */

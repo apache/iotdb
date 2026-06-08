@@ -85,7 +85,7 @@ public class DeletionReader implements Closeable {
       }
       return deletions;
     } catch (IOException e) {
-      // if file is corrupted, throw an exception and skip subsequence DAL.
+      // If the file is corrupted, throw an exception and skip subsequent DALs.
       LOGGER.warn(DataNodePipeMessages.FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE, logFile, e);
       throw e;
     }

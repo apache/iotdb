@@ -72,11 +72,11 @@ public class PipeRuntimeMeta {
    * id 0 clashes with the start of {@link SchemaRegionId#getId()} and {@link DataRegionId#getId()}
    *
    * <p>- The {@link ConfigRegionId#getId()} and {@link SchemaRegionId#getId()}'s {@link
-   * PipeTaskMeta}s engender nothing if the pipe has nothing to do with metadata.
+   * PipeTaskMeta}s do not drive schema transmission if the pipe has nothing to do with metadata.
    *
    * <p>- The {@link ConfigRegionId}s and {@link SchemaRegionId}s will not exist for the pipes
    * recovered from log with previous versions, and this is guaranteed to be seen as if they exist
-   * but do not spark schema transmission.
+   * but do not trigger schema transmission.
    */
   private final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap;
 
@@ -89,7 +89,7 @@ public class PipeRuntimeMeta {
    * and will result in the halt of pipe execution.
    *
    * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
-   * sharing the same connector, and will stop the pipe likewise.
+   * sharing the same sink, and will stop the pipe likewise.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();

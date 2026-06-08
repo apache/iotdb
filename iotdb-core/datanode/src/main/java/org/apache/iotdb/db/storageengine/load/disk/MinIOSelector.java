@@ -63,12 +63,11 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
                   this.rootDisks2DataDirsMapForLoad.put(mountPoint, dataDirPath);
                   logger.info(StorageEngineMessages.ADD_MOUNT_POINT, dataDirPath, mountPoint);
                 } else {
-                  logger.info(
-                      "Failed to find mount point {}, skip register it to map", dataDirPath);
+                  logger.info(StorageEngineMessages.FAILED_FIND_MOUNT_POINT, dataDirPath);
                 }
               } catch (Exception e) {
                 logger.warn(
-                    "Exception occurs when reading data dir's mount point {}", dataDirPath, e);
+                    StorageEngineMessages.EXCEPTION_READING_DATA_DIR_MOUNT_POINT, dataDirPath, e);
               }
             });
   }
@@ -90,7 +89,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       }
     } catch (Exception e) {
       logger.warn(
-          "Exception occurs when reading target file's mount point {}",
+          StorageEngineMessages.EXCEPTION_READING_TARGET_FILE_MOUNT_POINT,
           sourceDirectory.getAbsoluteFile(),
           e);
     }
@@ -98,7 +97,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
     File targetFile = null;
     if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
       if (appendFileName) {
-        // if there is an overlap between firDirRoot and data directories' disk roots, try to get
+        // if there is an overlap between fileDirRoot and data directories' disk roots, try to get
         // targetFile in the same disk
         targetFile = fsFactory.getFile(rootDisks2DataDirsMapForLoad.get(fileDirRoot), fileName);
       } else {
@@ -108,7 +107,7 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       return targetFile;
     }
 
-    // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
+    // if there isn't an overlap, fall back to the storage balance (sequence) strategy.
     return super.selectTargetDirectory(sourceDirectory, fileName, appendFileName, tierLevel);
   }
 }

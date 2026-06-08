@@ -298,8 +298,8 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
       doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support "
-              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+          "IoTDBLegacyPipeConnector supports only "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
     }
   }
 

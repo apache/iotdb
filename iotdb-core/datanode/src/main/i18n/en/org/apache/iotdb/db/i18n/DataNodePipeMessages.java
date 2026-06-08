@@ -25,67 +25,67 @@ public final class DataNodePipeMessages {
 
   public static final String CLOSING_DELETION_RESOURCE_MANAGER_FOR =
       "Closing deletion resource manager for {}...";
-  public static final String DAL_THREAD_STILL_DOESN_T_EXIT_AFTER =
-      "DAL Thread {} still doesn't exit after 30s";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY =
       "DeletionManager-{}: current DAL dir {} is deleted successfully";
   public static final String DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED =
       "DeletionManager-{}: current DAL dir {} is not initialized, no need to delete.";
   public static final String DELETIONMANAGER_CURRENT_WAITING_IS_INTERRUPTED_MAY_BECAUSE =
-      "DeletionManager-{}: current waiting is interrupted. May because current application is "
-          + "down. ";
+      "DeletionManager-{}: waiting was interrupted, possibly because the application is "
+          + "shutting down.";
   public static final String DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR =
-      "DeletionManager-{} delete deletion file in {} dir...";
+      "DeletionManager-{}: deleted deletion file {}.";
   public static final String DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR =
-      "DeletionManager-{} failed to delete file in {} dir, please manually check!";
+      "DeletionManager-{}: failed to delete files under {}, please check manually!";
   public static final String DELETIONRESOURCE_HAS_BEEN_RELEASED_TRIGGER_A_REMOVE =
-      "DeletionResource {} has been released, trigger a remove of DAL...";
+      "DeletionResource {} has been released; triggering DAL cleanup.";
   public static final String DELETION_PERSIST_CANNOT_CREATE_FILE_PLEASE_CHECK =
-      "Deletion persist: Cannot create file {}, please check your file system manually.";
+      "Deletion persist: failed to create file {}; please check the file system manually.";
   public static final String DELETION_PERSIST_CANNOT_WRITE_TO_MAY_CAUSE =
-      "Deletion persist: Cannot write to {}, may cause data inconsistency.";
+      "Deletion persist: failed to write to {}; data may become inconsistent.";
   public static final String DELETION_PERSIST_CURRENT_BATCH_FSYNC_DUE_TO =
-      "Deletion persist-{}: current batch fsync due to timeout";
+      "Deletion persist-{}: fsync current batch due to timeout";
   public static final String DELETION_PERSIST_CURRENT_FILE_HAS_BEEN_CLOSED =
       "Deletion persist-{}: current file has been closed";
   public static final String DELETION_PERSIST_SERIALIZE_DELETION_RESOURCE =
-      "Deletion persist-{}: serialize deletion resource {}";
+      "Deletion persist-{}: serializing deletion resource {}";
   public static final String DELETION_PERSIST_STARTING_TO_PERSIST_CURRENT_WRITING =
-      "Deletion persist-{}: starting to persist, current writing: {}";
+      "Deletion persist-{}: starting to persist, current file: {}";
   public static final String DELETION_PERSIST_SWITCHING_TO_A_NEW_FILE =
-      "Deletion persist-{}: switching to a new file, current writing: {}";
+      "Deletion persist-{}: switched to a new file, current file: {}";
   public static final String DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY =
       "Deletion resource manager for {} has been successfully closed!";
   public static final String DETECT_FILE_CORRUPTED_WHEN_RECOVER_DAL_DISCARD =
-      "Detect file corrupted when recover DAL-{}, discard all subsequent DALs...";
+      "Detected a corrupted file while recovering DAL-{}; discarding all subsequent DALs.";
   public static final String FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER =
       "Failed to initialize DeletionResourceManager";
   public static final String FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE =
-      "Failed to read deletion file {}, may because this file corrupted when writing it.";
+      "Failed to read deletion file {}; it may have been corrupted while being written.";
   public static final String FAILED_TO_RECOVER_DELETIONRESOURCEMANAGER =
       "Failed to recover DeletionResourceManager";
   public static final String FAIL_TO_ALLOCATE_DELETIONBUFFER_GROUP_S_BUFFER =
-      "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.";
+      "Failed to allocate deletionBuffer-group-{}'s buffer because memory is insufficient.";
   public static final String FAIL_TO_CLOSE_CURRENT_LOGGING_FILE_WHEN =
-      "Fail to close current logging file when closing";
+      "Failed to close current logging file while closing";
   public static final String FAIL_TO_REGISTER_DELETIONRESOURCE_INTO_DELETIONBUFFER_BECAUSE =
-      "Fail to register DeletionResource into deletionBuffer-{} because this buffer is closed.";
+      "Failed to register DeletionResource into deletionBuffer-{} because the buffer is closed.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_ALL_DELETIONS_FLUSHED =
-      "Interrupted when waiting for all deletions flushed.";
+      "Interrupted while waiting for all deletions to be flushed.";
+  public static final String INTERRUPTED_WHILE_WAITING_FOR_DAL_THREAD_TO_EXIT =
+      "Interrupted while waiting for the DAL thread of dataRegion {} to exit.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_RESULT =
-      "Interrupted when waiting for result.";
+      "Interrupted while waiting for result.";
   public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_DELETIONRESOURCE_FROM =
-      "Interrupted when waiting for taking DeletionResource from blocking queue to serialize.";
-  public static final String INTERRUPTED_WHEN_WAITING_FOR_TAKING_WALENTRY_FROM =
-      "Interrupted when waiting for taking WALEntry from blocking queue to serialize.";
+      "Interrupted while taking a DeletionResource from the blocking queue for serialization.";
+  public static final String INTERRUPTED_WHEN_WAITING_FOR_POLLING_DELETIONRESOURCE_FROM =
+      "Interrupted while polling a DeletionResource from the blocking queue for serialization.";
   public static final String INVALID_DELETION_PROGRESS_INDEX = "Invalid deletion progress index: ";
   public static final String PERSISTTHREAD_DID_NOT_TERMINATE_WITHIN_S =
-      "persistThread did not terminate within {}s";
+      "Persist thread did not terminate within {}s";
   public static final String READ_DELETION_FILE_MAGIC_VERSION =
-      "Read deletion file-{} magic version: {}";
+      "Read deletion file {} magic version: {}";
   public static final String READ_DELETION_FROM_FILE = "Read deletion: {} from file {}";
   public static final String UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT =
-      "Unable to create iotConsensusV2 deletion dir at {}";
+      "Unable to create IoTConsensusV2 deletion directory at {}";
 
   // ===================== AGENT =====================
 
@@ -115,7 +115,8 @@ public final class DataNodePipeMessages {
   public static final String EXCEPTION_OCCURS_WHEN_EXECUTING_PIPE_TASK =
       "Exception occurs when executing pipe task: ";
   public static final String FAILED_TO_CHECK_IF_PIPE_HAS_RELEASE =
-      "Failed to check if pipe has release region related resource with consensus group id: {}.";
+      "Failed to check whether pipe has released region-related resources for consensus group "
+          + "id: {}.";
   public static final String FAILED_TO_CLEAR_CLOSE_THE_SCHEMA_REGION =
       "Failed to clear/close the schema region listening queue, because {}. Will wait until "
           + "success or the region's state machine is stopped.";
@@ -141,7 +142,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE =
       "Failed to persist progress index to configNode, status: {}";
   public static final String FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS =
-      "Failure when register pipe plugin {}. Skip this plugin and continue startup.";
+      "Failed to register pipe plugin {}. Skip this plugin and continue startup.";
   public static final String
       FAILED_TO_REGISTER_PIPE_PLUGIN_BECAUSE_NAME_CONFLICTS_WITH_BUILTIN =
           "Failed to register PipePlugin %s, because the given PipePlugin name is the same as a built-in PipePlugin name.";
@@ -166,7 +167,7 @@ public final class DataNodePipeMessages {
           + "to 'false' to prevent premature halt before transfer completion.";
   public static final String PIPEDATANODETASKBUILDER_WHEN_SOURCE_USES_SNAPSHOT_MODEL_REALTIME_1 =
       "PipeDataNodeTaskBuilder: When source uses snapshot model, 'realtime-first' set to "
-          + "'true' may cause prevent premature halt before transfer completion.";
+          + "'true' may cause premature halt before transfer completion.";
   public static final String PIPEDATANODETASKBUILDER_WHEN_THE_REALTIME_SYNC_IS_ENABLED =
       "PipeDataNodeTaskBuilder: When the realtime sync is enabled, not enabling the rate "
           + "limiter in sending tsfile may introduce delay for realtime sending.";
@@ -179,7 +180,7 @@ public final class DataNodePipeMessages {
       "Pipe: connector subtask {} ({}) was closed within {} ms";
   public static final String PIPE_META_NOT_FOUND = "Pipe meta not found: ";
   public static final String PIPE_SINK_SUBTASKS_WITH_ATTRIBUTES_IS_BOUNDED =
-      "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and "
+      "Pipe sink subtasks with attributes {} are bound to sinkExecutor {} and "
           + "callbackExecutor {}.";
   public static final String PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T =
       "Pipe skipping temporary TsFile which shouldn't be transferred: {}";
@@ -218,7 +219,7 @@ public final class DataNodePipeMessages {
   public static final String SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO =
       "Successfully persisted all pipe's info to configNode.";
   public static final String THE_EXECUTOR_AND_HAS_BEEN_SUCCESSFULLY_SHUTDOWN =
-      "The executor {} and {} has been successfully shutdown.";
+      "The executors {} and {} have been shut down successfully.";
 
   // ===================== EVENT =====================
 
@@ -690,7 +691,7 @@ public final class DataNodePipeMessages {
       "Failed to send initial value to new subscription, nodeId={}";
   public static final String FAILED_TO_SERIALIZE_PROGRESS_INDEX =
       "Failed to serialize progress index {}";
-  public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "Failed to shutdown executor {}.";
+  public static final String FAILED_TO_SHUTDOWN_EXECUTOR = "Failed to shut down executor {}.";
   public static final String FAILED_TO_TRANSFER_DATAVALUE = "Failed to transfer dataValue";
   public static final String FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED =
       "Failed to transfer dataValue after successfully created nodes";
@@ -724,42 +725,42 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTConsensusV2AsyncConnector does not support transferring generic event: {}.";
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT =
-      "IoTConsensusV2AsyncConnector does not support transfer generic event: {}.";
+      "IoTConsensusV2AsyncConnector does not support transferring generic event: {}.";
   public static final String IOTCONSENSUSV2ASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVEN =
-      "IoTConsensusV2AsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "IoTConsensusV2AsyncConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String IOTCONSENSUSV2CONNECTOR_TRANSFERBUFFER_QUEUE_OFFER_IS_INTERRUPTED =
-      "IoTConsensusV2Connector transferBuffer queue offer is interrupted.";
+      "Interrupted while offering an event to the IoTConsensusV2Connector transfer buffer.";
   public static final String IOTCONSENSUSV2TRANSFERBATCHREQBUILDER_THE_MAX_BATCH_SIZE_IS_ADJUSTED =
-      "IoTConsensusV2TransferBatchReqBuilder: the max batch size is adjusted from {} to {} due "
-          + "to the memory restriction";
+      "IoTConsensusV2TransferBatchReqBuilder: the max batch size was adjusted from {} to {} due "
+          + "to memory constraints";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_NOT_FOUND_IN_TRANSFERBUFFER =
       "IoTConsensusV2-ConsensusGroup-{}: event-{} not found in transferBuffer, skip removing. "
           + "queue size = {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED =
-      "IoTConsensusV2-ConsensusGroup-{}: Event {} replicate index {} transfer failed, added to "
-          + "retry queue failed, this event will be ignored.";
+      "IoTConsensusV2-ConsensusGroup-{}: Event {} with replicate index {} failed to transfer and "
+          + "could not be added to the retry queue; this event will be ignored.";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_EVENT_REPLICATE_INDEX_TRANSFER_FAILED_1 =
-      "IoTConsensusV2-ConsensusGroup-{}: Event {} replicate index {} transfer failed, will be "
-          + "added to retry queue.";
+      "IoTConsensusV2-ConsensusGroup-{}: Event {} with replicate index {} failed to transfer and "
+          + "will be added to the retry queue.";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_NO_EVENT_ADDED_TO_CONNECTOR =
-      "IoTConsensusV2-ConsensusGroup-{}: no.{} event-{} added to connector buffer";
+      "IoTConsensusV2-ConsensusGroup-{}: event no.{} ({}) was added to the connector buffer";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_ONE_EVENT_SUCCESSFULLY_RECEIVED_BY =
-      "IoTConsensusV2-ConsensusGroup-{}: one event-{} successfully received by the follower, "
-          + "will be removed from queue, queue size = {}, limit size = {}";
+      "IoTConsensusV2-ConsensusGroup-{}: event {} was successfully received by the follower and "
+          + "will be removed from the queue; queue size = {}, limit size = {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_RETRYEVENTQUEUE_IS_NOT_EMPTY_AFTER =
       "IoTConsensusV2-ConsensusGroup-{}: retryEventQueue is not empty after 20 seconds. "
           + "retryQueue size: {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_RETRY_WITH_INTERVAL_FOR_INDEX =
       "IoTConsensusV2-ConsensusGroup-{}: retry with interval {} for index {} {}";
   public static final String IOTCONSENSUSV2_CONSENSUSGROUP_TRY_TO_REMOVE_EVENT_AFTER =
-      "IoTConsensusV2-ConsensusGroup-{}: try to remove event-{} after "
-          + "iotConsensusV2AsyncConnector being closed. Ignore it.";
+      "IoTConsensusV2-ConsensusGroup-{}: trying to remove event {} after "
+          + "iotConsensusV2AsyncConnector has been closed. Ignoring it.";
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN =
-      "IoTConsensusV2-{}: Failed to close file reader when failed to transfer file.";
+      "IoTConsensusV2-{}: Failed to close file reader after file transfer failed.";
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_1 =
-      "IoTConsensusV2-{}: Failed to close file reader when successfully transferred file.";
+      "IoTConsensusV2-{}: Failed to close file reader after successfully transferring file.";
   public static final String IOTCONSENSUSV2_FAILED_TO_CLOSE_FILE_READER_WHEN_2 =
-      "IoTConsensusV2-{}: Failed to close file reader when successfully transferred mod file.";
+      "IoTConsensusV2-{}: Failed to close file reader after successfully transferring mod file.";
   public static final String IOTCONSENSUSV2_FAILED_TO_TRANSFER_TABLETINSERTIONEVENT_BATCH_TOTAL =
       "IoTConsensusV2: Failed to transfer TabletInsertionEvent batch. Total failed events: {}, "
           + "related pipe names: {}";
@@ -771,22 +772,22 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_SUCCESSFULLY_TRANSFERRED_FILE_COMMITTER_KEY_REPLICATE =
       "IoTConsensusV2-{}: Successfully transferred file {} (committer key={}, replicate index={}).";
   public static final String IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB =
-      "IoTDBCDCConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "IoTDBCDCConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_A =
-      "IoTDBDataRegionAirGapConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBDataRegionAirGapConnector supports only PipeTsFileInsertionEvent. Ignoring {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBLegacyPipeConnector does not support transferring generic event: {}.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPEINSERTNODEINSERTIONEVENT_AND_PIPETABLE =
-      "IoTDBLegacyPipeConnector only support PipeInsertNodeInsertionEvent and "
-          + "PipeTabletInsertionEvent.";
+      "IoTDBLegacyPipeConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent.";
   public static final String IOTDBLEGACYPIPECONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT =
-      "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.";
+      "IoTDBLegacyPipeConnector supports only PipeTsFileInsertionEvent.";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TABLETINSERTIONEVENT =
       "IoTDBSchemaRegionAirGapSink can't transfer TabletInsertionEvent.";
   public static final String IOTDBSCHEMAREGIONAIRGAPSINK_CAN_T_TRANSFER_TSFILEINSERTIONEVENT =
@@ -802,19 +803,19 @@ public final class DataNodePipeMessages {
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBThriftAsyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFER_GENERIC_EVENT =
-      "IoTDBThriftAsyncConnector does not support transfer generic event: {}.";
+      "IoTDBThriftAsyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PI =
-      "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "IoTDBThriftAsyncConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent. Current event: {}.";
   public static final String IOTDBTHRIFTASYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "IoTDBThriftAsyncConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT =
       "IoTDBThriftSyncConnector does not support transferring generic event: {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIP =
-      "IoTDBThriftSyncConnector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String IOTDBTHRIFTSYNCCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE =
-      "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.";
+      "IoTDBThriftSyncConnector supports only PipeTsFileInsertionEvent. Ignoring {}.";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_FROM_TO =
       "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.";
   public static final String LEADERCACHEMANAGER_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_FROM_TO =
@@ -822,7 +823,7 @@ public final class DataNodePipeMessages {
   public static final String LOADING_KEYSTORE_AT = "Loading KeyStore at {}";
   public static final String LOADING_KEYSTORE_AT_1 = "Loading KeyStore at {}.";
   public static final String LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY =
-      "Load keyStore failed, the existing keyStore may be stale, re-constructing...";
+      "Failed to load KeyStore. The existing KeyStore may be stale; rebuilding it.";
   public static final String NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED =
       "No OPC client or server is specified when transferring tablet";
   public static final String OPC_DA_SINK_MUST_RUN_ON_WINDOWS =
@@ -852,7 +853,8 @@ public final class DataNodePipeMessages {
   public static final String SUCCESSFULLY_ADDED_ITEM = "Successfully added item {}.";
   public static final String SUCCESSFULLY_CONVERTED_PROGID_TO_CLSID =
       "Successfully converted progID {} to CLSID: {{}}";
-  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR = "Successfully shutdown executor {}.";
+  public static final String SUCCESSFULLY_SHUTDOWN_EXECUTOR =
+      "Successfully shut down executor {}.";
   public static final String SUCCESSFULLY_TRANSFERRED_DELETION_EVENT =
       "Successfully transferred deletion event {}.";
   public static final String SUCCESSFULLY_TRANSFERRED_FILE = "Successfully transferred file {}.";
@@ -924,8 +926,8 @@ public final class DataNodePipeMessages {
   public static final String THE_WRITTEN_TABLET_TIME_MAY_OVERLAP_OR =
       "The written Tablet time may overlap or the Schema may be incorrect";
   public static final String THIS_CONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLET =
-      "This Connector only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "This sink supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
   public static final String TIMED_OUT_WHEN_WAITING_FOR_CLIENT_HANDSHAKE =
       "Timed out when waiting for client handshake finish.";
   public static final String TIOTCONSENSUSV2BATCHTRANSFERRESP_IS_NULL =
@@ -947,20 +949,20 @@ public final class DataNodePipeMessages {
   public static final String WAIT_FOR_RESOURCE_ENOUGH_FOR_SLICING_TSFILE =
       "Wait for resource enough for slicing tsfile {} for {} seconds.";
   public static final String WEBSOCKETCONNECTOR_FAILED_TO_INCREASE_THE_REFERENCE_COUNT =
-      "WebsocketConnector failed to increase the reference count of the event. Ignore it. "
+      "WebSocketConnector failed to increase the reference count of the event. Ignore it. "
           + "Current event: {}.";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTA =
-      "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and "
+      "WebSocketConnector supports only PipeInsertNodeTabletInsertionEvent and "
           + "PipeRawTabletInsertionEvent. Current event: {}.";
   public static final String WEBSOCKETCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_CURRENT_EVENT =
-      "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.";
+      "WebSocketConnector supports only PipeTsFileInsertionEvent. Current event: {}.";
   public static final String WHEN_THE_OPC_UA_SINK_POINTS_TO =
       "When the OPC UA sink points to an outer server, the table model data is not supported.";
   public static final String WHEN_THE_OPC_UA_SINK_SETS_WITH =
       "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.";
   public static final String WRITEBACKSINK_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTABLETI =
-      "WriteBackSink only support PipeInsertNodeTabletInsertionEvent and "
-          + "PipeRawTabletInsertionEvent. Ignore {}.";
+      "WriteBackSink supports only PipeInsertNodeTabletInsertionEvent and "
+          + "PipeRawTabletInsertionEvent. Ignoring {}.";
 
   // ===================== RECEIVER =====================
 
@@ -990,7 +992,7 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_HANDLE_CONFIG_CLIENT_ID_EXIT =
       "Failed to handle config client (id = {}) exit";
   public static final String FAIL_TO_CREATE_IOTCONSENSUSV2_RECEIVER_FILE_FOLDERS =
-      "Fail to create iotConsensusV2 receiver file folders allocation strategy because all "
+      "Failed to create IoTConsensusV2 receiver file folders allocation strategy because all "
           + "disks of folders are full.";
   public static final String FAIL_TO_CREATE_PIPE_RECEIVER_FILE_FOLDERS =
       "Fail to create pipe receiver file folders allocation strategy because all disks of "
@@ -1006,8 +1008,8 @@ public final class DataNodePipeMessages {
   public static final String INVOKE_TRANSPORTPIPEDATA_METHOD_FROM_CLIENT_IP =
       "Invoke transportPipeData method from client ip = {}";
   public static final String IOTCONSENSUSV2RECEIVER_THREAD_IS_INTERRUPTED_WHEN_WAITING_FOR =
-      "IoTConsensusV2Receiver thread is interrupted when waiting for receiver get initiated, "
-          + "may because system exit.";
+      "IoTConsensusV2Receiver thread was interrupted while waiting for receiver initialization, "
+          + "possibly because the system is exiting.";
   public static final String IOTCONSENSUSV2_PIPENAME = "IoTConsensusV2-PipeName-{}: {}";
   public static final String IOTCONSENSUSV2_PIPENAME_CURRENT_WAITING_IS_INTERRUPTED_ONSYNCEDCOMMITINDEX =
       "IoTConsensusV2-PipeName-{}: current waiting is interrupted. onSyncedCommitIndex: {}. "
@@ -1021,15 +1023,15 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE =
       "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_1 =
-      "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}. Because parent "
-          + "system dir have been deleted due to system concurrently exit.";
+      "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {} because the parent "
+          + "system dir has been deleted during concurrent system shutdown.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_FILE_2 =
-      "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}. May because "
-          + "authority or dir already exists etc.";
+      "IoTConsensusV2-PipeName-{}: Failed to create receiver file dir {}. Possible causes "
+          + "include insufficient permissions or an existing directory.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_CREATE_RECEIVER_TSFILEWRITER =
-      "IoTConsensusV2-PipeName-{}: Failed to create receiver tsFileWriter-{} file dir {}";
+      "IoTConsensusV2-PipeName-{}: Failed to create receiver TsFileWriter-{} file dir {}";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_DELETE_BECAUSE =
-      "IoTConsensusV2-PipeName-{}: {} Failed to delete {}, because {}.";
+      "IoTConsensusV2-PipeName-{}: {} failed to delete {}, because {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_GET_BASE_DIRECTORY =
       "IoTConsensusV2-PipeName-{}: Failed to get base directory";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_LOAD_FILE_FROM =
@@ -1037,7 +1039,7 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_READ_TSFILE_WHEN =
       "IoTConsensusV2-PipeName-{}: Failed to read TsFile when counting points: {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_RETURN_TSFILEWRITER =
-      "IoTConsensusV2-PipeName-{}: Failed to return tsFileWriter {}.";
+      "IoTConsensusV2-PipeName-{}: Failed to return TsFileWriter {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE =
       "IoTConsensusV2-PipeName-{}: Failed to seal file {}, because the file does not exist.";
   public static final String IOTCONSENSUSV2_PIPENAME_FAILED_TO_SEAL_FILE_BECAUSE_1 =
@@ -1063,53 +1065,53 @@ public final class DataNodePipeMessages {
   public static final String IOTCONSENSUSV2_PIPENAME_ILLEGAL_FILE_NAME_WHEN_CHECKING =
       "IoTConsensusV2-PipeName-{}: Illegal file name {} when checking writing file.";
   public static final String IOTCONSENSUSV2_PIPENAME_IS_NOT_EXISTED_NO_NEED =
-      "IoTConsensusV2-PipeName-{}: {} {} is not existed. No need to delete.";
+      "IoTConsensusV2-PipeName-{}: {} {} does not exist. No need to delete.";
   public static final String IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_AFTER =
-      "IoTConsensusV2-PipeName-{}: no.{} event get executed after awaiting timeout, current "
+      "IoTConsensusV2-PipeName-{}: event no.{} was executed after awaiting timeout, current "
           + "receiver syncIndex: {}";
   public static final String IOTCONSENSUSV2_PIPENAME_NO_EVENT_GET_EXECUTED_BECAUSE =
-      "IoTConsensusV2-PipeName-{}: no.{} event get executed because receiver buffer's len >= "
+      "IoTConsensusV2-PipeName-{}: event no.{} was executed because receiver buffer's len >= "
           + "pipeline, current receiver syncIndex {}, current buffer len {}";
   public static final String IOTCONSENSUSV2_PIPENAME_PATH_TRAVERSAL_ATTEMPT_DETECTED_FILENAME =
       "IoTConsensusV2-PipeName-{}: Path traversal attempt detected! Filename: {}";
   public static final String IOTCONSENSUSV2_PIPENAME_PROCESS_NO_EVENT_SUCCESSFULLY =
-      "IoTConsensusV2-PipeName-{}: process no.{} event successfully!";
+      "IoTConsensusV2-PipeName-{}: processed event no.{} successfully!";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVED_A_DEPRECATED_REQUEST_WHICH =
-      "IoTConsensusV2-PipeName-{}: received a deprecated request-{}, which may because {}. ";
+      "IoTConsensusV2-PipeName-{}: received deprecated request {}, possibly because {}. ";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_PIPETASKRESTARTTIMES =
-      "IoTConsensusV2-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which "
-          + "indicates the pipe task has restarted. receiver will reset all its data.";
+      "IoTConsensusV2-PipeName-{}: receiver detected newer pipeTaskRestartTimes, which "
+          + "indicates the pipe task has restarted. The receiver will reset all its data.";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_DETECTED_AN_NEWER_REBOOTTIMES =
-      "IoTConsensusV2-PipeName-{}: receiver detected an newer rebootTimes, which indicates the "
-          + "leader has rebooted. receiver will reset all its data.";
+      "IoTConsensusV2-PipeName-{}: receiver detected newer rebootTimes, which indicates the "
+          + "leader has rebooted. The receiver will reset all its data.";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_FILE_DIR_WAS_CREATED =
       "IoTConsensusV2-PipeName-{}: Receiver file dir {} was created.";
   public static final String IOTCONSENSUSV2_PIPENAME_RECEIVER_THREAD_GET_INTERRUPTED_WHEN =
-      "IoTConsensusV2-PipeName-{}: receiver thread get interrupted when exiting.";
+      "IoTConsensusV2-PipeName-{}: receiver thread was interrupted while exiting.";
   public static final String IOTCONSENSUSV2_PIPENAME_SEAL_FILE_SUCCESSFULLY =
-      "IoTConsensusV2-PipeName-{}: Seal file {} successfully.";
+      "IoTConsensusV2-PipeName-{}: Sealed file {} successfully.";
   public static final String IOTCONSENSUSV2_PIPENAME_SEAL_FILE_WITH_MODS_SUCCESSFULLY =
-      "IoTConsensusV2-PipeName-{}: Seal file with mods {} successfully.";
+      "IoTConsensusV2-PipeName-{}: Sealed file with mods {} successfully.";
   public static final String IOTCONSENSUSV2_PIPENAME_SKIP_LOAD_TSFILE_WHEN_SEALING =
-      "IoTConsensusV2-PipeName-{}: skip load tsfile-{} when sealing, because this region has "
+      "IoTConsensusV2-PipeName-{}: skipped loading TsFile {} while sealing because this region has "
           + "been removed or migrated.";
   public static final String IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_PIECES =
-      "IoTConsensusV2-PipeName-{}: starting to receive tsFile pieces";
+      "IoTConsensusV2-PipeName-{}: starting to receive TsFile pieces";
   public static final String IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_SEAL =
-      "IoTConsensusV2-PipeName-{}: starting to receive tsFile seal";
+      "IoTConsensusV2-PipeName-{}: starting to receive TsFile seal";
   public static final String IOTCONSENSUSV2_PIPENAME_STARTING_TO_RECEIVE_TSFILE_SEAL_1 =
-      "IoTConsensusV2-PipeName-{}: starting to receive tsFile seal with mods";
+      "IoTConsensusV2-PipeName-{}: starting to receive TsFile seal with mods";
   public static final String IOTCONSENSUSV2_PIPENAME_START_TO_RECEIVE_NO_EVENT =
-      "IoTConsensusV2-PipeName-{}: start to receive no.{} event";
+      "IoTConsensusV2-PipeName-{}: start receiving event no.{}";
   public static final String IOTCONSENSUSV2_PIPENAME_THE_POINT_COUNT_OF_TSFILE =
       "IoTConsensusV2-PipeName-{}: The point count of TsFile {} is not given by sender, will "
           + "read actual point count from TsFile.";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_RETURNED_SELF =
-      "IoTConsensusV2-PipeName-{}: tsFileWriter-{} returned self";
+      "IoTConsensusV2-PipeName-{}: TsFileWriter-{} returned itself";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILEWRITER_ROLL_TO_WRITING_PATH =
-      "IoTConsensusV2-PipeName-{}: tsfileWriter-{} roll to writing path {}";
+      "IoTConsensusV2-PipeName-{}: TsFileWriter-{} rolled to writing path {}";
   public static final String IOTCONSENSUSV2_PIPENAME_TSFILE_WRITER_IS_CLEANED_UP =
-      "IoTConsensusV2-PipeName-{}: tsfile writer-{} is cleaned up because no new requests were "
+      "IoTConsensusV2-PipeName-{}: TsFileWriter-{} is cleaned up because no new requests were "
           + "received for too long.";
   public static final String IOTCONSENSUSV2_PIPENAME_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS =
       "IoTConsensusV2-PipeName-{}: Unknown PipeRequestType, response status = {}.";
@@ -1119,27 +1121,28 @@ public final class DataNodePipeMessages {
       "IoTConsensusV2-PipeName-{}: Writing file {} is not available. Writing file is null: {}, "
           + "writing file exists: {}, writing file writer is null: {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_IS_NOT_EXISTED =
-      "IoTConsensusV2-PipeName-{}: Writing file {} is not existed or name is not correct, try "
-          + "to create it. Current writing file is {}.";
+      "IoTConsensusV2-PipeName-{}: Writing file {} does not exist or its name is incorrect; "
+          + "trying to create it. Current writing file is {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_S_OFFSET_IS =
       "IoTConsensusV2-PipeName-{}: Writing file {}'s offset is {}, but request sender's offset "
           + "is {}.";
   public static final String IOTCONSENSUSV2_PIPENAME_WRITING_FILE_WAS_CREATED_READY =
       "IoTConsensusV2-PipeName-{}: Writing file {} was created. Ready to write file pieces.";
   public static final String IOTCONSENSUSV2_RECEIVE_ON_THE_FLY_NO_EVENT =
-      "IoTConsensusV2-{}: receive on-the-fly no.{} event after data region was deleted, discard it";
+      "IoTConsensusV2-{}: received on-the-fly event no.{} after the data region was deleted; "
+          + "discarding it";
   public static final String IOTCONSENSUSV2_TRANSFER_BATCH_HASN_T_BEEN_IMPLEMENTED =
-      "IoTConsensusV2 transfer batch hasn't been implemented yet.";
+      "IoTConsensusV2 batch transfer has not been implemented yet.";
   public static final String IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE =
-      "IoTConsensusV2-{}: TsFileWriter-{} set null writing file";
+      "IoTConsensusV2-{}: TsFileWriter-{} set writing file to null";
   public static final String IOTCONSENSUSV2_TSFILEWRITER_SET_NULL_WRITING_FILE_WRITER =
-      "IoTConsensusV2-{}: TsFileWriter-{} set null writing file writer";
+      "IoTConsensusV2-{}: TsFileWriter-{} set writing file writer to null";
   public static final String IOTCONSENSUSV2_UNKNOWN_IOTCONSENSUSV2REQUESTVERSION_RESPONSE_STATUS =
       "IoTConsensusV2: Unknown IoTConsensusV2RequestVersion, response status = {}.";
   public static final String IOTCONSENSUSV2_UNKNOWN_PIPEREQUESTTYPE_RESPONSE_STATUS =
-      "IoTConsensusV2 Unknown PipeRequestType, response status = {}.";
+      "IoTConsensusV2: Unknown PipeRequestType, response status = {}.";
   public static final String IOTCONSENSUSV2_WAITING_FOR_THE_PREVIOUS_EVENT_TIMES =
-      "IoTConsensusV2-{}: Waiting for the previous event times out, current peek {}, current id {}";
+      "IoTConsensusV2-{}: Timed out waiting for the previous event, current peek {}, current id {}";
   public static final String IOTDBAIRGAPRECEIVERAGENT_STARTED =
       "IoTDBAirGapReceiverAgent {} started.";
   public static final String IOTDBAIRGAPRECEIVERAGENT_STOPPED =
@@ -1199,7 +1202,7 @@ public final class DataNodePipeMessages {
   public static final String TEMPORARY_UNAVAILABLE_EXCEPTION_ENCOUNTERED_AT_AIR_GAP =
       "Temporary unavailable exception encountered at air gap receiver, will retry locally.";
   public static final String THE_IOTCONSENSUSV2_REQUEST_VERSION_IS_DIFFERENT_FROM =
-      "The iotConsensusV2 request version {} is different from the sender request version {}, "
+      "The IoTConsensusV2 request version {} is different from the sender request version {}, "
           + "the receiver will be reset to the sender request version.";
   public static final String THE_START_INDEX_OF_DATA_SYNC_IS =
       "The start index {} of data sync is not valid. The file is not exist and start index "
