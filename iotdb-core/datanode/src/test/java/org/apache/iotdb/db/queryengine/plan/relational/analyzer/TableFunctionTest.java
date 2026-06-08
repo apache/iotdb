@@ -46,7 +46,6 @@ import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortI
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -224,85 +223,6 @@ public class TableFunctionTest {
         tableFunctionProcessor(tableFunctionMatcher, mergeSort(exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(4), tableScan);
     assertPlan(planTester.getFragmentPlan(5), tableScan);
-  }
-
-  @Test
-  public void testM4TimeWindowMode() {
-    PlanTester planTester = new PlanTester();
-    String sql =
-        "SELECT * FROM TABLE(M4("
-            + "DATA => TABLE(table1) PARTITION BY tag1 ORDER BY time, "
-            + "TIMECOL => 'time', "
-            + "VALUECOL => 's1', "
-            + "SIZE => 1h))";
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
-    PlanMatchPattern tableScan =
-        tableScan(
-            "testdb.table1",
-            ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
-            ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
-
-    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
-        builder ->
-            builder
-                .name("m4")
-                .properOutputs("window_start", "window_end", "m4_time", "m4_value")
-                .requiredSymbols("time", "s1")
-                .handle(
-                    new MapTableFunctionHandle.Builder()
-                        .addProperty("SIZE", 3600000L)
-                        .addProperty("SLIDE", 3600000L)
-                        .addProperty("DISPLAYBEGIN", Long.MIN_VALUE)
-                        .addProperty("DISPLAYEND", Long.MAX_VALUE)
-                        .addProperty("__M4_WINDOW_MODE", true)
-                        .addProperty("__M4_VALUE_TYPE", "INT64")
-                        .build());
-
-    assertPlan(
-        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
-  }
-
-  @Test
-  public void testM4CountWindowMode() {
-    PlanTester planTester = new PlanTester();
-    String sql =
-        "SELECT * FROM TABLE(M4("
-            + "DATA => TABLE(table1) PARTITION BY tag1 ORDER BY time, "
-            + "TIMECOL => 'time', "
-            + "VALUECOL => 's1', "
-            + "SIZE => 5))";
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
-    PlanMatchPattern tableScan =
-        tableScan(
-            "testdb.table1",
-            ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
-            ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
-
-    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
-        builder ->
-            builder
-                .name("m4")
-                .properOutputs("window_start", "window_end", "m4_time", "m4_value")
-                .requiredSymbols("time", "s1")
-                .handle(
-                    new MapTableFunctionHandle.Builder()
-                        .addProperty("SIZE", 5L)
-                        .addProperty("SLIDE", 5L)
-                        .addProperty("DISPLAYBEGIN", Long.MIN_VALUE)
-                        .addProperty("DISPLAYEND", Long.MAX_VALUE)
-                        .addProperty("__M4_WINDOW_MODE", false)
-                        .addProperty("__M4_VALUE_TYPE", "INT64")
-                        .build());
-
-    assertPlan(
-        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
-  }
-
-  @Test
-  public void testM4MissingOrderBy() {
-    assertAnalyzeSemanticException(
-        "SELECT * FROM TABLE(M4(DATA => TABLE(table1) PARTITION BY tag1, TIMECOL => 'time', VALUECOL => 's1', SIZE => 5))",
-        "Table argument with set semantics requires an ORDER BY clause.");
   }
 
   @Test
@@ -561,6 +481,164 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals("TIMECOL should never be null or empty.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4TimeWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM M4("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "TIMECOL => 'time', "
+            + "SIZE => 1h)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag2", "tag2")
+                .put("tag3", "tag3")
+                .put("attr1", "attr1")
+                .put("attr2", "attr2")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("m4")
+                .properOutputs(
+                    "window_start",
+                    "window_end",
+                    "m4_tag2_time",
+                    "m4_tag2",
+                    "m4_tag3_time",
+                    "m4_tag3",
+                    "m4_attr1_time",
+                    "m4_attr1",
+                    "m4_attr2_time",
+                    "m4_attr2",
+                    "m4_s1_time",
+                    "m4_s1",
+                    "m4_s2_time",
+                    "m4_s2",
+                    "m4_s3_time",
+                    "m4_s3")
+                .requiredSymbols("time", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 3600000L)
+                        .addProperty("SLIDE", 3600000L)
+                        .addProperty("ORIGIN", 0L)
+                        .addProperty("__M4_WINDOW_MODE", true)
+                        .addProperty(
+                            "__M4_PARTICIPANT_TYPES",
+                            "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testM4CountWindowMode() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM M4("
+            + "DATA => table1 PARTITION BY tag1 ORDER BY time, "
+            + "TIMECOL => 'time', "
+            + "SIZE => 5)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableMap.<String, String>builder()
+                .put("time", "time")
+                .put("tag2", "tag2")
+                .put("tag3", "tag3")
+                .put("attr1", "attr1")
+                .put("attr2", "attr2")
+                .put("s1", "s1")
+                .put("s2", "s2")
+                .put("s3", "s3")
+                .buildOrThrow());
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("m4")
+                .properOutputs(
+                    "window_start",
+                    "window_end",
+                    "m4_tag2_time",
+                    "m4_tag2",
+                    "m4_tag3_time",
+                    "m4_tag3",
+                    "m4_attr1_time",
+                    "m4_attr1",
+                    "m4_attr2_time",
+                    "m4_attr2",
+                    "m4_s1_time",
+                    "m4_s1",
+                    "m4_s2_time",
+                    "m4_s2",
+                    "m4_s3_time",
+                    "m4_s3")
+                .requiredSymbols("time", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 5L)
+                        .addProperty("SLIDE", 5L)
+                        .addProperty("ORIGIN", 0L)
+                        .addProperty("__M4_WINDOW_MODE", false)
+                        .addProperty(
+                            "__M4_PARTICIPANT_TYPES",
+                            "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
+                        .build());
+
+    assertPlan(
+        logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, sort(tableScan))));
+  }
+
+  @Test
+  public void testM4MissingOrderBy() {
+    String sql = "SELECT * FROM M4(DATA => table1 PARTITION BY tag1, TIMECOL => 'time', SIZE => 5)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "Table argument with set semantics requires an ORDER BY clause.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4CountWindowRejectsOrigin() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 5, ORIGIN => 1970-01-01T00:00:00.000+00:00)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals("The ORIGIN argument is only supported in time window mode.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4RejectsDescendingOrderBy() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time DESC, TIMECOL => 'time', SIZE => 1h)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The ORDER BY clause of the DATA argument must sort the time column in ascending order.",
+          e.getMessage());
     }
   }
 }
