@@ -4433,8 +4433,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.topicName != null) {
       alterTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
     } else {
-      throw new SemanticException(
-          "Not support for this sql in ALTER TOPIC, please enter topicName.");
+      throw new SemanticException(DataNodeQueryMessages.NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC);
     }
 
     alterTopicStatement.setTopicAttributes(

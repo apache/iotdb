@@ -546,6 +546,8 @@ public final class DataNodeQueryMessages {
       "START PIPE 不支持此 SQL，请输入管道名。";
   public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_STOP_PIPE =
       "STOP PIPE 不支持此 SQL，请输入管道名。";
+  public static final String NOT_SUPPORT_FOR_THIS_SQL_IN_ALTER_TOPIC =
+      "ALTER TOPIC 不支持此 SQL，请输入 topic 名。";
   public static final String GET_REGION_ID_STATEMENT_EXPRESSION_MUST_BE_A =
       "GET REGION ID 语句的表达式必须是时间表达式";
   public static final String WRONG_SPACE_QUOTA_TYPE =

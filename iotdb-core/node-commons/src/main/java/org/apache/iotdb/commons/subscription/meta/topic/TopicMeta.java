@@ -150,6 +150,13 @@ public class TopicMeta {
                   + " incoming epoch is %s",
               this.ownerEpoch, ownerEpoch));
     }
+    if (isActiveOwnerLease() && isOwnerTransfer(ownerId)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease has not expired, topic: %s, current owner-id: %s,"
+                  + " current owner-epoch: %s, current owner-lease-expire-time-ms: %s",
+              topicName, this.ownerId, this.ownerEpoch, this.ownerLeaseExpireTimeMs));
+    }
 
     this.ownerId = ownerId;
     this.ownerEpoch = ownerEpoch;
@@ -320,6 +327,27 @@ public class TopicMeta {
               updatedTopicMeta.getOwnerId(),
               updatedTopicMeta.getOwnerEpoch()));
     }
+
+    if (currentTopicMeta.isActiveOwnerLease()
+        && currentTopicMeta.isOwnerTransfer(updatedTopicMeta.getOwnerId())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease has not expired, topic: %s, current owner-id: %s,"
+                  + " current owner-epoch: %s, current owner-lease-expire-time-ms: %s",
+              currentTopicMeta.getTopicName(),
+              currentTopicMeta.getOwnerId(),
+              currentTopicMeta.getOwnerEpoch(),
+              currentTopicMeta.getOwnerLeaseExpireTimeMs()));
+    }
+  }
+
+  private boolean isActiveOwnerLease() {
+    return Objects.nonNull(ownerLeaseExpireTimeMs)
+        && System.currentTimeMillis() <= ownerLeaseExpireTimeMs;
+  }
+
+  private boolean isOwnerTransfer(final String incomingOwnerId) {
+    return !Objects.equals(ownerId, incomingOwnerId);
   }
 
   private void initOwnerFromTopicAttributes(final Map<String, String> topicAttributes) {

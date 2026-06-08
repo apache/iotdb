@@ -164,10 +164,8 @@ public class SubscriptionCoordinator {
   }
 
   public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {
-    final TopicMeta existedTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
-    return existedTopicMeta == null
-        ? null
-        : existedTopicMeta.deepCopyWithUpdatedAttributes(req.getTopicAttributes());
+    return subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(
+        req.getTopicName(), req.getTopicAttributes());
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {

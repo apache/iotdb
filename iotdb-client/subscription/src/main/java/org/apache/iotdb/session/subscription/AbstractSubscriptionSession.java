@@ -116,9 +116,19 @@ abstract class AbstractSubscriptionSession {
 
   protected void alterTopic(final String topicName, final Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
+    alterTopic(topicName, properties, false);
+  }
+
+  private void alterTopic(
+      final String topicName, final Properties properties, final boolean allowOwnerAttributes)
+      throws IoTDBConnectionException, StatementExecutionException {
     IdentifierUtils.checkAndParseIdentifier(topicName); // ignore the parse result
     if (Objects.isNull(properties) || properties.isEmpty()) {
       throw new StatementExecutionException("Topic attributes should not be empty in ALTER TOPIC.");
+    }
+    if (!allowOwnerAttributes && containsOwnerAttribute(properties)) {
+      throw new StatementExecutionException(
+          "Topic owner attributes should be modified by alterTopicOwner only.");
     }
     final String sql =
         String.format("ALTER TOPIC %s WITH %s", topicName, buildTopicAttributesClause(properties));
@@ -148,7 +158,7 @@ abstract class AbstractSubscriptionSession {
       properties.put(
           TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
     }
-    alterTopic(topicName, properties);
+    alterTopic(topicName, properties, true);
   }
 
   protected void dropTopic(final String topicName)
@@ -280,5 +290,11 @@ abstract class AbstractSubscriptionSession {
 
   private static String escapeSqlStringLiteral(final String value) {
     return value.replace("'", "''");
+  }
+
+  private static boolean containsOwnerAttribute(final Properties properties) {
+    return properties.containsKey(TopicConstant.OWNER_ID_KEY)
+        || properties.containsKey(TopicConstant.OWNER_EPOCH_KEY)
+        || properties.containsKey(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
   }
 }

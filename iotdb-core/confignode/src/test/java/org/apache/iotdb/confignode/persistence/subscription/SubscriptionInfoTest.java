@@ -90,6 +90,54 @@ public class SubscriptionInfoTest {
   }
 
   @Test
+  public void testAlterTopicRejectsTransferBeforeOwnerLeaseExpires() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta initialTopicMeta =
+        createTopicMeta(topicName, "sn1", 5L, System.currentTimeMillis() + 60000);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(initialTopicMeta)).getCode());
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    final TSStatus alterStatus =
+        subscriptionInfo.alterTopic(
+            new AlterTopicPlan(initialTopicMeta.deepCopyWithUpdatedAttributes(updatedAttributes)));
+
+    Assert.assertEquals(
+        TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode(), alterStatus.getCode());
+    Assert.assertTrue(alterStatus.getMessage().contains("owner lease has not expired"));
+    Assert.assertEquals("sn1", subscriptionInfo.getTopicMeta(topicName).getOwnerId());
+    Assert.assertEquals(5L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
+  }
+
+  @Test
+  public void testAlterTopicTransfersOwnerAfterOwnerLeaseExpires() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final TopicMeta initialTopicMeta =
+        createTopicMeta(topicName, "sn1", 5L, System.currentTimeMillis() - 1);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(initialTopicMeta)).getCode());
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    final TSStatus alterStatus =
+        subscriptionInfo.alterTopic(
+            new AlterTopicPlan(initialTopicMeta.deepCopyWithUpdatedAttributes(updatedAttributes)));
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), alterStatus.getCode());
+    Assert.assertEquals("sn2", subscriptionInfo.getTopicMeta(topicName).getOwnerId());
+    Assert.assertEquals(6L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
+  }
+
+  @Test
   public void testAlterTopicOwnerAndShowTopicOwner() {
     final String topicName = "topic-" + UUID.randomUUID();
     final long ownerLeaseExpireTimeMs = 123456789L;
@@ -139,6 +187,19 @@ public class SubscriptionInfoTest {
     final Map<String, String> topicAttributes = new HashMap<>();
     topicAttributes.put(TopicConstant.OWNER_ID_KEY, ownerId);
     topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    return new TopicMeta(topicName, 1, topicAttributes);
+  }
+
+  private TopicMeta createTopicMeta(
+      final String topicName,
+      final String ownerId,
+      final long ownerEpoch,
+      final long ownerLeaseExpireTimeMs) {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, ownerId);
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    topicAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
     return new TopicMeta(topicName, 1, topicAttributes);
   }
 }

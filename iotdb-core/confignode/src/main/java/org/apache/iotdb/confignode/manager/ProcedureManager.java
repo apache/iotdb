@@ -1747,7 +1747,8 @@ public class ProcedureManager {
         return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Failed to alter topic %s, the topic is not existed", req.getTopicName()));
+                    ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+                    req.getTopicName()));
       }
 
       AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);

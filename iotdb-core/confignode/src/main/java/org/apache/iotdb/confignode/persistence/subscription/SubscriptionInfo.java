@@ -56,6 +56,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -300,6 +301,18 @@ public class SubscriptionInfo implements SnapshotProcessor {
     try {
       return topicMetaKeeper.containsTopicMeta(topicName)
           ? topicMetaKeeper.getTopicMeta(topicName).deepCopy()
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TopicMeta deepCopyTopicMetaWithUpdatedAttributes(
+      String topicName, Map<String, String> updatedAttributes) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper.getTopicMeta(topicName).deepCopyWithUpdatedAttributes(updatedAttributes)
           : null;
     } finally {
       releaseReadLock();
