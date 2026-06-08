@@ -132,6 +132,7 @@ public class QueryDataSetHandler {
       for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
         targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
         targetDataSet.addValuesItem(new ArrayList<>());
+        targetDataSet.addDataTypesItem(datasetHeader.getRespDataTypes().get(i).name());
         targetDataSetIndexToSourceDataSetIndex[i] = i;
       }
     }
