@@ -40,6 +40,8 @@ public class IoTDBDataSource implements DataSource {
   private String password;
   private Properties properties;
   private Integer port = 6667;
+  private PrintWriter logWriter;
+  private int loginTimeout;
 
   public IoTDBDataSource() {
     properties = new Properties();
@@ -91,45 +93,38 @@ public class IoTDBDataSource implements DataSource {
 
   @Override
   public Connection getConnection() throws SQLException {
-    try {
-      return new IoTDBConnection(url, properties);
-    } catch (TTransportException e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+    return createConnection((Properties) properties.clone());
   }
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
-    try {
-      Properties newProp = new Properties();
-      setProperty(newProp, Config.AUTH_USER, username);
-      setProperty(newProp, Config.AUTH_PASSWORD, password);
-      return new IoTDBConnection(url, newProp);
-    } catch (TTransportException e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+    Properties newProp = (Properties) properties.clone();
+    setProperty(newProp, Config.AUTH_USER, username);
+    setProperty(newProp, Config.AUTH_PASSWORD, password);
+    return createConnection(newProp);
   }
 
   @Override
   public PrintWriter getLogWriter() {
-    return null;
+    return logWriter;
   }
 
   @Override
   public void setLogWriter(PrintWriter printWriter) {
-    // Do nothing
+    this.logWriter = printWriter;
   }
 
   @Override
-  public void setLoginTimeout(int i) {
-    // Do nothing
+  public void setLoginTimeout(int i) throws SQLException {
+    if (i < 0) {
+      throw new SQLException("loginTimeout must be >= 0");
+    }
+    this.loginTimeout = i;
   }
 
   @Override
   public int getLoginTimeout() {
-    return 0;
+    return loginTimeout;
   }
 
   @Override
@@ -139,15 +134,34 @@ public class IoTDBDataSource implements DataSource {
 
   @Override
   public <T> T unwrap(Class<T> aClass) throws SQLException {
-    if (isWrapperFor(aClass)) {
-      return aClass.cast(this);
-    }
-    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + aClass);
+    return JdbcWrapperUtils.unwrap(this, aClass);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> aClass) {
-    return aClass != null && aClass.isInstance(this);
+    return JdbcWrapperUtils.isWrapperFor(this, aClass);
+  }
+
+  private Connection createConnection(Properties connectionProperties) throws SQLException {
+    applyLoginTimeout(connectionProperties);
+    try {
+      return new IoTDBConnection(url, connectionProperties);
+    } catch (TTransportException e) {
+      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
+      throw new SQLException(
+          "Connection Error, please check whether the network is available or the server"
+              + " has started.",
+          e);
+    }
+  }
+
+  private void applyLoginTimeout(Properties connectionProperties) {
+    if (loginTimeout <= 0 || connectionProperties.containsKey(Config.NETWORK_TIMEOUT)) {
+      return;
+    }
+    long timeoutInMs = (long) loginTimeout * 1000;
+    connectionProperties.setProperty(
+        Config.NETWORK_TIMEOUT, String.valueOf(Math.min(timeoutInMs, Integer.MAX_VALUE)));
   }
 
   private void setProperty(String key, String value) {

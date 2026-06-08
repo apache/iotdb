@@ -24,6 +24,8 @@ import org.osgi.service.jdbc.DataSourceFactory;
 
 import javax.sql.DataSource;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
@@ -103,6 +105,33 @@ public class IoTDBDataSourceFactoryTest {
   @Test(expected = SQLFeatureNotSupportedException.class)
   public void testDataSourceParentLoggerIsUnsupported() throws SQLException {
     new IoTDBDataSource().getParentLogger();
+  }
+
+  @Test(expected = SQLFeatureNotSupportedException.class)
+  public void testConnectionPoolDataSourceIsUnsupported() throws SQLException {
+    new IoTDBDataSourceFactory().createConnectionPoolDataSource(null);
+  }
+
+  @Test(expected = SQLFeatureNotSupportedException.class)
+  public void testXADataSourceIsUnsupported() throws SQLException {
+    new IoTDBDataSourceFactory().createXADataSource(null);
+  }
+
+  @Test
+  public void testDataSourceStoresLogWriterAndLoginTimeout() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    PrintWriter logWriter = new PrintWriter(new StringWriter());
+
+    dataSource.setLogWriter(logWriter);
+    dataSource.setLoginTimeout(10);
+
+    assertSame(logWriter, dataSource.getLogWriter());
+    assertEquals(10, dataSource.getLoginTimeout());
+  }
+
+  @Test(expected = SQLException.class)
+  public void testDataSourceRejectsNegativeLoginTimeout() throws SQLException {
+    new IoTDBDataSource().setLoginTimeout(-1);
   }
 
   @Test(expected = SQLException.class)

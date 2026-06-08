@@ -201,6 +201,13 @@ public class IoTDBJDBCResultSetTest {
     fetchResultsResp.hasResultSet = true; // at the first time to fetch
 
     try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.isWrapperFor(IoTDBJDBCResultSet.class));
+      Assert.assertTrue(resultSet.isWrapperFor(ResultSet.class));
+      Assert.assertFalse(resultSet.isWrapperFor(String.class));
+      Assert.assertFalse(resultSet.isWrapperFor(null));
+      Assert.assertSame(resultSet, resultSet.unwrap(IoTDBJDBCResultSet.class));
+      Assert.assertSame(resultSet, resultSet.unwrap(ResultSet.class));
+
       // check columnInfoMap
       Assert.assertEquals(1, resultSet.findColumn("Time"));
       Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));

@@ -29,6 +29,8 @@ import javax.sql.DataSource;
 import javax.sql.XADataSource;
 
 import java.sql.Driver;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 
 public class IoTDBDataSourceFactory implements DataSourceFactory {
@@ -67,13 +69,14 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   }
 
   @Override
-  public ConnectionPoolDataSource createConnectionPoolDataSource(Properties properties) {
-    return null;
+  public ConnectionPoolDataSource createConnectionPoolDataSource(Properties properties)
+      throws SQLException {
+    throw new SQLFeatureNotSupportedException(JdbcMessages.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  public XADataSource createXADataSource(Properties properties) {
-    return null;
+  public XADataSource createXADataSource(Properties properties) throws SQLException {
+    throw new SQLFeatureNotSupportedException(JdbcMessages.METHOD_NOT_SUPPORTED);
   }
 
   @Override

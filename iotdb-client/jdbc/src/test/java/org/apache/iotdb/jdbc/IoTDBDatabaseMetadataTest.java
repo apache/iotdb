@@ -48,6 +48,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +87,21 @@ public class IoTDBDatabaseMetadataTest {
     ResultSet resultSet = databaseMetaData.getExportedKeys(null, null, null);
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     Assert.assertEquals("PKTABLE_CAT", resultSet.getMetaData().getColumnName(2));
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    assertTrue(databaseMetaData.isWrapperFor(IoTDBDatabaseMetadata.class));
+    assertTrue(databaseMetaData.isWrapperFor(DatabaseMetaData.class));
+    assertFalse(databaseMetaData.isWrapperFor(String.class));
+    assertFalse(databaseMetaData.isWrapperFor(null));
+    assertSame(databaseMetaData, databaseMetaData.unwrap(IoTDBDatabaseMetadata.class));
+    assertSame(databaseMetaData, databaseMetaData.unwrap(DatabaseMetaData.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    databaseMetaData.unwrap(String.class);
   }
 
   @Test

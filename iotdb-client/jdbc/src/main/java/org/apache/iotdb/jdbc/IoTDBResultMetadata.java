@@ -70,12 +70,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @SuppressWarnings({

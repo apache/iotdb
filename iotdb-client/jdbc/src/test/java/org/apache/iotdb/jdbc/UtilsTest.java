@@ -213,4 +213,28 @@ public class UtilsTest {
   public void testParseUrlParamRejectsInvalidSqlDialectValue() throws IoTDBURLException {
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?sql_dialect=bad", new Properties());
   }
+
+  @Test
+  public void testParseUrlRejectsInvalidConnectionProperties() {
+    assertInvalidProperty(Config.DEFAULT_BUFFER_CAPACITY, "bad");
+    assertInvalidProperty(Config.THRIFT_FRAME_MAX_SIZE, "bad");
+    assertInvalidProperty(Config.VERSION, "bad");
+    assertInvalidProperty(Config.NETWORK_TIMEOUT, "bad");
+    assertInvalidProperty(Config.TIME_ZONE, "bad-time-zone");
+    assertInvalidProperty(Config.CHARSET, "bad-charset");
+    assertInvalidProperty(Config.USE_SSL, "bad");
+    assertInvalidProperty(Config.SQL_DIALECT, "bad");
+  }
+
+  private static void assertInvalidProperty(String key, String value) {
+    Properties properties = new Properties();
+    properties.setProperty(key, value);
+    try {
+      Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667", properties);
+    } catch (IoTDBURLException e) {
+      assertTrue(e.getMessage().contains(key));
+      return;
+    }
+    fail("Expected IoTDBURLException for invalid property " + key);
+  }
 }

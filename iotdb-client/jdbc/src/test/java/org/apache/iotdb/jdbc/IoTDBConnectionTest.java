@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.sql.Connection;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -41,7 +42,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -118,5 +122,20 @@ public class IoTDBConnectionTest {
   public void setTimeoutTest() throws SQLException {
     connection.setQueryTimeout(60);
     Assert.assertEquals(60, connection.getQueryTimeout());
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    assertTrue(connection.isWrapperFor(IoTDBConnection.class));
+    assertTrue(connection.isWrapperFor(Connection.class));
+    assertFalse(connection.isWrapperFor(String.class));
+    assertFalse(connection.isWrapperFor(null));
+    assertSame(connection, connection.unwrap(IoTDBConnection.class));
+    assertSame(connection, connection.unwrap(Connection.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    connection.unwrap(String.class);
   }
 }

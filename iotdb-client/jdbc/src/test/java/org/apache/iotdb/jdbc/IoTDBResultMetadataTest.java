@@ -23,6 +23,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class IoTDBResultMetadataTest {
@@ -172,5 +174,23 @@ public class IoTDBResultMetadataTest {
     for (int i = 1; i <= types.length; i++) {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
+
+    assertTrue(metadata.isWrapperFor(IoTDBResultMetadata.class));
+    assertTrue(metadata.isWrapperFor(ResultSetMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(IoTDBResultMetadata.class));
+    assertSame(metadata, metadata.unwrap(ResultSetMetaData.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    metadata = new IoTDBResultMetadata(false, null, "QUERY", null, null, false);
+    metadata.unwrap(String.class);
   }
 }

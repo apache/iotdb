@@ -157,12 +157,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_WRAPPER_FOR);
+    return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_UNWRAP);
+    return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @Override

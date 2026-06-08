@@ -115,26 +115,25 @@ public class Utils {
     }
     if (properties.containsKey(Config.DEFAULT_BUFFER_CAPACITY)) {
       params.setThriftDefaultBufferSize(
-          Integer.parseInt(properties.getProperty(Config.DEFAULT_BUFFER_CAPACITY)));
+          parseIntegerProperty(properties, Config.DEFAULT_BUFFER_CAPACITY));
     }
     if (properties.containsKey(Config.THRIFT_FRAME_MAX_SIZE)) {
-      params.setThriftMaxFrameSize(
-          Integer.parseInt(properties.getProperty(Config.THRIFT_FRAME_MAX_SIZE)));
+      params.setThriftMaxFrameSize(parseIntegerProperty(properties, Config.THRIFT_FRAME_MAX_SIZE));
     }
     if (properties.containsKey(Config.VERSION)) {
-      params.setVersion(Constant.Version.valueOf(properties.getProperty(Config.VERSION)));
+      params.setVersion(parseVersionProperty(properties));
     }
     if (properties.containsKey(Config.NETWORK_TIMEOUT)) {
-      params.setNetworkTimeout(Integer.parseInt(properties.getProperty(Config.NETWORK_TIMEOUT)));
+      params.setNetworkTimeout(parseIntegerProperty(properties, Config.NETWORK_TIMEOUT));
     }
     if (properties.containsKey(Config.TIME_ZONE)) {
-      params.setTimeZone(properties.getProperty(Config.TIME_ZONE));
+      params.setTimeZone(validateTimeZoneProperty(properties));
     }
     if (properties.containsKey(Config.CHARSET)) {
-      params.setCharset(properties.getProperty(Config.CHARSET));
+      params.setCharset(validateCharsetProperty(properties));
     }
     if (properties.containsKey(Config.USE_SSL)) {
-      params.setUseSSL(Boolean.parseBoolean(properties.getProperty(Config.USE_SSL)));
+      params.setUseSSL(parseBooleanProperty(properties));
     }
     if (properties.containsKey(Config.TRUST_STORE)) {
       params.setTrustStore(properties.getProperty(Config.TRUST_STORE));
@@ -143,7 +142,7 @@ public class Utils {
       params.setTrustStorePwd(properties.getProperty(Config.TRUST_STORE_PWD));
     }
     if (properties.containsKey(Config.SQL_DIALECT)) {
-      params.setSqlDialect(properties.getProperty(Config.SQL_DIALECT));
+      params.setSqlDialect(validateSqlDialectProperty(properties));
     }
 
     return params;
@@ -236,6 +235,76 @@ public class Utils {
 
   private static boolean isBoolean(String value) {
     return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
+  }
+
+  private static int parseIntegerProperty(Properties properties, String key)
+      throws IoTDBURLException {
+    String value = getPropertyValue(properties, key);
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      throw invalidPropertyValue(key, value, e);
+    }
+  }
+
+  private static Constant.Version parseVersionProperty(Properties properties)
+      throws IoTDBURLException {
+    String value = getPropertyValue(properties, Config.VERSION);
+    try {
+      return Constant.Version.valueOf(value);
+    } catch (IllegalArgumentException e) {
+      throw invalidPropertyValue(Config.VERSION, value, e);
+    }
+  }
+
+  private static boolean parseBooleanProperty(Properties properties) throws IoTDBURLException {
+    String value = getPropertyValue(properties, Config.USE_SSL);
+    if (!isBoolean(value)) {
+      throw invalidPropertyValue(Config.USE_SSL, value, null);
+    }
+    return Boolean.parseBoolean(value);
+  }
+
+  private static String validateTimeZoneProperty(Properties properties) throws IoTDBURLException {
+    String value = getPropertyValue(properties, Config.TIME_ZONE);
+    try {
+      ZoneId.of(value);
+    } catch (DateTimeException e) {
+      throw invalidPropertyValue(Config.TIME_ZONE, value, e);
+    }
+    return value;
+  }
+
+  private static String validateCharsetProperty(Properties properties) throws IoTDBURLException {
+    String value = getPropertyValue(properties, Config.CHARSET);
+    try {
+      Charset.forName(value);
+    } catch (Exception e) {
+      throw invalidPropertyValue(Config.CHARSET, value, e);
+    }
+    return value;
+  }
+
+  private static String validateSqlDialectProperty(Properties properties) throws IoTDBURLException {
+    String value = getPropertyValue(properties, Config.SQL_DIALECT);
+    if (!Constant.TREE.equals(value) && !Constant.TABLE.equals(value)) {
+      throw invalidPropertyValue(Config.SQL_DIALECT, value, null);
+    }
+    return value;
+  }
+
+  private static String getPropertyValue(Properties properties, String key)
+      throws IoTDBURLException {
+    String value = properties.getProperty(key);
+    if (value == null) {
+      throw invalidPropertyValue(key, null, null);
+    }
+    return value;
+  }
+
+  private static IoTDBURLException invalidPropertyValue(String key, String value, Throwable cause) {
+    return new IoTDBURLException(
+        "Invalid value for JDBC connection property " + key + ": " + value, cause);
   }
 
   private Utils() {}

@@ -195,13 +195,13 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
 
       @Override
-      public <T> T unwrap(Class<T> iface) {
-        return null;
+      public <T> T unwrap(Class<T> iface) throws SQLException {
+        return JdbcWrapperUtils.unwrap(this, iface);
       }
 
       @Override
       public boolean isWrapperFor(Class<?> iface) {
-        return false;
+        return JdbcWrapperUtils.isWrapperFor(this, iface);
       }
     };
   }
