@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
@@ -314,11 +315,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                   if (Objects.isNull(tablePattern)) {
                     return true;
                   }
-                  return Objects.isNull(sourceEvent)
-                          || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                  final String sourceDatabaseName =
+                      Objects.isNull(sourceEvent)
+                          ? null
+                          : sourceEvent.getSourceDatabaseNameFromDataRegion();
+                  return Objects.isNull(sourceEvent) || Objects.isNull(sourceDatabaseName)
                       ? tablePattern.matchesTable(tableName)
                       : tablePattern.matchesDatabaseAndTable(
-                          sourceEvent.getTableModelDatabaseName(), tableName);
+                          PathUtils.unQualifyDatabaseName(sourceDatabaseName), tableName);
                 }
 
                 @Override

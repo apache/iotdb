@@ -301,6 +301,46 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testWriteBackSinkWithExactSourcePatternAndRenamedDatabase() throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
+
+      sourceAttributes.put("capture.table", "true");
+      sourceAttributes.put("forwarding-pipe-requests", "false");
+      sourceAttributes.put("history.enable", "false");
+      sourceAttributes.put("realtime.enable", "true");
+      sourceAttributes.put("database-name", "test_source");
+      sourceAttributes.put("table-name", "test_table");
+      sourceAttributes.put("user", "root");
+
+      processorAttributes.put("processor", "rename-database-processor");
+      processorAttributes.put("processor.new-db-name", "test_target");
+
+      sinkAttributes.put("sink", "write-back-sink");
+      sinkAttributes.put("user", "root");
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipeExactPatternRename", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client.startPipe("testPipeExactPatternRename").getCode());
+
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test_table", "test_source");
+      TableModelUtils.insertData("test_source", "test_table", 0, 20, senderEnv, true);
+
+      TableModelUtils.assertCountData("test_target", "test_table", 20, senderEnv);
+    }
+  }
+
+  @Test
   public void testSinkTsFileFormat2() throws Exception {
     doTest(this::insertTablet1);
   }
