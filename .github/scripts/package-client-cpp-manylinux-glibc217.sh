@@ -116,12 +116,39 @@ fi
 echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
 
 echo "=== CXX11 ABI symbols in libiotdb_session.so ==="
-abi_symbols=$(nm -D --demangle "${SO}" | grep -E 'Session::setStorageGroup\(std::__cxx11::basic_string|SessionDataSet::getColumnNames\[abi:cxx11\]|RowRecord::toString\[abi:cxx11\]' || true)
-if [[ -z "${abi_symbols}" ]]; then
-  echo "ERROR: libiotdb_session.so was not built with _GLIBCXX_USE_CXX11_ABI=1"
+abi_symbol_sample=$(nm -D --demangle "${SO}" | awk '/std::__cxx11|\[abi:cxx11\]/ { print; if (++count >= 20) exit }' || true)
+if [[ -n "${abi_symbol_sample}" ]]; then
+  printf '%s\n' "${abi_symbol_sample}"
+else
+  echo "No std::__cxx11 symbols found in the dynamic symbol table; verifying by link test."
+fi
+
+ABI_SMOKE="/tmp/client-cpp-abi-smoke-glibc217"
+rm -rf "${ABI_SMOKE}"
+mkdir -p "${ABI_SMOKE}"
+cat > "${ABI_SMOKE}/main.cpp" <<'EOF'
+#include "Session.h"
+
+#include <string>
+
+int main() {
+  Session session(std::string("127.0.0.1"), 6667, std::string("root"), std::string("root"));
+  session.setDatabase(std::string("root.test"));
+  return 0;
+}
+EOF
+
+if ! c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 \
+    -I"iotdb-client/client-cpp/target/install/include" \
+    "${ABI_SMOKE}/main.cpp" \
+    -L"iotdb-client/client-cpp/target/install/lib" \
+    -Wl,-rpath,"${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/install/lib" \
+    -liotdb_session -pthread \
+    -o "${ABI_SMOKE}/abi-smoke"; then
+  echo "ERROR: libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=1"
   exit 1
 fi
-printf '%s\n' "${abi_symbols}" | head -20
+echo "CXX11 ABI link check passed"
 
 echo "=== Example package build/link/run smoke test ==="
 PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
