@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -41,7 +42,8 @@ public class AuthorPlanExecutorTest {
     final IAuthorizer authorizer = mock(IAuthorizer.class);
     when(authorizer.getUser("missing")).thenReturn(null);
 
-    final AuthorPlanExecutor executor = new AuthorPlanExecutor(authorizer);
+    final AuthorPlanExecutor executor =
+        new AuthorPlanExecutor(authorizer, mock(ConfigManager.class));
     final TSStatus status =
         executor.executeAuthorNonQuery(
             new AuthorTreePlan(
@@ -62,7 +64,8 @@ public class AuthorPlanExecutorTest {
     final IAuthorizer authorizer = mock(IAuthorizer.class);
     when(authorizer.getUser("missing")).thenReturn(null);
 
-    final AuthorPlanExecutor executor = new AuthorPlanExecutor(authorizer);
+    final AuthorPlanExecutor executor =
+        new AuthorPlanExecutor(authorizer, mock(ConfigManager.class));
     final TSStatus status =
         executor.executeRelationalAuthorNonQuery(
             new AuthorRelationalPlan(

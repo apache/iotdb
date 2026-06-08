@@ -70,6 +70,8 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
 
   private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final String ACCOUNT_UNLOCK_LOGIN_ADDRESS_ROLE_PREFIX =
+      "\u0000ACCOUNT_UNLOCK\u0000";
 
   private final List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
 
@@ -100,20 +102,8 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
           TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
           TSStatus status;
           req.setUsername(user);
-          req.setRoleName(role);
-          req.setNeedDisconnect(
-              plan.getAuthorType() == ConfigPhysicalPlanType.DropUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RDropUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.DropUserV2
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RDropUserV2
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.UpdateUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RUpdateUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.UpdateUserV2
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RUpdateUserV2
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RenameUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RRenameUser
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.AccountUnlock
-                  || plan.getAuthorType() == ConfigPhysicalPlanType.RAccountUnlock);
+          req.setRoleName(getPermissionCacheRoleName());
+          req.setNeedDisconnect(needDisconnectSessions());
           Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
           while (it.hasNext()) {
             Pair<TDataNodeConfiguration, Long> pair = it.next();
@@ -183,6 +173,31 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
       LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
     }
+  }
+
+  private String getPermissionCacheRoleName() {
+    if (!isAccountUnlockPlan()) {
+      return role;
+    }
+    return ACCOUNT_UNLOCK_LOGIN_ADDRESS_ROLE_PREFIX + (Objects.isNull(role) ? "" : role);
+  }
+
+  private boolean needDisconnectSessions() {
+    return plan.getAuthorType() == ConfigPhysicalPlanType.DropUser
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RDropUser
+        || plan.getAuthorType() == ConfigPhysicalPlanType.DropUserV2
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RDropUserV2
+        || plan.getAuthorType() == ConfigPhysicalPlanType.UpdateUser
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RUpdateUser
+        || plan.getAuthorType() == ConfigPhysicalPlanType.UpdateUserV2
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RUpdateUserV2
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RenameUser
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RRenameUser;
+  }
+
+  private boolean isAccountUnlockPlan() {
+    return plan.getAuthorType() == ConfigPhysicalPlanType.AccountUnlock
+        || plan.getAuthorType() == ConfigPhysicalPlanType.RAccountUnlock;
   }
 
   @Override

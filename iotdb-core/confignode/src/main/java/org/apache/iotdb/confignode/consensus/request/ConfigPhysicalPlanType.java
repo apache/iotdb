@@ -173,6 +173,7 @@ public enum ConfigPhysicalPlanType {
   RListRolePrivilege((short) 672),
   RUpdateUserMaxSession((short) 673),
   RUpdateUserMinSession((short) 674),
+  RAccountUnlock((short) 675),
 
   /** Function. */
   CreateFunction((short) 700),

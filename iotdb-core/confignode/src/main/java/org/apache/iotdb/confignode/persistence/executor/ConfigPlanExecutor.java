@@ -501,6 +501,7 @@ public class ConfigPlanExecutor {
       case RUpdateUserV2:
       case RUpdateUserMaxSession:
       case RUpdateUserMinSession:
+      case RAccountUnlock:
       case RGrantUserRole:
       case RGrantRoleAny:
       case RGrantUserAny:

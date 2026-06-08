@@ -440,6 +440,8 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
+  private static final String ACCOUNT_UNLOCK_LOGIN_ADDRESS_ROLE_PREFIX =
+      "\u0000ACCOUNT_UNLOCK\u0000";
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -3516,13 +3518,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req) {
-    if (req.isSetNeedDisconnect() && req.isNeedDisconnect()) {
+    if (isAccountUnlockRequest(req)) {
       return unlockAccountAndInvalidateCache(req);
     }
     if (!AuthorityChecker.invalidateCache(req.getUsername(), req.getRoleName())) {
       return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
     }
+    if (req.isSetNeedDisconnect() && req.isNeedDisconnect()) {
+      SessionManager.getInstance()
+          .removeSessions(
+              session ->
+                  session.getUsername() != null && session.getUsername().equals(req.getUsername()));
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private boolean isAccountUnlockRequest(TInvalidatePermissionCacheReq req) {
+    return Objects.nonNull(req.getRoleName())
+        && req.getRoleName().startsWith(ACCOUNT_UNLOCK_LOGIN_ADDRESS_ROLE_PREFIX);
+  }
+
+  private String getAccountUnlockLoginAddress(TInvalidatePermissionCacheReq req) {
+    return req.getRoleName().substring(ACCOUNT_UNLOCK_LOGIN_ADDRESS_ROLE_PREFIX.length());
   }
 
   private TSStatus unlockAccountAndInvalidateCache(TInvalidatePermissionCacheReq req) {
@@ -3531,14 +3548,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         .ifPresent(
             userId ->
                 LoginLockManager.getInstance()
-                    .unlock(userId, req.getUsername(), req.getRoleName()));
+                    .unlock(userId, req.getUsername(), getAccountUnlockLoginAddress(req)));
     if (!AuthorityChecker.invalidateCache(req.getUsername(), null)) {
       return RpcUtils.getStatus(TSStatusCode.CLEAR_PERMISSION_CACHE_ERROR);
     }
-    SessionManager.getInstance()
-        .removeSessions(
-            session ->
-                session.getUsername() != null && session.getUsername().equals(req.getUsername()));
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

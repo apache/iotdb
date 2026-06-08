@@ -572,6 +572,7 @@ public class TsFileInsertionEventParserTest {
               null,
               null,
               null,
+              false,
               false)) {
         final Iterator<TabletInsertionEvent> iterator = parser.toTabletInsertionEvents().iterator();
         int rowCount = 0;
