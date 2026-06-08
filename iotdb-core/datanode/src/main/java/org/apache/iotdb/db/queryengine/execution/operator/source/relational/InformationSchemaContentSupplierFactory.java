@@ -28,12 +28,15 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
@@ -184,6 +187,8 @@ public class InformationSchemaContentSupplierFactory {
           return new RegionSupplier(dataTypes, userEntity);
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
+        case InformationSchema.RECEIVERS:
+          return new ReceiversSupplier(dataTypes, userEntity);
         case InformationSchema.PIPE_PLUGINS:
           return new PipePluginSupplier(dataTypes, userEntity);
         case InformationSchema.TOPICS:
@@ -702,6 +707,50 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
 
       resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class ReceiversSupplier extends TsBlockSupplier {
+    private final Iterator<PipeReceiverRuntimeSnapshot> iterator;
+
+    private ReceiversSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkMissingPrivileges(
+          userEntity.getUsername(), Collections.singletonList(PrivilegeType.USE_PIPE), userEntity);
+      iterator = PipeReceiverRuntimeRegistry.getInstance().snapshot().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      final PipeReceiverRuntimeSnapshot snapshot = iterator.next();
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(snapshot.getReceiverNodeType()));
+      columnBuilders[1].writeInt(snapshot.getReceiverNodeId());
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(snapshot.getProtocol()));
+      columnBuilders[3].writeBinary(BytesUtils.valueOf(snapshot.getSenderAddress()));
+      columnBuilders[4].writeBinary(BytesUtils.valueOf(snapshot.getSenderPorts()));
+      columnBuilders[5].writeInt(snapshot.getConnectionCount());
+      columnBuilders[6].writeInt(snapshot.getPipeCount());
+      columnBuilders[7].writeBinary(BytesUtils.valueOf(snapshot.getPipeIds()));
+      columnBuilders[8].writeBinary(BytesUtils.valueOf(snapshot.getUserName()));
+      columnBuilders[9].writeBinary(BytesUtils.valueOf(snapshot.getSenderClusterId()));
+      writeTimestamp(columnBuilders[10], snapshot.getLastHandshakeTime());
+      writeTimestamp(columnBuilders[11], snapshot.getLastTransferTime());
+      columnBuilders[12].writeLong(snapshot.getRequestNum());
+      resultBuilder.declarePosition();
+    }
+
+    private static void writeTimestamp(ColumnBuilder columnBuilder, long timestampInMillis) {
+      if (timestampInMillis <= 0) {
+        columnBuilder.appendNull();
+        return;
+      }
+      columnBuilder.writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(timestampInMillis, TimeUnit.MILLISECONDS));
     }
 
     @Override

@@ -197,6 +197,21 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
 
+  // column names for show receivers
+  public static final String RECEIVER_NODE_TYPE = "ReceiverNodeType";
+  public static final String RECEIVER_NODE_ID = "ReceiverNodeId";
+  public static final String PROTOCOL = "Protocol";
+  public static final String SENDER_ADDRESS = "SenderAddress";
+  public static final String SENDER_PORTS = "SenderPorts";
+  public static final String CONNECTION_COUNT = "ConnectionCount";
+  public static final String PIPE_COUNT = "PipeCount";
+  public static final String PIPE_IDS = "PipeIDs";
+  public static final String RECEIVER_USER_NAME = "UserName";
+  public static final String SENDER_CLUSTER_ID = "SenderClusterId";
+  public static final String LAST_HANDSHAKE_TIME = "LastHandshakeTime";
+  public static final String LAST_TRANSFER_TIME = "LastTransferTime";
+  public static final String REQUEST_NUM = "RequestNum";
+
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
   public static final String SOURCE_COLUMN = "SourceColumn";
@@ -269,6 +284,19 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
+
+  public static final String RECEIVER_NODE_TYPE_TABLE_MODEL = "receiver_node_type";
+  public static final String RECEIVER_NODE_ID_TABLE_MODEL = "receiver_node_id";
+  public static final String PROTOCOL_TABLE_MODEL = "protocol";
+  public static final String SENDER_ADDRESS_TABLE_MODEL = "sender_address";
+  public static final String SENDER_PORTS_TABLE_MODEL = "sender_ports";
+  public static final String CONNECTION_COUNT_TABLE_MODEL = "connection_count";
+  public static final String PIPE_COUNT_TABLE_MODEL = "pipe_count";
+  public static final String PIPE_IDS_TABLE_MODEL = "pipe_ids";
+  public static final String SENDER_CLUSTER_ID_TABLE_MODEL = "sender_cluster_id";
+  public static final String LAST_HANDSHAKE_TIME_TABLE_MODEL = "last_handshake_time";
+  public static final String LAST_TRANSFER_TIME_TABLE_MODEL = "last_transfer_time";
+  public static final String REQUEST_NUM_TABLE_MODEL = "request_num";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -663,6 +691,22 @@ public class ColumnHeaderConstant {
           new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
           new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
           new ColumnHeader(TIMEOUT, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showReceiversColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RECEIVER_NODE_TYPE, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(PROTOCOL, TSDataType.TEXT),
+          new ColumnHeader(SENDER_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(SENDER_PORTS, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_COUNT, TSDataType.INT32),
+          new ColumnHeader(PIPE_IDS, TSDataType.TEXT),
+          new ColumnHeader(RECEIVER_USER_NAME, TSDataType.TEXT),
+          new ColumnHeader(SENDER_CLUSTER_ID, TSDataType.TEXT),
+          new ColumnHeader(LAST_HANDSHAKE_TIME, TSDataType.TEXT),
+          new ColumnHeader(LAST_TRANSFER_TIME, TSDataType.TEXT),
+          new ColumnHeader(REQUEST_NUM, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(

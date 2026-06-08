@@ -140,6 +140,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregati
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowDiskUsageOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ShowReceiversOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.CountWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.SessionWindowParameter;
@@ -224,6 +225,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -2476,6 +2478,19 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         node.getPlanNodeId(),
         Coordinator.getInstance(),
         node.getAllowedUsername());
+  }
+
+  @Override
+  public Operator visitShowReceivers(ShowReceiversNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ShowReceiversOperator.class.getSimpleName());
+
+    return new ShowReceiversOperator(operatorContext, node.getPlanNodeId());
   }
 
   @Override

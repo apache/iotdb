@@ -250,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -4410,6 +4411,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.WHERE() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitShowReceivers(IoTDBSqlParser.ShowReceiversContext ctx) {
+    return new ShowReceiversStatement();
   }
 
   @Override

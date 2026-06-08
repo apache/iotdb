@@ -249,6 +249,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
+      appendPipeInfoToHandshakeParams(params);
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));

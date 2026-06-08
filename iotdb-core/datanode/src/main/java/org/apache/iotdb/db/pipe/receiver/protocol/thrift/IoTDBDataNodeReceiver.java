@@ -35,8 +35,10 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferCompressedReq;
@@ -115,16 +117,19 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -174,6 +179,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   // datanode (cluster B).
   private static final AtomicLong CONFIG_RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicReference<String> configReceiverId = new AtomicReference<>();
+  private final AtomicReference<String> configPipeReceiverRuntimeSessionKey =
+      new AtomicReference<>();
 
   private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
 
@@ -217,8 +224,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                           TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
                           "The receiver memory is not enough to handle the handshake request from datanode."));
                 }
-                return handleTransferHandshakeV1(
-                    PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
+                return recordDataNodeHandshakeIfSuccess(
+                    handleTransferHandshakeV1(
+                        PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req)),
+                    req);
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
@@ -235,8 +244,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                           TSStatusCode.PIPE_HANDSHAKE_ERROR.getStatusCode(),
                           "The receiver memory is not enough to handle the handshake request from datanode."));
                 }
-                return handleTransferHandshakeV2(
-                    PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
+                return recordDataNodeHandshakeIfSuccess(
+                    handleTransferHandshakeV2(
+                        PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req)),
+                    req);
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
@@ -245,8 +256,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_INSERT_NODE:
             {
               try {
-                return handleTransferTabletInsertNode(
-                    PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletInsertNode(
+                        PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req)));
 
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
@@ -256,8 +268,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_INSERT_NODE_V2:
             {
               try {
-                return handleTransferTabletInsertNode(
-                    PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletInsertNode(
+                        PipeTransferTabletInsertNodeReqV2.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletInsertNodeV2Timer(System.nanoTime() - startTime);
@@ -266,7 +279,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_RAW:
             {
               try {
-                return handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletRawTimer(System.nanoTime() - startTime);
@@ -275,8 +289,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_RAW_V2:
             {
               try {
-                return handleTransferTabletRaw(
-                    PipeTransferTabletRawReqV2.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletRaw(PipeTransferTabletRawReqV2.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletRawV2Timer(System.nanoTime() - startTime);
@@ -285,8 +299,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_BINARY:
             {
               try {
-                return handleTransferTabletBinary(
-                    PipeTransferTabletBinaryReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletBinary(
+                        PipeTransferTabletBinaryReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
@@ -295,8 +310,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_BINARY_V2:
             {
               try {
-                return handleTransferTabletBinary(
-                    PipeTransferTabletBinaryReqV2.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletBinary(
+                        PipeTransferTabletBinaryReqV2.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBinaryV2Timer(System.nanoTime() - startTime);
@@ -305,8 +321,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_BATCH:
             {
               try {
-                return handleTransferTabletBatch(
-                    PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletBatch(
+                        PipeTransferTabletBatchReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBatchTimer(System.nanoTime() - startTime);
@@ -315,8 +332,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TABLET_BATCH_V2:
             {
               try {
-                return handleTransferTabletBatchV2(
-                    PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferTabletBatchV2(
+                        PipeTransferTabletBatchReqV2.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTabletBatchV2Timer(System.nanoTime() - startTime);
@@ -325,10 +343,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TS_FILE_PIECE:
             {
               try {
-                return handleTransferFilePiece(
-                    PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
-                    req instanceof AirGapPseudoTPipeTransferRequest,
-                    true);
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFilePiece(
+                        PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
+                        req instanceof AirGapPseudoTPipeTransferRequest,
+                        true));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTsFilePieceTimer(System.nanoTime() - startTime);
@@ -337,8 +356,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TS_FILE_SEAL:
             {
               try {
-                return handleTransferFileSealV1(
-                    PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFileSealV1(PipeTransferTsFileSealReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTsFileSealTimer(System.nanoTime() - startTime);
@@ -347,10 +366,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TS_FILE_PIECE_WITH_MOD:
             {
               try {
-                return handleTransferFilePiece(
-                    PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
-                    req instanceof AirGapPseudoTPipeTransferRequest,
-                    false);
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFilePiece(
+                        PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
+                        req instanceof AirGapPseudoTPipeTransferRequest,
+                        false));
 
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
@@ -360,8 +380,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
             {
               try {
-                return handleTransferFileSealV2(
-                    PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFileSealV2(
+                        PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
@@ -370,7 +391,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_PLAN_NODE:
             {
               try {
-                return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req)));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
@@ -379,10 +401,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
             {
               try {
-                return handleTransferFilePiece(
-                    PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
-                    req instanceof AirGapPseudoTPipeTransferRequest,
-                    false);
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFilePiece(
+                        PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
+                        req instanceof AirGapPseudoTPipeTransferRequest,
+                        false));
 
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
@@ -392,8 +415,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
             {
               try {
-                return handleTransferFileSealV2(
-                    PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
+                return recordDataNodeTransferIfSuccess(
+                    handleTransferFileSealV2(
+                        PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req)));
 
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
@@ -409,7 +433,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               try {
                 // Config requests will first be received by the DataNode receiver,
                 // then transferred to ConfigNode receiver to execute.
-                return handleTransferConfigPlan(req);
+                return recordConfigNodeReceiverRuntimeIfSuccess(handleTransferConfigPlan(req), req);
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
@@ -758,6 +782,123 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
     // sliceReqHandler will be cleared in the receive(req) method
     return receive(req.get());
+  }
+
+  private TPipeTransferResp recordDataNodeHandshakeIfSuccess(
+      final TPipeTransferResp resp, final TPipeTransferReq req) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverHandshake(
+          PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+          IOTDB_CONFIG.getDataNodeId(),
+          getProtocol(req));
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp recordDataNodeTransferIfSuccess(final TPipeTransferResp resp) {
+    if (isSuccess(resp)) {
+      recordPipeReceiverTransfer();
+    } else {
+      recordPipeReceiverRequest();
+    }
+    return resp;
+  }
+
+  private TPipeTransferResp recordConfigNodeReceiverRuntimeIfSuccess(
+      final TPipeTransferResp resp, final TPipeTransferReq req) {
+    if (!PipeRequestType.isValidatedRequestType(req.getType())) {
+      return resp;
+    }
+
+    final PipeRequestType requestType = PipeRequestType.valueOf(req.getType());
+    if (requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V1
+        || requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V2) {
+      if (isSuccess(resp)) {
+        recordConfigNodeHandshake(req, requestType);
+      }
+    } else {
+      if (isSuccess(resp)) {
+        PipeReceiverRuntimeRegistry.getInstance()
+            .markTransfer(configPipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
+      } else {
+        PipeReceiverRuntimeRegistry.getInstance()
+            .markRequest(configPipeReceiverRuntimeSessionKey.get());
+      }
+    }
+    return resp;
+  }
+
+  private void recordConfigNodeHandshake(
+      final TPipeTransferReq req, final PipeRequestType requestType) {
+    final String protocol = getProtocol(req);
+    final String sessionKey =
+        String.format(
+            "%s-%s-%s-%s",
+            PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE, -1, protocol, getConfigReceiverId());
+    final String oldSessionKey = configPipeReceiverRuntimeSessionKey.getAndSet(sessionKey);
+    if (!Objects.equals(oldSessionKey, sessionKey)) {
+      PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
+    }
+
+    final Map<String, String> params =
+        requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V2
+            ? parseHandshakeV2Params(req)
+            : Collections.emptyMap();
+    PipeReceiverRuntimeRegistry.getInstance()
+        .registerOrUpdateSession(
+            sessionKey,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+            -1,
+            protocol,
+            getSenderHost(),
+            parseSenderPort(getSenderPort()),
+            params.getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username),
+            params.getOrDefault(
+                PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID,
+                PipeReceiverRuntimeRegistry.UNKNOWN),
+            params.get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME),
+            parsePipeCreationTime(
+                params.get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME)),
+            System.currentTimeMillis());
+  }
+
+  private static Map<String, String> parseHandshakeV2Params(final TPipeTransferReq req) {
+    final Map<String, String> params = new HashMap<>();
+    if (req.getBody() == null) {
+      return params;
+    }
+    final ByteBuffer body = req.getBody().duplicate();
+    body.rewind();
+    final int size = ReadWriteIOUtils.readInt(body);
+    for (int i = 0; i < size; ++i) {
+      params.put(ReadWriteIOUtils.readString(body), ReadWriteIOUtils.readString(body));
+    }
+    return params;
+  }
+
+  private static String getProtocol(final TPipeTransferReq req) {
+    return req instanceof AirGapPseudoTPipeTransferRequest
+        ? PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP
+        : PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT;
+  }
+
+  private static int parseSenderPort(final String senderPort) {
+    try {
+      return Integer.parseInt(senderPort);
+    } catch (final Exception e) {
+      return -1;
+    }
+  }
+
+  private static long parsePipeCreationTime(final String pipeCreationTime) {
+    if (pipeCreationTime == null) {
+      return Long.MIN_VALUE;
+    }
+    try {
+      return Long.parseLong(pipeCreationTime);
+    } catch (final NumberFormatException e) {
+      return Long.MIN_VALUE;
+    }
   }
 
   /**
@@ -1157,6 +1298,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   public synchronized void handleExit() {
+    PipeReceiverRuntimeRegistry.getInstance()
+        .deregister(configPipeReceiverRuntimeSessionKey.getAndSet(null));
+
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());

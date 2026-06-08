@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowReceiversNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -1325,6 +1326,44 @@ public class LogicalPlanBuilder {
     this.root =
         new ShowQueriesNode(
             context.getQueryId().genPlanNodeId(), dataNodeLocation, allowedUsername);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowReceivers(Analysis analysis) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowReceivers(dataNodeLocations.get(0))
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else {
+      List<String> outputColumns = new ArrayList<>();
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              outputColumns);
+
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  this.planSingleShowReceivers(dataNodeLocation)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      outputColumns.addAll(mergeSortNode.getChildren().get(0).getOutputColumnNames());
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showReceiversColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowReceivers(TDataNodeLocation dataNodeLocation) {
+    this.root = new ShowReceiversNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
     return this;
   }
 

@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -179,6 +180,16 @@ public class StatementGeneratorTest {
         () ->
             StatementGenerator.createStatement(
                 "show queries order by a", ZonedDateTime.now().getOffset()));
+  }
+
+  @Test
+  public void testShowReceivers() {
+    final Statement showReceivers =
+        StatementGenerator.createStatement("show receivers", ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showReceivers instanceof ShowReceiversStatement);
+    Assert.assertEquals(
+        new SortItem("ReceiverNodeType", Ordering.ASC),
+        ((ShowReceiversStatement) showReceivers).getSortItemList().get(0));
   }
 
   @Test

@@ -172,6 +172,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             shouldMarkAsPipeRequest,
             false,
             skipIfNoPrivileges);
+    clientManager.setPipeInfo(pipeName, creationTime);
 
     transferTsFileClientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -188,6 +189,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             shouldMarkAsPipeRequest,
             isSplitTSFileBatchModeEnabled,
             skipIfNoPrivileges);
+    transferTsFileClientManager.setPipeInfo(pipeName, creationTime);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
