@@ -45,8 +45,12 @@ public class FileUtilsTest {
 
   @After
   public void tearDown() throws Exception {
-    tmpDir.delete();
-    targetDir.delete();
+    if (tmpDir != null) {
+      FileUtils.deleteFileOrDirectory(tmpDir, true);
+    }
+    if (targetDir != null) {
+      FileUtils.deleteFileOrDirectory(targetDir, true);
+    }
   }
 
   @Test

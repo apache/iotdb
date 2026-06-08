@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.After;
@@ -73,10 +74,10 @@ public class PipeDataNodePluginAgentTest {
       String pluginPath =
           PipePluginExecutableManager.getInstance()
               .getPluginsDirPath(PIPE_PLUGIN_META.getPluginName());
-      Files.deleteIfExists(Paths.get(pluginPath));
-      Files.deleteIfExists(Paths.get(PipePluginExecutableManager.getInstance().getInstallDir()));
-      Files.deleteIfExists(Paths.get(TMP_TEMP_LIB_ROOT_DIR));
-      Files.deleteIfExists(Paths.get(TMP_LIB_ROOT_DIR));
+      EnvironmentUtils.cleanDir(pluginPath);
+      EnvironmentUtils.cleanDir(PipePluginExecutableManager.getInstance().getInstallDir());
+      EnvironmentUtils.cleanDir(TMP_TEMP_LIB_ROOT_DIR);
+      EnvironmentUtils.cleanDir(TMP_LIB_ROOT_DIR);
     } catch (IOException e) {
       Assert.fail();
     }
