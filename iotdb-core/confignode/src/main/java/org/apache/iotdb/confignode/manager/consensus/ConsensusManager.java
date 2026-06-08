@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -86,11 +87,19 @@ public class ConsensusManager {
     setConsensusLayer(stateMachine);
   }
 
+  @TestOnly
+  ConsensusManager(IManager configManager, IConsensus consensusImpl) {
+    this.configManager = configManager;
+    this.consensusImpl = consensusImpl;
+  }
+
   public void start() throws IOException {
     consensusImpl.start();
-    if (SystemPropertiesUtils.isRestarted()) {
+    SystemPropertiesUtils.StartupState startupState = SystemPropertiesUtils.getStartupState();
+    if (startupState == SystemPropertiesUtils.StartupState.RESTART) {
       LOGGER.info(ManagerMessages.INIT_CONSENSUSMANAGER_SUCCESSFULLY_WHEN_RESTARTED);
-    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+    } else if (startupState == SystemPropertiesUtils.StartupState.FIRST_START
+        && ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
       try {
@@ -105,7 +114,10 @@ public class ConsensusManager {
             ManagerMessages
                 .SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_CREATELOCALPEER_API,
             e);
+        throw new IOException("Failed to create local ConfigNode consensus peer.", e);
       }
+    } else if (startupState != SystemPropertiesUtils.StartupState.FIRST_START) {
+      throw new IOException("Cannot start ConfigNode consensus from " + startupState + " state.");
     }
     isInitialized = true;
   }

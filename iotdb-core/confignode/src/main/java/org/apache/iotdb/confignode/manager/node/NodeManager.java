@@ -889,21 +889,30 @@ public class NodeManager {
    * @param configNodeLocation The new ConfigNode.
    * @param versionInfo The new ConfigNode's versionInfo.
    */
-  public void applyConfigNode(
+  public TSStatus applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
+    TSStatus status;
     try {
-      getConsensusManager().write(applyConfigNodePlan);
+      status = getConsensusManager().write(applyConfigNodePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
     try {
-      getConsensusManager().write(updateVersionInfoPlan);
+      status = getConsensusManager().write(updateVersionInfoPlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
     }
+    return status;
   }
 
   /**
