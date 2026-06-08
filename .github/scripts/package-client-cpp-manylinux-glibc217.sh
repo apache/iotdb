@@ -85,6 +85,32 @@ fi
 cmake --version
 java -version
 
+check_cxx11_abi_link() {
+  local sdk_root="$1"
+  local smoke_dir="$2"
+  rm -rf "${smoke_dir}"
+  mkdir -p "${smoke_dir}"
+  cat > "${smoke_dir}/main.cpp" <<'EOF'
+#include "Session.h"
+
+#include <string>
+
+int main() {
+  Session session(std::string("127.0.0.1"), 6667, std::string("root"), std::string("root"));
+  session.setDatabase(std::string("root.test"));
+  return 0;
+}
+EOF
+
+  c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 \
+    -I"${sdk_root}/include" \
+    "${smoke_dir}/main.cpp" \
+    -L"${sdk_root}/lib" \
+    -Wl,-rpath,"${sdk_root}/lib" \
+    -liotdb_session -pthread \
+    -o "${smoke_dir}/abi-smoke"
+}
+
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
@@ -123,32 +149,11 @@ else
   echo "No std::__cxx11 symbols found in the dynamic symbol table; verifying by link test."
 fi
 
-ABI_SMOKE="/tmp/client-cpp-abi-smoke-glibc217"
-rm -rf "${ABI_SMOKE}"
-mkdir -p "${ABI_SMOKE}"
-cat > "${ABI_SMOKE}/main.cpp" <<'EOF'
-#include "Session.h"
-
-#include <string>
-
-int main() {
-  Session session(std::string("127.0.0.1"), 6667, std::string("root"), std::string("root"));
-  session.setDatabase(std::string("root.test"));
-  return 0;
-}
-EOF
-
-if ! c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 \
-    -I"iotdb-client/client-cpp/target/install/include" \
-    "${ABI_SMOKE}/main.cpp" \
-    -L"iotdb-client/client-cpp/target/install/lib" \
-    -Wl,-rpath,"${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target/install/lib" \
-    -liotdb_session -pthread \
-    -o "${ABI_SMOKE}/abi-smoke"; then
+if ! check_cxx11_abi_link "iotdb-client/client-cpp/target/install" "/tmp/client-cpp-abi-smoke-glibc217-install"; then
   echo "ERROR: libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=1"
   exit 1
 fi
-echo "CXX11 ABI link check passed"
+echo "CXX11 ABI link check passed for target/install"
 
 echo "=== Example package build/link/run smoke test ==="
 PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
@@ -165,6 +170,11 @@ if [[ -z "${PKG_ROOT}" ]]; then
   echo "ERROR: could not find unpacked package directory for ${PACKAGE_CLASSIFIER}"
   exit 1
 fi
+if ! check_cxx11_abi_link "${PKG_ROOT}" "/tmp/client-cpp-abi-smoke-glibc217-package"; then
+  echo "ERROR: packaged libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=1"
+  exit 1
+fi
+echo "CXX11 ABI link check passed for packaged SDK"
 EXAMPLE_BUILD="/tmp/client-cpp-example-smoke-glibc217"
 rm -rf "${EXAMPLE_BUILD}"
 mkdir -p "${EXAMPLE_BUILD}"
