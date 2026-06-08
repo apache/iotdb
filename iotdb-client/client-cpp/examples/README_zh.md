@@ -46,15 +46,15 @@ CI 发版（[client-cpp-package.yml](../../.github/workflows/client-cpp-package.
 
 | 目标环境 | classifier 后缀 |
 |----------|-----------------|
-| Linux x86_64，glibc ≥ 2.17 | `linux-x86_64-glibc2.17` |
-| Linux aarch64，glibc ≥ 2.17 | `linux-aarch64-glibc2.17` |
+| Linux x86_64，glibc >= 2.28 | `linux-x86_64-glibc2.28` |
+| Linux aarch64，glibc >= 2.28 | `linux-aarch64-glibc2.28` |
 | macOS x86_64 | `macos-x86_64` |
 | macOS arm64 | `macos-aarch64` |
 | Windows + 与工程相同的 VS 版本 | `windows-x86_64-msvc14.1` ... `msvc14.4` |
 
 当前 CMake 构建在配置阶段从源码编译 Thrift 0.21，**不再**通过
 `-Diotdb-tools-thrift.version=0.14.1.1-gcc4-SNAPSHOT` 等旧参数控制 glibc；
-Linux 发版包在 `manylinux2014` 容器中构建，部署机需要 glibc 2.17 或更新版本。
+Linux 发版包在 `manylinux_2_28` 容器中构建，部署机需要 glibc 2.28 或更新版本。
 详见 [client-cpp README](../../iotdb-client/client-cpp/README.md)。
 
 ## SDK 目录结构（解压后）

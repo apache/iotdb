@@ -47,8 +47,8 @@ publishes one zip per platform/toolchain:
 
 | Deployment target | Classifier suffix |
 |-------------------|-------------------|
-| Linux x86_64, glibc ≥ 2.17 | `linux-x86_64-glibc2.17` |
-| Linux aarch64, glibc ≥ 2.17 | `linux-aarch64-glibc2.17` |
+| Linux x86_64, glibc >= 2.28 | `linux-x86_64-glibc2.28` |
+| Linux aarch64, glibc >= 2.28 | `linux-aarch64-glibc2.28` |
 | macOS x86_64 | `macos-x86_64` |
 | macOS arm64 | `macos-aarch64` |
 | Windows (match your Visual Studio version) | `windows-x86_64-msvc14.1` ... `msvc14.4` |
@@ -56,7 +56,7 @@ publishes one zip per platform/toolchain:
 The current build compiles Thrift 0.21 from source at CMake configure time.
 Legacy `-Diotdb-tools-thrift.version=...` flags applied to the **old**
 pre-built Thrift workflow only. Linux release packages are built in the
-`manylinux2014` container and require glibc 2.17 or newer. See
+`manylinux_2_28` container and require glibc 2.28 or newer. See
 [client-cpp README](../../iotdb-client/client-cpp/README.md).
 
 ## SDK layout (after unpack)

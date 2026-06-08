@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Build client-cpp in manylinux2014 and verify max required GLIBC symbol <= 2.17.
+# Build client-cpp in manylinux_2_28 and verify max required GLIBC symbol <= 2.28.
 set -euxo pipefail
 
 MACHINE=$(uname -m)
@@ -22,12 +22,12 @@ case "${MACHINE}" in
   x86_64)
     CMAKE_PKG_ARCH=linux-x86_64
     JDK_API_ARCH=linux/x64
-    DEFAULT_CLASSIFIER=linux-x86_64-glibc2.17
+    DEFAULT_CLASSIFIER=linux-x86_64-glibc2.28
     ;;
   aarch64)
     CMAKE_PKG_ARCH=linux-aarch64
     JDK_API_ARCH=linux/aarch64
-    DEFAULT_CLASSIFIER=linux-aarch64-glibc2.17
+    DEFAULT_CLASSIFIER=linux-aarch64-glibc2.28
     ;;
   *)
     echo "Unsupported architecture: ${MACHINE}" >&2
@@ -36,21 +36,6 @@ case "${MACHINE}" in
 esac
 
 PACKAGE_CLASSIFIER="${PACKAGE_CLASSIFIER:-${DEFAULT_CLASSIFIER}}"
-IOTDB_CXX11_ABI="${IOTDB_CXX11_ABI:-0}"
-
-# manylinux2014 is glibc 2.17 based. Its devtoolset libstdc++ is built with
-# the old string ABI, so the glibc2.17 package defaults to
-# _GLIBCXX_USE_CXX11_ABI=0 and exports that requirement to consumers.
-for devtoolset in devtoolset-12 devtoolset-11 devtoolset-10 devtoolset-9 devtoolset-8 devtoolset-7; do
-  if [[ -f "/opt/rh/${devtoolset}/enable" ]]; then
-    # shellcheck disable=SC1090
-    set +u
-    source "/opt/rh/${devtoolset}/enable"
-    set -u
-    echo "Enabled ${devtoolset}"
-    break
-  fi
-done
 
 CMAKE_VERSION=3.28.4
 CMAKE_DIR="/opt/cmake-${CMAKE_VERSION}"
@@ -79,44 +64,17 @@ export JAVA_HOME
 gcc --version
 c++ --version
 gcc_major=$(gcc -dumpversion | cut -d. -f1)
-if (( gcc_major < 5 )); then
-  echo "ERROR: GCC >= 5 is required; got $(gcc -dumpversion)"
+if (( gcc_major < 14 )); then
+  echo "ERROR: GCC >= 14 is required; got $(gcc -dumpversion)"
   exit 1
 fi
 cmake --version
 java -version
 
-check_glibcxx_abi_link() {
-  local sdk_root="$1"
-  local smoke_dir="$2"
-  rm -rf "${smoke_dir}"
-  mkdir -p "${smoke_dir}"
-  cat > "${smoke_dir}/main.cpp" <<'EOF'
-#include "Session.h"
-
-#include <string>
-
-int main() {
-  Session session(std::string("127.0.0.1"), 6667, std::string("root"), std::string("root"));
-  session.setDatabase(std::string("root.test"));
-  return 0;
-}
-EOF
-
-  c++ -std=c++11 -D_GLIBCXX_USE_CXX11_ABI="${IOTDB_CXX11_ABI}" \
-    -I"${sdk_root}/include" \
-    "${smoke_dir}/main.cpp" \
-    -L"${sdk_root}/lib" \
-    -Wl,-rpath,"${sdk_root}/lib" \
-    -liotdb_session -pthread \
-    -o "${smoke_dir}/abi-smoke"
-}
-
 cd "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is not set}"
 ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
   -Dspotless.skip=true \
-  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}" \
-  -Diotdb.cxx11.abi="${IOTDB_CXX11_ABI}"
+  -Dclient.cpp.package.classifier="${PACKAGE_CLASSIFIER}"
 
 SO="iotdb-client/client-cpp/target/install/lib/libiotdb_session.so"
 test -f "${SO}"
@@ -135,26 +93,12 @@ if [[ -z "${max_glibc}" ]]; then
   exit 1
 fi
 
-if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.17) }"; then
-  echo "ERROR: libiotdb_session.so requires glibc > 2.17 (max=${max_glibc})"
+if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.28) }"; then
+  echo "ERROR: libiotdb_session.so requires glibc > 2.28 (max=${max_glibc})"
   exit 1
 fi
 
-echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
-
-echo "=== GLIBCXX ABI symbols in libiotdb_session.so ==="
-abi_symbol_sample=$(nm -D --demangle "${SO}" | awk '/std::__cxx11|\[abi:cxx11\]/ { print; if (++count >= 20) exit }' || true)
-if [[ -n "${abi_symbol_sample}" ]]; then
-  printf '%s\n' "${abi_symbol_sample}"
-else
-  echo "No std::__cxx11 symbols found in the dynamic symbol table."
-fi
-
-if ! check_glibcxx_abi_link "iotdb-client/client-cpp/target/install" "/tmp/client-cpp-abi-smoke-glibc217-install"; then
-  echo "ERROR: libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=${IOTDB_CXX11_ABI}"
-  exit 1
-fi
-echo "GLIBCXX ABI link check passed for target/install (abi=${IOTDB_CXX11_ABI})"
+echo "glibc compatibility check passed (max=${max_glibc} <= 2.28)"
 
 echo "=== Example package build/link/run smoke test ==="
 PKG_ZIP=$(find "${GITHUB_WORKSPACE}/iotdb-client/client-cpp/target" -maxdepth 1 -type f -name "iotdb-session-cpp-*-${PACKAGE_CLASSIFIER}.zip" -print -quit)
@@ -162,7 +106,7 @@ if [[ -z "${PKG_ZIP}" ]]; then
   echo "ERROR: could not find package zip for ${PACKAGE_CLASSIFIER}"
   exit 1
 fi
-PKG_UNPACK="/tmp/client-cpp-package-smoke-glibc217"
+PKG_UNPACK="/tmp/client-cpp-package-smoke-glibc228"
 rm -rf "${PKG_UNPACK}"
 mkdir -p "${PKG_UNPACK}"
 unzip -q -o "${PKG_ZIP}" -d "${PKG_UNPACK}"
@@ -171,12 +115,7 @@ if [[ -z "${PKG_ROOT}" ]]; then
   echo "ERROR: could not find unpacked package directory for ${PACKAGE_CLASSIFIER}"
   exit 1
 fi
-if ! check_glibcxx_abi_link "${PKG_ROOT}" "/tmp/client-cpp-abi-smoke-glibc217-package"; then
-  echo "ERROR: packaged libiotdb_session.so is not link-compatible with _GLIBCXX_USE_CXX11_ABI=${IOTDB_CXX11_ABI}"
-  exit 1
-fi
-echo "GLIBCXX ABI link check passed for packaged SDK (abi=${IOTDB_CXX11_ABI})"
-EXAMPLE_BUILD="/tmp/client-cpp-example-smoke-glibc217"
+EXAMPLE_BUILD="/tmp/client-cpp-example-smoke-glibc228"
 rm -rf "${EXAMPLE_BUILD}"
 mkdir -p "${EXAMPLE_BUILD}"
 unset CC CXX CFLAGS CXXFLAGS

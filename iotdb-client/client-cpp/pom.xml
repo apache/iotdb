@@ -276,7 +276,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
-                <client.cpp.package.classifier>linux-x86_64-glibc2.17</client.cpp.package.classifier>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -292,7 +292,7 @@
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
-                <client.cpp.package.classifier>linux-aarch64-glibc2.17</client.cpp.package.classifier>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>

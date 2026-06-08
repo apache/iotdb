@@ -38,7 +38,7 @@ set(IOTDB_USE_CXX11_ABI ""
     CACHE STRING "Set _GLIBCXX_USE_CXX11_ABI for GNU libstdc++ builds (empty keeps toolchain default)")
 
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
     if(IOTDB_EXTRA_CXX_FLAGS)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IOTDB_EXTRA_CXX_FLAGS}")
     endif()

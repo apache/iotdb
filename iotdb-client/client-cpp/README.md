@@ -37,8 +37,8 @@ run:
 
 | Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
-| Linux x86_64, glibc >= 2.17 | `linux-x86_64-glibc2.17` |
-| Linux aarch64, glibc >= 2.17 | `linux-aarch64-glibc2.17` |
+| Linux x86_64, glibc >= 2.28 | `linux-x86_64-glibc2.28` |
+| Linux aarch64, glibc >= 2.28 | `linux-aarch64-glibc2.28` |
 | macOS x86_64 | `macos-x86_64` |
 | macOS arm64 | `macos-aarch64` |
 | Windows + Visual Studio 2017 | `windows-x86_64-msvc14.1` |
@@ -49,8 +49,8 @@ run:
 Example:
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17
+unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 The unpacked SDK contains public headers, one runtime library, CMake and
@@ -205,8 +205,8 @@ by default. Start IoTDB before running them.
 
 ### Runtime deployment notes
 
-- Linux release packages are built in the `manylinux2014` container and require
-  glibc 2.17 or newer.
+- Linux release packages are built in the `manylinux_2_28` container and require
+  glibc 2.28 or newer.
 - Windows packages use the dynamic MSVC runtime (`/MD`). Install the Microsoft
   Visual C++ Redistributable matching your Visual Studio generation on target
   machines that do not already have it.
@@ -257,6 +257,7 @@ During configure CMake will, in order:
 | Goal                          | Command                                                                                                |
 |-------------------------------|--------------------------------------------------------------------------------------------------------|
 | Library only (Linux/macOS)    | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package`                                  |
+| Debug library (Linux/macOS)   | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package`          |
 | Library only (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
@@ -275,8 +276,8 @@ deployment environment:
 
 | Target environment | Zip classifier (suffix) |
 |--------------------|-------------------------|
-| Linux x86_64, glibc >= 2.17 | `linux-x86_64-glibc2.17` |
-| Linux aarch64, glibc >= 2.17 | `linux-aarch64-glibc2.17` |
+| Linux x86_64, glibc >= 2.28 | `linux-x86_64-glibc2.28` |
+| Linux aarch64, glibc >= 2.28 | `linux-aarch64-glibc2.28` |
 | macOS x86_64 | `macos-x86_64` |
 | macOS arm64 | `macos-aarch64` |
 | Windows + Visual Studio 2017 | `windows-x86_64-msvc14.1` |
@@ -285,10 +286,18 @@ deployment environment:
 | Windows + Visual Studio 2026 | `windows-x86_64-msvc14.4` |
 
 Example file name:
-`iotdb-session-cpp-2.0.10.1-linux-x86_64-glibc2.17.zip`.
+`iotdb-session-cpp-2.0.10.1-linux-x86_64-glibc2.28.zip`.
 
-Linux release packages are built in the `manylinux2014` container, so they require
-glibc 2.17 or newer on the deployment host.
+Linux release packages are built in the `manylinux_2_28` containers with GCC 14,
+so they require glibc 2.28 or newer on the deployment host.
+
+| Architecture | manylinux_2_28 image |
+|--------------|----------------------|
+| x86_64 | `quay.io/pypa/manylinux_2_28_x86_64` |
+| i686 | `quay.io/pypa/manylinux_2_28_i686` |
+| aarch64 | `quay.io/pypa/manylinux_2_28_aarch64` |
+| ppc64le | `quay.io/pypa/manylinux_2_28_ppc64le` |
+| s390x | `quay.io/pypa/manylinux_2_28_s390x` |
 
 Thrift **0.21.0** is compiled from source during the CMake configure step (see
 `cmake/FetchThrift.cmake`). Older releases that used pre-built
@@ -299,11 +308,18 @@ and OS used to build** the SDK, not by that Maven property.
 
 ### Local build for a specific classifier
 
-Linux x86_64 (glibc 2.17 baseline, matching the manylinux2014 release build):
+Linux x86_64 (glibc 2.28 baseline, matching the manylinux_2_28 release build):
 
 ```bash
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
-  -Dclient.cpp.package.classifier=linux-x86_64-glibc2.17 package
+  -Dclient.cpp.package.classifier=linux-x86_64-glibc2.28 package
+```
+
+Debug build:
+
+```bash
+mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
+  -Dcmake.build.type=Debug package
 ```
 
 Windows (match the Visual Studio version you use to build your application):
@@ -338,6 +354,7 @@ pass them as Maven properties (the POM maps them to `-D` options for CMake):
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
 | `BOOST_INCLUDEDIR` | `boost.include.dir` (legacy alias) |
+| `CMAKE_BUILD_TYPE` | `cmake.build.type` (e.g. `-Dcmake.build.type=Debug`) |
 
 For a **standalone** `cmake` configure, pass `-DWITH_SSL=ON`, `-DIOTDB_OFFLINE=ON`,
 etc. directly.
@@ -354,6 +371,7 @@ etc. directly.
 | `BOOST_ROOT`          | (unset)                          | Existing Boost install to reuse, equivalent to `-Dboost.include.dir=...` from the legacy build.          |
 | `OPENSSL_ROOT_DIR`    | (unset)                          | Existing OpenSSL install when `WITH_SSL=ON`.                                                             |
 | `CMAKE_INSTALL_PREFIX`| `<build>/install`                | Install location.                                                                                        |
+| `CMAKE_BUILD_TYPE`    | `Release`                        | Single-config generator build type. Use `Debug` to produce a debug library.                              |
 
 ## Online build (default)
 

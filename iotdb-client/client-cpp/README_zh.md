@@ -37,8 +37,8 @@
 
 | 目标环境 | Zip classifier 后缀 |
 |----------|---------------------|
-| Linux x86_64，glibc >= 2.17 | `linux-x86_64-glibc2.17` |
-| Linux aarch64，glibc >= 2.17 | `linux-aarch64-glibc2.17` |
+| Linux x86_64，glibc >= 2.28 | `linux-x86_64-glibc2.28` |
+| Linux aarch64，glibc >= 2.28 | `linux-aarch64-glibc2.28` |
 | macOS x86_64 | `macos-x86_64` |
 | macOS arm64 | `macos-aarch64` |
 | Windows + Visual Studio 2017 | `windows-x86_64-msvc14.1` |
@@ -49,8 +49,8 @@
 示例：
 
 ```bash
-unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17.zip
-export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.17
+unzip iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28.zip
+export IOTDB_SESSION_HOME=$PWD/iotdb-session-cpp-2.0.7-SNAPSHOT-linux-x86_64-glibc2.28
 ```
 
 解压后的 SDK 主要包含：
@@ -203,7 +203,7 @@ int main() {
 
 ### 运行时部署注意事项
 
-- Linux 发版包在 `manylinux2014` 容器中构建，目标机器需要 glibc 2.17 或更新
+- Linux 发版包在 `manylinux_2_28` 容器中使用 GCC 14 构建，目标机器需要 glibc 2.28 或更新
   版本。
 - Windows 包使用 MSVC 动态运行时（`/MD`）。目标机器如果没有对应运行时，请安装
   与 Visual Studio 代际匹配的 Microsoft Visual C++ Redistributable。
@@ -221,6 +221,7 @@ CMake 的包装；没有 Maven 时也可以直接使用 CMake。
 | 目标 | 命令 |
 |------|------|
 | 只构建库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package` |
+| 构建 Debug 库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package` |
 | 只构建库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | 直接使用 CMake | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install` |
 
@@ -239,6 +240,7 @@ Maven 构建会把 SDK 安装到 `target/install/`，并生成
 | `BUILD_TESTING` | `build.tests` |
 | `IOTDB_DEPS_DIR` | `iotdb.deps.dir` |
 | `BOOST_INCLUDEDIR` | `boost.include.dir` |
+| `CMAKE_BUILD_TYPE` | `cmake.build.type`，例如 `-Dcmake.build.type=Debug` |
 
 直接使用 CMake 时传入 `-DWITH_SSL=ON`、`-DIOTDB_OFFLINE=ON` 等即可。
 

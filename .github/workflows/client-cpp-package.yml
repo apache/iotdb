@@ -155,11 +155,11 @@ jobs:
             write_windows_matrix_output '[]'
           fi
 
-  package-linux-glibc217:
-    name: Package (linux-x86_64-glibc2.17)
+  package-linux-glibc228:
+    name: Package (linux-x86_64-glibc2.28)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
-    # Checkout/cache on host (Node actions need modern glibc); build in manylinux2014 via docker run.
+    # Checkout/cache on host (Node actions need modern glibc); build in manylinux_2_28 via docker run.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -167,21 +167,21 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: linux-glibc217-m2-${{ hashFiles('**/pom.xml') }}
+          key: linux-glibc228-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            linux-glibc217-m2-
-      - name: Package client-cpp (glibc 2.17 baseline)
+            linux-glibc228-m2-
+      - name: Package client-cpp (glibc 2.28 baseline)
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-manylinux-glibc217.sh
+          chmod +x .github/scripts/package-client-cpp-manylinux228.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux2014_x86_64 \
-            bash .github/scripts/package-client-cpp-manylinux-glibc217.sh
+            quay.io/pypa/manylinux_2_28_x86_64 \
+            bash .github/scripts/package-client-cpp-manylinux228.sh
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
@@ -191,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.17.zip)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-x86_64-glibc2.28.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
             echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
@@ -213,11 +213,11 @@ jobs:
             ${{ steps.pkg.outputs.sha512_path }}
           if-no-files-found: error
 
-  package-linux-aarch64-glibc217:
-    name: Package (linux-aarch64-glibc2.17)
+  package-linux-aarch64-glibc228:
+    name: Package (linux-aarch64-glibc2.28)
     needs: [should-package, resolve-matrix]
     if: needs.should-package.outputs.run == 'true' && needs.resolve-matrix.outputs.run_linux == 'true'
-    # Checkout/cache on host; build in manylinux2014 aarch64 via docker run (glibc 2.17 baseline).
+    # Checkout/cache on host; build in manylinux_2_28 aarch64 via docker run (glibc 2.28 baseline).
     runs-on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -225,21 +225,21 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.m2
-          key: linux-aarch64-glibc217-m2-${{ hashFiles('**/pom.xml') }}
+          key: linux-aarch64-glibc228-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            linux-aarch64-glibc217-m2-
-      - name: Package client-cpp (glibc 2.17 baseline)
+            linux-aarch64-glibc228-m2-
+      - name: Package client-cpp (glibc 2.28 baseline)
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x .github/scripts/package-client-cpp-manylinux-glibc217.sh
+          chmod +x .github/scripts/package-client-cpp-manylinux228.sh
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -v "${HOME}/.m2:/root/.m2" \
             -w /workspace \
             -e GITHUB_WORKSPACE=/workspace \
-            quay.io/pypa/manylinux2014_aarch64 \
-            bash .github/scripts/package-client-cpp-manylinux-glibc217.sh
+            quay.io/pypa/manylinux_2_28_aarch64 \
+            bash .github/scripts/package-client-cpp-manylinux228.sh
       - name: Restore workspace ownership after container build
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
@@ -249,7 +249,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.17.zip)
+          packages=(iotdb-client/client-cpp/target/iotdb-session-cpp-*-linux-aarch64-glibc2.28.zip)
           if [ "${#packages[@]}" -ne 1 ]; then
             echo "Expected exactly one package zip, got: ${packages[*]:-(none)}"
             exit 1
