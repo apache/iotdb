@@ -411,14 +411,13 @@ public class IoTDBLoadObjectTableModelTsFileIT {
       Awaitility.await()
           .atMost(90, TimeUnit.SECONDS)
           .pollInterval(1, TimeUnit.SECONDS)
-          .until(
+          .untilAsserted(
               () -> {
                 try {
                   assertDeviceDataContent(session, "device_01", expectedTimes);
-                  return true;
                 } catch (final StatementExecutionException e) {
                   if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
-                    return false;
+                    Assert.fail(e.getMessage());
                   }
                   throw e;
                 }
@@ -492,7 +491,8 @@ public class IoTDBLoadObjectTableModelTsFileIT {
       ITableSession session, String deviceId, List<Long> expectedTimes) throws Exception {
     String query =
         String.format(
-            "SELECT time, READ_OBJECT(sensor_obj) FROM %s WHERE id='%s' ", TABLE_NAME, deviceId);
+            "SELECT time, READ_OBJECT(sensor_obj) FROM %s WHERE id='%s' ORDER BY time",
+            TABLE_NAME, deviceId);
 
     try (SessionDataSet dataSet = session.executeQueryStatement(query)) {
       SessionDataSet.DataIterator iterator = dataSet.iterator();
