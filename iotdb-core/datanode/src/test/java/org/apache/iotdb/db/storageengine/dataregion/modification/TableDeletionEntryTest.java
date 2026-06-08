@@ -49,6 +49,7 @@ public class TableDeletionEntryTest {
             new TimeRange(1, 5));
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
+    assertEquals(entry.serializedSize(), buffer.position());
     buffer.flip();
     ModEntry deserialized1 = ModEntry.createFrom(buffer);
     assertEquals(entry, deserialized1);
@@ -56,6 +57,7 @@ public class TableDeletionEntryTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     entry.serialize(bos);
     byte[] byteArray = bos.toByteArray();
+    assertEquals(entry.serializedSize(), byteArray.length);
     ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
     ModEntry deserialized2 = ModEntry.createFrom(bis);
     assertEquals(entry, deserialized2);

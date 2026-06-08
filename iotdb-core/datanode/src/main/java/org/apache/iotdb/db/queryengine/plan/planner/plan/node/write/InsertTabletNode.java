@@ -819,7 +819,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   int subSerializeSize(int start, int end) {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+    size += WALWriteUtils.sizeToWrite(targetPath.getFullPath());
     // measurements size
     size += Integer.BYTES;
     size += serializeMeasurementSchemasSize();

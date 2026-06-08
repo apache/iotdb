@@ -38,8 +38,10 @@ public class TreeDeletionEntryTest {
   @Test
   public void testSerialization() throws IllegalPathException, IOException {
     TreeDeletionEntry entry = new TreeDeletionEntry(new MeasurementPath("root.数据库.d1.温度"), 1, 5);
+    assertEquals(entry.serializedSize(), entry.getSerializedSize());
     ByteBuffer buffer = ByteBuffer.allocate(entry.serializedSize());
     entry.serialize(buffer);
+    assertEquals(entry.serializedSize(), buffer.position());
     buffer.flip();
     ModEntry deserialized1 = ModEntry.createFrom(buffer);
     assertEquals(entry, deserialized1);
@@ -47,6 +49,7 @@ public class TreeDeletionEntryTest {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     entry.serialize(bos);
     byte[] byteArray = bos.toByteArray();
+    assertEquals(entry.serializedSize(), byteArray.length);
     ByteArrayInputStream bis = new ByteArrayInputStream(byteArray);
     ModEntry deserialized2 = ModEntry.createFrom(bis);
     assertEquals(entry, deserialized2);

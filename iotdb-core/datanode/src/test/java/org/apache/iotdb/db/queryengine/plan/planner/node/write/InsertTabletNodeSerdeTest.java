@@ -87,8 +87,8 @@ public class InsertTabletNodeSerdeTest {
 
     tmpNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
@@ -117,8 +117,8 @@ public class InsertTabletNodeSerdeTest {
     tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
     tmpNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
@@ -321,9 +321,9 @@ public class InsertTabletNodeSerdeTest {
     InsertTabletNode insertTabletNode =
         new InsertTabletNode(
             new PlanNodeId("plannode 1"),
-            new PartialPath("root.isp.d1"),
+            new PartialPath("root.\u6570\u636e\u5e93.d1"),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new String[] {"\u6e29\u5ea6", "\u6e7f\u5ea6", "s3", "s4", "s5"},
             dataTypes,
             times,
             null,
@@ -331,8 +331,8 @@ public class InsertTabletNodeSerdeTest {
             times.length);
     insertTabletNode.setMeasurementSchemas(
         new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("\u6e29\u5ea6", TSDataType.DOUBLE),
+          new MeasurementSchema("\u6e7f\u5ea6", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)

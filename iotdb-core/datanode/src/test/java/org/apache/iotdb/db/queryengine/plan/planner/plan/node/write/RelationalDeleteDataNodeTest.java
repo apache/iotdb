@@ -78,9 +78,7 @@ public class RelationalDeleteDataNodeTest {
             "nezha");
     relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
 
-    ByteBuffer buffer = ByteBuffer.allocate(relationalDeleteDataNode.serializedSize());
-    relationalDeleteDataNode.serialize(buffer);
-    buffer.flip();
+    ByteBuffer buffer = relationalDeleteDataNode.serializeToByteBuffer();
     assertEquals(relationalDeleteDataNode, PlanNodeType.deserialize(buffer));
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -92,6 +90,7 @@ public class RelationalDeleteDataNodeTest {
     buffer = ByteBuffer.allocate(relationalDeleteDataNode.serializedSize());
     WALByteBufferForTest walByteBufferForTest = new WALByteBufferForTest(buffer);
     relationalDeleteDataNode.serializeToWAL(walByteBufferForTest);
+    assertEquals(relationalDeleteDataNode.serializedSize(), buffer.position());
     buffer.flip();
     PlanNode deserialized = PlanNodeType.deserializeFromWAL(buffer);
     // plan node id is not serialized to WAL, manually set it to pass comparison

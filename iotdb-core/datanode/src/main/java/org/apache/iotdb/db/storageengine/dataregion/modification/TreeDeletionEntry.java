@@ -216,9 +216,7 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   public long getSerializedSize() {
-    return modType.getSerializedSize()
-        + Integer.BYTES
-        + (long) pathPattern.getFullPath().length() * Character.BYTES;
+    return serializedSize();
   }
 
   @Override
