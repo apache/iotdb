@@ -37,7 +37,6 @@ public class IoTDBDataSource implements DataSource {
   private String url;
   private String user;
   private String password;
-  private static final String PWD_STR = "password";
   private Properties properties;
   private Integer port = 6667;
 
@@ -48,8 +47,8 @@ public class IoTDBDataSource implements DataSource {
   public IoTDBDataSource(String url, String user, String password, Integer port) {
     this.url = url;
     this.properties = new Properties();
-    properties.setProperty("user", user);
-    properties.setProperty(PWD_STR, password);
+    setUser(user);
+    setPassword(password);
     if (port != 0) {
       this.port = port;
     }
@@ -61,7 +60,7 @@ public class IoTDBDataSource implements DataSource {
 
   public void setUser(String user) {
     this.user = user;
-    properties.setProperty("user", user);
+    setProperty(Config.AUTH_USER, user);
   }
 
   public String getPassword() {
@@ -70,7 +69,7 @@ public class IoTDBDataSource implements DataSource {
 
   public void setPassword(String password) {
     this.password = password;
-    properties.setProperty(PWD_STR, password);
+    setProperty(Config.AUTH_PASSWORD, password);
   }
 
   public Integer getPort() {
@@ -103,8 +102,8 @@ public class IoTDBDataSource implements DataSource {
   public Connection getConnection(String username, String password) {
     try {
       Properties newProp = new Properties();
-      newProp.setProperty("user", username);
-      newProp.setProperty(PWD_STR, password);
+      setProperty(newProp, Config.AUTH_USER, username);
+      setProperty(newProp, Config.AUTH_PASSWORD, password);
       return new IoTDBConnection(url, newProp);
     } catch (Exception e) {
       LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
@@ -145,5 +144,17 @@ public class IoTDBDataSource implements DataSource {
   @Override
   public boolean isWrapperFor(Class<?> aClass) {
     return false;
+  }
+
+  private void setProperty(String key, String value) {
+    setProperty(properties, key, value);
+  }
+
+  private static void setProperty(Properties properties, String key, String value) {
+    if (value == null) {
+      properties.remove(key);
+    } else {
+      properties.setProperty(key, value);
+    }
   }
 }
