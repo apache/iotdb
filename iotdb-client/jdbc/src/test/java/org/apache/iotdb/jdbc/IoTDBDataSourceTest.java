@@ -21,7 +21,15 @@ package org.apache.iotdb.jdbc;
 
 import org.junit.Test;
 
+import javax.sql.DataSource;
+
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBDataSourceTest {
 
@@ -34,5 +42,35 @@ public class IoTDBDataSourceTest {
 
     assertNull(dataSource.getUser());
     assertNull(dataSource.getPassword());
+  }
+
+  @Test
+  public void testWrapperMethods() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    assertTrue(dataSource.isWrapperFor(IoTDBDataSource.class));
+    assertTrue(dataSource.isWrapperFor(DataSource.class));
+    assertFalse(dataSource.isWrapperFor(String.class));
+    assertFalse(dataSource.isWrapperFor(null));
+    assertSame(dataSource, dataSource.unwrap(IoTDBDataSource.class));
+    assertSame(dataSource, dataSource.unwrap(DataSource.class));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+    new IoTDBDataSource().unwrap(String.class);
+  }
+
+  @Test(expected = SQLFeatureNotSupportedException.class)
+  public void testParentLoggerIsUnsupported() throws SQLException {
+    new IoTDBDataSource().getParentLogger();
+  }
+
+  @Test(expected = SQLException.class)
+  public void testConnectionWithCredentialsPropagatesInvalidUrl() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    dataSource.setUrl("jdbc:iotdb://test");
+
+    dataSource.getConnection("root", "root");
   }
 }
