@@ -75,6 +75,11 @@ set(_thrift_build "${_thrift_root}/build")
 set(_thrift_install "${_thrift_root}/install")
 set(_thrift_marker "${_thrift_root}/.extracted-${THRIFT_VERSION}")
 
+set(_thrift_build_config "Release")
+if(MSVC AND CMAKE_BUILD_TYPE)
+    set(_thrift_build_config "${CMAKE_BUILD_TYPE}")
+endif()
+
 if(NOT EXISTS "${_thrift_marker}")
     file(REMOVE_RECURSE "${_thrift_root}/src")
     file(MAKE_DIRECTORY "${_thrift_root}/src")
@@ -98,7 +103,7 @@ set(_thrift_cmake_args
         # CMake 4.x rejects Thrift 0.21's cmake_minimum_required(3.0); set policy first.
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
         "-DCMAKE_INSTALL_PREFIX=${_thrift_install}"
-        "-DCMAKE_BUILD_TYPE=Release"
+        "-DCMAKE_BUILD_TYPE=${_thrift_build_config}"
         "-DBUILD_JAVA=OFF"
         "-DBUILD_NODEJS=OFF"
         "-DBUILD_JAVASCRIPT=OFF"
@@ -120,7 +125,7 @@ endif()
 
 if(MSVC)
     list(APPEND _thrift_cmake_args
-            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL")
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 else()
     set(_thrift_cxxflags "-fPIC")
     if(IOTDB_USE_CXX11_ABI)
@@ -147,7 +152,7 @@ if(IOTDB_USE_CXX11_ABI)
 else()
     set(_thrift_abi_stamp "-abidefault")
 endif()
-set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-mdll${_thrift_abi_stamp}")
+set(_thrift_stamp "${_thrift_build}/.built-${THRIFT_VERSION}-${_thrift_build_config}-mdll${_thrift_abi_stamp}")
 if(NOT EXISTS "${_thrift_stamp}")
     file(MAKE_DIRECTORY "${_thrift_build}")
     message(STATUS "[Thrift] configuring ${_thrift_dirname}")
@@ -176,9 +181,9 @@ if(NOT EXISTS "${_thrift_stamp}")
         message(FATAL_ERROR "[Thrift] configure step failed (rc=${_rc})")
     endif()
 
-    message(STATUS "[Thrift] building (Release)")
+    message(STATUS "[Thrift] building (${_thrift_build_config})")
     execute_process(
-            COMMAND ${CMAKE_COMMAND} --build . --config Release --target install
+            COMMAND ${CMAKE_COMMAND} --build . --config ${_thrift_build_config} --target install
             WORKING_DIRECTORY "${_thrift_build}"
             RESULT_VARIABLE _rc)
     if(NOT _rc EQUAL 0)
@@ -219,7 +224,11 @@ message(STATUS "[Thrift] THRIFT_EXECUTABLE = ${THRIFT_EXECUTABLE}")
 # Thrift static library (search a few standard install/lib locations).
 set(_thrift_libname_candidates)
 if(MSVC)
-    list(APPEND _thrift_libname_candidates thriftmd.lib thriftmt.lib thrift.lib)
+    if(_thrift_build_config STREQUAL "Debug")
+        list(APPEND _thrift_libname_candidates thriftmdd.lib thriftmd.lib thriftmtd.lib thriftmt.lib thrift.lib)
+    else()
+        list(APPEND _thrift_libname_candidates thriftmd.lib thriftmt.lib thrift.lib)
+    endif()
 else()
     list(APPEND _thrift_libname_candidates libthrift.a)
 endif()
