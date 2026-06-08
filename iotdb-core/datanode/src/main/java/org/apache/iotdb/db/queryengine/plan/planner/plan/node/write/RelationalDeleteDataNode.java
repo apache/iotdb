@@ -57,8 +57,8 @@ import java.util.stream.Collectors;
 public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(RelationalDeleteDataNode.class);
 
-  /** byte: type */
-  private static final int FIXED_SERIALIZED_SIZE = Short.BYTES;
+  /** short: type, long: searchIndex */
+  private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Long.BYTES;
 
   private final List<TableDeletionEntry> modEntries;
 
@@ -220,6 +220,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     for (TableDeletionEntry modEntry : modEntries) {
       size += modEntry.serializedSize();
     }
+    size += ReadWriteIOUtils.sizeToWrite(databaseName);
     return size;
   }
 
@@ -236,6 +237,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
       for (TableDeletionEntry modEntry : modEntries) {
         modEntry.serialize(buffer);
       }
+      ReadWriteIOUtils.writeVar(databaseName, buffer);
     } catch (IOException e) {
       LOGGER.error(DataNodeQueryMessages.FAILED_TO_SERIALIZE_MODENTRY_TO_WAL, e);
     }
@@ -283,12 +285,13 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     }
     final RelationalDeleteDataNode that = (RelationalDeleteDataNode) obj;
     return this.getPlanNodeId().equals(that.getPlanNodeId())
-        && Objects.equals(this.modEntries, that.modEntries);
+        && Objects.equals(this.modEntries, that.modEntries)
+        && Objects.equals(this.databaseName, that.databaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntries, progressIndex);
+    return Objects.hash(getPlanNodeId(), modEntries, databaseName);
   }
 
   public String toString() {

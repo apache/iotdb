@@ -75,7 +75,7 @@ public class RelationalDeleteDataNodeTest {
                 new TableDeletionEntry(
                     new DeletionPredicate("table1", new NOP(), Arrays.asList("s1", "s2")),
                     new TimeRange(0, 10))),
-            null);
+            "nezha");
     relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
 
     ByteBuffer buffer = ByteBuffer.allocate(relationalDeleteDataNode.serializedSize());
