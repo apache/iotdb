@@ -99,7 +99,10 @@ public class RestService implements IExternalService {
         "io.swagger.v3.jaxrs2.integration.resources, org.apache.iotdb.rest.protocol");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
-        "org.glassfish.jersey.media.multipart.MultiPartFeature");
+        String.join(
+            ",",
+            "org.glassfish.jersey.media.multipart.MultiPartFeature",
+            "org.apache.iotdb.rest.protocol.JacksonJsonProvider"));
     holder.setInitParameter("jersey.config.server.wadl.disableWadl", "true");
     context.setContextPath("/");
     return context;
