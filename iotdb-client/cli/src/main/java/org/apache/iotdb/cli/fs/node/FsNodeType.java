@@ -21,6 +21,7 @@ package org.apache.iotdb.cli.fs.node;
 
 public enum FsNodeType {
   VIRTUAL_ROOT,
+  VIRTUAL_DIRECTORY,
   TREE_ROOT,
   TREE_DATABASE,
   TREE_INTERNAL_PATH,
