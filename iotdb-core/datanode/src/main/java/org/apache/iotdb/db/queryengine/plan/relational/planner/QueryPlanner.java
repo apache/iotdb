@@ -75,15 +75,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAn
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.read.common.type.Type;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

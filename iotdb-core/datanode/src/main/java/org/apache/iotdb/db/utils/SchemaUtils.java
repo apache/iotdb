@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import jakarta.annotation.Nullable;
+
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -40,8 +42,6 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

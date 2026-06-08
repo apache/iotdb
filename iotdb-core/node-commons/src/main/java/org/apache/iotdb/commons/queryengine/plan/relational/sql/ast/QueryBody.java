@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public abstract class QueryBody extends Relation {
 

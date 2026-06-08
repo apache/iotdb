@@ -102,10 +102,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuot
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import jakarta.annotation.Nullable;
+
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
-
-import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

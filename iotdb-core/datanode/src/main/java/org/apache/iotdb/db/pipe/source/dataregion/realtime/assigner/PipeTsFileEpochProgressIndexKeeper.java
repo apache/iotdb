@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import java.util.Map;
 import java.util.Map.Entry;

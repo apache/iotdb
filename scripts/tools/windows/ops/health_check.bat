@@ -164,7 +164,7 @@ exit /b
 
 :local_jdk_check
 echo Check: Installation Environment(JDK)
-echo Requirement: JDK Version ^>=1.8
+echo Requirement: JDK Version ^>=17
 echo Result: JDK Version %JAVA_VERSION%
 exit /b
 

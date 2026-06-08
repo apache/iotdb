@@ -104,7 +104,7 @@ We use `clang-format` as the only formatter for C++ code and trigger it through 
 
 The version is pinned in the root `pom.xml` as property `clang.format.version` (same approach as Apache TsFile). Use **clang-format 17.0.6** locally so Spotless agrees with CI.
 
-**JDK for Maven:** the C++ `clangFormat` step is registered only when running Maven on **JDK 11 or newer** (see the `spotless-cpp` profile in this module and in `client-cpp-example`). The repository root still supports JDK 8 for Java builds, but `spotless:check` / `spotless:apply` for C++ will not apply the clang-format rules if you use JDK 8.
+**JDK for Maven:** the C++ `clangFormat` step is registered on the repository baseline, **JDK 17 or newer** (see the `spotless-cpp` profile in this module and in `client-cpp-example`). Use JDK 17+ for `spotless:check` / `spotless:apply`.
 
 ### Install clang-format 17.0.6
 

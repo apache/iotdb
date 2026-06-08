@@ -32,10 +32,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEnt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import jakarta.annotation.Nullable;
+
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

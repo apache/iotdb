@@ -39,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimat
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
+import jakarta.annotation.Nullable;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -48,8 +50,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import jakarta.annotation.Nullable;
+
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
-
-import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Optional;

@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 
+import jakarta.annotation.Nonnull;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
-
-import javax.annotation.Nonnull;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;

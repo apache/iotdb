@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 
+import jakarta.annotation.Nullable;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

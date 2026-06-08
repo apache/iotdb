@@ -30,10 +30,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import jakarta.annotation.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;

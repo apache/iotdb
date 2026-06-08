@@ -47,10 +47,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import jakarta.annotation.Nullable;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
-
-import javax.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

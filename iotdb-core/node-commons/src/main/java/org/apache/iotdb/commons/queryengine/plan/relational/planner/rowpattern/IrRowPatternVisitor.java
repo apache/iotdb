@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public abstract class IrRowPatternVisitor<R, C> {
   public R process(IrRowPattern rowPattern) {

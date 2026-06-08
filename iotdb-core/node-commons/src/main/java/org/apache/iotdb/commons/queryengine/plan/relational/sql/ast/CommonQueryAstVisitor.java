@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.QueryMessages;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 
 public interface CommonQueryAstVisitor<R, C> extends IAstVisitor<R, C> {
 
