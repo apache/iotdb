@@ -21,10 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
-import jakarta.validation.constraints.NotNull;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.validation.constraints.NotNull;
 
 import javax.annotation.concurrent.NotThreadSafe;
 

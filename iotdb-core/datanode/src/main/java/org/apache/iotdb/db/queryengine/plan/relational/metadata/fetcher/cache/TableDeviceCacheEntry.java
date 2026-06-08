@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
-import jakarta.annotation.Nonnull;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
@@ -30,6 +28,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+
+import jakarta.annotation.Nonnull;
 
 import javax.annotation.concurrent.ThreadSafe;
 

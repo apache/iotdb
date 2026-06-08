@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;

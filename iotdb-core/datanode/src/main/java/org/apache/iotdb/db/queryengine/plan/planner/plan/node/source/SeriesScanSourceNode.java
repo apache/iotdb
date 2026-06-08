@@ -28,9 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
+
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;

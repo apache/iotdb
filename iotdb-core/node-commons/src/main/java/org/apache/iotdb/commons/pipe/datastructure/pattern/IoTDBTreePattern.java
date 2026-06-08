@@ -30,9 +30,9 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import jakarta.annotation.Nullable;
-
 import org.apache.tsfile.file.metadata.IDeviceID;
+
+import jakarta.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;

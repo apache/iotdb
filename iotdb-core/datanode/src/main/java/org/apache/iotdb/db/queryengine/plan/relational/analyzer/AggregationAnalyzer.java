@@ -58,9 +58,9 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
+
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;

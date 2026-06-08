@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
+
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 

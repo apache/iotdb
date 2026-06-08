@@ -31,9 +31,9 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import jakarta.validation.constraints.NotNull;
-
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import jakarta.validation.constraints.NotNull;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

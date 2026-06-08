@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
-import jakarta.annotation.Nullable;
-
 import org.apache.tsfile.external.commons.lang3.StringUtils;
+
+import jakarta.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;

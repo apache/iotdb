@@ -822,7 +822,7 @@
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
-                                <order>org.apache.iotdb,jakarta,,javax,java,\#</order>
+                                <order>org.apache.iotdb,,jakarta,javax,java,\#</order>
                             </importOrder>
                             <removeUnusedImports/>
                         </java>

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import jakarta.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

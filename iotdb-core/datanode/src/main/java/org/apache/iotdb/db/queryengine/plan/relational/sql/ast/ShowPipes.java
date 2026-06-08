@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 
-import jakarta.annotation.Nullable;
-
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import jakarta.annotation.Nullable;
 
 import java.util.Objects;
 

@@ -29,12 +29,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import jakarta.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;

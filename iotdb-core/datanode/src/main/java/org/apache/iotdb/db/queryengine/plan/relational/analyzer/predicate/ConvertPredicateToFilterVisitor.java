@@ -50,8 +50,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeMan
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.DoubleMath;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -66,6 +64,8 @@ import org.apache.tsfile.read.filter.operator.ExtractTimeFilterOperators;
 import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
 import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.apache.tsfile.utils.Binary;
+
+import jakarta.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.HashSet;

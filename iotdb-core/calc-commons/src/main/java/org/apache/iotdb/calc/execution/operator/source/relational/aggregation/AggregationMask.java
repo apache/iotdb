@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
-import jakarta.annotation.Nullable;
-
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+
+import jakarta.annotation.Nullable;
 
 import java.util.Arrays;
 

@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
-import jakarta.validation.constraints.NotNull;
-
 import org.apache.tsfile.utils.RamUsageEstimator;
+
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Objects;

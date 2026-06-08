@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 
-import jakarta.annotation.Nullable;
-
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import jakarta.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
