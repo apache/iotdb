@@ -49,11 +49,11 @@ public class PruneFillColumns extends ProjectOffPushDownRule<FillNode> {
     if (fillNode instanceof PreviousFillNode) {
       PreviousFillNode previousFillNode = (PreviousFillNode) fillNode;
       previousFillNode.getHelperColumn().ifPresent(referencedInputs::add);
-      previousFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+      previousFillNode.getGroupingKeys().ifPresent(referencedInputs::addAll);
     } else if (fillNode instanceof LinearFillNode) {
       LinearFillNode linearFillNode = (LinearFillNode) fillNode;
       referencedInputs.add(linearFillNode.getHelperColumn());
-      linearFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+      linearFillNode.getGroupingKeys().ifPresent(referencedInputs::addAll);
     }
     return restrictChildOutputs(context.getIdAllocator(), fillNode, referencedInputs.build());
   }
