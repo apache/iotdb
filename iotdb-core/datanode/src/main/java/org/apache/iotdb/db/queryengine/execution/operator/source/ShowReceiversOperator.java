@@ -127,7 +127,7 @@ public class ShowReceiversOperator implements SourceOperator {
         PipeReceiverRuntimeRegistry.getInstance().snapshot()) {
       timeColumnBuilder.writeLong(currentTime);
       columnBuilders[0].writeBinary(BytesUtils.valueOf(snapshot.getReceiverNodeType()));
-      columnBuilders[1].writeInt(snapshot.getReceiverNodeId());
+      writeReceiverNodeId(columnBuilders[1], snapshot);
       columnBuilders[2].writeBinary(BytesUtils.valueOf(snapshot.getProtocol()));
       columnBuilders[3].writeBinary(BytesUtils.valueOf(snapshot.getSenderAddress()));
       columnBuilders[4].writeBinary(BytesUtils.valueOf(snapshot.getSenderPorts()));
@@ -144,6 +144,15 @@ public class ShowReceiversOperator implements SourceOperator {
       builder.declarePosition();
     }
     return builder.build();
+  }
+
+  private static void writeReceiverNodeId(
+      ColumnBuilder columnBuilder, PipeReceiverRuntimeSnapshot snapshot) {
+    if (snapshot.isReceiverNodeIdKnown()) {
+      columnBuilder.writeInt(snapshot.getReceiverNodeId());
+    } else {
+      columnBuilder.appendNull();
+    }
   }
 
   private static String formatTime(long timestampInMillis) {

@@ -84,9 +84,7 @@ public class PipeReceiverRuntimeRegistry {
             session.lastHandshakeTime = handshakeTime;
             session.lastTransferTime = Math.max(session.lastTransferTime, handshakeTime);
             session.requestNum.incrementAndGet();
-            if (!isBlank(pipeName)) {
-              session.pipeIds.add(formatPipeId(pipeName, pipeCreationTime));
-            }
+            session.pipeId = isBlank(pipeName) ? null : formatPipeId(pipeName, pipeCreationTime);
           }
           return session;
         });
@@ -135,7 +133,9 @@ public class PipeReceiverRuntimeRegistry {
         }
         aggregatedInfo.senderPorts.add(session.senderPort);
         aggregatedInfo.connectionCount++;
-        aggregatedInfo.pipeIds.addAll(session.pipeIds);
+        if (session.pipeId != null) {
+          aggregatedInfo.pipeIds.add(session.pipeId);
+        }
         aggregatedInfo.senderClusterIds.add(session.senderClusterId);
         aggregatedInfo.lastHandshakeTime =
             Math.max(aggregatedInfo.lastHandshakeTime, session.lastHandshakeTime);
@@ -186,7 +186,7 @@ public class PipeReceiverRuntimeRegistry {
     private long lastHandshakeTime;
     private long lastTransferTime;
     private final AtomicLong requestNum = new AtomicLong();
-    private final TreeSet<String> pipeIds = new TreeSet<>();
+    private String pipeId;
 
     private SessionRuntimeInfo(String connectionKey) {
       this.connectionKey = connectionKey;
@@ -299,7 +299,15 @@ public class PipeReceiverRuntimeRegistry {
 
   private static String joinIntegerSet(TreeSet<Integer> values) {
     final StringJoiner joiner = new StringJoiner(",");
+    boolean hasUnknown = false;
     for (Integer value : values) {
+      if (value < 0) {
+        if (!hasUnknown) {
+          joiner.add(UNKNOWN);
+          hasUnknown = true;
+        }
+        continue;
+      }
       joiner.add(String.valueOf(value));
     }
     return joiner.toString();

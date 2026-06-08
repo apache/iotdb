@@ -26,6 +26,7 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class PipeReceiverRuntimeRegistryTest {
@@ -123,5 +124,150 @@ public class PipeReceiverRuntimeRegistryTest {
     registry.deregister("data-1");
 
     assertTrue(registry.snapshot().isEmpty());
+  }
+
+  @Test
+  public void testRegisterOrUpdateSessionReplacesPipeId() {
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        -1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        -1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-b",
+        2,
+        200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertFalse(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
+  public void testRegisterOrUpdateSessionClearsPipeId() {
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        -1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        -1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        9001,
+        "root",
+        PipeReceiverRuntimeRegistry.UNKNOWN,
+        null,
+        Long.MIN_VALUE,
+        200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(0, snapshots.get(0).getPipeCount());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getPipeIds());
+  }
+
+  @Test
+  public void testUnknownSenderPort() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        -1,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getSenderPorts());
+  }
+
+  @Test
+  public void testDuplicateUnknownSenderPortsAreDeduplicated() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        -1,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "data-2",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        -2,
+        "root",
+        "cluster-b",
+        "pipe-b",
+        2,
+        200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getSenderPorts());
+  }
+
+  @Test
+  public void testUnknownReceiverNodeId() {
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        -1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "127.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(-1, snapshots.get(0).getReceiverNodeId());
+    assertFalse(snapshots.get(0).isReceiverNodeIdKnown());
   }
 }

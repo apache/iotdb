@@ -729,7 +729,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       final PipeReceiverRuntimeSnapshot snapshot = iterator.next();
       columnBuilders[0].writeBinary(BytesUtils.valueOf(snapshot.getReceiverNodeType()));
-      columnBuilders[1].writeInt(snapshot.getReceiverNodeId());
+      writeReceiverNodeId(columnBuilders[1], snapshot);
       columnBuilders[2].writeBinary(BytesUtils.valueOf(snapshot.getProtocol()));
       columnBuilders[3].writeBinary(BytesUtils.valueOf(snapshot.getSenderAddress()));
       columnBuilders[4].writeBinary(BytesUtils.valueOf(snapshot.getSenderPorts()));
@@ -742,6 +742,15 @@ public class InformationSchemaContentSupplierFactory {
       writeTimestamp(columnBuilders[11], snapshot.getLastTransferTime());
       columnBuilders[12].writeLong(snapshot.getRequestNum());
       resultBuilder.declarePosition();
+    }
+
+    private static void writeReceiverNodeId(
+        ColumnBuilder columnBuilder, PipeReceiverRuntimeSnapshot snapshot) {
+      if (snapshot.isReceiverNodeIdKnown()) {
+        columnBuilder.writeInt(snapshot.getReceiverNodeId());
+      } else {
+        columnBuilder.appendNull();
+      }
     }
 
     private static void writeTimestamp(ColumnBuilder columnBuilder, long timestampInMillis) {

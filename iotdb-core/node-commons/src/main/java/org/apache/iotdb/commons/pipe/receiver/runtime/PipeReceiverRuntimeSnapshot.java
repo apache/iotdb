@@ -72,6 +72,10 @@ public class PipeReceiverRuntimeSnapshot {
     return receiverNodeId;
   }
 
+  public boolean isReceiverNodeIdKnown() {
+    return receiverNodeId >= 0;
+  }
+
   public String getProtocol() {
     return protocol;
   }
