@@ -164,6 +164,18 @@ public class InsertRowNodeSerdeTest {
     Assert.assertFalse(tmpNode.isLastFragment());
   }
 
+  @Test
+  public void testRelationalSerializedSizeWithFailedMeasurement() {
+    RelationalInsertRowNode insertRowNode = getRelationalInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.markFailedMeasurement(1);
+    insertRowNode.setFailedMeasurementNumber(1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(insertRowNode.serializedSize());
+    insertRowNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+
+    Assert.assertEquals(insertRowNode.serializedSize(), byteBuffer.position());
+  }
+
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =

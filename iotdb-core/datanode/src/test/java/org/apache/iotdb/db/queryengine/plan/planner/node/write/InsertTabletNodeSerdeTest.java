@@ -224,6 +224,18 @@ public class InsertTabletNodeSerdeTest {
   }
 
   @Test
+  public void testRelationalSerializedSizeWithFailedMeasurement() {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.markFailedMeasurement(1);
+    insertTabletNode.setFailedMeasurementNumber(1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(insertTabletNode.serializedSize());
+    insertTabletNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+
+    Assert.assertEquals(insertTabletNode.serializedSize(), byteBuffer.position());
+  }
+
+  @Test
   public void testInitTabletValuesWithAllTypes()
       throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
     InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId("1"));
