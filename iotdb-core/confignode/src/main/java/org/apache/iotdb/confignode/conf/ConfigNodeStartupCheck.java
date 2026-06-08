@@ -77,11 +77,21 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     checkGlobalConfig();
     createDirsIfNecessary();
     checkRequestManager();
-    if (SystemPropertiesUtils.isRestarted()) {
-      /* Always restore ConfigNodeId first */
+    SystemPropertiesUtils.StartupState startupState = SystemPropertiesUtils.getStartupState();
+    if (startupState == SystemPropertiesUtils.StartupState.RESTART) {
+      // Always restore ConfigNodeId first.
       CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
 
       SystemPropertiesUtils.checkSystemProperties();
+    } else if (startupState != SystemPropertiesUtils.StartupState.FIRST_START) {
+      throw new StartupException(
+          "The local ConfigNode data is in "
+              + startupState
+              + " state. Please restore the missing local files or backup and clean "
+              + CONF.getSystemDir()
+              + " and "
+              + CONF.getConsensusDir()
+              + " before starting this ConfigNode.");
     }
   }
 
