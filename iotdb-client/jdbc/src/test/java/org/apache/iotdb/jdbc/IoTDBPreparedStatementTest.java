@@ -31,6 +31,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.sql.ParameterMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -38,7 +39,9 @@ import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -79,6 +82,20 @@ public class IoTDBPreparedStatementTest {
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataWrapperMethods() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertTrue(metadata.isWrapperFor(ParameterMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
   }
 
   @SuppressWarnings("resource")

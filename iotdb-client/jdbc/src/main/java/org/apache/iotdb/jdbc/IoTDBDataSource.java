@@ -91,25 +91,15 @@ public class IoTDBDataSource implements DataSource {
 
   @Override
   public Connection getConnection() throws SQLException {
-    try {
-      return new IoTDBConnection(url, properties);
-    } catch (TTransportException e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+    return createConnection((Properties) properties.clone());
   }
 
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
-    try {
-      Properties newProp = new Properties();
-      setProperty(newProp, Config.AUTH_USER, username);
-      setProperty(newProp, Config.AUTH_PASSWORD, password);
-      return new IoTDBConnection(url, newProp);
-    } catch (TTransportException e) {
-      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
-    }
-    return null;
+    Properties newProp = (Properties) properties.clone();
+    setProperty(newProp, Config.AUTH_USER, username);
+    setProperty(newProp, Config.AUTH_PASSWORD, password);
+    return createConnection(newProp);
   }
 
   @Override
@@ -139,15 +129,25 @@ public class IoTDBDataSource implements DataSource {
 
   @Override
   public <T> T unwrap(Class<T> aClass) throws SQLException {
-    if (isWrapperFor(aClass)) {
-      return aClass.cast(this);
-    }
-    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + aClass);
+    return JdbcWrapperUtils.unwrap(this, aClass);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> aClass) {
-    return aClass != null && aClass.isInstance(this);
+    return JdbcWrapperUtils.isWrapperFor(this, aClass);
+  }
+
+  private Connection createConnection(Properties connectionProperties) throws SQLException {
+    try {
+      return new IoTDBConnection(url, connectionProperties);
+    } catch (TTransportException e) {
+      LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
+      throw new SQLException(
+          JdbcMessages
+                  .EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6
+              + JdbcMessages.EXCEPTION_HAS_STARTED_BD7BC366,
+          e);
+    }
   }
 
   private void setProperty(String key, String value) {

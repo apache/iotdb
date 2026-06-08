@@ -182,12 +182,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.isWrapperFor(this, iface);
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return JdbcWrapperUtils.unwrap(this, iface);
   }
 
   @Override

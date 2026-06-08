@@ -53,6 +53,8 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.sql.ParameterMetaData;
+import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,6 +64,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -141,6 +145,20 @@ public class IoTDBTablePreparedStatementTest {
   }
 
   // ========== Table Model SQL Injection Prevention Tests ==========
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataWrapperMethods() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertTrue(metadata.isWrapperFor(ParameterMetaData.class));
+    assertFalse(metadata.isWrapperFor(String.class));
+    assertFalse(metadata.isWrapperFor(null));
+    assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
+  }
 
   @SuppressWarnings("resource")
   @Test

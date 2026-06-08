@@ -132,6 +132,8 @@ public final class JdbcMessages {
       "获取主键错误：{}";
 
   // IoTDBDataSource
+  public static final String EXCEPTION_INVALID_VALUE_FOR_JDBC_CONNECTION_PROPERTY_ARG_ARG_2193D0EE =
+      "JDBC 连接属性的值无效 %s：%s";
   public static final String GET_CONNECTION_ERROR = "获取连接错误：";
 
   // IoTDBJDBCResultSet

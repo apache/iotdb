@@ -73,4 +73,12 @@ public class IoTDBDataSourceTest {
 
     dataSource.getConnection("root", "root");
   }
+
+  @Test(expected = SQLException.class)
+  public void testConnectionFailureIsPropagated() throws SQLException {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+    dataSource.setUrl("jdbc:iotdb://127.0.0.1:1/");
+
+    dataSource.getConnection();
+  }
 }
