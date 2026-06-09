@@ -98,7 +98,12 @@ public class UDTFResample implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
-    resampler.insert(row.getTime(), Util.getValueAsDouble(row));
+    if (!row.isNull(0)) {
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        resampler.insert(row.getTime(), v);
+      }
+    }
     while (resampler.hasNext()) { // output as early as possible
       pc.putDouble(resampler.getOutTime(), resampler.getOutValue());
       resampler.next();

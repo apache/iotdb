@@ -70,6 +70,9 @@ public class UDTFHistogram implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
       int id = Math.min(Math.max((int) Math.floor((value - start) / gap), 0), count - 1);

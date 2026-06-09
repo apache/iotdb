@@ -72,6 +72,8 @@ public class UDFEnvelopeAnalysis implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    signals.clear();
+    timestamps.clear();
     frequency = parameters.getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE);
     amplification = parameters.getIntOrDefault(AMPLIFICATION, 1);
     timestampPrecision = parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
@@ -79,9 +81,15 @@ public class UDFEnvelopeAnalysis implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    signals.add(getValueAsDouble(row, 0));
-    if (timestamps.size() < 10) {
-      timestamps.add(row.getTime());
+    if (row.isNull(0)) {
+      return;
+    }
+    double value = getValueAsDouble(row, 0);
+    if (Double.isFinite(value)) {
+      signals.add(value);
+      if (timestamps.size() < 10) {
+        timestamps.add(row.getTime());
+      }
     }
   }
 

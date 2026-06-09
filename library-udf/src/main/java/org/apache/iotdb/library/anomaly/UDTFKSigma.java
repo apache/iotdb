@@ -69,12 +69,19 @@ public class UDTFKSigma implements UDTF {
     this.multipleK = udfParameters.getDoubleOrDefault("k", 3);
     this.dataType = udfParameters.getDataType(0);
     this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
+    this.mean = 0.0;
+    this.variance = 0.0;
+    this.sumX1 = 0.0;
+    this.sumX2 = 0.0;
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = Util.getValueAsDouble(row);
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {

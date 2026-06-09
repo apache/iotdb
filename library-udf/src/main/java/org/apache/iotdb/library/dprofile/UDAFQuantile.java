@@ -65,6 +65,9 @@ public class UDAFQuantile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     final long encoded;
     switch (dataType) {
       case INT32:
@@ -74,7 +77,11 @@ public class UDAFQuantile implements UDTF {
         encoded = row.getLong(0);
         break;
       default:
-        encoded = dataToLong(Util.getValueAsDouble(row));
+        double v = Util.getValueAsDouble(row);
+        if (!Double.isFinite(v)) {
+          return;
+        }
+        encoded = dataToLong(v);
         break;
     }
     sketch.update(encoded);
@@ -94,7 +101,7 @@ public class UDAFQuantile implements UDTF {
     } else if (k >= n) {
       k = n - 1;
     }
-    long result = sketch.findMinValueWithRank(k);
+    long result = sketch.findMaxValueWithRank(k);
     switch (dataType) {
       case INT32:
         collector.putInt(0, (int) result);

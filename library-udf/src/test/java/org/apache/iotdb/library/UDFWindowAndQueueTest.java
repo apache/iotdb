@@ -22,10 +22,16 @@ package org.apache.iotdb.library;
 import org.apache.iotdb.library.anomaly.UDTFIQR;
 import org.apache.iotdb.library.anomaly.UDTFKSigma;
 import org.apache.iotdb.library.anomaly.UDTFLOF;
+import org.apache.iotdb.library.anomaly.UDTFMissDetect;
+import org.apache.iotdb.library.anomaly.UDTFOutlier;
 import org.apache.iotdb.library.anomaly.UDTFRange;
+import org.apache.iotdb.library.anomaly.UDTFTwoSidedFilter;
+import org.apache.iotdb.library.anomaly.util.StreamMissDetector;
 import org.apache.iotdb.library.dlearn.UDTFAR;
 import org.apache.iotdb.library.dlearn.UDTFCluster;
 import org.apache.iotdb.library.dmatch.UDAFDtw;
+import org.apache.iotdb.library.dprofile.UDAFIntegral;
+import org.apache.iotdb.library.dprofile.UDAFIntegralAvg;
 import org.apache.iotdb.library.dprofile.UDAFMad;
 import org.apache.iotdb.library.dprofile.UDAFMedian;
 import org.apache.iotdb.library.dprofile.UDAFPercentile;
@@ -35,12 +41,14 @@ import org.apache.iotdb.library.dprofile.UDAFSkew;
 import org.apache.iotdb.library.dprofile.UDTFHistogram;
 import org.apache.iotdb.library.dprofile.UDTFMinMax;
 import org.apache.iotdb.library.dprofile.UDTFMvAvg;
+import org.apache.iotdb.library.dprofile.UDTFPACF;
 import org.apache.iotdb.library.dprofile.UDTFQLB;
 import org.apache.iotdb.library.dprofile.UDTFResample;
 import org.apache.iotdb.library.dprofile.UDTFSample;
 import org.apache.iotdb.library.dprofile.UDTFSegment;
 import org.apache.iotdb.library.dprofile.UDTFSpline;
 import org.apache.iotdb.library.dprofile.UDTFZScore;
+import org.apache.iotdb.library.dprofile.util.Resampler;
 import org.apache.iotdb.library.frequency.UDFEnvelopeAnalysis;
 import org.apache.iotdb.library.frequency.UDTFConv;
 import org.apache.iotdb.library.frequency.UDTFDWT;
@@ -131,6 +139,27 @@ public class UDFWindowAndQueueTest {
     Assert.assertEquals(Arrays.asList(3L, 4L), collector.timestamps);
     Assert.assertEquals(2.0, collector.values.get(0), 0.0);
     Assert.assertEquals(3.0, collector.values.get(1), 0.0);
+  }
+
+  @Test
+  public void testMvAvgInvalidRowsDoNotShrinkWindow() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("window", "3");
+
+    UDTFMvAvg mvAvg = new UDTFMvAvg();
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    mvAvg.validate(new UDFParameterValidator(parameters));
+    mvAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    mvAvg.transform(new DoubleRow(1, 1.0), collector);
+    mvAvg.transform(new DoubleRow(2, 2.0), collector);
+    mvAvg.transform(new DoubleRow(3, Double.NaN), collector);
+    mvAvg.transform(nullDoubleRow(4), collector);
+    mvAvg.transform(new DoubleRow(5, 3.0), collector);
+
+    Assert.assertEquals(Collections.singletonList(5L), collector.timestamps);
+    Assert.assertEquals(2.0, collector.values.get(0), 0.0);
   }
 
   @Test
@@ -258,6 +287,120 @@ public class UDFWindowAndQueueTest {
             new UDTFIQR()
                 .validate(
                     new UDFParameterValidator(createSingleDoubleSeriesParameters(attributes))));
+  }
+
+  @Test
+  public void testRowByRowNumericFunctionsSkipNullAndInvalidValues() throws Exception {
+    UDFParameters defaultParameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+
+    Map<String, String> rangeAttributes = new HashMap<>();
+    rangeAttributes.put("lower_bound", "0");
+    rangeAttributes.put("upper_bound", "10");
+    UDFParameters rangeParameters = createSingleDoubleSeriesParameters(rangeAttributes);
+    UDTFRange range = new UDTFRange();
+    RecordingPointCollector rangeCollector = new RecordingPointCollector();
+    range.validate(new UDFParameterValidator(rangeParameters));
+    range.beforeStart(rangeParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    range.transform(nullDoubleRow(1), rangeCollector);
+    range.transform(new DoubleRow(2, Double.NaN), rangeCollector);
+    Assert.assertTrue(rangeCollector.timestamps.isEmpty());
+
+    Map<String, String> histogramAttributes = new HashMap<>();
+    histogramAttributes.put("min", "0");
+    histogramAttributes.put("max", "10");
+    histogramAttributes.put("count", "2");
+    UDFParameters histogramParameters = createSingleDoubleSeriesParameters(histogramAttributes);
+    UDTFHistogram histogram = new UDTFHistogram();
+    RecordingPointCollector histogramCollector = new RecordingPointCollector();
+    histogram.validate(new UDFParameterValidator(histogramParameters));
+    histogram.beforeStart(histogramParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    histogram.transform(nullDoubleRow(1), histogramCollector);
+    histogram.transform(new DoubleRow(2, Double.NaN), histogramCollector);
+    histogram.transform(new DoubleRow(3, 8.0), histogramCollector);
+    histogram.terminate(histogramCollector);
+    Assert.assertEquals(Arrays.asList(0L, 1L), histogramCollector.timestamps);
+    Assert.assertEquals(0.0, histogramCollector.values.get(0), 0.0);
+    Assert.assertEquals(1.0, histogramCollector.values.get(1), 0.0);
+
+    Map<String, String> iqrAttributes = new HashMap<>();
+    iqrAttributes.put("compute", "stream");
+    iqrAttributes.put("q1", "1");
+    iqrAttributes.put("q3", "3");
+    UDFParameters iqrParameters = createSingleDoubleSeriesParameters(iqrAttributes);
+    UDTFIQR iqr = new UDTFIQR();
+    RecordingPointCollector iqrCollector = new RecordingPointCollector();
+    iqr.validate(new UDFParameterValidator(iqrParameters));
+    iqr.beforeStart(iqrParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    iqr.transform(nullDoubleRow(1), iqrCollector);
+    iqr.transform(new DoubleRow(2, Double.POSITIVE_INFINITY), iqrCollector);
+    iqr.transform(new DoubleRow(3, 10.0), iqrCollector);
+    Assert.assertEquals(Collections.singletonList(3L), iqrCollector.timestamps);
+    Assert.assertEquals(10.0, iqrCollector.values.get(0), 0.0);
+
+    Map<String, String> minMaxAttributes = new HashMap<>();
+    minMaxAttributes.put("compute", "stream");
+    minMaxAttributes.put("min", "0");
+    minMaxAttributes.put("max", "10");
+    UDFParameters minMaxParameters = createSingleDoubleSeriesParameters(minMaxAttributes);
+    UDTFMinMax minMax = new UDTFMinMax();
+    RecordingPointCollector minMaxCollector = new RecordingPointCollector();
+    minMax.validate(new UDFParameterValidator(minMaxParameters));
+    minMax.beforeStart(minMaxParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    minMax.transform(nullDoubleRow(1), minMaxCollector);
+    minMax.transform(new DoubleRow(2, Double.NaN), minMaxCollector);
+    minMax.transform(new DoubleRow(3, 5.0), minMaxCollector);
+    Assert.assertEquals(Collections.singletonList(3L), minMaxCollector.timestamps);
+    Assert.assertEquals(0.5, minMaxCollector.values.get(0), 0.0);
+
+    Map<String, String> zScoreAttributes = new HashMap<>();
+    zScoreAttributes.put("compute", "stream");
+    zScoreAttributes.put("avg", "0");
+    zScoreAttributes.put("sd", "2");
+    UDFParameters zScoreParameters = createSingleDoubleSeriesParameters(zScoreAttributes);
+    UDTFZScore zScore = new UDTFZScore();
+    RecordingPointCollector zScoreCollector = new RecordingPointCollector();
+    zScore.validate(new UDFParameterValidator(zScoreParameters));
+    zScore.beforeStart(zScoreParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    zScore.transform(nullDoubleRow(1), zScoreCollector);
+    zScore.transform(new DoubleRow(2, Double.NEGATIVE_INFINITY), zScoreCollector);
+    zScore.transform(new DoubleRow(3, 4.0), zScoreCollector);
+    Assert.assertEquals(Collections.singletonList(3L), zScoreCollector.timestamps);
+    Assert.assertEquals(2.0, zScoreCollector.values.get(0), 0.0);
+
+    UDTFKSigma kSigma = new UDTFKSigma();
+    RecordingPointCollector kSigmaCollector = new RecordingPointCollector();
+    kSigma.validate(new UDFParameterValidator(defaultParameters));
+    kSigma.beforeStart(defaultParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    kSigma.transform(nullDoubleRow(1), kSigmaCollector);
+    kSigma.transform(new DoubleRow(2, 1.0), kSigmaCollector);
+
+    UDTFPACF pacf = new UDTFPACF();
+    RecordingPointCollector pacfCollector = new RecordingPointCollector();
+    pacf.validate(new UDFParameterValidator(defaultParameters));
+    pacf.beforeStart(defaultParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    pacf.transform(nullDoubleRow(1), pacfCollector);
+    pacf.transform(new DoubleRow(2, 1.0), pacfCollector);
+    pacf.terminate(pacfCollector);
+    Assert.assertEquals(Arrays.asList(1L, 2L), pacfCollector.timestamps);
+
+    UDTFSegment segment = new UDTFSegment();
+    RecordingPointCollector segmentCollector = new RecordingPointCollector();
+    segment.validate(new UDFParameterValidator(defaultParameters));
+    segment.beforeStart(defaultParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    segment.transform(nullDoubleRow(1), segmentCollector);
+    segment.transform(new DoubleRow(2, 1.0), segmentCollector);
+
+    Map<String, String> splineAttributes = new HashMap<>();
+    splineAttributes.put("points", "2");
+    UDFParameters splineParameters = createSingleDoubleSeriesParameters(splineAttributes);
+    UDTFSpline spline = new UDTFSpline();
+    RecordingPointCollector splineCollector = new RecordingPointCollector();
+    spline.validate(new UDFParameterValidator(splineParameters));
+    spline.beforeStart(splineParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    spline.transform(nullDoubleRow(1), splineCollector);
+    spline.transform(new DoubleRow(2, 1.0), splineCollector);
+    spline.terminate(splineCollector);
+    Assert.assertTrue(splineCollector.timestamps.isEmpty());
   }
 
   @Test
@@ -393,6 +536,102 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testAggregateFunctionsSkipNullAndInvalidRows() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+
+    UDAFMedian median = new UDAFMedian();
+    RecordingPointCollector medianCollector = new RecordingPointCollector();
+    median.validate(new UDFParameterValidator(parameters));
+    median.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    median.transform(nullDoubleRow(1), medianCollector);
+    median.transform(new DoubleRow(2, 2.0), medianCollector);
+    median.transform(new DoubleRow(3, 4.0), medianCollector);
+    median.terminate(medianCollector);
+    Assert.assertEquals(3.0, medianCollector.values.get(0), 0.0);
+
+    UDAFMad mad = new UDAFMad();
+    RecordingPointCollector madCollector = new RecordingPointCollector();
+    mad.validate(new UDFParameterValidator(parameters));
+    mad.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    mad.transform(nullDoubleRow(1), madCollector);
+    mad.transform(new DoubleRow(2, 1.0), madCollector);
+    mad.transform(new DoubleRow(3, 2.0), madCollector);
+    mad.transform(new DoubleRow(4, 4.0), madCollector);
+    mad.terminate(madCollector);
+    Assert.assertEquals(1.0, madCollector.values.get(0), 0.0);
+
+    UDAFPercentile percentile = new UDAFPercentile();
+    RecordingPointCollector percentileCollector = new RecordingPointCollector();
+    percentile.validate(new UDFParameterValidator(parameters));
+    percentile.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    percentile.transform(nullDoubleRow(1), percentileCollector);
+    percentile.transform(new DoubleRow(2, 2.0), percentileCollector);
+    percentile.transform(new DoubleRow(3, 4.0), percentileCollector);
+    percentile.terminate(percentileCollector);
+    Assert.assertEquals(Collections.singletonList(2L), percentileCollector.timestamps);
+    Assert.assertEquals(2.0, percentileCollector.values.get(0), 0.0);
+
+    Map<String, String> approximateAttributes = new HashMap<>();
+    approximateAttributes.put("error", "0.1");
+    UDFParameters approximateParameters = createSingleDoubleSeriesParameters(approximateAttributes);
+
+    UDAFMedian approximateMedian = new UDAFMedian();
+    RecordingPointCollector approximateMedianCollector = new RecordingPointCollector();
+    approximateMedian.validate(new UDFParameterValidator(approximateParameters));
+    approximateMedian.beforeStart(
+        approximateParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    approximateMedian.transform(nullDoubleRow(1), approximateMedianCollector);
+    approximateMedian.transform(new DoubleRow(2, Double.NaN), approximateMedianCollector);
+    approximateMedian.terminate(approximateMedianCollector);
+    Assert.assertTrue(approximateMedianCollector.timestamps.isEmpty());
+
+    UDAFMad approximateMad = new UDAFMad();
+    RecordingPointCollector approximateMadCollector = new RecordingPointCollector();
+    approximateMad.validate(new UDFParameterValidator(approximateParameters));
+    approximateMad.beforeStart(
+        approximateParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    approximateMad.transform(nullDoubleRow(1), approximateMadCollector);
+    approximateMad.transform(new DoubleRow(2, Double.POSITIVE_INFINITY), approximateMadCollector);
+    approximateMad.terminate(approximateMadCollector);
+    Assert.assertTrue(approximateMadCollector.timestamps.isEmpty());
+
+    UDAFPercentile approximatePercentile = new UDAFPercentile();
+    RecordingPointCollector approximatePercentileCollector = new RecordingPointCollector();
+    approximatePercentile.validate(new UDFParameterValidator(approximateParameters));
+    approximatePercentile.beforeStart(
+        approximateParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    approximatePercentile.transform(nullDoubleRow(1), approximatePercentileCollector);
+    approximatePercentile.transform(
+        new DoubleRow(2, Double.NEGATIVE_INFINITY), approximatePercentileCollector);
+    approximatePercentile.terminate(approximatePercentileCollector);
+    Assert.assertTrue(approximatePercentileCollector.timestamps.isEmpty());
+
+    UDAFQuantile quantile = new UDAFQuantile();
+    RecordingPointCollector quantileCollector = new RecordingPointCollector();
+    quantile.validate(new UDFParameterValidator(parameters));
+    quantile.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    quantile.transform(nullDoubleRow(1), quantileCollector);
+    quantile.transform(new DoubleRow(2, Double.NaN), quantileCollector);
+    quantile.transform(new DoubleRow(3, 2.0), quantileCollector);
+    quantile.transform(new DoubleRow(4, 4.0), quantileCollector);
+    quantile.terminate(quantileCollector);
+    Assert.assertEquals(1, quantileCollector.values.size());
+    Assert.assertEquals(2.0, quantileCollector.values.get(0), 0.0);
+
+    UDAFSkew skew = new UDAFSkew();
+    RecordingPointCollector skewCollector = new RecordingPointCollector();
+    skew.validate(new UDFParameterValidator(parameters));
+    skew.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    skew.transform(nullDoubleRow(1), skewCollector);
+    skew.transform(new DoubleRow(2, Double.NaN), skewCollector);
+    skew.transform(new DoubleRow(3, 1.0), skewCollector);
+    skew.transform(new DoubleRow(4, 2.0), skewCollector);
+    skew.transform(new DoubleRow(5, 3.0), skewCollector);
+    skew.terminate(skewCollector);
+    Assert.assertEquals(0.0, skewCollector.values.get(0), 0.0);
+  }
+
+  @Test
   public void testExactMadUsesAbsoluteDeviations() throws Exception {
     UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
     UDAFMad mad = new UDAFMad();
@@ -442,6 +681,60 @@ public class UDFWindowAndQueueTest {
 
     Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
     Assert.assertEquals(0.0, collector.values.get(0), 0.0);
+  }
+
+  @Test
+  public void testPeriodAndWindowDetectorsHandleNullRows() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+
+    UDAFPeriod period = new UDAFPeriod();
+    RecordingPointCollector periodCollector = new RecordingPointCollector();
+    period.validate(new UDFParameterValidator(parameters));
+    period.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    period.transform(
+        new SimpleRowWindow(nullDoubleRow(1), new DoubleRow(2, 1.0), nullDoubleRow(3)),
+        periodCollector);
+    Assert.assertEquals(Collections.singletonList(0L), periodCollector.timestamps);
+    Assert.assertEquals(0.0, periodCollector.values.get(0), 0.0);
+
+    UDTFTwoSidedFilter twoSidedFilter = new UDTFTwoSidedFilter();
+    RecordingPointCollector filterCollector = new RecordingPointCollector();
+    twoSidedFilter.validate(new UDFParameterValidator(parameters));
+    twoSidedFilter.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    twoSidedFilter.transform(
+        new SimpleRowWindow(new DoubleRow(1, 1.0), nullDoubleRow(2), new DoubleRow(3, 1.0)),
+        filterCollector);
+    Assert.assertFalse(filterCollector.timestamps.contains(2L));
+  }
+
+  @Test
+  public void testResampleAndMissDetectSkipNullRows() throws Exception {
+    Map<String, String> resampleAttributes = new HashMap<>();
+    resampleAttributes.put("every", "1ms");
+    resampleAttributes.put("aggr", "first");
+    resampleAttributes.put("interp", "nan");
+    UDFParameters resampleParameters = createSingleDoubleSeriesParameters(resampleAttributes);
+    UDTFResample resample = new UDTFResample();
+    RecordingPointCollector resampleCollector = new RecordingPointCollector();
+
+    resample.validate(new UDFParameterValidator(resampleParameters));
+    resample.beforeStart(resampleParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    resample.transform(nullDoubleRow(0), resampleCollector);
+    resample.transform(new DoubleRow(1, 10.0), resampleCollector);
+    resample.transform(new DoubleRow(2, 20.0), resampleCollector);
+    resample.terminate(resampleCollector);
+    Assert.assertFalse(resampleCollector.timestamps.contains(0L));
+
+    UDFParameters missDetectParameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDTFMissDetect missDetect = new UDTFMissDetect();
+    RecordingPointCollector missDetectCollector = new RecordingPointCollector();
+    missDetect.validate(new UDFParameterValidator(missDetectParameters));
+    missDetect.beforeStart(missDetectParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    missDetect.transform(nullDoubleRow(1), missDetectCollector);
+    missDetect.transform(new DoubleRow(2, 10.0), missDetectCollector);
+    missDetect.terminate(missDetectCollector);
+    Assert.assertEquals(Collections.singletonList(2L), missDetectCollector.timestamps);
+    Assert.assertEquals(0.0, missDetectCollector.values.get(0), 0.0);
   }
 
   @Test
@@ -645,6 +938,107 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testFrequencyFunctionsResetBuffersBetweenRuns() throws Exception {
+    UDFParameters singleSeries = createSingleDoubleSeriesParameters(Collections.emptyMap());
+
+    UDTFFFT fft = new UDTFFFT();
+    fft.validate(new UDFParameterValidator(singleSeries));
+    RecordingPointCollector fftCollector = new RecordingPointCollector();
+    fft.beforeStart(singleSeries, new UDTFConfigurations(ZoneId.systemDefault()));
+    fft.transform(new DoubleRow(1, 1.0), fftCollector);
+    fft.transform(new DoubleRow(2, 2.0), fftCollector);
+    fft.terminate(fftCollector);
+    Assert.assertFalse(fftCollector.timestamps.isEmpty());
+
+    fftCollector.timestamps.clear();
+    fftCollector.values.clear();
+    fft.beforeStart(singleSeries, new UDTFConfigurations(ZoneId.systemDefault()));
+    fft.transform(nullDoubleRow(3), fftCollector);
+    fft.terminate(fftCollector);
+    Assert.assertTrue(fftCollector.timestamps.isEmpty());
+
+    Map<String, String> wpassAttributes = new HashMap<>();
+    wpassAttributes.put("wpass", "0.5");
+    UDFParameters wpassParameters = createSingleDoubleSeriesParameters(wpassAttributes);
+
+    UDTFLowPass lowPass = new UDTFLowPass();
+    RecordingPointCollector lowPassCollector = new RecordingPointCollector();
+    lowPass.validate(new UDFParameterValidator(wpassParameters));
+    lowPass.beforeStart(wpassParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    lowPass.transform(new DoubleRow(1, 1.0), lowPassCollector);
+    lowPass.transform(new DoubleRow(2, 2.0), lowPassCollector);
+    lowPass.terminate(lowPassCollector);
+    Assert.assertFalse(lowPassCollector.timestamps.isEmpty());
+
+    lowPassCollector.timestamps.clear();
+    lowPassCollector.values.clear();
+    lowPass.beforeStart(wpassParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    lowPass.transform(nullDoubleRow(3), lowPassCollector);
+    lowPass.terminate(lowPassCollector);
+    Assert.assertTrue(lowPassCollector.timestamps.isEmpty());
+
+    UDTFHighPass highPass = new UDTFHighPass();
+    RecordingPointCollector highPassCollector = new RecordingPointCollector();
+    highPass.validate(new UDFParameterValidator(wpassParameters));
+    highPass.beforeStart(wpassParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    highPass.transform(new DoubleRow(1, 1.0), highPassCollector);
+    highPass.transform(new DoubleRow(2, 2.0), highPassCollector);
+    highPass.terminate(highPassCollector);
+    Assert.assertFalse(highPassCollector.timestamps.isEmpty());
+
+    highPassCollector.timestamps.clear();
+    highPassCollector.values.clear();
+    highPass.beforeStart(wpassParameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    highPass.transform(nullDoubleRow(3), highPassCollector);
+    highPass.terminate(highPassCollector);
+    Assert.assertTrue(highPassCollector.timestamps.isEmpty());
+
+    UDFEnvelopeAnalysis envelopeAnalysis = new UDFEnvelopeAnalysis();
+    RecordingPointCollector envelopeCollector = new RecordingPointCollector();
+    envelopeAnalysis.validate(new UDFParameterValidator(singleSeries));
+    envelopeAnalysis.beforeStart(singleSeries, new UDTFConfigurations(ZoneId.systemDefault()));
+    envelopeAnalysis.transform(new DoubleRow(1, 1.0), envelopeCollector);
+    envelopeAnalysis.transform(new DoubleRow(2, 2.0), envelopeCollector);
+    envelopeAnalysis.terminate(envelopeCollector);
+    Assert.assertFalse(envelopeCollector.timestamps.isEmpty());
+
+    envelopeCollector.timestamps.clear();
+    envelopeCollector.values.clear();
+    envelopeAnalysis.beforeStart(singleSeries, new UDTFConfigurations(ZoneId.systemDefault()));
+    envelopeAnalysis.transform(nullDoubleRow(3), envelopeCollector);
+    envelopeAnalysis.terminate(envelopeCollector);
+    Assert.assertTrue(envelopeCollector.timestamps.isEmpty());
+  }
+
+  @Test
+  public void testIFFTClearsBuffersBetweenRuns() throws Exception {
+    UDFParameters parameters = createTwoDoubleSeriesParameters(Collections.emptyMap());
+    UDTFIFFT ifft = new UDTFIFFT();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    ifft.validate(new UDFParameterValidator(parameters));
+    ifft.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    ifft.transform(
+        new DoubleRow(0, new double[] {1.0, 0.0}, new boolean[] {false, false}), collector);
+    ifft.transform(
+        new DoubleRow(1, new double[] {0.0, 0.0}, new boolean[] {false, false}), collector);
+    ifft.terminate(collector);
+    Assert.assertFalse(collector.timestamps.isEmpty());
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    ifft.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    ifft.transform(
+        new DoubleRow(0, new double[] {0.0, 0.0}, new boolean[] {true, false}), collector);
+    ifft.transform(
+        new DoubleRow(1, new double[] {0.0, Double.NaN}, new boolean[] {false, false}), collector);
+    ifft.terminate(collector);
+
+    Assert.assertTrue(collector.timestamps.isEmpty());
+    Assert.assertTrue(collector.values.isEmpty());
+  }
+
+  @Test
   public void testMultiLayerDWTRoundTrip() throws Exception {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("method", "Haar");
@@ -762,6 +1156,149 @@ public class UDFWindowAndQueueTest {
     spline.terminate(collector);
 
     Assert.assertEquals(Arrays.asList(-5L, -3L, -1L), collector.timestamps);
+  }
+
+  @Test
+  public void testOutlierValidatesRuntimeSensitiveParameters() {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("s", "0");
+
+    Assert.assertThrows(
+        UDFParameterNotValidException.class,
+        () ->
+            new UDTFOutlier()
+                .validate(
+                    new UDFParameterValidator(createSingleDoubleSeriesParameters(attributes))));
+
+    Assert.assertThrows(
+        UDFInputSeriesDataTypeNotValidException.class,
+        () ->
+            new UDTFOutlier()
+                .validate(
+                    new UDFParameterValidator(
+                        createSingleTextSeriesParameters(Collections.emptyMap()))));
+  }
+
+  @Test
+  public void testOutlierResetsBuffersBetweenRunsAndSkipsInvalidValues() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("w", "3");
+    attributes.put("s", "1");
+    attributes.put("k", "3");
+    attributes.put("r", "0");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFOutlier outlier = new UDTFOutlier();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    outlier.validate(new UDFParameterValidator(parameters));
+    outlier.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    outlier.transform(new DoubleRow(1, 1.0), collector);
+    outlier.transform(new DoubleRow(2, 100.0), collector);
+    outlier.transform(new DoubleRow(3, 1.0), collector);
+    outlier.transform(new DoubleRow(4, 2.0), collector);
+    outlier.terminate(collector);
+
+    Assert.assertFalse(collector.timestamps.isEmpty());
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    outlier.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    outlier.transform(new DoubleRow(5, new double[] {0.0}, new boolean[] {true}), collector);
+    outlier.transform(new DoubleRow(6, Double.NaN), collector);
+    outlier.terminate(collector);
+
+    Assert.assertTrue(collector.timestamps.isEmpty());
+    Assert.assertTrue(collector.values.isEmpty());
+  }
+
+  @Test
+  public void testIntegralResetsBetweenRunsAndIgnoresNullRows() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("unit", "1ms");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDAFIntegral integral = new UDAFIntegral();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    integral.validate(new UDFParameterValidator(parameters));
+    integral.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integral.transform(new DoubleRow(0, 1.0), collector);
+    integral.transform(new DoubleRow(1, new double[] {0.0}, new boolean[] {true}), collector);
+    integral.transform(new DoubleRow(2, 3.0), collector);
+    integral.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(4.0, collector.values.get(0), 0.0);
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    integral.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integral.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(0.0, collector.values.get(0), 0.0);
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    integral.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integral.transform(new DoubleRow(-2, 1.0), collector);
+    integral.transform(new DoubleRow(-1, 3.0), collector);
+    integral.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(2.0, collector.values.get(0), 0.0);
+  }
+
+  @Test
+  public void testIntegralAvgUsesFirstFinitePointAndResetsBetweenRuns() throws Exception {
+    UDFParameters parameters = createSingleDoubleSeriesParameters(Collections.emptyMap());
+    UDAFIntegralAvg integralAvg = new UDAFIntegralAvg();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    integralAvg.validate(new UDFParameterValidator(parameters));
+    integralAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integralAvg.transform(new DoubleRow(1, new double[] {0.0}, new boolean[] {true}), collector);
+    integralAvg.transform(new DoubleRow(2, 5.0), collector);
+    integralAvg.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(5.0, collector.values.get(0), 0.0);
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    integralAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integralAvg.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(0.0, collector.values.get(0), 0.0);
+
+    collector.timestamps.clear();
+    collector.values.clear();
+    integralAvg.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    integralAvg.transform(new DoubleRow(-2, 1.0), collector);
+    integralAvg.transform(new DoubleRow(-1, 3.0), collector);
+    integralAvg.terminate(collector);
+
+    Assert.assertEquals(Collections.singletonList(0L), collector.timestamps);
+    Assert.assertEquals(2.0, collector.values.get(0), 0.0);
+  }
+
+  @Test
+  public void testNegativeTimestampStateInitialization() throws Exception {
+    StreamMissDetector detector = new StreamMissDetector(10);
+    detector.insert(-5, 1.0);
+    detector.insert(-4, 2.0);
+
+    Field startTime = StreamMissDetector.class.getDeclaredField("startTime");
+    startTime.setAccessible(true);
+    Assert.assertEquals(-5L, startTime.getLong(detector));
+
+    Resampler resampler = new Resampler(2, "first", "nan");
+    resampler.insert(-5, 1.0);
+    resampler.insert(-4, 2.0);
+
+    Field currentTime = Resampler.class.getDeclaredField("currentTime");
+    currentTime.setAccessible(true);
+    Assert.assertEquals(-5L, currentTime.getLong(resampler));
   }
 
   @Test
@@ -884,6 +1421,10 @@ public class UDFWindowAndQueueTest {
   private static UDFParameters createTwoDoubleSeriesParameters(Map<String, String> attributes) {
     return new UDFParameters(
         Arrays.asList("s1", "s2"), Arrays.asList(Type.DOUBLE, Type.DOUBLE), attributes);
+  }
+
+  private static DoubleRow nullDoubleRow(long time) {
+    return new DoubleRow(time, new double[] {0.0}, new boolean[] {true});
   }
 
   private static int getWindowSize(UDTFKSigma kSigma) throws Exception {
@@ -1072,7 +1613,8 @@ public class UDFWindowAndQueueTest {
 
     @Override
     public void putBoolean(long timestamp, boolean value) {
-      throw new UnsupportedOperationException();
+      timestamps.add(timestamp);
+      values.add(value ? 1.0 : 0.0);
     }
 
     @Override

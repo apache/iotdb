@@ -70,6 +70,7 @@ public class UDTFFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    list.clear();
     String result = parameters.getStringOrDefault("result", "abs");
     this.compressed = parameters.hasAttribute(COMPRESS_PARAM);
     double compressRate = parameters.getDoubleOrDefault(COMPRESS_PARAM, 1);
@@ -78,6 +79,9 @@ public class UDTFFFT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       list.add(v);

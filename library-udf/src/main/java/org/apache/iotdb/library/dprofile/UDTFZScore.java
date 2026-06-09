@@ -86,8 +86,14 @@ public class UDTFZScore implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && sd > 0) {
-      collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - avg) / sd);
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        collector.putDouble(row.getTime(), (v - avg) / sd);
+      }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
@@ -102,6 +108,9 @@ public class UDTFZScore implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
+      if (value.isEmpty()) {
+        return;
+      }
       avg = sum / value.size();
       sd = Math.sqrt(squareSum / value.size() - avg * avg);
       for (int i = 0; i < value.size(); i++) {

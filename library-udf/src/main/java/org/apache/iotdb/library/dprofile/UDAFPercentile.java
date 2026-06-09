@@ -103,27 +103,28 @@ public class UDAFPercentile implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (exact) {
       statistics.insert(row);
       switch (dataType) {
         case INT32:
-          if (!row.isNull(0)) {
-            intDic.put(row.getInt(0), row.getTime());
-          }
+          intDic.put(row.getInt(0), row.getTime());
           break;
         case INT64:
-          if (!row.isNull(0)) {
-            longDic.put(row.getLong(0), row.getTime());
-          }
+          longDic.put(row.getLong(0), row.getTime());
           break;
         case FLOAT:
-          if (!row.isNull(0) && Float.isFinite(row.getFloat(0))) {
-            floatDic.put(row.getFloat(0), row.getTime());
+          float fv = row.getFloat(0);
+          if (Float.isFinite(fv)) {
+            floatDic.put(fv, row.getTime());
           }
           break;
         case DOUBLE:
-          if (!row.isNull(0) && Double.isFinite(row.getDouble(0))) {
-            doubleDic.put(row.getDouble(0), row.getTime());
+          double dv = row.getDouble(0);
+          if (Double.isFinite(dv)) {
+            doubleDic.put(dv, row.getTime());
           }
           break;
         case BLOB:
@@ -137,6 +138,9 @@ public class UDAFPercentile implements UDTF {
       }
     } else {
       double res = Util.getValueAsDouble(row);
+      if (!Double.isFinite(res)) {
+        return;
+      }
       sketch.insert(res);
     }
   }

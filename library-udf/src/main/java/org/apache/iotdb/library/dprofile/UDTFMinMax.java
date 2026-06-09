@@ -84,8 +84,14 @@ public class UDTFMinMax implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && max > min) {
-      collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - min) / (max - min));
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        collector.putDouble(row.getTime(), (v - min) / (max - min));
+      }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {

@@ -55,6 +55,9 @@ public class UDAFSkew implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
       this.count++;

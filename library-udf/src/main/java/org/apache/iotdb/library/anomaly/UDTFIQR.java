@@ -90,9 +90,12 @@ public class UDTFIQR implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (compute.equalsIgnoreCase(STREAM_COMPUTE) && q3 > q1) {
       double v = Util.getValueAsDouble(row);
-      if (v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr) {
+      if (Double.isFinite(v) && (v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr)) {
         collector.putDouble(row.getTime(), v);
       }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {

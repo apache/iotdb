@@ -60,16 +60,18 @@ public class UDTFMvAvg implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    long t = row.getTime();
-    if (v.isFull()) {
-      windowSum -= v.pop();
+    if (row.isNull(0)) {
+      return;
     }
     double value = Util.getValueAsDouble(row);
     if (Double.isFinite(value)) {
+      if (v.isFull()) {
+        windowSum -= v.pop();
+      }
       v.push(value);
       windowSum += value;
       if (v.isFull()) {
-        collector.putDouble(t, windowSum / windowSize);
+        collector.putDouble(row.getTime(), windowSum / windowSize);
       }
     }
   }

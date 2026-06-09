@@ -60,7 +60,7 @@ public class UDTFPACF implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    double v = Util.getValueAsDouble(row);
+    double v = row.isNull(0) ? 0d : Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       value.add(v);
     } else {

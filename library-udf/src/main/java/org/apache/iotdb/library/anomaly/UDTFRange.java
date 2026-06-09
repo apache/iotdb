@@ -63,6 +63,9 @@ public class UDTFRange implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     int intValue;
     long longValue;
     float floatValue;

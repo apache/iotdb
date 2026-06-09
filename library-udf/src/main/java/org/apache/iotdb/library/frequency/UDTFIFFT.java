@@ -71,6 +71,9 @@ public class UDTFIFFT implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    real.clear();
+    imag.clear();
+    time.clear();
     this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"), parameters);
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
@@ -81,13 +84,15 @@ public class UDTFIFFT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    if (!row.isNull(0)
-        && !row.isNull(1)
-        && Double.isFinite(Util.getValueAsDouble(row, 0))
-        && Double.isFinite(Util.getValueAsDouble(row, 1))) {
+    if (!row.isNull(0) && !row.isNull(1)) {
+      double realValue = Util.getValueAsDouble(row, 0);
+      double imagValue = Util.getValueAsDouble(row, 1);
+      if (!Double.isFinite(realValue) || !Double.isFinite(imagValue)) {
+        return;
+      }
       time.add((int) row.getTime());
-      real.add(Util.getValueAsDouble(row, 0));
-      imag.add(Util.getValueAsDouble(row, 1));
+      real.add(realValue);
+      imag.add(imagValue);
     }
   }
 

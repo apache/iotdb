@@ -55,7 +55,12 @@ public class UDTFMissDetect implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    detector.insert(row.getTime(), Util.getValueAsDouble(row));
+    if (!row.isNull(0)) {
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        detector.insert(row.getTime(), v);
+      }
+    }
     while (detector.hasNext()) {
       collector.putBoolean(detector.getOutTime(), detector.getOutValue());
       detector.next();

@@ -66,10 +66,16 @@ public class UDAFMad implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     if (exact) {
       statistics.insert(row);
     } else {
-      sketch.insert(Util.getValueAsDouble(row));
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        sketch.insert(v);
+      }
     }
   }
 
