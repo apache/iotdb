@@ -34,6 +34,9 @@ import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetReg
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlacementRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.GreedyCopySetRegionGroupMigrator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.IRegionGroupMigrator;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
@@ -50,9 +53,12 @@ public class RegionBalancer {
 
   private final IManager configManager;
   private final IRegionGroupAllocator regionGroupAllocator;
+  private final IRegionGroupMigrator regionGroupMigrator;
 
   public RegionBalancer(IManager configManager) {
     this.configManager = configManager;
+    // Todo(xphu): add more migrator algorithms and make it configurable
+    this.regionGroupMigrator = new GreedyCopySetRegionGroupMigrator();
 
     switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
       case GREEDY:
@@ -139,6 +145,29 @@ public class RegionBalancer {
     }
 
     return createRegionGroupsPlan;
+  }
+
+  /**
+   * Auto balance the RegionReplicas' distribution for cluster RegionGroups.
+   *
+   * @param availableDataNodeMap DataNodes that can be used for allocation
+   * @param regionGroupStatisticsMap Statistics of RegionGroups
+   * @param allocatedRegionGroups Allocated RegionGroups
+   * @param replicationFactor Replication factor of TRegionReplicaSet
+   * @return The optimal TRegionReplicaSet derived by the specified algorithm
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      int replicationFactor,
+      List<Integer> targetNodeIds) {
+    return regionGroupMigrator.autoBalanceRegionReplicasDistribution(
+        availableDataNodeMap,
+        regionGroupStatisticsMap,
+        allocatedRegionGroups,
+        replicationFactor,
+        targetNodeIds);
   }
 
   private NodeManager getNodeManager() {

@@ -182,6 +182,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadBalanceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -207,6 +208,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -1084,6 +1087,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowMigrationsResp showMigrations(final TShowMigrationsReq showMigrationsReq) {
+    return configManager.showMigrations(showMigrationsReq);
+  }
+
+  @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     return configManager.getLatestRegionRouteMap();
   }
@@ -1500,5 +1508,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus pushHeartbeat(final int dataNodeId, final TPipeHeartbeatResp resp) {
     return configManager.pushHeartbeat(dataNodeId, resp);
+  }
+
+  @Override
+  public TSStatus loadBalance(TLoadBalanceReq req) {
+    return configManager.loadBalance(req);
   }
 }
