@@ -331,6 +331,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setClientInfo(Properties arg0) throws SQLClientInfoException {
+    checkOpenForClientInfo("setClientInfo");
     throw new SQLClientInfoException(JdbcMessages.NOT_SUPPORT_SET_CLIENT_INFO, null);
   }
 
@@ -545,6 +546,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
+    checkOpenForClientInfo("setClientInfo");
     if ("time_zone".equalsIgnoreCase(name)) {
       try {
         setTimeZone(value);
@@ -799,6 +801,13 @@ public class IoTDBConnection implements Connection {
   private void checkOpen(String action) throws SQLException {
     if (isClosed) {
       throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
+  }
+
+  private void checkOpenForClientInfo(String action) throws SQLClientInfoException {
+    if (isClosed) {
+      throw new SQLClientInfoException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action), null);
     }
   }
 }
