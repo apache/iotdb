@@ -669,6 +669,10 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
     checkConnection("setQueryTimeout");
+    if (seconds < 0) {
+      throw new SQLException(
+          String.format(JdbcMessages.QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE, seconds));
+    }
     this.queryTimeout = seconds;
   }
 
@@ -685,7 +689,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetHoldability() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_RESULT_SET_HOLDABILITY);
+    return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
   @Override

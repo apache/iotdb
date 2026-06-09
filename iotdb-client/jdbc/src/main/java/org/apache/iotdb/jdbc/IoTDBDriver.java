@@ -98,8 +98,11 @@ public class IoTDBDriver implements Driver {
   }
 
   @Override
-  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
-    Properties properties = info == null ? new Properties() : info;
+  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+    Properties properties = info == null ? new Properties() : (Properties) info.clone();
+    if (url != null && acceptsURL(url)) {
+      Utils.parseUrl(url, properties);
+    }
     return new DriverPropertyInfo[] {
       createProperty(
           Config.AUTH_USER, Config.DEFAULT_USER, "User name for authentication.", properties),
@@ -131,6 +134,12 @@ public class IoTDBDriver implements Driver {
           Config.CHARSET, TSFileConfig.STRING_CHARSET.name(), "Connection charset.", properties),
       createProperty(
           Config.USE_SSL, "false", BOOLEAN_CHOICES, "Whether to enable SSL.", properties),
+      createProperty(
+          Utils.RPC_COMPRESS,
+          String.valueOf(Config.rpcThriftCompressionEnable),
+          BOOLEAN_CHOICES,
+          "Whether to enable RPC thrift compression.",
+          properties),
       createProperty(Config.TRUST_STORE, null, "SSL trust store path.", properties),
       createSensitiveProperty(Config.TRUST_STORE_PWD, "SSL trust store password."),
       createProperty(

@@ -38,8 +38,14 @@ public class IoTDBDataSource implements DataSource {
   private String url;
   private String user;
   private String password;
+  private String serverName = Config.IOTDB_DEFAULT_HOST;
+  private String databaseName;
+  private String dataSourceName;
+  private String description;
+  private String networkProtocol;
+  private String roleName;
   private Properties properties;
-  private Integer port = 6667;
+  private Integer port = Config.IOTDB_DEFAULT_PORT;
   private PrintWriter logWriter;
   private int loginTimeout;
 
@@ -52,9 +58,7 @@ public class IoTDBDataSource implements DataSource {
     this.properties = new Properties();
     setUser(user);
     setPassword(password);
-    if (port != null && port != 0) {
-      this.port = port;
-    }
+    setPort(port);
   }
 
   public String getUser() {
@@ -80,7 +84,63 @@ public class IoTDBDataSource implements DataSource {
   }
 
   public void setPort(Integer port) {
-    this.port = port;
+    this.port = port == null || port == 0 ? Config.IOTDB_DEFAULT_PORT : port;
+  }
+
+  public Integer getPortNumber() {
+    return getPort();
+  }
+
+  public void setPortNumber(Integer portNumber) {
+    setPort(portNumber);
+  }
+
+  public String getServerName() {
+    return serverName;
+  }
+
+  public void setServerName(String serverName) {
+    this.serverName = serverName;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  public String getDataSourceName() {
+    return dataSourceName;
+  }
+
+  public void setDataSourceName(String dataSourceName) {
+    this.dataSourceName = dataSourceName;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public String getNetworkProtocol() {
+    return networkProtocol;
+  }
+
+  public void setNetworkProtocol(String networkProtocol) {
+    this.networkProtocol = networkProtocol;
+  }
+
+  public String getRoleName() {
+    return roleName;
+  }
+
+  public void setRoleName(String roleName) {
+    this.roleName = roleName;
   }
 
   public String getUrl() {
@@ -145,7 +205,7 @@ public class IoTDBDataSource implements DataSource {
   private Connection createConnection(Properties connectionProperties) throws SQLException {
     applyLoginTimeout(connectionProperties);
     try {
-      return new IoTDBConnection(url, connectionProperties);
+      return new IoTDBConnection(getConnectionUrl(), connectionProperties);
     } catch (TTransportException e) {
       LOGGER.error(JdbcMessages.GET_CONNECTION_ERROR, e);
       throw new SQLException(
@@ -153,6 +213,20 @@ public class IoTDBDataSource implements DataSource {
               + " has started.",
           e);
     }
+  }
+
+  String getConnectionUrl() {
+    if (url != null) {
+      return url;
+    }
+    String host =
+        serverName == null || serverName.trim().isEmpty() ? Config.IOTDB_DEFAULT_HOST : serverName;
+    StringBuilder builder = new StringBuilder(Config.IOTDB_URL_PREFIX);
+    builder.append(host).append(':').append(port);
+    if (databaseName != null && !databaseName.isEmpty()) {
+      builder.append('/').append(databaseName);
+    }
+    return builder.toString();
   }
 
   private void applyLoginTimeout(Properties connectionProperties) {

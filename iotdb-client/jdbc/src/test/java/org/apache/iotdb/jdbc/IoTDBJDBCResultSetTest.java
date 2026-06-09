@@ -207,6 +207,7 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertFalse(resultSet.isWrapperFor(null));
       Assert.assertSame(resultSet, resultSet.unwrap(IoTDBJDBCResultSet.class));
       Assert.assertSame(resultSet, resultSet.unwrap(ResultSet.class));
+      Assert.assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
 
       // check columnInfoMap
       Assert.assertEquals(1, resultSet.findColumn("Time"));

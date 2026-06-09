@@ -39,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBDataSourceFactoryTest {
 
   @Test
-  public void testCreateDataSourceAllowsNullProperties() {
+  public void testCreateDataSourceAllowsNullProperties() throws SQLException {
     DataSource dataSource = new IoTDBDataSourceFactory().createDataSource(null);
 
     assertTrue(dataSource instanceof IoTDBDataSource);
@@ -50,7 +50,7 @@ public class IoTDBDataSourceFactoryTest {
   }
 
   @Test
-  public void testCreateDataSourceAllowsUrlOnlyProperties() {
+  public void testCreateDataSourceAllowsUrlOnlyProperties() throws SQLException {
     String url = "jdbc:iotdb://localhost:6667";
     Properties properties = new Properties();
     properties.setProperty(DataSourceFactory.JDBC_URL, url);
@@ -62,6 +62,65 @@ public class IoTDBDataSourceFactoryTest {
     assertNull(dataSource.getUser());
     assertNull(dataSource.getPassword());
     assertEquals(url, properties.getProperty(DataSourceFactory.JDBC_URL));
+  }
+
+  @Test
+  public void testCreateDataSourceSupportsStandardServerPortAndDatabaseProperties()
+      throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty(DataSourceFactory.JDBC_SERVER_NAME, "127.0.0.1");
+    properties.put(DataSourceFactory.JDBC_PORT_NUMBER, 6688);
+    properties.setProperty(DataSourceFactory.JDBC_DATABASE_NAME, "root.sg");
+
+    IoTDBDataSource dataSource =
+        (IoTDBDataSource) new IoTDBDataSourceFactory().createDataSource(properties);
+
+    assertEquals("127.0.0.1", dataSource.getServerName());
+    assertEquals(Integer.valueOf(6688), dataSource.getPortNumber());
+    assertEquals("root.sg", dataSource.getDatabaseName());
+    assertNull(dataSource.getUrl());
+    assertEquals("jdbc:iotdb://127.0.0.1:6688/root.sg", dataSource.getConnectionUrl());
+    assertEquals(Integer.valueOf(6688), properties.get(DataSourceFactory.JDBC_PORT_NUMBER));
+  }
+
+  @Test
+  public void testCreateDataSourceAcceptsStandardInformationalAndPoolProperties()
+      throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty(DataSourceFactory.JDBC_DATASOURCE_NAME, "iotdb-ds");
+    properties.setProperty(DataSourceFactory.JDBC_DESCRIPTION, "IoTDB test data source");
+    properties.setProperty(DataSourceFactory.JDBC_NETWORK_PROTOCOL, "tcp");
+    properties.setProperty(DataSourceFactory.JDBC_ROLE_NAME, "reader");
+    properties.put(DataSourceFactory.JDBC_INITIAL_POOL_SIZE, 1);
+    properties.put(DataSourceFactory.JDBC_MAX_POOL_SIZE, 2);
+
+    IoTDBDataSource dataSource =
+        (IoTDBDataSource) new IoTDBDataSourceFactory().createDataSource(properties);
+
+    assertEquals("iotdb-ds", dataSource.getDataSourceName());
+    assertEquals("IoTDB test data source", dataSource.getDescription());
+    assertEquals("tcp", dataSource.getNetworkProtocol());
+    assertEquals("reader", dataSource.getRoleName());
+  }
+
+  @Test(expected = SQLException.class)
+  public void testCreateDataSourceRejectsInvalidStandardPortProperty() throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty(DataSourceFactory.JDBC_PORT_NUMBER, "bad");
+
+    new IoTDBDataSourceFactory().createDataSource(properties);
+  }
+
+  @Test
+  public void testDataSourceExplicitUrlTakesPrecedenceOverStandardProperties() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setUrl("jdbc:iotdb://explicit:6667/root.explicit");
+    dataSource.setServerName("127.0.0.1");
+    dataSource.setPortNumber(6688);
+    dataSource.setDatabaseName("root.sg");
+
+    assertEquals("jdbc:iotdb://explicit:6667/root.explicit", dataSource.getConnectionUrl());
   }
 
   @Test

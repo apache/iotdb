@@ -135,11 +135,7 @@ public class IoTDBConnection implements Connection {
     this.zoneId = ZoneId.of(params.getTimeZone());
     this.charset = params.getCharset();
     openTransport();
-    if (Config.rpcThriftCompressionEnable) {
-      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
-    } else {
-      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
-    }
+    openClient();
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
@@ -311,7 +307,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getHoldability() {
-    return 0;
+    return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
   @Override
@@ -408,7 +404,10 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean isValid(int arg0) {
+  public boolean isValid(int arg0) throws SQLException {
+    if (arg0 < 0) {
+      throw new SQLException("timeout must be >= 0");
+    }
     return !isClosed;
   }
 
@@ -561,6 +560,14 @@ public class IoTDBConnection implements Connection {
     }
   }
 
+  private void openClient() {
+    if (params.isRpcThriftCompressionEnabled()) {
+      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
+    } else {
+      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
+    }
+  }
+
   private void openSession() throws SQLException {
     TSOpenSessionReq openReq = new TSOpenSessionReq();
 
@@ -636,11 +643,7 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if (Config.rpcThriftCompressionEnable) {
-            setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
-          } else {
-            setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
-          }
+          openClient();
           openSession();
           setClient(RpcUtils.newSynchronizedClient(getClient()));
           flag = true;

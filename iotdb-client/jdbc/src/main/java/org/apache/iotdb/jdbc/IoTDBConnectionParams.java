@@ -51,6 +51,7 @@ public class IoTDBConnectionParams {
   private boolean useSSL = false;
   private String trustStore;
   private String trustStorePwd;
+  private boolean rpcThriftCompressionEnabled = Config.rpcThriftCompressionEnable;
 
   private String sqlDialect = TREE;
 
@@ -182,6 +183,14 @@ public class IoTDBConnectionParams {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return rpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    this.rpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
   public String getSqlDialect() {

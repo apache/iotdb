@@ -22,6 +22,7 @@ package org.apache.iotdb.jdbc;
 import org.junit.Test;
 
 import java.sql.DriverPropertyInfo;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -52,7 +53,7 @@ public class IoTDBDriverTest {
   }
 
   @Test
-  public void testGetPropertyInfo() {
+  public void testGetPropertyInfo() throws SQLException {
     IoTDBDriver driver = new IoTDBDriver();
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, "root");
@@ -78,7 +79,7 @@ public class IoTDBDriverTest {
   }
 
   @Test
-  public void testGetPropertyInfoAllowsNullProperties() {
+  public void testGetPropertyInfoAllowsNullProperties() throws SQLException {
     IoTDBDriver driver = new IoTDBDriver();
 
     DriverPropertyInfo[] propertyInfos =
@@ -86,6 +87,41 @@ public class IoTDBDriverTest {
 
     assertNotNull(propertyInfos);
     assertEquals(Config.DEFAULT_USER, findProperty(propertyInfos, Config.AUTH_USER).value);
+  }
+
+  @Test
+  public void testGetPropertyInfoMergesUrlPropertiesWithoutMutatingInput() throws SQLException {
+    IoTDBDriver driver = new IoTDBDriver();
+    Properties properties = new Properties();
+    properties.setProperty(Config.USE_SSL, "false");
+    boolean originalRpcCompression = Config.rpcThriftCompressionEnable;
+    Config.rpcThriftCompressionEnable = false;
+    try {
+      DriverPropertyInfo[] propertyInfos =
+          driver.getPropertyInfo(
+              "jdbc:iotdb://localhost:6667?use_ssl=true&sql_dialect=table&network_timeout=123&rpc_compress=true",
+              properties);
+
+      assertEquals("true", findProperty(propertyInfos, Config.USE_SSL).value);
+      assertEquals(Constant.TABLE, findProperty(propertyInfos, Config.SQL_DIALECT).value);
+      assertEquals("123", findProperty(propertyInfos, Config.NETWORK_TIMEOUT).value);
+      assertEquals("true", findProperty(propertyInfos, Utils.RPC_COMPRESS).value);
+      assertEquals("false", properties.getProperty(Config.USE_SSL));
+      assertFalse(Config.rpcThriftCompressionEnable);
+    } finally {
+      Config.rpcThriftCompressionEnable = originalRpcCompression;
+    }
+  }
+
+  @Test(expected = SQLException.class)
+  public void testGetPropertyInfoRejectsInvalidIoTDBUrl() throws SQLException {
+    new IoTDBDriver().getPropertyInfo("jdbc:iotdb://localhost", new Properties());
+  }
+
+  @Test(expected = SQLException.class)
+  public void testGetPropertyInfoRejectsInvalidUrlProperties() throws SQLException {
+    new IoTDBDriver()
+        .getPropertyInfo("jdbc:iotdb://localhost:6667?network_timeout=-1", new Properties());
   }
 
   private static DriverPropertyInfo findProperty(DriverPropertyInfo[] propertyInfos, String name) {

@@ -32,6 +32,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
@@ -111,6 +112,12 @@ public class IoTDBStatementTest {
     Assert.assertEquals(100, statement.getQueryTimeout());
   }
 
+  @Test(expected = SQLException.class)
+  public void testSetQueryTimeoutRejectsNegativeValue() throws SQLException {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID);
+    statement.setQueryTimeout(-1);
+  }
+
   @Test
   public void testWrapperMethods() throws SQLException {
     IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID);
@@ -121,6 +128,13 @@ public class IoTDBStatementTest {
     assertFalse(statement.isWrapperFor(null));
     assertSame(statement, statement.unwrap(IoTDBStatement.class));
     assertSame(statement, statement.unwrap(Statement.class));
+  }
+
+  @Test
+  public void testStandardResultSetHoldability() throws SQLException {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID);
+
+    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, statement.getResultSetHoldability());
   }
 
   @Test(expected = SQLException.class)

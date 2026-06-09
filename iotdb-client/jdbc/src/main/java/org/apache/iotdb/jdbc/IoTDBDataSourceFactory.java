@@ -38,28 +38,67 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   private final Logger logger = LoggerFactory.getLogger(IoTDBDataSourceFactory.class);
 
   @Override
-  public DataSource createDataSource(Properties properties) {
+  public DataSource createDataSource(Properties properties) throws SQLException {
     IoTDBDataSource ds = new IoTDBDataSource();
     setProperties(ds, properties);
     return ds;
   }
 
-  public void setProperties(IoTDBDataSource ds, Properties prop) {
+  public void setProperties(IoTDBDataSource ds, Properties prop) throws SQLException {
     Properties properties = prop == null ? new Properties() : (Properties) prop.clone();
-    String url = (String) properties.remove(DataSourceFactory.JDBC_URL);
+    String url = removeStringProperty(properties, DataSourceFactory.JDBC_URL);
     if (url != null) {
       ds.setUrl(url);
     }
 
-    String user = (String) properties.remove(DataSourceFactory.JDBC_USER);
+    String user = removeStringProperty(properties, DataSourceFactory.JDBC_USER);
     if (user != null) {
       ds.setUser(user);
     }
 
-    String password = (String) properties.remove(DataSourceFactory.JDBC_PASSWORD);
+    String password = removeStringProperty(properties, DataSourceFactory.JDBC_PASSWORD);
     if (password != null) {
       ds.setPassword(password);
     }
+
+    String serverName = removeStringProperty(properties, DataSourceFactory.JDBC_SERVER_NAME);
+    if (serverName != null) {
+      ds.setServerName(serverName);
+    }
+
+    Integer portNumber = removeIntegerProperty(properties, DataSourceFactory.JDBC_PORT_NUMBER);
+    if (portNumber != null) {
+      ds.setPortNumber(portNumber);
+    }
+
+    String databaseName = removeStringProperty(properties, DataSourceFactory.JDBC_DATABASE_NAME);
+    if (databaseName != null) {
+      ds.setDatabaseName(databaseName);
+    }
+
+    String dataSourceName =
+        removeStringProperty(properties, DataSourceFactory.JDBC_DATASOURCE_NAME);
+    if (dataSourceName != null) {
+      ds.setDataSourceName(dataSourceName);
+    }
+
+    String description = removeStringProperty(properties, DataSourceFactory.JDBC_DESCRIPTION);
+    if (description != null) {
+      ds.setDescription(description);
+    }
+
+    String networkProtocol =
+        removeStringProperty(properties, DataSourceFactory.JDBC_NETWORK_PROTOCOL);
+    if (networkProtocol != null) {
+      ds.setNetworkProtocol(networkProtocol);
+    }
+
+    String roleName = removeStringProperty(properties, DataSourceFactory.JDBC_ROLE_NAME);
+    if (roleName != null) {
+      ds.setRoleName(roleName);
+    }
+
+    removeUnsupportedPoolProperties(properties);
 
     logger.info(JdbcMessages.REMAINING_PROPERTIES, properties.size());
 
@@ -82,5 +121,36 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   @Override
   public Driver createDriver(Properties properties) {
     return new IoTDBDriver();
+  }
+
+  private static String removeStringProperty(Properties properties, String key) {
+    Object value = properties.remove(key);
+    return value == null ? null : value.toString();
+  }
+
+  private static Integer removeIntegerProperty(Properties properties, String key)
+      throws SQLException {
+    Object value = properties.remove(key);
+    if (value == null) {
+      return null;
+    }
+    try {
+      int integerValue = Integer.parseInt(value.toString());
+      if (integerValue < 0 || integerValue > 65535) {
+        throw new NumberFormatException(value.toString());
+      }
+      return integerValue;
+    } catch (NumberFormatException e) {
+      throw new SQLException("Invalid JDBC property " + key + ": " + value, e);
+    }
+  }
+
+  private static void removeUnsupportedPoolProperties(Properties properties) {
+    properties.remove(DataSourceFactory.JDBC_INITIAL_POOL_SIZE);
+    properties.remove(DataSourceFactory.JDBC_MAX_IDLE_TIME);
+    properties.remove(DataSourceFactory.JDBC_MAX_POOL_SIZE);
+    properties.remove(DataSourceFactory.JDBC_MAX_STATEMENTS);
+    properties.remove(DataSourceFactory.JDBC_MIN_POOL_SIZE);
+    properties.remove(DataSourceFactory.JDBC_PROPERTY_CYCLE);
   }
 }

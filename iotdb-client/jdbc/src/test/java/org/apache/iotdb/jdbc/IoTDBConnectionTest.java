@@ -35,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -122,6 +123,17 @@ public class IoTDBConnectionTest {
   public void setTimeoutTest() throws SQLException {
     connection.setQueryTimeout(60);
     Assert.assertEquals(60, connection.getQueryTimeout());
+  }
+
+  @Test
+  public void testStandardConnectionStateMethods() throws SQLException {
+    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, connection.getHoldability());
+    assertFalse(connection.isValid(0));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testIsValidRejectsNegativeTimeout() throws SQLException {
+    connection.isValid(-1);
   }
 
   @Test
