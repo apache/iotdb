@@ -544,7 +544,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
     setProperty(
-        "pipe_connector_request_slice_threshold_bytes",
+        "pipe_sink_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
     return this;

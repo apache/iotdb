@@ -1079,6 +1079,18 @@ struct TGetAllSubscriptionInfoResp {
     2: required list<binary> allSubscriptionInfo
 }
 
+struct TGetCommitProgressReq {
+    1: required string consumerGroupId
+    2: required string topicName
+    3: required i32 regionId
+    4: required i32 dataNodeId
+}
+
+struct TGetCommitProgressResp {
+    1: required common.TSStatus status
+    2: optional binary committedRegionProgress
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -1981,6 +1993,9 @@ service IConfigNodeRPCService {
 
   /** Get all subscription information. It is used for DataNode registration and restart */
   TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
+
+  /** Get committed search index from ConfigNode for recovery */
+  TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req)
 
   // ======================================================
   // TestTools

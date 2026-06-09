@@ -117,7 +117,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewPr
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
@@ -1669,6 +1671,21 @@ public class ProcedureManager {
     }
   }
 
+  public void subscriptionHandleLeaderChange(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap,
+      long runtimeVersion) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new SubscriptionHandleLeaderChangeProcedure(
+                  regionGroupToOldAndNewLeaderPairMap, runtimeVersion));
+      LOGGER.info(
+          "SubscriptionHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
+    } catch (Exception e) {
+      LOGGER.warn("SubscriptionHandleLeaderChangeProcedure was failed to submit.", e);
+    }
+  }
+
   public boolean pipeHandleMetaChange(
       boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
     try {
@@ -1884,6 +1901,23 @@ public class ProcedureManager {
   public TSStatus consumerGroupMetaSync() {
     try {
       ConsumerGroupMetaSyncProcedure procedure = new ConsumerGroupMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else {
+        return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus commitProgressSync() {
+    try {
+      CommitProgressSyncProcedure procedure = new CommitProgressSyncProcedure();
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

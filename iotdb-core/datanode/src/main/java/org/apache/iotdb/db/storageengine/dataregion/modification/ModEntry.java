@@ -24,9 +24,11 @@ import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
 import org.apache.tsfile.annotations.TreeModel;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.EOFException;
@@ -47,7 +49,15 @@ public abstract class ModEntry
 
   public int serializedSize() {
     // modType + time range
-    return Byte.BYTES + Long.BYTES * 2 + Byte.BYTES * 2;
+    return Byte.BYTES + Long.BYTES * 2;
+  }
+
+  static int sizeToWriteVarString(final String value) {
+    if (value == null) {
+      return ReadWriteForEncodingUtils.varIntSize(-1);
+    }
+    final int byteLength = value.getBytes(TSFileConfig.STRING_CHARSET).length;
+    return ReadWriteForEncodingUtils.varIntSize(byteLength) + byteLength;
   }
 
   @Override

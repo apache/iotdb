@@ -1285,6 +1285,12 @@ public class IoTDBDescriptor {
                 "region_migration_speed_limit_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "region_migration_speed_limit_bytes_per_second"))));
+    conf.setKeepSameDiskWhenLoadingSnapshot(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "keep_same_disk_when_loading_snapshot",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "keep_same_disk_when_loading_snapshot"))));
   }
 
   private void loadIoTConsensusV2Props(TrimProperties properties) throws IOException {
@@ -2207,6 +2213,11 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("enable_wal_compression")));
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
+
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
 
       // update Consensus config
       reloadConsensusProps(properties);

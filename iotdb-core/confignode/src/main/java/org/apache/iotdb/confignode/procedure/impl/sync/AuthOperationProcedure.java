@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -100,6 +101,11 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
           TSStatus status;
           req.setUsername(user);
           req.setRoleName(role);
+          if (plan.getAuthorType() == ConfigPhysicalPlanType.AccountUnlock
+              || plan.getAuthorType() == ConfigPhysicalPlanType.RAccountUnlock) {
+            // For account unlock, role carries the optional login address.
+            req.setNeedDisconnect(true);
+          }
           Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
           while (it.hasNext()) {
             Pair<TDataNodeConfiguration, Long> pair = it.next();

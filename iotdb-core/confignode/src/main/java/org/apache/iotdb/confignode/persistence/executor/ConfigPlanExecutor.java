@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -113,6 +114,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -361,7 +363,7 @@ public class ConfigPlanExecutor {
       case GetRegionGroupsByTime:
         return partitionInfo.getRegionGroupsByTime((GetRegionGroupsByTimePlan) req);
       case SHOW_CQ:
-        return cqInfo.showCQ();
+        return cqInfo.showCQ((ShowCQPlan) req);
       case ShowExternalService:
         return externalServiceInfo.showService(((ShowExternalServicePlan) req).getDataNodeIds());
       case GetFunctionTable:
@@ -488,6 +490,7 @@ public class ConfigPlanExecutor {
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
       case RenameUser:
+      case AccountUnlock:
       case RCreateRole:
       case RCreateUser:
       case RDropUser:
@@ -647,6 +650,9 @@ public class ConfigPlanExecutor {
       case ConsumerGroupHandleMetaChange:
         return subscriptionInfo.handleConsumerGroupMetaChanges(
             (ConsumerGroupHandleMetaChangePlan) physicalPlan);
+      case CommitProgressHandleMetaChange:
+        return subscriptionInfo.handleCommitProgressChanges(
+            (CommitProgressHandleMetaChangePlan) physicalPlan);
       case AlterConsumerGroup:
         return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
       case TopicHandleMetaChange:

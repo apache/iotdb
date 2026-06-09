@@ -986,6 +986,7 @@ fillClause
 fillMethod
     : LINEAR timeColumnClause? fillGroupClause?                                    #linearFill
     | PREVIOUS timeBoundClause? timeColumnClause? fillGroupClause?                 #previousFill
+    | NEXT timeBoundClause? timeColumnClause? fillGroupClause?                     #nextFill
     | CONSTANT literalExpression                                                   #valueFill
     ;
 

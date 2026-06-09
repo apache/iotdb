@@ -26,6 +26,9 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -48,6 +51,9 @@ import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionQueueRegistry;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionWalRetentionCalculator;
+import org.apache.iotdb.consensus.iot.subscription.SubscriptionWalRetentionCalculator.SubscriptionRetentionBound;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
 import org.apache.iotdb.consensus.iot.thrift.TBuildSyncLogChannelReq;
@@ -60,6 +66,8 @@ import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelReq;
 import org.apache.iotdb.consensus.iot.thrift.TRemoveSyncLogChannelRes;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
@@ -88,9 +96,11 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -105,6 +115,10 @@ import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 public class IoTConsensusServerImpl {
 
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
+  private static final String WRITER_META_FILE_NAME = "writer.meta";
+  // writer.meta only protects writer physical-time monotonicity after restart, so avoid fsync per
+  // write.
+  private static final long WRITER_META_PERSIST_MIN_INTERVAL_MS = 1_000L;
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -115,6 +129,7 @@ public class IoTConsensusServerImpl {
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
+  private FolderManager recvFolderManager = null;
   private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
@@ -130,17 +145,55 @@ public class IoTConsensusServerImpl {
       IoTConsensusRateLimiter.getInstance();
   private IndexedConsensusRequest lastConsensusRequest;
 
+  // Subscription queues receive IndexedConsensusRequest in real-time from write(),
+  // similar to LogDispatcher, enabling in-memory data delivery without waiting for WAL flush.
+  private final SubscriptionQueueRegistry subscriptionQueueRegistry;
+  private final SubscriptionWalRetentionCalculator subscriptionWalRetentionCalculator;
+
+  /** Current routing epoch for ordered consensus subscription. Set by external routing changes. */
+  private volatile long currentRoutingEpoch = 0;
+
+  /**
+   * Maximum physical time known to this replica. Local writes assign from it; remote replication
+   * can also raise it so future local writes do not regress behind observed remote events.
+   */
+  private final AtomicLong lastAssignedPhysicalTime = new AtomicLong(0);
+
+  private final WriterSafeFrontierTracker writerSafeFrontierTracker =
+      new WriterSafeFrontierTracker();
+
+  private final Path writerMetaPath;
+  private final Object writerMetaPersistLock = new Object();
+  private volatile WriterMeta latestWriterMeta;
+  private long lastPersistedWriterLocalSeq = -1;
+  private long lastPersistedWriterPhysicalTime = -1;
+  private long lastWriterMetaPersistAttemptTimeMs = 0;
+
   public IoTConsensusServerImpl(
       String storageDir,
+      List<String> recvSnapshotDirs,
       Peer thisNode,
       TreeSet<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
-      IoTConsensusConfig config) {
+      IoTConsensusConfig config)
+      throws DiskSpaceInsufficientException {
     this.active = true;
     this.storageDir = storageDir;
+    List<String> snapshotDirs = new ArrayList<>();
+    if (recvSnapshotDirs != null) {
+      for (String dir : recvSnapshotDirs) {
+        snapshotDirs.add(dir + File.separator + SNAPSHOT_DIR_NAME);
+      }
+    } else {
+      snapshotDirs.add(storageDir);
+    }
+
+    this.recvFolderManager =
+        new FolderManager(
+            snapshotDirs, DirectoryStrategyType.MIN_FOLDER_OCCUPIED_SPACE_FIRST_STRATEGY);
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
@@ -152,6 +205,11 @@ public class IoTConsensusServerImpl {
     this.consensusReqReader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(consensusReqReader.getCurrentSearchIndex());
+    this.subscriptionQueueRegistry = new SubscriptionQueueRegistry(consensusGroupId);
+    this.subscriptionWalRetentionCalculator =
+        new SubscriptionWalRetentionCalculator(consensusReqReader);
+    this.writerMetaPath = Paths.get(storageDir, WRITER_META_FILE_NAME);
+    initializeWriterMeta();
     this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
     this.logDispatcher = new LogDispatcher(this, clientManager);
   }
@@ -169,6 +227,7 @@ public class IoTConsensusServerImpl {
 
   public void stop() {
     logDispatcher.stop();
+    persistLatestWriterMeta(true);
     stateMachine.stop();
     MetricService.getInstance().removeMetricSet(this.ioTConsensusServerMetrics);
   }
@@ -211,6 +270,7 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      indexedConsensusRequest.setRoutingEpoch(currentRoutingEpoch);
       lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
@@ -230,6 +290,10 @@ public class IoTConsensusServerImpl {
       ioTConsensusServerMetrics.recordWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        writerSafeFrontierTracker.recordAppliedProgress(
+            indexedConsensusRequest.getPhysicalTime(),
+            thisNode.getNodeId(),
+            indexedConsensusRequest.getLocalSeq());
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
         // the queue, the dispatcher will try to find the request in WAL. This behavior
@@ -238,17 +302,35 @@ public class IoTConsensusServerImpl {
         // in one transaction.
         synchronized (searchIndex) {
           logDispatcher.offer(indexedConsensusRequest);
+          // Deliver to subscription queues for real-time in-memory consumption.
+          // Offer AFTER stateMachine.write() so that InsertNode has inferred types
+          // and properly typed values (same timing as LogDispatcher).
+          final int sqCount = subscriptionQueueRegistry.size();
+          if (sqCount > 0) {
+            subscriptionQueueRegistry.offer(indexedConsensusRequest);
+          } else if (logger.isDebugEnabled()
+              && indexedConsensusRequest.getSearchIndex() % 50 == 0) {
+            // Log periodically when no subscription queues are registered
+            logger.debug(
+                "write() no subscription queues registered, " + "group={}, searchIndex={}, this={}",
+                consensusGroupId,
+                indexedConsensusRequest.getSearchIndex(),
+                System.identityHashCode(this));
+          }
           searchIndex.incrementAndGet();
         }
+        updateWriterMetaOnSuccess(indexedConsensusRequest);
         // statistic the time of offering request into queue
         ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
             System.nanoTime() - writeToStateMachineEndTime);
-      } else {
+      } else if (logger.isDebugEnabled()) {
         logger.debug(
-            IoTConsensusMessages.WRITE_OPERATION_FAILED,
+            IoTConsensusMessages.WRITE_OPERATION_FAILED + ", subscriptionQueues: {}, this: {}",
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
-            result.getCode());
+            result.getCode(),
+            subscriptionQueueRegistry.size(),
+            System.identityHashCode(this));
       }
       // statistic the time of total write process
       ioTConsensusServerMetrics.recordConsensusWriteTime(
@@ -360,18 +442,45 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       String targetFilePath = calculateSnapshotPath(snapshotId, originalFilePath);
-      File targetFile = getSnapshotPath(targetFilePath);
-      Path parentDir = Paths.get(targetFile.getParent());
-      if (!Files.exists(parentDir)) {
-        Files.createDirectories(parentDir);
+      File existingFile = getExistingSnapshotFile(targetFilePath);
+      if (existingFile != null) {
+        writeSnapshotFragment(existingFile, fileChunk, fileOffset);
+        return;
       }
-      try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
-          FileChannel channel = fos.getChannel()) {
-        channel.write(fileChunk.slice(), fileOffset);
-      }
+
+      recvFolderManager.getNextWithRetry(
+          folder -> {
+            writeSnapshotFragment(getSnapshotPath(folder, targetFilePath), fileChunk, fileOffset);
+            return null;
+          });
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    } catch (DiskSpaceInsufficientException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(IoTConsensusMessages.ERROR_RECEIVING_SNAPSHOT, snapshotId), e);
+    }
+  }
+
+  private File getExistingSnapshotFile(String targetFilePath) {
+    for (String folder : recvFolderManager.getFolders()) {
+      File targetFile = getSnapshotPath(folder, targetFilePath);
+      if (targetFile.exists()) {
+        return targetFile;
+      }
+    }
+    return null;
+  }
+
+  private void writeSnapshotFragment(File targetFile, ByteBuffer fileChunk, long fileOffset)
+      throws IOException {
+    Path parentDir = Paths.get(targetFile.getParent());
+    if (!Files.exists(parentDir)) {
+      Files.createDirectories(parentDir);
+    }
+    try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
+        FileChannel channel = fos.getChannel()) {
+      channel.write(fileChunk.slice(), fileOffset);
     }
   }
 
@@ -404,12 +513,17 @@ public class IoTConsensusServerImpl {
 
   public void loadSnapshot(String snapshotId) {
     // TODO: (xingtanzjr) throw exception if the snapshot load failed
-    stateMachine.loadSnapshot(getSnapshotPath(snapshotId));
+    recvFolderManager
+        .getFolders()
+        .forEach(
+            dir -> {
+              stateMachine.loadSnapshot(getSnapshotPath(dir, snapshotId));
+            });
   }
 
-  private File getSnapshotPath(String snapshotRelativePath) {
-    File storageDirFile = new File(storageDir);
-    File snapshotDir = new File(storageDir, snapshotRelativePath);
+  private File getSnapshotPath(String curStorageDir, String snapshotRelativePath) {
+    File storageDirFile = new File(curStorageDir);
+    File snapshotDir = new File(curStorageDir, snapshotRelativePath);
     try {
       if (!snapshotDir
           .getCanonicalFile()
@@ -432,7 +546,7 @@ public class IoTConsensusServerImpl {
   public void inactivatePeer(Peer peer, boolean forDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
     ConsensusGroupModifyPeerException lastException = null;
-    // In region migration, if the target node restarts before the “addRegionPeer” phase within 1
+    // In region migration, if the target node restarts before the "addRegionPeer" phase within 1
     // minutes,
     // the client in the ClientManager will become invalid.
     // This PR adds 1 retry at this point to ensure that region migration can still proceed
@@ -653,6 +767,36 @@ public class IoTConsensusServerImpl {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
+  private TSStatus syncWriterSafeTimeBarrierToPeer(
+      final Peer targetPeer,
+      final long safePhysicalTime,
+      final int writerNodeId,
+      final long barrierLocalSeq) {
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      final TSyncWriterSafeTimeBarrierRes res =
+          client.syncWriterSafeTimeBarrier(
+              new TSyncWriterSafeTimeBarrierReq()
+                  .setConsensusGroupId(thisNode.getGroupId().convertToTConsensusGroupId())
+                  .setSafePhysicalTime(safePhysicalTime)
+                  .setWriterNodeId(writerNodeId)
+                  .setBarrierLocalSeq(barrierLocalSeq));
+      return res.getStatus();
+    } catch (Exception e) {
+      logger.debug(
+          "Failed to sync writer safe-time barrier to peer {} for group {}, "
+              + "safePt={}, writerNodeId={}, barrier={}",
+          targetPeer,
+          consensusGroupId,
+          safePhysicalTime,
+          writerNodeId,
+          barrierLocalSeq,
+          e);
+      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   /** build SyncLog channel with safeIndex as the default initial sync index. */
   public void buildSyncLogChannel(Peer targetPeer, boolean startNow) {
     buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
@@ -710,13 +854,163 @@ public class IoTConsensusServerImpl {
           new IoTProgressIndex(thisNode.getNodeId(), searchIndex.get() + 1);
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
-    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
+    return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
+        .setPhysicalTime(assignPhysicalTimeInMs())
+        .setNodeId(thisNode.getNodeId());
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      long syncIndex, List<IConsensusRequest> requests) {
-    return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
+      long syncIndex,
+      long routingEpoch,
+      long physicalTime,
+      int nodeId,
+      List<IConsensusRequest> requests) {
+    observePhysicalTimeLowerBound(physicalTime);
+    IndexedConsensusRequest req =
+        new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
+    req.setRoutingEpoch(routingEpoch);
+    req.setPhysicalTime(physicalTime);
+    req.setNodeId(nodeId);
+    return req;
+  }
+
+  public TSStatus syncIdleWriterSafeTimeBarrierToPeer(final Peer targetPeer) {
+    final long safePhysicalTime = assignPhysicalTimeInMs();
+    final long safeLocalSeq = searchIndex.get();
+    writerSafeFrontierTracker.recordAppliedProgress(
+        safePhysicalTime, thisNode.getNodeId(), safeLocalSeq);
+    return syncWriterSafeTimeBarrierToPeer(
+        targetPeer, safePhysicalTime, thisNode.getNodeId(), safeLocalSeq);
+  }
+
+  public void observeRemoteWriterSafeTimeBarrier(
+      final long safePhysicalTime, final int writerNodeId, final long barrierLocalSeq) {
+    observePhysicalTimeLowerBound(safePhysicalTime);
+    writerSafeFrontierTracker.observePendingWriterSafeTimeBarrier(
+        safePhysicalTime, writerNodeId, barrierLocalSeq);
+  }
+
+  public void recordRemoteAppliedWriterProgress(
+      final long physicalTime, final int writerNodeId, final long appliedLocalSeq) {
+    writerSafeFrontierTracker.recordAppliedProgress(physicalTime, writerNodeId, appliedLocalSeq);
+  }
+
+  public long getEffectiveSafePhysicalTime(final int writerNodeId) {
+    return writerSafeFrontierTracker.getEffectiveSafePt(writerNodeId);
+  }
+
+  public WriterSafeFrontierTracker getWriterSafeFrontierTracker() {
+    return writerSafeFrontierTracker;
+  }
+
+  public boolean hasSubscriptionConsumers() {
+    return !subscriptionQueueRegistry.isEmpty();
+  }
+
+  private long assignPhysicalTimeInMs() {
+    while (true) {
+      final long previous = lastAssignedPhysicalTime.get();
+      final long candidate = Math.max(System.currentTimeMillis(), previous);
+      if (lastAssignedPhysicalTime.compareAndSet(previous, candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  private void observePhysicalTimeLowerBound(final long observedPhysicalTime) {
+    if (observedPhysicalTime <= 0) {
+      return;
+    }
+    while (true) {
+      final long previous = lastAssignedPhysicalTime.get();
+      final long candidate = Math.max(previous, observedPhysicalTime);
+      if (candidate == previous || lastAssignedPhysicalTime.compareAndSet(previous, candidate)) {
+        return;
+      }
+    }
+  }
+
+  private void initializeWriterMeta() {
+    final long recoveredSearchIndex = searchIndex.get();
+    try {
+      final Optional<WriterMeta> writerMetaOptional = WriterMeta.load(writerMetaPath);
+      if (writerMetaOptional.isPresent()) {
+        final WriterMeta writerMeta = writerMetaOptional.get();
+        logger.info(
+            "Recovered writer meta for group {} from {}, recoveredLocalSeq={}, "
+                + "persistedLocalSeq={}",
+            consensusGroupId,
+            writerMetaPath,
+            recoveredSearchIndex,
+            writerMeta.getLastAllocatedLocalSeq());
+        lastAssignedPhysicalTime.set(
+            Math.max(writerMeta.getLastAssignedPhysicalTimeMs(), System.currentTimeMillis()));
+        latestWriterMeta = writerMeta;
+        lastPersistedWriterLocalSeq = writerMeta.getLastAllocatedLocalSeq();
+        lastPersistedWriterPhysicalTime = writerMeta.getLastAssignedPhysicalTimeMs();
+        return;
+      }
+    } catch (IOException e) {
+      logger.warn(
+          "Failed to load writer meta for group {} from {}. Starting fresh writer metadata.",
+          consensusGroupId,
+          writerMetaPath,
+          e);
+    }
+    lastAssignedPhysicalTime.set(System.currentTimeMillis());
+    logger.info(
+        "Initialized fresh writer meta for group {}, recoveredLocalSeq={}",
+        consensusGroupId,
+        recoveredSearchIndex);
+  }
+
+  private void updateWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
+    latestWriterMeta =
+        new WriterMeta(
+            indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime());
+    persistLatestWriterMeta(false);
+  }
+
+  private void persistLatestWriterMeta(final boolean force) {
+    final WriterMeta writerMeta = latestWriterMeta;
+    if (writerMeta == null) {
+      return;
+    }
+    final long currentTimeMs = System.currentTimeMillis();
+    if (!force
+        && currentTimeMs - lastWriterMetaPersistAttemptTimeMs
+            < WRITER_META_PERSIST_MIN_INTERVAL_MS) {
+      return;
+    }
+
+    synchronized (writerMetaPersistLock) {
+      final WriterMeta latestMeta = latestWriterMeta;
+      if (latestMeta == null
+          || (latestMeta.getLastAllocatedLocalSeq() == lastPersistedWriterLocalSeq
+              && latestMeta.getLastAssignedPhysicalTimeMs() == lastPersistedWriterPhysicalTime)) {
+        return;
+      }
+
+      final long nowMs = System.currentTimeMillis();
+      if (!force
+          && nowMs - lastWriterMetaPersistAttemptTimeMs < WRITER_META_PERSIST_MIN_INTERVAL_MS) {
+        return;
+      }
+
+      lastWriterMetaPersistAttemptTimeMs = nowMs;
+      try {
+        latestMeta.persist(writerMetaPath);
+        lastPersistedWriterLocalSeq = latestMeta.getLastAllocatedLocalSeq();
+        lastPersistedWriterPhysicalTime = latestMeta.getLastAssignedPhysicalTimeMs();
+      } catch (IOException e) {
+        logger.warn(
+            "Failed to persist writer meta for group {} at localSeq={}, pt={}",
+            consensusGroupId,
+            latestMeta.getLastAllocatedLocalSeq(),
+            latestMeta.getLastAssignedPhysicalTimeMs(),
+            e);
+      }
+    }
   }
 
   /**
@@ -745,6 +1039,43 @@ public class IoTConsensusServerImpl {
 
   public long getSearchIndex() {
     return searchIndex.get();
+  }
+
+  public ConsensusReqReader getConsensusReqReader() {
+    return consensusReqReader;
+  }
+
+  /**
+   * Registers a subscription pending queue for real-time in-memory data delivery. When {@link
+   * #write(IConsensusRequest)} succeeds, the IndexedConsensusRequest is offered to all registered
+   * subscription queues, enabling subscription consumers to receive data without waiting for WAL
+   * flush.
+   *
+   * @param queue the blocking queue to receive IndexedConsensusRequest entries
+   */
+  public void registerSubscriptionQueue(
+      final BlockingQueue<IndexedConsensusRequest> queue,
+      final SubscriptionWalRetentionPolicy retentionPolicy) {
+    subscriptionQueueRegistry.register(queue, retentionPolicy);
+    // Immediately re-evaluate the safe delete index with new subscription awareness
+    checkAndUpdateSafeDeletedSearchIndex();
+    logger.info(
+        "Registered subscription queue for group {}, "
+            + "total subscription queues: {}, currentSearchIndex={}, this={}",
+        consensusGroupId,
+        subscriptionQueueRegistry.size(),
+        searchIndex.get(),
+        System.identityHashCode(this));
+  }
+
+  public void deregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
+    subscriptionQueueRegistry.unregister(queue);
+    // Re-evaluate: with fewer subscribers, more WAL may be deletable
+    checkAndUpdateSafeDeletedSearchIndex();
+    logger.info(
+        "Deregistered subscription queue for group {}, remaining subscription queues: {}",
+        consensusGroupId,
+        subscriptionQueueRegistry.size());
   }
 
   public long getSyncLag() {
@@ -829,15 +1160,19 @@ public class IoTConsensusServerImpl {
   }
 
   public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
-    File snapshotDir = getSnapshotPath(snapshotId);
-    if (snapshotDir.exists()) {
-      try {
-        FileUtils.deleteDirectory(snapshotDir);
-      } catch (IOException e) {
-        throw new ConsensusGroupModifyPeerException(e);
+    List<String> allDirs = new ArrayList<>(Collections.singletonList(storageDir));
+    allDirs.addAll(recvFolderManager.getFolders());
+    for (String dir : allDirs) {
+      File snapshotDir = getSnapshotPath(dir, snapshotId);
+      if (snapshotDir.exists()) {
+        try {
+          FileUtils.deleteDirectory(snapshotDir);
+        } catch (IOException e) {
+          throw new ConsensusGroupModifyPeerException(e);
+        }
+      } else {
+        logger.info(IoTConsensusMessages.FILE_NOT_EXIST, snapshotDir);
       }
-    } else {
-      logger.info(IoTConsensusMessages.FILE_NOT_EXIST, snapshotDir);
     }
   }
 
@@ -861,17 +1196,40 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
-   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * Computes and updates the safe-to-delete WAL search index based on replication progress and
+   * subscription WAL retention policy.
+   *
+   * <p>Because multiple subscription topics share one region WAL, the effective per-region
+   * retention policy is the most conservative policy across all active subscription queues on this
+   * region. Retention is applied at rolled WAL-file granularity and may therefore lag behind the
+   * configured thresholds.
    */
-  void checkAndUpdateSafeDeletedSearchIndex() {
+  public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
       logger.error(IoTConsensusMessages.CONFIGURATION_EMPTY_UNEXPECTED);
-    } else if (configuration.size() == 1) {
-      consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
-    } else {
-      consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+      return;
     }
+
+    final boolean hasSubscriptions = !subscriptionQueueRegistry.isEmpty();
+
+    if (configuration.size() == 1 && !hasSubscriptions) {
+      // Single replica, no subscription consumers => delete all WAL freely
+      consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+      consensusReqReader.setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
+      return;
+    }
+
+    final long replicationIndex =
+        configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
+
+    final SubscriptionRetentionBound subscriptionRetentionBound =
+        subscriptionWalRetentionCalculator.calculate(
+            subscriptionQueueRegistry.getRetentionPolicies());
+
+    consensusReqReader.setSafelyDeletedSearchIndex(
+        Math.min(replicationIndex, subscriptionRetentionBound.getSafelyDeletedSearchIndex()));
+    consensusReqReader.setSubscriptionRetainedMinVersionId(
+        subscriptionRetentionBound.getRetainedMinVersionId());
   }
 
   public void checkAndUpdateSearchIndex() {
@@ -998,6 +1356,11 @@ public class IoTConsensusServerImpl {
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
           insertNode.markAsGeneratedByRemoteConsensusLeader();
           subStatus.add(stateMachine.write(insertNode));
+        }
+        if (subStatus.stream()
+            .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
+          recordRemoteAppliedWriterProgress(
+              request.getEndPhysicalTime(), request.getWriterNodeId(), request.getEndSyncIndex());
         }
         long applyTime = System.nanoTime();
         ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);

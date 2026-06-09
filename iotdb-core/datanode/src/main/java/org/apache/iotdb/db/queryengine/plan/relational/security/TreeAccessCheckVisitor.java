@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountNodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
@@ -1400,13 +1402,19 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         .setAuditLogOperation(AuditLogOperation.QUERY)
         .setPrivilegeType(PrivilegeType.READ_SCHEMA);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      statement.setCanSeeSystemDB(true);
       statement.setCanSeeAuditDB(true);
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true),
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
       return SUCCEED;
     }
+    TSStatus internalDatabaseStatus = checkExplicitInternalDatabaseCount(statement, context);
+    if (internalDatabaseStatus != null) {
+      return internalDatabaseStatus;
+    }
     setCanSeeAuditDB(statement, context);
+    setCanSeeSystemDB(statement, context);
     if (statement.hasTimeCondition()) {
       try {
         statement.setAuthorityScope(
@@ -1415,6 +1423,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                     context.getUsername(), PrivilegeType.READ_SCHEMA),
                 AuthorityChecker.getAuthorizedPathTree(
                     context.getUsername(), PrivilegeType.READ_DATA)));
+        appendInternalDatabaseAuthorityScope(statement);
       } catch (AuthException e) {
         AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
             context.setResult(false),
@@ -1426,14 +1435,22 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
           () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      return visitAuthorityInformation(statement, context);
+      TSStatus status = visitAuthorityInformation(statement, context);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        appendInternalDatabaseAuthorityScope(statement);
+      }
+      return status;
     }
   }
 
   @Override
   public TSStatus visitCountLevelTimeSeries(
       CountLevelTimeSeriesStatement countStatement, TreeAccessCheckContext context) {
+    context
+        .setAuditLogOperation(AuditLogOperation.QUERY)
+        .setPrivilegeType(PrivilegeType.READ_SCHEMA);
     if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
+      countStatement.setCanSeeSystemDB(true);
       countStatement.setCanSeeAuditDB(true);
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           context.setResult(true),
@@ -1444,8 +1461,86 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
                   .toString());
       return SUCCEED;
     }
+    TSStatus internalDatabaseStatus = checkExplicitInternalDatabaseCount(countStatement, context);
+    if (internalDatabaseStatus != null) {
+      return internalDatabaseStatus;
+    }
     setCanSeeAuditDB(countStatement, context);
-    return visitAuthorityInformation(countStatement, context);
+    setCanSeeSystemDB(countStatement, context);
+    TSStatus status = visitAuthorityInformation(countStatement, context);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      appendInternalDatabaseAuthorityScope(countStatement);
+    }
+    return status;
+  }
+
+  private void setCanSeeSystemDB(CountStatement statement, IAuditEntity auditEntity) {
+    statement.setCanSeeSystemDB(
+        checkHasGlobalAuth(
+            auditEntity, PrivilegeType.SYSTEM, () -> SchemaConstant.SYSTEM_DATABASE));
+  }
+
+  private void appendInternalDatabaseAuthorityScope(CountStatement statement) {
+    PathPatternTree authorityScope = statement.getAuthorityScope();
+    if (SchemaConstant.ALL_MATCH_SCOPE.equals(authorityScope)) {
+      return;
+    }
+    if (statement.isCanSeeSystemDB()) {
+      authorityScope.appendPathPattern(
+          createInternalDatabasePathPattern(SchemaConstant.SYSTEM_DATABASE), true);
+    }
+    if (statement.isCanSeeAuditDB()) {
+      authorityScope.appendPathPattern(Audit.TREE_MODEL_AUDIT_DATABASE_PATH_PATTERN, true);
+    }
+    authorityScope.constructTree();
+  }
+
+  private PartialPath createInternalDatabasePathPattern(String internalDatabase) {
+    String[] databaseNodes = internalDatabase.split("\\.");
+    String[] pathPatternNodes = Arrays.copyOf(databaseNodes, databaseNodes.length + 1);
+    pathPatternNodes[databaseNodes.length] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+    return new PartialPath(pathPatternNodes);
+  }
+
+  private TSStatus checkExplicitInternalDatabaseCount(
+      CountStatement statement, TreeAccessCheckContext context) {
+    String internalDatabase = getExplicitInternalDatabase(statement.getPathPattern());
+    if (internalDatabase == null) {
+      return null;
+    }
+
+    PrivilegeType requiredPrivilege =
+        SchemaConstant.SYSTEM_DATABASE.equals(internalDatabase)
+            ? PrivilegeType.SYSTEM
+            : PrivilegeType.AUDIT;
+    TSStatus status = checkGlobalAuth(context, requiredPrivilege, () -> internalDatabase);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    statement.setCanSeeSystemDB(SchemaConstant.SYSTEM_DATABASE.equals(internalDatabase));
+    statement.setCanSeeAuditDB(SchemaConstant.AUDIT_DATABASE.equals(internalDatabase));
+    statement.setAuthorityScope(createAuthorityScope(statement.getPathPattern()));
+    return SUCCEED;
+  }
+
+  private String getExplicitInternalDatabase(PartialPath pathPattern) {
+    String[] nodes = pathPattern.getNodes();
+    if (nodes.length < 2 || !SchemaConstant.ROOT.equals(nodes[0])) {
+      return null;
+    }
+    String database = SchemaConstant.ROOT + "." + nodes[1];
+    if (SchemaConstant.SYSTEM_DATABASE.equals(database)
+        || SchemaConstant.AUDIT_DATABASE.equals(database)) {
+      return database;
+    }
+    return null;
+  }
+
+  private PathPatternTree createAuthorityScope(PartialPath pathPattern) {
+    PathPatternTree authorityScope = new PathPatternTree();
+    authorityScope.appendPathPattern(pathPattern);
+    authorityScope.constructTree();
+    return authorityScope;
   }
 
   @Override

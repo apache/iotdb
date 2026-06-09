@@ -55,6 +55,7 @@ import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -139,6 +140,7 @@ public class DataRegionConsensusImpl {
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
           .setStorageDir(CONF.getDataRegionConsensusDir())
+          .setRecvSnapshotDirs(Arrays.asList(CONF.getLocalDataDirs()))
           .setConsensusGroupType(TConsensusGroupType.DataRegion)
           .setIoTConsensusConfig(
               IoTConsensusConfig.newBuilder()
@@ -168,6 +170,10 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .setSubscriptionWalRetentionSizeInBytes(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionSizeInBytes())
+                          .setSubscriptionWalRetentionTimeMs(
+                              COMMON_CONF.getSubscriptionConsensusWalRetentionTimeMs())
                           .build())
                   .build())
           .setIoTConsensusV2Config(

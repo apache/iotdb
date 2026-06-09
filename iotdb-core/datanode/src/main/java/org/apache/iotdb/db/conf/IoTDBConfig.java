@@ -87,8 +87,7 @@ public class IoTDBConfig {
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
-  private static final String MULTI_DIR_STRATEGY_PREFIX =
-      "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
+  private static final String MULTI_DIR_STRATEGY_PREFIX = "org.apache.iotdb.commons.disk.strategy.";
   private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
       new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
@@ -1218,6 +1217,8 @@ public class IoTDBConfig {
   private long cacheLastValuesMemoryBudgetInByte = 4 * 1024 * 1024;
 
   private boolean includeNullValueInWriteThroughputMetric = false;
+
+  private boolean keepSameDiskWhenLoadingSnapshot = true;
 
   private ConcurrentHashMap<String, EncryptParameter> tsFileDBToEncryptMap =
       new ConcurrentHashMap<>(
@@ -4432,6 +4433,14 @@ public class IoTDBConfig {
 
   public void setPasswordLockTimeMinutes(int passwordLockTimeMinutes) {
     this.passwordLockTimeMinutes = passwordLockTimeMinutes;
+  }
+
+  public boolean isKeepSameDiskWhenLoadingSnapshot() {
+    return keepSameDiskWhenLoadingSnapshot;
+  }
+
+  public void setKeepSameDiskWhenLoadingSnapshot(boolean keepSameDiskWhenLoadingSnapshot) {
+    this.keepSameDiskWhenLoadingSnapshot = keepSameDiskWhenLoadingSnapshot;
   }
 
   public ConcurrentHashMap<String, EncryptParameter> getTSFileDBToEncryptMap() {

@@ -113,7 +113,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
             .forceAllocateForTabletWithRetry(
                 IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
 
-    LOGGER.info(
+    LOGGER.debug(
         DataNodePipeMessages.TSFILE_HAS_INITIALIZED_PIPENAME_CREATION_TIME_PATTERN,
         tsFile,
         getClass().getSimpleName(),
