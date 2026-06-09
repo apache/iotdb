@@ -50,6 +50,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -102,6 +103,15 @@ public class IoTDBDatabaseMetadataTest {
   @Test(expected = SQLException.class)
   public void testUnwrapRejectsUnsupportedClass() throws SQLException {
     databaseMetaData.unwrap(String.class);
+  }
+
+  @Test
+  public void testClosedConnectionRejectsMetadataWrapperMethods() throws SQLException {
+    when(connection.isClosed()).thenReturn(true);
+
+    assertThrows(SQLException.class, () -> databaseMetaData.isWrapperFor(DatabaseMetaData.class));
+    assertThrows(SQLException.class, () -> databaseMetaData.unwrap(DatabaseMetaData.class));
+    assertThrows(SQLException.class, () -> databaseMetaData.getConnection());
   }
 
   @Test
