@@ -501,7 +501,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         dataBaseName,
         LoadTsFileStatement.getDatabaseLevelByTreeDatabase(dataBaseName),
         shouldConvertDataTypeOnTypeMismatch,
-        validateTsFile,
+        validateTsFile || shouldConvertDataTypeOnTypeMismatch,
         null,
         shouldMarkAsPipeRequest);
   }
@@ -509,16 +509,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
     return executeStatementAndClassifyExceptions(
-        buildLoadTsFileStatementForSync(dataBaseName, fileAbsolutePath, validateTsFile.get()));
+        buildLoadTsFileStatementForSync(
+            dataBaseName,
+            fileAbsolutePath,
+            validateTsFile.get(),
+            shouldConvertDataTypeOnTypeMismatch));
   }
 
   static LoadTsFileStatement buildLoadTsFileStatementForSync(
-      final String dataBaseName, final String fileAbsolutePath, final boolean validateTsFile)
+      final String dataBaseName,
+      final String fileAbsolutePath,
+      final boolean validateTsFile,
+      final boolean shouldConvertDataTypeOnTypeMismatch)
       throws FileNotFoundException {
     final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(validateTsFile);
+    statement.setConvertOnTypeMismatch(shouldConvertDataTypeOnTypeMismatch);
+    statement.setVerifySchema(validateTsFile || shouldConvertDataTypeOnTypeMismatch);
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
@@ -769,9 +776,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
+    // Execute insert statements through the conversion wrapper first to avoid writing a partial
+    // row/tablet before the type mismatch is converted.
+    if (shouldConvertDataTypeOnTypeMismatch && statement instanceof InsertBaseStatement) {
+      final Optional<TSStatus> convertedStatus =
+          statement.accept(
+              statementDataTypeConvertExecutionVisitor,
+              new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      if (convertedStatus.isPresent()) {
+        return convertedStatus.get();
+      }
+    }
+
     final TSStatus status = executeStatement(statement);
 
-    // Try to convert the data type and the status code is not success
+    // Try to convert data type if the status code is not success. Insert statements normally return
+    // above after the first converted execution. The retry path is kept for load and fallback
+    // cases.
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
