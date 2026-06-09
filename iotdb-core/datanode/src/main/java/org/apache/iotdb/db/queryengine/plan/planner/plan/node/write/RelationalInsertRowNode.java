@@ -219,7 +219,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   protected int subSerializeSize() {
-    return super.subSerializeSize() + columnCategories.length * Byte.BYTES;
+    return super.subSerializeSize() + getValidMeasurementNumber() * Byte.BYTES;
   }
 
   @Override

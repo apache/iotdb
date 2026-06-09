@@ -340,6 +340,16 @@ public abstract class InsertNode extends SearchNode {
     return failedMeasurementNumber;
   }
 
+  protected int getValidMeasurementNumber() {
+    int validMeasurementNumber = 0;
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
   public boolean isMeasurementFailed(int index) {
     return measurements[index] == null;
   }
