@@ -99,11 +99,16 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
     }
 
     removeUnsupportedPoolProperties(properties);
+    applyConnectionProperties(ds, properties);
 
     logger.info(JdbcMessages.REMAINING_PROPERTIES, properties.size());
 
     if (!properties.isEmpty()) {
-      BeanConfig.configure(ds, properties);
+      try {
+        BeanConfig.configure(ds, properties);
+      } catch (IllegalArgumentException e) {
+        throw new SQLException("Invalid JDBC DataSource property", e);
+      }
     }
   }
 
@@ -126,6 +131,43 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   private static String removeStringProperty(Properties properties, String key) {
     Object value = properties.remove(key);
     return value == null ? null : value.toString();
+  }
+
+  private static void applyConnectionProperties(IoTDBDataSource ds, Properties properties) {
+    applyCredentialProperty(ds, properties, Config.AUTH_USER);
+    applyCredentialProperty(ds, properties, Config.AUTH_PASSWORD);
+    applyConnectionProperty(ds, properties, Config.DEFAULT_BUFFER_CAPACITY);
+    applyConnectionProperty(ds, properties, Config.THRIFT_FRAME_MAX_SIZE);
+    applyConnectionProperty(ds, properties, Config.VERSION);
+    applyConnectionProperty(ds, properties, Config.NETWORK_TIMEOUT);
+    applyConnectionProperty(ds, properties, Config.TIME_ZONE);
+    applyConnectionProperty(ds, properties, Config.CHARSET);
+    applyConnectionProperty(ds, properties, Config.USE_SSL);
+    applyConnectionProperty(ds, properties, Config.TRUST_STORE);
+    applyConnectionProperty(ds, properties, Config.TRUST_STORE_PWD);
+    applyConnectionProperty(ds, properties, Utils.RPC_COMPRESS);
+    applyConnectionProperty(ds, properties, Config.SQL_DIALECT);
+  }
+
+  private static void applyCredentialProperty(
+      IoTDBDataSource ds, Properties properties, String key) {
+    String value = removeStringProperty(properties, key);
+    if (value == null) {
+      return;
+    }
+    if (Config.AUTH_USER.equals(key)) {
+      ds.setUser(value);
+    } else {
+      ds.setPassword(value);
+    }
+  }
+
+  private static void applyConnectionProperty(
+      IoTDBDataSource ds, Properties properties, String key) {
+    String value = removeStringProperty(properties, key);
+    if (value != null) {
+      ds.setConnectionProperty(key, value);
+    }
   }
 
   private static Integer removeIntegerProperty(Properties properties, String key)

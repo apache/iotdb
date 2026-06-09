@@ -84,6 +84,9 @@ public class IoTDBDataSource implements DataSource {
   }
 
   public void setPort(Integer port) {
+    if (port != null && (port < 0 || port > 65535)) {
+      throw new IllegalArgumentException("port must be between 0 and 65535");
+    }
     this.port = port == null || port == 0 ? Config.IOTDB_DEFAULT_PORT : port;
   }
 
@@ -149,6 +152,14 @@ public class IoTDBDataSource implements DataSource {
 
   public void setUrl(String url) {
     this.url = url;
+  }
+
+  String getConnectionProperty(String key) {
+    return properties.getProperty(key);
+  }
+
+  void setConnectionProperty(String key, String value) {
+    setProperty(key, value);
   }
 
   @Override

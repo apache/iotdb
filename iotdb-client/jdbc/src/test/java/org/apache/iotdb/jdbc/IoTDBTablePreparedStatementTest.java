@@ -21,8 +21,11 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
@@ -35,10 +38,19 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.sql.ParameterMetaData;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.ZoneId;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
@@ -86,6 +98,7 @@ public class IoTDBTablePreparedStatementTest {
     // Mock for executePreparedStatement
     when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
         .thenReturn(execStatementResp);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 
   /** Count the number of '?' placeholders in a SQL string, ignoring those inside quotes */
@@ -128,6 +141,23 @@ public class IoTDBTablePreparedStatementTest {
     assertFalse(metadata.isWrapperFor(null));
     assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
     assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataRejectsInvalidIndex() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(1, metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getParameterType(0));
+    assertThrows(SQLException.class, () -> metadata.isSigned(2));
+
+    ps.setInt(1, 1);
+
+    assertEquals(Types.INTEGER, metadata.getParameterType(1));
+    assertTrue(metadata.isSigned(1));
   }
 
   @SuppressWarnings("resource")
@@ -255,5 +285,59 @@ public class IoTDBTablePreparedStatementTest {
         ArgumentCaptor.forClass(TSExecutePreparedReq.class);
     verify(client).executePreparedStatement(argument.capture());
     assertTrue(argument.getValue().getParameters() != null);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelPreparedNullSettersSerializeNulls() throws Exception {
+    String sql = "SELECT * FROM users WHERE a=? AND b=? AND c=? AND d=? AND e=? AND f=?";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setObject(1, null);
+    ps.setBytes(2, null);
+    ps.setDate(3, (Date) null);
+    ps.setTime(4, (Time) null);
+    ps.setTimestamp(5, (Timestamp) null);
+    ps.setBinaryStream(6, (InputStream) null, 0);
+    ps.execute();
+
+    ArgumentCaptor<TSExecutePreparedReq> argument =
+        ArgumentCaptor.forClass(TSExecutePreparedReq.class);
+    verify(client).executePreparedStatement(argument.capture());
+    List<DeserializedParam> parameters =
+        PreparedParameterSerde.deserialize(ByteBuffer.wrap(argument.getValue().getParameters()));
+
+    assertEquals(6, parameters.size());
+    for (DeserializedParam parameter : parameters) {
+      assertTrue(parameter.isNull());
+    }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelSetBinaryStreamRejectsNegativeLength() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertThrows(
+        SQLException.class, () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[0]), -1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTableModelClientSideNullStringUsesSqlNullLiteral() throws Exception {
+    String sql = "INSERT INTO users(time,email) VALUES(1, ?)";
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setString(1, null);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "INSERT INTO users(time,email) VALUES(1, NULL)", argument.getValue().getStatement());
   }
 }

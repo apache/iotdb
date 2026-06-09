@@ -131,6 +131,25 @@ public class UtilsTest {
   }
 
   @Test
+  public void testParseUrlAppliesCredentialAndBufferQueryProperties() throws IoTDBURLException {
+    Properties properties = new Properties();
+    properties.setProperty(Config.AUTH_USER, "prop-user");
+    properties.setProperty(Config.DEFAULT_BUFFER_CAPACITY, "1");
+
+    IoTDBConnectionParams params =
+        Utils.parseUrl(
+            "jdbc:iotdb://test:6667?user=url-user&password=url-password&thrift_default_buffer_capacity=1024&thrift_max_frame_size=2048",
+            properties);
+
+    assertEquals("url-user", params.getUsername());
+    assertEquals("url-password", params.getPassword());
+    assertEquals(1024, params.getThriftDefaultBufferSize());
+    assertEquals(2048, params.getThriftMaxFrameSize());
+    assertEquals("url-user", properties.getProperty(Config.AUTH_USER));
+    assertEquals("1024", properties.getProperty(Config.DEFAULT_BUFFER_CAPACITY));
+  }
+
+  @Test
   public void testParseUrlAllowsEmptyDatabaseBeforeQuery() throws IoTDBURLException {
     IoTDBConnectionParams params =
         Utils.parseUrl("jdbc:iotdb://test:6667/?use_ssl=true", new Properties());
@@ -259,6 +278,17 @@ public class UtilsTest {
   @Test(expected = IoTDBURLException.class)
   public void testParseUrlParamRejectsNegativeNetworkTimeoutValue() throws IoTDBURLException {
     Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?network_timeout=-1", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidThriftBufferCapacityValue() throws IoTDBURLException {
+    Utils.parseUrl(
+        "jdbc:iotdb://127.0.0.1:6667?thrift_default_buffer_capacity=0", new Properties());
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseUrlParamRejectsInvalidThriftFrameMaxSizeValue() throws IoTDBURLException {
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?thrift_max_frame_size=bad", new Properties());
   }
 
   @Test(expected = IoTDBURLException.class)

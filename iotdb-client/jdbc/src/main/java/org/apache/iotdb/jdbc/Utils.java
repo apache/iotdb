@@ -170,6 +170,21 @@ public class Utils {
       String key = tmpParam.substring(0, separatorIndex);
       String value = tmpParam.substring(separatorIndex + 1);
       switch (key) {
+        case Config.AUTH_USER:
+        case Config.AUTH_PASSWORD:
+          info.put(key, value);
+          break;
+        case Config.DEFAULT_BUFFER_CAPACITY:
+        case Config.THRIFT_FRAME_MAX_SIZE:
+          try {
+            if (Integer.parseInt(value) <= 0) {
+              return false;
+            }
+          } catch (NumberFormatException e) {
+            return false;
+          }
+          info.put(key, value);
+          break;
         case RPC_COMPRESS:
           if (isBoolean(value)) {
             info.put(key, value);

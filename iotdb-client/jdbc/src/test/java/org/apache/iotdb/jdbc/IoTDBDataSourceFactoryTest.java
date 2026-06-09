@@ -103,10 +103,43 @@ public class IoTDBDataSourceFactoryTest {
     assertEquals("reader", dataSource.getRoleName());
   }
 
+  @Test
+  public void testCreateDataSourceAcceptsIoTDBConnectionProperties() throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty(Config.NETWORK_TIMEOUT, "1234");
+    properties.setProperty(Config.TIME_ZONE, "Asia/Shanghai");
+    properties.setProperty(Config.CHARSET, "UTF-8");
+    properties.setProperty(Config.USE_SSL, "true");
+    properties.setProperty(Config.TRUST_STORE, "trust-store");
+    properties.setProperty(Config.TRUST_STORE_PWD, "trust-store-password");
+    properties.setProperty(Config.SQL_DIALECT, Constant.TABLE);
+    properties.setProperty(Utils.RPC_COMPRESS, "true");
+
+    IoTDBDataSource dataSource =
+        (IoTDBDataSource) new IoTDBDataSourceFactory().createDataSource(properties);
+
+    assertEquals("1234", dataSource.getConnectionProperty(Config.NETWORK_TIMEOUT));
+    assertEquals("Asia/Shanghai", dataSource.getConnectionProperty(Config.TIME_ZONE));
+    assertEquals("UTF-8", dataSource.getConnectionProperty(Config.CHARSET));
+    assertEquals("true", dataSource.getConnectionProperty(Config.USE_SSL));
+    assertEquals("trust-store", dataSource.getConnectionProperty(Config.TRUST_STORE));
+    assertEquals("trust-store-password", dataSource.getConnectionProperty(Config.TRUST_STORE_PWD));
+    assertEquals(Constant.TABLE, dataSource.getConnectionProperty(Config.SQL_DIALECT));
+    assertEquals("true", dataSource.getConnectionProperty(Utils.RPC_COMPRESS));
+  }
+
   @Test(expected = SQLException.class)
   public void testCreateDataSourceRejectsInvalidStandardPortProperty() throws SQLException {
     Properties properties = new Properties();
     properties.setProperty(DataSourceFactory.JDBC_PORT_NUMBER, "bad");
+
+    new IoTDBDataSourceFactory().createDataSource(properties);
+  }
+
+  @Test(expected = SQLException.class)
+  public void testCreateDataSourceRejectsUnknownBeanProperty() throws SQLException {
+    Properties properties = new Properties();
+    properties.setProperty("unknownProperty", "value");
 
     new IoTDBDataSourceFactory().createDataSource(properties);
   }
@@ -142,6 +175,11 @@ public class IoTDBDataSourceFactoryTest {
         new IoTDBDataSource("jdbc:iotdb://localhost:6667", null, null, null);
 
     assertEquals(Integer.valueOf(6667), dataSource.getPort());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testDataSourceRejectsInvalidDirectPort() {
+    new IoTDBDataSource().setPortNumber(65536);
   }
 
   @Test

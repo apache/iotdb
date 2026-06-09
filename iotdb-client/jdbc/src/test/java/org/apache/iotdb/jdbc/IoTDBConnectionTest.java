@@ -46,8 +46,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class IoTDBConnectionTest {
@@ -92,6 +95,43 @@ public class IoTDBConnectionTest {
     connection.setClient(client);
     connection.setClientInfo("time_zone", timeZone);
     assertEquals(connection.getTimeZone(), timeZone);
+  }
+
+  @Test
+  public void testSetTimeZoneRejectsInvalidZoneBeforeRpc() throws TException {
+    connection.setClient(client);
+
+    assertThrows(IoTDBSQLException.class, () -> connection.setTimeZone("invalid-zone"));
+    verify(client, never()).setTimeZone(any(TSSetTimeZoneReq.class));
+  }
+
+  @Test
+  public void testSetClientInfoWrapsInvalidTimeZone() {
+    SQLClientInfoException exception =
+        assertThrows(
+            SQLClientInfoException.class,
+            () -> connection.setClientInfo("time_zone", "invalid-zone"));
+
+    assertTrue(exception.getCause() instanceof IoTDBSQLException);
+  }
+
+  @Test
+  public void testSetClientInfoRejectsNullNameWithoutNpe() {
+    assertThrows(SQLClientInfoException.class, () -> connection.setClientInfo(null, "value"));
+  }
+
+  @Test
+  public void testTableCatalogAndSchemaRejectNull() {
+    IoTDBConnection tableConnection =
+        new IoTDBConnection() {
+          @Override
+          public String getSqlDialect() {
+            return Constant.TABLE_DIALECT;
+          }
+        };
+
+    assertThrows(SQLException.class, () -> tableConnection.setCatalog(null));
+    assertThrows(SQLException.class, () -> tableConnection.setSchema(null));
   }
 
   @Test

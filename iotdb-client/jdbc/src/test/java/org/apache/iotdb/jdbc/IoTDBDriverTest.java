@@ -99,9 +99,12 @@ public class IoTDBDriverTest {
     try {
       DriverPropertyInfo[] propertyInfos =
           driver.getPropertyInfo(
-              "jdbc:iotdb://localhost:6667?use_ssl=true&sql_dialect=table&network_timeout=123&rpc_compress=true",
+              "jdbc:iotdb://localhost:6667?user=url-user&thrift_default_buffer_capacity=1024&thrift_max_frame_size=2048&use_ssl=true&sql_dialect=table&network_timeout=123&rpc_compress=true",
               properties);
 
+      assertEquals("url-user", findProperty(propertyInfos, Config.AUTH_USER).value);
+      assertEquals("1024", findProperty(propertyInfos, Config.DEFAULT_BUFFER_CAPACITY).value);
+      assertEquals("2048", findProperty(propertyInfos, Config.THRIFT_FRAME_MAX_SIZE).value);
       assertEquals("true", findProperty(propertyInfos, Config.USE_SSL).value);
       assertEquals(Constant.TABLE, findProperty(propertyInfos, Config.SQL_DIALECT).value);
       assertEquals("123", findProperty(propertyInfos, Config.NETWORK_TIMEOUT).value);

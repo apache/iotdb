@@ -31,8 +31,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.sql.Date;
 import java.sql.ParameterMetaData;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.ZoneId;
@@ -96,6 +100,24 @@ public class IoTDBPreparedStatementTest {
     assertFalse(metadata.isWrapperFor(null));
     assertSame(metadata, metadata.unwrap(ParameterMetaData.class));
     assertThrows(SQLException.class, () -> metadata.unwrap(String.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testParameterMetadataRejectsUnsetIndexAndHandlesNullValue() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(0, metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getPrecision(1));
+
+    ps.setString(1, null);
+
+    assertEquals(1, metadata.getParameterCount());
+    assertEquals(0, metadata.getPrecision(1));
+    assertEquals(Types.NULL, metadata.getParameterType(1));
+    assertEquals(ParameterMetaData.parameterModeUnknown, metadata.getParameterMode(1));
   }
 
   @SuppressWarnings("resource")
@@ -251,6 +273,40 @@ public class IoTDBPreparedStatementTest {
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
         "SELECT status, 'temperature' FROM root.ln.wf01.wt01", argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void nullArgumentsUseSqlNullLiteral() throws Exception {
+    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g) VALUES(1,?,?,?,?,?,?,?)";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    ps.setString(1, null);
+    ps.setObject(2, null);
+    ps.setDate(3, (Date) null);
+    ps.setTime(4, (Time) null);
+    ps.setTimestamp(5, (Timestamp) null);
+    ps.setBytes(6, null);
+    ps.setBinaryStream(7, (InputStream) null, 0);
+    ps.execute();
+
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatementV2(argument.capture());
+    assertEquals(
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f,g) VALUES(1,NULL,NULL,NULL,NULL,NULL,NULL,NULL)",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void setBinaryStreamRejectsNegativeLength() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertThrows(
+        SQLException.class, () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[0]), -1));
   }
 
   @SuppressWarnings("resource")
