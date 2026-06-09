@@ -51,10 +51,16 @@
             <artifactId>rest-openapi</artifactId>
             <version>2.0.7-SNAPSHOT</version>
             <exclusions>
-                <!-- repeated in datanode -->
+                <!--
+                    Keep jakarta.xml.bind-api 3.x for the Swagger/OpenAPI runtime. The
+                    datanode-provided jakarta.xml.bind-api 2.3.x still contains the old
+                    javax.xml.bind namespace and cannot satisfy jakarta.xml.bind classes.
+                    Exclude the JAXB-transitive activation implementation to avoid
+                    duplicating jakarta.activation classes with jakarta.activation-api.
+                -->
                 <exclusion>
-                    <groupId>jakarta.xml.bind</groupId>
-                    <artifactId>jakarta.xml.bind-api</artifactId>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>jakarta.activation</artifactId>
                 </exclusion>
                 <!-- repeated in datanode -->
                 <exclusion>
