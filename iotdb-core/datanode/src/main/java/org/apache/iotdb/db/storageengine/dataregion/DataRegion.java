@@ -2219,7 +2219,9 @@ public class DataRegion implements IDataRegionForQuery {
         databaseName + "-" + dataRegionIdString,
         systemDir);
     int regionId = dataRegionId.getId();
-    TableDiskUsageIndex.getInstance().remove(databaseName, regionId);
+    if (isTableModel) {
+      TableDiskUsageIndex.getInstance().remove(databaseName, regionId);
+    }
     FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");
     try {
