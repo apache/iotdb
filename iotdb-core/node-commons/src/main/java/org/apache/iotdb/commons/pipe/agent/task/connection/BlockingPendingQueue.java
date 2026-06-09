@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
@@ -27,7 +29,9 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -44,6 +48,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
+  protected final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
     this.pendingQueue = pendingQueue;
@@ -51,7 +57,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean offer(final E event) {
-    checkBeforeOffer(event);
+    if (!checkBeforeOffer(event)) {
+      return false;
+    }
+
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -60,13 +69,15 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean put(final E event) {
-    checkBeforeOffer(event);
+    if (!checkBeforeOffer(event)) {
+      return false;
+    }
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
       return true;
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue put is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_PUT_INTERRUPTED, e);
       Thread.currentThread().interrupt();
       return false;
     }
@@ -87,7 +98,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
               TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
     } catch (final InterruptedException e) {
-      LOGGER.info("pending queue poll is interrupted.", e);
+      LOGGER.info(PipeMessages.PENDING_QUEUE_POLL_INTERRUPTED, e);
       Thread.currentThread().interrupt();
     }
     return event;
@@ -101,6 +112,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     isClosed.set(true);
     pendingQueue.clear();
     eventCounter.reset();
+    droppedPipeTaskKeys.clear();
   }
 
   /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
@@ -120,14 +132,20 @@ public abstract class BlockingPendingQueue<E extends Event> {
           return true;
         });
     eventCounter.reset();
+    droppedPipeTaskKeys.clear();
   }
 
-  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  public void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
-              && regionId == ((EnrichedEvent) event).getRegionId()) {
+              && isEventFromPipe((EnrichedEvent) event, committerKey)) {
             if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
             }
@@ -157,9 +175,48 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return eventCounter.getPipeHeartbeatEventCount();
   }
 
-  protected void checkBeforeOffer(final E event) {
-    if (isClosed.get() && event instanceof EnrichedEvent) {
+  protected boolean checkBeforeOffer(final E event) {
+    final boolean shouldReject = isClosed.get() || isEventFromDroppedPipe(event);
+    if (shouldReject && event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName());
     }
+    return !shouldReject;
+  }
+
+  protected static boolean isEventFromPipe(
+      final EnrichedEvent event,
+      final String pipeNameToDrop,
+      final long creationTimeToDrop,
+      final int regionId) {
+    return pipeNameToDrop.equals(event.getPipeName())
+        && creationTimeToDrop == event.getCreationTime()
+        && regionId == event.getRegionId();
+  }
+
+  protected static boolean isEventFromPipe(
+      final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
+  }
+
+  protected boolean isEventFromDroppedPipe(final E event) {
+    return event instanceof EnrichedEvent
+        && ((EnrichedEvent) event).getPipeName() != null
+        && isEventFromDroppedPipe((EnrichedEvent) event);
+  }
+
+  public boolean isEventFromDroppedPipe(final EnrichedEvent event) {
+    return droppedPipeTaskKeys.stream().anyMatch(key -> isEventFromPipe(event, key));
+  }
+
+  public boolean isPipeDropped(final String pipeName, final long creationTime, final int regionId) {
+    return droppedPipeTaskKeys.stream()
+        .anyMatch(
+            key ->
+                key.getPipeName().equals(pipeName)
+                    && key.getCreationTime() == creationTime
+                    && key.getRegionId() == regionId);
   }
 }

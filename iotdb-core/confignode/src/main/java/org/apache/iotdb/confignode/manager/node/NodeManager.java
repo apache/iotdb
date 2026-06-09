@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
@@ -370,7 +372,7 @@ public class NodeManager {
     if (clusterId == null) {
       resp.setStatus(
           new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
-              .setMessage("clusterId has not generated"));
+              .setMessage(ManagerMessages.CLUSTERID_HAS_NOT_GENERATED));
       return resp;
     }
 
@@ -414,7 +416,7 @@ public class NodeManager {
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
-    LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_START_TO_REMOVE_DATANODE, removeDataNodePlan);
     try {
       // Checks if the RemoveDataNode request is valid
       RemoveDataNodeHandler removeDataNodeHandler =
@@ -423,7 +425,7 @@ public class NodeManager {
           removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "The remove DataNode request check failed. req: {}, check result: {}",
+            ManagerMessages.THE_REMOVE_DATANODE_REQUEST_CHECK_FAILED_REQ_CHECK_RESULT,
             removeDataNodePlan,
             preCheckStatus.getStatus());
         return preCheckStatus;
@@ -435,7 +437,7 @@ public class NodeManager {
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         dataSet.setStatus(
             new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-                .setMessage("Migrate the service on the removed DataNodes failed"));
+                .setMessage(ManagerMessages.MIGRATE_THE_SERVICE_ON_THE_REMOVED_DATANODES_FAILED));
         return dataSet;
       }
 
@@ -445,15 +447,15 @@ public class NodeManager {
       TSStatus status;
       if (removeSucceed) {
         status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        status.setMessage("Server accepted the request");
+        status.setMessage(ManagerMessages.SERVER_ACCEPTED_THE_REQUEST);
       } else {
         status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-        status.setMessage("Server rejected the request, maybe requests are too many");
+        status.setMessage(ManagerMessages.SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY);
       }
       dataSet.setStatus(status);
 
       LOGGER.info(
-          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          ManagerMessages.NODEMANAGER_SUBMIT_REMOVEDATANODEPLAN_FINISHED_REMOVEDATANODEPLAN,
           removeDataNodePlan);
       return dataSet;
     } finally {
@@ -523,7 +525,7 @@ public class NodeManager {
       dataSet.setConfigNodeList(Collections.emptyList());
       dataSet.setStatus(
           new TSStatus(TSStatusCode.REGISTER_AI_NODE_ERROR.getStatusCode())
-              .setMessage("There is already one AINode in the cluster."));
+              .setMessage(ManagerMessages.THERE_IS_ALREADY_ONE_AINODE_IN_THE_CLUSTER));
       return dataSet;
     }
 
@@ -559,7 +561,7 @@ public class NodeManager {
     // check if the node exists
     if (nodeInfo.getRegisteredAINodes().isEmpty()) {
       return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
-          .setMessage("Remove AINode failed because there is no AINode in the cluster.");
+          .setMessage(ManagerMessages.REMOVE_AINODE_FAILED_BECAUSE_THERE_IS_NO_AINODE_IN_THE);
     }
 
     // We remove the only AINode by default
@@ -570,13 +572,13 @@ public class NodeManager {
     TSStatus status;
     if (removeSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accepted the request");
+      status.setMessage(ManagerMessages.SERVER_ACCEPTED_THE_REQUEST);
     } else {
       status = new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode());
-      status.setMessage("Server rejected the request, maybe requests are too many");
+      status.setMessage(ManagerMessages.SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY);
     }
 
-    LOGGER.info("NodeManager submit RemoveAINodePlan finished, {}", removeAINodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_SUBMIT_REMOVEAINODEPLAN_FINISHED, removeAINodePlan);
     return status;
   }
 
@@ -614,7 +616,7 @@ public class NodeManager {
     try {
       return (AINodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       AINodeConfigurationResp response = new AINodeConfigurationResp();
@@ -634,7 +636,7 @@ public class NodeManager {
     try {
       return (DataNodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       DataNodeConfigurationResp response = new DataNodeConfigurationResp();
@@ -935,14 +937,16 @@ public class NodeManager {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-              .setMessage("Remove ConfigNode failed due to thread interruption.");
+              .setMessage(ManagerMessages.REMOVE_CONFIGNODE_FAILED_DUE_TO_THREAD_INTERRUPTION);
         }
       }
 
       // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
       if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
         return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-            .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
+            .setMessage(
+                ManagerMessages
+                    .REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER);
       }
 
       // Check whether the remove ConfigNode is leader
@@ -965,7 +969,7 @@ public class NodeManager {
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Successfully remove confignode.");
+        .setMessage(ManagerMessages.SUCCESSFULLY_REMOVE_CONFIGNODE);
   }
 
   private TSStatus transferLeader(
@@ -990,7 +994,8 @@ public class NodeManager {
               new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
     } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
-          .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
+          .setMessage(
+              ManagerMessages.REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED);
     }
     return new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         .setRedirectNode(newLeader.getInternalEndPoint())
@@ -1052,7 +1057,7 @@ public class NodeManager {
     if (!targetDataNodes.isEmpty()) {
       DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
           new DataNodeAsyncRequestContext<>(
-              CnToDnAsyncRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+              CnToDnAsyncRequestType.SET_CONFIGURATION, req, targetDataNodes);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
       responseList.addAll(clientHandler.getResponseList());

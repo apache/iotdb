@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -115,7 +116,7 @@ public class DataPartitionTableGenerator {
   /** Start generating DataPartitionTable asynchronously. */
   public CompletableFuture<Void> startGeneration() {
     if (status != TaskStatus.NOT_STARTED) {
-      throw new IllegalStateException("Task is already started or completed");
+      throw new IllegalStateException(DataNodeMiscMessages.TASK_ALREADY_STARTED);
     }
 
     status = TaskStatus.IN_PROGRESS;
@@ -164,7 +165,7 @@ public class DataPartitionTableGenerator {
                         unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
 
                     if (dataPartitionMap.isEmpty()) {
-                      LOG.error("Failed to generate DataPartitionTable, dataPartitionMap is empty");
+                      LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE);
                       status = TaskStatus.FAILED;
                       errorMessage = "DataPartitionMap is empty after processing resource file";
                       return;
@@ -183,7 +184,10 @@ public class DataPartitionTableGenerator {
                           return v;
                         });
                   } catch (Exception e) {
-                    LOG.error("Error processing data region: {}", dataRegion.getDatabaseName(), e);
+                    LOG.error(
+                        DataNodeMiscMessages.ERROR_PROCESSING_DATA_REGION,
+                        dataRegion.getDatabaseName(),
+                        e);
                     failedTimePartitions.incrementAndGet();
                     errorMessage = "Failed to process data region: " + e.getMessage();
                   }
@@ -201,7 +205,7 @@ public class DataPartitionTableGenerator {
           processedTimePartitions.get(),
           failedTimePartitions.get());
     } catch (Exception e) {
-      LOG.error("Failed to generate DataPartitionTable", e);
+      LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE, e);
       status = TaskStatus.FAILED;
       errorMessage = "Generation failed: " + e.getMessage();
     }
@@ -242,7 +246,10 @@ public class DataPartitionTableGenerator {
           timeSlotIds.add(timeSlotId);
           failedTimePartitions.incrementAndGet();
         }
-        LOG.error("Failed to process tsfile {}, {}", tsFileResource.getTsFileID(), e.getMessage());
+        LOG.error(
+            DataNodeMiscMessages.FAILED_TO_PROCESS_TSFILE,
+            tsFileResource.getTsFileID(),
+            e.getMessage());
       }
     }
 

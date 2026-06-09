@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.util.sorter;
 
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -106,7 +107,7 @@ public class PipeInsertEventSorter {
     }
 
     if (bitMapsModified) {
-      dataAdapter.setBitMaps(bitMaps);
+      dataAdapter.setBitMaps(PipeTabletUtils.compactBitMaps(bitMaps, deDuplicatedSize));
     }
   }
 

@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -32,14 +37,14 @@ import java.util.Objects;
 public class SetSqlDialect extends Statement {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SetSqlDialect.class);
-  private final IClientSession.SqlDialect sqlDialect;
+  private final SqlDialect sqlDialect;
 
-  public SetSqlDialect(IClientSession.SqlDialect sqlDialect, @Nullable NodeLocation location) {
+  public SetSqlDialect(SqlDialect sqlDialect, @Nullable NodeLocation location) {
     super(location);
     this.sqlDialect = sqlDialect;
   }
 
-  public IClientSession.SqlDialect getSqlDialect() {
+  public SqlDialect getSqlDialect() {
     return sqlDialect;
   }
 
@@ -49,8 +54,8 @@ public class SetSqlDialect extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitSetSqlDialect(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitSetSqlDialect(this, context);
   }
 
   @Override

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
@@ -136,16 +137,16 @@ public class IoTDBStartCheck {
   }
 
   private IoTDBStartCheck() {
-    logger.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
+    logger.info(DataNodeMiscMessages.STARTING_IOTDB, IoTDBConstant.VERSION_WITH_BUILD);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
     if (!dir.exists()) {
       if (!dir.mkdirs()) {
-        logger.error("Can not create schema dir: {}", SCHEMA_DIR);
+        logger.error(DataNodeMiscMessages.CANNOT_CREATE_SCHEMA_DIR, SCHEMA_DIR);
         System.exit(-1);
       } else {
-        logger.info(" {} dir has been created.", SCHEMA_DIR);
+        logger.info(DataNodeMiscMessages.SCHEMA_DIR_CREATED, SCHEMA_DIR);
       }
     }
 
@@ -246,7 +247,7 @@ public class IoTDBStartCheck {
       }
       String versionString = properties.getProperty(IOTDB_VERSION_STRING);
       if (versionString.startsWith("0.")) {
-        logger.error("IoTDB version is too old");
+        logger.error(DataNodeMiscMessages.IOTDB_VERSION_TOO_OLD);
         System.exit(-1);
       }
       checkImmutableSystemProperties();
@@ -271,7 +272,7 @@ public class IoTDBStartCheck {
     for (Entry<String, Supplier<String>> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
-        logger.info("repair system.properties, lack {}", entry.getKey());
+        logger.info(DataNodeMiscMessages.REPAIR_SYSTEM_PROPERTIES, entry.getKey());
       }
     }
 
@@ -374,7 +375,7 @@ public class IoTDBStartCheck {
       return properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL);
     }
 
-    logger.error("Unexpected consensus group type");
+    logger.error(DataNodeMiscMessages.UNEXPECTED_CONSENSUS_GROUP_TYPE);
     return false;
   }
 
@@ -428,7 +429,7 @@ public class IoTDBStartCheck {
               EncryptUtils.getEncrypt().getDecryptor().decrypt(magicStringBytes),
               TSFileConfig.STRING_CHARSET);
       if (!Objects.equals(decryptedMagicString, magicString)) {
-        logger.error("encrypt_magic_string is not matched");
+        logger.error(DataNodeMiscMessages.ENCRYPT_MAGIC_STRING_NOT_MATCHED);
         throw new ConfigurationException(
             "Changing encrypt type or key for tsfile encryption after first start is not permitted. Here is your token hint info: "
                 + CommonDescriptor.getInstance().getConfig().getUserEncryptTokenHint());

@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.load.config;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.external.commons.lang3.StringUtils;
 
@@ -61,7 +62,8 @@ public class LoadTsFileConfigurator {
         validateAsyncLoadParam(value);
         break;
       default:
-        throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
+        throw new SemanticException(
+            StorageEngineMessages.INVALID_PARAMETER + key + "' for LOAD TSFILE command.");
     }
   }
 
@@ -219,6 +221,6 @@ public class LoadTsFileConfigurator {
   }
 
   private LoadTsFileConfigurator() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(StorageEngineMessages.UTILITY_CLASS);
   }
 }

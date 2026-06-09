@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -308,7 +309,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
         // Do not need to do anything else. New leader which restore this procedure from a wrong
         // state will reexecute it and converge to the correct state since procedures are
         // idempotent.
-        LOG.warn("pid={} Failed to persist lock state to store.", this.procId, e);
+        LOG.warn(ProcedureMessages.PID_FAILED_TO_PERSIST_LOCK_STATE_TO_STORE, this.procId, e);
       }
     }
     return state;
@@ -323,32 +324,33 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   public final void doReleaseLock(Env env, IProcedureStore store) throws Exception {
     locked = false;
     if (getState() == ProcedureState.ROLLEDBACK) {
-      LOG.info("Force write unlock state to raft for pid={}", this.procId);
+      LOG.info(ProcedureMessages.FORCE_WRITE_UNLOCK_STATE_TO_RAFT_FOR_PID, this.procId);
     }
     try {
       store.update(this);
       // do not release lock when consensus layer is not working
       releaseLock(env);
     } catch (ConsensusException e) {
-      LOG.error("pid={} Failed to persist unlock state to store.", this.procId, e);
+      LOG.error(ProcedureMessages.PID_FAILED_TO_PERSIST_UNLOCK_STATE_TO_STORE, this.procId, e);
       throw e;
     }
   }
 
   public final void restoreLock(Env env) {
     if (!lockedWhenLoading) {
-      LOG.debug("{} didn't hold the lock before restarting, skip acquiring lock", this);
+      LOG.debug(ProcedureMessages.DIDN_T_HOLD_THE_LOCK_BEFORE_RESTARTING_SKIP_ACQUIRING_LOCK, this);
       return;
     }
     if (isFinished()) {
-      LOG.debug("{} is already bypassed, skip acquiring lock.", this);
+      LOG.debug(ProcedureMessages.IS_ALREADY_BYPASSED_SKIP_ACQUIRING_LOCK, this);
       return;
     }
     if (getState() == ProcedureState.WAITING && !holdLock(env)) {
-      LOG.debug("{} is in WAITING STATE, and holdLock= false , skip acquiring lock.", this);
+      LOG.debug(ProcedureMessages.IS_IN_WAITING_STATE_AND_HOLDLOCK_FALSE_SKIP_ACQUIRING_LOCK, this);
       return;
     }
-    LOG.debug("{} held the lock before restarting, call acquireLock to restore it.", this);
+    LOG.debug(
+        ProcedureMessages.HELD_THE_LOCK_BEFORE_RESTARTING_CALL_ACQUIRELOCK_TO_RESTORE_IT, this);
     acquireLock(env);
   }
 
@@ -677,7 +679,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureException("Operation timed out after " + timeDiff + " ms."));
+          new ProcedureException(ProcedureMessages.OPERATION_TIMED_OUT_AFTER + timeDiff + " ms."));
       return true;
     }
     return false;
@@ -695,7 +697,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   protected synchronized void setChildrenLatch(int numChildren) {
     this.childrenLatch = numChildren;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH INCREMENT SET " + this.childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_INCREMENT_SET + this.childrenLatch,
+          new Throwable(this.toString()));
     }
   }
 
@@ -704,7 +708,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     // TODO: can this be inferred from the stack? I think so...
     this.childrenLatch++;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH INCREMENT " + this.childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_INCREMENT + this.childrenLatch,
+          new Throwable(this.toString()));
     }
   }
 
@@ -713,7 +719,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     assert childrenLatch > 0 : this;
     boolean b = --childrenLatch == 0;
     if (LOG.isTraceEnabled()) {
-      LOG.trace("CHILD LATCH DECREMENT " + childrenLatch, new Throwable(this.toString()));
+      LOG.trace(
+          ProcedureMessages.CHILD_LATCH_DECREMENT + childrenLatch, new Throwable(this.toString()));
     }
     return b;
   }

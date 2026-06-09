@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -60,7 +61,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -273,28 +273,28 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
-    DataPartition dataPartition;
+    final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
+        splitDataPartitionQueryParam(
+            dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
+    DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
+    if (null != dataPartition) {
+      return dataPartition;
+    }
+
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(
-              dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
-      dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
+      final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+      final TDataPartitionTableResp dataPartitionTableResp =
+          client.getOrCreateDataPartitionTable(req);
 
-      if (null == dataPartition) {
-        final TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
-        final TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(req);
-
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new IoTDBRuntimeException(
-              dataPartitionTableResp.getStatus().getMessage(),
-              dataPartitionTableResp.getStatus().getCode());
-        }
+      if (dataPartitionTableResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
+      } else {
+        throw new IoTDBRuntimeException(
+            dataPartitionTableResp.getStatus().getMessage(),
+            dataPartitionTableResp.getStatus().getCode());
       }
     } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
@@ -411,7 +411,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       return new TSchemaPartitionReq(patternTree.serialize());
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 
@@ -432,7 +433,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaNodeManagementReq;
     } catch (final IOException e) {
-      throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
+      throw new StatementAnalyzeException(
+          DataNodeQueryMessages.AN_ERROR_OCCURRED_WHEN_SERIALIZING_PATTERN_TREE);
     }
   }
 
@@ -520,16 +522,31 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String database = entry1.getKey();
       final Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
           regionReplicaMap.computeIfAbsent(database, k -> new HashMap<>());
+      Map<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionTable = entry1.getValue();
 
-      Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
-          new LinkedHashMap<>(entry1.getValue());
-      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
+      if (seriesPartitionTable.size() == 1) {
+        // Fast collection in case of query for single device
+        Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionEntry =
+            seriesPartitionTable.entrySet().iterator().next();
+        List<TRegionReplicaSet> regionReplicaSets =
+            partitionCache.getRegionReplicaSet(
+                Collections.singletonList(seriesPartitionEntry.getValue()));
+        result1.put(seriesPartitionEntry.getKey(), regionReplicaSets.get(0));
+        continue;
+      }
+
+      List<TConsensusGroupId> distinctRegionGroupIds =
+          new ArrayList<>(new HashSet<>(seriesPartitionTable.values()));
       List<TRegionReplicaSet> regionReplicaSets =
-          partitionCache.getRegionReplicaSet(orderedGroupIds);
+          partitionCache.getRegionReplicaSet(distinctRegionGroupIds);
+      Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSet = new HashMap<>();
+      for (int index = 0; index < distinctRegionGroupIds.size(); index++) {
+        groupIdToReplicaSet.put(distinctRegionGroupIds.get(index), regionReplicaSets.get(index));
+      }
 
-      int index = 0;
-      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 : orderedMap.entrySet()) {
-        result1.put(entry2.getKey(), regionReplicaSets.get(index++));
+      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
+          seriesPartitionTable.entrySet()) {
+        result1.put(entry2.getKey(), groupIdToReplicaSet.get(entry2.getValue()));
       }
     }
     return new SchemaPartition(

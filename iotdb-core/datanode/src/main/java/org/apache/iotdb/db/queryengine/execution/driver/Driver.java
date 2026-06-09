@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryMetricsManager;
 
 import com.google.common.collect.ImmutableList;
@@ -55,8 +55,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
-import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
+import static org.apache.iotdb.calc.execution.operator.Operator.NOT_BLOCKED;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
 
 public abstract class Driver implements IDriver {
 

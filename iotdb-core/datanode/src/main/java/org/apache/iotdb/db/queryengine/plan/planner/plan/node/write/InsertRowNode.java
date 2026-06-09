@@ -22,13 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -65,9 +67,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   private static final byte TYPE_NULL_WITHOUT_TYPE = -2;
   private static final byte TYPE_NULL_WITH_TYPE = -3;
 
-  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
+  private static final String UNSUPPORTED_DATA_TYPE = DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2;
 
-  protected static final String DESERIALIZE_ERROR = "Cannot deserialize InsertRowNode";
+  protected static final String DESERIALIZE_ERROR =
+      DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTROWNODE;
 
   private long time;
   private Object[] values;
@@ -149,7 +152,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -553,7 +556,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   protected int subSerializeSize() {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+    size += WALWriteUtils.sizeToWrite(targetPath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
 
@@ -617,8 +620,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     subSerialize(buffer);
   }
 
@@ -699,7 +706,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     long searchIndex = stream.readLong();
     InsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -790,7 +797,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     InsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -898,8 +905,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInsertRow(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitInsertRow(this, context);
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {

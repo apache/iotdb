@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -239,7 +240,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       sqlKeywordsThatArentSQL92 = keywordBuf.toString();
 
     } catch (Exception e) {
-      LOGGER.error("Error when initializing SQL keywords: ", e);
+      LOGGER.error(JdbcMessages.INIT_SQL_KEYWORDS_ERROR, e);
       throw new RuntimeException(e);
     }
   }
@@ -294,7 +295,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
         }
         sql = sql + "." + tableNamePattern;
       }
-      LOGGER.info("Get tables: sql: {}", sql);
+      LOGGER.info(JdbcMessages.GET_TABLES_SQL, sql);
       try (ResultSet rs = stmt.executeQuery(sql)) {
         Field[] fields = new Field[10];
         fields[0] = new Field("", TABLE_CAT, "TEXT");
@@ -618,7 +619,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     try {
       tsBlock = convertTsBlock(valuesList, tsDataTypeList);
     } catch (IOException e) {
-      LOGGER.error("Get primary keys error: {}", e.getMessage());
+      LOGGER.error(JdbcMessages.GET_PRIMARY_KEYS_ERROR, e.getMessage());
     } finally {
       close(null, stmt);
     }
@@ -664,7 +665,7 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     try {
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
-      LOGGER.error("Failed to fetch metadata in json because: ", e);
+      LOGGER.error(JdbcMessages.FAILED_TO_FETCH_METADATA_JSON, e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.getClient();

@@ -22,14 +22,18 @@ package org.apache.iotdb.db.queryengine.plan.planner.node.write;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,5 +69,29 @@ public class DeleteDataNodeSerdeTest {
     for (int i = 0; i < pathList.size(); i++) {
       Assert.assertEquals(pathList.get(i), deserializedPathList.get(i));
     }
+  }
+
+  @Test
+  public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+    long startTime = 1;
+    long endTime = 10;
+    List<MeasurementPath> pathList = new ArrayList<>();
+    pathList.add(new MeasurementPath("root.\u6570\u636e\u5e93.d1.\u6e29\u5ea6"));
+    pathList.add(new MeasurementPath("root.\u6570\u636e\u5e93.d2.*"));
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("DeleteDataNode"), pathList, startTime, endTime);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(deleteDataNode.serializedSize());
+    deleteDataNode.serializeToWAL(new WALByteBufferForTest(byteBuffer));
+    Assert.assertEquals(deleteDataNode.serializedSize(), byteBuffer.position());
+
+    DataInputStream dataInputStream =
+        new DataInputStream(new ByteArrayInputStream(byteBuffer.array()));
+    Assert.assertEquals(PlanNodeType.DELETE_DATA.getNodeType(), dataInputStream.readShort());
+
+    DeleteDataNode deserializedNode = DeleteDataNode.deserializeFromWAL(dataInputStream);
+    Assert.assertEquals(startTime, deserializedNode.getDeleteStartTime());
+    Assert.assertEquals(endTime, deserializedNode.getDeleteEndTime());
+    Assert.assertEquals(pathList, deserializedNode.getPathList());
   }
 }

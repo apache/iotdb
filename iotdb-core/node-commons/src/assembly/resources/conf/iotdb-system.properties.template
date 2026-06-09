@@ -494,9 +494,10 @@ cn_rpc_max_concurrent_client_num=3000
 cn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-cn_selector_thread_nums_of_client_manager=1
+cn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # when the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -504,6 +505,14 @@ cn_selector_thread_nums_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 cn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+# cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -522,11 +531,6 @@ dn_rpc_thrift_compression_enable=false
 # Datatype: boolean
 # this feature is under development, set this as false before it is done.
 dn_rpc_advanced_compression_enable=false
-
-# the number of rpc selector
-# effectiveMode: restart
-# Datatype: int
-dn_rpc_selector_thread_count=1
 
 # The maximum number of concurrent clients that can be connected to the dataNode.
 # effectiveMode: restart
@@ -549,9 +553,10 @@ dn_thrift_init_buffer_size=1024
 dn_connection_timeout_ms=60000
 
 # selector thread (TAsyncClientManager) nums for async thread in a clientManager
+# When <= 0, use max(1, CPU core number / 4).
 # effectiveMode: restart
 # Datatype: int
-dn_selector_thread_count_of_client_manager=1
+dn_selector_thread_nums_of_client_manager=0
 
 # The maximum number of clients that can be allocated for a node in a clientManager.
 # When the number of the client to a single node exceeds this number, the thread for applying for a client will be blocked
@@ -559,6 +564,14 @@ dn_selector_thread_count_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 dn_max_client_count_for_each_node_in_client_manager=1000
+
+# The maximum number of idle clients that can be retained for a node in a clientManager.
+# When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
+# effectiveMode: restart
+# Datatype: int
+# dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -666,6 +679,15 @@ default_data_region_group_num_per_database=2
 # Datatype: Integer
 data_region_per_data_node=0
 
+# The policy of allocating new RegionGroup replicas to DataNodes.
+# These policies are currently supported:
+# 1. GREEDY (Each replica is placed on the DataNode that currently holds the fewest regions; database-aware tie-break)
+# 2. GCR (Greedy + CopySet; balances cluster regions, per-database regions, and 2-region scatter)
+# 3. PGP (Partite-Graph Placement; based on the PGP paper, with database-aware balance)
+# effectiveMode: restart
+# Datatype: String
+# region_group_allocate_policy=GCR
+
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
 # Notice: Default is false because the Ratis is unstable for this function.
@@ -722,6 +744,21 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# Whether to enable topology probing between DataNodes
+# effectiveMode: hot_reload
+# Datatype: Boolean
+# enable_topology_probing=false
+
+# Base interval in ms for topology probing between DataNodes
+# effectiveMode: restart
+# Datatype: long
+# topology_probing_base_interval_in_ms=5000
+
+# Ratio of probing timeout to probing interval (must be less than 1.0)
+# effectiveMode: restart
+# Datatype: double
+# topology_probing_timeout_ratio=0.5
+
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)
@@ -738,12 +775,6 @@ partition_table_recover_worker_num=10
 # effectiveMode: restart
 # Datatype: Integer
 partition_table_recover_max_read_megabytes_per_second=10
-
-# Purpose: for data partition repair
-# Set a timeout to wait for all datanodes complete startup, the unit is ms
-# effectiveMode: restart
-# Datatype: Integer
-partition_table_recover_wait_all_dn_up_timeout_ms=60000
 
 ####################
 ### Memory Control Configuration
@@ -1668,6 +1699,12 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
+# This may reduce file copies but may also result in a worse disk load-balance
+# effectiveMode: hot_reload
+# Datatype: boolean
+keep_same_disk_when_loading_snapshot=true
+
 ####################
 ### Blob Allocator Configuration
 ####################
@@ -1931,6 +1968,15 @@ pipe_air_gap_receiver_port=9780
 pipe_all_sinks_rate_limit_bytes_per_second=-1
 
 ####################
+### Subscription Consensus Configuration
+####################
+
+# The interval at which an idle consensus-subscription queue advances its writer safe-time barrier by watermark.
+# effectiveMode: restart
+# Datatype: long(duration)
+subscription_consensus_idle_safe_time_barrier_interval_ms=10000
+
+####################
 ### RatisConsensus Configuration
 ####################
 
@@ -2159,6 +2205,17 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # effectiveMode: hot_reload
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
+
+# Whether the load_tsfile supports path allowed dirs check.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_source_path_check_enable=false
+
+# Comma-separated list of directories from which user-issued LOAD TSFILE statements can read.
+# If empty, IoTDB only permits LOAD sources under the internal load TsFile directories.
+# effectiveMode: hot_reload
+# Datatype: String
+load_tsfile_allowed_dirs=
 
 # Whether to enable the active listening mode for tsfile loading.
 # effectiveMode: hot_reload

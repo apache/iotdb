@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
@@ -107,7 +108,7 @@ public class SelectIntoUtils {
       try {
         index = Integer.parseInt(param.substring(2, param.length() - 1).trim());
       } catch (NumberFormatException e) {
-        throw new SemanticException("select into: the i of ${i} should be an integer.");
+        throw new SemanticException(DataNodeQueryMessages.SELECT_INTO_THE_I_OF_SHOULD_BE_AN);
       }
       if (index < 1 || index >= sourceNodes.length) {
         throw new SemanticException(

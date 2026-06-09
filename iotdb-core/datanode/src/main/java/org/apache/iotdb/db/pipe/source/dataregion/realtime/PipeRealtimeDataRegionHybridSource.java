@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -83,7 +84,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     if (canNotUseTabletAnymore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+          .registerProgressIndex(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getResource());
     } else {
       event
           .getTsFileEpoch()
@@ -156,7 +158,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+            .eliminateProgressIndex(
+                dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
         event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
         return;
       case EMPTY:
@@ -197,7 +200,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
       LOGGER.info(
-          "Pipe task {}@{} canNotUseTabletAnyMore for tsFile {}: The memory usage of the insert node {} has reached the dangerous threshold of single pipe {}, event count: {}",
+          DataNodePipeMessages.PIPE_TASK_CANNOTUSETABLETANYMORE_FOR_TSFILE_THE_MEMORY,
           pipeName,
           dataRegionId,
           event.getTsFileEpoch().getFilePath(),
@@ -215,7 +218,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
-      final Event suppliedEvent;
+      Event suppliedEvent;
 
       // Used to judge the type of the event, not directly for supplying.
       final Event eventToSupply = realtimeEvent.getEvent();
@@ -239,6 +242,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           PipeRealtimeDataRegionHybridSource.class.getName(), false);
 
       if (suppliedEvent != null) {
+        suppliedEvent = assignReplicateIndexIfNeeded(realtimeEvent, suppliedEvent);
         maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }
@@ -275,15 +279,14 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "TsFile Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
+              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+          .eliminateProgressIndex(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
       return null;
     }
   }

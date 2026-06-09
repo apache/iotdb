@@ -27,6 +27,8 @@ import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.SubscriptionMessageProcessor;
+import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
@@ -49,6 +51,7 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -58,6 +61,7 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
         endPoint,
         username,
         password,
+        encryptedPassword,
         consumerId,
         consumerGroupId,
         thriftMaxFrameSize,
@@ -80,6 +84,7 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
             .nodeUrls(builder.nodeUrls)
             .username(builder.username)
             .password(builder.password)
+            .encryptedPassword(builder.encryptedPassword)
             .consumerId(builder.consumerId)
             .consumerGroupId(builder.consumerGroupId)
             .heartbeatIntervalMs(builder.heartbeatIntervalMs)
@@ -174,6 +179,11 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
   }
 
   @Override
+  public List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    return super.drainBufferedMessages();
+  }
+
+  @Override
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(message);
   }
@@ -220,6 +230,26 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
     return super.allTopicMessagesHaveBeenConsumed();
   }
 
+  /////////////////////////////// processor ///////////////////////////////
+
+  public SubscriptionTreePullConsumer addProcessor(final SubscriptionMessageProcessor processor) {
+    super.addProcessor(processor);
+    return this;
+  }
+
+  public PollResult pollWithInfo(final long timeoutMs) throws SubscriptionException {
+    return super.pollWithInfo(timeoutMs);
+  }
+
+  public PollResult pollWithInfo(final Duration timeout) throws SubscriptionException {
+    return super.pollWithInfo(timeout.toMillis());
+  }
+
+  public PollResult pollWithInfo(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return super.pollWithInfo(topicNames, timeoutMs);
+  }
+
   /////////////////////////////// builder ///////////////////////////////
 
   @Deprecated // keep for forward compatibility
@@ -231,6 +261,7 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
 
     private String username = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String encryptedPassword;
 
     private String consumerId;
     private String consumerGroupId;
@@ -271,6 +302,11 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
 
     public Builder password(final String password) {
       this.password = password;
+      return this;
+    }
+
+    public Builder encryptedPassword(final String encryptedPassword) {
+      this.encryptedPassword = encryptedPassword;
       return this;
     }
 

@@ -19,22 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsJsonDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
@@ -205,7 +207,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       String res = logContent.toString();
       logger.info(res);
     } catch (Exception e) {
-      logger.error("Error occurred when logging intermediate result of analyze.", e);
+      logger.error(
+          DataNodeQueryMessages.ERROR_OCCURRED_WHEN_LOGGING_INTERMEDIATE_RESULT_OF_ANALYZE, e);
     }
   }
 
@@ -321,10 +324,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     if (logRecordTask != null) {
       boolean cancelResult = logRecordTask.cancel(true);
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", logRecordTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 

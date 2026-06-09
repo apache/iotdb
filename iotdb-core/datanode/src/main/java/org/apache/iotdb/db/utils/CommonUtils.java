@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -104,7 +106,8 @@ public class CommonUtils {
             if (TypeInferenceUtils.isNumber(value)) {
               return Long.parseLong(value);
             } else {
-              return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
+              return DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+                  StringUtils.trim(value), zoneId);
             }
           } catch (Throwable e) {
             throw new NumberFormatException(
@@ -126,7 +129,7 @@ public class CommonUtils {
                 "data type is not consistent, input " + value + ", registered " + dataType);
           }
           if (Float.isInfinite(f)) {
-            throw new NumberFormatException("The input float value is Infinity");
+            throw new NumberFormatException(DataNodeMiscMessages.INPUT_FLOAT_INFINITY);
           }
           return f;
         case DOUBLE:
@@ -138,7 +141,7 @@ public class CommonUtils {
                 "data type is not consistent, input " + value + ", registered " + dataType);
           }
           if (Double.isInfinite(d)) {
-            throw new NumberFormatException("The input double value is Infinity");
+            throw new NumberFormatException(DataNodeMiscMessages.INPUT_DOUBLE_INFINITY);
           }
           return d;
         case TEXT:
@@ -167,7 +170,7 @@ public class CommonUtils {
           throw new NumberFormatException(
               "data type is not consistent, input " + value + ", registered " + dataType);
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
+          throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
@@ -202,7 +205,7 @@ public class CommonUtils {
     if (SqlConstant.BOOLEAN_TRUE_NUM.equals(value) || SqlConstant.BOOLEAN_TRUE.equals(value)) {
       return true;
     }
-    throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+    throw new QueryProcessException(DataNodeMiscMessages.BOOLEAN_PARSE_ERROR);
   }
 
   public static String getContentOfRequest(

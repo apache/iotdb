@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
@@ -75,12 +75,9 @@ public class RelationalDeleteDataNodeTest {
                 new TableDeletionEntry(
                     new DeletionPredicate("table1", new NOP(), Arrays.asList("s1", "s2")),
                     new TimeRange(0, 10))),
-            null);
-    relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
+            "nezha");
 
-    ByteBuffer buffer = ByteBuffer.allocate(relationalDeleteDataNode.serializedSize());
-    relationalDeleteDataNode.serialize(buffer);
-    buffer.flip();
+    ByteBuffer buffer = relationalDeleteDataNode.serializeToByteBuffer();
     assertEquals(relationalDeleteDataNode, PlanNodeType.deserialize(buffer));
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -92,6 +89,7 @@ public class RelationalDeleteDataNodeTest {
     buffer = ByteBuffer.allocate(relationalDeleteDataNode.serializedSize());
     WALByteBufferForTest walByteBufferForTest = new WALByteBufferForTest(buffer);
     relationalDeleteDataNode.serializeToWAL(walByteBufferForTest);
+    assertEquals(relationalDeleteDataNode.serializedSize(), buffer.position());
     buffer.flip();
     PlanNode deserialized = PlanNodeType.deserializeFromWAL(buffer);
     // plan node id is not serialized to WAL, manually set it to pass comparison
@@ -108,6 +106,7 @@ public class RelationalDeleteDataNodeTest {
     deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
     assertEquals(relationalDeleteDataNode, deserialized);
 
+    relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
     buffer = relationalDeleteDataNode.serializeToDAL();
     deserialized = DeleteNodeType.deserializeFromDAL(buffer);
     // plan node id is not serialized to DAL, manually set it to pass comparison

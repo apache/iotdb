@@ -24,91 +24,91 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
-import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -143,20 +143,20 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind.AGGREGATE;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind.AGGREGATE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TransformSortToStreamSort.isOrderByAllIdsAndTime;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
-    extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
+    implements PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
   private final MPPQueryContext queryContext;
   private final QueryId queryId;
   private final Analysis analysis;
@@ -187,7 +187,7 @@ public class TableDistributedPlanGenerator
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
-      throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+      throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
     }
   }
 
@@ -321,7 +321,22 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
+    boolean containsDiff =
+        node.getAssignments().getMap().values().stream()
+            .anyMatch(expression -> containsDiffFunction(expression));
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     boolean containAllSortItem = false;
     if (childOrdering != null) {
@@ -378,9 +393,6 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    boolean containsDiff =
-        node.getAssignments().getMap().values().stream()
-            .anyMatch(PushPredicateIntoTableScan::containsDiffFunction);
     if (containsDiff) {
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -583,7 +595,20 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
+    boolean containsDiff = containsDiffFunction(node.getPredicate());
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -594,7 +619,7 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    if (containsDiffFunction(node.getPredicate())) {
+    if (containsDiff) {
       node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     }
@@ -651,7 +676,8 @@ public class TableDistributedPlanGenerator
           throw new IllegalStateException(
               "RIGHT Join should be transformed to LEFT Join in previous process");
         default:
-          throw new UnsupportedOperationException("Unsupported Join Type: " + node.getJoinType());
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
       }
     }
     return Collections.singletonList(node);
@@ -1318,7 +1344,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
@@ -1500,7 +1527,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
@@ -1905,7 +1933,7 @@ public class TableDistributedPlanGenerator
           DataNodeTableCache.getInstance()
               .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
       return Optional.of(
-          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+          DataNodeTableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
               DataNodeTreeViewSchemaUtils.getPrefixPath(table)));
     } else {
       return Optional.empty();

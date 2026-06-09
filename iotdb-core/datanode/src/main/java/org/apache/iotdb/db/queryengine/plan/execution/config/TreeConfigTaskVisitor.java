@@ -22,13 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterTimeSeriesTask;
@@ -106,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.RepairDataPartitionTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
@@ -214,6 +215,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
@@ -227,7 +229,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -251,7 +252,8 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
 
   @Override
   public IConfigTask visitStatement(Statement statement, MPPQueryContext context) {
-    throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CONFIGTASK_IS_NOT_IMPLEMENTED_FOR + statement);
   }
 
   @Override
@@ -341,20 +343,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   private void visitUpdateUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
-    statement.setPassWord(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(
-        statement.getAssociatedUsedId(), statement.getNewPassword());
+    statement.setPassWord(
+        AuthorityChecker.getAuthorityFetcher()
+            .getUser(statement.getUserName(), true)
+            .getPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
+    AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName(), true);
   }
 
   @Override
@@ -390,6 +386,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, MPPQueryContext context) {
     return new StartRepairDataTask(startRepairDataStatement);
+  }
+
+  @Override
+  public IConfigTask visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
+    return new RepairDataPartitionTableTask();
   }
 
   @Override

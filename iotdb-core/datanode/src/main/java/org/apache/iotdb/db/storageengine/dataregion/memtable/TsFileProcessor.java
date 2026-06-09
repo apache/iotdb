@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -34,12 +36,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -117,7 +118,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.GET_QUERY_RESOURCE_FROM_MEM;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.GET_QUERY_RESOURCE_FROM_MEM;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.FLUSHING_MEMTABLE;
 import static org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet.WORKING_MEMTABLE;
 
@@ -242,7 +243,7 @@ public class TsFileProcessor {
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
-    logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
+    logger.info(StorageEngineMessages.CREATE_NEW_TSFILE_PROCESSOR, tsfile.getAbsolutePath());
   }
 
   @SuppressWarnings("java:S107") // ignore number of arguments
@@ -266,7 +267,7 @@ public class TsFileProcessor {
     flushListeners.add(FlushListener.DefaultMemTableFLushListener.INSTANCE);
     flushListeners.add(this.walNode);
     closeFileListeners.add(closeUnsealedTsFileProcessor);
-    logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
+    logger.info(StorageEngineMessages.REOPEN_TSFILE_PROCESSOR, tsFileResource.getTsFile());
   }
 
   private void ensureMemTable(long[] infoForMetrics) {
@@ -320,7 +321,7 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
-      logger.warn("Exception during wal flush", e);
+      logger.warn(StorageEngineMessages.EXCEPTION_DURING_WAL_FLUSH, e);
       if (e instanceof IoTDBRuntimeException) {
         throw new WriteProcessException(
             e.getMessage(), ((IoTDBRuntimeException) e).getErrorCode(), true);
@@ -417,7 +418,7 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       rollbackMemoryInfo(memIncrements);
-      logger.warn("Exception during wal flush", e);
+      logger.warn(StorageEngineMessages.EXCEPTION_DURING_WAL_FLUSH, e);
       if (e instanceof IoTDBRuntimeException) {
         throw new WriteProcessException(
             e.getMessage(), ((IoTDBRuntimeException) e).getErrorCode(), true);
@@ -1214,7 +1215,7 @@ public class TsFileProcessor {
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
-        logger.info("[Deletion] Deletion with {} in flushingMemTable", deletion);
+        logger.info(StorageEngineMessages.DELETION_IN_FLUSHING_MEMTABLE, deletion);
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
         deleted = true;
       }
@@ -1263,7 +1264,7 @@ public class TsFileProcessor {
       }
 
       asyncClose().get();
-      logger.info("Start to wait until file {} is closed", tsFileResource);
+      logger.info(StorageEngineMessages.START_WAIT_UNTIL_FILE_CLOSED, tsFileResource);
       // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
       // but the TsFileProcessor may be not closed. Therefore, we need to check whether the writer
       // is null.
@@ -1273,7 +1274,9 @@ public class TsFileProcessor {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
+    logger.info(
+        StorageEngineMessages.FILE_CLOSED_SYNCHRONOUSLY,
+        tsFileResource.getTsFile().getAbsolutePath());
   }
 
   /** async close one tsfile, register and close it by another thread */
@@ -1456,7 +1459,11 @@ public class TsFileProcessor {
             flushingMemTables.size());
       }
     } catch (Exception e) {
-      logger.error("{}: {}", dataRegionName, tsFileResource.getTsFile().getName(), e);
+      logger.error(
+          StorageEngineMessages.DATAREGION_TSFILE_ERROR,
+          dataRegionName,
+          tsFileResource.getTsFile().getName(),
+          e);
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();
@@ -1572,7 +1579,7 @@ public class TsFileProcessor {
           this.tsFileResource.getModFileForWrite().write(entry.left);
           tsFileResource.getModFileForWrite().close();
           iterator.remove();
-          logger.info("[Deletion] Deletion : {} written when flush memtable", entry.left);
+          logger.info(StorageEngineMessages.DELETION_WRITTEN_WHEN_FLUSH, entry.left);
         }
       }
     } catch (IOException e) {
@@ -1597,7 +1604,7 @@ public class TsFileProcessor {
     try {
       writer.getTsFileOutput().force();
     } catch (IOException e) {
-      logger.error("fsync memTable data to disk error,", e);
+      logger.error(StorageEngineMessages.FSYNC_MEMTABLE_TO_DISK_ERROR, e);
     }
 
     // Call flushed listener after memtable is released safely
@@ -1622,7 +1629,7 @@ public class TsFileProcessor {
           endFile();
         }
         if (logger.isDebugEnabled()) {
-          logger.debug("{} flushingMemtables is clear", dataRegionName);
+          logger.debug(StorageEngineMessages.FLUSHING_MEMTABLES_CLEAR, dataRegionName);
         }
       } catch (Exception e) {
         logger.error(
@@ -1700,7 +1707,7 @@ public class TsFileProcessor {
   /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
     if (logger.isDebugEnabled()) {
-      logger.debug("Start to end file {}", tsFileResource);
+      logger.debug(StorageEngineMessages.START_TO_END_FILE, tsFileResource);
     }
     writer.endFile();
 
@@ -1721,7 +1728,7 @@ public class TsFileProcessor {
             tsFileResource.getTsFileID(),
             writer.getTableSizeMap());
     if (logger.isDebugEnabled()) {
-      logger.debug("Ended file {}", tsFileResource);
+      logger.debug(StorageEngineMessages.ENDED_FILE, tsFileResource);
     }
     // Remove this processor from Closing list in StorageGroupProcessor,
     // Mark the TsFileResource closed, no need writer anymore
@@ -1737,7 +1744,7 @@ public class TsFileProcessor {
 
   /** End empty file and remove it from file system */
   private void endEmptyFile() throws TsFileProcessorException, IOException {
-    logger.info("Start to end empty file {}", tsFileResource);
+    logger.info(StorageEngineMessages.START_TO_END_EMPTY_FILE, tsFileResource);
 
     // Remove this processor from Closing list in DataRegion,
     // Mark the TsFileResource closed, no need writer anymore
@@ -1915,7 +1922,8 @@ public class TsFileProcessor {
         searchTimeChunkMetaDataIndexAndSetModifications(
             chunkMetaDataListForDevice, deviceID, modifications, queryContext);
     if (timeChunkMetadataListIndex == -1) {
-      throw new QueryProcessException("TimeChunkMetadata in aligned device should not be empty");
+      throw new QueryProcessException(
+          StorageEngineMessages.TIME_CHUNK_METADATA_SHOULD_NOT_BE_EMPTY);
     }
     List<ChunkMetadata> timeChunkMetadataList =
         chunkMetaDataListForDevice.get(timeChunkMetadataListIndex);

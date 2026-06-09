@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
+
+import com.google.common.collect.ImmutableSet;
 
 import java.util.Optional;
 import java.util.Set;
@@ -38,6 +43,23 @@ public class PruneFillColumns extends ProjectOffPushDownRule<FillNode> {
   @Override
   protected Optional<PlanNode> pushDownProjectOff(
       Context context, FillNode fillNode, Set<Symbol> referencedOutputs) {
-    return restrictChildOutputs(context.getIdAllocator(), fillNode, referencedOutputs);
+    // Like PruneGapFillColumns: TIME_COLUMN / helper and FILL_GROUP symbols must remain in the
+    // child's output even if no outer consumer references them (e.g. nested subquery pruning).
+    ImmutableSet.Builder<Symbol> referencedInputs = ImmutableSet.builder();
+    referencedInputs.addAll(referencedOutputs);
+    if (fillNode instanceof PreviousFillNode) {
+      PreviousFillNode previousFillNode = (PreviousFillNode) fillNode;
+      previousFillNode.getHelperColumn().ifPresent(referencedInputs::add);
+      previousFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+    } else if (fillNode instanceof NextFillNode) {
+      NextFillNode nextFillNode = (NextFillNode) fillNode;
+      nextFillNode.getHelperColumn().ifPresent(referencedInputs::add);
+      nextFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+    } else if (fillNode instanceof LinearFillNode) {
+      LinearFillNode linearFillNode = (LinearFillNode) fillNode;
+      referencedInputs.add(linearFillNode.getHelperColumn());
+      linearFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+    }
+    return restrictChildOutputs(context.getIdAllocator(), fillNode, referencedInputs.build());
   }
 }

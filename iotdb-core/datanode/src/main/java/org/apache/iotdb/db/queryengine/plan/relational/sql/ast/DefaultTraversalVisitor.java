@@ -19,15 +19,75 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExcludedPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingElement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GroupingSets;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.JoinOn;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternAlternation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternConcatenation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternPermutation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternVariable;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SetOperation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SingleColumn;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WithQuery;
+
+public abstract class DefaultTraversalVisitor<C> implements AstVisitor<Void, C> {
   @Override
-  protected Void visitExtract(Extract node, C context) {
+  public Void visitExtract(Extract node, C context) {
     process(node.getExpression(), context);
     return null;
   }
 
   @Override
-  protected Void visitArithmeticBinary(ArithmeticBinaryExpression node, C context) {
+  public Void visitArithmeticBinary(ArithmeticBinaryExpression node, C context) {
     process(node.getLeft(), context);
     process(node.getRight(), context);
 
@@ -35,7 +95,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitBetweenPredicate(BetweenPredicate node, C context) {
+  public Void visitBetweenPredicate(BetweenPredicate node, C context) {
     process(node.getValue(), context);
     process(node.getMin(), context);
     process(node.getMax(), context);
@@ -44,7 +104,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCoalesceExpression(CoalesceExpression node, C context) {
+  public Void visitCoalesceExpression(CoalesceExpression node, C context) {
     for (Expression operand : node.getOperands()) {
       process(operand, context);
     }
@@ -53,7 +113,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitComparisonExpression(ComparisonExpression node, C context) {
+  public Void visitComparisonExpression(ComparisonExpression node, C context) {
     process(node.getLeft(), context);
     process(node.getRight(), context);
 
@@ -61,7 +121,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitQuery(Query node, C context) {
+  public Void visitQuery(Query node, C context) {
     if (node.getWith().isPresent()) {
       process(node.getWith().get(), context);
     }
@@ -80,26 +140,26 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitExplain(Explain node, C context) {
+  public Void visitExplain(Explain node, C context) {
     process(node.getStatement(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitCopyTo(CopyTo node, C context) {
+  public Void visitCopyTo(CopyTo node, C context) {
     process(node.getQueryStatement(), context);
     return null;
   }
 
   @Override
-  protected Void visitExplainAnalyze(ExplainAnalyze node, C context) {
+  public Void visitExplainAnalyze(ExplainAnalyze node, C context) {
     process(node.getStatement(), context);
     return null;
   }
 
   @Override
-  protected Void visitWith(With node, C context) {
+  public Void visitWith(With node, C context) {
     for (WithQuery query : node.getQueries()) {
       process(query, context);
     }
@@ -108,13 +168,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitWithQuery(WithQuery node, C context) {
+  public Void visitWithQuery(WithQuery node, C context) {
     process(node.getQuery(), context);
     return null;
   }
 
   @Override
-  protected Void visitSelect(Select node, C context) {
+  public Void visitSelect(Select node, C context) {
     for (SelectItem item : node.getSelectItems()) {
       process(item, context);
     }
@@ -123,13 +183,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitFill(Fill node, C context) {
+  public Void visitFill(Fill node, C context) {
     node.getFillValue().ifPresent(this::process);
     return null;
   }
 
   @Override
-  protected Void visitOrderBy(OrderBy node, C context) {
+  public Void visitOrderBy(OrderBy node, C context) {
     for (SortItem sortItem : node.getSortItems()) {
       process(sortItem, context);
     }
@@ -137,21 +197,21 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitOffset(Offset node, C context) {
+  public Void visitOffset(Offset node, C context) {
     process(node.getRowCount());
 
     return null;
   }
 
   @Override
-  protected Void visitLimit(Limit node, C context) {
+  public Void visitLimit(Limit node, C context) {
     process(node.getRowCount());
 
     return null;
   }
 
   @Override
-  protected Void visitQuerySpecification(QuerySpecification node, C context) {
+  public Void visitQuerySpecification(QuerySpecification node, C context) {
     process(node.getSelect(), context);
     if (node.getFrom().isPresent()) {
       process(node.getFrom().get(), context);
@@ -178,7 +238,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSetOperation(SetOperation node, C context) {
+  public Void visitSetOperation(SetOperation node, C context) {
     for (Relation relation : node.getRelations()) {
       process(relation, context);
     }
@@ -186,7 +246,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitWhenClause(WhenClause node, C context) {
+  public Void visitWhenClause(WhenClause node, C context) {
     process(node.getOperand(), context);
     process(node.getResult(), context);
 
@@ -194,7 +254,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitInPredicate(InPredicate node, C context) {
+  public Void visitInPredicate(InPredicate node, C context) {
     process(node.getValue(), context);
     process(node.getValueList(), context);
 
@@ -202,7 +262,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitFunctionCall(FunctionCall node, C context) {
+  public Void visitFunctionCall(FunctionCall node, C context) {
     for (Expression argument : node.getArguments()) {
       process(argument, context);
     }
@@ -211,7 +271,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
+  public Void visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
     process(node.getOperand(), context);
     for (WhenClause clause : node.getWhenClauses()) {
       process(clause, context);
@@ -223,7 +283,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
+  public Void visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
     for (WhenClause clause : node.getWhenClauses()) {
       process(clause, context);
     }
@@ -233,7 +293,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitInListExpression(InListExpression node, C context) {
+  public Void visitInListExpression(InListExpression node, C context) {
     for (Expression value : node.getValues()) {
       process(value, context);
     }
@@ -242,13 +302,13 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitDereferenceExpression(DereferenceExpression node, C context) {
+  public Void visitDereferenceExpression(DereferenceExpression node, C context) {
     process(node.getBase(), context);
     return null;
   }
 
   @Override
-  protected Void visitTrim(Trim node, C context) {
+  public Void visitTrim(Trim node, C context) {
     process(node.getTrimSource(), context);
     node.getTrimCharacter().ifPresent(trimChar -> process(trimChar, context));
 
@@ -256,7 +316,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitIfExpression(IfExpression node, C context) {
+  public Void visitIfExpression(IfExpression node, C context) {
     process(node.getCondition(), context);
     process(node.getTrueValue(), context);
     if (node.getFalseValue().isPresent()) {
@@ -267,7 +327,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitNullIfExpression(NullIfExpression node, C context) {
+  public Void visitNullIfExpression(NullIfExpression node, C context) {
     process(node.getFirst(), context);
     process(node.getSecond(), context);
 
@@ -275,33 +335,33 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitArithmeticUnary(ArithmeticUnaryExpression node, C context) {
+  public Void visitArithmeticUnary(ArithmeticUnaryExpression node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitNotExpression(NotExpression node, C context) {
+  public Void visitNotExpression(NotExpression node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitSingleColumn(SingleColumn node, C context) {
+  public Void visitSingleColumn(SingleColumn node, C context) {
     process(node.getExpression(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitAllColumns(AllColumns node, C context) {
+  public Void visitAllColumns(AllColumns node, C context) {
     node.getTarget().ifPresent(value -> process(value, context));
 
     return null;
   }
 
   @Override
-  protected Void visitLikePredicate(LikePredicate node, C context) {
+  public Void visitLikePredicate(LikePredicate node, C context) {
     process(node.getValue(), context);
     process(node.getPattern(), context);
     node.getEscape().ifPresent(value -> process(value, context));
@@ -310,19 +370,19 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitIsNotNullPredicate(IsNotNullPredicate node, C context) {
+  public Void visitIsNotNullPredicate(IsNotNullPredicate node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitIsNullPredicate(IsNullPredicate node, C context) {
+  public Void visitIsNullPredicate(IsNullPredicate node, C context) {
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitLogicalExpression(LogicalExpression node, C context) {
+  public Void visitLogicalExpression(LogicalExpression node, C context) {
     for (Node child : node.getTerms()) {
       process(child, context);
     }
@@ -331,19 +391,19 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSubqueryExpression(SubqueryExpression node, C context) {
+  public Void visitSubqueryExpression(SubqueryExpression node, C context) {
     process(node.getQuery(), context);
     return null;
   }
 
   @Override
-  protected Void visitSortItem(SortItem node, C context) {
+  public Void visitSortItem(SortItem node, C context) {
     process(node.getSortKey(), context);
     return null;
   }
 
   @Override
-  protected Void visitValues(Values node, C context) {
+  public Void visitValues(Values node, C context) {
     for (Expression row : node.getRows()) {
       process(row, context);
     }
@@ -351,7 +411,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitRow(Row node, C context) {
+  public Void visitRow(Row node, C context) {
     for (Expression expression : node.getItems()) {
       process(expression, context);
     }
@@ -359,19 +419,19 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitTableSubquery(TableSubquery node, C context) {
+  public Void visitTableSubquery(TableSubquery node, C context) {
     process(node.getQuery(), context);
     return null;
   }
 
   @Override
-  protected Void visitAliasedRelation(AliasedRelation node, C context) {
+  public Void visitAliasedRelation(AliasedRelation node, C context) {
     process(node.getRelation(), context);
     return null;
   }
 
   @Override
-  protected Void visitJoin(Join node, C context) {
+  public Void visitJoin(Join node, C context) {
     process(node.getLeft(), context);
     process(node.getRight(), context);
 
@@ -389,20 +449,20 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitExists(ExistsPredicate node, C context) {
+  public Void visitExists(ExistsPredicate node, C context) {
     process(node.getSubquery(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitCast(Cast node, C context) {
+  public Void visitCast(Cast node, C context) {
     process(node.getExpression(), context);
     return null;
   }
 
   @Override
-  protected Void visitCreateDB(CreateDB node, C context) {
+  public Void visitCreateDB(CreateDB node, C context) {
     for (Property property : node.getProperties()) {
       process(property, context);
     }
@@ -411,7 +471,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitAlterDB(AlterDB node, C context) {
+  public Void visitAlterDB(AlterDB node, C context) {
     for (Property property : node.getProperties()) {
       process(property, context);
     }
@@ -420,7 +480,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCreateTable(final CreateTable node, final C context) {
+  public Void visitCreateTable(final CreateTable node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);
     }
@@ -429,7 +489,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCreateView(final CreateView node, final C context) {
+  public Void visitCreateView(final CreateView node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);
     }
@@ -438,7 +498,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitProperty(Property node, C context) {
+  public Void visitProperty(Property node, C context) {
     process(node.getName(), context);
     if (!node.isSetToDefault()) {
       process(node.getNonDefaultValue(), context);
@@ -447,7 +507,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSetProperties(final SetProperties node, final C context) {
+  public Void visitSetProperties(final SetProperties node, final C context) {
     for (final Property property : node.getProperties()) {
       process(property, context);
     }
@@ -456,21 +516,21 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitAddColumn(final AddColumn node, final C context) {
+  public Void visitAddColumn(final AddColumn node, final C context) {
     process(node.getColumn(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitInsert(Insert node, C context) {
+  public Void visitInsert(Insert node, C context) {
     process(node.getQuery(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitDelete(Delete node, C context) {
+  public Void visitDelete(Delete node, C context) {
     process(node.getTable(), context);
     node.getWhere().ifPresent(where -> process(where, context));
 
@@ -478,7 +538,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitUpdate(Update node, C context) {
+  public Void visitUpdate(Update node, C context) {
     process(node.getTable(), context);
     node.getAssignments().forEach(value -> process(value, context));
     node.getWhere().ifPresent(where -> process(where, context));
@@ -487,14 +547,14 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitUpdateAssignment(UpdateAssignment node, C context) {
+  public Void visitUpdateAssignment(UpdateAssignment node, C context) {
     process(node.getName(), context);
     process(node.getValue(), context);
     return null;
   }
 
   @Override
-  protected Void visitGroupBy(GroupBy node, C context) {
+  public Void visitGroupBy(GroupBy node, C context) {
     for (GroupingElement groupingElement : node.getGroupingElements()) {
       process(groupingElement, context);
     }
@@ -503,7 +563,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitGroupingSets(GroupingSets node, C context) {
+  public Void visitGroupingSets(GroupingSets node, C context) {
     for (Expression expression : node.getExpressions()) {
       process(expression, context);
     }
@@ -512,7 +572,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSimpleGroupBy(SimpleGroupBy node, C context) {
+  public Void visitSimpleGroupBy(SimpleGroupBy node, C context) {
     for (Expression expression : node.getExpressions()) {
       process(expression, context);
     }
@@ -521,8 +581,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitQuantifiedComparisonExpression(
-      QuantifiedComparisonExpression node, C context) {
+  public Void visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context) {
     process(node.getValue(), context);
     process(node.getSubquery(), context);
 
@@ -530,14 +589,14 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitExcludedPattern(ExcludedPattern node, C context) {
+  public Void visitExcludedPattern(ExcludedPattern node, C context) {
     process(node.getPattern(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitPatternAlternation(PatternAlternation node, C context) {
+  public Void visitPatternAlternation(PatternAlternation node, C context) {
     for (RowPattern rowPattern : node.getPatterns()) {
       process(rowPattern, context);
     }
@@ -546,7 +605,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitPatternConcatenation(PatternConcatenation node, C context) {
+  public Void visitPatternConcatenation(PatternConcatenation node, C context) {
     for (RowPattern rowPattern : node.getPatterns()) {
       process(rowPattern, context);
     }
@@ -555,7 +614,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitPatternPermutation(PatternPermutation node, C context) {
+  public Void visitPatternPermutation(PatternPermutation node, C context) {
     for (RowPattern rowPattern : node.getPatterns()) {
       process(rowPattern, context);
     }
@@ -564,14 +623,14 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitPatternVariable(PatternVariable node, C context) {
+  public Void visitPatternVariable(PatternVariable node, C context) {
     process(node.getName(), context);
 
     return null;
   }
 
   @Override
-  protected Void visitQuantifiedPattern(QuantifiedPattern node, C context) {
+  public Void visitQuantifiedPattern(QuantifiedPattern node, C context) {
     process(node.getPattern(), context);
 
     return null;

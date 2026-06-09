@@ -19,27 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
-import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -130,6 +131,12 @@ public class MPPQueryContext implements IAuditEntity {
   private LongConsumer reserveMemoryForSchemaTreeFunc = null;
 
   private boolean userQuery = false;
+
+  /**
+   * When true (e.g. SHOW QUERIES), operator and exchange memory may use fallback when pool is
+   * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
+   */
+  private boolean needSetHighestPriority = false;
 
   private boolean debug = false;
 
@@ -510,11 +517,19 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean needSetHighestPriority() {
+    return needSetHighestPriority;
+  }
+
+  public void setNeedSetHighestPriority(boolean needSetHighestPriority) {
+    this.needSetHighestPriority = needSetHighestPriority;
   }
 
   public boolean isDebug() {

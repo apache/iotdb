@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -33,13 +35,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -154,6 +156,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> startRepairData(boolean onCluster);
 
   SettableFuture<ConfigTaskResult> stopRepairData(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> repairDataPartitionTable();
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
@@ -328,7 +332,10 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      final ShowDB showDB, final Predicate<String> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeeDB);
+
+  SettableFuture<ConfigTaskResult> countDatabases(
+      final CountDB countDB, final Predicate<String> canSeeDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
@@ -352,7 +359,7 @@ public interface IConfigTaskExecutor {
       final Boolean isShowCreateView);
 
   SettableFuture<ConfigTaskResult> showTables(
-      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
@@ -445,7 +452,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
 
-  SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect);
+  SettableFuture<ConfigTaskResult> setSqlDialect(SqlDialect sqlDialect);
 
   SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
 

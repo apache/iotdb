@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
@@ -93,7 +94,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(ClientMessages.CLIENT_INVALIDATED));
     }
   }
 
@@ -135,7 +136,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
 
   private synchronized void recoverTimeout() {
     if (originalTimeout == -1) {
-      logger.warn("This client's timeout has not been modified, cannot reset");
+      logger.warn(ClientMessages.TIMEOUT_NOT_MODIFIED);
     }
     setTimeout(originalTimeout);
     originalTimeout = -1;
@@ -153,7 +154,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
     } catch (Exception e) {
       if (printLogWhenEncounterException) {
         logger.error(
-            "Unexpected exception occurs in {}, error msg is {}",
+            ClientMessages.UNEXPECTED_EXCEPTION_IN_CLIENT_WITH_MSG,
             this,
             ExceptionUtils.getRootCause(e).toString());
       }

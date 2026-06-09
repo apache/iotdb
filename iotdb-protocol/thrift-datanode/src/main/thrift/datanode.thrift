@@ -332,6 +332,11 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateClusterTopologyReq {
+  1: required map<i32, common.TDataNodeLocation> dataNodes
+  2: required map<i32, set<i32>> topology
+}
+
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
@@ -595,6 +600,33 @@ struct TPushConsumerGroupMetaRespExceptionMessage {
   1: required string consumerGroupId
   2: required string message
   3: required i64 timeStamp
+}
+
+struct TPullCommitProgressReq {
+}
+
+struct TPullCommitProgressResp {
+  1: required common.TSStatus status
+  2: optional map<string, binary> commitRegionProgress
+}
+
+struct TSyncSubscriptionProgressReq {
+  1: required string consumerGroupId
+  2: required string topicName
+  3: required string regionId
+  4: required i64 physicalTime
+  5: required i32 writerNodeId
+  6: required i64 localSeq
+}
+struct TSubscriptionRuntimeStateEntry {
+  1: required common.TConsensusGroupId regionId
+  2: required i64 runtimeVersion
+  3: required i32 preferredWriterNodeId
+  4: required bool active
+  5: required list<i32> activeWriterNodeIds
+}
+struct TPushSubscriptionRuntimeReq {
+  1: required list<TSubscriptionRuntimeStateEntry> runtimeStates
 }
 
 struct TConstructViewSchemaBlackListReq {
@@ -1211,6 +1243,20 @@ service IDataNodeRPCService {
   */
   TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
 
+ /**
+  * Pull commit progress from DataNode for subscription consensus persistence
+  */
+  TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req)
+
+ /**
+  * Sync subscription committed progress from Leader to Follower (fire-and-forget)
+  */
+  common.TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req)
+ /**
+  * Push subscription runtime state to DataNodes.
+  */
+  common.TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req)
+
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
   **/
@@ -1304,6 +1350,12 @@ service IDataNodeRPCService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 
+  /**
+   * Push cluster topology to this DataNode.
+   * Each DataNode receives only its own reachable set.
+   */
+  common.TSStatus updateClusterTopology(1:TUpdateClusterTopologyReq req)
+
   /** to write audit log or other events as time series **/
   common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
 
@@ -1330,7 +1382,7 @@ service IDataNodeRPCService {
   /**
    * Check the status of DataPartitionTable generation task
    */
-  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat()
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
 
   /**
   * END: Data Partition Table Integrity Check

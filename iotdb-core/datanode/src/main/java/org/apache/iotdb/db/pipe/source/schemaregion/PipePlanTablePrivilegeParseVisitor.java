@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipePlanTablePrivilegeParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, IAuditEntity> {
+    implements PlanVisitor<Optional<PlanNode>, IAuditEntity> {
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final IAuditEntity auditEntity) {
     return Optional.of(node);

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -25,15 +28,14 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
@@ -42,8 +44,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecut
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -254,6 +254,63 @@ public class PrimitiveMemTableTest {
     readOnlyMemChunk.sortTvLists();
 
     MemPointIterator memPointIterator = readOnlyMemChunk.createMemPointIterator(Ordering.ASC, null);
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.nextBatch();
+    }
+  }
+
+  @Test
+  public void testFlushingQueryDoesNotSortWorkingTVListUsedByPreviousQuery()
+      throws QueryProcessException, IOException, IllegalPathException {
+
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    StringArrayDeviceID deviceID = new StringArrayDeviceID("root.test.d1");
+    for (int i = 1000; i < 2000; i++) {
+      memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
+    }
+
+    ResourceByPathUtils resourcesByPathUtils =
+        ResourceByPathUtils.getResourceInstance(
+            new AlignedFullPath(deviceID, Arrays.asList("s1", "s2", "s3"), measurementSchemas));
+    AlignedReadOnlyMemChunk firstQueryMemChunk =
+        (AlignedReadOnlyMemChunk)
+            resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+                new QueryContext(1, false), memTable, null, Long.MAX_VALUE, null);
+    TVList originalWorkingList = memTable.getWritableMemChunk(deviceID, "").getWorkingTVList();
+    Assert.assertSame(
+        originalWorkingList,
+        firstQueryMemChunk.getAligendTvListQueryMap().keySet().iterator().next());
+
+    for (int i = 1; i <= 50; i++) {
+      memTable.writeAlignedRow(deviceID, measurementSchemas, i, new Object[] {i, i, i});
+    }
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 1, 10));
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 1, 10));
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 1, 10));
+    Assert.assertFalse(originalWorkingList.isSorted());
+
+    AlignedReadOnlyMemChunk flushingQueryMemChunk =
+        (AlignedReadOnlyMemChunk)
+            resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+                new QueryContext(2, false), memTable, new ArrayList<>(), Long.MAX_VALUE, null);
+    TVList flushingQueryList =
+        flushingQueryMemChunk.getAligendTvListQueryMap().keySet().iterator().next();
+    Assert.assertNotSame(originalWorkingList, flushingQueryList);
+
+    flushingQueryMemChunk.sortTvLists();
+    Assert.assertFalse(originalWorkingList.isSorted());
+
+    firstQueryMemChunk.sortTvLists();
+    MemPointIterator memPointIterator =
+        firstQueryMemChunk.createMemPointIterator(Ordering.ASC, null);
     while (memPointIterator.hasNextBatch()) {
       memPointIterator.nextBatch();
     }
@@ -748,7 +805,7 @@ public class PrimitiveMemTableTest {
         Mockito.mock(MemoryReservationManager.class);
     Mockito.doThrow(new MemoryNotEnoughException(""))
         .when(memoryReservationManager)
-        .reserveMemoryCumulatively(list.calculateRamSize());
+        .reserveMemoryCumulatively(list.calculateRamSize().getRamSize());
 
     // create FragmentInstanceId
     QueryId queryId = new QueryId("stub_query");
@@ -767,7 +824,7 @@ public class PrimitiveMemTableTest {
     list.getQueryContextSet().add(queryContext);
     Map<TVList, Integer> tvlistMap = new HashMap<>();
     tvlistMap.put(list, 100);
-    queryContext.addTVListToSet(tvlistMap);
+    queryContext.addTVListToSet(tvlistMap.keySet());
 
     // fragment instance execution
     IDriverScheduler scheduler = Mockito.mock(IDriverScheduler.class);

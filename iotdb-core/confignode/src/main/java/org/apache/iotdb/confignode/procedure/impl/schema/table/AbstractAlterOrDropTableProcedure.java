@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -96,14 +97,15 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_PRE_RELEASE_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
           failedResults);
       setFailure(
           new ProcedureException(
-              new MetadataException("Pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.PRE_RELEASE + getActionMessage() + " failed")));
     }
   }
 
@@ -117,7 +119,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
             database, table.getTableName(), env.getConfigManager(), oldName);
     if (!failedResults.isEmpty()) {
       LOGGER.warn(
-          "Failed to {} for table {}.{} to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_FOR_TABLE_TO_DATANODE_FAILURE_RESULTS,
           getActionMessage(),
           database,
           table.getTableName(),
@@ -143,14 +145,15 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache
       LOGGER.warn(
-          "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}",
+          ProcedureMessages.FAILED_TO_ROLLBACK_PRE_RELEASE_FOR_TABLE_INFO_TO_DATANODE,
           getActionMessage(),
           database,
           table.getTableName(),
           failedResults);
       setFailure(
           new ProcedureException(
-              new MetadataException("Rollback pre-release " + getActionMessage() + " failed")));
+              new MetadataException(
+                  ProcedureMessages.ROLLBACK_PRE_RELEASE + getActionMessage() + " failed")));
     }
   }
 
@@ -206,7 +209,7 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      ProcedureMessages.FOR_FAILED_WHEN_BECAUSE_FAILED_TO_EXECUTE_IN_ALL_REPLICASET,
                       this.getClass().getSimpleName(),
                       database,
                       tableName,

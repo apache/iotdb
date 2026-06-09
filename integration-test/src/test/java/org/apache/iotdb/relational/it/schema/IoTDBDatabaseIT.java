@@ -490,7 +490,8 @@ public class IoTDBDatabaseIT {
                   "plugin_name,STRING,TAG,",
                   "plugin_type,STRING,ATTRIBUTE,",
                   "class_name,STRING,ATTRIBUTE,",
-                  "plugin_jar,STRING,ATTRIBUTE,")));
+                  "plugin_jar,STRING,ATTRIBUTE,",
+                  "exception_message,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc topics"),
           "ColumnName,DataType,Category,",
@@ -577,6 +578,7 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "database,STRING,FIELD,",
                   "table_name,STRING,FIELD,",
+                  "table_type,STRING,FIELD,",
                   "datanode_id,INT32,FIELD,",
                   "region_id,INT32,FIELD,",
                   "time_partition,INT64,FIELD,",
@@ -708,15 +710,15 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
-          "plugin_name,plugin_type,class_name,plugin_jar,",
+          "plugin_name,plugin_type,class_name,plugin_jar,exception_message,",
           Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -751,8 +753,7 @@ public class IoTDBDatabaseIT {
           Collections.singleton(EnvFactory.getEnv().getConfigNodeWrapperList().size() + ","));
 
       Set<String> resultSet = new HashSet<>();
-      // data region created from writing password history
-      resultSet.add("1,");
+      resultSet.add("0,");
       for (int i = 1; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
         resultSet.add("0,");
       }
@@ -815,13 +816,36 @@ public class IoTDBDatabaseIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count databases"), "count,", Collections.singleton("3,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select count(*) from information_schema.databases"),
+          "_col0,",
+          Collections.singleton("3,"));
       statement.execute("drop database test");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       // One for AUDIT database
-      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
+    }
+  }
+
+  @Test
+  public void testCountDatabases() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database db1");
+      statement.execute("create database db2");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count databases"), "count,", Collections.singleton("3,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select count(*) from information_schema.databases"),
+          "_col0,",
+          Collections.singleton("3,"));
     }
   }
 
@@ -838,6 +862,8 @@ public class IoTDBDatabaseIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("count databases"), "count,", Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("show databases"),
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
@@ -869,6 +895,8 @@ public class IoTDBDatabaseIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
+      TestUtils.assertResultSetEqual(
+          userStmt.executeQuery("count databases"), "count,", Collections.singleton("2,"));
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());

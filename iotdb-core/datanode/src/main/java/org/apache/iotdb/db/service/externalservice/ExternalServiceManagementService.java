@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -79,7 +80,7 @@ public class ExternalServiceManagementService {
     try {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(dir);
     } catch (IOException e) {
-      LOGGER.error("Failed to make external service dir", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_MAKE_EXTERNAL_SERVICE_DIR, e);
       throw new ExternalServiceManagementException(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));

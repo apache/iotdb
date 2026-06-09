@@ -198,7 +198,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               "create user someUser 'passwd'",
               "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
           null);
-      awaitUntilFlush(senderEnv);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -229,7 +228,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "User,", Collections.singleton("root,"));
+          receiverEnv,
+          "list user",
+          "UserId,User,",
+          new HashSet<>(Arrays.asList("0,root,", "10000,thulab,")));
     }
   }
 
@@ -588,12 +590,17 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         "count(root.vehicle.plane.pressure),",
         Collections.singleton("1,"));
 
+    // After restart, the pipe keeps retrying with the stale password and may trigger login lock.
+    statement.execute("alter user thulab account unlock");
+
     try {
       statement.execute("alter pipe a2b modify source ('password'='fake')");
+      fail();
     } catch (final SQLException e) {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword')");
 
     // Test empty alter
@@ -618,6 +625,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     statement = connection.createStatement();
     TestUtils.executeNonQuery(
         senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    statement.execute("alter user thulab account unlock");
     statement.execute("alter user thulab set password 'newST@ongPassword'");
     statement.execute("alter pipe a2b");
 

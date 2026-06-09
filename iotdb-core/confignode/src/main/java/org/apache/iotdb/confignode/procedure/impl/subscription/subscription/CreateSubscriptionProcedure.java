@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
@@ -52,6 +54,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndPipeProcedure {
@@ -65,6 +68,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   // NOTE: The 'alter consumer group' operation must be performed before 'create pipe'.
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
   private List<CreatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
+
+  private Set<String> consensusTopicNames = new HashSet<>();
 
   // TODO: remove this variable later
   private final List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>(); // unused now
@@ -85,7 +90,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMVALIDATE);
+
+    alterConsumerGroupProcedure = null;
+    createPipeProcedures = new ArrayList<>();
 
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
@@ -103,21 +111,37 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     alterConsumerGroupProcedure =
         new AlterConsumerGroupProcedure(updatedConsumerGroupMeta, subscriptionInfo);
 
-    // Construct CreatePipeProcedureV2s
+    // Construct CreatePipeProcedureV2s (for non-consensus topics)
     for (final String topicName : subscribeReq.getTopicNames()) {
+      final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
+
+      final String topicMode = topicMeta.getConfig().getMode();
+      final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+
+      if (isConsensusBasedTopic) {
+        // skip pipe creation
+        consensusTopicNames.add(topicName);
+        LOGGER.info(
+            "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode "
+                + "(mode={}), skipping pipe creation",
+            topicName,
+            topicMode);
+        continue;
+      }
+
       final String pipeName =
           PipeStaticMeta.generateSubscriptionPipeName(topicName, consumerGroupId);
       if (!subscriptionInfo.get().isTopicSubscribedByConsumerGroup(topicName, consumerGroupId)
           // even if there existed subscription meta, if there is no corresponding pipe meta, it
           // will try to create the pipe
           || !pipeTaskInfo.get().isPipeExisted(pipeName)) {
-        final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
                     .setExtractorAttributes(
-                        topicMeta.generateExtractorAttributes(consumerMeta.getUsername()))
+                        topicMeta.generateExtractorAttributes(
+                            consumerMeta.getUsername(), consumerMeta.getSubscriptionAuthPassword()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));
@@ -139,7 +163,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected void executeFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES);
 
     // Execute AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
@@ -156,53 +180,65 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
               .getConsensusManager()
               .write(new OperateMultiplePipesPlanV2(createPipePlans));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to create subscription with request %s on config nodes, because %s",
-              subscribeReq, response));
+              ProcedureMessages.FAILED_TO_CREATE_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES_BECAUSE,
+              subscribeReq,
+              response));
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     // Push consumer group meta to data nodes
     alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
 
-    // Push pipe meta to data nodes
-    final List<String> pipeNames =
-        createPipeProcedures.stream()
-            .map(CreatePipeProcedureV2::getPipeName)
-            .collect(Collectors.toList());
-    final String exceptionMessage =
-        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
-            null, pushMultiPipeMetaToDataNodes(pipeNames, env));
-    if (!exceptionMessage.isEmpty()) {
-      // throw exception instead of logging warn, do not rely on metadata synchronization
-      throw new SubscriptionException(
-          String.format(
-              "Failed to create pipes %s when creating subscription with request %s, details: %s, metadata will be synchronized later.",
-              pipeNames, subscribeReq, exceptionMessage));
+    if (!consensusTopicNames.isEmpty()) {
+      LOGGER.info(
+          "CreateSubscriptionProcedure: consensus-based topics {} will be handled by DataNode "
+              + "via consumer group meta push (no pipe creation needed)",
+          consensusTopicNames);
+    }
+
+    // Push pipe meta to data nodes (only for non-consensus pipe-based topics)
+    if (!createPipeProcedures.isEmpty()) {
+      final List<String> pipeNames =
+          createPipeProcedures.stream()
+              .map(CreatePipeProcedureV2::getPipeName)
+              .collect(Collectors.toList());
+      final String exceptionMessage =
+          AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+              null, pushMultiPipeMetaToDataNodes(pipeNames, env));
+      if (!exceptionMessage.isEmpty()) {
+        // throw exception instead of logging warn, do not rely on metadata synchronization
+        throw new SubscriptionException(
+            String.format(
+                ProcedureMessages
+                    .FAILED_TO_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST_DETAILS,
+                pipeNames,
+                subscribeReq,
+                exceptionMessage));
+      }
     }
   }
 
   @Override
   protected void rollbackFromValidate(final ConfigNodeProcedureEnv env) {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromValidate");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMVALIDATE);
   }
 
   @Override
   protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES);
 
     // Rollback CreatePipeProcedureV2s
     final List<ConfigPhysicalPlan> dropPipePlans =
@@ -216,15 +252,17 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
               .getConsensusManager()
               .write(new OperateMultiplePipesPlanV2(dropPipePlans));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback creating subscription with request %s on config nodes, because %s",
-              subscribeReq, response));
+              ProcedureMessages
+                  .FAILED_TO_ROLLBACK_CREATING_SUBSCRIPTION_WITH_REQUEST_ON_CONFIG_NODES,
+              subscribeReq,
+              response));
     }
 
     // Rollback AlterConsumerGroupProcedure
@@ -234,7 +272,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
-    LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info(ProcedureMessages.CREATESUBSCRIPTIONPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
@@ -244,8 +282,10 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       // throw exception instead of logging warn, do not rely on metadata synchronization
       throw new SubscriptionException(
           String.format(
-              "Failed to rollback create pipes when creating subscription with request %s, because %s",
-              subscribeReq, exceptionMessage));
+              ProcedureMessages
+                  .FAILED_TO_ROLLBACK_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST,
+              subscribeReq,
+              exceptionMessage));
     }
 
     // Rollback AlterConsumerGroupProcedure
@@ -296,6 +336,12 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       }
     } else {
       ReadWriteIOUtils.write(false, stream);
+    }
+
+    // Serialize consensus topic names
+    ReadWriteIOUtils.write(consensusTopicNames.size(), stream);
+    for (final String consensusTopicName : consensusTopicNames) {
+      ReadWriteIOUtils.write(consensusTopicName, stream);
     }
   }
 
@@ -348,6 +394,14 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         }
       }
     }
+
+    // Deserialize consensus topic names
+    if (byteBuffer.hasRemaining()) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; ++i) {
+        consensusTopicNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      }
+    }
   }
 
   @Override
@@ -364,7 +418,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         && getCycles() == that.getCycles()
         && Objects.equals(subscribeReq, that.subscribeReq)
         && Objects.equals(alterConsumerGroupProcedure, that.alterConsumerGroupProcedure)
-        && Objects.equals(createPipeProcedures, that.createPipeProcedures);
+        && Objects.equals(createPipeProcedures, that.createPipeProcedures)
+        && Objects.equals(consensusTopicNames, that.consensusTopicNames);
   }
 
   @Override
@@ -375,7 +430,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         getCycles(),
         subscribeReq,
         alterConsumerGroupProcedure,
-        createPipeProcedures);
+        createPipeProcedures,
+        consensusTopicNames);
   }
 
   @TestOnly

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.udf.api.relational.EmptyTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 
@@ -37,11 +37,15 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -57,10 +61,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -385,9 +385,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -398,7 +397,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -406,7 +405,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test
@@ -445,9 +444,8 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(
+                sort(
                     ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
-                    0,
                     topK(
                         1440,
                         ImmutableList.of(sort("time_0", DESCENDING, LAST)),
@@ -458,7 +456,7 @@ public class TableFunctionTest {
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──GroupNode
+     *               └──SortNode
      *                   └──TableScan
      */
     assertPlan(
@@ -466,7 +464,7 @@ public class TableFunctionTest {
         output(
             tableFunctionProcessor(
                 tableFunctionMatcher,
-                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+                sort(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), tableScan))));
   }
 
   @Test

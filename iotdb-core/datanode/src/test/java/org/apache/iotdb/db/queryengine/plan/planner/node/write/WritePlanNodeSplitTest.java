@@ -32,11 +32,11 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -205,6 +206,9 @@ public class WritePlanNodeSplitTest {
     insertTabletNode.setColumns(
         new Object[] {new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
     insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
+    final BitMap[] bitMaps = new BitMap[] {new BitMap(insertTabletNode.getRowCount())};
+    bitMaps[0].mark(2);
+    insertTabletNode.setBitMaps(bitMaps);
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(
@@ -224,6 +228,12 @@ public class WritePlanNodeSplitTest {
       Assert.assertEquals(tabletNode.getTimes().length, 2);
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
+      if (tabletNode.getTimes()[0] == 1) {
+        Assert.assertNotNull(tabletNode.getBitMaps());
+        Assert.assertTrue(tabletNode.getBitMaps()[0].isMarked(0));
+      } else {
+        Assert.assertNull(tabletNode.getBitMaps());
+      }
     }
 
     insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 2"));
@@ -271,6 +281,9 @@ public class WritePlanNodeSplitTest {
     relationalInsertTabletNode.setColumnCategories(
         new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
     relationalInsertTabletNode.setRowCount(12);
+    final BitMap[] bitMaps = new BitMap[] {new BitMap(12), new BitMap(12)};
+    bitMaps[1].mark(2);
+    relationalInsertTabletNode.setBitMaps(bitMaps);
 
     List<DataPartitionQueryParam> dataPartitionQueryParamList = new ArrayList<>();
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
@@ -300,6 +313,13 @@ public class WritePlanNodeSplitTest {
       Assert.assertTrue(tabletNode.getTimes()[0] < tabletNode.getTimes()[1]);
       TConsensusGroupId regionId = tabletNode.getDataRegionReplicaSet().getRegionId();
       Assert.assertEquals(getRegionIdByTime(tabletNode.getMinTime()), regionId.getId());
+      if (tabletNode.getTimes()[0] == 1) {
+        Assert.assertNotNull(tabletNode.getBitMaps());
+        Assert.assertNull(tabletNode.getBitMaps()[0]);
+        Assert.assertTrue(tabletNode.getBitMaps()[1].isMarked(0));
+      } else {
+        Assert.assertNull(tabletNode.getBitMaps());
+      }
     }
   }
 

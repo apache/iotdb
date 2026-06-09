@@ -25,9 +25,10 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
@@ -62,7 +63,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class PipePlanTreePrivilegeParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, IAuditEntity> {
+    implements PlanVisitor<Optional<PlanNode>, IAuditEntity> {
 
   private final boolean skip;
 
@@ -101,7 +102,8 @@ public class PipePlanTreePrivilegeParseVisitor
                     .collect(Collectors.toList()),
                 PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
     }
     return failedIndexes.size() != node.getMeasurements().size()
         ? Optional.of(
@@ -152,7 +154,8 @@ public class PipePlanTreePrivilegeParseVisitor
                         .collect(Collectors.toList()),
                     PrivilegeType.READ_SCHEMA));
     if (!skip && !failedIndexes.isEmpty()) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
     }
     if (failedIndexes.size() == group.size()) {
       return null;
@@ -220,7 +223,8 @@ public class PipePlanTreePrivilegeParseVisitor
                 PrivilegeType.READ_SCHEMA);
     if (!failedPos.isEmpty()) {
       if (!skip) {
-        throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+        throw new AccessDeniedException(
+            DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
       }
       return Optional.empty();
     }
@@ -242,7 +246,8 @@ public class PipePlanTreePrivilegeParseVisitor
       if (failedIndexes.isEmpty()) {
         filteredMap.put(pathEntry.getKey(), pathEntry.getValue());
       } else if (!skip) {
-        throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+        throw new AccessDeniedException(
+            DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
       }
     }
     return !filteredMap.isEmpty()
@@ -286,7 +291,8 @@ public class PipePlanTreePrivilegeParseVisitor
       if (failedIndexes.isEmpty()) {
         filteredMap.put(pathEntry.getKey(), pathEntry.getValue());
       } else if (!skip) {
-        throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+        throw new AccessDeniedException(
+            DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
       }
     }
     return !filteredMap.isEmpty()
@@ -305,7 +311,8 @@ public class PipePlanTreePrivilegeParseVisitor
             .checkSeriesPrivilegeWithIndexes4Pipe(
                 auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
     }
     failedIndexes.forEach(index -> filteredMap.remove(viewPathList.get(index)));
     return !filteredMap.isEmpty()
@@ -324,7 +331,8 @@ public class PipePlanTreePrivilegeParseVisitor
             .checkSeriesPrivilegeWithIndexes4Pipe(
                 auditEntity, viewPathList, PrivilegeType.READ_SCHEMA);
     if (!skip && !failedIndexes.isEmpty()) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
     }
     failedIndexes.forEach(index -> filteredMap.remove(viewPathList.get(index)));
     return !filteredMap.isEmpty()
@@ -341,7 +349,8 @@ public class PipePlanTreePrivilegeParseVisitor
             new TreeAccessCheckContext(
                 auditEntity.getUserId(), auditEntity.getUsername(), auditEntity.getCliHostname()));
     if (!skip && !intersectedPaths.equals(node.getPathList())) {
-      throw new AccessDeniedException("Not has privilege to transfer plan: " + node);
+      throw new AccessDeniedException(
+          DataNodePipeMessages.NOT_HAS_PRIVILEGE_TO_TRANSFER_PLAN + node);
     }
     return !intersectedPaths.isEmpty()
         ? Optional.of(

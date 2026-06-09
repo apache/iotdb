@@ -30,20 +30,29 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -57,7 +66,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -70,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
@@ -89,18 +98,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -140,15 +145,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -216,10 +218,10 @@ public class Coordinator {
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory(
+                      CONFIG.getSelectorNumOfClientManager()));
 
   private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   private final ExecutorService dispatchExecutor;
 
@@ -255,7 +257,7 @@ public class Coordinator {
         1_000L,
         1_000L,
         TimeUnit.MILLISECONDS);
-    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+    LOGGER.info(DataNodeQueryMessages.EXPIRED_QUERIES_INFO_CLEAR_THREAD_IS_SUCCESSFULLY_STARTED);
   }
 
   static {
@@ -276,7 +278,6 @@ public class Coordinator {
     this.queryExecutionMap = new ConcurrentHashMap<>();
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
-    this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
     int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
     this.dispatchExecutor =
@@ -309,7 +310,7 @@ public class Coordinator {
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
-        LOGGER.debug("[QueryStart] sql: {}", sql);
+        LOGGER.debug(DataNodeQueryMessages.QUERY_START_SQL, sql);
       }
       queryContext =
           new MPPQueryContext(
@@ -410,7 +411,6 @@ public class Coordinator {
         new TreeModelPlanner(
             statement,
             executor,
-            writeOperationExecutor,
             scheduledExecutor,
             partitionFetcher,
             schemaFetcher,
@@ -432,7 +432,7 @@ public class Coordinator {
    * along with CTE query dataset.
    */
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       long queryId,
@@ -468,7 +468,7 @@ public class Coordinator {
   }
 
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       long queryId,
@@ -549,7 +549,7 @@ public class Coordinator {
   /** For compatibility of MQTT and REST, this method should never be called. */
   @Deprecated
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
       IClientSession currSession,
       Long queryId,
@@ -601,7 +601,7 @@ public class Coordinator {
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       final SqlParser sqlParser,
       final IClientSession clientSession,
       final MPPQueryContext queryContext,
@@ -611,6 +611,7 @@ public class Coordinator {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
+        || statement instanceof CountDB
         || statement instanceof ShowDB
         || statement instanceof CreateDB
         || statement instanceof AlterDB
@@ -688,12 +689,14 @@ public class Coordinator {
               queryContext));
     }
     // Initialize variables for TableModelPlanner
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statementToUse = statement;
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statementToUse =
+        statement;
     List<Expression> parameters = Collections.emptyList();
     Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
 
     // Unwrap Explain/ExplainAnalyze to check for inner Execute/ExecuteImmediate
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement innerStatement = statement;
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement innerStatement =
+        statement;
     if (statement instanceof Explain) {
       innerStatement = ((Explain) statement).getStatement();
     } else if (statement instanceof ExplainAnalyze) {
@@ -710,7 +713,7 @@ public class Coordinator {
             String.format("Prepared statement '%s' does not exist", statementName));
       }
 
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           preparedInfo.getSql();
       parameterLookup =
           ParameterExtractor.bindParameters(resolvedSql, executeStatement.getParameters());
@@ -730,7 +733,7 @@ public class Coordinator {
       String sql = executeImmediateStatement.getSqlString();
       List<Literal> literalParameters = executeImmediateStatement.getParameters();
 
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
           sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
       if (!literalParameters.isEmpty()) {
@@ -789,12 +792,6 @@ public class Coordinator {
         coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL.getName());
   }
 
-  private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
-    return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
-  }
-
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
@@ -828,7 +825,7 @@ public class Coordinator {
       Supplier<String> contentOfQuerySupplier,
       Throwable t) {
     try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-      LOGGER.debug("[CleanUpQuery]]");
+      LOGGER.debug(DataNodeQueryMessages.CLEAN_UP_QUERY);
       queryExecution.stopAndCleanup(t);
       boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
       if (isUserQuery) {
@@ -877,7 +874,8 @@ public class Coordinator {
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+      SLOW_SQL_LOGGER.info(
+          DataNodeQueryMessages.COST_MS, costTime / 1_000_000, contentOfQuerySupplier.get());
     }
 
     // always print the query when debug is true
@@ -916,10 +914,7 @@ public class Coordinator {
           long executeTime = currentTime - queryStartTime;
           if (timeout > 0 && executeTime - 60_000L > timeout) {
             LOGGER.warn(
-                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
-                queryId,
-                executeTime,
-                timeout);
+                DataNodeQueryMessages.CLEANING_UP_STALE_QUERY, queryId, executeTime, timeout);
             cleanupQueryExecution(
                 queryId,
                 (org.apache.thrift.TBase<?, ?>) null,
@@ -1214,7 +1209,9 @@ public class Coordinator {
 
     @Override
     public long ramBytesUsed() {
+      // The result of this method is fixed
       return INSTANCE_SIZE
+          + sizeOfCharArray(queryId.length())
           + sizeOfCharArray(statement.length())
           + sizeOfCharArray(user.length())
           + sizeOfCharArray(clientHost.length());

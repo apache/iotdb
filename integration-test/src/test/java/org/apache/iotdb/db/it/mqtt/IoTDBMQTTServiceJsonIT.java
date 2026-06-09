@@ -36,12 +36,17 @@ import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.QoS;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -58,26 +63,36 @@ import static org.junit.Assert.fail;
 public class IoTDBMQTTServiceJsonIT {
 
   private BlockingConnection connection;
+  private static int mqttPort;
   private static final String IP = System.getProperty("RemoteIp", "127.0.0.1");
   private static final String USER = System.getProperty("RemoteUser", SessionConfig.DEFAULT_USER);
   private static final String PASSWORD =
       System.getProperty("RemotePassword", SessionConfig.DEFAULT_PASSWORD);
   public static final String FORMATTER = "json";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void beforeClass() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
     baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    int port = portConflictDataNodeWrapper.getMqttPort();
+    mqttPort = portConflictDataNodeWrapper.getMqttPort();
+  }
+
+  @AfterClass
+  public static void afterClass() {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setUp() throws Exception {
     MQTT mqtt = new MQTT();
-    mqtt.setHost(IP, port);
+    mqtt.setHost(IP, mqttPort);
     mqtt.setUserName(USER);
     mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
-    mqtt.setReconnectDelay(10);
+    mqtt.setReconnectDelay(1000);
     mqtt.setClientId("jsonClientId1");
 
     connection = mqtt.blockingConnection();
@@ -94,7 +109,25 @@ public class IoTDBMQTTServiceJsonIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    cleanupSgData();
+  }
+
+  private static void executeQuietly(Statement statement, String sql) {
+    try {
+      statement.execute(sql);
+    } catch (SQLException ignored) {
+      // ignore
+    }
+  }
+
+  private static void cleanupSgData() {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      executeQuietly(statement, "DELETE DATABASE root.sg");
+      executeQuietly(statement, "DELETE DATABASE root.sg.**");
+    } catch (SQLException ignored) {
+      // ignore
+    }
   }
 
   /** Test single JSON message with multiple measurements */

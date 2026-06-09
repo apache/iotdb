@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -72,7 +73,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPrope
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
@@ -106,8 +109,8 @@ public class ProcedureFactory implements IProcedureFactory {
     short typeCode = buffer.getShort();
     ProcedureType procedureType = ProcedureType.convertToProcedureType(typeCode);
     if (procedureType == null) {
-      LOGGER.error("unrecognized log type " + typeCode);
-      throw new IOException("unrecognized log type " + typeCode);
+      LOGGER.error(ProcedureMessages.UNRECOGNIZED_LOG_TYPE + typeCode);
+      throw new IOException(ProcedureMessages.UNRECOGNIZED_LOG_TYPE + typeCode);
     }
 
     Procedure procedure;
@@ -396,6 +399,12 @@ public class ProcedureFactory implements IProcedureFactory {
       case CONSUMER_GROUP_META_SYNC_PROCEDURE:
         procedure = new ConsumerGroupMetaSyncProcedure();
         break;
+      case COMMIT_PROGRESS_SYNC_PROCEDURE:
+        procedure = new CommitProgressSyncProcedure();
+        break;
+      case SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new SubscriptionHandleLeaderChangeProcedure();
+        break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
         break;
@@ -409,14 +418,16 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DataPartitionTableIntegrityCheckProcedure();
         break;
       default:
-        LOGGER.error("Unknown Procedure type: {}", typeCode);
-        throw new IOException("Unknown Procedure type: " + typeCode);
+        LOGGER.error(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE_2, typeCode);
+        throw new IOException(ProcedureMessages.UNKNOWN_PROCEDURE_TYPE + typeCode);
     }
     try {
       procedure.deserialize(buffer);
     } catch (ThriftSerDeException e) {
       LOGGER.warn(
-          "Catch exception while deserializing procedure, this procedure will be ignored.", e);
+          ProcedureMessages
+              .CATCH_EXCEPTION_WHILE_DESERIALIZING_PROCEDURE_THIS_PROCEDURE_WILL_BE_IGNORED,
+          e);
       procedure = null;
     }
     return procedure;
@@ -544,6 +555,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
     } else if (procedure instanceof ConsumerGroupMetaSyncProcedure) {
       return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
+    } else if (procedure instanceof CommitProgressSyncProcedure) {
+      return ProcedureType.COMMIT_PROGRESS_SYNC_PROCEDURE;
+    } else if (procedure instanceof SubscriptionHandleLeaderChangeProcedure) {
+      return ProcedureType.SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {
@@ -562,7 +577,7 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
-        "Procedure type " + procedure.getClass() + " is not supported");
+        ProcedureMessages.PROCEDURE_TYPE + procedure.getClass() + " is not supported");
   }
 
   private static class ProcedureFactoryHolder {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.doubletype;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.pipe.api.type.Binary;
 
@@ -104,7 +105,7 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
   @Override
   public void updateValue(final boolean input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "FractionPoweredSumOperator does not support boolean input");
+        DataNodePipeMessages.FRACTIONPOWEREDSUMOPERATOR_DOES_NOT_SUPPORT_BOOLEAN_INPUT);
   }
 
   @Override
@@ -115,7 +116,7 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
   @Override
   public void updateValue(final LocalDate input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "FractionPoweredSumOperator does not support date input");
+        DataNodePipeMessages.FRACTIONPOWEREDSUMOPERATOR_DOES_NOT_SUPPORT_DATE_INPUT);
   }
 
   @Override
@@ -136,13 +137,13 @@ public class FractionPoweredSumOperator implements IntermediateResultOperator {
   @Override
   public void updateValue(final String input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "FractionPoweredSumOperator does not support string input");
+        DataNodePipeMessages.FRACTIONPOWEREDSUMOPERATOR_DOES_NOT_SUPPORT_STRING_INPUT);
   }
 
   @Override
   public void updateValue(final Binary initialInput, final long initialTimestamp) {
     throw new UnsupportedOperationException(
-        "FractionPoweredSumOperator does not support binary input");
+        DataNodePipeMessages.FRACTIONPOWEREDSUMOPERATOR_DOES_NOT_SUPPORT_BINARY_INPUT);
   }
 
   @Override

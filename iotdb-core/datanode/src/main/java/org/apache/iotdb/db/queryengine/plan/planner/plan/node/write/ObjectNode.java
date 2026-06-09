@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.calc.utils.IObjectPath;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -107,8 +109,12 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     buffer.put((byte) (isEOF ? 1 : 0));
     buffer.putLong(offset);
     try {
@@ -136,7 +142,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     IObjectPath filePath = IObjectPath.getDeserializer().deserializeFrom(stream);
     int contentLength = stream.readInt();
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contentLength, filePath);
-    objectNode.setSearchIndex(searchIndex);
+    objectNode.setSearchIndexFromWAL(searchIndex);
     return objectNode;
   }
 
@@ -161,7 +167,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     }
 
     ObjectNode objectNode = new ObjectNode(isEOF, offset, contents, filePath);
-    objectNode.setSearchIndex(searchIndex);
+    objectNode.setSearchIndexFromWAL(searchIndex);
     return objectNode;
   }
 
@@ -179,7 +185,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     if (searchNodes.size() == 1) {
       return searchNodes.get(0);
     }
-    throw new UnsupportedOperationException("Merge is not supported");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.MERGE_IS_NOT_SUPPORTED);
   }
 
   @Override
@@ -285,7 +291,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
         }
       }
       if (!readSuccess && LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Error when read object file {}.", filePath.toString(), ioException);
+        LOGGER.debug(
+            DataNodeQueryMessages.ERROR_WHEN_READ_OBJECT_FILE, filePath.toString(), ioException);
       }
       ReadWriteIOUtils.write(readSuccess && isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);
@@ -325,7 +332,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitWriteObjectFile(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitWriteObjectFile(this, context);
   }
 }

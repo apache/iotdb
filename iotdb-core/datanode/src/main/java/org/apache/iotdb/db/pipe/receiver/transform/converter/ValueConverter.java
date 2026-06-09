@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.receiver.transform.converter;
 
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -750,7 +752,8 @@ public class ValueConverter {
       case STRING:
         return parseString(value);
       default:
-        throw new UnsupportedOperationException("Unsupported data type: " + dataType);
+        throw new UnsupportedOperationException(
+            DataNodePipeMessages.UNSUPPORTED_DATA_TYPE + dataType);
     }
   }
 
@@ -797,7 +800,8 @@ public class ValueConverter {
     try {
       return TypeInferenceUtils.isNumber(value)
           ? Long.parseLong(value)
-          : DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), ZoneOffset.UTC);
+          : DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+              StringUtils.trim(value), ZoneOffset.UTC);
     } catch (final Exception e) {
       return 0L;
     }

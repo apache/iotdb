@@ -61,7 +61,7 @@
         <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
-        <bouncycastle.version>1.81</bouncycastle.version>
+        <bouncycastle.version>1.84</bouncycastle.version>
         <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
@@ -124,7 +124,7 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
-        <netty.version>4.1.126.Final</netty.version>
+        <netty.version>4.1.134.Final</netty.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
@@ -149,7 +149,8 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>2.44.5</spotless.version>
+        <clang.format.version>17.0.6</clang.format.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -163,7 +164,9 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.2.1-260327-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.1-260520-SNAPSHOT</tsfile.version>
+        <i18n.locale>en</i18n.locale>
+        <tsfile.locale.opt/>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -946,6 +949,20 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>add-i18n-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>src/main/i18n/${i18n.locale}</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.felix</groupId>
@@ -1281,48 +1298,6 @@
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Separates the unit tests from the integration tests. -->
-            <!-- TODO: Integration-Tests should be executed by the failsafe plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unit-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include unit tests within integration-test phase. -->
-                                <include>src/test/**/*Test.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude integration tests within (unit) test phase. -->
-                                <exclude>src/test/**/*IT.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>integration-tests</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <includes>
-                                <!-- Include integration tests within integration-test phase. -->
-                                <include>src/test/**/*IT.java</include>
-                            </includes>
-                            <excludes>
-                                <!-- Exclude unit tests within (unit) test phase. -->
-                                <exclude>src/test/**/*Test.java</exclude>
-                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -2004,6 +1979,13 @@
             <id>enforce</id>
             <properties>
                 <enforcer.skip>false</enforcer.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
+                <tsfile.locale.opt>-Dtsfile.locale=zh</tsfile.locale.opt>
             </properties>
         </profile>
     </profiles>

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
@@ -49,6 +50,67 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ModificationFileTest {
+
+  @Test
+  public void testRemoveUpdatesMetrics() throws IOException {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.remove.metrics.temp");
+    int modFileNumBefore = FileMetrics.getInstance().getModFileNum();
+    long modFileSizeBefore = FileMetrics.getInstance().getModFileSize();
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, true)) {
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(new String[] {"root", "sg", "d1", "s1"}), 1, 10));
+      long fileLength = modificationFile.getFileLength();
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore + fileLength, FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.remove();
+      assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());
+    } finally {
+      Files.deleteIfExists(new File(tempFileName).toPath());
+    }
+  }
+
+  @Test
+  public void testCompactUpdatesMetricsAndAllowFurtherWrite() throws IOException {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.compact.metrics.temp");
+    int modFileNumBefore = FileMetrics.getInstance().getModFileNum();
+    long modFileSizeBefore = FileMetrics.getInstance().getModFileSize();
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName, true)) {
+      while (modificationFile.getFileLength() < 1024 * 1024) {
+        modificationFile.write(
+            new TreeDeletionEntry(
+                new MeasurementPath(new String[] {"root", "sg", "d1", "s1"}),
+                Long.MIN_VALUE,
+                time += 5000));
+      }
+
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      modificationFile.compact();
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(
+          modFileSizeBefore + modificationFile.getFileLength(),
+          FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(new String[] {"root", "sg", "d1", "s2"}),
+              Long.MIN_VALUE,
+              time + 5000));
+      assertEquals(modFileNumBefore + 1, FileMetrics.getInstance().getModFileNum());
+      assertEquals(
+          modFileSizeBefore + modificationFile.getFileLength(),
+          FileMetrics.getInstance().getModFileSize());
+
+      modificationFile.remove();
+      assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
+      assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());
+    } finally {
+      Files.deleteIfExists(new File(tempFileName).toPath());
+    }
+  }
 
   @Test
   public void readMyWrite() {

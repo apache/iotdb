@@ -170,6 +170,16 @@ git checkout rel/x.x
 
 编译完成后, IoTDB cli 将生成在 "cli/target".
 
+### 编译中文日志和错误信息版本
+
+IoTDB 支持编译时国际化（i18n），可将日志和错误信息切换为中文。默认编译使用英文，如需中文版本，请激活 `with-zh-locale` Maven profile：
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+该机制通过在编译时将源码目录从 `src/main/i18n/en`（默认）替换为 `src/main/i18n/zh` 实现，各模块在对应目录下维护翻译后的 Java 消息常量类。
+
 ### 编译其他模块
 
 通过添加 `-P with-cpp` 可以进行c++客户端API的编译。

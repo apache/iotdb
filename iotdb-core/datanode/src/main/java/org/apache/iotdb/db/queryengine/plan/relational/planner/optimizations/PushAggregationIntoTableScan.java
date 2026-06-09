@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
@@ -42,7 +42,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode.combineAggregationAndTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
 
@@ -71,7 +74,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
             context.getSymbolAllocator()));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
@@ -190,13 +193,24 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return PushDownLevel.NOOP;
       } else if (singleDeviceEntry
           || ImmutableSet.copyOf(groupingKeys)
-              .containsAll(tableScanNode.getIdColumnsInTableStore(metadata, session))) {
-        // If all ID columns appear in groupingKeys and no Measurement column appears, we can push
+              .containsAll(getTagColumnsInTableStore(tableScanNode, metadata, session))) {
+        // If all tag columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;
       } else {
         return PushDownLevel.PARTIAL;
       }
+    }
+
+    private List<Symbol> getTagColumnsInTableStore(
+        DeviceTableScanNode tableScanNode, Metadata metadata, SessionInfo session) {
+      return Objects.requireNonNull(
+              metadata.getTableSchema(session, tableScanNode.getQualifiedObjectName()).orElse(null))
+          .getColumns()
+          .stream()
+          .filter(columnSchema -> columnSchema.getColumnCategory() == TAG)
+          .map(columnSchema -> Symbol.of(columnSchema.getName()))
+          .collect(Collectors.toList());
     }
 
     private boolean isDateBinFunctionOfTime(

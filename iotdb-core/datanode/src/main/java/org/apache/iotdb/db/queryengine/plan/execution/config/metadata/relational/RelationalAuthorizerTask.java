@@ -36,7 +36,8 @@ public class RelationalAuthorizerTask implements IConfigTask {
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
-    if (statement.getQueryType() == QueryType.WRITE) {
+    if (statement.getQueryType() != QueryType.READ
+        && statement.getQueryType() != QueryType.READ_WRITE) {
       return AuthorityChecker.operatePermission(statement);
     } else {
       return AuthorityChecker.queryPermission(statement);

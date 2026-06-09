@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
@@ -104,8 +105,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRelationalInsertRow(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRelationalInsertRow(this, context);
   }
 
   public static RelationalInsertRowNode deserialize(ByteBuffer byteBuffer) {
@@ -127,14 +128,14 @@ public class RelationalInsertRowNode extends InsertRowNode {
       throws IOException {
     long searchIndex = stream.readLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
   public static RelationalInsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -218,7 +219,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   protected int subSerializeSize() {
-    return super.subSerializeSize() + columnCategories.length * Byte.BYTES;
+    return super.subSerializeSize() + getValidMeasurementNumber() * Byte.BYTES;
   }
 
   @Override

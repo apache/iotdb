@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
+import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -28,8 +30,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;

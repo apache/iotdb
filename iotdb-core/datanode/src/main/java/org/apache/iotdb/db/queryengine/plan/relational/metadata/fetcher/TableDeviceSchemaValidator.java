@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -35,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +75,9 @@ public class TableDeviceSchemaValidator {
     // High-cost operations, shall only be called once
     final List<Object[]> deviceIdList = schemaValidation.getDeviceIdList();
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();
-    final List<Object[]> attributeValueList = schemaValidation.getAttributeValueList();
+    // In normal inserts, null attributes mean no-op. Raw null is reserved for explicit clears.
+    final List<Object[]> attributeValueList =
+        normalizeNullAttributeValuesForInsert(schemaValidation.getAttributeValueList());
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -86,7 +90,8 @@ public class TableDeviceSchemaValidator {
         validateDeviceSchemaInCache(
             schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("{} devices are missing", validateResult.missingDeviceIndexList.size());
+      LOGGER.debug(
+          DataNodeQueryMessages.DEVICES_ARE_MISSING, validateResult.missingDeviceIndexList.size());
     }
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {
@@ -129,12 +134,8 @@ public class TableDeviceSchemaValidator {
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
-        for (int j = 0, attributeSize = attributeKeyList.size(); j < attributeSize; j++) {
-          if (!Objects.equals(
-              attributeMap.get(attributeKeyList.get(j)), attributeValueList.get(i)[j])) {
-            result.attributeUpdateDeviceIndexList.add(i);
-            break;
-          }
+        if (isAttributeUpdateRequired(attributeKeyList, attributeValueList.get(i), attributeMap)) {
+          result.attributeUpdateDeviceIndexList.add(i);
         }
       }
     }
@@ -184,18 +185,62 @@ public class TableDeviceSchemaValidator {
       final ValidateResult result,
       final int index,
       final Map<String, Binary> attributeMap) {
-    final Object[] deviceAttributeValueList = attributeValueList.get(index);
-    for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
-      if (deviceAttributeValueList[j] != null) {
-        final String key = attributeKeyList.get(j);
-        final Binary value = attributeMap.get(key);
+    if (isAttributeUpdateRequired(attributeKeyList, attributeValueList.get(index), attributeMap)) {
+      result.attributeUpdateDeviceIndexList.add(index);
+    }
+  }
 
-        if (!deviceAttributeValueList[j].equals(value)) {
-          result.attributeUpdateDeviceIndexList.add(index);
-          break;
-        }
+  static boolean isAttributeUpdateRequired(
+      final List<String> attributeKeyList,
+      final Object[] deviceAttributeValueList,
+      final Map<String, Binary> attributeMap) {
+    for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
+      final Object inputValue =
+          deviceAttributeValueList.length > j ? deviceAttributeValueList[j] : null;
+      if (inputValue == null || inputValue == Constants.NONE) {
+        continue;
+      }
+      if (!Objects.equals(attributeMap.get(attributeKeyList.get(j)), inputValue)) {
+        return true;
       }
     }
+    return false;
+  }
+
+  private List<Object[]> normalizeNullAttributeValuesForInsert(
+      final List<Object[]> attributeValueList) {
+    List<Object[]> result = null;
+    for (int i = 0; i < attributeValueList.size(); i++) {
+      final Object[] deviceAttributeValueList = attributeValueList.get(i);
+      final Object[] normalizedAttributeValueList =
+          normalizeNullAttributeValuesForInsert(deviceAttributeValueList);
+      if (result != null) {
+        result.add(normalizedAttributeValueList);
+      } else if (normalizedAttributeValueList != deviceAttributeValueList) {
+        result = new ArrayList<>(attributeValueList.size());
+        for (int j = 0; j < i; j++) {
+          result.add(attributeValueList.get(j));
+        }
+        result.add(normalizedAttributeValueList);
+      }
+    }
+    return result == null ? attributeValueList : result;
+  }
+
+  private Object[] normalizeNullAttributeValuesForInsert(final Object[] deviceAttributeValueList) {
+    for (int i = 0; i < deviceAttributeValueList.length; i++) {
+      if (deviceAttributeValueList[i] == null) {
+        final Object[] result =
+            Arrays.copyOf(deviceAttributeValueList, deviceAttributeValueList.length);
+        for (int j = i; j < result.length; j++) {
+          if (result[j] == null) {
+            result[j] = Constants.NONE;
+          }
+        }
+        return result;
+      }
+    }
+    return deviceAttributeValueList;
   }
 
   private void autoCreateOrUpdateDeviceSchema(
@@ -251,7 +296,7 @@ public class TableDeviceSchemaValidator {
   }
 
   public static void checkObject4DeviceId(final Object[] deviceId) {
-    throw new SemanticException("The object type column is not supported.");
+    throw new SemanticException(DataNodeQueryMessages.THE_OBJECT_TYPE_COLUMN_IS_NOT_SUPPORTED);
   }
 
   private static class ValidateResult {

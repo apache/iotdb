@@ -72,8 +72,11 @@ public class ConsumerGroupMeta {
     final ConsumerGroupMeta copied = new ConsumerGroupMeta();
     copied.consumerGroupId = consumerGroupId;
     copied.creationTime = creationTime;
-    copied.topicNameToSubscribedConsumerIdSet =
-        new ConcurrentHashMap<>(topicNameToSubscribedConsumerIdSet);
+    copied.topicNameToSubscribedConsumerIdSet = new ConcurrentHashMap<>();
+    topicNameToSubscribedConsumerIdSet.forEach(
+        (topicName, subscribedConsumerIds) ->
+            copied.topicNameToSubscribedConsumerIdSet.put(
+                topicName, new HashSet<>(subscribedConsumerIds)));
     copied.consumerIdToConsumerMeta = new ConcurrentHashMap<>(consumerIdToConsumerMeta);
     copied.topicNameToSubscriptionCreationTime =
         new ConcurrentHashMap<>(topicNameToSubscriptionCreationTime);
@@ -114,6 +117,26 @@ public class ConsumerGroupMeta {
               }
             });
     return unsubscribedTopicNames;
+  }
+
+  public static Set<String> getTopicsNewlySubByGroup(
+      final ConsumerGroupMeta currentMeta, final ConsumerGroupMeta updatedMeta) {
+    if (!Objects.equals(currentMeta.consumerGroupId, updatedMeta.consumerGroupId)
+        || !Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
+      return Collections.emptySet();
+    }
+
+    final Set<String> newlySubscribedTopicNames = new HashSet<>();
+    updatedMeta
+        .topicNameToSubscribedConsumerIdSet
+        .keySet()
+        .forEach(
+            topicName -> {
+              if (!currentMeta.topicNameToSubscribedConsumerIdSet.containsKey(topicName)) {
+                newlySubscribedTopicNames.add(topicName);
+              }
+            });
+    return newlySubscribedTopicNames;
   }
 
   /////////////////////////////// consumer ///////////////////////////////
@@ -173,6 +196,11 @@ public class ConsumerGroupMeta {
   }
 
   ////////////////////////// subscription //////////////////////////
+
+  /** Get all topic names subscribed by this consumer group. */
+  public Set<String> getSubscribedTopicNames() {
+    return Collections.unmodifiableSet(topicNameToSubscribedConsumerIdSet.keySet());
+  }
 
   /**
    * Get the consumers subscribing the given topic in this group.

@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -41,15 +42,8 @@ import java.util.Optional;
 public class TransformUtils {
 
   private TransformUtils() {
-    throw new IllegalStateException("TransformUtils should not be instantiated.");
-  }
-
-  public static int compare(Binary first, Binary second) {
-    if (Objects.requireNonNull(first) == Objects.requireNonNull(second)) {
-      return 0;
-    }
-
-    return first.compareTo(second);
+    throw new IllegalStateException(
+        DataNodeQueryMessages.TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED);
   }
 
   public static Column transformConstantOperandToColumn(ConstantOperand constantOperand) {
@@ -83,7 +77,7 @@ public class TransformUtils {
         case TIMESTAMP:
         default:
           throw new UnSupportedDataTypeException(
-              "Unsupported type: " + constantOperand.getDataType());
+              DataNodeQueryMessages.UNSUPPORTED_TYPE + constantOperand.getDataType());
       }
     } catch (QueryProcessException e) {
       throw new UnsupportedOperationException(e);

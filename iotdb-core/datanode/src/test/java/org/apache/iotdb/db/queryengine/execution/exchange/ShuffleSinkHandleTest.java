@@ -106,13 +106,14 @@ public class ShuffleSinkHandleTest {
     Assert.assertFalse(localSinkChannel.isFinished());
     Assert.assertEquals(11 * mockTsBlockSize, localSinkChannel.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(11))
-        .reserve(
+        .reserveWithPriority(
             queryId,
             FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            false);
 
     // Abort.
     shuffleSinkHandle.abort();

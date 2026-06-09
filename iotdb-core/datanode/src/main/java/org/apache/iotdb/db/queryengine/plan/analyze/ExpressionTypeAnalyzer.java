@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ArithmeticBinaryExpression;
@@ -44,7 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -165,7 +166,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitExpression(Expression expression, Function<String, TSDataType> context) {
       throw new UnsupportedOperationException(
-          "Unsupported expression type: " + expression.getClass().getName());
+          DataNodeQueryMessages.UNSUPPORTED_EXPRESSION_TYPE + expression.getClass().getName());
     }
 
     @Override
@@ -542,12 +543,24 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        TypeInferenceUtils.verifyIsAggregationDataTypeMatchedForBothInputs(
+            aggregateFunctionName,
+            expressionTypes.get(NodeRef.of(inputExpressions.get(0))),
+            expressionTypes.get(NodeRef.of(inputExpressions.get(1))));
+        return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:
         throw new IllegalArgumentException(
-            "Invalid Aggregation function: " + aggregateFunctionName);
+            DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregateFunctionName);
     }
   }
 }

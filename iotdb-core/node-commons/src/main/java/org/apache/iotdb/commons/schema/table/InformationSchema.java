@@ -230,6 +230,9 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
     pipePluginTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.EXCEPTION_MESSAGE_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPE_PLUGINS, pipePluginTable);
 
     final TsTable topicTable = new TsTable(TOPICS);
@@ -354,6 +357,8 @@ public class InformationSchema {
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
@@ -427,6 +432,7 @@ public class InformationSchema {
         ImmutableSet.of(
             ColumnHeaderConstant.DATABASE.toLowerCase(),
             ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL,
             ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
             ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));

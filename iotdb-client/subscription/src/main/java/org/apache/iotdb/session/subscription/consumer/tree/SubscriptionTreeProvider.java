@@ -24,12 +24,15 @@ import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 
+import java.util.Objects;
+
 final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
 
   SubscriptionTreeProvider(
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -39,6 +42,7 @@ final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
         endPoint,
         username,
         password,
+        encryptedPassword,
         consumerId,
         consumerGroupId,
         thriftMaxFrameSize,
@@ -52,13 +56,16 @@ final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
       final int port,
       final String username,
       final String password,
+      final String encryptedPassword,
       final int thriftMaxFrameSize,
       final int connectionTimeoutInMs) {
+    final boolean useEncryptedPassword = Objects.nonNull(encryptedPassword);
     return new SubscriptionTreeSessionBuilder()
         .host(host)
         .port(port)
         .username(username)
-        .password(password)
+        .password(useEncryptedPassword ? encryptedPassword : password)
+        .useEncryptedPassword(useEncryptedPassword)
         .thriftMaxFrameSize(thriftMaxFrameSize)
         .connectionTimeoutInMs(connectionTimeoutInMs);
   }

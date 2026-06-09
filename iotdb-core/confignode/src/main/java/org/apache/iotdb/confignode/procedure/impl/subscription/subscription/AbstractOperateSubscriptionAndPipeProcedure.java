@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
@@ -47,14 +48,15 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.info("ProcedureId {} try to acquire subscription and pipe lock.", getProcId());
+    LOGGER.info(
+        ProcedureMessages.PROCEDUREID_TRY_TO_ACQUIRE_SUBSCRIPTION_AND_PIPE_LOCK, getProcId());
 
     pipeTaskInfo =
         configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire pipe lock.", getProcId());
+      LOGGER.warn(ProcedureMessages.PROCEDUREID_FAILED_TO_ACQUIRE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.info("ProcedureId {} acquired pipe lock.", getProcId());
+      LOGGER.info(ProcedureMessages.PROCEDUREID_ACQUIRED_PIPE_LOCK, getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -63,19 +65,25 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       case LOCK_ACQUIRED:
         if (pipeTaskInfo == null) {
           LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED,
               getProcId());
         } else {
           LOGGER.info(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription and pipe lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH_2,
               getProcId());
         }
         break;
       case LOCK_EVENT_WAIT:
         if (pipeTaskInfo == null) {
-          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
+          LOGGER.warn(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_PIPE_LOCK,
+              getProcId());
         } else {
-          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
+          LOGGER.info(
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_PIPE_LOCK_WILL_BE_RELEASED,
+              getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
@@ -87,12 +95,12 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       default:
         if (pipeTaskInfo == null) {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_PIPE_LOCK,
               getProcId(),
               procedureLockState);
         } else {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_PIPE_LOCK_WILL_BE_RELEASED,
               getProcId(),
               procedureLockState);
           configNodeProcedureEnv
@@ -112,9 +120,11 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     super.releaseLock(configNodeProcedureEnv);
 
     if (pipeTaskInfo == null) {
-      LOGGER.warn("ProcedureId {} release lock. No need to release pipe lock.", getProcId());
+      LOGGER.warn(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_PIPE_LOCK, getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
+      LOGGER.info(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_PIPE_LOCK_WILL_BE_RELEASED, getProcId());
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;
     }
@@ -134,7 +144,8 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     for (String pipeName : pipeNames) {
       PipeMeta pipeMeta = pipeTaskInfo.get().getPipeMetaByPipeName(pipeName);
       if (pipeMeta == null) {
-        LOGGER.warn("Pipe {} not found in PipeTaskInfo, can not push its meta.", pipeName);
+        LOGGER.warn(
+            ProcedureMessages.PIPE_NOT_FOUND_IN_PIPETASKINFO_CAN_NOT_PUSH_ITS_META, pipeName);
         continue;
       }
       pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
 import org.apache.iotdb.commons.schema.tree.ITreeNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.utils.Accountable;
 
@@ -72,11 +73,13 @@ public abstract class SchemaNode implements ITreeNode, Accountable {
   }
 
   public SchemaEntityNode getAsEntityNode() {
-    throw new UnsupportedOperationException("This node isn't instance of SchemaEntityNode.");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAENTITYNODE);
   }
 
   public SchemaMeasurementNode getAsMeasurementNode() {
-    throw new UnsupportedOperationException("This node isn't instance of SchemaMeasurementNode.");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE);
   }
 
   public abstract byte getType();

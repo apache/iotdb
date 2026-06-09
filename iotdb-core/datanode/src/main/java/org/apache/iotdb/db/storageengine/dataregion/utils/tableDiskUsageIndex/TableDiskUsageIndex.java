@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -88,7 +89,7 @@ public class TableDiskUsageIndex {
                 e);
           }
         } catch (Exception e) {
-          LOGGER.error("Meet exception when apply TableDiskUsageIndex operation.", e);
+          LOGGER.error(StorageEngineMessages.EXCEPTION_APPLY_TABLE_DISK_USAGE_INDEX, e);
         }
       }
     } finally {
@@ -108,14 +109,14 @@ public class TableDiskUsageIndex {
    */
   protected void failedToRecover(Exception e) {
     failedToRecover = true;
-    LOGGER.error("Failed to recover TableDiskUsageIndex", e);
+    LOGGER.error(StorageEngineMessages.FAILED_RECOVER_TABLE_DISK_USAGE_INDEX, e);
   }
 
   protected void syncTsFileTableSizeIndexIfNecessary(DataRegionTableSizeIndexWriter writer) {
     try {
       writer.tsFileIndexWriter.syncIfNecessary();
     } catch (IOException e) {
-      LOGGER.warn("Failed to sync tsfile table size index.", e);
+      LOGGER.warn(StorageEngineMessages.FAILED_SYNC_TABLE_SIZE_INDEX, e);
     }
   }
 
@@ -158,7 +159,7 @@ public class TableDiskUsageIndex {
 
   public void writeObjectDelta(
       String database, int regionId, long timePartition, String table, long size, int num) {
-    throw new UnsupportedOperationException("writeObjectDelta");
+    throw new UnsupportedOperationException(StorageEngineMessages.WRITE_OBJECT_DELTA);
   }
 
   public CompletableFuture<Pair<TsFileTableSizeIndexReader, IObjectTableSizeIndexReader>> startRead(
@@ -197,7 +198,7 @@ public class TableDiskUsageIndex {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
-      LOGGER.error("Meet exception when remove TableDiskUsageIndex.", e);
+      LOGGER.error(StorageEngineMessages.EXCEPTION_REMOVE_TABLE_DISK_USAGE_INDEX, e);
     }
   }
 
@@ -215,7 +216,7 @@ public class TableDiskUsageIndex {
       queue.put(operation);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted while adding operation {} to queue.", operation, e);
+      LOGGER.warn(StorageEngineMessages.INTERRUPTED_ADDING_OP_TO_QUEUE, operation, e);
       return false;
     }
     return true;
@@ -442,18 +443,25 @@ public class TableDiskUsageIndex {
 
     @Override
     public void apply(TableDiskUsageIndex tableDiskUsageIndex) {
-      tableDiskUsageIndex.writerMap.computeIfPresent(
-          regionId,
-          (k, writer) -> {
-            if (writer.getActiveReaderNum() > 0) {
-              // If there are active readers, defer removal until all readers finish
-              writer.setRemovedFuture(future);
-              return writer;
-            }
-            writer.close();
-            future.complete(null);
-            return null;
-          });
+      DataRegionTableSizeIndexWriter removedWriter = null;
+      try {
+        removedWriter =
+            tableDiskUsageIndex.writerMap.computeIfPresent(
+                regionId,
+                (k, writer) -> {
+                  if (writer.getActiveReaderNum() > 0) {
+                    // If there are active readers, defer removal until all readers finish
+                    writer.setRemovedFuture(future);
+                    return writer;
+                  }
+                  writer.close();
+                  return null;
+                });
+      } finally {
+        if (removedWriter == null) {
+          future.complete(null);
+        }
+      }
     }
   }
 

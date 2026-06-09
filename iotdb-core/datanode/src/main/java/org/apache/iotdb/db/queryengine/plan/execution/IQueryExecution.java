@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 
@@ -97,7 +97,7 @@ public interface IQueryExecution {
 
   String getStatementType();
 
-  IClientSession.SqlDialect getSQLDialect();
+  SqlDialect getSQLDialect();
 
   String getUser();
 

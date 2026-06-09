@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
 
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
@@ -49,10 +50,12 @@ import java.util.stream.Stream;
 
 public class SubscriptionRecordHandler implements Iterable<ResultSet>, SubscriptionMessageHandler {
 
-  private final List<ResultSet> resultSets;
+  private final List<SubscriptionResultSet> resultSets;
+
+  private final List<ResultSet> resultSetView;
 
   public SubscriptionRecordHandler(final Map<String, List<Tablet>> tablets) {
-    final List<ResultSet> resultSets = new ArrayList<>();
+    final List<SubscriptionResultSet> resultSets = new ArrayList<>();
     for (final Map.Entry<String, List<Tablet>> entry : tablets.entrySet()) {
       final String databaseName = entry.getKey();
       final List<Tablet> tabletList = entry.getValue();
@@ -67,15 +70,23 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
       }
     }
     this.resultSets = Collections.unmodifiableList(resultSets);
+    final List<ResultSet> resultSetView = new ArrayList<>();
+    resultSetView.addAll(resultSets);
+    this.resultSetView = Collections.unmodifiableList(resultSetView);
   }
 
   public List<ResultSet> getResultSets() {
-    return resultSets;
+    return resultSetView;
   }
 
   @Override
   public Iterator<ResultSet> iterator() {
-    return resultSets.iterator();
+    return resultSetView.iterator();
+  }
+
+  @Override
+  public void removeUserData() {
+    resultSets.forEach(SubscriptionResultSet::removeUserData);
   }
 
   public static class SubscriptionResultSet extends AbstractResultSet {
@@ -89,6 +100,8 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     private int rowIndex = -1;
 
     @TableModel private List<ColumnCategory> columnCategoryList;
+
+    private volatile boolean userDataRemoved = false;
 
     private SubscriptionResultSet(final Tablet tablet, @Nullable final String databaseName) {
       super(generateColumnNames(tablet, databaseName), generateColumnTypes(tablet));
@@ -104,11 +117,13 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     @TableModel
     public String getTableName() {
+      ensureUserDataAvailable();
       return tablet.getTableName();
     }
 
     @TableModel
     public List<ColumnCategory> getColumnCategories() {
+      ensureUserDataAvailable();
       if (Objects.nonNull(columnCategoryList)) {
         return columnCategoryList;
       }
@@ -139,10 +154,12 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     }
 
     public Tablet getTablet() {
+      ensureUserDataAvailable();
       return tablet;
     }
 
     public boolean hasNext() {
+      ensureUserDataAvailable();
       return Objects.nonNull(tablet) && rowIndex + 1 < sortedRowPositions.size();
     }
 
@@ -152,6 +169,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     }
 
     public int getColumnCount() {
+      ensureUserDataAvailable();
       return tablet.getSchemas().size() + 1;
     }
 
@@ -175,6 +193,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     @Override
     public boolean next() throws IOException {
+      ensureUserDataAvailable();
       if (Objects.isNull(tablet)) {
         return false;
       }
@@ -197,6 +216,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     @Override
     public Iterator<TSRecord> iterator() {
+      ensureUserDataAvailable();
       final Tablet currentTablet = this.tablet;
       if (Objects.isNull(currentTablet)) {
         return Collections.emptyIterator();
@@ -220,6 +240,16 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
       };
     }
 
+    private void removeUserData() {
+      if (userDataRemoved) {
+        return;
+      }
+
+      userDataRemoved = true;
+      sortedRowPositions.clear();
+      close();
+    }
+
     public enum ColumnCategory {
       TIME,
       TAG,
@@ -229,6 +259,13 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     private boolean isTableData() {
       return Objects.nonNull(databaseName);
+    }
+
+    private void ensureUserDataAvailable() {
+      if (userDataRemoved) {
+        throw new SubscriptionRuntimeException(
+            String.format("User data has been removed from %s.", getClass().getSimpleName()));
+      }
     }
 
     private static List<String> generateColumnNames(

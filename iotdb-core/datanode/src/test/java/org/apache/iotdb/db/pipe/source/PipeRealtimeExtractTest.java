@@ -26,20 +26,22 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
@@ -64,6 +66,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class PipeRealtimeExtractTest {
@@ -261,6 +264,52 @@ public class PipeRealtimeExtractTest {
     }
   }
 
+  @Test
+  public void testListenToTsFileSkipsAssignerWithoutTsFileSource() throws Exception {
+    try (final NoTsFileRealtimeDataRegionSource extractor =
+        new NoTsFileRealtimeDataRegionSource()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(PipeSourceConstant.EXTRACTOR_PATTERN_KEY, pattern1);
+                }
+              });
+      final PipeTaskRuntimeConfiguration configuration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskSourceRuntimeEnvironment(
+                  "1", 1, dataRegion1, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+
+      extractor.validate(new PipeParameterValidator(parameters));
+      extractor.customize(parameters, configuration);
+      extractor.start();
+
+      final File dataRegionDir =
+          new File(tsFileDir.getPath() + File.separator + dataRegion1 + File.separator + "0");
+      final boolean ignored = dataRegionDir.mkdirs();
+      final File tsFile = new File(dataRegionDir, "0-0-0-0.tsfile");
+      Assert.assertTrue(tsFile.createNewFile());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.updateStartTime(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              String.join(TsFileConstant.PATH_SEPARATOR, device)),
+          0);
+      resource.close();
+
+      PipeInsertionDataNodeListener.getInstance()
+          .listenToTsFile(dataRegion1, Integer.toString(dataRegion1), resource, false);
+
+      final long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(1);
+      while (System.currentTimeMillis() < deadline
+          && extractor.getObservedTsFileEventCount() == 0) {
+        TimeUnit.MILLISECONDS.sleep(10);
+      }
+
+      Assert.assertEquals(0, extractor.getObservedTsFileEventCount());
+    }
+  }
+
   private Future<?> write2DataRegion(
       final int writeNum, final int dataRegionId, final int startNum) {
     final File dataRegionDir =
@@ -347,5 +396,37 @@ public class PipeRealtimeExtractTest {
             Assert.assertEquals(expectNum, eventNum);
           }
         });
+  }
+
+  private static class NoTsFileRealtimeDataRegionSource extends PipeRealtimeDataRegionSource {
+
+    private final AtomicInteger observedTsFileEventCount = new AtomicInteger(0);
+
+    @Override
+    public Event supply() {
+      return null;
+    }
+
+    @Override
+    protected void doExtract(final PipeRealtimeEvent event) {
+      if (event.getEvent() instanceof TsFileInsertionEvent) {
+        observedTsFileEventCount.incrementAndGet();
+      }
+      event.decreaseReferenceCount(NoTsFileRealtimeDataRegionSource.class.getName(), false);
+    }
+
+    @Override
+    public boolean isNeedListenToTsFile() {
+      return false;
+    }
+
+    @Override
+    public boolean isNeedListenToInsertNode() {
+      return false;
+    }
+
+    private int getObservedTsFileEventCount() {
+      return observedTsFileEventCount.get();
+    }
   }
 }

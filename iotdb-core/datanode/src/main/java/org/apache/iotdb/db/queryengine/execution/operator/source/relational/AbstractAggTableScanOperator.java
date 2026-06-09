@@ -19,22 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.IWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -63,8 +65,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.satisfiedTimeRange;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.CURRENT_DEVICE_INDEX_STRING;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
@@ -141,7 +141,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
     this.currentDeviceIndex = 0;
-    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
     this.aggregatorInputChannels = parameter.aggregatorInputChannels;
     this.timeIterator = parameter.tableTimeRangeIterator;
     this.dateBinSize =
@@ -166,7 +167,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     resultTsBlock =
         resultTsBlockBuilder.build(
             new RunLengthEncodedColumn(
-                TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()));
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultTsBlockBuilder.getPositionCount()));
     resultTsBlockBuilder.reset();
   }
 
@@ -188,7 +189,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
             alignedPath,
             scanOrder,
             seriesScanOptions,
-            operatorContext.getInstanceContext(),
+            ((OperatorContext) operatorContext).getInstanceContext(),
             true,
             measurementColumnTSDataTypes);
   }
@@ -267,7 +268,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         return Optional.of(false);
       }
     } catch (IOException e) {
-      throw new RuntimeException("Error while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_WHILE_SCANNING_THE_FILE, e);
     }
   }
 
@@ -342,7 +343,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     TsBlock tsBlock =
         new TsBlock(
             inputRegion.getPositionCount(),
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, inputRegion.getPositionCount()),
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, inputRegion.getPositionCount()),
             valueColumns);
 
     for (TableAggregator aggregator : tableAggregators) {
@@ -382,7 +384,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case FIELD:
         return inputRegion.getColumn(aggColumnsIndexArray[columnIdx]);
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 
@@ -447,7 +450,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       case FIELD:
         return valueStatistics[aggColumnsIndexArray[columnIdx]];
       default:
-        throw new IllegalStateException("Unsupported column type: " + columnSchemaCategory);
+        throw new IllegalStateException(
+            DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + columnSchemaCategory);
     }
   }
 
@@ -733,7 +737,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   protected void nextDevice() throws Exception {
     currentDeviceIndex++;
     this.operatorContext.recordSpecifiedInfo(
-        CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   protected void resetTableAggregators() {

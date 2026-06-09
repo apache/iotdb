@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.BinaryColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LogicAndColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.LogicOrColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

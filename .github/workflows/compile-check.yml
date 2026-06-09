@@ -11,6 +11,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   pull_request:
     branches:
       - master
@@ -20,6 +24,10 @@ on:
     paths-ignore:
       - "docs/**"
       - "site/**"
+      - "iotdb-client/client-cpp/**"
+      - ".github/workflows/client-cpp-package.yml"
+      - ".github/scripts/package-client-cpp-*.sh"
+      - ".github/workflows/multi-language-client.yml"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -53,3 +61,7 @@ jobs:
         shell: bash
         run: |
           mvn clean package -P with-integration-tests -DskipTests -ntp
+      - name: Compiler Test (Chinese i18n)
+        shell: bash
+        run: |
+          mvn clean package -P with-integration-tests,with-zh-locale -DskipTests -ntp

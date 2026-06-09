@@ -434,6 +434,107 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    // CAPACITY with SLIDE=2 (same as SIZE=2, should behave identically to no SLIDE)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 2) ORDER BY stock_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=1 (overlapping windows)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "2,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+          "2,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=3, SLIDE=2 (overlapping windows, different params)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "0,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "1,2021-01-01T09:09:00.000Z,AAPL,102.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+          "0,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+          "1,2021-01-01T09:15:00.000Z,TESL,195.0,332.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 3, SLIDE => 2) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=3 (gap windows, some rows discarded)
+    expectedHeader = new String[] {"window_index", "time", "stock_id", "price", "s1"};
+    retArray =
+        new String[] {
+          "0,2021-01-01T09:05:00.000Z,AAPL,100.0,101.0,",
+          "0,2021-01-01T09:07:00.000Z,AAPL,103.0,101.0,",
+          "0,2021-01-01T09:06:00.000Z,TESL,200.0,102.0,",
+          "0,2021-01-01T09:07:00.000Z,TESL,202.0,202.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 3) ORDER BY stock_id, window_index, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with SIZE=2, SLIDE=1 + GROUP BY (verify aggregation with overlapping windows)
+    expectedHeader = new String[] {"stock_id", "window_index", "avg"};
+    retArray =
+        new String[] {
+          "AAPL,0,101.5,",
+          "AAPL,1,102.5,",
+          "AAPL,2,102.0,",
+          "TESL,0,201.0,",
+          "TESL,1,198.5,",
+          "TESL,2,195.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT stock_id, window_index, avg(price) as avg FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 1) GROUP BY window_index, stock_id ORDER BY stock_id, window_index",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // CAPACITY with negative SLIDE (error case)
+    tableAssertTestFail(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => -1) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
+        DATABASE_NAME);
+
+    // CAPACITY with SLIDE=0 (error case)
+    tableAssertTestFail(
+        "SELECT * FROM CAPACITY(DATA => bid PARTITION BY stock_id ORDER BY time, SIZE => 2, SLIDE => 0) ORDER BY stock_id, time",
+        "Invalid scalar argument SLIDE, should be a positive value",
+        DATABASE_NAME);
   }
 
   @Test
@@ -858,6 +959,58 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,1.2,1.0', smooth => 0.5, threshold => 1.0, width => 1000.0, height => 500.0, smooth_On_Pattern => true)",
         expectedHeader,
         retArray,
+        DATABASE_NAME);
+
+    // test flat pattern with smooth=0.0 should not crash (was IndexOutOfBoundsException due to
+    // NaN from 0/0)
+    // pattern '1,1,1,1,1,2,3,4,3' is flat->up->down, no data segment matches this sign sequence
+    retArray = new String[] {};
+    tableResultSetEqualByDataTypeTest(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,1.0,1.0,1.0,1.0,2.0,3.0,4.0,3.0', smooth => 0.0, threshold => 1.0, smooth_on_pattern => false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test negative smooth should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => -0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "smooth must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative threshold should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => -1.1, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "threshold must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative width should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => -1.0, height => 500.0, smooth_on_pattern => false)",
+        "width must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative height should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => -10.0, smooth_on_pattern => false)",
+        "height must be a non-negative number",
+        DATABASE_NAME);
+
+    // test invalid pattern with non-numeric characters should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => 'abc,def,ghi', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test empty pattern should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test single-point pattern should be rejected (need at least 2 points)
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
         DATABASE_NAME);
   }
 }

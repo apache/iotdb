@@ -19,26 +19,31 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -51,8 +56,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
@@ -78,6 +81,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
@@ -91,9 +95,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
+  private static final int MODS_MEMORY_ESTIMATE_READ_INTERVAL = 10_000;
   private final FragmentInstanceId id;
 
   private final FragmentInstanceStateMachine stateMachine;
@@ -161,6 +167,7 @@ public class FragmentInstanceContext extends QueryContext {
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
+  private boolean highestPriority = false;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
@@ -372,41 +379,60 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   @Override
-  protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> getAllModifications(
-      TsFileResource resource) {
-    if (isSingleSourcePath() || memoryReservationManager == null) {
-      return loadAllModificationsFromDisk(resource);
+  public List<ModEntry> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
     }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID, measurement);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification -> modification.affects(deviceID) && modification.affects(measurement),
+            mods -> getPathModifications(mods, deviceID, measurement))) {
+      return modificationLoader.getPathModifications();
+    } catch (IllegalPathException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
-    AtomicReference<PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-        atomicReference = new AtomicReference<>();
-    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> cachedResult =
-        fileModCache.computeIfAbsent(
-            resource.getTsFileID(),
-            k -> {
-              PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> allMods =
-                  loadAllModificationsFromDisk(resource);
-              atomicReference.set(allMods);
-              if (cachedModEntriesSize.get() >= CONFIG.getModsCacheSizeLimitPerFI()) {
-                return null;
-              }
-              long memCost =
-                  RamUsageEstimator.sizeOfObject(allMods)
-                      + RamUsageEstimator.SHALLOW_SIZE_OF_CONCURRENT_HASHMAP_ENTRY;
-              long alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              while (alreadyUsedMemoryForCachedModEntries + memCost
-                  < CONFIG.getModsCacheSizeLimitPerFI()) {
-                if (cachedModEntriesSize.compareAndSet(
-                    alreadyUsedMemoryForCachedModEntries,
-                    alreadyUsedMemoryForCachedModEntries + memCost)) {
-                  memoryReservationManager.reserveMemoryCumulatively(memCost);
-                  return allMods;
-                }
-                alreadyUsedMemoryForCachedModEntries = cachedModEntriesSize.get();
-              }
-              return null;
-            });
-    return cachedResult == null ? atomicReference.get() : cachedResult;
+  @Override
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+      throws IllegalPathException {
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+    if (memoryReservationManager == null) {
+      return super.getPathModifications(tsFileResource, deviceID);
+    }
+    try (QueryModificationLoader modificationLoader =
+        getQueryModificationLoader(
+            tsFileResource,
+            modification ->
+                deviceID.isTableModel()
+                    ? modification.affects(deviceID)
+                    : modification.affectsAll(deviceID),
+            mods -> getPathModifications(mods, deviceID))) {
+      return modificationLoader.getPathModifications();
+    }
+  }
+
+  private QueryModificationLoader getQueryModificationLoader(
+      TsFileResource tsFileResource,
+      Predicate<ModEntry> fallbackModificationMatcher,
+      QueryModificationLoader.ModsTreeMatcher modsTreeMatcher) {
+    return new QueryModificationLoader(
+        this,
+        tsFileResource,
+        memoryReservationManager,
+        CONFIG.getModsCacheSizeLimitPerFI(),
+        MODS_MEMORY_ESTIMATE_READ_INTERVAL,
+        fileModCache,
+        cachedModEntriesSize,
+        fallbackModificationMatcher,
+        modsTreeMatcher);
   }
 
   // the state change listener is added here in a separate initialize() method
@@ -522,7 +548,7 @@ public class FragmentInstanceContext extends QueryContext {
         status = new TSStatus(DATE_OUT_OF_RANGE.getStatusCode());
         status.setMessage(failure.getMessage());
       } else {
-        LOGGER.warn("[Unknown exception]: ", failure);
+        LOGGER.warn(DataNodeQueryMessages.UNKNOWN_EXCEPTION, failure);
       }
     }
 
@@ -641,7 +667,7 @@ public class FragmentInstanceContext extends QueryContext {
       }
     }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     long startAcquireLockTime = System.nanoTime();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
@@ -694,7 +720,7 @@ public class FragmentInstanceContext extends QueryContext {
       return true;
     }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
         // minus already consumed time
@@ -736,7 +762,7 @@ public class FragmentInstanceContext extends QueryContext {
     if (pathList == null) {
       return true;
     }
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       // minus already consumed time
       waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;
@@ -916,7 +942,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
     long duration = System.nanoTime() - startTime;
     if (duration >= LONG_WAIT_DURATION) {
-      LOGGER.warn("Wait {}ms for all Drivers closed", duration / 1_000_000);
+      LOGGER.warn(DataNodeQueryMessages.WAIT_MS_FOR_ALL_DRIVERS_CLOSED, duration / 1_000_000);
     }
     releaseResource();
   }
@@ -929,7 +955,7 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize();
+      long tvListRamSize = tvList.calculateRamSize().getRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
@@ -958,9 +984,22 @@ public class FragmentInstanceContext extends QueryContext {
                 memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            queryContext
-                .getMemoryReservationContext()
-                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
@@ -1188,6 +1227,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  /**
+   * Same flag as {@link
+   * org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis#needSetHighestPriority()}.
+   */
+  public boolean isHighestPriority() {
+    return highestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    this.highestPriority = highestPriority;
   }
 
   public boolean isSingleSourcePath() {

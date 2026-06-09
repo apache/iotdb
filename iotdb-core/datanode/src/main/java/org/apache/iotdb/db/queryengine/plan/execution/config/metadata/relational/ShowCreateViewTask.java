@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -99,7 +100,13 @@ public class ShowCreateViewTask extends AbstractTableTask {
               .append("TAG");
           break;
         case TIME:
-          continue;
+          builder
+              .append(getIdentifier(schema.getColumnName()))
+              .append(" ")
+              .append(schema.getDataType())
+              .append(" ")
+              .append("TIME");
+          break;
         case FIELD:
           builder
               .append(getIdentifier(schema.getColumnName()))
@@ -114,7 +121,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
         case ATTRIBUTE:
         default:
           throw new UnsupportedOperationException(
-              "Unsupported column type: " + schema.getColumnCategory());
+              DataNodeQueryMessages.UNSUPPORTED_COLUMN_TYPE + schema.getColumnCategory());
       }
       if (Objects.nonNull(schema.getProps().get(TsTable.COMMENT_KEY))) {
         builder.append(" COMMENT ").append(getString(schema.getProps().get(TsTable.COMMENT_KEY)));
@@ -122,7 +129,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.append(",");
     }
 
-    if (table.getColumnList().size() > 1) {
+    if (!table.getColumnList().isEmpty()) {
       builder.deleteCharAt(builder.length() - 1);
     }
 
@@ -136,10 +143,11 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.append(" RESTRICT");
     }
 
-    builder
-        .append(" WITH (ttl=")
-        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
-        .append(")");
+    String ttlString = table.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE);
+    if (ttlString.equals(TTL_INFINITE)) {
+      ttlString = "'" + ttlString + "'";
+    }
+    builder.append(" WITH (ttl=").append(ttlString).append(")");
 
     builder.append(" AS ");
 

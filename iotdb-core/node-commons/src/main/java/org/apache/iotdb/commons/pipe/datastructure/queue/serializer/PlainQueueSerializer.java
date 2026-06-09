@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.serializer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -72,7 +73,7 @@ public class PlainQueueSerializer<E> implements QueueSerializer<E> {
         buffer.flip();
         E element = elementDeserializationFunction.apply(buffer);
         if (element == null) {
-          throw new IOException("Failed to load snapshot.");
+          throw new IOException(PipeMessages.FAILED_TO_LOAD_SNAPSHOT);
         }
         queue.add(element);
       }
