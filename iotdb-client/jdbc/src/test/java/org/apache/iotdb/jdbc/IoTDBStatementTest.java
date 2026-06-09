@@ -153,6 +153,8 @@ public class IoTDBStatementTest {
     assertThrows(SQLException.class, () -> statement.executeBatch());
     assertThrows(SQLException.class, () -> statement.addBatch("select 1"));
     assertThrows(SQLException.class, () -> statement.clearBatch());
+    assertThrows(SQLException.class, () -> statement.isWrapperFor(Statement.class));
+    assertThrows(SQLException.class, () -> statement.unwrap(Statement.class));
     assertThrows(SQLException.class, () -> statement.getFetchSize());
     assertThrows(SQLException.class, () -> statement.getWarnings());
   }

@@ -182,6 +182,8 @@ public class IoTDBTablePreparedStatementTest {
         SQLException.class,
         () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[] {1}), 1));
     assertThrows(SQLException.class, () -> ps.getParameterMetaData());
+    assertThrows(SQLException.class, () -> metadata.isWrapperFor(ParameterMetaData.class));
+    assertThrows(SQLException.class, () -> metadata.unwrap(ParameterMetaData.class));
     assertThrows(SQLException.class, () -> metadata.getParameterCount());
     assertThrows(SQLException.class, () -> metadata.getParameterType(1));
   }

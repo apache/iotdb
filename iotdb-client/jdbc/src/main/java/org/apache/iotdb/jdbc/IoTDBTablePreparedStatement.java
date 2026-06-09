@@ -339,11 +339,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
       @Override
       public <T> T unwrap(Class<T> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
         return JdbcWrapperUtils.unwrap(this, iface);
       }
 
       @Override
-      public boolean isWrapperFor(Class<?> iface) {
+      public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkConnection("getParameterMetaData");
         return JdbcWrapperUtils.isWrapperFor(this, iface);
       }
     };

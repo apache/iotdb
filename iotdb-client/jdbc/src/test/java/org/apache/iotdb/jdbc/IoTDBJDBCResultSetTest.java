@@ -295,10 +295,26 @@ public class IoTDBJDBCResultSetTest {
     resultSet.close();
 
     Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> resultSet.isWrapperFor(ResultSet.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.unwrap(ResultSet.class));
+    Assert.assertThrows(SQLException.class, () -> resultSet.clearWarnings());
     Assert.assertThrows(SQLException.class, () -> resultSet.next());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBlob(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getBytes(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getConcurrency());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getFetchDirection());
+    Assert.assertThrows(
+        SQLException.class, () -> resultSet.setFetchDirection(ResultSet.FETCH_FORWARD));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getFetchSize());
+    Assert.assertThrows(SQLException.class, () -> resultSet.setFetchSize(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getHoldability());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getStatement());
     Assert.assertThrows(SQLException.class, () -> resultSet.getString(1));
     Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("Time"));
     Assert.assertThrows(SQLException.class, () -> resultSet.getMetaData());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getType());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getWarnings());
     Assert.assertThrows(SQLException.class, () -> resultSet.wasNull());
   }
 
