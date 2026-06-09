@@ -178,13 +178,7 @@ public class User extends Role {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.getName(),
-        password,
-        super.getPathPrivilegeList(),
-        super.getSysPrivilege(),
-        roleSet,
-        isOpenIdUser);
+    return Objects.hash(super.hashCode(), password, roleSet, isOpenIdUser);
   }
 
   @Override
