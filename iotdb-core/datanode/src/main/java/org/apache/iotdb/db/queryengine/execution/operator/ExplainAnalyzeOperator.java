@@ -189,6 +189,14 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     return analyzeResult;
   }
 
+  private String buildFragmentInstanceStatisticsJson(
+      List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
+        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+    return fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
+        instances, allStatistics, verbose);
+  }
+
   // We will log the intermediate result of analyze if timeout
   // It can be used to analyze deadlock problem.
   private void logIntermediateResultIfTimeout() {
@@ -197,12 +205,15 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
             String.format(
                 "%s-Explain-Analyze-Logger",
                 operatorContext.getInstanceContext().getId().getQueryId()))) {
-      List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
-
       StringBuilder logContent = new StringBuilder();
       logContent.append("\n").append(LOG_TITLE).append("\n");
-      for (String line : analyzeResult) {
-        logContent.append(line).append("\n");
+      if (outputFormat == ExplainOutputFormat.JSON) {
+        logContent.append(buildFragmentInstanceStatisticsJson(instances, verbose)).append("\n");
+      } else {
+        List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+        for (String line : analyzeResult) {
+          logContent.append(line).append("\n");
+        }
       }
       String res = logContent.toString();
       logger.info(res);
@@ -234,11 +245,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   }
 
   private TsBlock buildJsonResult() throws FragmentInstanceFetchException {
-    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
-        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
-    String jsonResult =
-        fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
-            instances, allStatistics, verbose);
+    String jsonResult = buildFragmentInstanceStatisticsJson(instances, verbose);
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();

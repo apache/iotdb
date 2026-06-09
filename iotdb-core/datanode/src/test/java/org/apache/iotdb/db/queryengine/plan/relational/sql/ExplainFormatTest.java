@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import org.junit.Before;
@@ -79,6 +79,15 @@ public class ExplainFormatTest {
     assertEquals(ExplainOutputFormat.JSON, ((Explain) stmt).getOutputFormat());
   }
 
+  @Test
+  public void testExplainWithoutLocationKeepsOutputFormat() {
+    Statement stmt = parseSQL("SELECT * FROM table1");
+    Explain explain = new Explain(stmt, ExplainOutputFormat.JSON);
+
+    assertEquals(ExplainOutputFormat.JSON, explain.getOutputFormat());
+    assertEquals(stmt, explain.getStatement());
+  }
+
   @Test(expected = Exception.class)
   public void testExplainInvalidFormat() {
     parseSQL("EXPLAIN (FORMAT XML) SELECT * FROM table1");
@@ -112,6 +121,16 @@ public class ExplainFormatTest {
     ExplainAnalyze ea = (ExplainAnalyze) stmt;
     assertEquals(ExplainOutputFormat.JSON, ea.getOutputFormat());
     assertTrue(ea.isVerbose());
+  }
+
+  @Test
+  public void testExplainAnalyzeWithoutLocationKeepsOutputFormat() {
+    Statement stmt = parseSQL("SELECT * FROM table1");
+    ExplainAnalyze explainAnalyze = new ExplainAnalyze(stmt, true, ExplainOutputFormat.JSON);
+
+    assertEquals(ExplainOutputFormat.JSON, explainAnalyze.getOutputFormat());
+    assertTrue(explainAnalyze.isVerbose());
+    assertEquals(stmt, explainAnalyze.getStatement());
   }
 
   @Test(expected = Exception.class)

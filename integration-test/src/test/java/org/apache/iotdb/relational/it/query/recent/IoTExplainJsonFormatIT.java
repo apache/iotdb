@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -181,6 +182,76 @@ public class IoTExplainJsonFormatIT {
   }
 
   @Test
+  public void testExplainJsonWithExecuteKeepsFormat() {
+    // Expected output for both EXECUTE and EXECUTE IMMEDIATE (single row, single JSON object
+    // representing the resolved query's distributed plan tree; the outer FORMAT JSON must be
+    // preserved when the prepared/immediate SQL is unwrapped):
+    // {
+    //   "name": "OutputNode-<id>",
+    //   "id": "<id>",
+    //   "properties": {
+    //     "OutputColumns": ["time", "deviceid", "voltage"],
+    //     "OutputSymbols": ["time", "deviceid", "voltage"]
+    //   },
+    //   "children": [
+    //     {
+    //       "name": "CollectNode-<id>",
+    //       "children": [
+    //         {
+    //           "name": "ExchangeNode-<id>",
+    //           "children": [
+    //             {
+    //               "name": "DeviceTableScanNode-<id>",
+    //               "properties": {
+    //                 "QualifiedTableName": "testdb_json.testtb",
+    //                 "PushDownPredicate": "(\"deviceid\" = 'd1')",
+    //                 ...
+    //               }
+    //             }
+    //           ]
+    //         }
+    //       ]
+    //     }
+    //   ]
+    // }
+    try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = conn.createStatement()) {
+      Statement sessionStatement = getSessionScopedStatement(conn, statement);
+      try {
+        sessionStatement.execute("USE " + DATABASE_NAME);
+        sessionStatement.execute(
+            "PREPARE explain_json_stmt FROM SELECT * FROM testtb WHERE deviceid = ?");
+
+        ResultSet executeResultSet =
+            sessionStatement.executeQuery(
+                "EXPLAIN (FORMAT JSON) EXECUTE explain_json_stmt USING 'd1'");
+        Assert.assertTrue(executeResultSet.next());
+        JsonObject executeJson =
+            JsonParser.parseString(executeResultSet.getString(1)).getAsJsonObject();
+        Assert.assertTrue("EXECUTE explain JSON should have 'name' field", executeJson.has("name"));
+        executeResultSet.close();
+
+        ResultSet immediateResultSet =
+            sessionStatement.executeQuery(
+                "EXPLAIN (FORMAT JSON) EXECUTE IMMEDIATE "
+                    + "'SELECT * FROM testtb WHERE deviceid = ?' USING 'd1'");
+        Assert.assertTrue(immediateResultSet.next());
+        JsonObject immediateJson =
+            JsonParser.parseString(immediateResultSet.getString(1)).getAsJsonObject();
+        Assert.assertTrue(
+            "EXECUTE IMMEDIATE explain JSON should have 'name' field", immediateJson.has("name"));
+        immediateResultSet.close();
+
+        sessionStatement.execute("DEALLOCATE PREPARE explain_json_stmt");
+      } finally {
+        closeSessionScopedStatement(sessionStatement, statement);
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testExplainAnalyzeJsonFormat() {
     // Expected output (single row, single JSON object with plan statistics + fragment instances):
     // {
@@ -279,6 +350,79 @@ public class IoTExplainJsonFormatIT {
       Assert.assertTrue(planStats.has("dispatchCostMs"));
 
       resultSet.close();
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testExplainAnalyzeJsonWithExecuteKeepsFormat() {
+    // Expected output for both EXECUTE and EXECUTE IMMEDIATE (single row, single JSON object
+    // with plan statistics + fragment instances; the outer FORMAT JSON must be preserved when the
+    // prepared/immediate SQL is unwrapped):
+    // {
+    //   "planStatistics": {
+    //     "analyzeCostMs": <ms>,
+    //     "fetchPartitionCostMs": <ms>,
+    //     "fetchSchemaCostMs": <ms>,
+    //     "logicalPlanCostMs": <ms>,
+    //     "logicalOptimizationCostMs": <ms>,
+    //     "distributionPlanCostMs": <ms>,
+    //     "dispatchCostMs": <ms>
+    //   },
+    //   "fragmentInstancesCount": <count>,
+    //   "fragmentInstances": [
+    //     {
+    //       "id": "<queryId>.<fragmentId>.<instanceId>",
+    //       "ip": "127.0.0.1:<port>",
+    //       "dataRegion": "<region>",
+    //       "state": "FINISHED",
+    //       "queryStatistics": { ... },
+    //       "operators": { ... }
+    //     }
+    //   ]
+    // }
+    try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = conn.createStatement()) {
+      Statement sessionStatement = getSessionScopedStatement(conn, statement);
+      try {
+        sessionStatement.execute("USE " + DATABASE_NAME);
+        sessionStatement.execute(
+            "PREPARE explain_analyze_json_stmt FROM SELECT * FROM testtb WHERE deviceid = ?");
+
+        ResultSet executeResultSet =
+            sessionStatement.executeQuery(
+                "EXPLAIN ANALYZE (FORMAT JSON) EXECUTE explain_analyze_json_stmt USING 'd1'");
+        Assert.assertTrue(executeResultSet.next());
+        JsonObject executeJson =
+            JsonParser.parseString(executeResultSet.getString(1)).getAsJsonObject();
+        Assert.assertTrue(
+            "EXECUTE explain analyze JSON should have 'planStatistics' field",
+            executeJson.has("planStatistics"));
+        Assert.assertTrue(
+            "EXECUTE explain analyze JSON should have 'fragmentInstances' field",
+            executeJson.has("fragmentInstances"));
+        executeResultSet.close();
+
+        ResultSet immediateResultSet =
+            sessionStatement.executeQuery(
+                "EXPLAIN ANALYZE (FORMAT JSON) EXECUTE IMMEDIATE "
+                    + "'SELECT * FROM testtb WHERE deviceid = ?' USING 'd1'");
+        Assert.assertTrue(immediateResultSet.next());
+        JsonObject immediateJson =
+            JsonParser.parseString(immediateResultSet.getString(1)).getAsJsonObject();
+        Assert.assertTrue(
+            "EXECUTE IMMEDIATE explain analyze JSON should have 'planStatistics' field",
+            immediateJson.has("planStatistics"));
+        Assert.assertTrue(
+            "EXECUTE IMMEDIATE explain analyze JSON should have 'fragmentInstances' field",
+            immediateJson.has("fragmentInstances"));
+        immediateResultSet.close();
+
+        sessionStatement.execute("DEALLOCATE PREPARE explain_analyze_json_stmt");
+      } finally {
+        closeSessionScopedStatement(sessionStatement, statement);
+      }
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -536,6 +680,9 @@ public class IoTExplainJsonFormatIT {
       Assert.assertTrue("CTE should have 'name' field", cte.has("name"));
       Assert.assertEquals("cte1", cte.get("name").getAsString());
       Assert.assertTrue("CTE should have 'plan' field", cte.has("plan"));
+      Assert.assertTrue("CTE plan should be a JSON object", cte.get("plan").isJsonObject());
+      Assert.assertTrue(
+          "CTE plan should have 'name' field", cte.getAsJsonObject("plan").has("name"));
 
       // The main query plan should be a JSON object with 'name' field (plan node)
       JsonObject mainQuery = root.getAsJsonObject("mainQuery");
@@ -685,6 +832,24 @@ public class IoTExplainJsonFormatIT {
       resultSet.close();
     } catch (SQLException e) {
       fail(e.getMessage());
+    }
+  }
+
+  private static Statement getSessionScopedStatement(Connection connection, Statement statement)
+      throws SQLException {
+    if (connection instanceof ClusterTestConnection) {
+      return ((ClusterTestConnection) connection)
+          .writeConnection
+          .getUnderlyingConnection()
+          .createStatement();
+    }
+    return statement;
+  }
+
+  private static void closeSessionScopedStatement(Statement sessionStatement, Statement statement)
+      throws SQLException {
+    if (sessionStatement != statement) {
+      sessionStatement.close();
     }
   }
 }

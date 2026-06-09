@@ -50,6 +50,13 @@ public class ExplainAnalyze extends Statement {
     this.outputFormat = ExplainOutputFormat.TEXT;
   }
 
+  public ExplainAnalyze(Statement statement, boolean verbose, ExplainOutputFormat outputFormat) {
+    super(null);
+    this.statement = requireNonNull(statement, "statement is null");
+    this.verbose = verbose;
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+  }
+
   public ExplainAnalyze(NodeLocation location, boolean verbose, Statement statement) {
     super(requireNonNull(location, "location is null"));
     this.statement = requireNonNull(statement, "statement is null");

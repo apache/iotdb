@@ -47,6 +47,12 @@ public class Explain extends Statement {
     this.outputFormat = ExplainOutputFormat.GRAPHVIZ;
   }
 
+  public Explain(Statement statement, ExplainOutputFormat outputFormat) {
+    super(null);
+    this.statement = requireNonNull(statement, "statement is null");
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
+  }
+
   public Explain(NodeLocation location, Statement statement) {
     super(requireNonNull(location, "location is null"));
     this.statement = requireNonNull(statement, "statement is null");
