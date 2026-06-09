@@ -28,7 +28,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -114,7 +113,7 @@ public class Deletion extends Modification implements Cloneable {
     serializeSize += Long.BYTES;
     stream.writeLong(getEndTime());
     serializeSize += Long.BYTES;
-    serializeSize += ReadWriteIOUtils.write(getPathString(), stream);
+    serializeSize += writeString(getPathString(), stream);
     return serializeSize;
   }
 
@@ -122,8 +121,30 @@ public class Deletion extends Modification implements Cloneable {
       throws IOException, IllegalPathException {
     long startTime = stream.readLong();
     long endTime = stream.readLong();
-    return new Deletion(
-        getMeasurementPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
+    return new Deletion(getMeasurementPath(readString(stream)), 0, startTime, endTime);
+  }
+
+  private static int writeString(String value, DataOutputStream stream) throws IOException {
+    if (value == null) {
+      stream.writeInt(-1);
+      return Integer.BYTES;
+    }
+    byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+    return Integer.BYTES + bytes.length;
+  }
+
+  private static String readString(DataInputStream stream) throws IOException {
+    int strLength = stream.readInt();
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    byte[] bytes = new byte[strLength];
+    stream.readFully(bytes);
+    return new String(bytes, TSFileConfig.STRING_CHARSET);
   }
 
   private static PartialPath getMeasurementPath(String path) throws IllegalPathException {

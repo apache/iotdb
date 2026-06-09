@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
@@ -671,8 +672,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     insertNode.setTime(stream.readLong());
     try {
       insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(stream)));
+          DataNodeDevicePathCache.getInstance().getPartialPath(WALReadUtils.readString(stream)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -757,8 +757,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     insertNode.setTime(buffer.getLong());
     try {
       insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(buffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath(WALReadUtils.readString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }

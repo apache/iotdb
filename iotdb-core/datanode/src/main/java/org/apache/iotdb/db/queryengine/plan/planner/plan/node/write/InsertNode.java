@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -244,7 +245,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+      measurementSchemas[i] = WALReadUtils.readMeasurementSchema(stream);
       measurements[i] = measurementSchemas[i].getMeasurementId();
       dataTypes[i] = measurementSchemas[i].getType();
     }
@@ -252,7 +253,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
     for (int i = 0; i < measurements.length; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurementSchemas[i] = WALReadUtils.readMeasurementSchema(buffer);
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
