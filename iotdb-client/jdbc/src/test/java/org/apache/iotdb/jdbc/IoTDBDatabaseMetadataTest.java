@@ -204,6 +204,16 @@ public class IoTDBDatabaseMetadataTest {
   }
 
   @Test
+  public void testGetPrimaryKeysBuildsMetadataResultSetAfterClosingInternalStatement()
+      throws SQLException {
+    ResultSet resultSet = databaseMetaData.getPrimaryKeys(null, null, "root.sg.d1");
+
+    Assert.assertEquals("TABLE_CAT", resultSet.getMetaData().getColumnName(1));
+    Assert.assertEquals("TABLE_SCHEM", resultSet.getMetaData().getColumnName(2));
+    Assert.assertEquals("TABLE_NAME", resultSet.getMetaData().getColumnName(3));
+  }
+
+  @Test
   public void testGetIndexInfo() throws SQLException {
     ResultSet resultSet = databaseMetaData.getIndexInfo(null, null, null, false, false);
     Assert.assertEquals("Time", resultSet.getMetaData().getColumnName(1));

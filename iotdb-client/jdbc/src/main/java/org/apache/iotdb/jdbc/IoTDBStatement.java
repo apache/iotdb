@@ -620,6 +620,10 @@ public class IoTDBStatement implements Statement {
     return fetchSize;
   }
 
+  int getFetchSizeInternal() {
+    return fetchSize;
+  }
+
   @Override
   public void setFetchSize(int fetchSize) throws SQLException {
     checkConnection("setFetchSize");
