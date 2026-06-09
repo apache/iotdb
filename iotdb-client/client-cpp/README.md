@@ -409,6 +409,18 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package
 ```
 
+Standalone CMake uses the same online dependency resolution:
+
+```bash
+# Linux / macOS
+cmake -S iotdb-client/client-cpp -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target install
+
+# Windows / Visual Studio
+cmake -S iotdb-client/client-cpp -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release --target install
+```
+
 ## Offline build
 
 1. Pre-populate the platform-specific sub-directory under `third-party/`:

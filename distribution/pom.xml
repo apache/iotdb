@@ -143,7 +143,7 @@
                 </os>
             </activation>
             <properties>
-                <client.cpp.package.classifier>linux-x86_64-glibc2.17</client.cpp.package.classifier>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
@@ -156,7 +156,7 @@
                 </os>
             </activation>
             <properties>
-                <client.cpp.package.classifier>linux-aarch64-glibc2.17</client.cpp.package.classifier>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
             </properties>
         </profile>
         <profile>
