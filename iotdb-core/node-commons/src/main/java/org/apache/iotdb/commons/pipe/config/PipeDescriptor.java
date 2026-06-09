@@ -445,9 +445,11 @@ public class PipeDescriptor {
 
     config.setPipeSinkRequestSliceThresholdBytes(
         Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_request_slice_threshold_bytes",
-                String.valueOf(config.getPipeSinkRequestSliceThresholdBytes()))));
+            Optional.ofNullable(properties.getProperty("pipe_sink_request_slice_threshold_bytes"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_request_slice_threshold_bytes",
+                        String.valueOf(config.getPipeSinkRequestSliceThresholdBytes())))));
 
     config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
         Long.parseLong(
