@@ -66,6 +66,8 @@ public final class JdbcMessages {
       "Cannot %s after connection has been closed!";
   public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
       "Cannot %s after statement has been closed!";
+  public static final String EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52 =
+      "ResultSet has been closed";
 
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";

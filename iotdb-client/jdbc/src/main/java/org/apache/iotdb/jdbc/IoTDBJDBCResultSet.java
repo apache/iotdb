@@ -85,6 +85,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private List<String> sgColumns = null;
   private Charset charset = TSFileConfig.STRING_CHARSET;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+  private boolean explicitlyClosed = false;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
@@ -219,6 +220,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public void close() throws SQLException {
     try {
       ioTDBRpcDataSet.close();
+      explicitlyClosed = true;
     } catch (StatementExecutionException e) {
       throw new SQLException(JdbcMessages.CLOSE_SERVER_SIDE_ERROR, e);
     } catch (TException e) {
@@ -233,6 +235,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public int findColumn(String columnName) throws SQLException {
+    checkOpen();
     if (!ioTDBRpcDataSet.getColumnNameList().contains(columnName)) {
       throw new SQLException(
           String.format(JdbcMessages.EXCEPTION_UNKNOWN_COLUMN_NAME_ARG_F8369278, columnName));
@@ -589,7 +592,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public ResultSetMetaData getMetaData() {
+  public ResultSetMetaData getMetaData() throws SQLException {
+    checkOpen();
     String operationTypeColumn = "";
     boolean nonAlign = false;
     try {
@@ -890,6 +894,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public boolean isClosed() {
     return ioTDBRpcDataSet.isClosed();
+  }
+
+  private void checkOpen() throws SQLException {
+    if (explicitlyClosed) {
+      throw new SQLException(JdbcMessages.EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52);
+    }
   }
 
   @Override
@@ -1372,7 +1382,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public boolean wasNull() {
+  public boolean wasNull() throws SQLException {
+    checkOpen();
     return ioTDBRpcDataSet.isLastReadWasNull();
   }
 

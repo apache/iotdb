@@ -67,6 +67,8 @@ public final class JdbcMessages {
 
   public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
       "Statement 关闭后无法执行 %s";
+  public static final String EXCEPTION_RESULTSET_HAS_BEEN_CLOSED_45F3BF52 =
+      "ResultSet 已关闭";
 
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
