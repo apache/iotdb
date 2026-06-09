@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -137,7 +138,14 @@ public class Deletion extends Modification implements Cloneable {
   }
 
   public long getSerializedSize() {
-    return Long.BYTES * 2 + Integer.BYTES + (long) getPathString().length() * Character.BYTES;
+    return Long.BYTES * 2L + sizeToWriteString(getPathString());
+  }
+
+  private static int sizeToWriteString(String value) {
+    if (value == null) {
+      return Integer.BYTES;
+    }
+    return Integer.BYTES + value.getBytes(TSFileConfig.STRING_CHARSET).length;
   }
 
   @Override

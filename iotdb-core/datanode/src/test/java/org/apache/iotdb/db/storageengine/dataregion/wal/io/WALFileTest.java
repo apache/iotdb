@@ -61,7 +61,7 @@ public class WALFileTest {
       new File(
           TestConstant.BASE_OUTPUT_PATH.concat(
               WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX)));
-  private final String devicePath = "root.test_sg.test_d";
+  private final String devicePath = "root.\u6570\u636e\u5e93.test_d";
 
   @Before
   public void setUp() throws Exception {
@@ -169,6 +169,16 @@ public class WALFileTest {
     WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
     fileChannel2.close();
     assertTrue(walMetaData.getMemTablesId().isEmpty());
+  }
+
+  @Test
+  public void testInsertTabletEntrySerializedSizeWithRange()
+      throws IOException, IllegalPathException {
+    WALEntry walEntry = new WALInfoEntry(1, getInsertTabletNode(devicePath), 1, 3);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(walEntry.serializedSize());
+    WALByteBufferForTest buffer = new WALByteBufferForTest(byteBuffer);
+    walEntry.serialize(buffer);
+    assertEquals(walEntry.serializedSize(), byteBuffer.position());
   }
 
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
