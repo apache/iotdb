@@ -60,6 +60,7 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -363,6 +364,9 @@ public class IoTDBConnection implements Connection {
   public void setSchema(String arg0) throws SQLException {
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      if (arg0 == null) {
+        throw new SQLException(JdbcMessages.EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3);
+      }
       for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
         if (arg0.equalsIgnoreCase(str)) {
           arg0 = "\"" + arg0 + "\"";
@@ -501,7 +505,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    if (name.equalsIgnoreCase("time_zone")) {
+    if ("time_zone".equalsIgnoreCase(name)) {
       try {
         setTimeZone(value);
       } catch (TException | IoTDBSQLException e) {
@@ -698,6 +702,7 @@ public class IoTDBConnection implements Connection {
   }
 
   public void setTimeZone(String timeZone) throws TException, IoTDBSQLException {
+    ZoneId newZoneId = parseTimeZone(timeZone);
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, timeZone);
     TSStatus resp = getClient().setTimeZone(req);
     try {
@@ -705,7 +710,20 @@ public class IoTDBConnection implements Connection {
     } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
-    this.zoneId = ZoneId.of(timeZone);
+    this.zoneId = newZoneId;
+  }
+
+  private static ZoneId parseTimeZone(String timeZone) throws IoTDBSQLException {
+    if (timeZone == null) {
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2, timeZone));
+    }
+    try {
+      return ZoneId.of(timeZone);
+    } catch (DateTimeException e) {
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2, timeZone), e);
+    }
   }
 
   public ServerProperties getServerProperties() throws TException {

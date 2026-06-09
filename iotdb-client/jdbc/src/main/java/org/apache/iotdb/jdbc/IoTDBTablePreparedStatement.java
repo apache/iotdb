@@ -281,12 +281,14 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       }
 
       @Override
-      public int isNullable(int param) {
+      public int isNullable(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return ParameterMetaData.parameterNullableUnknown;
       }
 
       @Override
-      public boolean isSigned(int param) {
+      public boolean isSigned(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         if (!serverSidePrepared) {
           return false;
         }
@@ -298,17 +300,20 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       }
 
       @Override
-      public int getPrecision(int param) {
+      public int getPrecision(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return 0;
       }
 
       @Override
-      public int getScale(int param) {
+      public int getScale(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return 0;
       }
 
       @Override
-      public int getParameterType(int param) {
+      public int getParameterType(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         if (!serverSidePrepared) {
           return Types.NULL;
         }
@@ -316,17 +321,20 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       }
 
       @Override
-      public String getParameterTypeName(int param) {
+      public String getParameterTypeName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public String getParameterClassName(int param) {
+      public String getParameterClassName(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return null;
       }
 
       @Override
-      public int getParameterMode(int param) {
+      public int getParameterMode(int param) throws SQLException {
+        checkParameterMetadataIndex(param);
         return ParameterMetaData.parameterModeIn;
       }
 
@@ -420,6 +428,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.BINARY);
     // Format as hexadecimal string literal for SQL: X'0A0B0C'
@@ -428,6 +440,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.DATE);
+      return;
+    }
     setLocalDate(parameterIndex, x.toLocalDate());
   }
 
@@ -446,6 +462,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setTime(int parameterIndex, Time x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIME);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     try {
       long time = x.getTime();
@@ -476,6 +496,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+    if (x == null) {
+      setNull(parameterIndex, Types.TIMESTAMP);
+      return;
+    }
     checkParameterIndex(parameterIndex);
     // The server reads time values in its own precision (ms, us or ns)
     long time = toServerTime(x);
@@ -570,6 +594,17 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     }
   }
 
+  private void checkParameterMetadataIndex(int index) throws SQLException {
+    if (index < 1 || index > parameterCount) {
+      throw new SQLException(
+          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
+              + index
+              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
+              + parameterCount
+              + JdbcMessages.RIGHT_PARENTHESIS);
+    }
+  }
+
   private void setPreparedParameterValue(int parameterIndex, Object value, int sqlType) {
     if (!serverSidePrepared) {
       return;
@@ -614,6 +649,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+    if (length < 0) {
+      throw new SQLException(JdbcMessages.EXCEPTION_LENGTH_MUST_BE_0_53AF26C8);
+    }
+    if (x == null) {
+      setNull(parameterIndex, Types.BINARY);
+      return;
+    }
     try {
       byte[] bytes = ReadWriteIOUtils.readBytes(x, length);
       setBytes(parameterIndex, bytes);
@@ -752,7 +794,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (!parameters.containsKey(i)) {
         throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
-      newSql.append(parameters.get(i));
+      String parameter = parameters.get(i);
+      newSql.append(parameter == null ? "NULL" : parameter);
       newSql.append(parts.get(i));
     }
     return newSql.toString();

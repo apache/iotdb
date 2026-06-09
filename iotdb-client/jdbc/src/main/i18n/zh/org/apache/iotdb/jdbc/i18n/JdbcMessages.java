@@ -183,6 +183,12 @@ public final class JdbcMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3 =
+      "schema 不能为空";
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2 =
+      "无效的 time_zone：%s";
+  public static final String EXCEPTION_LENGTH_MUST_BE_0_53AF26C8 =
+      "length 必须大于等于 0";
   public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "连接错误，请检查网络是否可用或服务器是否正常";
   public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " 已启动。";
   public static final String EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB =

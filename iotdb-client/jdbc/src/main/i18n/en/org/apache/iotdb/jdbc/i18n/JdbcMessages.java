@@ -184,6 +184,11 @@ public final class JdbcMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SCHEMA_CANNOT_BE_NULL_E93264A3 =
+      "schema cannot be null";
+  public static final String EXCEPTION_INVALID_TIME_ZONE_ARG_625F2BE2 =
+      "Invalid time_zone: %s";
+  public static final String EXCEPTION_LENGTH_MUST_BE_0_53AF26C8 = "length must be >= 0";
   public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "Connection Error, please check whether the network is available or the server";
   public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " has started.";
   public static final String EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB =
