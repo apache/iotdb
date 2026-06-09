@@ -121,7 +121,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
       this.serverSidePrepared = false;
-      this.parameterCount = 0;
+      this.parameterCount = splitSqlStatement(sql).size() - 1;
       this.parameterValues = null;
       this.parameterTypes = null;
     }
@@ -581,27 +581,22 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    if (!serverSidePrepared) {
-      return;
-    }
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
-              + index
-              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
-              + parameterCount
-              + JdbcMessages.RIGHT_PARENTHESIS);
+          String.format(
+              JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6,
+              index,
+              parameterCount));
     }
   }
 
   private void checkParameterMetadataIndex(int index) throws SQLException {
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
-              + index
-              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
-              + parameterCount
-              + JdbcMessages.RIGHT_PARENTHESIS);
+          String.format(
+              JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6,
+              index,
+              parameterCount));
     }
   }
 

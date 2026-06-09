@@ -162,6 +162,25 @@ public class IoTDBTablePreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
+  public void testParameterMetadataRejectsInvalidIndex() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(1, metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getParameterType(0));
+    assertThrows(SQLException.class, () -> metadata.isSigned(2));
+    assertThrows(SQLException.class, () -> ps.setInt(0, 1));
+    assertThrows(SQLException.class, () -> ps.setInt(2, 1));
+
+    ps.setInt(1, 1);
+
+    assertEquals(Types.INTEGER, metadata.getParameterType(1));
+    assertTrue(metadata.isSigned(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
   public void testTableModelLoginInjectionWithComment() throws Exception {
     // Login interface SQL injection attack 1: Using -- comments to bypass password checks
     String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
@@ -278,6 +297,9 @@ public class IoTDBTablePreparedStatementTest {
     String sql = "SELECT * FROM users WHERE email = ?";
     IoTDBTablePreparedStatement ps =
         new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    assertThrows(SQLException.class, () -> ps.setString(0, null));
+    assertThrows(SQLException.class, () -> ps.setString(2, null));
     ps.setString(1, null);
     ps.execute();
 

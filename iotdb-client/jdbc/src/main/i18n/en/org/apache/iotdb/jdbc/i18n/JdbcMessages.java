@@ -80,6 +80,8 @@ public final class JdbcMessages {
       "Failed to read binary stream: ";
 
   // IoTDBPreparedStatement
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6 =
+      "Parameter index out of range: %d (expected 1-%d)";
   public static final String NO_TYPE_MATCHED = "No type was matched";
   public static final String SQL_DEBUG = "SQL {}";
   public static final String PARAMETERS_DEBUG = "parameters {}";

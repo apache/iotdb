@@ -80,6 +80,8 @@ public final class JdbcMessages {
       "读取二进制流失败：";
 
   // IoTDBPreparedStatement
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_OF_RANGE_ARG_EXPECTED_1_ARG_65BF83C6 =
+      "参数索引超出范围：%d（范围应为 1-%d）";
   public static final String NO_TYPE_MATCHED = "没有匹配的类型";
   public static final String SQL_DEBUG = "SQL {}";
   public static final String PARAMETERS_DEBUG = "参数 {}";

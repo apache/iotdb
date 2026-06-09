@@ -100,13 +100,35 @@ public class IoTDBPreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
-  public void unusedArgument() throws SQLException {
+  public void testParameterMetadataRejectsUnsetIndexAndHandlesNullValue() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(
+            connection, client, sessionId, "SELECT ? FROM root.sg.d WHERE s = '?'", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    assertEquals(1, metadata.getParameterCount());
+    assertEquals(0, metadata.getPrecision(1));
+    assertThrows(SQLException.class, () -> metadata.getPrecision(0));
+    assertThrows(SQLException.class, () -> metadata.getParameterMode(2));
+    assertThrows(SQLException.class, () -> ps.setString(0, "x"));
+    assertThrows(SQLException.class, () -> ps.setInt(2, 1));
+
+    ps.setString(1, null);
+
+    assertEquals(1, metadata.getParameterCount());
+    assertEquals(0, metadata.getPrecision(1));
+    assertEquals(Types.NULL, metadata.getParameterType(1));
+    assertEquals(ParameterMetaData.parameterModeUnknown, metadata.getParameterMode(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void invalidParameterIndex() throws SQLException {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00";
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.setString(1, "123");
-    assertFalse(ps.execute());
+    assertThrows(SQLException.class, () -> ps.setString(1, "123"));
   }
 
   @SuppressWarnings("resource")
