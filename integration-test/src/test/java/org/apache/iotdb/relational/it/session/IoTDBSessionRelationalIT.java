@@ -267,13 +267,16 @@ public class IoTDBSessionRelationalIT {
             "701: Input time format aa error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or refer to user document for more info.",
             e.getMessage());
       }
-      try {
-        session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
-        fail("No exception thrown");
-      } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: Insert expression must be constant after constant folding: (1 + 1) (folded to (1 + 1))",
-            e.getMessage());
+      session.executeNonQueryStatement("insert into wrong_time values(1+1,'bb','cc','dd')");
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from wrong_time where time = 2")) {
+        assertTrue(dataSet.hasNext());
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(2L, rowRecord.getFields().get(0).getLongV());
+        assertEquals("bb", rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("cc", rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("dd", rowRecord.getFields().get(3).getBinaryV().toString());
+        assertFalse(dataSet.hasNext());
       }
       try {
         session.executeNonQueryStatement("insert into wrong_time values(1.0,'bb','cc','dd')");
