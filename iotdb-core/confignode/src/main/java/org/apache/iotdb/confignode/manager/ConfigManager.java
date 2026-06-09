@@ -3333,6 +3333,18 @@ public class ConfigManager implements IManager {
     List<Integer> targetNodeIds = null;
     if (req.isSetTargetNodeIds() && !req.getTargetNodeIds().isEmpty()) {
       targetNodeIds = req.getTargetNodeIds();
+      List<Integer> unavailableTargetNodeIds =
+          targetNodeIds.stream()
+              .filter(targetNodeId -> !availableDataNodeMap.containsKey(targetNodeId))
+              .distinct()
+              .collect(Collectors.toList());
+      if (!unavailableTargetNodeIds.isEmpty()) {
+        return new TSStatus(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Load balance target DataNodes %s do not exist or are not running.",
+                    unavailableTargetNodeIds));
+      }
     }
 
     // Balance and migrate data regions
