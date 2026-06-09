@@ -691,7 +691,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
 
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // Skip failed Measurements
       if (!isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)) {
         continue;
@@ -731,7 +731,7 @@ public class TsFileProcessor {
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       Object[] values = insertRowNode.getValues();
       String[] measurements = insertRowNode.getMeasurements();
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (!isWritableFieldMeasurement(
             measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
@@ -800,7 +800,7 @@ public class TsFileProcessor {
       // For existed device of this mem table
       AlignedWritableMemChunk alignedMemChunk = (AlignedWritableMemChunk) memChunk;
       List<TSDataType> dataTypesInTVList = new ArrayList<>();
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (!isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)) {
           continue;
@@ -824,7 +824,7 @@ public class TsFileProcessor {
       }
     }
 
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // TEXT data mem size
       if (isWritableFieldMeasurement(measurements, dataTypes, values, columnCategories, i)
           && dataTypes[i].isBinary()) {
@@ -864,7 +864,7 @@ public class TsFileProcessor {
             ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
                 * writableFieldDataTypes.length;
         memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(writableFieldDataTypes, null);
-        for (int i = 0; i < dataTypes.length; i++) {
+        for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
           // Skip failed Measurements
           if (!isWritableFieldMeasurement(
               measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
@@ -881,7 +881,7 @@ public class TsFileProcessor {
         List<TSDataType> dataTypesInTVList = new ArrayList<>();
         Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
             increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
-        for (int i = 0; i < dataTypes.length; i++) {
+        for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
           // Skip failed Measurements
           if (!isWritableFieldMeasurement(
               measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
@@ -921,7 +921,7 @@ public class TsFileProcessor {
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
 
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (!isWritableFieldMeasurement(
             measurements, dataTypes, values, insertRowNode.getColumnCategories(), i)) {
@@ -951,7 +951,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // Skip failed Measurements
       if (!isWritableFieldMeasurement(measurements, dataTypes, columns, columnCategories, i)) {
         continue;
@@ -1085,7 +1085,7 @@ public class TsFileProcessor {
       List<TSDataType> dataTypesInTVList = new ArrayList<>();
       int currentPointNum = alignedMemChunk.alignedListSize();
       int newPointNum = currentPointNum + incomingPointNum;
-      for (int i = 0; i < dataTypes.length; i++) {
+      for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
         TSDataType dataType = dataTypes[i];
         if (!isWritableFieldMeasurement(measurementIds, dataTypes, columns, columnCategories, i)) {
           continue;
@@ -1118,7 +1118,7 @@ public class TsFileProcessor {
     }
 
     // flexible-length data size
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       TSDataType dataType = dataTypes[i];
       if (!isWritableFieldMeasurement(measurementIds, dataTypes, columns, columnCategories, i)) {
         continue;
@@ -1137,7 +1137,7 @@ public class TsFileProcessor {
       Object[] valuesOrColumns,
       TsTableColumnCategory[] columnCategories) {
     List<TSDataType> writableFieldDataTypes = new ArrayList<>();
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       if (isWritableFieldMeasurement(
           measurementIds, dataTypes, valuesOrColumns, columnCategories, i)) {
         writableFieldDataTypes.add(dataTypes[i]);
@@ -1153,6 +1153,8 @@ public class TsFileProcessor {
       TsTableColumnCategory[] columnCategories,
       int index) {
     return isFieldMeasurement(measurementIds, dataTypes, columnCategories, index)
+        && valuesOrColumns != null
+        && index < valuesOrColumns.length
         && valuesOrColumns[index] != null;
   }
 
@@ -1161,9 +1163,16 @@ public class TsFileProcessor {
       TSDataType[] dataTypes,
       TsTableColumnCategory[] columnCategories,
       int index) {
-    return dataTypes[index] != null
+    return measurementIds != null
+        && dataTypes != null
+        && index >= 0
+        && index < measurementIds.length
+        && index < dataTypes.length
+        && dataTypes[index] != null
         && measurementIds[index] != null
-        && (columnCategories == null || columnCategories[index] == TsTableColumnCategory.FIELD);
+        && (columnCategories == null
+            || index < columnCategories.length
+                && columnCategories[index] == TsTableColumnCategory.FIELD);
   }
 
   private void updateMemoryInfo(

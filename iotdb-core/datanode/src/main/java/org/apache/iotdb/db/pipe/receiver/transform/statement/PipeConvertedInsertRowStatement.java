@@ -107,7 +107,13 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   public void transferType(ZoneId zoneId) throws QueryProcessException {
+    if (measurementSchemas == null) {
+      return;
+    }
     for (int i = 0; i < measurementSchemas.length; i++) {
+      if (!isColumnPresent(i) || dataTypes == null || i >= dataTypes.length) {
+        continue;
+      }
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {

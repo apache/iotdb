@@ -116,7 +116,9 @@ public abstract class TabletInsertionEventParser {
   //////////////////////////// parse ////////////////////////////
 
   protected void parse(final InsertRowNode insertRowNode) {
-    final int originColumnSize = insertRowNode.getMeasurements().length;
+    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
+    final int originColumnSize =
+        originColumnNameStringList == null ? 0 : originColumnNameStringList.length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
@@ -129,7 +131,6 @@ public abstract class TabletInsertionEventParser {
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
-    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
     final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
     final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
     final Object[] originValues = insertRowNode.getValues();
@@ -199,7 +200,9 @@ public abstract class TabletInsertionEventParser {
   }
 
   protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
-    final int originColumnSize = insertTabletNode.getMeasurements().length;
+    final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
+    final int originColumnSize =
+        originColumnNameStringList == null ? 0 : originColumnNameStringList.length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
@@ -213,7 +216,6 @@ public abstract class TabletInsertionEventParser {
 
     final MeasurementSchema[] originMeasurementSchemaList =
         insertTabletNode.getMeasurementSchemas();
-    final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
     final TsTableColumnCategory[] originColumnCategories = insertTabletNode.getColumnCategories();
     final TSDataType[] originValueColumnDataTypes = insertTabletNode.getDataTypes();
     final Object[] originValueColumns = insertTabletNode.getColumns();

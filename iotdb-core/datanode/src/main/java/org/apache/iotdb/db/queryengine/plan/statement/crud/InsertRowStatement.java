@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -99,7 +100,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
+    if (measurements == null) {
+      return ret;
+    }
     for (String m : measurements) {
+      if (m == null) {
+        continue;
+      }
       PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
@@ -120,6 +127,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   public void setValues(Object[] values) {
     this.values = values;
+    deviceID = null;
+  }
+
+  @Override
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    super.setColumnCategories(columnCategories);
+    deviceID = null;
   }
 
   public boolean isNeedInferType() {
@@ -193,7 +207,15 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public Object getFirstValueOfIndex(int index) {
+    if (values == null || index < 0 || index >= values.length) {
+      return null;
+    }
     return values[index];
+  }
+
+  @Override
+  public boolean isColumnPresent(final int index) {
+    return super.isColumnPresent(index) && values != null && index < values.length;
   }
 
   @Override
@@ -213,8 +235,18 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(ZoneId zoneId) throws QueryProcessException {
+    if (measurementSchemas == null) {
+      return;
+    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
+      if (!isColumnPresent(i)
+          || values == null
+          || i >= values.length
+          || dataTypes == null
+          || i >= dataTypes.length) {
+        continue;
+      }
       // null when time series doesn't exist
       if (measurementSchemas[i] == null) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -266,7 +298,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void markFailedMeasurement(int index, Exception cause) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
 
@@ -276,12 +311,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
         new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], values[index], cause);
+            measurements[index],
+            dataTypes != null && index < dataTypes.length ? dataTypes[index] : null,
+            values != null && index < values.length ? values[index] : null,
+            cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
-    dataTypes[index] = null;
-    values[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (values != null && index < values.length) {
+      values[index] = null;
+    }
   }
 
   @Override
@@ -291,15 +333,15 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          if (measurements != null) {
+          if (measurements != null && index < measurements.length) {
             measurements[index] = info.getMeasurement();
           }
 
-          if (dataTypes != null) {
+          if (dataTypes != null && index < dataTypes.length) {
             dataTypes[index] = info.getDataType();
           }
 
-          if (values != null) {
+          if (values != null && index < values.length) {
             values[index] = info.getValue();
           }
         });
@@ -506,8 +548,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getTagColumnIndices().size(); i++) {
         final Integer columnIndex = getTagColumnIndices().get(i);
-        deviceIdSegments[i + 1] =
-            values[columnIndex] != null ? values[columnIndex].toString() : null;
+        final Object idSegment =
+            values != null && columnIndex >= 0 && columnIndex < values.length
+                ? values[columnIndex]
+                : null;
+        deviceIdSegments[i + 1] = idSegment != null ? idSegment.toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -596,7 +641,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     if (values != null) {
-      values = columnsToKeep.stream().map(i -> values[i]).toArray();
+      values = columnsToKeep.stream().filter(i -> i < values.length).map(i -> values[i]).toArray();
     }
   }
 

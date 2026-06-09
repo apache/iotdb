@@ -220,6 +220,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public void setColumns(Object[] columns) {
     this.columns = columns;
+    deviceIDs = null;
   }
 
   public BitMap[] getBitMaps() {
@@ -228,6 +229,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public void setBitMaps(BitMap[] bitMaps) {
     this.nullBitMaps = bitMaps;
+    deviceIDs = null;
+  }
+
+  @Override
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    super.setColumnCategories(columnCategories);
+    deviceIDs = null;
   }
 
   public long[] getTimes() {
@@ -275,7 +283,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
+    if (measurements == null) {
+      return ret;
+    }
     for (String m : measurements) {
+      if (m == null) {
+        continue;
+      }
       PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
@@ -304,7 +318,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void markFailedMeasurement(int index, Exception cause) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
 
@@ -314,12 +331,19 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
     InsertBaseStatement.FailedMeasurementInfo failedMeasurementInfo =
         new InsertBaseStatement.FailedMeasurementInfo(
-            measurements[index], dataTypes[index], columns[index], cause);
+            measurements[index],
+            dataTypes != null && index < dataTypes.length ? dataTypes[index] : null,
+            columns != null && index < columns.length ? columns[index] : null,
+            cause);
     failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
 
     measurements[index] = null;
-    dataTypes[index] = null;
-    columns[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (columns != null && index < columns.length) {
+      columns[index] = null;
+    }
   }
 
   @Override
@@ -329,9 +353,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          columns[index] = info.getValue();
+          if (measurements != null && index < measurements.length) {
+            measurements[index] = info.getMeasurement();
+          }
+          if (dataTypes != null && index < dataTypes.length) {
+            dataTypes[index] = info.getDataType();
+          }
+          if (columns != null && index < columns.length) {
+            columns[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
   }
@@ -420,6 +450,15 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public Object getFirstValueOfIndex(int index) {
+    if (dataTypes == null
+        || columns == null
+        || index < 0
+        || index >= dataTypes.length
+        || index >= columns.length
+        || dataTypes[index] == null
+        || columns[index] == null) {
+      return null;
+    }
     Object value;
     switch (dataTypes[index]) {
       case INT32:
@@ -455,6 +494,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
             String.format(DATATYPE_UNSUPPORTED, dataTypes[index]));
     }
     return value;
+  }
+
+  @Override
+  public boolean isColumnPresent(final int index) {
+    return super.isColumnPresent(index)
+        && columns != null
+        && index < columns.length
+        && columns[index] != null;
   }
 
   @Override
@@ -562,9 +609,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getTagColumnIndices().size(); i++) {
         final Integer columnIndex = getTagColumnIndices().get(i);
-        boolean isNull = isNull(rowIdx, i);
-        deviceIdSegments[i + 1] =
-            isNull ? null : ((Object[]) columns[columnIndex])[rowIdx].toString();
+        final Object idSegment =
+            isNull(rowIdx, columnIndex) ? null : getColumnValue(rowIdx, columnIndex);
+        deviceIdSegments[i + 1] = idSegment != null ? idSegment.toString() : null;
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -701,19 +748,38 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   public boolean isNull(int row, int col) {
-    if (nullBitMaps == null || nullBitMaps[col] == null) {
-      return false;
+    return nullBitMaps != null
+        && row >= 0
+        && col >= 0
+        && col < nullBitMaps.length
+        && nullBitMaps[col] != null
+        && nullBitMaps[col].isMarked(row);
+  }
+
+  private Object getColumnValue(final int rowIdx, final int columnIndex) {
+    if (columns == null
+        || columnIndex < 0
+        || columnIndex >= columns.length
+        || columns[columnIndex] == null
+        || !(columns[columnIndex] instanceof Object[])) {
+      return null;
     }
-    return nullBitMaps[col].isMarked(row);
+    final Object[] values = (Object[]) columns[columnIndex];
+    return rowIdx >= 0 && rowIdx < values.length ? values[rowIdx] : null;
   }
 
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     if (columns != null) {
-      columns = columnsToKeep.stream().map(i -> columns[i]).toArray();
+      columns =
+          columnsToKeep.stream().filter(i -> i < columns.length).map(i -> columns[i]).toArray();
     }
     if (nullBitMaps != null) {
-      nullBitMaps = columnsToKeep.stream().map(i -> nullBitMaps[i]).toArray(BitMap[]::new);
+      nullBitMaps =
+          columnsToKeep.stream()
+              .filter(i -> i < nullBitMaps.length)
+              .map(i -> nullBitMaps[i])
+              .toArray(BitMap[]::new);
     }
   }
 
@@ -743,10 +809,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       final List<IMeasurementSchema> schemas = new ArrayList<>(originalSchemaSize);
       final int[] validColumnIndices = new int[originalSchemaSize];
       int validColumnCount = 0;
-      if (dataTypes != null) {
+      final Object[] statementColumns = this.getColumns();
+      if (dataTypes != null && statementColumns != null) {
         final int dataTypeSize = Math.min(originalSchemaSize, dataTypes.length);
         for (int i = 0; i < dataTypeSize; i++) {
-          if (measurements[i] != null && dataTypes[i] != null) {
+          if (measurements[i] != null
+              && dataTypes[i] != null
+              && i < statementColumns.length
+              && statementColumns[i] != null) {
             final MeasurementSchema measurementSchema =
                 measurementSchemas != null && i < measurementSchemas.length
                     ? measurementSchemas[i]
@@ -803,7 +873,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
       // Get values - convert Statement columns to Tablet format, only for valid columns
       // All arrays are copied to rowSize length
-      final Object[] statementColumns = this.getColumns();
       final Object[] tabletValues = new Object[schemaSize];
       if (statementColumns != null && statementColumns.length > 0) {
         for (int i = 0; i < schemaSize; i++) {

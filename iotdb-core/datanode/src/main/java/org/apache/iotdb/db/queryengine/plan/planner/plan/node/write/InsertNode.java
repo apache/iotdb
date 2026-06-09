@@ -191,10 +191,14 @@ public abstract class InsertNode extends SearchNode {
 
   public boolean isValidMeasurement(int i) {
     return measurements != null
+        && i >= 0
+        && i < measurements.length
         && measurements[i] != null
         && measurementSchemas != null
+        && i < measurementSchemas.length
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
+        && (columnCategories == null
+            || i < columnCategories.length && columnCategories[i] == TsTableColumnCategory.FIELD);
   }
 
   public void setMeasurements(String[] measurements) {
@@ -336,7 +340,9 @@ public abstract class InsertNode extends SearchNode {
     }
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null
-          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
+          && (columnCategories == null
+              || i < columnCategories.length
+                  && columnCategories[i] == TsTableColumnCategory.FIELD)) {
         return true;
       }
     }
@@ -353,8 +359,8 @@ public abstract class InsertNode extends SearchNode {
 
   protected int getValidMeasurementNumber() {
     int validMeasurementNumber = 0;
-    for (String measurement : measurements) {
-      if (measurement != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (measurements[i] != null) {
         validMeasurementNumber++;
       }
     }
@@ -362,7 +368,10 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isMeasurementFailed(int index) {
-    return measurements == null || measurements[index] == null;
+    return measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null;
   }
 
   protected boolean isWritableFieldMeasurement(int index) {
@@ -432,7 +441,7 @@ public abstract class InsertNode extends SearchNode {
     if (columnCategories != null) {
       tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
+        if (columnCategories[i] == TsTableColumnCategory.TAG) {
           tagColumnIndices.add(i);
         }
       }
@@ -453,7 +462,9 @@ public abstract class InsertNode extends SearchNode {
     MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
     String[] rawMeasurements = new String[measurements.length];
     for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
+      if (measurementSchemas != null
+          && i < measurementSchemas.length
+          && measurementSchemas[i] != null) {
         // get raw measurement rather than alias
         rawMeasurements[i] = measurementSchemas[i].getMeasurementName();
       } else {

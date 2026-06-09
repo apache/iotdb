@@ -280,6 +280,34 @@ public class InsertTabletNodeSerdeTest {
   }
 
   @Test
+  public void testRelationalDeserializeFromWALSkipsRetainedMeasurementWithNullCategory()
+      throws IOException {
+    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema("table1");
+    insertTabletNode.getColumnCategories()[1] = null;
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(
+        PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    RelationalInsertTabletNode tmpNode =
+        RelationalInsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(new String[] {"s1", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+    Assert.assertArrayEquals(
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.ATTRIBUTE,
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.FIELD
+        },
+        tmpNode.getColumnCategories());
+  }
+
+  @Test
   public void testDeserializeFromWALWithMarkedFailedMeasurementOnly()
       throws IllegalPathException, IOException {
     InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();

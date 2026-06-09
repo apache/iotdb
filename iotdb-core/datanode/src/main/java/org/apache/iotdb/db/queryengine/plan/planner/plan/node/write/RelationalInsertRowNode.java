@@ -95,8 +95,11 @@ public class RelationalInsertRowNode extends InsertRowNode {
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < tagColumnIndices.size(); i++) {
         final Integer columnIndex = tagColumnIndices.get(i);
-        deviceIdSegments[i + 1] =
-            getValues()[columnIndex] != null ? getValues()[columnIndex].toString() : null;
+        final Object value =
+            getValues() != null && columnIndex < getValues().length
+                ? getValues()[columnIndex]
+                : null;
+        deviceIdSegments[i + 1] = value != null ? value.toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -179,10 +182,27 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return super.shouldSerializeMeasurement(index) && hasColumnCategory(index);
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurementToWAL(final int index) {
+    return super.shouldSerializeMeasurementToWAL(index) && hasColumnCategory(index);
+  }
+
+  private boolean hasColumnCategory(final int index) {
+    return columnCategories != null
+        && index >= 0
+        && index < columnCategories.length
+        && columnCategories[index] != null;
+  }
+
+  @Override
   void subSerialize(ByteBuffer buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(buffer);
       }
     }
@@ -191,8 +211,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   void subSerialize(DataOutputStream stream) throws IOException {
     super.subSerialize(stream);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);
       }
     }
@@ -201,8 +221,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   protected void subSerialize(IWALByteBufferView buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         buffer.put(columnCategories[i].getCategory());
       }
     }
@@ -219,7 +239,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   protected int subSerializeSize() {
-    return super.subSerializeSize() + getValidMeasurementNumber() * Byte.BYTES;
+    return super.subSerializeSize() + getValidMeasurementNumberForWAL() * Byte.BYTES;
   }
 
   @Override

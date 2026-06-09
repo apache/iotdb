@@ -166,7 +166,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   public TSDataType getDataType(int i) {
-    if (dataTypes == null) {
+    if (dataTypes == null || i < 0 || i >= dataTypes.length) {
       return null;
     }
     return dataTypes[i];
@@ -300,12 +300,25 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    if (measurements == null) {
+      return false;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (isColumnPresent(i)
+          && (columnCategories == null
+              || i < columnCategories.length
+                  && columnCategories[i] == TsTableColumnCategory.FIELD)) {
         return true;
       }
     }
     return false;
+  }
+
+  public boolean isColumnPresent(final int index) {
+    return measurements != null
+        && index >= 0
+        && index < measurements.length
+        && measurements[index] != null;
   }
 
   public TsTableColumnCategory[] getColumnCategories() {
@@ -313,7 +326,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   }
 
   public TsTableColumnCategory getColumnCategory(int i) {
-    if (columnCategories == null) {
+    if (columnCategories == null || i < 0 || i >= columnCategories.length) {
       return null;
     }
     return columnCategories[i];
@@ -335,7 +348,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (tagColumnIndices == null && columnCategories != null) {
       tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
+        if (isColumnPresent(i) && columnCategories[i] == TsTableColumnCategory.TAG) {
           tagColumnIndices.add(i);
         }
       }
@@ -347,7 +360,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (attrColumnIndices == null && columnCategories != null) {
       attrColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+        if (isColumnPresent(i) && columnCategories[i] == TsTableColumnCategory.ATTRIBUTE) {
           attrColumnIndices.add(i);
         }
       }
@@ -434,7 +447,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     List<Integer> columnsToKeep = new ArrayList<>();
     for (int i = 0; i < columnCategories.length; i++) {
-      if (!columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+      if (columnCategories[i] != TsTableColumnCategory.ATTRIBUTE) {
         columnsToKeep.add(i);
       }
     }
@@ -452,13 +465,24 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
     if (measurementSchemas != null) {
       measurementSchemas =
-          columnsToKeep.stream().map(i -> measurementSchemas[i]).toArray(MeasurementSchema[]::new);
+          columnsToKeep.stream()
+              .filter(i -> i < measurementSchemas.length)
+              .map(i -> measurementSchemas[i])
+              .toArray(MeasurementSchema[]::new);
     }
     if (measurements != null) {
-      measurements = columnsToKeep.stream().map(i -> measurements[i]).toArray(String[]::new);
+      measurements =
+          columnsToKeep.stream()
+              .filter(i -> i < measurements.length)
+              .map(i -> measurements[i])
+              .toArray(String[]::new);
     }
     if (dataTypes != null) {
-      dataTypes = columnsToKeep.stream().map(i -> dataTypes[i]).toArray(TSDataType[]::new);
+      dataTypes =
+          columnsToKeep.stream()
+              .filter(i -> i < dataTypes.length)
+              .map(i -> dataTypes[i])
+              .toArray(TSDataType[]::new);
     }
     if (columnCategories != null) {
       columnCategories =
@@ -796,8 +820,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   @TableModel
   public List<String> getAttributeColumnNameList() {
     final List<String> attributeColumnNameList = new ArrayList<>();
-    for (int i = 0; i < getColumnCategories().length; i++) {
-      if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+    final TsTableColumnCategory[] columnCategories = getColumnCategories();
+    for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+      if (isColumnPresent(i) && columnCategories[i] == TsTableColumnCategory.ATTRIBUTE) {
         attributeColumnNameList.add(getMeasurements()[i]);
       }
     }

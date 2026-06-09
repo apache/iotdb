@@ -118,7 +118,9 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   public List<Binary[]> getObjectColumns() {
     List<Binary[]> objectColumns = new ArrayList<>();
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0;
+        columns != null && dataTypes != null && i < columns.length && i < dataTypes.length;
+        i++) {
       if (dataTypes[i] == TSDataType.OBJECT) {
         objectColumns.add((Binary[]) columns[i]);
       }
@@ -137,9 +139,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         deviceIdSegments[0] = this.getTableName();
         for (int i = 0; i < tagColumnIndices.size(); i++) {
           final Integer columnIndex = tagColumnIndices.get(i);
-          Object idSeg = ((Object[]) columns[columnIndex])[0];
-          boolean isNull =
-              bitMaps != null && bitMaps[columnIndex] != null && bitMaps[columnIndex].isMarked(0);
+          Object idSeg = getColumnValue(columnIndex, 0);
+          boolean isNull = isNullValue(columnIndex, 0);
           deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
         }
         deviceIDs[0] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
@@ -154,11 +155,8 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < tagColumnIndices.size(); i++) {
         final Integer columnIndex = tagColumnIndices.get(i);
-        Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];
-        boolean isNull =
-            bitMaps != null
-                && bitMaps[columnIndex] != null
-                && bitMaps[columnIndex].isMarked(rowIdx);
+        Object idSeg = getColumnValue(columnIndex, rowIdx);
+        boolean isNull = isNullValue(columnIndex, rowIdx);
         deviceIdSegments[i + 1] = !isNull && idSeg != null ? idSeg.toString() : null;
       }
       IDeviceID currentDeviceId = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
@@ -175,6 +173,38 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
     return ((PlanVisitor<R, C>) visitor).visitRelationalInsertTablet(this, context);
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return super.shouldSerializeMeasurement(index) && hasColumnCategory(index);
+  }
+
+  private boolean hasColumnCategory(final int index) {
+    return columnCategories != null
+        && index >= 0
+        && index < columnCategories.length
+        && columnCategories[index] != null;
+  }
+
+  private Object getColumnValue(final int columnIndex, final int rowIndex) {
+    if (columns == null
+        || columnIndex < 0
+        || columnIndex >= columns.length
+        || columns[columnIndex] == null
+        || !(columns[columnIndex] instanceof Object[])) {
+      return null;
+    }
+    final Object[] values = (Object[]) columns[columnIndex];
+    return rowIndex >= 0 && rowIndex < values.length ? values[rowIndex] : null;
+  }
+
+  private boolean isNullValue(final int columnIndex, final int rowIndex) {
+    return bitMaps != null
+        && columnIndex >= 0
+        && columnIndex < bitMaps.length
+        && bitMaps[columnIndex] != null
+        && bitMaps[columnIndex].isMarked(rowIndex);
   }
 
   @Override
@@ -249,7 +279,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(byteBuffer);
       }
@@ -259,7 +289,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);
       }
@@ -284,7 +314,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
     super.subSerialize(buffer, rangeList, encodedSearchIndex);
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
         buffer.put(columnCategories[i].getCategory());
       }

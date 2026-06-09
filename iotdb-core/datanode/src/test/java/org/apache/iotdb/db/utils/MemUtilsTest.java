@@ -133,6 +133,34 @@ public class MemUtilsTest {
   }
 
   @Test
+  public void getRowRecordSizeWithShortColumnCategoriesTest() {
+    Object[] row = {1, 2L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+
+    int sizeSum = 8 + TSDataType.INT32.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getRowRecordSize(
+            dataTypes, row, new TsTableColumnCategory[] {TsTableColumnCategory.FIELD}));
+  }
+
+  @Test
+  public void getAlignedRowRecordSizeWithShortColumnCategoriesTest() {
+    Object[] row = {1, 2L};
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+
+    int sizeSum = 8 + 4 + TSDataType.INT32.getDataTypeSize();
+
+    Assert.assertEquals(
+        sizeSum,
+        MemUtils.getAlignedRowRecordSize(
+            dataTypes, row, new TsTableColumnCategory[] {TsTableColumnCategory.FIELD}));
+  }
+
+  @Test
   public void getRecordSizeWithInsertTableNodeTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
@@ -251,6 +279,27 @@ public class MemUtilsTest {
     long sizeSum = 2L * TSDataType.INT64.getDataTypeSize();
     sizeSum += 2L * (8L + 4L);
     Assert.assertEquals(sizeSum, MemUtils.getAlignedTabletSize(insertNode, 0, 2, null));
+  }
+
+  @Test
+  public void getTabletSizeWithShortValueArraysTest() throws IllegalPathException {
+    PartialPath device = new PartialPath("root.sg.d1");
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            device,
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32},
+            new long[] {1},
+            null,
+            new Object[] {new int[] {1}},
+            1);
+    insertNode.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)});
+
+    long sizeSum = 8 + TSDataType.INT32.getDataTypeSize();
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertNode, 0, 1));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
