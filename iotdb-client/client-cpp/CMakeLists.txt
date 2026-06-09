@@ -62,6 +62,12 @@ endif()
 option(WITH_SSL "Build with OpenSSL support" OFF)
 option(BUILD_TESTING "Build IT test executables" OFF)
 option(IOTDB_OFFLINE "Disable all network access during configure" OFF)
+set(IOTDB_SESSION_VERSION "0.0.0"
+    CACHE STRING "IoTDB C++ session package version")
+string(REGEX MATCH "^[0-9]+" IOTDB_SESSION_SOVERSION "${IOTDB_SESSION_VERSION}")
+if(NOT IOTDB_SESSION_SOVERSION)
+    set(IOTDB_SESSION_SOVERSION "0")
+endif()
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
@@ -111,6 +117,12 @@ add_library(iotdb_session SHARED
 
 if(WIN32)
     set_target_properties(iotdb_session PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
+if(UNIX AND NOT APPLE)
+    set_target_properties(iotdb_session PROPERTIES
+            VERSION "${IOTDB_SESSION_VERSION}"
+            SOVERSION "${IOTDB_SESSION_SOVERSION}")
 endif()
 
 add_dependencies(iotdb_session iotdb_thrift_external iotdb_thrift_codegen)
@@ -181,6 +193,62 @@ foreach(_hdr IN LISTS IOTDB_PUBLIC_HEADERS)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/include/${_hdr}"
             DESTINATION include)
 endforeach()
+
+set(IOTDB_SESSION_PC_LIBS "-liotdb_session")
+set(IOTDB_SESSION_PC_CFLAGS "")
+set(IOTDB_SESSION_CXX11_ABI_COMPILE_DEFINITION "")
+if(UNIX)
+    set(IOTDB_SESSION_PC_LIBS "${IOTDB_SESSION_PC_LIBS} -pthread")
+endif()
+if(IOTDB_LIBSTDCXX_CXX11_ABI AND NOT MSVC)
+    set(IOTDB_SESSION_PC_CFLAGS "-D_GLIBCXX_USE_CXX11_ABI=1")
+    set(IOTDB_SESSION_CXX11_ABI_COMPILE_DEFINITION "_GLIBCXX_USE_CXX11_ABI=1")
+endif()
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session-config.cmake.in"
+        "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+        @ONLY)
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/iotdb-session.pc.in"
+        "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+        @ONLY)
+execute_process(
+        COMMAND git rev-parse HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE IOTDB_SESSION_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+if(NOT IOTDB_SESSION_GIT_COMMIT)
+    set(IOTDB_SESSION_GIT_COMMIT "unknown")
+endif()
+string(TIMESTAMP IOTDB_SESSION_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+set(IOTDB_SESSION_CI_BUILD_ID "$ENV{GITHUB_RUN_ID}")
+if(NOT IOTDB_SESSION_CI_BUILD_ID)
+    set(IOTDB_SESSION_CI_BUILD_ID "local")
+endif()
+file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
+        "${IOTDB_SESSION_VERSION}\n")
+file(WRITE "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+        "Apache IoTDB C++ session client build information\n\n"
+        "version=${IOTDB_SESSION_VERSION}\n"
+        "commit=${IOTDB_SESSION_GIT_COMMIT}\n"
+        "build.time=${IOTDB_SESSION_BUILD_TIME}\n"
+        "ci.build.id=${IOTDB_SESSION_CI_BUILD_ID}\n"
+        "compiler=${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\n"
+        "cmake.generator=${CMAKE_GENERATOR}\n"
+        "cmake.build.type=${CMAKE_BUILD_TYPE}\n"
+        "with.ssl=${WITH_SSL}\n"
+        "iotdb.offline=${IOTDB_OFFLINE}\n"
+        "iotdb.libstdcxx.cxx11.abi=${IOTDB_LIBSTDCXX_CXX11_ABI}\n"
+        "iotdb.extra.cxx.flags=${IOTDB_EXTRA_CXX_FLAGS}\n")
+install(FILES "${CMAKE_BINARY_DIR}/package-metadata/cmake/iotdb-session-config.cmake"
+        DESTINATION cmake)
+install(FILES "${CMAKE_BINARY_DIR}/package-metadata/pkgconfig/iotdb-session.pc"
+        DESTINATION pkgconfig)
+install(FILES
+        "${CMAKE_BINARY_DIR}/package-metadata/VERSION"
+        "${CMAKE_BINARY_DIR}/package-metadata/BUILD-INFO.txt"
+        DESTINATION .)
 
 if(BUILD_TESTING)
     enable_testing()

@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Build client-cpp in manylinux2014 and verify max required GLIBC symbol <= 2.17.
+# Build client-cpp in manylinux_2_28 and verify max required GLIBC symbol <= 2.28.
 set -euxo pipefail
 
 MACHINE=$(uname -m)
@@ -22,12 +22,12 @@ case "${MACHINE}" in
   x86_64)
     CMAKE_PKG_ARCH=linux-x86_64
     JDK_API_ARCH=linux/x64
-    DEFAULT_CLASSIFIER=linux-x86_64-glibc217
+    DEFAULT_CLASSIFIER=linux-x86_64-glibc2.28
     ;;
   aarch64)
     CMAKE_PKG_ARCH=linux-aarch64
     JDK_API_ARCH=linux/aarch64
-    DEFAULT_CLASSIFIER=linux-aarch64-glibc217
+    DEFAULT_CLASSIFIER=linux-aarch64-glibc2.28
     ;;
   *)
     echo "Unsupported architecture: ${MACHINE}" >&2
@@ -62,6 +62,12 @@ export PATH="${CMAKE_DIR}/bin:${JAVA_HOME}/bin:${PATH}"
 export JAVA_HOME
 
 gcc --version
+c++ --version
+gcc_major=$(gcc -dumpversion | cut -d. -f1)
+if (( gcc_major < 14 )); then
+  echo "ERROR: GCC >= 14 is required; got $(gcc -dumpversion)"
+  exit 1
+fi
 cmake --version
 java -version
 
@@ -87,9 +93,9 @@ if [[ -z "${max_glibc}" ]]; then
   exit 1
 fi
 
-if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.17) }"; then
-  echo "ERROR: libiotdb_session.so requires glibc > 2.17 (max=${max_glibc})"
+if awk -v max="${max_glibc}" "BEGIN { exit !(max > 2.28) }"; then
+  echo "ERROR: libiotdb_session.so requires glibc > 2.28 (max=${max_glibc})"
   exit 1
 fi
 
-echo "glibc compatibility check passed (max=${max_glibc} <= 2.17)"
+echo "glibc compatibility check passed (max=${max_glibc} <= 2.28)"
