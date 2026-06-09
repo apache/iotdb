@@ -65,8 +65,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** {@link IStateMachine} for ConfigRegion. */
 public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -94,14 +92,14 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   private static final String CURRENT_FILE_DIR =
       ConsensusManager.getConfigRegionDir() + File.separator + "current";
+  private static final String LOG_INPROGRESS_FILE_PREFIX = "log_inprogress_";
+  private static final String LOG_FILE_PREFIX = "log_";
   private static final String PROGRESS_FILE_PATH =
-      CURRENT_FILE_DIR + File.separator + "log_inprogress_";
-  private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
+      CURRENT_FILE_DIR + File.separator + LOG_INPROGRESS_FILE_PREFIX;
+  private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + LOG_FILE_PREFIX;
   private static final long LOG_FILE_MAX_SIZE =
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
-  private static final Pattern LOG_INPROGRESS_PATTERN = Pattern.compile("\\d+");
-  private static final Pattern LOG_PATTERN = Pattern.compile("(?<=_)(\\d+)$");
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
@@ -626,17 +624,27 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   private static long parseEndIndex(String filename) {
-    if (filename.startsWith("log_inprogress_")) {
-      Matcher matcher = LOG_INPROGRESS_PATTERN.matcher(filename);
-      if (matcher.find()) {
-        return Long.parseLong(matcher.group());
+    final String endIndexString;
+    if (filename.startsWith(LOG_INPROGRESS_FILE_PREFIX)) {
+      endIndexString = filename.substring(LOG_INPROGRESS_FILE_PREFIX.length());
+    } else if (filename.startsWith(LOG_FILE_PREFIX)) {
+      final int lastSeparatorIndex = filename.lastIndexOf('_');
+      if (lastSeparatorIndex < LOG_FILE_PREFIX.length()) {
+        return 0;
       }
+      endIndexString = filename.substring(lastSeparatorIndex + 1);
     } else {
-      Matcher matcher = LOG_PATTERN.matcher(filename);
-      if (matcher.find()) {
-        return Long.parseLong(matcher.group());
+      return 0;
+    }
+
+    if (endIndexString.isEmpty()) {
+      return 0;
+    }
+    for (int i = 0; i < endIndexString.length(); i++) {
+      if (!Character.isDigit(endIndexString.charAt(i))) {
+        return 0;
       }
     }
-    return 0;
+    return Long.parseLong(endIndexString);
   }
 }
