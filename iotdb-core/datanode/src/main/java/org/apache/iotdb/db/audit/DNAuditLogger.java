@@ -80,6 +80,8 @@ import javax.validation.constraints.NotNull;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -102,6 +104,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final String AUDIT_LOG_DEVICE_PATH = "root.__audit.log.**";
   private static final String AUDIT_LOG_PREFIX = "AUDIT";
+  private static final long AUDIT_LOGGER_READY_WAIT_TIMEOUT_IN_MS = 500L;
+  private static final long AUDIT_LOGGER_READY_WAIT_INTERVAL_IN_MS = 10L;
   private static final SessionInfo sessionInfo =
       new SessionInfo(
           0,
@@ -122,9 +126,9 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String LOGIN_HISTORY_TABLE_NAME = "login_history";
   private static final String LOGIN_HISTORY_IP = "ip";
 
-  private Coordinator coordinator;
+  private volatile Coordinator coordinator;
 
-  private AsyncBatchUtils<InsertRowStatement> asyncBatchUtils;
+  private volatile AsyncBatchUtils<InsertRowStatement> asyncBatchUtils;
 
   private final Object asyncBatchLock = new Object();
 
@@ -178,6 +182,35 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   public void setCoordinator(Coordinator coordinator) {
     DNAuditLoggerHolder.INSTANCE.coordinator = coordinator;
+  }
+
+  private TSStatus auditLoggerNotReadyStatus() {
+    return new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode())
+        .setMessage("DataNode audit logger is not ready");
+  }
+
+  private boolean isAuditLoggerReady() {
+    return coordinator != null && asyncBatchUtils != null;
+  }
+
+  private boolean waitUntilAuditLoggerReady() {
+    if (isAuditLoggerReady()) {
+      return true;
+    }
+    long deadline =
+        System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(AUDIT_LOGGER_READY_WAIT_TIMEOUT_IN_MS);
+    while (System.nanoTime() < deadline) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(AUDIT_LOGGER_READY_WAIT_INTERVAL_IN_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+      if (isAuditLoggerReady()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @NotNull
@@ -691,6 +724,17 @@ public class DNAuditLogger extends AbstractAuditLogger {
       return;
     }
     try {
+      if (!waitUntilAuditLoggerReady()) {
+        logger.warn(
+            "[{}}] Skip audit log because DataNode audit logger is not ready", AUDIT_LOG_PREFIX);
+        return;
+      }
+      AsyncBatchUtils<InsertRowStatement> batchUtils = asyncBatchUtils;
+      if (batchUtils == null) {
+        logger.warn(
+            "[{}}] Skip audit log because DataNode audit logger is not ready", AUDIT_LOG_PREFIX);
+        return;
+      }
       createViewIfNecessary();
       if (noNeedInsertAuditLog(auditLogFields)) {
         return;
@@ -706,21 +750,29 @@ public class DNAuditLogger extends AbstractAuditLogger {
               auditLogFields,
               log.get(),
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
-      asyncBatchUtils.push(statement);
+      batchUtils.push(statement);
     } catch (Exception e) {
       logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);
     }
   }
 
-  public void logFromCN(AuditLogFields auditLogFields, String log, int nodeId, long logTimestamp)
+  public TSStatus logFromCN(
+      AuditLogFields auditLogFields, String log, int nodeId, long logTimestamp)
       throws IllegalPathException {
     if (!commonConfig.isEnableAuditLog()) {
-      return;
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     try {
+      if (!waitUntilAuditLoggerReady()) {
+        return auditLoggerNotReadyStatus();
+      }
+      AsyncBatchUtils<InsertRowStatement> batchUtils = asyncBatchUtils;
+      if (batchUtils == null) {
+        return auditLoggerNotReadyStatus();
+      }
       createViewIfNecessary();
       if (noNeedInsertAuditLog(auditLogFields)) {
-        return;
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
       long userId = auditLogFields.getUserId();
       String user = String.valueOf(userId);
@@ -733,9 +785,17 @@ public class DNAuditLogger extends AbstractAuditLogger {
               log,
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, nodeId, user)),
               logTimestamp);
-      asyncBatchUtils.push(statement);
+      CompletableFuture<TSStatus> pushFuture = batchUtils.push(statement);
+      if (pushFuture.isCompletedExceptionally()) {
+        return auditLoggerNotReadyStatus();
+      }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IllegalPathException e) {
+      throw e;
     } catch (Exception e) {
       logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode())
+          .setMessage("Failed to write ConfigNode audit log to DataNode: " + e.getMessage());
     }
   }
 

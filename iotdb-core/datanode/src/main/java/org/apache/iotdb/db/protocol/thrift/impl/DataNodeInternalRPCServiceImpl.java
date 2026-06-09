@@ -4375,7 +4375,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             req.getDatabase(),
             req.getSqlString());
     try {
-      DNAuditLogger.getInstance()
+      return DNAuditLogger.getInstance()
           .logFromCN(
               fields,
               req.getLog(),
@@ -4384,7 +4384,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   private List<PrivilegeType> parsePrivilegeTypes(String privilegeTypes) {
