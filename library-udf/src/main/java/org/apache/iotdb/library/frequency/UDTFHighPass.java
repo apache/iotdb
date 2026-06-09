@@ -99,7 +99,10 @@ public class UDTFHighPass implements UDTF {
     fft.complexInverse(a, true);
     // output
     for (int i = 0; i < n; i++) {
-      collector.putDouble(timeList.get(i), a[i * 2]);
+      double value = a[i * 2];
+      if (Double.isFinite(value)) {
+        collector.putDouble(timeList.get(i), value);
+      }
     }
   }
 }

@@ -75,7 +75,9 @@ public class UDTFConv implements UDTF {
       }
     }
     for (int i = 0; i < ans.length; i++) {
-      collector.putDouble(i, ans[i]);
+      if (Double.isFinite(ans[i])) {
+        collector.putDouble(i, ans[i]);
+      }
     }
   }
 }

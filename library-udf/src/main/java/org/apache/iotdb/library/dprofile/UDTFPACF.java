@@ -84,8 +84,12 @@ public class UDTFPACF implements UDTF {
         x[i] -= xmean;
       }
       collector.putDouble(timestamp.get(0), 1.0d);
+      YuleWalker yuleWalker = new YuleWalker();
       for (int k = 1; k <= lag; k++) {
-        collector.putDouble(timestamp.get(k), new YuleWalker().yuleWalker(x, k, method, n));
+        double partialCorrelation = yuleWalker.yuleWalker(x, k, method, n);
+        if (Double.isFinite(partialCorrelation)) {
+          collector.putDouble(timestamp.get(k), partialCorrelation);
+        }
       }
     }
   }

@@ -93,7 +93,9 @@ public class UDTFDeconv implements UDTF {
         collector.putDouble(0, 0);
       } else { // residue
         for (int i = 0; i < list1.size(); i++) {
-          collector.putDouble(i, list1.get(i));
+          if (Double.isFinite(list1.get(i))) {
+            collector.putDouble(i, list1.get(i));
+          }
         }
       }
     } else { // order of divisor is no larger than dividend
@@ -109,11 +111,15 @@ public class UDTFDeconv implements UDTF {
       }
       if (isQuotientResult(result)) { // quotient
         for (int i = 0; i < q.length; i++) {
-          collector.putDouble(i, q[i]);
+          if (Double.isFinite(q[i])) {
+            collector.putDouble(i, q[i]);
+          }
         }
       } else { // residue
         for (int i = 0; i < r.length; i++) {
-          collector.putDouble(i, r[i]);
+          if (Double.isFinite(r[i])) {
+            collector.putDouble(i, r[i]);
+          }
         }
       }
     }

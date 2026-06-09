@@ -50,11 +50,9 @@ public class UDAFIntegral implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "Unknown time unit input. Supported units are ns, us, ms, s, m, h, d.",
-            Util.parseTime(
-                validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S),
-                validator.getParameters()));
+            validator.getParameters().getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
   }
 
   @Override

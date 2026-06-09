@@ -103,7 +103,9 @@ public class UDTFDWT implements UDTF {
       transformer.waveletTransform();
       double[] r = transformer.getData();
       for (int i = 0; i < r.length; i++) {
-        pointCollector.putDouble(timestamp.get(i), r[i]);
+        if (Double.isFinite(r[i])) {
+          pointCollector.putDouble(timestamp.get(i), r[i]);
+        }
       }
     }
   }

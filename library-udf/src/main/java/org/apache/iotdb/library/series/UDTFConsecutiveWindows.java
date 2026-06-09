@@ -43,16 +43,13 @@ public class UDTFConsecutiveWindows implements UDTF {
     validator
         .validateRequiredAttribute("length")
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "gap should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(
-                validator.getParameters().getStringOrDefault("gap", "1ms"),
-                validator.getParameters()))
+            validator.getParameters().getStringOrDefault("gap", "1ms"))
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "length should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(
-                validator.getParameters().getString("length"), validator.getParameters()));
+            validator.getParameters().getString("length"));
   }
 
   @Override

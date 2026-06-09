@@ -30,8 +30,6 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.text.SimpleDateFormat;
-
 /** This function does upsample or downsample of input series. */
 public class UDTFResample implements UDTF {
   private static final String START_PARAM = "start";
@@ -45,9 +43,9 @@ public class UDTFResample implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validateRequiredAttribute("every")
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "gap should be a time period whose unit is ms, s, m, h, d.",
-            Util.parseTime(validator.getParameters().getString("every"), validator.getParameters()))
+            validator.getParameters().getString("every"))
         .validate(
             x ->
                 "min".equals(x)
@@ -62,18 +60,17 @@ public class UDTFResample implements UDTF {
             x -> "nan".equals(x) || "ffill".equals(x) || "bfill".equals(x) || "linear".equals(x),
             "aggr should be min, max, mean, median, first, last.",
             validator.getParameters().getStringOrDefault("interp", "nan").toLowerCase());
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
-          x -> (long) x > 0,
+          x -> Util.isPositiveDateTime((String) x),
           "start should conform to the format yyyy-MM-dd HH:mm:ss.",
-          format.parse(validator.getParameters().getString(START_PARAM)).getTime());
+          validator.getParameters().getString(START_PARAM));
     }
     if (validator.getParameters().hasAttribute("end")) {
       validator.validate(
-          x -> (long) x > 0,
+          x -> Util.isPositiveDateTime((String) x),
           "end should conform to the format yyyy-MM-dd HH:mm:ss.",
-          format.parse(validator.getParameters().getString("end")).getTime());
+          validator.getParameters().getString("end"));
     }
   }
 
@@ -84,14 +81,13 @@ public class UDTFResample implements UDTF {
     long newPeriod = Util.parseTime(parameters.getString("every"), parameters);
     String aggregator = parameters.getStringOrDefault("aggr", "mean").toLowerCase();
     String interpolator = parameters.getStringOrDefault("interp", "nan").toLowerCase();
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     long startTime = -1;
     long endTime = -1;
     if (parameters.hasAttribute(START_PARAM)) {
-      startTime = format.parse(parameters.getString(START_PARAM)).getTime();
+      startTime = Util.parseDateTime(parameters.getString(START_PARAM));
     }
     if (parameters.hasAttribute("end")) {
-      endTime = format.parse(parameters.getString("end")).getTime();
+      endTime = Util.parseDateTime(parameters.getString("end"));
     }
     resampler = new Resampler(newPeriod, aggregator, interpolator, startTime, endTime);
   }

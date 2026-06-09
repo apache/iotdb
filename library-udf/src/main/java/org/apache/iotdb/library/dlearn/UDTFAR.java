@@ -96,6 +96,9 @@ public class UDTFAR implements UDTF {
       }
     }
     long interval = maxFreqInterval;
+    if (interval <= 0) {
+      return;
+    }
 
     List<Long> imputedTimeWindow = new ArrayList<>();
     List<Double> imputedValueWindow = new ArrayList<>();
@@ -137,7 +140,13 @@ public class UDTFAR implements UDTF {
       for (int j = 1; j <= i - 1; j++) {
         tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
       }
+      if (!Double.isFinite(epsilons[i - 1]) || Math.abs(epsilons[i - 1]) < 1e-12) {
+        return;
+      }
       kappas[i] = (resultCovariances[i] - tmpSum) / epsilons[i - 1];
+      if (!Double.isFinite(kappas[i])) {
+        return;
+      }
       alphas[i][i] = kappas[i];
       if (i > 1) {
         for (int j = 1; j <= i - 1; j++) {
@@ -147,7 +156,9 @@ public class UDTFAR implements UDTF {
       epsilons[i] = (1 - kappas[i] * kappas[i]) * epsilons[i - 1];
     }
     for (int i = 1; i <= p; i++) {
-      collector.putDouble(i, alphas[i][p]);
+      if (Double.isFinite(alphas[i][p])) {
+        collector.putDouble(i, alphas[i][p]);
+      }
     }
   }
 }

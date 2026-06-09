@@ -72,9 +72,16 @@ public class UDAFSkew implements UDTF {
     if (count == 0) {
       return;
     }
-    collector.putDouble(
-        0,
-        (sumX3 / count - 3 * sumX1 / count * sumX2 / count + 2 * Math.pow(sumX1 / count, 3))
-            / Math.pow(sumX2 / count - sumX1 / count * sumX1 / count, 1.5));
+    double mean = sumX1 / count;
+    double variance = sumX2 / count - mean * mean;
+    if (!Double.isFinite(variance) || variance <= 0) {
+      return;
+    }
+    double skew =
+        (sumX3 / count - 3 * mean * sumX2 / count + 2 * Math.pow(mean, 3))
+            / Math.pow(variance, 1.5);
+    if (Double.isFinite(skew)) {
+      collector.putDouble(0, skew);
+    }
   }
 }

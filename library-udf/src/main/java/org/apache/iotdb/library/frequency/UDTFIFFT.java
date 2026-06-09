@@ -33,8 +33,6 @@ import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.jtransforms.fft.DoubleFFT_1D;
 
-import java.text.SimpleDateFormat;
-
 /** This function does Inverse Fast Fourier Transform for input series. */
 public class UDTFIFFT implements UDTF {
 
@@ -53,17 +51,14 @@ public class UDTFIFFT implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x -> (long) x > 0,
+            x -> Util.isPositiveTime((String) x, validator.getParameters()),
             "interval should be a time period whose unit is ms, s, m, h, d.",
-            Util.parseTime(
-                validator.getParameters().getStringOrDefault("interval", "1s"),
-                validator.getParameters()));
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            validator.getParameters().getStringOrDefault("interval", "1s"));
     if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
-          x -> (long) x > 0,
+          x -> Util.isPositiveDateTime((String) x),
           "start should conform to the format yyyy-MM-dd HH:mm:ss.",
-          format.parse(validator.getParameters().getString(START_PARAM)).getTime());
+          validator.getParameters().getString(START_PARAM));
     }
   }
 
@@ -75,10 +70,9 @@ public class UDTFIFFT implements UDTF {
     imag.clear();
     time.clear();
     this.interval = Util.parseTime(parameters.getStringOrDefault("interval", "1s"), parameters);
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     this.start = 0;
     if (parameters.hasAttribute(START_PARAM)) {
-      this.start = format.parse(parameters.getString(START_PARAM)).getTime();
+      this.start = Util.parseDateTime(parameters.getString(START_PARAM));
     }
   }
 
@@ -120,7 +114,14 @@ public class UDTFIFFT implements UDTF {
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     fft.complexInverse(a, true);
     for (int i = 0; i < n; i++) {
-      collector.putDouble(start + i * interval, a[2 * i]);
+      double value = a[2 * i];
+      if (Double.isFinite(value)) {
+        try {
+          collector.putDouble(Math.addExact(start, Math.multiplyExact((long) i, interval)), value);
+        } catch (ArithmeticException ignored) {
+          // skip timestamps that overflow the long range
+        }
+      }
     }
   }
 }

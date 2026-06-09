@@ -78,9 +78,11 @@ public class UDTFSpline implements UDTF {
       Long t = row.getTime();
       if (minimumTimestamp == null) {
         minimumTimestamp = t;
+      } else if (t <= timestamp.get(timestamp.size() - 1)) {
+        return;
       }
       timestamp.add(t);
-      xDouble.add((Double.valueOf(Long.toString(t - minimumTimestamp))));
+      xDouble.add((double) t - minimumTimestamp);
       yDouble.add(v);
     }
   }
@@ -93,14 +95,12 @@ public class UDTFSpline implements UDTF {
       double[] y = ArrayUtils.toPrimitive(yDouble.toArray(new Double[0]));
       psf = asi.interpolate(x, y);
       for (int i = 0; i < samplePoints; i++) {
-        int approximation =
-            (int)
-                Math.floor(
-                    (x[0] * (samplePoints - 1 - i) + x[yDouble.size() - 1] * (i))
-                            / (samplePoints - 1)
-                        + 0.5);
+        double approximation =
+            Math.floor(
+                (x[0] * (samplePoints - 1 - i) + x[yDouble.size() - 1] * (i)) / (samplePoints - 1)
+                    + 0.5);
         double yhead = psf.value(approximation);
-        collector.putDouble(minimumTimestamp + approximation, yhead);
+        collector.putDouble(minimumTimestamp + Math.round(approximation), yhead);
       }
     }
   }

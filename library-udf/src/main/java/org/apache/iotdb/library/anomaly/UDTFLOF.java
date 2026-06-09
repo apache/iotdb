@@ -39,6 +39,7 @@ public class UDTFLOF implements UDTF {
   private int multipleK;
   private int dim;
   private static final String DEFAULT_METHOD = "default";
+  private static final String METHOD_SERIES = "series";
   private String method = DEFAULT_METHOD;
   private int window;
 
@@ -126,6 +127,23 @@ public class UDTFLOF implements UDTF {
     for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
       validator.validateInputSeriesDataType(i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
     }
+    validator
+        .validate(
+            k -> (int) k > 0,
+            "Parameter k should be a positive integer.",
+            validator.getParameters().getIntOrDefault("k", 3))
+        .validate(
+            window -> (int) window > 0,
+            "Parameter window should be a positive integer.",
+            validator.getParameters().getIntOrDefault("window", 10000))
+        .validate(
+            method -> isValidMethod((String) method),
+            "Method should be default or series.",
+            validator.getParameters().getStringOrDefault("method", DEFAULT_METHOD));
+  }
+
+  private static boolean isValidMethod(String method) {
+    return DEFAULT_METHOD.equalsIgnoreCase(method) || METHOD_SERIES.equalsIgnoreCase(method);
   }
 
   @Override
@@ -143,7 +161,7 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    if (this.method.equals(DEFAULT_METHOD)) {
+    if (this.method.equalsIgnoreCase(DEFAULT_METHOD)) {
       int size = 0;
       Double[][] knn = new Double[rowWindow.windowSize()][dim];
       long[] timestamp = new long[rowWindow.windowSize()];
@@ -181,7 +199,7 @@ public class UDTFLOF implements UDTF {
           }
         }
       }
-    } else if (this.method.equals("series")) {
+    } else if (this.method.equalsIgnoreCase(METHOD_SERIES)) {
       int size = rowWindow.windowSize() - window + 1;
       if (size > 0) {
         List<Long> timestamp = new ArrayList<>();

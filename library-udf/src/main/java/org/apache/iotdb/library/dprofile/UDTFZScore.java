@@ -116,9 +116,19 @@ public class UDTFZScore implements UDTF {
         return;
       }
       avg = sum / value.size();
-      sd = Math.sqrt(squareSum / value.size() - avg * avg);
+      double variance = squareSum / value.size() - avg * avg;
+      if (!Double.isFinite(variance) || variance <= 0) {
+        return;
+      }
+      sd = Math.sqrt(variance);
+      if (!Double.isFinite(sd) || sd <= 0) {
+        return;
+      }
       for (int i = 0; i < value.size(); i++) {
-        collector.putDouble(timestamp.get(i), (value.get(i) - avg) / sd);
+        double zScore = (value.get(i) - avg) / sd;
+        if (Double.isFinite(zScore)) {
+          collector.putDouble(timestamp.get(i), zScore);
+        }
       }
     }
   }

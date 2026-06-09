@@ -104,7 +104,9 @@ public class UDTFIDWT implements UDTF {
       transformer.inverse();
       double[] r = transformer.getData();
       for (int i = 0; i < r.length; i++) {
-        pointCollector.putDouble(timestamp.get(i), r[i]);
+        if (Double.isFinite(r[i])) {
+          pointCollector.putDouble(timestamp.get(i), r[i]);
+        }
       }
     }
   }

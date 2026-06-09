@@ -33,6 +33,8 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.jtransforms.fft.DoubleFFT_1D;
 
+import java.util.Locale;
+
 /** This function does Fast Fourier Transform for input series. */
 public class UDTFFFT implements UDTF {
 
@@ -71,7 +73,7 @@ public class UDTFFFT implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     list.clear();
-    String result = parameters.getStringOrDefault("result", "abs");
+    String result = parameters.getStringOrDefault("result", "abs").toLowerCase(Locale.ROOT);
     this.compressed = parameters.hasAttribute(COMPRESS_PARAM);
     double compressRate = parameters.getDoubleOrDefault(COMPRESS_PARAM, 1);
     this.fftutil = new FFTUtil(result, compressRate);

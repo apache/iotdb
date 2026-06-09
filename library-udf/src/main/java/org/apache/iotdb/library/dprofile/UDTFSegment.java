@@ -98,6 +98,9 @@ public class UDTFSegment implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (value.isEmpty()) {
+      return;
+    }
     long[] ts = timestamp.stream().mapToLong(Long::valueOf).toArray();
     double[] v = value.stream().mapToDouble(Double::valueOf).toArray();
     List<double[]> seg = new ArrayList<>();

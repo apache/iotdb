@@ -35,6 +35,9 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to repair the value of the time series. */
 public class UDTFValueRepair implements UDTF {
+  private static final String METHOD_SCREEN = "screen";
+  private static final String METHOD_LS_GREEDY = "lsgreedy";
+
   String method;
   double minSpeed;
   double maxSpeed;
@@ -61,7 +64,15 @@ public class UDTFValueRepair implements UDTF {
         .validate(
             x -> Double.isFinite((double) x),
             "Parameter $center$ should be finite.",
-            validator.getParameters().getDoubleOrDefault("center", 0));
+            validator.getParameters().getDoubleOrDefault("center", 0))
+        .validate(
+            method -> isValidMethod((String) method),
+            "Method should be screen or lsgreedy.",
+            validator.getParameters().getStringOrDefault("method", METHOD_SCREEN));
+  }
+
+  private static boolean isValidMethod(String method) {
+    return METHOD_SCREEN.equalsIgnoreCase(method) || METHOD_LS_GREEDY.equalsIgnoreCase(method);
   }
 
   @Override
@@ -70,7 +81,7 @@ public class UDTFValueRepair implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
-    method = parameters.getStringOrDefault("method", "screen");
+    method = parameters.getStringOrDefault("method", METHOD_SCREEN);
     minSpeed = parameters.getDoubleOrDefault("minSpeed", Double.NaN);
     maxSpeed = parameters.getDoubleOrDefault("maxSpeed", Double.NaN);
     center = parameters.getDoubleOrDefault("center", 0);
@@ -81,7 +92,7 @@ public class UDTFValueRepair implements UDTF {
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     ValueRepair vr;
     try {
-      if ("screen".equalsIgnoreCase(method)) {
+      if (METHOD_SCREEN.equalsIgnoreCase(method)) {
         Screen screen = new Screen(rowWindow.getRowIterator());
         if (!Double.isNaN(minSpeed)) {
           screen.setSmin(minSpeed);
@@ -90,7 +101,7 @@ public class UDTFValueRepair implements UDTF {
           screen.setSmax(maxSpeed);
         }
         vr = screen;
-      } else if ("lsgreedy".equalsIgnoreCase(method)) {
+      } else if (METHOD_LS_GREEDY.equalsIgnoreCase(method)) {
         LsGreedy lsGreedy = new LsGreedy(rowWindow.getRowIterator());
         if (!Double.isNaN(sigma)) {
           lsGreedy.setSigma(sigma);
