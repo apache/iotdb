@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.common.request;
 
+import org.apache.iotdb.commons.request.IConsensusRequest;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,19 +28,28 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** only used for iot consensus. */
-public class IndexedConsensusRequest implements org.apache.iotdb.commons.request.IConsensusRequest {
+public class IndexedConsensusRequest implements IConsensusRequest {
 
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
   private final long syncIndex;
-  private final List<org.apache.iotdb.commons.request.IConsensusRequest> requests;
+
+  /** routing epoch from ConfigNode broadcast for ordered consensus subscription */
+  private long routingEpoch = 0;
+
+  /** Millisecond physical time used as the first ordering key in the new subscription progress. */
+  private long physicalTime = 0;
+
+  /** Writer node id used as the second ordering key across multiple writers. */
+  private int nodeId = -1;
+
+  private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
   private AtomicLong referenceCnt = new AtomicLong();
 
-  public IndexedConsensusRequest(
-      long searchIndex, List<org.apache.iotdb.commons.request.IConsensusRequest> requests) {
+  public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
     this.syncIndex = -1L;
@@ -46,9 +57,7 @@ public class IndexedConsensusRequest implements org.apache.iotdb.commons.request
   }
 
   public IndexedConsensusRequest(
-      long searchIndex,
-      long syncIndex,
-      List<org.apache.iotdb.commons.request.IConsensusRequest> requests) {
+      long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
     this.syncIndex = syncIndex;
@@ -69,7 +78,7 @@ public class IndexedConsensusRequest implements org.apache.iotdb.commons.request
     throw new UnsupportedOperationException();
   }
 
-  public List<org.apache.iotdb.commons.request.IConsensusRequest> getRequests() {
+  public List<IConsensusRequest> getRequests() {
     return requests;
   }
 
@@ -87,6 +96,47 @@ public class IndexedConsensusRequest implements org.apache.iotdb.commons.request
 
   public long getSyncIndex() {
     return syncIndex;
+  }
+
+  /**
+   * Returns the writer-local sequence used by the new subscription progress model.
+   *
+   * <p>For locally generated requests this is the request searchIndex. For replicated requests this
+   * is the source leader's propagated localSeq carried in syncIndex.
+   */
+  public long getProgressLocalSeq() {
+    return syncIndex >= 0 ? syncIndex : searchIndex;
+  }
+
+  public long getRoutingEpoch() {
+    return routingEpoch;
+  }
+
+  public IndexedConsensusRequest setRoutingEpoch(long routingEpoch) {
+    this.routingEpoch = routingEpoch;
+    return this;
+  }
+
+  public long getPhysicalTime() {
+    return physicalTime;
+  }
+
+  public IndexedConsensusRequest setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    return this;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
+  public IndexedConsensusRequest setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    return this;
+  }
+
+  public long getLocalSeq() {
+    return searchIndex;
   }
 
   @Override

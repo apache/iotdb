@@ -715,6 +715,22 @@ public final class DataNodeMiscMessages {
       "Subscription: create broker bound to consumer group [{}]";
   public static final String SUBSCRIPTION_DROP_BROKER =
       "Subscription: drop broker bound to consumer group [{}]";
+  public static final String SUBSCRIPTION_BROKER_NOT_EXIST_FMT =
+      "Subscription: broker bound to consumer group [%s] does not exist";
+  public static final String SUBSCRIPTION_PIPE_BROKER_NOT_EMPTY =
+      "Subscription: pipe broker bound to consumer group [{}] is not empty when dropping";
+  public static final String SUBSCRIPTION_CONSENSUS_BROKER_NOT_EMPTY =
+      "Subscription: consensus broker bound to consumer group [{}] is not empty when dropping";
+  public static final String SUBSCRIPTION_DROP_CONSENSUS_BROKER =
+      "Subscription: drop consensus broker bound to consumer group [{}]";
+  public static final String SUBSCRIPTION_CREATE_PIPE_BROKER_FOR_BINDING =
+      "Subscription: pipe broker bound to consumer group [{}] does not exist, create new for binding prefetching queue";
+  public static final String SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING =
+      "Subscription: consensus broker bound to consumer group [{}] does not exist, create new for binding consensus prefetching queue";
+  public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
+      "ConsensusPrefetchingQueue %s: unexpected in-flight response for consumer %s, commit context %s, offset %s";
+  public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
+      "Unsupported consensus subscription progress file version %s";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionConsumerAgent

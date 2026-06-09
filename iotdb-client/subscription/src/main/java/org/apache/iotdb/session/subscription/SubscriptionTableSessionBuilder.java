@@ -53,6 +53,11 @@ public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTableSessionBuilder useEncryptedPassword(final boolean useEncryptedPassword) {
+    super.useEncryptedPassword = useEncryptedPassword;
+    return this;
+  }
+
   public SubscriptionTableSessionBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     super.thriftMaxFrameSize = thriftMaxFrameSize;
     return this;

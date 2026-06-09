@@ -52,6 +52,11 @@ public class SubscriptionTreeSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTreeSessionBuilder useEncryptedPassword(final boolean useEncryptedPassword) {
+    super.useEncryptedPassword = useEncryptedPassword;
+    return this;
+  }
+
   public SubscriptionTreeSessionBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     super.thriftMaxFrameSize = thriftMaxFrameSize;
     return this;

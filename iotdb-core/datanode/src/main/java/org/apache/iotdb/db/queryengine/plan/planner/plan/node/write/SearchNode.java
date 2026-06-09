@@ -42,6 +42,22 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
 
+  /** routing epoch from ConfigNode broadcast, used for ordered consensus subscription */
+  protected long routingEpoch = 0;
+
+  /** Millisecond physical time used as the first ordering key in the new subscription progress. */
+  protected long physicalTime = 0;
+
+  /** Writer node id used as the second ordering key across multiple writers. */
+  protected int nodeId = -1;
+
+  /**
+   * syncIndex carries the source Leader's searchIndex for replicated (Follower) writes. On Leader
+   * nodes this stays at NO_CONSENSUS_INDEX (-1). Only stored in WALMetaData V3, never changes the
+   * WAL entry's own searchIndex.
+   */
+  protected long syncIndex = NO_CONSENSUS_INDEX;
+
   protected boolean isLastFragment = false;
 
   protected SearchNode(PlanNodeId id) {
@@ -56,6 +72,55 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
   public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
     return this;
+  }
+
+  public long getRoutingEpoch() {
+    return routingEpoch;
+  }
+
+  public SearchNode setRoutingEpoch(long routingEpoch) {
+    this.routingEpoch = routingEpoch;
+    return this;
+  }
+
+  public long getPhysicalTime() {
+    return physicalTime;
+  }
+
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    return this;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    return this;
+  }
+
+  public long getSyncIndex() {
+    return syncIndex;
+  }
+
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    return this;
+  }
+
+  public long getLocalSeq() {
+    return searchIndex;
+  }
+
+  public SearchNode setLocalSeq(long localSeq) {
+    this.searchIndex = localSeq;
+    return this;
+  }
+
+  public long getProgressLocalSeq() {
+    return syncIndex >= 0 ? syncIndex : searchIndex;
   }
 
   public boolean isLastFragment() {

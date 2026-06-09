@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -331,18 +333,29 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntry.getWalFlushListener().fail(e);
         return;
       }
-      // parse search index
+      // parse search index and writer-progress metadata
       long searchIndex = DEFAULT_SEARCH_INDEX;
+      long syncIndex = DEFAULT_SEARCH_INDEX;
+      long physicalTime = 0;
+      int nodeId = -1;
       if (walEntry.getType().needSearch()) {
         searchIndex = ((WALInfoEntry) walEntry).getSearchIndex();
+        final SearchNode searchNode = (SearchNode) walEntry.getValue();
+        syncIndex = searchNode.getSyncIndex();
+        physicalTime = searchNode.getPhysicalTime();
+        nodeId = searchNode.getNodeId();
         if (searchIndex != DEFAULT_SEARCH_INDEX) {
           currentSearchIndex = searchIndex;
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
         }
       }
+      // For Leader writes: syncIndex stays -1, use searchIndex as the ordering key
+      // For Follower writes: searchIndex is -1, syncIndex carries source's searchIndex
+      long effectiveLocalSeq = (syncIndex >= 0) ? syncIndex : searchIndex;
       // update related info
       totalSize += size;
-      info.metaData.add(size, searchIndex, walEntry.getMemTableId());
+      info.metaData.add(
+          size, searchIndex, walEntry.getMemTableId(), physicalTime, nodeId, effectiveLocalSeq);
       info.memTableId2WalDiskUsage.compute(
           walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
@@ -743,6 +756,11 @@ public class WALBuffer extends AbstractWALBuffer {
     } finally {
       buffersLock.unlock();
     }
+  }
+
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    final WALWriter writer = currentWALFileWriter;
+    return writer == null ? new WALMetaData() : writer.snapshotMetaData();
   }
 
   public CheckpointManager getCheckpointManager() {

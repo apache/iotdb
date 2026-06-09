@@ -50,24 +50,20 @@ public class ConsumerGroupPushMetaRPCHandler
 
   @Override
   public void onComplete(TPushConsumerGroupMetaResp response) {
-    // Put response
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
+      LOGGER.debug(
           ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
+      LOGGER.warn(
           ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);
     }
 
-    // Always remove to avoid retrying
     nodeLocationMap.remove(requestId);
-
-    // Always CountDown
     countDownLatch.countDown();
   }
 
@@ -80,14 +76,13 @@ public class ConsumerGroupPushMetaRPCHandler
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg, e);
+    LOGGER.warn(errorMsg);
 
     responseMap.put(
         requestId,
         new TPushConsumerGroupMetaResp(
             RpcUtils.getStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR, errorMsg)));
 
-    // Always CountDown
     countDownLatch.countDown();
   }
 }

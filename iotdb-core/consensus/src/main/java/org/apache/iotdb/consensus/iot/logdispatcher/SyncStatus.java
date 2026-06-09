@@ -109,4 +109,8 @@ public class SyncStatus {
   public synchronized List<Batch> getPendingBatches() {
     return pendingBatches;
   }
+
+  public synchronized boolean hasPendingBatches() {
+    return !pendingBatches.isEmpty();
+  }
 }

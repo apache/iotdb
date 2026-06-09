@@ -72,12 +72,21 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
               .collect(Collectors.toList());
 
       String messages = String.join(", ", retryStatusMessages);
-      logger.warn(
-          IoTConsensusMessages.CANNOT_SEND_TO_PEER,
-          batch,
-          thread.getPeer(),
-          ++retryCount,
-          messages);
+      if (++retryCount == 1) {
+        logger.warn(
+            IoTConsensusMessages.CANNOT_SEND_TO_PEER,
+            batch,
+            thread.getPeer(),
+            retryCount,
+            messages);
+      } else {
+        logger.debug(
+            IoTConsensusMessages.CANNOT_SEND_TO_PEER,
+            batch,
+            thread.getPeer(),
+            retryCount,
+            messages);
+      }
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       if (logger.isDebugEnabled()) {
@@ -106,14 +115,24 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public void onError(Exception exception) {
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
-    logger.warn(
-        IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
-        batch,
-        thread.getPeer(),
-        retryCount,
-        rootCause.toString());
+    final Throwable actualCause = rootCause == null ? exception : rootCause;
+    if (retryCount == 1) {
+      logger.warn(
+          IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
+          batch,
+          thread.getPeer(),
+          retryCount,
+          actualCause.toString());
+    } else {
+      logger.debug(
+          IoTConsensusMessages.CANNOT_SEND_TO_PEER_ON_ERROR,
+          batch,
+          thread.getPeer(),
+          retryCount,
+          actualCause.toString());
+    }
     // skip TApplicationException caused by follower
-    if (rootCause instanceof TApplicationException) {
+    if (actualCause instanceof TApplicationException) {
       completeBatch(batch);
       logger.warn(IoTConsensusMessages.SKIP_RETRY_TAPPLICATION_EXCEPTION, batch);
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);

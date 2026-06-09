@@ -54,6 +54,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractR
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -910,9 +912,94 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALFileVersion();
   }
 
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    return buffer.getCurrentWALMetaDataSnapshot();
+  }
+
   @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
+  }
+
+  @Override
+  public long getRegionDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    return getDeletionBoundToFreeAtLeast(bytesToFree).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return new Pair<>(DEFAULT_SAFELY_DELETED_SEARCH_INDEX, 0L);
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        if (i + 1 < walFiles.length) {
+          return new Pair<>(
+              WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName()),
+              WALFileUtils.parseVersionId(walFiles[i + 1].getName()));
+        }
+        break;
+      }
+    }
+    return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return getDeletionBoundToFreeAtLeast(bytesToFree).right;
+  }
+
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).left;
+  }
+
+  @Override
+  public Pair<Long, Long> getDeletionBoundBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return new Pair<>(Long.MIN_VALUE + 1, 0L);
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return new Pair<>(Long.MAX_VALUE, Long.MAX_VALUE);
+    }
+    return new Pair<>(
+        WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName()),
+        WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName()));
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return getDeletionBoundBeforeTimestamp(cutoffTimeMs).right;
+  }
+
+  private int countExpiredRolledWalFiles(File[] walFiles, long cutoffTimeMs) {
+    int expiredPrefixLength = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      if (walFiles[i].lastModified() < cutoffTimeMs) {
+        expiredPrefixLength++;
+      } else {
+        break;
+      }
+    }
+    return expiredPrefixLength;
   }
 
   public boolean isAllSearchIndexSafelyDeleted() {

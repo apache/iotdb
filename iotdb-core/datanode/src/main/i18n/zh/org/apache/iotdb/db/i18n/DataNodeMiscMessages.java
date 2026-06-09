@@ -714,6 +714,22 @@ public final class DataNodeMiscMessages {
       "订阅：创建绑定到消费者组 [{}] 的 Broker";
   public static final String SUBSCRIPTION_DROP_BROKER =
       "订阅：删除绑定到消费者组 [{}] 的 Broker";
+  public static final String SUBSCRIPTION_BROKER_NOT_EXIST_FMT =
+      "订阅：绑定到消费者组 [%s] 的 Broker 不存在";
+  public static final String SUBSCRIPTION_PIPE_BROKER_NOT_EMPTY =
+      "订阅：绑定到消费者组 [{}] 的 Pipe Broker 非空，无法删除";
+  public static final String SUBSCRIPTION_CONSENSUS_BROKER_NOT_EMPTY =
+      "订阅：绑定到消费者组 [{}] 的共识 Broker 非空，无法删除";
+  public static final String SUBSCRIPTION_DROP_CONSENSUS_BROKER =
+      "订阅：删除绑定到消费者组 [{}] 的共识 Broker";
+  public static final String SUBSCRIPTION_CREATE_PIPE_BROKER_FOR_BINDING =
+      "订阅：绑定到消费者组 [{}] 的 Pipe Broker 不存在，为绑定预取队列创建新 Broker";
+  public static final String SUBSCRIPTION_CREATE_CONSENSUS_BROKER_FOR_BINDING =
+      "订阅：绑定到消费者组 [{}] 的共识 Broker 不存在，为绑定共识预取队列创建新 Broker";
+  public static final String SUBSCRIPTION_CONSENSUS_UNEXPECTED_IN_FLIGHT_RESPONSE_FMT =
+      "ConsensusPrefetchingQueue %s：消费者 %s 的处理中响应不符合预期，提交上下文 %s，偏移量 %s";
+  public static final String SUBSCRIPTION_UNSUPPORTED_CONSENSUS_PROGRESS_FILE_VERSION_FMT =
+      "不支持的共识订阅进度文件版本 %s";
 
   // ---------------------------------------------------------------------------
   // subscription – SubscriptionConsumerAgent
