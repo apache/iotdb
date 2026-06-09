@@ -17,39 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.request;
+package org.apache.iotdb.rpc.subscription.payload.response;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import java.util.Objects;
 
-public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
+public class PipeSubscribeSeekResp extends TPipeSubscribeResp {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
-   * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
-   * client.
+   * Serialize the incoming parameters into {@code PipeSubscribeSeekResp}, called by the
+   * subscription server.
    */
-  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq() {
-    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+  public static PipeSubscribeSeekResp toTPipeSubscribeResp(final TSStatus status) {
+    final PipeSubscribeSeekResp resp = new PipeSubscribeSeekResp();
 
-    req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
-    req.type = PipeSubscribeRequestType.HEARTBEAT.getType();
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
 
-    return req;
+    return resp;
   }
 
-  /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(
-      final TPipeSubscribeReq heartbeatReq) {
-    final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+  /**
+   * Deserialize {@code TPipeSubscribeResp} to obtain parameters, called by the subscription client.
+   */
+  public static PipeSubscribeSeekResp fromTPipeSubscribeResp(final TPipeSubscribeResp seekResp) {
+    final PipeSubscribeSeekResp resp = new PipeSubscribeSeekResp();
 
-    req.version = heartbeatReq.version;
-    req.type = heartbeatReq.type;
-    req.body = heartbeatReq.body;
+    resp.status = seekResp.status;
+    resp.version = seekResp.version;
+    resp.type = seekResp.type;
+    resp.body = seekResp.body;
 
-    return req;
+    return resp;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -62,14 +66,15 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
-    return this.version == that.version
+    final PipeSubscribeSeekResp that = (PipeSubscribeSeekResp) obj;
+    return Objects.equals(this.status, that.status)
+        && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(version, type, body);
+    return Objects.hash(status, version, type, body);
   }
 }
