@@ -287,12 +287,18 @@ public class AlignedChunkData implements ChunkData {
   }
 
   protected void deserializeTsFileData(TsFileIOWriter writer) throws IOException, PageException {
-    final InputStream stream = new ByteArrayInputStream(chunkData);
+    final InputStream stream = createTsFileDataInputStream();
     if (needDecodeChunk) {
       buildChunkWriter(stream, writer);
     } else {
       deserializeEntireChunk(stream, writer);
     }
+  }
+
+  private InputStream createTsFileDataInputStream() {
+    return chunkData == null
+        ? new ByteArrayInputStream(byteStream.getBuf(), 0, byteStream.size())
+        : new ByteArrayInputStream(chunkData);
   }
 
   protected void deserializeTsFileDataByte(final InputStream stream) throws IOException {

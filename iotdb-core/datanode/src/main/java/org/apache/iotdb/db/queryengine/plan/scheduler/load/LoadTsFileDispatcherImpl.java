@@ -38,7 +38,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
@@ -156,12 +155,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     PlanNode planNode = instance.getFragment().getPlanNodeTree();
 
     if (planNode instanceof LoadTsFilePieceNode) { // split
-      LoadTsFilePieceNode pieceNode =
-          (LoadTsFilePieceNode) PlanNodeType.deserialize(planNode.serializeToByteBuffer());
-      if (pieceNode == null) {
-        throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
-      }
+      LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) planNode;
       TSStatus resultStatus =
           StorageEngine.getInstance().writeLoadTsFileNode((DataRegionId) groupId, pieceNode, uuid);
 
