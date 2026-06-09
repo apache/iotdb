@@ -50,6 +50,9 @@ public class PipeConfigRegionListener {
   public synchronized void decreaseReference(final PipeParameters parameters)
       throws IllegalPathException {
     if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
+      if (listeningQueueReferenceCount == 0) {
+        return;
+      }
       listeningQueueReferenceCount--;
       if (listeningQueueReferenceCount == 0) {
         listeningQueue.close();

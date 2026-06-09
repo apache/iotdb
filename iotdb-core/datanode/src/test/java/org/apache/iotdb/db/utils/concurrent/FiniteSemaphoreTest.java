@@ -22,6 +22,10 @@ package org.apache.iotdb.db.utils.concurrent;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+
 public class FiniteSemaphoreTest {
 
   @Test
@@ -37,6 +41,65 @@ public class FiniteSemaphoreTest {
   @Test
   public void testRejectInitialPermitsLargerThanCapacity() {
     assertIllegalArgument(() -> new FiniteSemaphore(1, 2));
+  }
+
+  @Test
+  public void testReleaseDoesNotExceedCapacity() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 0);
+
+    semaphore.release();
+    semaphore.release();
+
+    semaphore.acquire();
+    Thread waiter =
+        new Thread(
+            () -> {
+              try {
+                semaphore.acquire();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    waiter.start();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, waiter.getState()));
+
+    waiter.interrupt();
+    waiter.join();
+  }
+
+  @Test
+  public void testAcquireWaitsUntilRelease() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 0);
+    Thread waiter =
+        new Thread(
+            () -> {
+              try {
+                semaphore.acquire();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            });
+    waiter.start();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.WAITING, waiter.getState()));
+
+    semaphore.release();
+    await()
+        .atMost(1, TimeUnit.MINUTES)
+        .untilAsserted(() -> Assert.assertEquals(Thread.State.TERMINATED, waiter.getState()));
+    waiter.join();
+  }
+
+  @Test
+  public void testPermitCanBeReused() throws InterruptedException {
+    FiniteSemaphore semaphore = new FiniteSemaphore(1, 1);
+
+    semaphore.acquire();
+    semaphore.release();
+    semaphore.acquire();
   }
 
   private void assertIllegalArgument(Runnable runnable) {

@@ -374,8 +374,10 @@ public class DataNodeTableCache implements ITableCache {
   private Map<String, Map<String, TsTable>> getTablesInConfigNode(
       final Map<String, Map<String, Long>> tableInput) {
     Map<String, Map<String, TsTable>> result = Collections.emptyMap();
+    boolean acquired = false;
     try {
       fetchTableSemaphore.acquire();
+      acquired = true;
       final TFetchTableResp resp =
           ClusterConfigTaskExecutor.getInstance()
               .fetchTables(
@@ -388,11 +390,11 @@ public class DataNodeTableCache implements ITableCache {
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(DataNodeSchemaMessages.INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES);
-    } catch (final Exception e) {
-      fetchTableSemaphore.release();
-      throw e;
+    } finally {
+      if (acquired) {
+        fetchTableSemaphore.release();
+      }
     }
-    fetchTableSemaphore.release();
     return result;
   }
 
