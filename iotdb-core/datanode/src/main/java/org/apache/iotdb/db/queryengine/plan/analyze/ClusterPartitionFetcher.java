@@ -258,26 +258,28 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
     DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
 
-    if (null == dataPartition) {
-      try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
-        TDataPartitionTableResp dataPartitionTableResp = client.getOrCreateDataPartitionTable(req);
+    if (null != dataPartition) {
+      return dataPartition;
+    }
 
-        if (dataPartitionTableResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
-          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
-        } else {
-          throw new RuntimeException(
-              new IoTDBException(
-                  dataPartitionTableResp.getStatus().getMessage(),
-                  dataPartitionTableResp.getStatus().getCode()));
-        }
-      } catch (ClientManagerException | TException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
+    try (ConfigNodeClient client =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TDataPartitionReq req = constructDataPartitionReq(splitDataPartitionQueryParams);
+      TDataPartitionTableResp dataPartitionTableResp = client.getOrCreateDataPartitionTable(req);
+
+      if (dataPartitionTableResp.getStatus().getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
+      } else {
+        throw new RuntimeException(
+            new IoTDBException(
+                dataPartitionTableResp.getStatus().getMessage(),
+                dataPartitionTableResp.getStatus().getCode()));
       }
+    } catch (ClientManagerException | TException e) {
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
     return dataPartition;
   }
