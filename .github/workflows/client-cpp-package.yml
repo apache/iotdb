@@ -126,7 +126,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"boost-msvc-14.1","boost_choco_version":"1.74.0","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"","boost_choco_version":"","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -374,19 +374,18 @@ jobs:
         shell: pwsh
         run: |
           choco install winflexbison3 -y --no-progress
-          $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
-          if ('${{ matrix.boost_choco_version }}' -ne '') {
-            $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
+          if ('${{ matrix.boost_choco }}' -ne '') {
+            $boostArgs = @('install', '${{ matrix.boost_choco }}', '-y', '--no-progress')
+            if ('${{ matrix.boost_choco_version }}' -ne '') {
+              $boostArgs += @("--version=${{ matrix.boost_choco_version }}")
+            }
+            & choco @boostArgs
+            $boostDir = Get-ChildItem -Path 'C:\local\' -Filter 'boost_*' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $boostDir) {
+              throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
+            }
+            echo "BOOST_INCLUDEDIR=$($boostDir.FullName)" >> $env:GITHUB_ENV
           }
-          & choco @boostArgs
-          if (-not (Test-Path 'C:\local')) {
-            New-Item -ItemType Directory -Path 'C:\local' -Force | Out-Null
-          }
-          $boostDir = Get-ChildItem -Path 'C:\local\' -Filter 'boost_*' -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $boostDir) {
-            throw "Boost not found under C:\local after installing ${{ matrix.boost_choco }}"
-          }
-          echo $boostDir.FullName >> $env:GITHUB_PATH
           choco install openssl -y --no-progress
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
@@ -408,6 +407,9 @@ jobs:
           MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests \
             -Dspotless.skip=true \
             "-Dclient.cpp.package.classifier=${PACKAGE_CLASSIFIER}")
+          if [ -n "${BOOST_INCLUDEDIR:-}" ]; then
+            MVN_ARGS+=("-Dboost.include.dir=${BOOST_INCLUDEDIR}")
+          fi
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi
