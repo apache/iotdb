@@ -157,6 +157,16 @@ public class IoTDBStatementTest {
     assertThrows(SQLException.class, () -> statement.unwrap(Statement.class));
     assertThrows(SQLException.class, () -> statement.getFetchSize());
     assertThrows(SQLException.class, () -> statement.getWarnings());
+
+    SQLException unsupportedException =
+        assertThrows(
+            SQLException.class,
+            () -> statement.execute("select 1", Statement.RETURN_GENERATED_KEYS));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> statement.getGeneratedKeys());
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, statement::closeOnCompletion);
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
   }
 
   @Test(expected = SQLException.class)

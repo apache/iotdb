@@ -43,6 +43,7 @@ import java.sql.Savepoint;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -91,6 +92,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testSetTimeZoneByClientInfo() throws TException, SQLClientInfoException {
+    openConnection(connection);
     String timeZone = "+07:00";
     assertNotEquals(connection.getTimeZone(), timeZone);
     when(client.setTimeZone(any(TSSetTimeZoneReq.class))).thenReturn(new TSStatus(successStatus));
@@ -109,6 +111,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testSetClientInfoWrapsInvalidTimeZone() {
+    openConnection(connection);
     SQLClientInfoException exception =
         assertThrows(
             SQLClientInfoException.class,
@@ -119,6 +122,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testSetClientInfoRejectsNullNameWithoutNpe() {
+    openConnection(connection);
     assertThrows(SQLClientInfoException.class, () -> connection.setClientInfo(null, "value"));
   }
 
@@ -271,6 +275,14 @@ public class IoTDBConnectionTest {
     assertThrows(SQLException.class, () -> connection.setCatalog("root"));
     assertThrows(SQLException.class, () -> connection.getClientInfo());
     assertThrows(SQLException.class, () -> connection.getClientInfo("time_zone"));
+    SQLClientInfoException clientInfoException =
+        assertThrows(
+            SQLClientInfoException.class, () -> connection.setClientInfo("time_zone", "+07:00"));
+    assertTrue(clientInfoException.getMessage().contains("connection has been closed"));
+    clientInfoException =
+        assertThrows(
+            SQLClientInfoException.class, () -> connection.setClientInfo(new Properties()));
+    assertTrue(clientInfoException.getMessage().contains("connection has been closed"));
     assertThrows(SQLException.class, () -> connection.getHoldability());
     assertThrows(
         SQLException.class, () -> connection.setHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));

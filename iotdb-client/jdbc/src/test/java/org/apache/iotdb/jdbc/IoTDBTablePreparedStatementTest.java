@@ -186,6 +186,14 @@ public class IoTDBTablePreparedStatementTest {
     assertThrows(SQLException.class, () -> metadata.unwrap(ParameterMetaData.class));
     assertThrows(SQLException.class, () -> metadata.getParameterCount());
     assertThrows(SQLException.class, () -> metadata.getParameterType(1));
+
+    SQLException unsupportedException =
+        assertThrows(SQLException.class, () -> ps.setArray(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setRowId(1, null));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
+    unsupportedException = assertThrows(SQLException.class, () -> ps.setObject(1, new Object()));
+    assertTrue(unsupportedException.getMessage().contains("statement has been closed"));
   }
 
   @SuppressWarnings("resource")

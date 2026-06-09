@@ -266,7 +266,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public void closeOnCompletion() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_CLOSE_ON_COMPLETION);
+    throw unsupportedOperation("closeOnCompletion", JdbcMessages.NOT_SUPPORT_CLOSE_ON_COMPLETION);
   }
 
   /**
@@ -296,17 +296,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String arg0, int arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE);
+    throw unsupportedOperation("execute", NOT_SUPPORT_EXECUTE);
   }
 
   @Override
   public boolean execute(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE);
+    throw unsupportedOperation("execute", NOT_SUPPORT_EXECUTE);
   }
 
   @Override
   public boolean execute(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE);
+    throw unsupportedOperation("execute", NOT_SUPPORT_EXECUTE);
   }
 
   private interface TFunction<T> {
@@ -564,17 +564,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int executeUpdate(String arg0, int arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
+    throw unsupportedOperation("executeUpdate", NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   @Override
   public int executeUpdate(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
+    throw unsupportedOperation("executeUpdate", NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   @Override
   public int executeUpdate(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
+    throw unsupportedOperation("executeUpdate", NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   private int executeUpdateSQL(final String sql)
@@ -632,17 +632,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet getGeneratedKeys() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_GENERATED_KEYS);
+    throw unsupportedOperation("getGeneratedKeys", JdbcMessages.NOT_SUPPORT_GET_GENERATED_KEYS);
   }
 
   @Override
   public int getMaxFieldSize() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
+    throw unsupportedOperation("getMaxFieldSize", JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
   }
 
   @Override
   public void setMaxFieldSize(int arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
+    throw unsupportedOperation("setMaxFieldSize", JdbcMessages.NOT_SUPPORT_GET_MAX_FIELD_SIZE);
   }
 
   @Override
@@ -668,7 +668,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean getMoreResults(int arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_MORE_RESULTS);
+    throw unsupportedOperation("getMoreResults", JdbcMessages.NOT_SUPPORT_GET_MORE_RESULTS);
   }
 
   @Override
@@ -695,7 +695,8 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetConcurrency() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_GET_RESULT_SET_CONCURRENCY);
+    throw unsupportedOperation(
+        "getResultSetConcurrency", JdbcMessages.NOT_SUPPORT_GET_RESULT_SET_CONCURRENCY);
   }
 
   @Override
@@ -724,7 +725,8 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isCloseOnCompletion() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_CLOSE_ON_COMPLETION);
+    throw unsupportedOperation(
+        "isCloseOnCompletion", JdbcMessages.NOT_SUPPORT_IS_CLOSE_ON_COMPLETION);
   }
 
   @Override
@@ -734,22 +736,23 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isPoolable() throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_IS_POOLABLE);
+    throw unsupportedOperation("isPoolable", JdbcMessages.NOT_SUPPORT_IS_POOLABLE);
   }
 
   @Override
   public void setPoolable(boolean arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_POOLABLE);
+    throw unsupportedOperation("setPoolable", JdbcMessages.NOT_SUPPORT_SET_POOLABLE);
   }
 
   @Override
   public void setCursorName(String arg0) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_CURSOR_NAME);
+    throw unsupportedOperation("setCursorName", JdbcMessages.NOT_SUPPORT_SET_CURSOR_NAME);
   }
 
   @Override
   public void setEscapeProcessing(boolean enable) throws SQLException {
-    throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_ESCAPE_PROCESSING);
+    throw unsupportedOperation(
+        "setEscapeProcessing", JdbcMessages.NOT_SUPPORT_SET_ESCAPE_PROCESSING);
   }
 
   protected void checkConnection(String action) throws SQLException {
@@ -759,6 +762,11 @@ public class IoTDBStatement implements Statement {
     if (isClosed) {
       throw new SQLException(String.format(CANNOT_AFTER_STATEMENT_CLOSED, action));
     }
+  }
+
+  private SQLException unsupportedOperation(String action, String message) throws SQLException {
+    checkConnection(action);
+    return new SQLException(message);
   }
 
   private boolean reInit() throws SQLException {

@@ -316,6 +316,13 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertThrows(SQLException.class, () -> resultSet.getType());
     Assert.assertThrows(SQLException.class, () -> resultSet.getWarnings());
     Assert.assertThrows(SQLException.class, () -> resultSet.wasNull());
+
+    SQLException unsupportedException =
+        Assert.assertThrows(SQLException.class, () -> resultSet.absolute(1));
+    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+    unsupportedException =
+        Assert.assertThrows(SQLException.class, () -> resultSet.updateString(1, "x"));
+    Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
   }
 
   @SuppressWarnings("resource")
