@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -93,7 +94,8 @@ public class PipeHeartbeatParser {
               final AtomicReference<PipeTaskInfo> pipeTaskInfo =
                   configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
               if (pipeTaskInfo == null) {
-                LOGGER.warn(
+                PipeLogger.log(
+                    LOGGER::warn,
                     ManagerMessages.FAILED_TO_ACQUIRE_LOCK_WHEN_PARSEHEARTBEAT_FROM_NODE_ID,
                     nodeId);
                 return;
@@ -127,8 +129,10 @@ public class PipeHeartbeatParser {
         configManager.getNodeManager().getRegisteredDataNodeCount()
             + (PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled() ? 1 : 0);
     if (expectedNodeCount <= 0) {
-      LOGGER.warn(
-          ManagerMessages.EXPECTED_PIPE_HEARTBEAT_NODE_COUNT_IS_FALLBACK_TO_1, expectedNodeCount);
+      PipeLogger.log(
+          LOGGER::warn,
+          ManagerMessages.EXPECTED_PIPE_HEARTBEAT_NODE_COUNT_IS_FALLBACK_TO_1,
+          expectedNodeCount);
       return 1;
     }
     return expectedNodeCount;
@@ -142,7 +146,8 @@ public class PipeHeartbeatParser {
       final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             ManagerMessages.PIPERUNTIMECOORDINATOR_MEETS_ERROR_IN_UPDATING_PIPEMETAKEEPER
                 + "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}",
             pipeMetaFromCoordinator);
@@ -157,7 +162,8 @@ public class PipeHeartbeatParser {
       if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
 
         temporaryMeta.markDataNodeCompleted(nodeId);
-        LOGGER.info(
+        PipeLogger.log(
+            LOGGER::info,
             "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}",
             nodeId,
             staticMeta.getPipeName(),
@@ -169,14 +175,16 @@ public class PipeHeartbeatParser {
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
         uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
         if (uncompletedDataNodeIds.isEmpty()) {
-          LOGGER.info(
+          PipeLogger.log(
+              LOGGER::info,
               "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}",
               staticMeta.getPipeName(),
               temporaryMeta.getGlobalRemainingEvents(),
               temporaryMeta.getGlobalRemainingTime(),
               staticMeta);
           pipeTaskInfo.get().removePipeMeta(staticMeta.getPipeName());
-          LOGGER.info(
+          PipeLogger.log(
+              LOGGER::info,
               ManagerMessages.DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT,
               staticMeta.getPipeName(),
               staticMeta);
@@ -267,7 +275,9 @@ public class PipeHeartbeatParser {
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(false);
 
-              LOGGER.warn(
+              PipeLogger.log(
+                  LOGGER::warn,
+                  exception,
                   ManagerMessages.DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
                   exception,
                   pipeName);
@@ -296,11 +306,13 @@ public class PipeHeartbeatParser {
                             needWriteConsensusOnConfigNodes.set(true);
                             needPushPipeMetaToDataNodes.set(false);
 
-                            LOGGER.warn(
-                                String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s "
-                                        + "from agent, stop pipe %s.",
-                                    exception, pipeName));
+                            PipeLogger.log(
+                                LOGGER::warn,
+                                exception,
+                                ManagerMessages
+                                    .DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE,
+                                exception,
+                                pipeName);
                           });
             }
           }

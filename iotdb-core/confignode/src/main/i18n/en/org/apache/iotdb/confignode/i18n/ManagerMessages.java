@@ -67,6 +67,8 @@ public final class ManagerMessages {
       "Detected completion of pipe {}, static meta: {}, remove it.";
   public static final String DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
       "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.";
+  public static final String DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
+      "Detect PipeRuntimeSinkCriticalException {} from agent, stop pipe {}.";
   public static final String ENABLE_SEPARATION_OF_POWERS_IS_NOT_SUPPORTED =
       "Enable separation of powers is not supported";
   public static final String ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS =
