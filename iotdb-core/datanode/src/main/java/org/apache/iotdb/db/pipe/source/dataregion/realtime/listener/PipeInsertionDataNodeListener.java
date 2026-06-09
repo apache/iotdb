@@ -63,7 +63,7 @@ public class PipeInsertionDataNodeListener {
         });
   }
 
-  public synchronized void stopListenAndAssign(
+  public void stopListenAndAssign(
       final String dataRegionId, final PipeRealtimeDataRegionSource source) {
     PipeDataRegionAssigner assignerToClose = null;
 
