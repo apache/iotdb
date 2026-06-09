@@ -39,7 +39,6 @@ import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHeartbeatResp> {
@@ -53,7 +52,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   private final int nodeId;
 
   private final LoadManager loadManager;
-  private final Set<TConsensusGroupId> regionGroupIdsOnDataNode;
 
   private final Map<Integer, Long> deviceNum;
   private final Map<Integer, Long> timeSeriesNum;
@@ -67,7 +65,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   public DataNodeHeartbeatHandler(
       int nodeId,
       LoadManager loadManager,
-      Set<TConsensusGroupId> regionGroupIdsOnDataNode,
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
@@ -77,7 +74,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
     this.nodeId = nodeId;
     this.loadManager = loadManager;
-    this.regionGroupIdsOnDataNode = regionGroupIdsOnDataNode;
     this.deviceNum = deviceNum;
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
@@ -88,11 +84,21 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   @Override
   public void onComplete(TDataNodeHeartbeatResp heartbeatResp) {
-    // Update NodeCache
+    cacheNodeHeartbeatSample(heartbeatResp);
+    cacheRegionGroupHeartbeatSamples(heartbeatResp);
+    cacheUsageSamples(heartbeatResp);
+    cachePipeHeartbeat(heartbeatResp);
+    cacheConfirmedConfigNodeEndPoints(heartbeatResp);
+    cacheRegionSizeSamples(heartbeatResp);
+  }
+
+  private void cacheNodeHeartbeatSample(TDataNodeHeartbeatResp heartbeatResp) {
     loadManager
         .getLoadCache()
         .cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp));
+  }
 
+  private void cacheRegionGroupHeartbeatSamples(TDataNodeHeartbeatResp heartbeatResp) {
     RegionStatus regionStatus = RegionStatus.valueOf(heartbeatResp.getStatus());
 
     Map<TConsensusGroupId, Boolean> judgedLeaders =
@@ -101,53 +107,63 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
             : Collections.emptyMap();
     judgedLeaders.forEach(
         (regionGroupId, isLeader) -> {
-
-          // Do not allow regions to inherit the Removing state from datanode
-          RegionStatus nextRegionStatus = regionStatus;
-          if (nextRegionStatus == RegionStatus.Removing) {
-            nextRegionStatus =
-                loadManager.getLoadCache().getRegionCacheLastSampleStatus(regionGroupId, nodeId);
-          }
-
-          // Update RegionGroupCache
-          loadManager
-              .getLoadCache()
-              .cacheRegionHeartbeatSample(
-                  regionGroupId,
-                  nodeId,
-                  new RegionHeartbeatSample(
-                      heartbeatResp.getHeartbeatTimestamp(),
-                      // Region will inherit DataNode's status
-                      nextRegionStatus),
-                  false);
-
-          boolean shouldCacheConsensusSample =
-              (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
-                      && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
-                  || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-                      && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE);
-          boolean hasConsensusLogicalTimestamp =
-              heartbeatResp.isSetConsensusLogicalTimeMap()
-                  && heartbeatResp.getConsensusLogicalTimeMap().containsKey(regionGroupId);
-          if (shouldCacheConsensusSample
-              && hasConsensusLogicalTimestamp
-              && Boolean.TRUE.equals(isLeader)) {
-            loadManager
-                .getLoadCache()
-                .cacheConsensusSample(
-                    regionGroupId,
-                    new ConsensusGroupHeartbeatSample(
-                        heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
-          }
+          cacheRegionHeartbeatSample(heartbeatResp, regionStatus, regionGroupId);
+          cacheConsensusSampleIfNeeded(heartbeatResp, regionGroupId, isLeader);
         });
+  }
+
+  private void cacheRegionHeartbeatSample(
+      TDataNodeHeartbeatResp heartbeatResp,
+      RegionStatus dataNodeRegionStatus,
+      TConsensusGroupId regionGroupId) {
     loadManager
         .getLoadCache()
-        .cacheUnreportedDataNodeRegionHeartbeatSamples(
+        .cacheRegionHeartbeatSample(
+            regionGroupId,
             nodeId,
-            regionGroupIdsOnDataNode,
-            judgedLeaders.keySet(),
-            heartbeatResp.getHeartbeatTimestamp());
+            new RegionHeartbeatSample(
+                heartbeatResp.getHeartbeatTimestamp(),
+                getRegionHeartbeatStatus(regionGroupId, dataNodeRegionStatus)),
+            false);
+  }
 
+  private RegionStatus getRegionHeartbeatStatus(
+      TConsensusGroupId regionGroupId, RegionStatus dataNodeRegionStatus) {
+    return dataNodeRegionStatus == RegionStatus.Removing
+        ? loadManager.getLoadCache().getRegionCacheLastSampleStatus(regionGroupId, nodeId)
+        : dataNodeRegionStatus;
+  }
+
+  private void cacheConsensusSampleIfNeeded(
+      TDataNodeHeartbeatResp heartbeatResp, TConsensusGroupId regionGroupId, Boolean isLeader) {
+    if (!Boolean.TRUE.equals(isLeader)
+        || !shouldCacheConsensusSample(regionGroupId)
+        || !hasConsensusLogicalTimestamp(heartbeatResp, regionGroupId)) {
+      return;
+    }
+
+    loadManager
+        .getLoadCache()
+        .cacheConsensusSample(
+            regionGroupId,
+            new ConsensusGroupHeartbeatSample(
+                heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
+  }
+
+  private boolean shouldCacheConsensusSample(TConsensusGroupId regionGroupId) {
+    return (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+            && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
+        || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+            && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE);
+  }
+
+  private boolean hasConsensusLogicalTimestamp(
+      TDataNodeHeartbeatResp heartbeatResp, TConsensusGroupId regionGroupId) {
+    return heartbeatResp.isSetConsensusLogicalTimeMap()
+        && heartbeatResp.getConsensusLogicalTimeMap().containsKey(regionGroupId);
+  }
+
+  private void cacheUsageSamples(TDataNodeHeartbeatResp heartbeatResp) {
     if (heartbeatResp.getRegionDeviceUsageMap() != null) {
       deviceNum.putAll(heartbeatResp.getRegionDeviceUsageMap());
       deviceUsageRespProcess.accept(heartbeatResp.getRegionDeviceUsageMap());
@@ -159,6 +175,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
     if (heartbeatResp.getRegionDisk() != null) {
       regionDisk.putAll(heartbeatResp.getRegionDisk());
     }
+  }
+
+  private void cachePipeHeartbeat(TDataNodeHeartbeatResp heartbeatResp) {
     if (heartbeatResp.getPipeMetaList() != null) {
       pipeRuntimeCoordinator.parseHeartbeat(
           nodeId,
@@ -167,12 +186,18 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
           heartbeatResp.getPipeRemainingEventCountList(),
           heartbeatResp.getPipeRemainingTimeList());
     }
+  }
+
+  private void cacheConfirmedConfigNodeEndPoints(TDataNodeHeartbeatResp heartbeatResp) {
     if (heartbeatResp.isSetConfirmedConfigNodeEndPoints()) {
       loadManager
           .getLoadCache()
           .updateConfirmedConfigNodeEndPoints(
               nodeId, heartbeatResp.getConfirmedConfigNodeEndPoints());
     }
+  }
+
+  private void cacheRegionSizeSamples(TDataNodeHeartbeatResp heartbeatResp) {
     if (heartbeatResp.isSetRegionDisk()) {
       loadManager.getLoadCache().updateRegionSizeMap(nodeId, heartbeatResp.getRegionDisk());
     }

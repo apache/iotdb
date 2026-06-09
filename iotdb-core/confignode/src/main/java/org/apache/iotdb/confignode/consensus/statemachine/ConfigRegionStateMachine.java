@@ -60,7 +60,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -101,8 +100,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private static final long LOG_FILE_MAX_SIZE =
       CONF.getConfigNodeSimpleConsensusLogSegmentSizeMax();
   private final TEndPoint currentNodeTEndPoint;
-  private static Pattern LOG_INPROGRESS_PATTERN = Pattern.compile("\\d+");
-  private static Pattern LOG_PATTERN = Pattern.compile("(?<=_)(\\d+)$");
+  private static final Pattern LOG_INPROGRESS_PATTERN = Pattern.compile("\\d+");
+  private static final Pattern LOG_PATTERN = Pattern.compile("(?<=_)(\\d+)$");
 
   public ConfigRegionStateMachine(ConfigManager configManager, ConfigPlanExecutor executor) {
     this.executor = executor;
@@ -126,9 +125,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    return Optional.ofNullable(request)
-        .map(o -> write((ConfigPhysicalPlan) request))
-        .orElseGet(() -> new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+    return request == null
+        ? new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+        : write((ConfigPhysicalPlan) request);
   }
 
   /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
@@ -314,10 +313,26 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getLoadManager().startTopologyService();
     }
 
-    threadPool.submit(() -> startLeaderServicesAndWaitLoadReady(epoch));
+    threadPool.submit(() -> startLeaderServicesAndWaitForLoadReady(epoch));
   }
 
-  private void startLeaderServicesAndWaitLoadReady(final long epoch) {
+  private void startLeaderServicesAndWaitForLoadReady(final long epoch) {
+    if (!startLeaderServices(epoch)) {
+      return;
+    }
+
+    boolean loadReady = waitForLoadReady(epoch);
+    if (!isCurrentLeaderServicesEpoch(epoch)) {
+      return;
+    }
+    logLoadWarmUpIfNeeded(loadReady);
+    LOGGER.info(
+        ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+        currentNodeTEndPoint);
+  }
+
+  private boolean startLeaderServices(final long epoch) {
     synchronized (leaderServicesLock) {
       if (!isCurrentLeaderServicesEpoch(epoch)) {
         LOGGER.info(
@@ -325,7 +340,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
                 + "skip starting leader services because the leader epoch is stale",
             ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
             currentNodeTEndPoint);
-        return;
+        return false;
       }
 
       // Start leader scheduling services
@@ -373,25 +388,23 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           epoch, () -> configManager.getClusterManager().checkClusterId());
 
       if (!isCurrentLeaderServicesEpoch(epoch)) {
-        return;
+        return false;
       }
       configManager
           .getProcedureManager()
-          .startExecutor(
-              () -> {
-                if (isCurrentLeaderServicesEpoch(epoch)) {
-                  leaderServicesReady.set(true);
-                }
-              });
-      if (!leaderServicesReady.get()) {
-        return;
-      }
+          .startExecutor(() -> markLeaderServicesReadyIfEpochCurrent(epoch));
+      markLeaderServicesReadyIfEpochCurrent(epoch);
+      return leaderServicesReady.get();
     }
+  }
 
-    boolean loadReady = waitForLoadReady(epoch);
-    if (!isCurrentLeaderServicesEpoch(epoch)) {
-      return;
+  private void markLeaderServicesReadyIfEpochCurrent(final long epoch) {
+    if (isCurrentLeaderServicesEpoch(epoch)) {
+      leaderServicesReady.set(true);
     }
+  }
+
+  private void logLoadWarmUpIfNeeded(final boolean loadReady) {
     if (!loadReady) {
       LOGGER.info(
           "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load"
@@ -399,13 +412,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint,
           configManager.getLoadManager().getLoadReadyReason());
-    }
-
-    if (isCurrentLeaderServicesEpoch(epoch)) {
-      LOGGER.info(
-          ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
-          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          currentNodeTEndPoint);
     }
   }
 
@@ -416,15 +422,22 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       if (configManager.getLoadManager().isLoadReady()) {
         return true;
       }
-      try {
-        TimeUnit.MILLISECONDS.sleep(WAIT_LOAD_READY_INTERVAL_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption while waiting for ConfigNode leader load warm-up.", e);
+      if (!sleepForLoadReady()) {
         return false;
       }
     }
     return isCurrentLeaderServicesEpoch(epoch) && configManager.getLoadManager().isLoadReady();
+  }
+
+  private boolean sleepForLoadReady() {
+    try {
+      TimeUnit.MILLISECONDS.sleep(WAIT_LOAD_READY_INTERVAL_MS);
+      return true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Unexpected interruption while waiting for ConfigNode leader load warm-up.", e);
+      return false;
+    }
   }
 
   public boolean areLeaderServicesReady() {
@@ -528,7 +541,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     dir.mkdirs();
     String[] list = new File(CURRENT_FILE_DIR).list();
     if (list != null && list.length != 0) {
-      Arrays.sort(list, new FileComparator());
+      Arrays.sort(list, Comparator.comparingLong(ConfigRegionStateMachine::parseEndIndex));
       for (String logFileName : list) {
         File logFile =
             SystemFileFactory.INSTANCE.getFile(CURRENT_FILE_DIR + File.separator + logFileName);
@@ -612,17 +625,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
   }
 
-  static class FileComparator implements Comparator<String> {
-
-    @Override
-    public int compare(String filename1, String filename2) {
-      long id1 = parseEndIndex(filename1);
-      long id2 = parseEndIndex(filename2);
-      return Long.compare(id1, id2);
-    }
-  }
-
-  static long parseEndIndex(String filename) {
+  private static long parseEndIndex(String filename) {
     if (filename.startsWith("log_inprogress_")) {
       Matcher matcher = LOG_INPROGRESS_PATTERN.matcher(filename);
       if (matcher.find()) {

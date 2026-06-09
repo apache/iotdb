@@ -365,24 +365,6 @@ public class LoadCache {
         .ifPresent(group -> group.cacheHeartbeatSample(sample));
   }
 
-  public void cacheUnreportedDataNodeRegionHeartbeatSamples(
-      int nodeId,
-      Set<TConsensusGroupId> regionGroupIdsOnDataNode,
-      Set<TConsensusGroupId> reportedRegionGroupIds,
-      long sampleTimestamp) {
-    regionGroupIdsOnDataNode.forEach(
-        regionGroupId -> {
-          if (reportedRegionGroupIds.contains(regionGroupId)) {
-            return;
-          }
-          cacheRegionHeartbeatSample(
-              regionGroupId,
-              nodeId,
-              new RegionHeartbeatSample(sampleTimestamp, RegionStatus.Unknown),
-              false);
-        });
-  }
-
   /** Update the NodeStatistics of all Nodes. */
   public void updateNodeStatistics(boolean forceUpdate) {
     nodeCacheMap

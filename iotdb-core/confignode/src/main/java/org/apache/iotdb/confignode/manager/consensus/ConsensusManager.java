@@ -450,10 +450,6 @@ public class ConsensusManager {
     return confirmLeader(true);
   }
 
-  public TSStatus confirmLeaderForInternalProcedure() {
-    return confirmLeader(false);
-  }
-
   private TSStatus confirmLeader(final boolean checkLoadReady) {
     if (!isLeader()) {
       TSStatus result = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
@@ -466,20 +462,7 @@ public class ConsensusManager {
       return result;
     }
 
-    long startTime = System.currentTimeMillis();
-    while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
-      if (isLeaderReady()) {
-        break;
-      }
-      try {
-        Thread.sleep(RETRY_WAIT_TIME_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn(
-            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
-        break;
-      }
-    }
+    waitForLeaderReady();
 
     if (!isLeaderReady()) {
       return getLeaderWarmingUpStatus(
@@ -494,6 +477,24 @@ public class ConsensusManager {
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus confirmLeaderForInternalProcedure() {
+    return confirmLeader(false);
+  }
+
+  private void waitForLeaderReady() {
+    long startTime = System.currentTimeMillis();
+    while (!isLeaderReady() && System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+      try {
+        Thread.sleep(RETRY_WAIT_TIME_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn(
+            ManagerMessages.UNEXPECTED_INTERRUPTION_DURING_WAITING_FOR_CONFIGNODE_LEADER_READY);
+        return;
+      }
+    }
   }
 
   private TSStatus getLeaderWarmingUpStatus(String message) {
