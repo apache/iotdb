@@ -96,6 +96,7 @@ public class ConsensusManager {
   ConsensusManager(IManager configManager, IConsensus consensusImpl) {
     this.configManager = configManager;
     this.consensusImpl = consensusImpl;
+    this.stateMachine = null;
   }
 
   public void start() throws IOException {
