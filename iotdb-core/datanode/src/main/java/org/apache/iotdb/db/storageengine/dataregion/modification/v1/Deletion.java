@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -120,7 +121,14 @@ public class Deletion extends Modification implements Cloneable {
   }
 
   public long getSerializedSize() {
-    return Long.BYTES * 2 + Integer.BYTES + (long) getPathString().length() * Character.BYTES;
+    return Long.BYTES * 2L + sizeToWriteString(getPathString());
+  }
+
+  private static int sizeToWriteString(String value) {
+    if (value == null) {
+      return Integer.BYTES;
+    }
+    return Integer.BYTES + value.getBytes(TSFileConfig.STRING_CHARSET).length;
   }
 
   @Override

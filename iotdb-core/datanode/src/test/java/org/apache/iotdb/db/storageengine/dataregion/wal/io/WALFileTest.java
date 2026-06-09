@@ -178,6 +178,7 @@ public class WALFileTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(walEntry.serializedSize());
     WALByteBufferForTest buffer = new WALByteBufferForTest(byteBuffer);
     walEntry.serialize(buffer);
+    assertEquals(walEntry.serializedSize(), byteBuffer.position());
     byteBuffer.flip();
     byte[] serializedEntry = new byte[byteBuffer.remaining()];
     byteBuffer.get(serializedEntry);
