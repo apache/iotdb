@@ -72,6 +72,8 @@ public class UDTFCluster implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validateRequiredAttribute("l")
+        .validateRequiredAttribute("k")
         .validate(
             x -> (int) x > 0,
             "Parameter l must be a positive integer.",

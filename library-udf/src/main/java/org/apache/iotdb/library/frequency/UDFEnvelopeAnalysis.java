@@ -87,6 +87,9 @@ public class UDFEnvelopeAnalysis implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (signals.isEmpty()) {
+      return;
+    }
     double[] envelopeValues = envelopeAnalyze(signals.toArray());
     frequency = frequency != Double.MAX_VALUE ? frequency : calculateFrequency(timestamps);
     int signalSize = signals.size();

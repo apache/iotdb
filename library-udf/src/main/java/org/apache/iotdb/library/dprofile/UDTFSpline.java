@@ -41,14 +41,19 @@ public class UDTFSpline implements UDTF {
   ArrayList<Long> timestamp = new ArrayList<>();
   ArrayList<Double> yDouble = new ArrayList<>();
   ArrayList<Double> xDouble = new ArrayList<>();
-  Long minimumTimestamp = -1L;
+  Long minimumTimestamp;
   PolynomialSplineFunction psf;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64);
+        .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
+        .validateRequiredAttribute("points")
+        .validate(
+            x -> (int) x >= 2,
+            "Parameter points should be at least 2.",
+            validator.getParameters().getInt("points"));
   }
 
   @Override
@@ -59,6 +64,8 @@ public class UDTFSpline implements UDTF {
     timestamp.clear();
     xDouble.clear();
     yDouble.clear();
+    minimumTimestamp = null;
+    psf = null;
   }
 
   @Override
@@ -66,7 +73,7 @@ public class UDTFSpline implements UDTF {
     double v = Util.getValueAsDouble(row);
     if (Double.isFinite(v)) {
       Long t = row.getTime();
-      if (minimumTimestamp < 0) {
+      if (minimumTimestamp == null) {
         minimumTimestamp = t;
       }
       timestamp.add(t);
@@ -77,7 +84,7 @@ public class UDTFSpline implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (yDouble.size() >= 4 && samplePoints >= 2) { // 4个点以上才进行插值
+    if (yDouble.size() >= 5 && samplePoints >= 2) {
       asi = new AkimaSplineInterpolator();
       double[] x = ArrayUtils.toPrimitive(xDouble.toArray(new Double[0]));
       double[] y = ArrayUtils.toPrimitive(yDouble.toArray(new Double[0]));

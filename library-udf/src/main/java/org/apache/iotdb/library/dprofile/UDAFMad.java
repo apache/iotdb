@@ -31,6 +31,8 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.NoSuchElementException;
+
 /** calculate the exact or approximate median absolute deviation (mad). */
 public class UDAFMad implements UDTF {
 
@@ -73,10 +75,14 @@ public class UDAFMad implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (exact) {
-      collector.putDouble(0, statistics.getMad());
-    } else {
-      collector.putDouble(0, sketch.getMad().result);
+    try {
+      if (exact) {
+        collector.putDouble(0, statistics.getMad());
+      } else {
+        collector.putDouble(0, sketch.getMad().result);
+      }
+    } catch (NoSuchElementException e) {
+      // Empty inputs have no MAD to emit.
     }
   }
 }

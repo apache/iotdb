@@ -43,6 +43,7 @@ public class UDTFResample implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validateRequiredAttribute("every")
         .validate(
             x -> (long) x > 0,
             "gap should be a time period whose unit is ms, s, m, h, d.",

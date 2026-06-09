@@ -37,7 +37,8 @@ public class UDTFDeconv implements UDTF {
 
   private final ArrayList<Double> list1 = new ArrayList<>();
   private final ArrayList<Double> list2 = new ArrayList<>();
-  private static final String QUOTINENT_RESULT = "quotinent";
+  private static final String QUOTIENT_RESULT = "quotient";
+  private static final String LEGACY_QUOTINENT_RESULT = "quotinent";
   private static final String REMAINDER_RESULT = "remainder";
   private String result;
 
@@ -48,11 +49,9 @@ public class UDTFDeconv implements UDTF {
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
-            x ->
-                ((String) x).equalsIgnoreCase(QUOTINENT_RESULT)
-                    || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
+            x -> isQuotientResult((String) x) || ((String) x).equalsIgnoreCase(REMAINDER_RESULT),
             "Result should be 'quotient' or 'remainder'.",
-            validator.getParameters().getStringOrDefault("result", QUOTINENT_RESULT));
+            validator.getParameters().getStringOrDefault("result", QUOTIENT_RESULT));
   }
 
   @Override
@@ -61,7 +60,7 @@ public class UDTFDeconv implements UDTF {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     list1.clear();
     list2.clear();
-    this.result = parameters.getStringOrDefault("result", QUOTINENT_RESULT);
+    this.result = parameters.getStringOrDefault("result", QUOTIENT_RESULT);
   }
 
   @Override
@@ -79,7 +78,7 @@ public class UDTFDeconv implements UDTF {
     if (list2.isEmpty()) { // Exception: divided by zero
       throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
     } else if (list2.size() > list1.size()) { // order of divisor is larger than dividend
-      if (result.equalsIgnoreCase(QUOTINENT_RESULT)) { // quotient
+      if (isQuotientResult(result)) { // quotient
         collector.putDouble(0, 0);
       } else { // residue
         for (int i = 0; i < list1.size(); i++) {
@@ -97,7 +96,7 @@ public class UDTFDeconv implements UDTF {
           r[i + j] -= q[i] * list2.get(j);
         }
       }
-      if (result.equalsIgnoreCase(QUOTINENT_RESULT)) { // quotient
+      if (isQuotientResult(result)) { // quotient
         for (int i = 0; i < q.length; i++) {
           collector.putDouble(i, q[i]);
         }
@@ -107,5 +106,10 @@ public class UDTFDeconv implements UDTF {
         }
       }
     }
+  }
+
+  private static boolean isQuotientResult(String result) {
+    return QUOTIENT_RESULT.equalsIgnoreCase(result)
+        || LEGACY_QUOTINENT_RESULT.equalsIgnoreCase(result);
   }
 }

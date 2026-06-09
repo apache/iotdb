@@ -50,8 +50,8 @@ public class UDTFHistogram implements UDTF {
             "parameter $count$ should be larger than 0",
             validator.getParameters().getIntOrDefault("count", 1))
         .validate(
-            params -> (double) params[0] <= (double) params[1],
-            "parameter $end$ should be larger than or equal to $start$",
+            params -> (double) params[0] < (double) params[1],
+            "parameter $end$ should be larger than $start$",
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
   }

@@ -81,8 +81,8 @@ public class UDAFMedian implements UDTF {
       } else {
         collector.putDouble(0, sketch.query(0.5));
       }
-    } catch (NoSuchElementException e) {
-      // just ignore it
+    } catch (NoSuchElementException | ArithmeticException e) {
+      // Empty inputs have no median to emit.
     }
   }
 }

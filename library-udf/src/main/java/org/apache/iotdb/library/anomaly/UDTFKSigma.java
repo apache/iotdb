@@ -33,6 +33,8 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
+  private static final int DEFAULT_WINDOW_SIZE = 10;
+
   private double mean = 0.0;
   private double variance = 0.0;
   private double sumX2 = 0.0;
@@ -51,7 +53,7 @@ public class UDTFKSigma implements UDTF {
         .validate(
             x -> (int) x > 0,
             "Window size should be larger than 0.",
-            validator.getParameters().getIntOrDefault("window", 10))
+            validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
             x -> (double) x > 0,
             "Parameter k should be larger than 0.",
@@ -66,7 +68,7 @@ public class UDTFKSigma implements UDTF {
         .setOutputDataType(udfParameters.getDataType(0));
     this.multipleK = udfParameters.getDoubleOrDefault("k", 3);
     this.dataType = udfParameters.getDataType(0);
-    this.windowSize = udfParameters.getIntOrDefault("window", 10000);
+    this.windowSize = udfParameters.getIntOrDefault("window", DEFAULT_WINDOW_SIZE);
     this.v = new CircularQueue<>(windowSize);
     this.t = new LongCircularQueue(windowSize);
   }

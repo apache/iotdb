@@ -72,6 +72,9 @@ public class UDTFHighPass implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     int n = valueList.size();
+    if (n == 0) {
+      return;
+    }
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     // each data point count for 2 double values, same with UDTFFFT
     double[] a = new double[2 * n];

@@ -51,6 +51,7 @@ public class UDTFIFFT implements UDTF {
     validator
         .validateInputSeriesNumber(2)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validateInputSeriesDataType(1, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
         .validate(
             x -> (long) x > 0,
             "interval should be a time period whose unit is ms, s, m, h, d.",
@@ -92,6 +93,9 @@ public class UDTFIFFT implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (time.isEmpty()) {
+      return;
+    }
     int n = time.get(time.size() - 1) + 1;
     double[] a = new double[n * 2];
     for (int i = 0; i < time.size(); i++) {

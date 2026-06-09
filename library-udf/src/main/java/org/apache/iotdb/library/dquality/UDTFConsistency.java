@@ -68,7 +68,7 @@ public class UDTFConsistency implements UDTF {
         collector.putDouble(rowWindow.getRow(0).getTime(), tsq.getConsistency());
       }
     } catch (IOException | NoNumberException ex) {
-      Logger.getLogger(UDTFCompleteness.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(UDTFConsistency.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

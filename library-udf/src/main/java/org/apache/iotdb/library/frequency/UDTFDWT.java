@@ -76,12 +76,20 @@ public class UDTFDWT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector pointCollector) throws Exception {
-    timestamp.add(row.getTime());
-    value.add(Util.getValueAsDouble(row));
+    if (!row.isNull(0)) {
+      double v = Util.getValueAsDouble(row);
+      if (Double.isFinite(v)) {
+        timestamp.add(row.getTime());
+        value.add(v);
+      }
+    }
   }
 
   @Override
   public void terminate(PointCollector pointCollector) throws Exception {
+    if (value.isEmpty()) {
+      return;
+    }
     if (!s.equals("") || !method.equals("")) { // When user offers at least one parameter
       DWTUtil transformer = new DWTUtil(method, s, layer, value);
       transformer.waveletTransform();

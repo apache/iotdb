@@ -58,6 +58,12 @@ public class UDTFMinMax implements UDTF {
             "parameter $min$ should be smaller than $max$.",
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("min").validateRequiredAttribute("max");
+    }
   }
 
   @Override
@@ -84,17 +90,17 @@ public class UDTFMinMax implements UDTF {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
-      }
-      timestamp.add(row.getTime());
-      if (flag) {
-        min = v;
-        max = v;
-        flag = false;
-      } else {
-        if (v > max) {
-          max = v;
-        } else if (v < min) {
+        timestamp.add(row.getTime());
+        if (flag) {
           min = v;
+          max = v;
+          flag = false;
+        } else {
+          if (v > max) {
+            max = v;
+          } else if (v < min) {
+            min = v;
+          }
         }
       }
     }

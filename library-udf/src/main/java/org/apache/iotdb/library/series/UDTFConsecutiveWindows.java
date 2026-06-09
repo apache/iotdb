@@ -41,6 +41,7 @@ public class UDTFConsecutiveWindows implements UDTF {
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
+        .validateRequiredAttribute("length")
         .validate(
             x -> (long) x > 0,
             "gap should be a time period whose unit is ms, s, m, h.",

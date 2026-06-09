@@ -33,6 +33,8 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function splits string from an input series according to given regex. */
 public class UDTFRegexSplit implements UDTF {
@@ -125,13 +127,23 @@ public class UDTFRegexSplit implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
         .validate(
-            regex -> ((String) regex).length() > 0,
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
             "regexp has to be a valid regular expression.",
-            validator.getParameters().getStringOrDefault("regex", ""))
+            validator.getParameters().getString("regex"))
         .validate(
             index -> (int) index >= -1,
             "index must a non-negative integer to fetch split results or -1 to get length.",
             validator.getParameters().getIntOrDefault("index", -1));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 }

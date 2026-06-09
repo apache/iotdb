@@ -87,6 +87,9 @@ public class UDTFFFT implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     int n = list.size();
+    if (n == 0) {
+      return;
+    }
     DoubleFFT_1D fft = new DoubleFFT_1D(n);
     // each data point count for 2 double values (re and im)
     double[] a = new double[2 * n];

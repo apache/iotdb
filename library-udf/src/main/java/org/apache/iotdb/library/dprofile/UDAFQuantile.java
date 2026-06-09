@@ -83,16 +83,16 @@ public class UDAFQuantile implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     long n = sketch.getN();
+    if (n == 0) {
+      return;
+    }
     // Nearest-rank: k-th smallest uses getApproxRank (strictly-less-than count) in [0, n-1];
     // rank=1 must map to k=n-1, not k=n which is unreachable and can overshoot the max sample.
-    long k = 0;
-    if (n > 0) {
-      k = (long) Math.ceil(rank * n) - 1;
-      if (k < 0) {
-        k = 0;
-      } else if (k >= n) {
-        k = n - 1;
-      }
+    long k = (long) Math.ceil(rank * n) - 1;
+    if (k < 0) {
+      k = 0;
+    } else if (k >= n) {
+      k = n - 1;
     }
     long result = sketch.findMinValueWithRank(k);
     switch (dataType) {

@@ -36,6 +36,7 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /** This function replaces substring according to regex parameter from an input series. */
 public class UDTFRegexReplace implements UDTF {
@@ -52,9 +53,11 @@ public class UDTFRegexReplace implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.TEXT)
+        .validateRequiredAttribute("regex")
+        .validateRequiredAttribute("replace")
         .validate(
-            regex -> ((String) regex).length() > 0,
-            "regex should not be empty",
+            regex -> ((String) regex).length() > 0 && isValidRegex((String) regex),
+            "regex should not be empty and has to be a valid regular expression.",
             validator.getParameters().getString("regex"))
         .validate(
             limit -> (int) limit >= -1,
@@ -65,6 +68,15 @@ public class UDTFRegexReplace implements UDTF {
             offset -> (int) offset >= 0,
             "offset has to be non-negative to skip first several matches.",
             validator.getParameters().getIntOrDefault("offset", 0));
+  }
+
+  private static boolean isValidRegex(String regex) {
+    try {
+      Pattern.compile(regex);
+      return true;
+    } catch (PatternSyntaxException e) {
+      return false;
+    }
   }
 
   @Override

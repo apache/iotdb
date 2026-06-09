@@ -172,7 +172,7 @@ public class ExactOrderStatistics {
       double median = getMedian(nums);
       DoubleArrayList dal = new DoubleArrayList();
       for (int i = 0; i < nums.size(); ++i) {
-        dal.set(i, Math.abs(nums.get(i) - median));
+        dal.add(Math.abs(nums.get(i) - median));
       }
       return getMedian(dal);
     }
@@ -202,7 +202,7 @@ public class ExactOrderStatistics {
       double median = getMedian(nums);
       DoubleArrayList dal = new DoubleArrayList();
       for (int i = 0; i < nums.size(); ++i) {
-        dal.set(i, Math.abs(nums.get(i) - median));
+        dal.add(Math.abs(nums.get(i) - median));
       }
       return getMedian(dal);
     }
@@ -215,7 +215,7 @@ public class ExactOrderStatistics {
       double median = getMedian(nums);
       DoubleArrayList dal = new DoubleArrayList();
       for (int i = 0; i < nums.size(); ++i) {
-        dal.set(i, Math.abs(nums.get(i) - median));
+        dal.add(Math.abs(nums.get(i) - median));
       }
       return getMedian(dal);
     }
@@ -228,7 +228,7 @@ public class ExactOrderStatistics {
       double median = getMedian(nums);
       DoubleArrayList dal = new DoubleArrayList();
       for (int i = 0; i < nums.size(); ++i) {
-        dal.set(i, Math.abs(nums.get(i) - median));
+        dal.add(Math.abs(nums.get(i) - median));
       }
       return getMedian(dal);
     }

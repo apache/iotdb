@@ -133,29 +133,4 @@ public class DTWState implements State {
   public List<DTWMatchResult> getMatchResults() {
     return matchResults;
   }
-
-  public static void main(String[] args) {
-    DTWState state = new DTWState();
-    state.setSize(5);
-    state.reset();
-    for (int i = 0; i < 4; i++) {
-      state.updateBuffer(i, i);
-      state.addMatchResult(new DTWMatchResult(i, i, i));
-    }
-    for (int i = 0; i < state.getTimeBuffer().length; i++) {
-      System.out.println(state.getTimeBuffer()[i] + " " + state.getValueBuffer()[i]);
-    }
-    for (DTWMatchResult matchResult : state.matchResults) {
-      System.out.println(matchResult);
-    }
-
-    DTWState newState = new DTWState();
-    newState.setSize(5);
-    newState.reset();
-    newState.deserialize(state.serialize());
-    for (int i = 0; i < state.getTimeBuffer().length; i++) {
-      System.out.println(state.getTimeBuffer()[i] + " " + state.getValueBuffer()[i]);
-    }
-    System.out.println(newState.getMatchResults());
-  }
 }

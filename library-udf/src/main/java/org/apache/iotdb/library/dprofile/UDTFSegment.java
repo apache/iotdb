@@ -42,8 +42,8 @@ public class UDTFSegment implements UDTF {
   private static final String METHOD_BOTTOM_UP = "bottom-up";
   private String output;
   private static final String OUTPUT_FIRST = "first";
-  private static final List<Long> timestamp = new ArrayList<>();
-  private static final List<Double> value = new ArrayList<>();
+  private final List<Long> timestamp = new ArrayList<>();
+  private final List<Double> value = new ArrayList<>();
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {

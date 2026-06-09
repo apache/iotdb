@@ -47,6 +47,10 @@ public class UDAFSkew implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    count = 0;
+    sumX1 = 0.0;
+    sumX2 = 0.0;
+    sumX3 = 0.0;
   }
 
   @Override
@@ -62,6 +66,9 @@ public class UDAFSkew implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (count == 0) {
+      return;
+    }
     collector.putDouble(
         0,
         (sumX3 / count - 3 * sumX1 / count * sumX2 / count + 2 * Math.pow(sumX1 / count, 3))

@@ -68,7 +68,7 @@ public class UDTFValidity implements UDTF {
         collector.putDouble(rowWindow.getRow(0).getTime(), tsq.getValidity());
       }
     } catch (IOException | NoNumberException ex) {
-      Logger.getLogger(UDTFCompleteness.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(UDTFValidity.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

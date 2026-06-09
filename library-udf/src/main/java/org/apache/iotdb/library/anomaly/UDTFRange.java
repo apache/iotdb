@@ -40,7 +40,14 @@ public class UDTFRange implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
+        .validateRequiredAttribute("lower_bound")
+        .validateRequiredAttribute("upper_bound")
+        .validate(
+            params -> (double) params[0] < (double) params[1],
+            "parameter \"lower_bound\" should be smaller than \"upper_bound\".",
+            validator.getParameters().getDouble("lower_bound"),
+            validator.getParameters().getDouble("upper_bound"));
   }
 
   @Override

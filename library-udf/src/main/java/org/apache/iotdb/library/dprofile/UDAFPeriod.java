@@ -61,7 +61,7 @@ public class UDAFPeriod implements UDTF {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
-      } else {
+      } else if (!value.isEmpty()) {
         value.add(value.getLast());
       }
     }

@@ -63,6 +63,12 @@ public class UDTFIQR implements UDTF {
             "parameter $q1$ should be smaller than $q3$",
             validator.getParameters().getDoubleOrDefault("q1", -1),
             validator.getParameters().getDoubleOrDefault("q3", 1));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("q1").validateRequiredAttribute("q3");
+    }
   }
 
   @Override
@@ -91,14 +97,19 @@ public class UDTFIQR implements UDTF {
       }
     } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
-      value.add(v);
-      timestamp.add(row.getTime());
+      if (Double.isFinite(v)) {
+        value.add(v);
+        timestamp.add(row.getTime());
+      }
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
+      if (value.isEmpty()) {
+        return;
+      }
       q1 = Quantiles.quartiles().index(1).compute(value);
       q3 = Quantiles.quartiles().index(3).compute(value);
       iqr = q3 - q1;

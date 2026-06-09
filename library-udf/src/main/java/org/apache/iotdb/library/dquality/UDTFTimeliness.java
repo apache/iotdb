@@ -68,7 +68,7 @@ public class UDTFTimeliness implements UDTF {
         collector.putDouble(rowWindow.getRow(0).getTime(), tsq.getTimeliness());
       }
     } catch (IOException | NoNumberException ex) {
-      Logger.getLogger(UDTFCompleteness.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(UDTFTimeliness.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

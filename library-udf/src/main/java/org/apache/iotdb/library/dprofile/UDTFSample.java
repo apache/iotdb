@@ -80,6 +80,7 @@ public class UDTFSample implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
+    this.num = 0;
     this.dataType = parameters.getDataType(0);
     String methodIn = parameters.getStringOrDefault("method", METHOD_RESERVOIR);
     if ("triangle".equalsIgnoreCase(methodIn)) {
@@ -99,7 +100,10 @@ public class UDTFSample implements UDTF {
           .setOutputDataType(parameters.getDataType(0));
       this.samples = new Pair[this.k];
       this.random = new Random();
+      return;
     }
+    this.samples = null;
+    this.random = null;
   }
 
   @Override

@@ -119,7 +119,10 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    validator.validateInputSeriesNumber(1, Integer.MAX_VALUE);
+    for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
+      validator.validateInputSeriesDataType(i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
+    }
   }
 
   @Override
@@ -147,7 +150,7 @@ public class UDTFLOF implements UDTF {
         timestamp[i] = rowWindow.getRow(row).getTime();
         for (int j = 0; j < dim; j++) {
           if (!rowWindow.getRow(row).isNull(j)) {
-            knn[i][j] = Util.getValueAsDouble(rowWindow.getRow(i), j);
+            knn[i][j] = Util.getValueAsDouble(rowWindow.getRow(row), j);
           } else {
             i--;
             size--;

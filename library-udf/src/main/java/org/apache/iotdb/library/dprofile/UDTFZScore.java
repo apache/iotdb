@@ -61,6 +61,12 @@ public class UDTFZScore implements UDTF {
             x -> ((Double) x) > 0,
             "Parameter \"sd\" is illegal. It should be larger than 0.",
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
+    if (validator
+        .getParameters()
+        .getStringOrDefault("compute", BATCH_COMPUTE)
+        .equalsIgnoreCase(STREAM_COMPUTE)) {
+      validator.validateRequiredAttribute("avg").validateRequiredAttribute("sd");
+    }
   }
 
   @Override
