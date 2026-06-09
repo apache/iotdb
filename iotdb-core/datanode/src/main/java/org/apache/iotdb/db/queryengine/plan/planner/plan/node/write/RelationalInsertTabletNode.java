@@ -329,7 +329,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   int subSerializeSize(int start, int end) {
-    return super.subSerializeSize(start, end) + columnCategories.length * Byte.BYTES;
+    return super.subSerializeSize(start, end) + getValidMeasurementNumber() * Byte.BYTES;
+  }
+
+  @Override
+  int subSerializeSize(List<int[]> rangeList) {
+    return super.subSerializeSize(rangeList) + getValidMeasurementNumber() * Byte.BYTES;
   }
 
   @Override

@@ -816,16 +816,30 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return Short.BYTES + subSerializeSize(start, end);
   }
 
+  /** Serialized size for wal */
+  public int serializedSize(List<int[]> rangeList) {
+    return Short.BYTES + subSerializeSize(rangeList);
+  }
+
   int subSerializeSize(int start, int end) {
+    return subSerializeSizeByRange(Collections.singletonList(new int[] {start, end}));
+  }
+
+  int subSerializeSize(List<int[]> rangeList) {
+    return subSerializeSizeByRange(rangeList);
+  }
+
+  private int subSerializeSizeByRange(List<int[]> rangeList) {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+    size += WALWriteUtils.sizeToWrite(targetPath.getFullPath());
+    int rowNumInRange = getRowNumInRange(rangeList);
     // measurements size
     size += Integer.BYTES;
     size += serializeMeasurementSchemasSize();
     // times size
     size += Integer.BYTES;
-    size += Long.BYTES * (end - start);
+    size += Long.BYTES * rowNumInRange;
     // bitmaps size
     size += Byte.BYTES;
     if (bitMaps != null) {
@@ -837,9 +851,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
         size += Byte.BYTES;
         if (bitMaps[i] != null) {
-          int len = end - start;
-          BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
+          BitMap partBitMap = new BitMap(rowNumInRange);
+          int copiedLength = 0;
+          for (int[] range : rangeList) {
+            int len = range[1] - range[0];
+            BitMap.copyOfRange(bitMaps[i], range[0], partBitMap, copiedLength, len);
+            copiedLength += len;
+          }
           size += partBitMap.getByteArray().length;
         }
       }
@@ -847,7 +865,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     // values size
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] != null) {
-        size += getColumnSize(dataTypes[i], columns[i], start, end);
+        for (int[] range : rangeList) {
+          size += getColumnSize(dataTypes[i], columns[i], range[0], range[1]);
+        }
       }
     }
     // isAlign
@@ -855,6 +875,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     // column category
 
     return size;
+  }
+
+  private int getRowNumInRange(List<int[]> rangeList) {
+    int rowNumInRange = 0;
+    for (int[] range : rangeList) {
+      rowNumInRange += range[1] - range[0];
+    }
+    return rowNumInRange;
   }
 
   private int getColumnSize(TSDataType dataType, Object column, int start, int end) {

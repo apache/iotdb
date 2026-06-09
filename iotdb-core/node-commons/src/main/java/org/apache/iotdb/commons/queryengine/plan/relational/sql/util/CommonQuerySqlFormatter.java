@@ -158,7 +158,8 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                           elements.stream()
                               .map(CommonQuerySqlFormatter::formatExpression)
                               .collect(joining(", "))));
-    } else if (node.getFillMethod() == FillPolicy.PREVIOUS) {
+    } else if (node.getFillMethod() == FillPolicy.PREVIOUS
+        || node.getFillMethod() == FillPolicy.NEXT) {
       node.getTimeBound()
           .ifPresent(timeBound -> builder.append(" TIME_BOUND ").append(timeBound.toString()));
       node.getTimeColumnIndex()

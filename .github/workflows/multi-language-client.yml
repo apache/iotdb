@@ -1,3 +1,4 @@
+# Shared client CI: run only affected language jobs via paths-filter.
 name: Multi-Language Client
 on:
   push:
@@ -5,28 +6,28 @@ on:
       - master
       - "rc/*"
     paths:
-      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
-      - 'example/client-cpp-example/**'
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
   pull_request:
     branches:
       - master
       - "rc/*"
       - 'force_ci/**'
     paths:
-      - 'pom.xml'
       - 'iotdb-client/pom.xml'
       - 'iotdb-client/client-py/**'
       - 'iotdb-client/client-cpp/**'
-      - 'example/client-cpp-example/**'
       - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
       - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
       - '.github/workflows/multi-language-client.yml'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -40,7 +41,50 @@ env:
   MAVEN_ARGS: --batch-mode --no-transfer-progress
 
 jobs:
+  # Per-language path filters: a client-cpp-only PR runs cpp, not go/python.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      cpp: ${{ steps.filter.outputs.cpp }}
+      python: ${{ steps.filter.outputs.python }}
+      go: ${{ steps.filter.outputs.go }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cpp:
+              - 'iotdb-client/pom.xml'
+              - 'iotdb-client/client-cpp/**'
+              - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+              - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+              - '.github/workflows/multi-language-client.yml'
+              - '.github/workflows/client-cpp-package.yml'
+              - '.github/scripts/package-client-cpp-*.sh'
+            python:
+              - 'pom.xml'
+              - 'iotdb-client/pom.xml'
+              - 'iotdb-client/client-py/**'
+              - 'docker/src/main/Dockerfile-1c1d'
+              - '.github/workflows/multi-language-client.yml'
+            go:
+              - 'pom.xml'
+              - 'iotdb-core/**'
+              - 'iotdb-api/**'
+              - 'iotdb-protocol/**'
+              - 'distribution/**'
+              - 'integration-test/**'
+              - 'iotdb-client/session/**'
+              - 'iotdb-client/jdbc/**'
+              - 'iotdb-client/cli/**'
+              - 'iotdb-client/service-rpc/**'
+              - '.github/workflows/multi-language-client.yml'
+
   cpp:
+    needs: changes
+    # Full client validation (format + server build + verify) for C++ examples and SDK.
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.cpp == 'true'
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -81,11 +125,12 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          brew install boost
-          brew install openssl llvm@17
+          brew install boost openssl llvm@17 bison
           ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
           clang-format --version
+          bison --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -115,7 +160,6 @@ jobs:
         shell: bash
         run: |
           ./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check
-          ./mvnw -P with-cpp -pl example/client-cpp-example spotless:check
       - name: Build IoTDB server
         shell: bash
         run: ./mvnw clean install -pl distribution -am -DskipTests
@@ -126,9 +170,9 @@ jobs:
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
           if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026"
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -Dcmake.generator="Visual Studio 18 2026"
           else
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
           fi
       - name: Upload Artifact
         if: failure()
@@ -139,6 +183,8 @@ jobs:
           retention-days: 1
 
   go:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -168,6 +214,8 @@ jobs:
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.python == 'true'
     strategy:
       fail-fast: false
       max-parallel: 15
