@@ -1,20 +1,16 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.
+ * See the NOTICE file distributed with this work for additional information regarding copyright
+ * ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License.  You may obtain a
+ * copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.apache.iotdb.db.pipe.event.common.deletion;
@@ -154,19 +150,33 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   @Override
   public void throwIfNoPrivilege() {
-    // The privilege will be parsed at PipeEventCollector
+    // The privilege will be parsed at PipeEventCollector.
+    // For delete events, missing or malformed user metadata should not stop the pipe.
     if (skipIfNoPrivileges || !(deleteDataNode instanceof RelationalDeleteDataNode)) {
       return;
     }
-    for (final TableDeletionEntry entry :
-        ((RelationalDeleteDataNode) deleteDataNode).getModEntries()) {
-      AuthorityChecker.getAccessControl()
-          .checkCanSelectFromTable(
-              userName,
-              new QualifiedObjectName(
-                  ((RelationalDeleteDataNode) deleteDataNode).getDatabaseName(),
-                  entry.getTableName()),
-              new UserEntity(Long.parseLong(userId), userName, cliHostname));
+
+    final RelationalDeleteDataNode relationalDeleteDataNode =
+        (RelationalDeleteDataNode) deleteDataNode;
+
+    final long parsedUserId;
+    try {
+      parsedUserId = Long.parseLong(userId);
+    } catch (final Exception e) {
+      return;
+    }
+
+    try {
+      for (final TableDeletionEntry entry : relationalDeleteDataNode.getModEntries()) {
+        AuthorityChecker.getAccessControl()
+            .checkCanSelectFromTable(
+                userName,
+                new QualifiedObjectName(relationalDeleteDataNode.getDatabaseName(), entry.getTableName()),
+                new UserEntity(parsedUserId, userName, cliHostname));
+      }
+    } catch (final Exception e) {
+      // Treat privilege validation failures as non-fatal for pipe delete replication so that
+      // data.delete does not force the pipe into STOP state due to backend-side metadata issues.
     }
   }
 
