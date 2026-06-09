@@ -58,7 +58,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -338,11 +337,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     }
 
     // Start the remaining leader services in parallel and wait for all of them to finish.
-    final List<CompletableFuture<Void>> startups = new ArrayList<>();
-    for (final Runnable startup : leaderServiceStartups()) {
-      startups.add(startInParallelIfEpochCurrent(epoch, startup));
-    }
-    CompletableFuture.allOf(startups.toArray(new CompletableFuture[0])).join();
+    final CompletableFuture<?>[] startups =
+        leaderServiceStartups().stream()
+            .map(startup -> startInParallelIfEpochCurrent(epoch, startup))
+            .toArray(CompletableFuture[]::new);
+    CompletableFuture.allOf(startups).join();
 
     if (!isCurrentLeaderServicesEpoch(epoch)) {
       return;
