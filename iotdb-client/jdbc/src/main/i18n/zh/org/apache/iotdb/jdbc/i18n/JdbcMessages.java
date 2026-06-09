@@ -173,6 +173,7 @@ public final class JdbcMessages {
       "不支持此类型的客户端信息：";
   public static final String NOT_SUPPORT_SET_NETWORK_TIMEOUT =
       "不支持 setNetworkTimeout";
+  public static final String EXCEPTION_TIMEOUT_MUST_BE_0_80BF04B8 = "timeout 必须 >= 0";
   public static final String QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE =
       "queryTimeout %d 必须 >= 0！";
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "不支持 setSavepoint";

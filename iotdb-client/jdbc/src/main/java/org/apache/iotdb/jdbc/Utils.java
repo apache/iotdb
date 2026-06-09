@@ -51,60 +51,47 @@ public class Utils {
   static IoTDBConnectionParams parseUrl(String url, Properties info) throws IoTDBURLException {
     Properties properties = info == null ? new Properties() : info;
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
-    if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
-      return params;
-    }
 
-    boolean isUrlLegal = false;
+    boolean isUrlLegal = url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX);
     Matcher matcher = null;
     String host = null;
     String suffixURL = null;
-    if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
+    if (!isUrlLegal && url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
-      int i = -1;
-      if (subURL.startsWith("[")) {
-        int endIndex = subURL.indexOf("]");
-        if (endIndex > 1
-            && endIndex + 1 < subURL.length()
-            && COLON.equals(subURL.substring(endIndex + 1, endIndex + 2))) {
-          host = subURL.substring(1, endIndex);
-          i = endIndex + 2;
+      int authorityEnd = findAuthorityEnd(subURL);
+      String authority = subURL.substring(0, authorityEnd);
+      String portText = null;
+      if (authority.startsWith("[")) {
+        int closingBracketIndex = authority.indexOf("]");
+        if (closingBracketIndex > 1
+            && closingBracketIndex + 1 < authority.length()
+            && COLON.equals(authority.substring(closingBracketIndex + 1, closingBracketIndex + 2))) {
+          host = authority.substring(1, closingBracketIndex);
+          portText = authority.substring(closingBracketIndex + 2);
         }
-      } else if (!subURL.contains("[") && !subURL.contains("]")) {
-        i = subURL.lastIndexOf(COLON);
-        if (i > 0) {
-          host = subURL.substring(0, i);
-          i++;
+      } else {
+        int portSeparatorIndex = authority.lastIndexOf(COLON);
+        if (portSeparatorIndex > 0 && portSeparatorIndex < authority.length() - 1) {
+          host = authority.substring(0, portSeparatorIndex);
+          portText = authority.substring(portSeparatorIndex + 1);
         }
       }
-
-      if (i > 0) {
-        params.setHost(host);
-        // parse port
-        int port = 0;
-        int portStartIndex = i;
-        for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
-          port = port * 10 + (subURL.charAt(i) - '0');
-        }
-        suffixURL = i < subURL.length() ? subURL.substring(i) : "";
-        // legal port
-        if (i > portStartIndex && port >= 1 && port <= 65535) {
+      if (host != null && portText != null) {
+        int port = parsePort(portText);
+        suffixURL = subURL.substring(authorityEnd);
+        if (port >= 1 && port <= 65535) {
+          params.setHost(host);
           params.setPort(port);
 
-          // parse database
-          if (i < subURL.length() && subURL.charAt(i) == SLASH) {
-            int endIndex = subURL.indexOf(PARAMETER_SEPARATOR, i + 1);
+          if (!suffixURL.isEmpty() && suffixURL.charAt(0) == SLASH) {
+            int endIndex = suffixURL.indexOf(PARAMETER_SEPARATOR, 1);
             String database;
-            if (endIndex <= i + 1) {
-              if (i + 1 == subURL.length()) {
-                database = null;
-              } else {
-                database = subURL.substring(i + 1);
-              }
+            if (endIndex < 0) {
+              database = suffixURL.length() == 1 ? null : suffixURL.substring(1);
               suffixURL = "";
             } else {
-              database = subURL.substring(i + 1, endIndex);
-              suffixURL = subURL.substring(endIndex);
+              database = endIndex == 1 ? null : suffixURL.substring(1, endIndex);
+              suffixURL = suffixURL.substring(endIndex);
             }
             params.setDb(database);
           }
@@ -131,16 +118,17 @@ public class Utils {
     }
     if (properties.containsKey(Config.DEFAULT_BUFFER_CAPACITY)) {
       params.setThriftDefaultBufferSize(
-          parseIntegerProperty(properties, Config.DEFAULT_BUFFER_CAPACITY));
+          parsePositiveIntegerProperty(properties, Config.DEFAULT_BUFFER_CAPACITY));
     }
     if (properties.containsKey(Config.THRIFT_FRAME_MAX_SIZE)) {
-      params.setThriftMaxFrameSize(parseIntegerProperty(properties, Config.THRIFT_FRAME_MAX_SIZE));
+      params.setThriftMaxFrameSize(
+          parsePositiveIntegerProperty(properties, Config.THRIFT_FRAME_MAX_SIZE));
     }
     if (properties.containsKey(Config.VERSION)) {
       params.setVersion(parseVersionProperty(properties));
     }
     if (properties.containsKey(Config.NETWORK_TIMEOUT)) {
-      params.setNetworkTimeout(parseIntegerProperty(properties, Config.NETWORK_TIMEOUT));
+      params.setNetworkTimeout(parseNonNegativeIntegerProperty(properties, Config.NETWORK_TIMEOUT));
     }
     if (properties.containsKey(Config.TIME_ZONE)) {
       params.setTimeZone(validateTimeZoneProperty(properties));
@@ -149,7 +137,7 @@ public class Utils {
       params.setCharset(validateCharsetProperty(properties));
     }
     if (properties.containsKey(Config.USE_SSL)) {
-      params.setUseSSL(parseBooleanProperty(properties));
+      params.setUseSSL(parseBooleanProperty(properties, Config.USE_SSL));
     }
     if (properties.containsKey(Config.TRUST_STORE)) {
       params.setTrustStore(properties.getProperty(Config.TRUST_STORE));
@@ -166,6 +154,9 @@ public class Utils {
     if (properties.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(
           RpcSslUtils.normalizeProtocol(properties.getProperty(Config.SSL_PROTOCOL)));
+    }
+    if (properties.containsKey(RPC_COMPRESS)) {
+      params.setRpcThriftCompressionEnabled(parseBooleanProperty(properties, RPC_COMPRESS));
     }
     if (properties.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(validateSqlDialectProperty(properties));
@@ -198,7 +189,7 @@ public class Utils {
       switch (key) {
         case RPC_COMPRESS:
           if (isBoolean(value)) {
-            Config.rpcThriftCompressionEnable = Boolean.parseBoolean(value);
+            info.put(key, value);
           } else {
             return false;
           }
@@ -226,7 +217,9 @@ public class Utils {
           break;
         case Config.NETWORK_TIMEOUT:
           try {
-            Integer.parseInt(value);
+            if (Integer.parseInt(value) < 0) {
+              return false;
+            }
           } catch (NumberFormatException e) {
             return false;
           }
@@ -266,6 +259,34 @@ public class Utils {
     return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
   }
 
+  private static int findAuthorityEnd(String subURL) {
+    int slashIndex = subURL.indexOf(SLASH);
+    int parameterIndex = subURL.indexOf(PARAMETER_SEPARATOR);
+    if (slashIndex < 0) {
+      return parameterIndex < 0 ? subURL.length() : parameterIndex;
+    }
+    if (parameterIndex < 0) {
+      return slashIndex;
+    }
+    return Math.min(slashIndex, parameterIndex);
+  }
+
+  private static int parsePort(String portText) {
+    if (portText.isEmpty()) {
+      return -1;
+    }
+    for (int i = 0; i < portText.length(); i++) {
+      if (!Character.isDigit(portText.charAt(i))) {
+        return -1;
+      }
+    }
+    try {
+      return Integer.parseInt(portText);
+    } catch (NumberFormatException e) {
+      return -1;
+    }
+  }
+
   private static int parseIntegerProperty(Properties properties, String key)
       throws IoTDBURLException {
     String value = getPropertyValue(properties, key);
@@ -274,6 +295,24 @@ public class Utils {
     } catch (NumberFormatException e) {
       throw invalidPropertyValue(key, value, e);
     }
+  }
+
+  private static int parsePositiveIntegerProperty(Properties properties, String key)
+      throws IoTDBURLException {
+    int value = parseIntegerProperty(properties, key);
+    if (value <= 0) {
+      throw invalidPropertyValue(key, String.valueOf(value), null);
+    }
+    return value;
+  }
+
+  private static int parseNonNegativeIntegerProperty(Properties properties, String key)
+      throws IoTDBURLException {
+    int value = parseIntegerProperty(properties, key);
+    if (value < 0) {
+      throw invalidPropertyValue(key, String.valueOf(value), null);
+    }
+    return value;
   }
 
   private static Constant.Version parseVersionProperty(Properties properties)
@@ -286,10 +325,11 @@ public class Utils {
     }
   }
 
-  private static boolean parseBooleanProperty(Properties properties) throws IoTDBURLException {
-    String value = getPropertyValue(properties, Config.USE_SSL);
+  private static boolean parseBooleanProperty(Properties properties, String key)
+      throws IoTDBURLException {
+    String value = getPropertyValue(properties, key);
     if (!isBoolean(value)) {
-      throw invalidPropertyValue(Config.USE_SSL, value, null);
+      throw invalidPropertyValue(key, value, null);
     }
     return Boolean.parseBoolean(value);
   }

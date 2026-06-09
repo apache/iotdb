@@ -39,7 +39,7 @@ public class IoTDBDataSource implements DataSource {
   private String user;
   private String password;
   private Properties properties;
-  private Integer port = 6667;
+  private Integer port = Config.IOTDB_DEFAULT_PORT;
 
   public IoTDBDataSource() {
     properties = new Properties();
@@ -50,9 +50,7 @@ public class IoTDBDataSource implements DataSource {
     this.properties = new Properties();
     setUser(user);
     setPassword(password);
-    if (port != null && port != 0) {
-      this.port = port;
-    }
+    setPort(port);
   }
 
   public String getUser() {
@@ -78,7 +76,7 @@ public class IoTDBDataSource implements DataSource {
   }
 
   public void setPort(Integer port) {
-    this.port = port;
+    this.port = port == null || port == 0 ? Config.IOTDB_DEFAULT_PORT : port;
   }
 
   public String getUrl() {

@@ -26,6 +26,7 @@ import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -42,6 +43,16 @@ public class IoTDBDataSourceTest {
 
     assertNull(dataSource.getUser());
     assertNull(dataSource.getPassword());
+  }
+
+  @Test
+  public void testNullOrZeroPortUsesDefault() {
+    IoTDBDataSource dataSource = new IoTDBDataSource();
+
+    dataSource.setPort(0);
+    assertEquals(Integer.valueOf(Config.IOTDB_DEFAULT_PORT), dataSource.getPort());
+    dataSource.setPort(null);
+    assertEquals(Integer.valueOf(Config.IOTDB_DEFAULT_PORT), dataSource.getPort());
   }
 
   @Test

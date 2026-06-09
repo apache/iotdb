@@ -54,6 +54,7 @@ public class IoTDBConnectionParams {
   private String keyStore;
   private String keyStorePwd;
   private String sslProtocol = Config.DEFAULT_SSL_PROTOCOL;
+  private boolean rpcThriftCompressionEnabled = Config.rpcThriftCompressionEnable;
 
   private String sqlDialect = TREE;
 
@@ -209,6 +210,14 @@ public class IoTDBConnectionParams {
 
   public void setSslProtocol(String sslProtocol) {
     this.sslProtocol = sslProtocol;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return rpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    this.rpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
   public String getSqlDialect() {

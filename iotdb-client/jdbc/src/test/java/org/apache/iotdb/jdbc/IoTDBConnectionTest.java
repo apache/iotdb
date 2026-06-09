@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -309,6 +310,17 @@ public class IoTDBConnectionTest {
     assertSame(cause, exception.getCause());
     verify(transport).close();
     return exception;
+  }
+
+  @Test
+  public void testStandardConnectionStateMethods() throws SQLException {
+    assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, connection.getHoldability());
+    assertFalse(connection.isValid(0));
+  }
+
+  @Test(expected = SQLException.class)
+  public void testIsValidRejectsNegativeTimeout() throws SQLException {
+    connection.isValid(-1);
   }
 
   @Test

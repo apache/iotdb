@@ -530,7 +530,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public int getHoldability() throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
   @Override
