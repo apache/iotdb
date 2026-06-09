@@ -74,6 +74,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TwoStageCountProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
+  private static final String LEGACY_PROCESSOR_OUTPUT_SERIES_KEY = "processor.output.series";
 
   private String pipeName;
   private long creationTime;
@@ -98,10 +99,17 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+    validator.validateSynonymAttributes(
+        Collections.singletonList(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY),
+        Collections.singletonList(LEGACY_PROCESSOR_OUTPUT_SERIES_KEY),
+        true);
 
     final String rawOutputSeries =
-        validator.getParameters().getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY);
+        validator
+            .getParameters()
+            .getStringByKeys(
+                PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY,
+                LEGACY_PROCESSOR_OUTPUT_SERIES_KEY);
     try {
       PathUtils.isLegalPath(rawOutputSeries);
     } catch (IllegalPathException e) {
@@ -119,8 +127,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
 
-    outputSeries =
-        new PartialPath(parameters.getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
@@ -150,6 +157,13 @@ public class TwoStageCountProcessor implements PipeProcessor {
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
     twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
+  }
+
+  static PartialPath parseOutputSeries(final PipeParameters parameters)
+      throws IllegalPathException {
+    return new PartialPath(
+        parameters.getStringByKeys(
+            PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY, LEGACY_PROCESSOR_OUTPUT_SERIES_KEY));
   }
 
   @Override
