@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
@@ -92,6 +93,47 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void groupingSetsAliasesUseResolvedExpressions() {
+    AnalyzedQuery rollup = analyze("SELECT s1 AS x, COUNT(*) FROM table1 GROUP BY ROLLUP(x)");
+    Analysis.GroupingSetAnalysis rollupAnalysis = rollup.analysis.getGroupingSets(rollup.query);
+    assertSingleOriginalIdentifier(rollupAnalysis, "s1");
+    assertEquals(1, rollupAnalysis.getRollups().size());
+
+    AnalyzedQuery cube = analyze("SELECT s1 AS x, COUNT(*) FROM table1 GROUP BY CUBE(x)");
+    Analysis.GroupingSetAnalysis cubeAnalysis = cube.analysis.getGroupingSets(cube.query);
+    assertSingleOriginalIdentifier(cubeAnalysis, "s1");
+    assertEquals(1, cubeAnalysis.getCubes().size());
+
+    AnalyzedQuery explicit =
+        analyze("SELECT s1 AS x, COUNT(*) FROM table1 GROUP BY GROUPING SETS ((x))");
+    Analysis.GroupingSetAnalysis explicitAnalysis =
+        explicit.analysis.getGroupingSets(explicit.query);
+    assertSingleOriginalIdentifier(explicitAnalysis, "s1");
+    assertEquals(1, explicitAnalysis.getOrdinarySets().size());
+  }
+
+  @Test
+  public void groupingSetsInputColumnTakesPrecedenceOverAlias() {
+    String sql = "SELECT x + 1 AS x, COUNT(s1) FROM table_with_x GROUP BY ROLLUP(x)";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    assertSingleOriginalIdentifier(
+        analyzedQuery.analysis.getGroupingSets(analyzedQuery.query), "x");
+  }
+
+  @Test
+  public void groupingSetsAliasIsNotBlockedByOuterScopeColumn() {
+    String sql =
+        "SELECT x FROM table_with_x WHERE EXISTS ("
+            + "SELECT s1 AS x, COUNT(*) FROM table1 "
+            + "WHERE table_with_x.s1 = table1.s1 GROUP BY GROUPING SETS ((x)))";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    QuerySpecification innerQuery = getExistsSubquery(analyzedQuery.query);
+    assertSingleOriginalIdentifier(analyzedQuery.analysis.getGroupingSets(innerQuery), "s1");
+  }
+
+  @Test
   public void orderByOutputAliasTakesPrecedenceOverInputColumn() {
     String sql = "SELECT s1 AS x FROM table_with_x ORDER BY x";
 
@@ -125,6 +167,18 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void orderByExpressionUsesOrderByScopeWithoutAliasRewrite() {
+    String sql = "SELECT s1 AS x FROM table1 ORDER BY x + 1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    Expression orderByExpression =
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0);
+    assertTrue(orderByExpression instanceof ArithmeticBinaryExpression);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void orderByWindowFunctionAliasReusesSelectOutputField() {
     String sql = "SELECT row_number() OVER (ORDER BY s1) AS rn FROM table1 ORDER BY rn";
 
@@ -150,6 +204,18 @@ public class SelectAliasReuseTest {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x, COUNT(*) FROM table1 GROUP BY x",
         "Column alias 'x' is ambiguous");
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, s2 AS x, COUNT(*) FROM table1 GROUP BY ROLLUP(x)",
+        "Column alias 'x' is ambiguous");
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, s2 AS x, COUNT(*) FROM table1 GROUP BY CUBE(x)",
+        "Column alias 'x' is ambiguous");
+
+    assertAnalyzeSemanticException(
+        "SELECT s1 AS x, s2 AS x, COUNT(*) FROM table1 GROUP BY GROUPING SETS ((x))",
+        "Column alias 'x' is ambiguous");
   }
 
   @Test
@@ -172,9 +238,6 @@ public class SelectAliasReuseTest {
         "SELECT s1 AS x FROM table1 WHERE x > 1", "Column 'x' cannot be resolved");
 
     assertAnalyzeSemanticException(
-        "SELECT s1 AS x FROM table1 ORDER BY x + 1", "Column 'x' cannot be resolved");
-
-    assertAnalyzeSemanticException(
         "SELECT AVG(s1) AS avg_s1 FROM table1 HAVING avg_s1 > 1",
         "Column 'avg_s1' cannot be resolved");
 
@@ -185,8 +248,7 @@ public class SelectAliasReuseTest {
   @Test
   public void selectAliasDoesNotLeakIntoSubquery() {
     assertAnalyzeSemanticException(
-        "SELECT s1 AS x FROM table1 ORDER BY (SELECT x FROM table1)",
-        "Column 'x' cannot be resolved");
+        "SELECT s1 AS x, (SELECT x FROM table1) FROM table1", "Column 'x' cannot be resolved");
   }
 
   @Test
@@ -229,6 +291,12 @@ public class SelectAliasReuseTest {
     assertEquals(1, expressions.size());
     assertTrue(expressions.get(0) instanceof FunctionCall);
     assertEquals("date_bin", ((FunctionCall) expressions.get(0)).getName().getSuffix());
+  }
+
+  private static void assertSingleOriginalIdentifier(
+      Analysis.GroupingSetAnalysis analysis, String name) {
+    assertEquals(1, analysis.getOriginalExpressions().size());
+    assertIdentifier(analysis.getOriginalExpressions().get(0), name);
   }
 
   private static void assertIdentifier(Expression expression, String name) {

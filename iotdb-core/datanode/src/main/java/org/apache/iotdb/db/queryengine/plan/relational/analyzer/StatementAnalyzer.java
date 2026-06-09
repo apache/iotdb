@@ -388,21 +388,15 @@ public class StatementAnalyzer {
 
   private static final class SelectAlias {
     private final String canonicalName;
-    private final Expression expression;
     private final int position;
 
-    private SelectAlias(String canonicalName, Expression expression, int position) {
+    private SelectAlias(String canonicalName, int position) {
       this.canonicalName = requireNonNull(canonicalName, "canonicalName is null");
-      this.expression = requireNonNull(expression, "expression is null");
       this.position = position;
     }
 
     private String getCanonicalName() {
       return canonicalName;
-    }
-
-    private Expression getExpression() {
-      return expression;
     }
 
     private int getPosition() {
@@ -970,11 +964,7 @@ public class StatementAnalyzer {
       if (node.getOrderBy().isPresent()) {
         orderByExpressions =
             analyzeOrderBy(
-                node,
-                getSortItemsFromOrderBy(node.getOrderBy()),
-                queryBodyScope,
-                queryBodyScope,
-                emptyList());
+                node, getSortItemsFromOrderBy(node.getOrderBy()), queryBodyScope, emptyList());
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1289,11 +1279,7 @@ public class StatementAnalyzer {
 
         orderByExpressions =
             analyzeOrderBy(
-                node,
-                orderBy.getSortItems(),
-                sourceScope,
-                orderByScope.get(),
-                selectAnalysis.getAliases());
+                node, orderBy.getSortItems(), orderByScope.get(), selectAnalysis.getAliases());
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
@@ -1684,8 +1670,7 @@ public class StatementAnalyzer {
                 selectExpression, node, scope, outputExpressionBuilder, selectExpressionBuilder);
             if (singleColumn.getAlias().isPresent()) {
               Identifier alias = singleColumn.getAlias().get();
-              selectAliasBuilder.add(
-                  new SelectAlias(alias.getCanonicalValue(), selectExpression, outputPosition));
+              selectAliasBuilder.add(new SelectAlias(alias.getCanonicalValue(), outputPosition));
             }
             outputPosition++;
           }
@@ -2799,7 +2784,7 @@ public class StatementAnalyzer {
                 column = outputExpressions.get(toIntExact(ordinal - 1));
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               } else {
-                column = resolveGroupBySelectAlias(column, scope, selectAliases);
+                column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
                 verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
                 analyzeExpression(column, scope);
               }
@@ -2826,13 +2811,18 @@ public class StatementAnalyzer {
             }
           } else if (groupingElement instanceof GroupingSets) {
             GroupingSets element = (GroupingSets) groupingElement;
+            Map<NodeRef<Expression>, Expression> resolvedGroupingColumns = new HashMap<>();
             for (Expression column : groupingElement.getExpressions()) {
+              Expression originalColumn = column;
+              column = resolveGroupBySelectAlias(column, scope, outputExpressions, selectAliases);
+              verifyNoAggregateWindowOrGroupingFunctions(column, "GROUP BY clause");
               analyzeExpression(column, scope);
               if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                 throw new SemanticException(
                     String.format("GROUP BY expression must be a column reference: %s", column));
               }
 
+              resolvedGroupingColumns.put(NodeRef.of(originalColumn), column);
               groupingExpressions.add(column);
             }
 
@@ -2841,6 +2831,11 @@ public class StatementAnalyzer {
                     .map(
                         set ->
                             set.stream()
+                                .map(
+                                    expression ->
+                                        requireNonNull(
+                                            resolvedGroupingColumns.get(NodeRef.of(expression)),
+                                            "resolved grouping expression is null"))
                                 .map(NodeRef::of)
                                 .map(analysis.getColumnReferenceFields()::get)
                                 .map(ResolvedField::getFieldId)
@@ -2902,7 +2897,10 @@ public class StatementAnalyzer {
     }
 
     private Expression resolveGroupBySelectAlias(
-        Expression expression, Scope scope, List<SelectAlias> selectAliases) {
+        Expression expression,
+        Scope scope,
+        List<Expression> outputExpressions,
+        List<SelectAlias> selectAliases) {
       if (!(expression instanceof Identifier)) {
         return expression;
       }
@@ -2913,7 +2911,7 @@ public class StatementAnalyzer {
       }
 
       return resolveSelectAlias(identifier, selectAliases)
-          .map(SelectAlias::getExpression)
+          .map(alias -> outputExpressions.get(alias.getPosition() - 1))
           .orElse(expression);
     }
 
@@ -4212,16 +4210,12 @@ public class StatementAnalyzer {
     }
 
     private List<Expression> analyzeOrderBy(
-        Node node,
-        List<SortItem> sortItems,
-        Scope sourceScope,
-        Scope orderByScope,
-        List<SelectAlias> selectAliases) {
+        Node node, List<SortItem> sortItems, Scope orderByScope, List<SelectAlias> selectAliases) {
       ImmutableList.Builder<Expression> orderByFieldsBuilder = ImmutableList.builder();
 
       for (SortItem item : sortItems) {
         Expression expression = item.getSortKey();
-        Scope expressionScope = sourceScope;
+        Scope expressionScope = orderByScope;
 
         if (expression instanceof LongLiteral) {
           // this is an ordinal in the output tuple
