@@ -174,6 +174,7 @@ public abstract class InsertNode extends SearchNode {
 
   public void setMeasurementSchemas(MeasurementSchema[] measurementSchemas) {
     this.measurementSchemas = measurementSchemas;
+    measurementColumnCnt = -1;
   }
 
   public String[] getMeasurements() {
@@ -189,13 +190,16 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isValidMeasurement(int i) {
-    return measurementSchemas != null
+    return measurements != null
+        && measurements[i] != null
+        && measurementSchemas != null
         && measurementSchemas[i] != null
         && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
   }
 
   public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
+    measurementColumnCnt = -1;
   }
 
   public TSDataType[] getDataTypes() {
@@ -327,8 +331,12 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
+    if (measurements == null) {
+      return false;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null
+          && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD)) {
         return true;
       }
     }
@@ -354,15 +362,16 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isMeasurementFailed(int index) {
-    return measurements[index] == null;
+    return measurements == null || measurements[index] == null;
+  }
+
+  protected boolean isWritableFieldMeasurement(int index) {
+    return !isMeasurementFailed(index)
+        && (columnCategories == null || columnCategories[index] == TsTableColumnCategory.FIELD);
   }
 
   public boolean allMeasurementFailed() {
-    if (measurements != null) {
-      return failedMeasurementNumber
-          >= measurements.length - (tagColumnIndices == null ? 0 : tagColumnIndices.size());
-    }
-    return true;
+    return measurements == null || !hasValidMeasurements();
   }
 
   // endregion
@@ -418,6 +427,8 @@ public abstract class InsertNode extends SearchNode {
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
+    measurementColumnCnt = -1;
+    tagColumnIndices = null;
     if (columnCategories != null) {
       tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {

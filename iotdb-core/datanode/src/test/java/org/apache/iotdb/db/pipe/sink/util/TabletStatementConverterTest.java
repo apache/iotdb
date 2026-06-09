@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -170,6 +171,41 @@ public class TabletStatementConverterTest {
 
     // Verify round trip: original Tablet should equal converted Tablet
     assertTabletsEqual(originalTablet, convertedTablet);
+  }
+
+  @Test
+  public void testDeserializeStatementFromTabletFormatWithNullSchemaAndNullColumn()
+      throws IOException, MetadataException {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    ReadWriteIOUtils.write("root.sg.device", outputStream);
+    ReadWriteIOUtils.write(1, outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(1, outputStream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(1L, outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(true), outputStream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(false), outputStream);
+
+    ReadWriteIOUtils.write(true, outputStream);
+
+    final ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+    final InsertTabletStatement statement =
+        TabletStatementConverter.deserializeStatementFromTabletFormat(buffer);
+
+    Assert.assertArrayEquals(new String[] {null}, statement.getMeasurements());
+    Assert.assertArrayEquals(new TSDataType[] {null}, statement.getDataTypes());
+    Assert.assertNull(statement.getColumns()[0]);
+    Assert.assertTrue(statement.isAligned());
   }
 
   /**

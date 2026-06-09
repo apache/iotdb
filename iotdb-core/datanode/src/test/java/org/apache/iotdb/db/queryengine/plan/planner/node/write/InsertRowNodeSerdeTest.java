@@ -176,6 +176,25 @@ public class InsertRowNodeSerdeTest {
     Assert.assertEquals(insertRowNode.serializedSize(), byteBuffer.position());
   }
 
+  @Test
+  public void testDeserializeFromWALWithMarkedFailedMeasurementOnly()
+      throws IllegalPathException, IOException {
+    InsertRowNode insertRowNode = getInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.markFailedMeasurement(1);
+
+    byte[] bytes = new byte[insertRowNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =

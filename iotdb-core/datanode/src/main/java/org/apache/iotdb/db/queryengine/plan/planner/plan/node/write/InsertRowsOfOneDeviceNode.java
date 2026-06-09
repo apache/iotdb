@@ -241,6 +241,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       String[] measurements = insertRowNode.getMeasurements();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
       for (int i = 0; i < measurements.length; i++) {
+        if (measurements[i] == null) {
+          continue;
+        }
         if (!measurementSet.contains(measurements[i])) {
           measurementList.add(measurements[i]);
           dataTypeList.add(dataTypes[i]);

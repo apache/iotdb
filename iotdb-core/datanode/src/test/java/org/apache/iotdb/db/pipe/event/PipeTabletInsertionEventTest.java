@@ -33,10 +33,12 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -351,6 +353,75 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
+  public void convertToTabletSkipsFailedMeasurementsForCoveredTreePattern() throws Exception {
+    final InsertRowNode rowNode =
+        new InsertRowNode(
+            new PlanNodeId("plan node failed row"),
+            new PartialPath(deviceId),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            Arrays.copyOf(schemas, schemas.length),
+            times[0],
+            Arrays.copyOf(insertRowNode.getValues(), schemas.length),
+            false);
+    rowNode.markFailedMeasurement(1);
+
+    final Tablet rowTablet =
+        new TabletInsertionEventTreePatternParser(rowNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(rowTablet, "s2", schemas.length - 1);
+
+    final InsertTabletNode tabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("plan node failed tablet"),
+            new PartialPath(deviceId),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            Arrays.copyOf(schemas, schemas.length),
+            times,
+            null,
+            Arrays.copyOf(insertTabletNode.getColumns(), schemas.length),
+            times.length);
+    tabletNode.markFailedMeasurement(1);
+
+    final Tablet tablet =
+        new TabletInsertionEventTreePatternParser(tabletNode, new PrefixTreePattern(pattern))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(tablet, "s2", schemas.length - 1);
+  }
+
+  @Test
+  public void convertToTabletSkipsFailedMeasurementsForTablePattern() throws Exception {
+    final TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[schemas.length];
+    Arrays.fill(columnCategories, TsTableColumnCategory.FIELD);
+    columnCategories[0] = TsTableColumnCategory.TAG;
+    columnCategories[2] = TsTableColumnCategory.ATTRIBUTE;
+
+    final RelationalInsertTabletNode tabletNode =
+        new RelationalInsertTabletNode(
+            new PlanNodeId("plan node failed relational tablet"),
+            new PartialPath("table1", false),
+            false,
+            Arrays.copyOf(measurementIds, measurementIds.length),
+            Arrays.copyOf(dataTypes, dataTypes.length),
+            times,
+            null,
+            Arrays.copyOf(insertTabletNode.getColumns(), schemas.length),
+            times.length,
+            columnCategories);
+    tabletNode.setMeasurementSchemas(Arrays.copyOf(schemas, schemas.length));
+    tabletNode.markFailedMeasurement(1);
+
+    final Tablet tablet =
+        new TabletInsertionEventTablePatternParser(
+                null, null, tabletNode, new TablePattern(true, null, null))
+            .convertToTablet();
+    assertTabletDoesNotContainMeasurement(tablet, "s2", schemas.length - 1);
+  }
+
+  @Test
   public void convertToTabletWithFilteredRowsForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
@@ -536,6 +607,16 @@ public class PipeTabletInsertionEventTest {
           ? AuthorityChecker.getTSStatus(
               Collections.singletonList(0), checkedPathsSupplier, permission)
           : new TSStatus(org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+  }
+
+  private static void assertTabletDoesNotContainMeasurement(
+      final Tablet tablet, final String measurement, final int expectedSchemaSize) {
+    Assert.assertEquals(expectedSchemaSize, tablet.getSchemas().size());
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      Assert.assertNotNull(tablet.getSchemas().get(i));
+      Assert.assertNotEquals(measurement, tablet.getSchemas().get(i).getMeasurementName());
+      Assert.assertNotNull(tablet.getValues()[i]);
     }
   }
 }

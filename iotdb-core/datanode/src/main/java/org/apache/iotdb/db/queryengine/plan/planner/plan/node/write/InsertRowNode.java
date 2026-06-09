@@ -240,6 +240,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     measurements[index] = null;
     dataTypes[index] = null;
     values[index] = null;
+    measurementColumnCnt = -1;
   }
 
   @Override
@@ -268,7 +269,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series. */
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
+    ReadWriteIOUtils.write(getValidMeasurementNumber(), buffer);
     serializeMeasurementsOrSchemas(buffer);
     putDataTypesAndValues(buffer);
     ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), buffer);
@@ -282,7 +283,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws IOException - If an I/O error occurs.
    */
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
+    ReadWriteIOUtils.write(getValidMeasurementNumber(), stream);
     serializeMeasurementsOrSchemas(stream);
     putDataTypesAndValues(stream);
     ReadWriteIOUtils.write((byte) (isNeedInferType ? 1 : 0), stream);
@@ -637,7 +638,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements and values, ignoring failed time series. */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    buffer.putInt(getValidMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
     putDataTypesAndValues(buffer);
     buffer.put((byte) (isAligned ? 1 : 0));
@@ -910,15 +911,26 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length
-        || Objects.isNull(dataTypes[columnIndex])
-        || dataTypes[columnIndex] == TSDataType.OBJECT) {
+    if (!canComposeTimeValuePair(columnIndex)) {
       return null;
     }
     Object value = values[columnIndex];
-    return Objects.nonNull(value)
-        ? new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value))
-        : null;
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
+  }
+
+  private boolean canComposeTimeValuePair(final int columnIndex) {
+    return measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && values != null
+        && columnIndex < values.length
+        && values[columnIndex] != null
+        && dataTypes != null
+        && columnIndex < dataTypes.length
+        && dataTypes[columnIndex] != null
+        && dataTypes[columnIndex] != TSDataType.OBJECT
+        && (columnCategories == null || columnIndex < columnCategories.length)
+        && isWritableFieldMeasurement(columnIndex);
   }
 
   public void updateLastCache(String databaseName) {

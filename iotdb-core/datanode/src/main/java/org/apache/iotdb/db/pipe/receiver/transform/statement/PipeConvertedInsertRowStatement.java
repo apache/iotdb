@@ -126,6 +126,9 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
+      if (values == null || i >= values.length || values[i] == null) {
+        continue;
+      }
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {

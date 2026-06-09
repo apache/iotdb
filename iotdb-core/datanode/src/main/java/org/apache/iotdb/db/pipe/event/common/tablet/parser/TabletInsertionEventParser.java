@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -127,14 +128,26 @@ public abstract class TabletInsertionEventParser {
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
+    final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
+    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
+    final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
+    final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
+    final Object[] originValues = insertRowNode.getValues();
+
     generateColumnIndexMapper(
-        insertRowNode.getMeasurements(), originColumnIndex2FilteredColumnIndexMapperList);
+        originColumnNameStringList, originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i ->
+                isValidOriginColumn(
+                        originColumnNameStringList,
+                        originMeasurementSchemaList,
+                        originValueDataTypes,
+                        i)
+                    && originValues != null
+                    && i < originValues.length);
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
@@ -143,19 +156,15 @@ public abstract class TabletInsertionEventParser {
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
-    final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
-    final String[] originColumnNameStringList = insertRowNode.getMeasurements();
-    final TsTableColumnCategory[] originColumnCategories = insertRowNode.getColumnCategories();
-    final TSDataType[] originValueDataTypes = insertRowNode.getDataTypes();
-    final Object[] originValues = insertRowNode.getValues();
-
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnCategories != null && originColumnCategories[i] != null
+            originColumnCategories != null
+                    && i < originColumnCategories.length
+                    && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
                 : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueDataTypes[i];
@@ -202,22 +211,6 @@ public abstract class TabletInsertionEventParser {
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
-    generateColumnIndexMapper(
-        insertTabletNode.getMeasurements(), originColumnIndex2FilteredColumnIndexMapperList);
-
-    final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
-
-    this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
-    this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
-    this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize];
-    this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
-
     final MeasurementSchema[] originMeasurementSchemaList =
         insertTabletNode.getMeasurementSchemas();
     final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
@@ -226,13 +219,38 @@ public abstract class TabletInsertionEventParser {
     final Object[] originValueColumns = insertTabletNode.getColumns();
     final BitMap[] originBitMapList = insertTabletNode.getBitMaps();
 
+    generateColumnIndexMapper(
+        originColumnNameStringList, originColumnIndex2FilteredColumnIndexMapperList);
+
+    final int filteredColumnSize =
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i ->
+                isValidOriginColumn(
+                        originColumnNameStringList,
+                        originMeasurementSchemaList,
+                        originValueColumnDataTypes,
+                        i)
+                    && originValueColumns != null
+                    && i < originValueColumns.length
+                    && originValueColumns[i] != null);
+
+    this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
+    this.columnNameStringList = new String[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
+    this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
+    this.valueColumns = new Object[filteredColumnSize];
+    this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
+
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnCategories != null && originColumnCategories[i] != null
+            originColumnCategories != null
+                    && i < originColumnCategories.length
+                    && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
                 : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
@@ -298,10 +316,9 @@ public abstract class TabletInsertionEventParser {
         originMeasurementList, originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
-        Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
-            .filter(Objects::nonNull)
-            .toArray()
-            .length;
+        compactColumnIndexMapper(
+            originColumnIndex2FilteredColumnIndexMapperList,
+            i -> isValidOriginColumn(originMeasurementSchemaList, i));
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
@@ -372,6 +389,46 @@ public abstract class TabletInsertionEventParser {
   protected abstract void generateColumnIndexMapper(
       final String[] originMeasurementList,
       final Integer[] originColumnIndex2FilteredColumnIndexMapperList);
+
+  private static int compactColumnIndexMapper(
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList,
+      final IntPredicate columnValidator) {
+    int filteredCount = 0;
+    for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
+      if (originColumnIndex2FilteredColumnIndexMapperList[i] != null && columnValidator.test(i)) {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
+      } else {
+        originColumnIndex2FilteredColumnIndexMapperList[i] = null;
+      }
+    }
+    return filteredCount;
+  }
+
+  private static boolean isValidOriginColumn(
+      final String[] originColumnNameStringList,
+      final MeasurementSchema[] originMeasurementSchemaList,
+      final TSDataType[] originValueDataTypes,
+      final int index) {
+    return originColumnNameStringList != null
+        && index < originColumnNameStringList.length
+        && originColumnNameStringList[index] != null
+        && originMeasurementSchemaList != null
+        && index < originMeasurementSchemaList.length
+        && originMeasurementSchemaList[index] != null
+        && originMeasurementSchemaList[index].getType() != null
+        && originValueDataTypes != null
+        && index < originValueDataTypes.length
+        && originValueDataTypes[index] != null;
+  }
+
+  private static boolean isValidOriginColumn(
+      final List<IMeasurementSchema> originMeasurementSchemaList, final int index) {
+    return originMeasurementSchemaList != null
+        && index < originMeasurementSchemaList.size()
+        && originMeasurementSchemaList.get(index) != null
+        && originMeasurementSchemaList.get(index).getMeasurementName() != null
+        && originMeasurementSchemaList.get(index).getType() != null;
+  }
 
   private List<Integer> generateRowIndexList(final long[] originTimestampColumn) {
     final int rowCount = originTimestampColumn.length;

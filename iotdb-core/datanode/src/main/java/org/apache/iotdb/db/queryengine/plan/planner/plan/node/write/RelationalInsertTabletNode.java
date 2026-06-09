@@ -180,7 +180,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   @Override
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
-    Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
+    Object[] values = initTabletValuesForSplit(dataTypes.length, count, dataTypes);
     BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
@@ -250,7 +250,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     super.serializeAttributes(byteBuffer);
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(byteBuffer);
       }
     }
@@ -260,7 +260,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     super.serializeAttributes(stream);
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);
       }
     }
@@ -285,7 +285,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
     super.subSerialize(buffer, rangeList, encodedSearchIndex);
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+      if (shouldSerializeMeasurement(i)) {
         buffer.put(columnCategories[i].getCategory());
       }
     }
@@ -450,7 +450,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       System.arraycopy(times, start, subNode.times, destLoc, length);
       for (int i = 0; i < subNode.columns.length; i++) {
-        if (dataTypes[i] != null) {
+        if (hasColumnForSplit(i)) {
           System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
         }
         if (subNode.bitMaps != null
