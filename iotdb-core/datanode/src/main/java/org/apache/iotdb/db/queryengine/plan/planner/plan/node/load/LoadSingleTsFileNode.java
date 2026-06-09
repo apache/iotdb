@@ -48,8 +48,10 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -67,6 +69,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private final boolean tsFileContainsObjectColumn;
   private File objectFileSearchRoot;
+  private final Map<String, String> writableViewTableNameRewriteMap;
+  private final Map<String, Map<String, String>> writableViewColumnNameRewriteMap;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
@@ -80,6 +84,57 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final boolean needDecode4TimeColumn,
       final boolean tsFileContainsObjectColumn,
       final File objectFileSearchRoot) {
+    this(
+        id,
+        resource,
+        isTableModel,
+        database,
+        deleteAfterLoad,
+        writePointCount,
+        needDecode4TimeColumn,
+        tsFileContainsObjectColumn,
+        objectFileSearchRoot,
+        Collections.emptyMap(),
+        Collections.emptyMap());
+  }
+
+  public LoadSingleTsFileNode(
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecode4TimeColumn,
+      final boolean tsFileContainsObjectColumn,
+      final File objectFileSearchRoot,
+      final Map<String, String> writableViewTableNameRewriteMap) {
+    this(
+        id,
+        resource,
+        isTableModel,
+        database,
+        deleteAfterLoad,
+        writePointCount,
+        needDecode4TimeColumn,
+        tsFileContainsObjectColumn,
+        objectFileSearchRoot,
+        writableViewTableNameRewriteMap,
+        Collections.emptyMap());
+  }
+
+  public LoadSingleTsFileNode(
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecode4TimeColumn,
+      final boolean tsFileContainsObjectColumn,
+      final File objectFileSearchRoot,
+      final Map<String, String> writableViewTableNameRewriteMap,
+      final Map<String, Map<String, String>> writableViewColumnNameRewriteMap) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -87,7 +142,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
-    this.needDecodeTsFile = needDecode4TimeColumn;
+    this.writableViewTableNameRewriteMap = new HashMap<>(writableViewTableNameRewriteMap);
+    this.writableViewColumnNameRewriteMap =
+        copyWritableViewColumnNameRewriteMap(writableViewColumnNameRewriteMap);
+    this.needDecodeTsFile =
+        needDecode4TimeColumn
+            || !this.writableViewTableNameRewriteMap.isEmpty()
+            || !this.writableViewColumnNameRewriteMap.isEmpty();
     this.tsFileContainsObjectColumn = tsFileContainsObjectColumn;
     if (tsFileContainsObjectColumn && objectFileSearchRoot == null) {
       String fileName = tsFile.getName();
@@ -150,6 +211,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public boolean isTsFileContainsObjectColumn() {
     return tsFileContainsObjectColumn;
+  }
+
+  public Map<String, String> getWritableViewTableNameRewriteMap() {
+    return writableViewTableNameRewriteMap;
+  }
+
+  public Map<String, Map<String, String>> getWritableViewColumnNameRewriteMap() {
+    return writableViewColumnNameRewriteMap;
   }
 
   public File getObjectFileSearchRoot() {
@@ -315,5 +384,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         needDecodeTsFile,
         deleteAfterLoad,
         localRegionReplicaSet);
+  }
+
+  private static Map<String, Map<String, String>> copyWritableViewColumnNameRewriteMap(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final Map<String, Map<String, String>> copiedMap = new HashMap<>();
+    columnNameRewriteMap.forEach(
+        (tableName, columnMap) -> copiedMap.put(tableName, new HashMap<>(columnMap)));
+    return copiedMap;
   }
 }

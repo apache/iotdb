@@ -76,6 +76,8 @@ public class LoadTsFileStatement extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private boolean needDecode4TimeColumn;
+  private Map<String, String> writableViewTableNameRewriteMap = new HashMap<>();
+  private Map<String, Map<String, String>> writableViewColumnNameRewriteMap = new HashMap<>();
   private final List<Boolean> tsFileContainsObjectColumn = new ArrayList<>();
   private File objectFileSearchRoot;
 
@@ -300,6 +302,35 @@ public class LoadTsFileStatement extends Statement {
     this.needDecode4TimeColumn = true;
   }
 
+  public void addWritableViewTableNameRewrite(
+      final String viewTableName, final String sourceTableName) {
+    this.writableViewTableNameRewriteMap.put(viewTableName, sourceTableName);
+  }
+
+  public Map<String, String> getWritableViewTableNameRewriteMap() {
+    return writableViewTableNameRewriteMap;
+  }
+
+  public void addWritableViewColumnNameRewrite(
+      final String viewTableName, final Map<String, String> columnNameRewriteMap) {
+    if (columnNameRewriteMap.isEmpty()) {
+      return;
+    }
+    this.writableViewColumnNameRewriteMap.put(viewTableName, new HashMap<>(columnNameRewriteMap));
+  }
+
+  public Map<String, Map<String, String>> getWritableViewColumnNameRewriteMap() {
+    return writableViewColumnNameRewriteMap;
+  }
+
+  public boolean hasWritableViewTableNameRewrite() {
+    return !writableViewTableNameRewriteMap.isEmpty();
+  }
+
+  public boolean hasWritableViewColumnNameRewrite() {
+    return !writableViewColumnNameRewriteMap.isEmpty();
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -459,6 +490,10 @@ public class LoadTsFileStatement extends Statement {
       statement.resources = new ArrayList<>(batchFiles.size());
       statement.writePointCountList = new ArrayList<>(batchFiles.size());
       statement.isTableModel = new ArrayList<>(batchFiles.size());
+      statement.writableViewTableNameRewriteMap =
+          new HashMap<>(this.writableViewTableNameRewriteMap);
+      statement.writableViewColumnNameRewriteMap =
+          copyWritableViewColumnNameRewriteMap(this.writableViewColumnNameRewriteMap);
       for (int j = 0; j < batchFiles.size(); j++) {
         statement.isTableModel.add(false);
       }
@@ -503,6 +538,14 @@ public class LoadTsFileStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitLoadFile(this, context);
+  }
+
+  private static Map<String, Map<String, String>> copyWritableViewColumnNameRewriteMap(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final Map<String, Map<String, String>> copiedMap = new HashMap<>();
+    columnNameRewriteMap.forEach(
+        (tableName, columnMap) -> copiedMap.put(tableName, new HashMap<>(columnMap)));
+    return copiedMap;
   }
 
   @Override

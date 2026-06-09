@@ -334,7 +334,9 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFile(),
               tsFileDataManager::addOrSendTsFileData,
               node.isTsFileContainsObjectColumn(),
-              node.getObjectFileSearchRoot())
+              node.getObjectFileSearchRoot(),
+              node.getWritableViewTableNameRewriteMap(),
+              node.getWritableViewColumnNameRewriteMap())
           .splitTsFileByDataPartition();
       if (!tsFileDataManager.sendAllTsFileData()) {
         return false;
@@ -897,6 +899,7 @@ public class LoadTsFileScheduler implements IScheduler {
           if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
+          final long dispatchedDataSize = pieceNode.getDataSize();
           boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
           if (isDispatchSuccess && !scheduler.dispatchObjectFileBatches(pieceNode, replicaSet)) {
             isDispatchSuccess = false;
@@ -912,8 +915,8 @@ public class LoadTsFileScheduler implements IScheduler {
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
 
-          dataSize -= chunkData.getDataSize();
-          block.reduceMemoryUsage(chunkData.getDataSize());
+          dataSize -= dispatchedDataSize;
+          block.reduceMemoryUsage(dispatchedDataSize);
 
           if (!isDispatchSuccess) {
             return false;

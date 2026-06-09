@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public abstract class IDPredicate implements StreamSerializable, BufferSerializable, Accountable {
@@ -79,6 +80,10 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
   }
 
   public abstract boolean matches(IDeviceID deviceID);
+
+  public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    return this;
+  }
 
   @Override
   public long serialize(OutputStream stream) throws IOException {
@@ -219,6 +224,29 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     }
 
     @Override
+    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+      if (deviceID == null
+          || tableNameRewriteMap == null
+          || tableNameRewriteMap.isEmpty()
+          || !deviceID.isTableModel()) {
+        return this;
+      }
+
+      final String rewrittenTableName = tableNameRewriteMap.get(deviceID.getTableName());
+      if (rewrittenTableName == null) {
+        return this;
+      }
+
+      final Object[] segments = deviceID.getSegments();
+      final String[] rewrittenSegments = new String[segments.length];
+      rewrittenSegments[0] = rewrittenTableName;
+      for (int i = 1; i < segments.length; i++) {
+        rewrittenSegments[i] = Objects.toString(segments[i], null);
+      }
+      return new FullExactMatch(IDeviceID.Factory.DEFAULT_FACTORY.create(rewrittenSegments));
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) {
         return true;
@@ -307,6 +335,18 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public boolean matches(IDeviceID deviceID) {
       return Objects.equals(pattern, deviceID.segment(segmentIndex));
+    }
+
+    @Override
+    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+      if (segmentIndex != 0 || tableNameRewriteMap == null || tableNameRewriteMap.isEmpty()) {
+        return this;
+      }
+
+      final String rewrittenPattern = tableNameRewriteMap.get(pattern);
+      return rewrittenPattern == null
+          ? this
+          : new SegmentExactMatch(rewrittenPattern, segmentIndex);
     }
 
     @Override
@@ -406,6 +446,22 @@ public abstract class IDPredicate implements StreamSerializable, BufferSerializa
     @Override
     public boolean matches(IDeviceID deviceID) {
       return predicates.stream().allMatch(predicate -> predicate.matches(deviceID));
+    }
+
+    @Override
+    public IDPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+      if (tableNameRewriteMap == null || tableNameRewriteMap.isEmpty()) {
+        return this;
+      }
+
+      boolean rewritten = false;
+      final List<IDPredicate> rewrittenPredicates = new ArrayList<>(predicates.size());
+      for (final IDPredicate predicate : predicates) {
+        final IDPredicate rewrittenPredicate = predicate.rewriteTableName(tableNameRewriteMap);
+        rewritten |= rewrittenPredicate != predicate;
+        rewrittenPredicates.add(rewrittenPredicate);
+      }
+      return rewritten ? new And(rewrittenPredicates.toArray(new IDPredicate[0])) : this;
     }
 
     @Override

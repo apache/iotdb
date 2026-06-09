@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class DeletionPredicate implements StreamSerializable, BufferSerializable, Accountable {
@@ -90,6 +91,64 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
 
   public boolean affects(String measurementName) {
     return measurementNames.isEmpty() || measurementNames.contains(measurementName);
+  }
+
+  public DeletionPredicate rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    return rewriteTableNameAndColumns(tableNameRewriteMap, Collections.emptyMap());
+  }
+
+  public DeletionPredicate rewriteTableNameAndColumns(
+      final Map<String, String> tableNameRewriteMap,
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    if (tableNameRewriteMap == null || tableNameRewriteMap.isEmpty()) {
+      return rewriteColumns(columnNameRewriteMap);
+    }
+
+    final String rewrittenTableName = tableNameRewriteMap.get(tableName);
+    if (rewrittenTableName == null) {
+      return rewriteColumns(columnNameRewriteMap);
+    }
+
+    final IDPredicate rewrittenIdPredicate = idPredicate.rewriteTableName(tableNameRewriteMap);
+    final List<String> rewrittenMeasurementNames = rewriteMeasurementNames(columnNameRewriteMap);
+
+    return new DeletionPredicate(
+        rewrittenTableName, rewrittenIdPredicate, rewrittenMeasurementNames);
+  }
+
+  private DeletionPredicate rewriteColumns(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final List<String> rewrittenMeasurementNames = rewriteMeasurementNames(columnNameRewriteMap);
+    return rewrittenMeasurementNames == measurementNames
+        ? this
+        : new DeletionPredicate(tableName, idPredicate, rewrittenMeasurementNames);
+  }
+
+  private List<String> rewriteMeasurementNames(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    if (measurementNames.isEmpty()
+        || columnNameRewriteMap == null
+        || columnNameRewriteMap.isEmpty()) {
+      return measurementNames;
+    }
+
+    final Map<String, String> columnRewriteMap = columnNameRewriteMap.get(tableName);
+    if (columnRewriteMap == null || columnRewriteMap.isEmpty()) {
+      return measurementNames;
+    }
+
+    boolean rewritten = false;
+    final List<String> rewrittenMeasurementNames = new ArrayList<>(measurementNames.size());
+    for (final String measurementName : measurementNames) {
+      final String rewrittenMeasurementName = columnRewriteMap.get(measurementName);
+      if (rewrittenMeasurementName == null) {
+        rewrittenMeasurementNames.add(measurementName);
+      } else {
+        rewrittenMeasurementNames.add(rewrittenMeasurementName);
+        rewritten = true;
+      }
+    }
+    return rewritten ? rewrittenMeasurementNames : measurementNames;
   }
 
   @Override

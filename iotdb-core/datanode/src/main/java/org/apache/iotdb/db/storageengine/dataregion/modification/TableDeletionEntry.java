@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public class TableDeletionEntry extends ModEntry {
@@ -131,6 +132,22 @@ public class TableDeletionEntry extends ModEntry {
   public TableDeletionEntry clone() {
     TimeRange timeRangeCopy = new TimeRange(timeRange.getMin(), timeRange.getMax());
     return new TableDeletionEntry(predicate, timeRangeCopy);
+  }
+
+  public TableDeletionEntry rewriteTableName(final Map<String, String> tableNameRewriteMap) {
+    return rewriteTableNameAndColumns(tableNameRewriteMap, java.util.Collections.emptyMap());
+  }
+
+  public TableDeletionEntry rewriteTableNameAndColumns(
+      final Map<String, String> tableNameRewriteMap,
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final DeletionPredicate rewrittenPredicate =
+        predicate.rewriteTableNameAndColumns(tableNameRewriteMap, columnNameRewriteMap);
+    if (rewrittenPredicate == predicate) {
+      return this;
+    }
+    return new TableDeletionEntry(
+        rewrittenPredicate, new TimeRange(timeRange.getMin(), timeRange.getMax()));
   }
 
   public String getTableName() {

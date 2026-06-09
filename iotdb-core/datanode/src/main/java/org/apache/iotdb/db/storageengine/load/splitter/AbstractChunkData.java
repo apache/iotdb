@@ -31,14 +31,18 @@ public abstract class AbstractChunkData implements ChunkData {
 
   /**
    * {@code OBJECT} column payload files referenced by values in this chunk: each entry is {@code
-   * (searchRoot, relativePath)} to resolve the on-disk file encoded in the OBJECT binary.
+   * (searchRoot, sourceRelativePath)} to resolve the on-disk file encoded in the source OBJECT
+   * binary.
    */
   private final Set<Pair<File, String>> objectFiles = new LinkedHashSet<>();
+
+  private final Set<ObjectFileReference> objectFileReferences = new LinkedHashSet<>();
 
   private long objectMetadataSizeInBytes = 0L;
 
   protected final void copyObjectSidecarFrom(final AbstractChunkData other) {
     objectFiles.addAll(other.objectFiles);
+    objectFileReferences.addAll(other.objectFileReferences);
     objectMetadataSizeInBytes += other.objectMetadataSizeInBytes;
   }
 
@@ -49,24 +53,45 @@ public abstract class AbstractChunkData implements ChunkData {
 
   @Override
   public void addObjectRelativePath(final File parentDir, final String relativePath) {
-    Objects.requireNonNull(parentDir, "parentDir");
-    Objects.requireNonNull(relativePath, "relativePath");
+    addObjectRelativePath(parentDir, relativePath, relativePath);
+  }
 
-    File resolvedObjectFile = new File(parentDir, relativePath);
+  @Override
+  public void addObjectRelativePath(
+      final File parentDir, final String sourceRelativePath, final String targetRelativePath) {
+    Objects.requireNonNull(parentDir, "parentDir");
+    Objects.requireNonNull(sourceRelativePath, "sourceRelativePath");
+    Objects.requireNonNull(targetRelativePath, "targetRelativePath");
+
+    File resolvedObjectFile = new File(parentDir, sourceRelativePath);
     if (!resolvedObjectFile.isFile()) {
       throw new IllegalArgumentException(
           String.format(
               "Object file path does not point to a regular file: %s (parentDir=%s, relativePath=%s)",
-              resolvedObjectFile.getAbsolutePath(), parentDir.getAbsolutePath(), relativePath));
+              resolvedObjectFile.getAbsolutePath(),
+              parentDir.getAbsolutePath(),
+              sourceRelativePath));
     }
 
-    if (objectFiles.add(new Pair<>(parentDir, relativePath))) {
-      objectMetadataSizeInBytes += RamUsageEstimator.sizeOf(relativePath);
+    final ObjectFileReference reference =
+        new ObjectFileReference(parentDir, sourceRelativePath, targetRelativePath);
+    if (objectFileReferences.add(reference)) {
+      objectFiles.add(new Pair<>(parentDir, sourceRelativePath));
+      objectMetadataSizeInBytes += RamUsageEstimator.sizeOf(sourceRelativePath);
+      if (!sourceRelativePath.equals(targetRelativePath)) {
+        objectMetadataSizeInBytes += RamUsageEstimator.sizeOf(targetRelativePath);
+      }
     }
   }
 
   @Override
   public long getObjectMetadataSizeInBytes() {
     return objectMetadataSizeInBytes;
+  }
+
+  @Override
+  public LoadTsFileObjectFileBatchIterator getObjectFileBatchIterator(final int maxBatchSize) {
+    return new LoadTsFileObjectFileBatchIterator(
+        objectFileReferences, maxBatchSize, getTimePartitionSlot());
   }
 }

@@ -33,6 +33,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -204,5 +206,30 @@ public class TableDeletionEntryTest {
 
     assertTrue(
         entry3.affectsAll(Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1", "id2"})));
+  }
+
+  @Test
+  public void testRewriteTableName() {
+    final TableDeletionEntry entry =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "view_table",
+                new FullExactMatch(
+                    Factory.DEFAULT_FACTORY.create(new String[] {"view_table", "id1", "id2"})),
+                Collections.singletonList("s1")),
+            new TimeRange(1, 5));
+    final Map<String, String> tableNameRewriteMap = new HashMap<>();
+    tableNameRewriteMap.put("view_table", "source_table");
+
+    final TableDeletionEntry rewritten = entry.rewriteTableName(tableNameRewriteMap);
+
+    assertEquals("source_table", rewritten.getTableName());
+    assertTrue(
+        rewritten.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"source_table", "id1", "id2"})));
+    assertFalse(
+        rewritten.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {"view_table", "id1", "id2"})));
+    assertTrue(rewritten.affects("s1"));
   }
 }

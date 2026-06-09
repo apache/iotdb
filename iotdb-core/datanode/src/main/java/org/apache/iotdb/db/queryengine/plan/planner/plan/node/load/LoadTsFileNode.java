@@ -39,7 +39,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class LoadTsFileNode extends WritePlanNode {
@@ -48,6 +50,8 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<Boolean> isTableModel;
   private final String database;
   private final boolean needDecode4TimeColumn;
+  private final Map<String, String> writableViewTableNameRewriteMap;
+  private final Map<String, Map<String, String>> writableViewColumnNameRewriteMap;
 
   public LoadTsFileNode(
       final PlanNodeId id,
@@ -55,11 +59,52 @@ public class LoadTsFileNode extends WritePlanNode {
       final List<Boolean> isTableModel,
       final String database,
       final boolean needDecode4TimeColumn) {
+    this(
+        id,
+        resources,
+        isTableModel,
+        database,
+        needDecode4TimeColumn,
+        Collections.emptyMap(),
+        Collections.emptyMap());
+  }
+
+  public LoadTsFileNode(
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database,
+      final boolean needDecode4TimeColumn,
+      final Map<String, String> writableViewTableNameRewriteMap) {
+    this(
+        id,
+        resources,
+        isTableModel,
+        database,
+        needDecode4TimeColumn,
+        writableViewTableNameRewriteMap,
+        Collections.emptyMap());
+  }
+
+  public LoadTsFileNode(
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database,
+      final boolean needDecode4TimeColumn,
+      final Map<String, String> writableViewTableNameRewriteMap,
+      final Map<String, Map<String, String>> writableViewColumnNameRewriteMap) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
-    this.needDecode4TimeColumn = needDecode4TimeColumn;
+    this.writableViewTableNameRewriteMap = new HashMap<>(writableViewTableNameRewriteMap);
+    this.writableViewColumnNameRewriteMap =
+        copyWritableViewColumnNameRewriteMap(writableViewColumnNameRewriteMap);
+    this.needDecode4TimeColumn =
+        needDecode4TimeColumn
+            || !this.writableViewTableNameRewriteMap.isEmpty()
+            || !this.writableViewColumnNameRewriteMap.isEmpty();
   }
 
   @Override
@@ -103,6 +148,14 @@ public class LoadTsFileNode extends WritePlanNode {
     // Do nothing
   }
 
+  public Map<String, String> getWritableViewTableNameRewriteMap() {
+    return writableViewTableNameRewriteMap;
+  }
+
+  public Map<String, Map<String, String>> getWritableViewColumnNameRewriteMap() {
+    return writableViewColumnNameRewriteMap;
+  }
+
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     if (analysis instanceof Analysis) {
@@ -132,7 +185,9 @@ public class LoadTsFileNode extends WritePlanNode {
               statement.getWritePointCount(i),
               needDecode4TimeColumn,
               statement.isTsFileContainsObjectColumn(i),
-              statement.getObjectFileSearchRoot()));
+              statement.getObjectFileSearchRoot(),
+              writableViewTableNameRewriteMap,
+              writableViewColumnNameRewriteMap));
     }
     return res;
   }
@@ -157,7 +212,9 @@ public class LoadTsFileNode extends WritePlanNode {
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn,
                 statement.isTsFileContainsObjectColumn(i),
-                statement.getObjectFileSearchRoot()));
+                statement.getObjectFileSearchRoot(),
+                writableViewTableNameRewriteMap,
+                writableViewColumnNameRewriteMap));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LOADTSFILE_STATEMENT_IS_NULL_DURING_TABLE_MODEL_SPLIT);
@@ -183,5 +240,13 @@ public class LoadTsFileNode extends WritePlanNode {
   @Override
   public int hashCode() {
     return Objects.hash(resources, database, isTableModel);
+  }
+
+  private static Map<String, Map<String, String>> copyWritableViewColumnNameRewriteMap(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final Map<String, Map<String, String>> copiedMap = new HashMap<>();
+    columnNameRewriteMap.forEach(
+        (tableName, columnMap) -> copiedMap.put(tableName, new HashMap<>(columnMap)));
+    return copiedMap;
   }
 }

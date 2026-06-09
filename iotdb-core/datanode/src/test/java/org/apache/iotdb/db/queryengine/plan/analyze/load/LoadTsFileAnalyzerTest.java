@@ -19,17 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.load.LoadAnalyzeWritableViewException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -39,6 +46,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -52,6 +60,7 @@ import org.junit.Test;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -123,7 +132,7 @@ public class LoadTsFileAnalyzerTest {
   }
 
   @Test
-  public void testWritableViewTargetTriggersTabletConversion() throws Exception {
+  public void testIdentityWritableViewTargetUsesNativeLoadFastPath() throws Exception {
     final DataNodeTableCache cache = DataNodeTableCache.getInstance();
     final String database = "load_writable_view_ut";
     final String sourceName = "source_table";
@@ -145,7 +154,7 @@ public class LoadTsFileAnalyzerTest {
 
       final LoadTsFileTableSchemaCache schemaCache =
           new LoadTsFileTableSchemaCache(
-              null, new MPPQueryContext(new QueryId("load_view")), false);
+              new TableMetadataImpl(), createTableQueryContext("load_view", database), false);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -160,12 +169,302 @@ public class LoadTsFileAnalyzerTest {
                         Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
         IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
 
-        final LoadAnalyzeWritableViewException exception =
-            Assert.assertThrows(
-                LoadAnalyzeWritableViewException.class,
-                () -> schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0")));
-        Assert.assertTrue(exception.getMessage().contains("requires tablet conversion"));
-        Assert.assertTrue(exception.getMessage().contains(sourceName));
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testProjectionWritableViewTargetUsesNativeLoadFastPath() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_projection_writable_view_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      sourceTable.addColumnSchema(new FieldColumnSchema("humidity", TSDataType.INT32));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              new TableMetadataImpl(),
+              createTableQueryContext("load_projection_view", database),
+              false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("temperature", TSDataType.INT32)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+        Assert.assertTrue(schemaCache.getWritableViewColumnNameRewriteMap().isEmpty());
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testIdentityWritableViewTargetWithObjectUsesNativeLoadFastPath() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_writable_view_object_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("payload", TSDataType.OBJECT));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("payload", TSDataType.OBJECT));
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              new TableMetadataImpl(),
+              createTableQueryContext("load_view_object", database),
+              false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setCurrentFileContainsObjectColumn(true);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("payload", TSDataType.OBJECT)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testIdentityWritableViewTargetWithModsUsesNativeLoadFastPath() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_writable_view_mod_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              new TableMetadataImpl(), createTableQueryContext("load_view_mod", database), false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("temperature", TSDataType.INT32)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        appendCurrentModification(
+            schemaCache,
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    viewName,
+                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
+                new TimeRange(100, 101)));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testIdentityWritableViewTargetWithFullyDeletedDeviceRecordsRewrite()
+      throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_writable_view_full_deleted_mod_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              new TableMetadataImpl(),
+              createTableQueryContext("load_view_fully_deleted_mod", database),
+              false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("temperature", TSDataType.INT32)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        appendCurrentModification(
+            schemaCache,
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    viewName,
+                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0"))),
+                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+      } finally {
+        schemaCache.close();
+      }
+    } finally {
+      cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testAliasWritableViewTargetUsesNativeLoadFastPath() throws Exception {
+    final DataNodeTableCache cache = DataNodeTableCache.getInstance();
+    final String database = "load_alias_writable_view_ut";
+    final String sourceName = "source_table";
+    final String viewName = "writable_view";
+
+    cache.invalid(database);
+    try {
+      final TsTable sourceTable = new TsTable(sourceName);
+      sourceTable.addColumnSchema(new TagColumnSchema("source_device", TSDataType.STRING));
+      sourceTable.addColumnSchema(new FieldColumnSchema("temperature", TSDataType.INT32));
+      cache.preUpdateTable(database, sourceTable, null);
+      cache.commitUpdateTable(database, sourceName, null);
+
+      final WritableView writableView = new WritableView(viewName, database, sourceName, true);
+      writableView.addColumnSchema(new TagColumnSchema("device_id", TSDataType.STRING));
+      writableView.addColumnSchema(new FieldColumnSchema("temp", TSDataType.INT32));
+      writableView.putViewColumnSourceColumnMapping("device_id", "source_device");
+      writableView.putViewColumnSourceColumnMapping("temp", "temperature");
+      cache.preUpdateTable(database, writableView, null);
+      cache.commitUpdateTable(database, viewName, null);
+
+      final LoadTsFileTableSchemaCache schemaCache =
+          new LoadTsFileTableSchemaCache(
+              new TableMetadataImpl(),
+              createTableQueryContext("load_non_identity_view", database),
+              false);
+      try {
+        schemaCache.setDatabase(database);
+        schemaCache.setTableSchemaMap(
+            new HashMap<>(
+                Collections.singletonMap(
+                    viewName,
+                    new TableSchema(
+                        viewName,
+                        Arrays.asList(
+                            new MeasurementSchema("device_id", TSDataType.STRING),
+                            new MeasurementSchema("temp", TSDataType.INT32)),
+                        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD)))));
+        appendCurrentModification(
+            schemaCache,
+            new TableDeletionEntry(
+                new DeletionPredicate(
+                    viewName,
+                    new IDPredicate.FullExactMatch(new StringArrayDeviceID(viewName, "d0")),
+                    Collections.singletonList("temp")),
+                new TimeRange(100, 101)));
+        IoTDBDescriptor.getInstance().getConfig().setSkipFailedTableSchemaCheck(true);
+
+        schemaCache.autoCreateAndVerify(new StringArrayDeviceID(viewName, "d0"));
+
+        Assert.assertEquals(
+            sourceName, schemaCache.getWritableViewTableNameRewriteMap().get(viewName));
+        Assert.assertEquals(
+            "source_device",
+            schemaCache.getWritableViewColumnNameRewriteMap().get(viewName).get("device_id"));
+        Assert.assertEquals(
+            "temperature",
+            schemaCache.getWritableViewColumnNameRewriteMap().get(viewName).get("temp"));
       } finally {
         schemaCache.close();
       }
@@ -228,9 +527,44 @@ public class LoadTsFileAnalyzerTest {
     tableSchemaCacheField.set(analyzer, schemaCache);
   }
 
+  private void appendCurrentModification(
+      final LoadTsFileTableSchemaCache schemaCache, final TableDeletionEntry modification)
+      throws Exception {
+    final Field currentModificationListField =
+        LoadTsFileTableSchemaCache.class.getDeclaredField("currentModificationList");
+    currentModificationListField.setAccessible(true);
+    currentModificationListField.set(schemaCache, Collections.singletonList(modification));
+
+    final Field currentModificationsField =
+        LoadTsFileTableSchemaCache.class.getDeclaredField("currentModifications");
+    currentModificationsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final org.apache.iotdb.commons.path.PatternTreeMap<
+            org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry,
+            org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer>
+        currentModifications =
+            (org.apache.iotdb.commons.path.PatternTreeMap<
+                    org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry,
+                    org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer>)
+                currentModificationsField.get(schemaCache);
+    currentModifications.append(modification.keyOfPatternTree(), modification);
+  }
+
   private boolean containsDevice(final Set<IDeviceID> devices, final String... expectedSegments) {
     return devices.stream()
         .anyMatch(device -> Arrays.equals(device.getSegments(), expectedSegments));
+  }
+
+  private MPPQueryContext createTableQueryContext(final String queryId, final String database) {
+    final MPPQueryContext context = new MPPQueryContext(new QueryId(queryId));
+    context.setSession(
+        new SessionInfo(
+            0,
+            new UserEntity(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, ""),
+            ZoneId.systemDefault(),
+            database,
+            SqlDialect.TABLE));
+    return context;
   }
 
   private static class TrackingLoadTsFileTableSchemaCache extends LoadTsFileTableSchemaCache {

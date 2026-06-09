@@ -451,12 +451,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final TSStatus status =
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
-                  .convertForTableModel(
-                      LoadTsFile.createUnchecked(
-                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                          .setDatabase(databaseForTableData)
-                          .setDeleteAfterLoad(isDeleteAfterLoad)
-                          .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                  .convertForTableModel(createTableModelConversionStatement(tsFiles.get(i)))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
@@ -557,6 +552,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     final boolean containsObjectColumn = tableModelTsFileHasObjectColumn(tableSchemaMap);
+    getOrCreateTableSchemaCache().setCurrentFileContainsObjectColumn(containsObjectColumn);
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
@@ -578,6 +574,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().flush();
+    addWritableViewTableNameRewrites(
+        getOrCreateTableSchemaCache().getWritableViewTableNameRewriteMap());
+    addWritableViewColumnNameRewrites(
+        getOrCreateTableSchemaCache().getWritableViewColumnNameRewriteMap());
     if (getOrCreateTableSchemaCache().isNeedDecode4DifferentTimeColumn()) {
       if (isTableModelStatement) {
         loadTsFileTableStatement.enableNeedDecode4TimeColumn();
@@ -593,6 +593,29 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     addTsFileContainsObjectColumn(containsObjectColumn);
     addTsFileResource(tsFileResource);
     addWritePointCount(writePointCount);
+  }
+
+  private void addWritableViewTableNameRewrites(final Map<String, String> tableNameRewriteMap) {
+    if (tableNameRewriteMap.isEmpty()) {
+      return;
+    }
+    if (isTableModelStatement) {
+      tableNameRewriteMap.forEach(loadTsFileTableStatement::addWritableViewTableNameRewrite);
+    } else {
+      tableNameRewriteMap.forEach(loadTsFileTreeStatement::addWritableViewTableNameRewrite);
+    }
+  }
+
+  private void addWritableViewColumnNameRewrites(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    if (columnNameRewriteMap.isEmpty()) {
+      return;
+    }
+    if (isTableModelStatement) {
+      columnNameRewriteMap.forEach(loadTsFileTableStatement::addWritableViewColumnNameRewrite);
+    } else {
+      columnNameRewriteMap.forEach(loadTsFileTreeStatement::addWritableViewColumnNameRewrite);
+    }
   }
 
   private static boolean tableModelTsFileHasObjectColumn(
@@ -769,12 +792,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         final TSStatus status =
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
-                    .convertForTableModel(
-                        LoadTsFile.createUnchecked(
-                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                            .setDatabase(databaseForTableData)
-                            .setDeleteAfterLoad(isDeleteAfterLoad)
-                            .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                    .convertForTableModel(createTableModelConversionStatement(tsFiles.get(i)))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
@@ -819,6 +837,31 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
     return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
+  }
+
+  private LoadTsFile createTableModelConversionStatement(final File tsFile)
+      throws FileNotFoundException {
+    final LoadTsFile statement =
+        LoadTsFile.createUnchecked(
+                null,
+                tsFile.getPath(),
+                isTableModelStatement
+                    ? loadTsFileTableStatement.getLoadAttributes()
+                    : Collections.emptyMap())
+            .setDatabase(databaseForTableData)
+            .setDeleteAfterLoad(isDeleteAfterLoad)
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+
+    if (isTableModelStatement) {
+      statement.setObjectFileSearchRoot(loadTsFileTableStatement.getObjectFileSearchRoot());
+    } else if (loadTsFileTreeStatement != null) {
+      statement.setObjectFileSearchRoot(loadTsFileTreeStatement.getObjectFileSearchRoot());
+    }
+    return statement;
   }
 
   private void getFileModelInfoBeforeTabletConversion() throws IOException {

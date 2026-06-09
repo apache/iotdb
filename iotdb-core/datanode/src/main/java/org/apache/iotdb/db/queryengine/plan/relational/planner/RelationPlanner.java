@@ -1487,7 +1487,9 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
             node.getResources(),
             isTableModel,
             node.getDatabase(),
-            node.isNeedDecode4TimeColumn()),
+            node.isNeedDecode4TimeColumn(),
+            node.getWritableViewTableNameRewriteMap(),
+            node.getWritableViewColumnNameRewriteMap()),
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);

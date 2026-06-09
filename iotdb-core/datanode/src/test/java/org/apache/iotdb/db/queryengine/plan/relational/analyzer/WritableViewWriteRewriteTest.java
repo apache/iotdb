@@ -123,6 +123,7 @@ public class WritableViewWriteRewriteTest {
   private static final String VIEW_TAG = "id_alias";
   private static final String VIEW_ATTR = "attr_alias";
   private static final String VIEW_FIELD = "m_alias";
+  private static final String VIEW_TIME = "d_date_time";
 
   private MetadataForWritableView metadata;
   private SessionInfo sessionInfo;
@@ -617,6 +618,47 @@ public class WritableViewWriteRewriteTest {
   }
 
   @Test
+  public void testDeleteDataOnWritableViewRewritesAliasedTimePredicate() throws Exception {
+    resetWritableView(
+        createSourceTable(true, true),
+        createWritableViewWithAliasedTime(),
+        createSourceTableSchema(true, true),
+        createWritableViewSchemaWithAliasedTime());
+
+    final String sql =
+        "delete from writable_view_db.writable_view "
+            + "where d_date_time <= 100 and d_date_time >= 10 and id_alias = 'id:0'";
+    final Delete statement =
+        (Delete)
+            sqlParser.createStatement(
+                sql, ZoneId.systemDefault(), new InternalClientSession("test"));
+    final MPPQueryContext context =
+        new MPPQueryContext(
+            sql, new QueryId("query_delete_data_alias_time"), sessionInfo, null, null);
+    final Method validateSchema =
+        AnalyzeUtils.class.getDeclaredMethod("validateSchema", Delete.class, MPPQueryContext.class);
+    validateSchema.setAccessible(true);
+    validateSchema.invoke(null, statement, context);
+
+    assertEquals(DATABASE, statement.getDatabaseName());
+    assertEquals(1, statement.getTableDeletionEntries().size());
+
+    final TableDeletionEntry deletionEntry = statement.getTableDeletionEntries().get(0);
+    assertEquals(SOURCE_TABLE, deletionEntry.getTableName());
+    assertEquals(10, deletionEntry.getStartTime());
+    assertEquals(100, deletionEntry.getEndTime());
+    assertTrue(
+        deletionEntry.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {SOURCE_TABLE, "id:0"}), 10, 100));
+    assertFalse(
+        deletionEntry.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {SOURCE_TABLE, "id:1"}), 10, 100));
+    assertFalse(
+        deletionEntry.affects(
+            Factory.DEFAULT_FACTORY.create(new String[] {SOURCE_TABLE, "id:0"}), 1, 9));
+  }
+
+  @Test
   public void testDeleteDevicesOnWritableViewRewritesPredicate() {
     final String sql =
         "delete devices from writable_view_db.writable_view "
@@ -1089,6 +1131,13 @@ public class WritableViewWriteRewriteTest {
     return writableView;
   }
 
+  private static WritableView createWritableViewWithAliasedTime() {
+    final WritableView writableView = createWritableView(null);
+    writableView.addColumnSchema(new TimeColumnSchema(VIEW_TIME, TSDataType.TIMESTAMP));
+    writableView.setViewColumnToSourceColumnMap(createWritableViewColumnMapWithAliasedTime());
+    return writableView;
+  }
+
   private static WritableView createIdentityWritableView() {
     final WritableView writableView = new WritableView(VIEW_TABLE, DATABASE, SOURCE_TABLE, false);
     writableView.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
@@ -1169,6 +1218,36 @@ public class WritableViewWriteRewriteTest {
         columns,
         new QualifiedObjectName(DATABASE, SOURCE_TABLE),
         createWritableViewColumnMap());
+  }
+
+  private static WritableViewSchema createWritableViewSchemaWithAliasedTime() {
+    final List<ColumnSchema> columns = new ArrayList<>();
+    columns.add(
+        new ColumnSchema(
+            VIEW_TIME,
+            TypeFactory.getType(TSDataType.TIMESTAMP),
+            false,
+            TsTableColumnCategory.TIME));
+    columns.add(
+        new ColumnSchema(
+            VIEW_TAG, TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
+    columns.add(
+        new ColumnSchema(
+            VIEW_ATTR,
+            TypeFactory.getType(TSDataType.STRING),
+            false,
+            TsTableColumnCategory.ATTRIBUTE));
+    columns.add(
+        new ColumnSchema(
+            VIEW_FIELD,
+            TypeFactory.getType(TSDataType.DOUBLE),
+            false,
+            TsTableColumnCategory.FIELD));
+    return new WritableViewSchema(
+        VIEW_TABLE,
+        columns,
+        new QualifiedObjectName(DATABASE, SOURCE_TABLE),
+        createWritableViewColumnMapWithAliasedTime());
   }
 
   private static WritableViewSchema createWritableViewSchemaFromColumnSourceNames(
@@ -1258,6 +1337,13 @@ public class WritableViewWriteRewriteTest {
     columnMap.put(VIEW_TAG, SOURCE_TAG);
     columnMap.put(VIEW_ATTR, SOURCE_ATTR);
     columnMap.put(VIEW_FIELD, SOURCE_FIELD);
+    return columnMap;
+  }
+
+  private static Map<String, String> createWritableViewColumnMapWithAliasedTime() {
+    final Map<String, String> columnMap = createWritableViewColumnMap();
+    columnMap.remove("time");
+    columnMap.put(VIEW_TIME, "time");
     return columnMap;
   }
 

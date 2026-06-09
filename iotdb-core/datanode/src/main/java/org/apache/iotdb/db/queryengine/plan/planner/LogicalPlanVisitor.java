@@ -555,7 +555,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         loadTsFileStatement.getResources(),
         isTableModel,
         loadTsFileStatement.getDatabase(),
-        loadTsFileStatement.isNeedDecode4TimeColumn());
+        loadTsFileStatement.isNeedDecode4TimeColumn(),
+        loadTsFileStatement.getWritableViewTableNameRewriteMap(),
+        loadTsFileStatement.getWritableViewColumnNameRewriteMap());
   }
 
   @Override

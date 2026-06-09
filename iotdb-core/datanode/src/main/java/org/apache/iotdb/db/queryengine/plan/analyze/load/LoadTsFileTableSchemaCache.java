@@ -42,9 +42,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.WritableViewSchema;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -55,7 +58,9 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.timecho.iotdb.db.queryengine.plan.relational.metadata.WritableViewUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -71,6 +76,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -106,9 +112,13 @@ public class LoadTsFileTableSchemaCache {
 
   // tableName -> Pair<device column count, device column mapping>
   private Map<String, Pair<Integer, Map<Integer, Integer>>> tableTagColumnMapper = new HashMap<>();
+  private final Map<String, String> writableViewTableNameRewriteMap = new HashMap<>();
+  private final Map<String, Map<String, String>> writableViewColumnNameRewriteMap = new HashMap<>();
 
   private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
+  private List<ModEntry> currentModificationList = Collections.emptyList();
   private ITimeIndex currentTimeIndex;
+  private boolean currentFileContainsObjectColumn = false;
 
   private long batchTable2DevicesMemoryUsageSizeInBytes = 0;
   private long tableTagColumnMapperMemoryUsageSizeInBytes = 0;
@@ -140,12 +150,24 @@ public class LoadTsFileTableSchemaCache {
     this.tableSchemaMap = tableSchemaMap;
   }
 
-  public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
-    if (isDeviceDeletedByMods(device)) {
-      return;
-    }
+  public void setCurrentFileContainsObjectColumn(final boolean currentFileContainsObjectColumn) {
+    this.currentFileContainsObjectColumn = currentFileContainsObjectColumn;
+  }
 
+  public Map<String, String> getWritableViewTableNameRewriteMap() {
+    return writableViewTableNameRewriteMap;
+  }
+
+  public Map<String, Map<String, String>> getWritableViewColumnNameRewriteMap() {
+    return writableViewColumnNameRewriteMap;
+  }
+
+  public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
     try {
+      prepareWritableViewNativeLoadFastPathIfNecessary(device.getTableName());
+      if (isDeviceDeletedByMods(device)) {
+        return;
+      }
       createTableAndDatabaseIfNecessary(device.getTableName());
     } catch (final LoadAnalyzeWritableViewException e) {
       throw e;
@@ -160,10 +182,31 @@ public class LoadTsFileTableSchemaCache {
     }
 
     // TODO: add permission check and record auth cost
-    addDevice(device);
+    addDevice(rewriteWritableViewDeviceIfNecessary(device));
     if (shouldFlushDevices()) {
       flush();
     }
+  }
+
+  private void prepareWritableViewNativeLoadFastPathIfNecessary(final String tableName)
+      throws LoadAnalyzeException {
+    final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.get(tableName);
+    if (Objects.isNull(schema)) {
+      return;
+    }
+
+    final TsTable existingTable =
+        DataNodeTableCache.getInstance().getTableInWrite(database, tableName);
+    if (!(existingTable instanceof WritableView)) {
+      return;
+    }
+
+    final WritableView writableView = (WritableView) existingTable;
+    if (tryUseWritableViewNativeLoadFastPath(tableName, schema)) {
+      tableSchemaMap.remove(tableName);
+      return;
+    }
+    throwWritableViewRequiresTabletConversion(tableName, writableView);
   }
 
   public boolean isDeviceDeletedByMods(final IDeviceID device) {
@@ -301,13 +344,10 @@ public class LoadTsFileTableSchemaCache {
         DataNodeTableCache.getInstance().getTableInWrite(database, tableName);
     if (existingTable instanceof WritableView) {
       final WritableView writableView = (WritableView) existingTable;
-      throw new LoadAnalyzeWritableViewException(
-          String.format(
-              DataNodeQueryMessages.LOAD_TSFILE_TARGET_IS_WRITABLE_VIEW_REQUIRES_TABLET_CONVERSION,
-              database,
-              tableName,
-              writableView.getSourceTableDatabase(),
-              writableView.getSourceTableName()));
+      if (tryUseWritableViewNativeLoadFastPath(tableName, schema)) {
+        return;
+      }
+      throwWritableViewRequiresTabletConversion(tableName, writableView);
     }
 
     // Check on creation, do not auto-create tables or database that cannot be inserted
@@ -334,6 +374,249 @@ public class LoadTsFileTableSchemaCache {
               fileSchema.getTableName(), fileSchema));
     }
     verifyTableDataTypeAndGenerateTagColumnMapper(fileSchema, realSchema);
+  }
+
+  private void throwWritableViewRequiresTabletConversion(
+      final String tableName, final WritableView writableView)
+      throws LoadAnalyzeWritableViewException {
+    throw new LoadAnalyzeWritableViewException(
+        String.format(
+            DataNodeQueryMessages.LOAD_TSFILE_TARGET_IS_WRITABLE_VIEW_REQUIRES_TABLET_CONVERSION,
+            database,
+            tableName,
+            writableView.getSourceTableDatabase(),
+            writableView.getSourceTableName()));
+  }
+
+  private boolean tryUseWritableViewNativeLoadFastPath(
+      final String tableName, final org.apache.tsfile.file.metadata.TableSchema schema)
+      throws LoadAnalyzeException {
+    final Metadata viewMetadata = Objects.nonNull(metadata) ? metadata : new TableMetadataImpl();
+    final Optional<TableSchema> tableSchema =
+        viewMetadata.getTableSchema(
+            context.getSession(), new QualifiedObjectName(database, tableName));
+    if (!tableSchema.isPresent() || !(tableSchema.get() instanceof WritableViewSchema)) {
+      return false;
+    }
+
+    final WritableViewSchema writableViewSchema = (WritableViewSchema) tableSchema.get();
+    final Optional<NativeWritableViewLoadPlan> nativeLoadPlan =
+        buildNativeWritableViewLoadPlan(tableName, schema, writableViewSchema, viewMetadata);
+    if (!nativeLoadPlan.isPresent()) {
+      return false;
+    }
+
+    if (!canRewriteCurrentModificationsForWritableView(
+        tableName,
+        nativeLoadPlan.get().getColumnNameRewriteMap(),
+        nativeLoadPlan.get().getSourceColumnNames())) {
+      return false;
+    }
+
+    AuthorityChecker.getAccessControl()
+        .checkCanInsertIntoTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, tableName),
+            context);
+    writableViewTableNameRewriteMap.put(
+        tableName, writableViewSchema.getSourceTableName().getObjectName());
+    if (!nativeLoadPlan.get().getColumnNameRewriteMap().isEmpty()) {
+      writableViewColumnNameRewriteMap.put(
+          tableName, nativeLoadPlan.get().getColumnNameRewriteMap());
+    }
+
+    final TableSchema realSchema =
+        viewMetadata
+            .validateTableHeaderSchema4TsFile(
+                database,
+                nativeLoadPlan.get().getSourceFileSchema(),
+                context,
+                true,
+                true,
+                needDecode4DifferentTimeColumn)
+            .orElse(null);
+    if (Objects.isNull(realSchema)) {
+      throw new LoadAnalyzeException(
+          String.format(
+              "Failed to validate schema for writable view source table {%s, %s}",
+              nativeLoadPlan.get().getSourceFileSchema().getTableName(),
+              nativeLoadPlan.get().getSourceFileSchema()));
+    }
+
+    verifyTableDataTypeAndGenerateTagColumnMapper(
+        nativeLoadPlan.get().getSourceFileSchema(), realSchema);
+    return true;
+  }
+
+  private Optional<NativeWritableViewLoadPlan> buildNativeWritableViewLoadPlan(
+      final String tableName,
+      final org.apache.tsfile.file.metadata.TableSchema schema,
+      final WritableViewSchema writableViewSchema,
+      final Metadata viewMetadata) {
+    if (!database.equals(writableViewSchema.getSourceTableName().getDatabaseName())) {
+      return Optional.empty();
+    }
+
+    final Optional<TableSchema> sourceTableSchema =
+        resolveSourceTableSchema(writableViewSchema, viewMetadata);
+    if (!sourceTableSchema.isPresent()) {
+      return Optional.empty();
+    }
+
+    final TableSchema viewFileSchema = TableSchema.fromTsFileTableSchema(tableName, schema);
+    final Map<String, ColumnSchema> viewColumnSchemaMap = writableViewSchema.getColumnSchemaMap();
+    final Map<String, ColumnSchema> sourceColumnSchemaMap =
+        sourceTableSchema.get().getColumnSchemaMap();
+    final Set<String> sourceColumnNames = new HashSet<>(sourceColumnSchemaMap.keySet());
+    final Set<String> rewrittenFileColumnNames = new HashSet<>();
+    final List<ColumnSchema> sourceFileColumns = new ArrayList<>();
+    final Map<String, String> columnNameRewriteMap =
+        buildCompatibleColumnNameRewriteMap(writableViewSchema, sourceColumnSchemaMap);
+
+    int fileTagIndex = 0;
+    for (final ColumnSchema fileColumn : viewFileSchema.getColumns()) {
+      final ColumnSchema viewColumn = viewColumnSchemaMap.get(fileColumn.getName());
+      if (Objects.isNull(viewColumn) || !hasSameTypeAndCategory(fileColumn, viewColumn)) {
+        return Optional.empty();
+      }
+
+      final String sourceColumnName =
+          Optional.ofNullable(
+                  WritableViewUtils.getSourceColumnName(
+                      fileColumn.getName(), writableViewSchema.getViewColumnToSourceColumnMap()))
+              .orElse(fileColumn.getName());
+      final ColumnSchema sourceColumn = sourceColumnSchemaMap.get(sourceColumnName);
+      if (Objects.isNull(sourceColumn) || !hasSameTypeAndCategory(fileColumn, sourceColumn)) {
+        return Optional.empty();
+      }
+      if (!rewrittenFileColumnNames.add(sourceColumnName)) {
+        return Optional.empty();
+      }
+
+      if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
+        final Integer sourceTagIndex =
+            getSourceTagColumnIndex(sourceColumnName, writableViewSchema, sourceTableSchema.get());
+        if (Objects.isNull(sourceTagIndex) || sourceTagIndex != fileTagIndex) {
+          return Optional.empty();
+        }
+        fileTagIndex++;
+      }
+
+      sourceFileColumns.add(
+          new ColumnSchema(
+              sourceColumnName,
+              fileColumn.getType(),
+              fileColumn.isHidden(),
+              fileColumn.getColumnCategory()));
+      if (!sourceColumnName.equals(fileColumn.getName())) {
+        columnNameRewriteMap.put(fileColumn.getName(), sourceColumnName);
+      }
+    }
+
+    return Optional.of(
+        new NativeWritableViewLoadPlan(
+            new TableSchema(
+                writableViewSchema.getSourceTableName().getObjectName(), sourceFileColumns),
+            columnNameRewriteMap,
+            sourceColumnNames));
+  }
+
+  private static Map<String, String> buildCompatibleColumnNameRewriteMap(
+      final WritableViewSchema writableViewSchema,
+      final Map<String, ColumnSchema> sourceColumnSchemaMap) {
+    final Map<String, String> columnNameRewriteMap = new HashMap<>();
+    for (final ColumnSchema viewColumn : writableViewSchema.getColumns()) {
+      final String sourceColumnName =
+          WritableViewUtils.getSourceColumnName(
+              viewColumn.getName(), writableViewSchema.getViewColumnToSourceColumnMap());
+      if (Objects.isNull(sourceColumnName) || sourceColumnName.equals(viewColumn.getName())) {
+        continue;
+      }
+      final ColumnSchema sourceColumn = sourceColumnSchemaMap.get(sourceColumnName);
+      if (Objects.nonNull(sourceColumn) && hasSameTypeAndCategory(viewColumn, sourceColumn)) {
+        columnNameRewriteMap.put(viewColumn.getName(), sourceColumnName);
+      }
+    }
+    return columnNameRewriteMap;
+  }
+
+  private Optional<TableSchema> resolveSourceTableSchema(
+      final WritableViewSchema writableViewSchema, final Metadata viewMetadata) {
+    if (writableViewSchema.getSourceTableSchema().isPresent()) {
+      return writableViewSchema.getSourceTableSchema();
+    }
+    return viewMetadata.getTableSchema(
+        context.getSession(), writableViewSchema.getSourceTableName());
+  }
+
+  private static boolean hasSameTypeAndCategory(
+      final ColumnSchema fileColumn, final ColumnSchema tableColumn) {
+    return fileColumn.getColumnCategory() == tableColumn.getColumnCategory()
+        && fileColumn.getType().equals(tableColumn.getType());
+  }
+
+  private static Integer getSourceTagColumnIndex(
+      final String sourceColumnName,
+      final WritableViewSchema writableViewSchema,
+      final TableSchema sourceTableSchema) {
+    final Integer sourceTagIndex =
+        writableViewSchema.getSourceTagColumnIndexMap().get(sourceColumnName);
+    return Objects.nonNull(sourceTagIndex)
+        ? sourceTagIndex
+        : sourceTableSchema.getIndexAmongTagColumns(sourceColumnName);
+  }
+
+  private boolean canRewriteCurrentModificationsForWritableView(
+      final String tableName,
+      final Map<String, String> columnNameRewriteMap,
+      final Set<String> sourceColumnNames) {
+    if (currentModifications.isEmpty()) {
+      return true;
+    }
+
+    for (final ModEntry modification : currentModificationList) {
+      if (!(modification instanceof TableDeletionEntry)) {
+        return false;
+      }
+      final TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) modification;
+      if (tableName.equals(tableDeletionEntry.getTableName())
+          && !canRewriteMeasurementNamesForWritableView(
+              tableDeletionEntry, columnNameRewriteMap, sourceColumnNames)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean canRewriteMeasurementNamesForWritableView(
+      final TableDeletionEntry deletion,
+      final Map<String, String> columnNameRewriteMap,
+      final Set<String> sourceColumnNames) {
+    if (columnNameRewriteMap.isEmpty()) {
+      return true;
+    }
+    for (final String measurementName : deletion.getPredicate().getMeasurementNames()) {
+      if (!sourceColumnNames.contains(measurementName)
+          && !columnNameRewriteMap.containsKey(measurementName)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private IDeviceID rewriteWritableViewDeviceIfNecessary(final IDeviceID device) {
+    final String rewrittenTableName = writableViewTableNameRewriteMap.get(device.getTableName());
+    if (Objects.isNull(rewrittenTableName)) {
+      return device;
+    }
+
+    final Object[] segments = device.getSegments();
+    final String[] rewrittenSegments = new String[segments.length];
+    rewrittenSegments[0] = rewrittenTableName;
+    for (int i = 1; i < segments.length; i++) {
+      rewrittenSegments[i] = Objects.toString(segments[i], null);
+    }
+    return new StringArrayDeviceID(rewrittenSegments);
   }
 
   public boolean isNeedDecode4DifferentTimeColumn() {
@@ -437,10 +720,9 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    ModificationFile.readAllModifications(resource.getTsFile(), false)
-        .forEach(
-            modification ->
-                currentModifications.append(modification.keyOfPatternTree(), modification));
+    currentModificationList = ModificationFile.readAllModifications(resource.getTsFile(), false);
+    currentModificationList.forEach(
+        modification -> currentModifications.append(modification.keyOfPatternTree(), modification));
 
     currentModificationsMemoryUsageSizeInBytes = currentModifications.ramBytesUsed();
 
@@ -483,6 +765,8 @@ public class LoadTsFileTableSchemaCache {
     currentBatchTable2Devices = null;
     tableTagColumnMapper = null;
     needDecode4DifferentTimeColumn.set(false);
+    writableViewTableNameRewriteMap.clear();
+    writableViewColumnNameRewriteMap.clear();
   }
 
   private void clearDevices() {
@@ -494,6 +778,7 @@ public class LoadTsFileTableSchemaCache {
 
   private void clearModificationsAndTimeIndex() {
     currentModifications = PatternTreeMapFactory.getModsPatternTreeMap();
+    currentModificationList = Collections.emptyList();
     currentTimeIndex = null;
     block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
     block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
@@ -505,5 +790,33 @@ public class LoadTsFileTableSchemaCache {
     tableTagColumnMapper.clear();
     block.reduceMemoryUsage(tableTagColumnMapperMemoryUsageSizeInBytes);
     tableTagColumnMapperMemoryUsageSizeInBytes = 0;
+  }
+
+  private static final class NativeWritableViewLoadPlan {
+
+    private final TableSchema sourceFileSchema;
+    private final Map<String, String> columnNameRewriteMap;
+    private final Set<String> sourceColumnNames;
+
+    private NativeWritableViewLoadPlan(
+        final TableSchema sourceFileSchema,
+        final Map<String, String> columnNameRewriteMap,
+        final Set<String> sourceColumnNames) {
+      this.sourceFileSchema = sourceFileSchema;
+      this.columnNameRewriteMap = columnNameRewriteMap;
+      this.sourceColumnNames = sourceColumnNames;
+    }
+
+    private TableSchema getSourceFileSchema() {
+      return sourceFileSchema;
+    }
+
+    private Map<String, String> getColumnNameRewriteMap() {
+      return columnNameRewriteMap;
+    }
+
+    private Set<String> getSourceColumnNames() {
+      return sourceColumnNames;
+    }
   }
 }

@@ -48,6 +48,11 @@ public interface ChunkData extends TsFileData {
 
   default void addObjectRelativePath(File parentDir, String relativePath) {}
 
+  default void addObjectRelativePath(
+      File parentDir, String sourceRelativePath, String targetRelativePath) {
+    addObjectRelativePath(parentDir, sourceRelativePath);
+  }
+
   default long getObjectMetadataSizeInBytes() {
     return 0L;
   }

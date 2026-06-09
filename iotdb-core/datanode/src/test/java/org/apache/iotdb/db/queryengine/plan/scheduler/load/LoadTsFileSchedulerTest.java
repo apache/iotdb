@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
@@ -57,14 +60,17 @@ import org.mockito.MockitoAnnotations;
 import org.powermock.reflect.Whitebox;
 
 import java.io.File;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -114,15 +120,50 @@ public class LoadTsFileSchedulerTest {
     final Object tsFileDataManager = createTsFileDataManager();
     final LoadTsFileDataCacheMemoryBlock block = getTsFileDataManagerBlock(tsFileDataManager);
 
-    final ChunkData chunkData = mock(ChunkData.class);
-    when(chunkData.getDataSize()).thenReturn(100L);
-    when(chunkData.getTimePartitionSlot()).thenReturn(new TTimePartitionSlot(0L));
+    final ChunkData chunkData = createChunkData(100L, mock(IDeviceID.class));
 
     Assert.assertTrue(
         (boolean) Whitebox.invokeMethod(tsFileDataManager, "addOrSendChunkData", chunkData));
 
     Assert.assertEquals(100L, getBlockMemoryUsage(block));
     Assert.assertEquals(100L, (long) Whitebox.getInternalState(tsFileDataManager, "dataSize"));
+  }
+
+  @Test
+  public void testIntermediateDispatchReleasesWholePieceMemory() throws Exception {
+    final TRegionReplicaSet replicaSet = createReplicaSet();
+    final DataPartition dataPartition = mock(DataPartition.class);
+    when(dataPartition.getDataRegionReplicaSetForWriting(any(), any())).thenReturn(replicaSet);
+
+    final IPartitionFetcher partitionFetcher = mock(IPartitionFetcher.class);
+    when(partitionFetcher.getOrCreateDataPartition(anyList(), anyString()))
+        .thenReturn(dataPartition);
+
+    final LoadTsFileScheduler scheduler = createScheduler(partitionFetcher);
+    final LoadTsFileDispatcherImpl dispatcher = mock(LoadTsFileDispatcherImpl.class);
+    Whitebox.setInternalState(scheduler, "dispatcher", dispatcher);
+    when(dispatcher.dispatch(isNull(), anyList()))
+        .thenReturn(CompletableFuture.completedFuture(new FragInstanceDispatchResult(true)));
+
+    final Object tsFileDataManager = createTsFileDataManager(scheduler);
+    final LoadTsFileDataCacheMemoryBlock block = getTsFileDataManagerBlock(tsFileDataManager);
+    setBlockMemoryLimit(block, 150L);
+
+    final IDeviceID device = mock(IDeviceID.class);
+    Assert.assertTrue(
+        (boolean)
+            Whitebox.invokeMethod(
+                tsFileDataManager, "addOrSendChunkData", createChunkData(100L, device)));
+    Assert.assertEquals(100L, getBlockMemoryUsage(block));
+
+    Assert.assertTrue(
+        (boolean)
+            Whitebox.invokeMethod(
+                tsFileDataManager, "addOrSendChunkData", createChunkData(60L, device)));
+
+    Assert.assertEquals(0L, getBlockMemoryUsage(block));
+    Assert.assertEquals(0L, (long) Whitebox.getInternalState(tsFileDataManager, "dataSize"));
+    verify(dispatcher).dispatch(isNull(), anyList());
   }
 
   @Test
@@ -235,20 +276,28 @@ public class LoadTsFileSchedulerTest {
   }
 
   private LoadTsFileScheduler createScheduler() {
+    return createScheduler(mock(IPartitionFetcher.class));
+  }
+
+  private LoadTsFileScheduler createScheduler(final IPartitionFetcher partitionFetcher) {
     final MPPQueryContext queryContext = mock(MPPQueryContext.class);
     when(queryContext.getTimeOut()).thenReturn(10_000L);
-    when(queryContext.getStartTime()).thenReturn(0L);
+    when(queryContext.getStartTime()).thenReturn(System.currentTimeMillis());
+    when(queryContext.getSession()).thenReturn(new SessionInfo(0, "root", ZoneId.systemDefault()));
     return new LoadTsFileScheduler(
         distributedQueryPlan,
         queryContext,
         mock(QueryStateMachine.class),
         mock(IClientManager.class),
-        mock(IPartitionFetcher.class),
+        partitionFetcher,
         false);
   }
 
   private Object createTsFileDataManager() throws Exception {
-    final LoadTsFileScheduler scheduler = createScheduler();
+    return createTsFileDataManager(createScheduler());
+  }
+
+  private Object createTsFileDataManager(final LoadTsFileScheduler scheduler) throws Exception {
     final LoadSingleTsFileNode singleTsFileNode = mock(LoadSingleTsFileNode.class);
     when(singleTsFileNode.getPlanNodeId()).thenReturn(new PlanNodeId("load"));
     when(singleTsFileNode.getTsFileResource())
@@ -272,6 +321,22 @@ public class LoadTsFileSchedulerTest {
   private long getBlockMemoryUsage(final LoadTsFileDataCacheMemoryBlock block) throws Exception {
     final AtomicLong memoryUsageInBytes = Whitebox.getInternalState(block, "memoryUsageInBytes");
     return memoryUsageInBytes.get();
+  }
+
+  private void setBlockMemoryLimit(final LoadTsFileDataCacheMemoryBlock block, final long limit)
+      throws Exception {
+    final AtomicLong limitedMemorySizeInBytes =
+        Whitebox.getInternalState(block, "limitedMemorySizeInBytes");
+    limitedMemorySizeInBytes.set(limit);
+  }
+
+  private ChunkData createChunkData(final long dataSize, final IDeviceID device) {
+    final ChunkData chunkData = mock(ChunkData.class);
+    when(chunkData.getDataSize()).thenReturn(dataSize);
+    when(chunkData.getDevice()).thenReturn(device);
+    when(chunkData.getTimePartitionSlot()).thenReturn(new TTimePartitionSlot(0L));
+    when(chunkData.getObjectFiles()).thenReturn(Collections.emptySet());
+    return chunkData;
   }
 
   private TRegionReplicaSet createReplicaSet() {

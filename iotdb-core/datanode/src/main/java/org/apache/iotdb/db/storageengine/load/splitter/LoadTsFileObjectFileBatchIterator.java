@@ -31,20 +31,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class LoadTsFileObjectFileBatchIterator
     implements Iterator<LoadTsFileObjectFileBatch>, AutoCloseable {
 
-  private final Iterator<Pair<File, String>> fileIterator;
+  private final Iterator<ObjectFileReference> fileIterator;
   private final int maxBatchSize;
   private final TTimePartitionSlot timePartitionSlot;
 
   private FileChannel currentChannel;
-  private String currentRelativePath;
+  private String currentTargetRelativePath;
   private long currentTotalLength;
   private long currentOffset;
 
@@ -52,6 +54,18 @@ public class LoadTsFileObjectFileBatchIterator
 
   public LoadTsFileObjectFileBatchIterator(
       final Set<Pair<File, String>> fileSet,
+      final int maxBatchSize,
+      final TTimePartitionSlot timePartitionSlot) {
+    this(
+        fileSet.stream()
+            .map(pair -> new ObjectFileReference(pair.left, pair.right, pair.right))
+            .collect(Collectors.toCollection(java.util.LinkedHashSet::new)),
+        maxBatchSize,
+        timePartitionSlot);
+  }
+
+  public LoadTsFileObjectFileBatchIterator(
+      final Collection<ObjectFileReference> fileSet,
       final int maxBatchSize,
       final TTimePartitionSlot timePartitionSlot) {
     this.fileIterator = fileSet.iterator();
@@ -114,7 +128,7 @@ public class LoadTsFileObjectFileBatchIterator
         boolean isLast = (currentOffset + bytesRead) >= currentTotalLength;
         chunks.add(
             new ObjectFileChunk(
-                currentRelativePath, currentOffset, currentTotalLength, isLast, buffer));
+                currentTargetRelativePath, currentOffset, currentTotalLength, isLast, buffer));
 
         currentBatchBytes += bytesRead;
         currentOffset += bytesRead;
@@ -133,12 +147,12 @@ public class LoadTsFileObjectFileBatchIterator
 
   private boolean openNextFile() throws IOException {
     while (fileIterator.hasNext()) {
-      Pair<File, String> pair = fileIterator.next();
-      File file = new File(pair.left, pair.right);
+      ObjectFileReference reference = fileIterator.next();
+      File file = new File(reference.getParentDir(), reference.getSourceRelativePath());
 
       if (file.exists() && file.isFile() && file.length() > 0) {
         currentChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ);
-        currentRelativePath = pair.right;
+        currentTargetRelativePath = reference.getTargetRelativePath();
         currentTotalLength = file.length();
         currentOffset = 0;
         return true;

@@ -70,6 +70,9 @@ public class LoadTsFile extends Statement {
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
   private boolean needDecode4TimeColumn;
+  private Map<String, String> writableViewTableNameRewriteMap = new java.util.HashMap<>();
+  private Map<String, Map<String, String>> writableViewColumnNameRewriteMap =
+      new java.util.HashMap<>();
   private final List<Boolean> tsFileContainsObjectColumn = new ArrayList<>();
   private File objectFileSearchRoot;
 
@@ -194,6 +197,36 @@ public class LoadTsFile extends Statement {
 
   public void enableNeedDecode4TimeColumn() {
     this.needDecode4TimeColumn = true;
+  }
+
+  public void addWritableViewTableNameRewrite(
+      final String viewTableName, final String sourceTableName) {
+    this.writableViewTableNameRewriteMap.put(viewTableName, sourceTableName);
+  }
+
+  public Map<String, String> getWritableViewTableNameRewriteMap() {
+    return writableViewTableNameRewriteMap;
+  }
+
+  public void addWritableViewColumnNameRewrite(
+      final String viewTableName, final Map<String, String> columnNameRewriteMap) {
+    if (columnNameRewriteMap.isEmpty()) {
+      return;
+    }
+    this.writableViewColumnNameRewriteMap.put(
+        viewTableName, new java.util.HashMap<>(columnNameRewriteMap));
+  }
+
+  public Map<String, Map<String, String>> getWritableViewColumnNameRewriteMap() {
+    return writableViewColumnNameRewriteMap;
+  }
+
+  public boolean hasWritableViewTableNameRewrite() {
+    return !writableViewTableNameRewriteMap.isEmpty();
+  }
+
+  public boolean hasWritableViewColumnNameRewrite() {
+    return !writableViewColumnNameRewriteMap.isEmpty();
   }
 
   public List<File> getTsFiles() {
@@ -337,6 +370,10 @@ public class LoadTsFile extends Statement {
       subStatement.resources = new ArrayList<>(batchFiles.size());
       subStatement.writePointCountList = new ArrayList<>(batchFiles.size());
       subStatement.isTableModel = new ArrayList<>(batchFiles.size());
+      subStatement.writableViewTableNameRewriteMap =
+          new java.util.HashMap<>(this.writableViewTableNameRewriteMap);
+      subStatement.writableViewColumnNameRewriteMap =
+          copyWritableViewColumnNameRewriteMap(this.writableViewColumnNameRewriteMap);
       for (int j = 0; j < batchFiles.size(); j++) {
         subStatement.isTableModel.add(true);
       }
@@ -409,5 +446,13 @@ public class LoadTsFile extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
     size += RamUsageEstimator.shallowSizeOf(isTableModel);
     return size;
+  }
+
+  private static Map<String, Map<String, String>> copyWritableViewColumnNameRewriteMap(
+      final Map<String, Map<String, String>> columnNameRewriteMap) {
+    final Map<String, Map<String, String>> copiedMap = new java.util.HashMap<>();
+    columnNameRewriteMap.forEach(
+        (tableName, columnMap) -> copiedMap.put(tableName, new java.util.HashMap<>(columnMap)));
+    return copiedMap;
   }
 }

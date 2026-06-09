@@ -740,6 +740,55 @@ public class IoTDBWritableViewIT {
   }
 
   @Test
+  public void testWritableViewDeleteWithAliasedTimeColumn() throws Exception {
+    final String database = "writable_view_delete_alias_time_db";
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("create database " + database);
+        statement.execute("use " + database);
+        statement.execute(
+            "create table source_table(" + "device_id string tag, " + "temperature int32 field)");
+        statement.execute(
+            "create writable view writable_view as select "
+                + "time as d_date_time, "
+                + "device_id as dev, "
+                + "temperature as temp "
+                + "from source_table");
+        statement.execute(
+            "insert into source_table(time, device_id, temperature) values "
+                + "(1, 'd1', 10), "
+                + "(2, 'd1', 20), "
+                + "(3, 'd1', 30), "
+                + "(2, 'd2', 40)");
+
+        statement.execute(
+            "delete from writable_view "
+                + "where d_date_time <= 2 and d_date_time >= 1 and dev = 'd1'");
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery(
+                "select d_date_time, dev, temp from writable_view order by d_date_time, dev"),
+            "d_date_time,dev,temp,",
+            new HashSet<>(
+                Arrays.asList(
+                    "1970-01-01T00:00:00.002Z,d2,40,", "1970-01-01T00:00:00.003Z,d1,30,")));
+
+        TestUtils.assertResultSetEqual(
+            statement.executeQuery(
+                "select time, device_id, temperature from source_table order by time, device_id"),
+            "time,device_id,temperature,",
+            new HashSet<>(
+                Arrays.asList(
+                    "1970-01-01T00:00:00.002Z,d2,40,", "1970-01-01T00:00:00.003Z,d1,30,")));
+      } finally {
+        dropDatabaseQuietly(statement, database);
+      }
+    }
+  }
+
+  @Test
   public void testWritableViewTTLFiltersQuery() throws Exception {
     final String database = "writable_view_ttl_query_db";
     try (final Connection connection =

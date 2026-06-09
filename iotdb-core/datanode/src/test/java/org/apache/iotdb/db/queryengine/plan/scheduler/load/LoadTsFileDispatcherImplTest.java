@@ -26,12 +26,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -46,12 +48,38 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.File;
 import java.util.Collections;
 
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(StorageEngine.class)
 public class LoadTsFileDispatcherImplTest {
+
+  @Test
+  public void testDispatchLocallyPieceNodeSkipsSerdeRoundTrip() throws Exception {
+    final StorageEngine storageEngine = Mockito.mock(StorageEngine.class);
+    PowerMockito.mockStatic(StorageEngine.class);
+    PowerMockito.when(StorageEngine.getInstance()).thenReturn(storageEngine);
+
+    final LoadTsFileDispatcherImpl dispatcher = new LoadTsFileDispatcherImpl(null, false);
+    dispatcher.setUuid("test-uuid");
+
+    final LoadTsFilePieceNode pieceNode =
+        new LoadTsFilePieceNode(new PlanNodeId("piece"), new File("test.tsfile"));
+    final FragmentInstance instance = createFragmentInstance(pieceNode);
+
+    Mockito.when(
+            storageEngine.writeLoadTsFileNode(
+                Mockito.eq(new DataRegionId(1)), Mockito.same(pieceNode), Mockito.eq("test-uuid")))
+        .thenReturn(RpcUtils.SUCCESS_STATUS);
+
+    dispatcher.dispatchLocally(instance);
+
+    Mockito.verify(storageEngine)
+        .writeLoadTsFileNode(
+            Mockito.eq(new DataRegionId(1)), Mockito.same(pieceNode), Mockito.eq("test-uuid"));
+  }
 
   @Test
   public void testDispatchLocallyObjectPieceNodeSuccess() throws Exception {
@@ -119,12 +147,11 @@ public class LoadTsFileDispatcherImplTest {
             Collections.emptyList(), new TTimePartitionSlot().setStartTime(1L)));
   }
 
-  private static FragmentInstance createFragmentInstance(
-      final LoadTsFileObjectPieceNode objectPieceNode) {
+  private static FragmentInstance createFragmentInstance(final PlanNode planNode) {
     final PlanFragmentId fragmentId = new PlanFragmentId("test", 0);
     final FragmentInstance instance =
         new FragmentInstance(
-            new PlanFragment(fragmentId, objectPieceNode),
+            new PlanFragment(fragmentId, planNode),
             fragmentId.genFragmentInstanceId(),
             null,
             null,
