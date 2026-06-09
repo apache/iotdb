@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class PreviousFillNode extends FillNode {
+public class NextFillNode extends FillNode {
 
   @Nullable private final TimeDuration timeBound;
 
@@ -48,7 +48,7 @@ public class PreviousFillNode extends FillNode {
 
   @Nullable private final List<Symbol> groupingKeys;
 
-  public PreviousFillNode(
+  public NextFillNode(
       PlanNodeId id,
       PlanNode child,
       TimeDuration timeBound,
@@ -74,17 +74,17 @@ public class PreviousFillNode extends FillNode {
 
   @Override
   public PlanNode clone() {
-    return new PreviousFillNode(id, null, timeBound, helperColumn, groupingKeys);
+    return new NextFillNode(id, null, timeBound, helperColumn, groupingKeys);
   }
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitPreviousFill(this, context);
+    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitNextFill(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_PREVIOUS_FILL_NODE.serialize(byteBuffer);
+    PlanNodeType.TABLE_NEXT_FILL_NODE.serialize(byteBuffer);
     if (timeBound == null) {
       ReadWriteIOUtils.write(false, byteBuffer);
     } else {
@@ -112,7 +112,7 @@ public class PreviousFillNode extends FillNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_PREVIOUS_FILL_NODE.serialize(stream);
+    PlanNodeType.TABLE_NEXT_FILL_NODE.serialize(stream);
     if (timeBound == null) {
       ReadWriteIOUtils.write(false, stream);
     } else {
@@ -136,7 +136,7 @@ public class PreviousFillNode extends FillNode {
     }
   }
 
-  public static PreviousFillNode deserialize(ByteBuffer byteBuffer) {
+  public static NextFillNode deserialize(ByteBuffer byteBuffer) {
     boolean hasValue = ReadWriteIOUtils.readBool(byteBuffer);
     TimeDuration timeDuration = null;
     if (hasValue) {
@@ -157,12 +157,12 @@ public class PreviousFillNode extends FillNode {
       }
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new PreviousFillNode(planNodeId, null, timeDuration, helperColumn, groupingKeys);
+    return new NextFillNode(planNodeId, null, timeDuration, helperColumn, groupingKeys);
   }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    return new PreviousFillNode(
+    return new NextFillNode(
         id, Iterables.getOnlyElement(newChildren), timeBound, helperColumn, groupingKeys);
   }
 
@@ -177,7 +177,7 @@ public class PreviousFillNode extends FillNode {
     if (!super.equals(o)) {
       return false;
     }
-    PreviousFillNode that = (PreviousFillNode) o;
+    NextFillNode that = (NextFillNode) o;
     return Objects.equals(timeBound, that.timeBound)
         && Objects.equals(helperColumn, that.helperColumn)
         && Objects.equals(groupingKeys, that.groupingKeys);
@@ -190,6 +190,6 @@ public class PreviousFillNode extends FillNode {
 
   @Override
   public String toString() {
-    return "PreviousFillNode-" + this.getPlanNodeId();
+    return "NextFillNode-" + this.getPlanNodeId();
   }
 }

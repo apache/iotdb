@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
@@ -137,6 +138,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitLinearFill(LinearFillNode node, Context context) {
+      context.enablePushDown = false;
+      return node;
+    }
+
+    @Override
+    public PlanNode visitNextFill(NextFillNode node, Context context) {
       context.enablePushDown = false;
       return node;
     }
