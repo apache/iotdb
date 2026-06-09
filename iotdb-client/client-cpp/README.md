@@ -259,7 +259,7 @@ During configure CMake will, in order:
 | Library only (Linux/macOS)    | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package`                                  |
 | Debug library (Linux/macOS)   | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package`          |
 | Library only (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
-| Debug library (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug "-Dboost.include.dir=C:\boost_1_88_0" package` |
+| Debug library (Windows / MSVC) | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dcmake.build.type=Debug" "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | Library + ITs (Linux/macOS)   | `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am` then `mvn -P with-cpp -pl iotdb-client/client-cpp -am verify` |
 | Direct CMake (no Maven)       | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install`                    |
 
@@ -347,13 +347,13 @@ mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package
 
 # Visual Studio 2019
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
-  -Dcmake.generator="Visual Studio 16 2019" `
-  -Dclient.cpp.package.classifier=windows-x86_64-msvc14.2 package
+  "-Dcmake.generator=Visual Studio 16 2019" `
+  "-Dclient.cpp.package.classifier=windows-x86_64-msvc14.2" package
 
 # Visual Studio 2017 (CMake uses -A x64 on Windows automatically)
 mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests `
-  -Dcmake.generator="Visual Studio 15 2017" `
-  -Dclient.cpp.package.classifier=windows-x86_64-msvc14.1 package
+  "-Dcmake.generator=Visual Studio 15 2017" `
+  "-Dclient.cpp.package.classifier=windows-x86_64-msvc14.1" package
 ```
 
 On Windows, the build passes `-DCMAKE_GENERATOR_PLATFORM=x64` so Visual Studio
