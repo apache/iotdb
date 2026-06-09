@@ -64,6 +64,8 @@ public final class JdbcMessages {
       "Not support setEscapeProcessing";
   public static final String CANNOT_AFTER_CONNECTION_CLOSED =
       "Cannot %s after connection has been closed!";
+  public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
+      "Cannot %s after statement has been closed!";
 
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";

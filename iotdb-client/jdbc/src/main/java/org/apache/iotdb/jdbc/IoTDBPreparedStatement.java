@@ -100,6 +100,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void addBatch() throws SQLException {
+    checkConnection("addBatch");
     super.addBatch(createCompleteSql(sql, parameters));
   }
 
@@ -110,22 +111,26 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public boolean execute() throws SQLException {
+    checkConnection("execute");
     return super.execute(createCompleteSql(sql, parameters));
   }
 
   @Override
   public ResultSet executeQuery() throws SQLException {
+    checkConnection("executeQuery");
     return super.executeQuery(createCompleteSql(sql, parameters));
   }
 
   @Override
   public int executeUpdate() throws SQLException {
+    checkConnection("executeUpdate");
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
-    return getResultSet().getMetaData();
+    ResultSet currentResultSet = getResultSet();
+    return currentResultSet == null ? null : currentResultSet.getMetaData();
   }
 
   @Override

@@ -65,6 +65,9 @@ public final class JdbcMessages {
   public static final String CANNOT_AFTER_CONNECTION_CLOSED =
       "连接已关闭后无法执行 %s！";
 
+  public static final String EXCEPTION_CANNOT_ARG_AFTER_STATEMENT_HAS_BEEN_CLOSED_A35AD40C =
+      "Statement 关闭后无法执行 %s";
+
   // IoTDBTablePreparedStatement
   public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
   public static final String PARAMETER_UNSET = "参数 #%d 未设置";

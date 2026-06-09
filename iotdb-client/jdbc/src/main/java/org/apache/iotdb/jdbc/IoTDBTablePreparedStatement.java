@@ -141,6 +141,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void addBatch() throws SQLException {
+    checkConnection("addBatch");
     super.addBatch(createCompleteSql(sql, parameters));
   }
 
@@ -157,6 +158,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public boolean execute() throws SQLException {
+    checkConnection("execute");
     if (isQueryStatement(sql)) {
       TSExecuteStatementResp resp = executeInternal();
       return resp.isSetQueryDataSet() || resp.isSetQueryResult();
@@ -175,12 +177,14 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public ResultSet executeQuery() throws SQLException {
+    checkConnection("executeQuery");
     TSExecuteStatementResp resp = executeInternal();
     return processQueryResult(resp);
   }
 
   @Override
   public int executeUpdate() throws SQLException {
+    checkConnection("executeUpdate");
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
