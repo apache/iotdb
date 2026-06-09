@@ -147,6 +147,9 @@ public class PartitionManager {
   public static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
+  private static final long REGION_GROUP_VISIBILITY_TIMEOUT_MS = 10_000L;
+  private static final long REGION_GROUP_VISIBILITY_CHECK_INTERVAL_MS = 20L;
+
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
 
@@ -715,10 +718,73 @@ public class PartitionManager {
           getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
       LOGGER.info(ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
       createRegionGroupsPlan.planLog(LOGGER);
-      return getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
+      final TSStatus createStatus =
+          getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
+      if (createStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return createStatus;
+      }
+      return waitForRegionGroupsVisible(createRegionGroupsPlan, consensusGroupType);
     } else {
       return RpcUtils.SUCCESS_STATUS;
     }
+  }
+
+  private TSStatus waitForRegionGroupsVisible(
+      final CreateRegionGroupsPlan createRegionGroupsPlan,
+      final TConsensusGroupType consensusGroupType) {
+    final Map<String, Set<TConsensusGroupId>> expectedRegionGroups = new HashMap<>();
+    createRegionGroupsPlan
+        .getRegionGroupMap()
+        .forEach(
+            (database, regionReplicaSets) -> {
+              final Set<TConsensusGroupId> regionGroupIds =
+                  regionReplicaSets.stream()
+                      .map(TRegionReplicaSet::getRegionId)
+                      .filter(regionGroupId -> consensusGroupType.equals(regionGroupId.getType()))
+                      .collect(Collectors.toSet());
+              if (!regionGroupIds.isEmpty()) {
+                expectedRegionGroups.put(database, regionGroupIds);
+              }
+            });
+
+    final long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime <= REGION_GROUP_VISIBILITY_TIMEOUT_MS) {
+      if (areRegionGroupsVisible(expectedRegionGroups, consensusGroupType)) {
+        return RpcUtils.SUCCESS_STATUS;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(REGION_GROUP_VISIBILITY_CHECK_INTERVAL_MS);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
+            .setMessage(
+                String.format(
+                    "Interrupted while waiting for created %s RegionGroups %s to become visible in PartitionInfo.",
+                    consensusGroupType, expectedRegionGroups));
+      }
+    }
+
+    final String message =
+        String.format(
+            "Created %s RegionGroups %s are not visible in PartitionInfo within %d ms.",
+            consensusGroupType, expectedRegionGroups, REGION_GROUP_VISIBILITY_TIMEOUT_MS);
+    LOGGER.warn(message);
+    return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode()).setMessage(message);
+  }
+
+  private boolean areRegionGroupsVisible(
+      final Map<String, Set<TConsensusGroupId>> expectedRegionGroups,
+      final TConsensusGroupType consensusGroupType) {
+    for (final Map.Entry<String, Set<TConsensusGroupId>> entry : expectedRegionGroups.entrySet()) {
+      final Set<TConsensusGroupId> visibleRegionGroups =
+          partitionInfo.getRegionGroupSlotsCounter(entry.getKey(), consensusGroupType).stream()
+              .map(Pair::getRight)
+              .collect(Collectors.toSet());
+      if (!visibleRegionGroups.containsAll(entry.getValue())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

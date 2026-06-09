@@ -445,6 +445,10 @@ public final class ProcedureMessages {
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
+
+  public static final String
+      FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE =
+          "不能移除 DataNode，因为 data_replication_factor 为 1，或至少存在一个 DataRegion 只有一个副本。移除 DataNode 可能造成数据丢失。请先提高 data_replication_factor，并确保每个 DataRegion 都有多个副本，再移除 DataNode。";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =

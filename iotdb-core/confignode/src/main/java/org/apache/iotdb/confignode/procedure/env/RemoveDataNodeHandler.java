@@ -559,6 +559,14 @@ public class RemoveDataNodeHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
 
+    if (hasSingleDataRegionReplica()) {
+      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+      status.setMessage(
+          ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE);
+      LOGGER.error(status.getMessage());
+      return status;
+    }
+
     int availableDatanodeSize =
         configManager
             .getNodeManager()
@@ -566,20 +574,26 @@ public class RemoveDataNodeHandler {
             .size();
     // when the configuration is one replication, it will be failed if the data node is not in
     // running state.
-    if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
-      for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-        // check whether removed data node is in running state
-        if (!NodeStatus.Running.equals(
-            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
-          removedDataNodes.remove(dataNodeLocation);
-          LOGGER.error(
-              ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN, dataNodeLocation);
-        }
-        if (removedDataNodes.isEmpty()) {
-          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-          status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
-          return status;
-        }
+    if (CONF.getSchemaReplicationFactor() == 1) {
+      final List<TDataNodeLocation> notRunningDataNodes =
+          removedDataNodes.stream()
+              .filter(
+                  dataNodeLocation ->
+                      !NodeStatus.Running.equals(
+                          configManager
+                              .getLoadManager()
+                              .getNodeStatus(dataNodeLocation.getDataNodeId())))
+              .collect(Collectors.toList());
+      notRunningDataNodes.forEach(
+          dataNodeLocation ->
+              LOGGER.error(
+                  ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN,
+                  dataNodeLocation));
+      removedDataNodes.removeAll(notRunningDataNodes);
+      if (removedDataNodes.isEmpty()) {
+        status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+        status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
+        return status;
       }
     }
 
@@ -602,6 +616,22 @@ public class RemoveDataNodeHandler {
               (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
     }
     return status;
+  }
+
+  private boolean hasSingleDataRegionReplica() {
+    return CONF.getDataReplicationFactor() == 1
+        || configManager
+            .getClusterSchemaManager()
+            .getMatchedDatabaseSchemasByName(
+                configManager.getClusterSchemaManager().getDatabaseNames(null), null)
+            .values()
+            .stream()
+            .anyMatch(databaseSchema -> databaseSchema.getDataReplicationFactor() == 1)
+        || configManager
+            .getPartitionManager()
+            .getAllReplicaSets(TConsensusGroupType.DataRegion)
+            .stream()
+            .anyMatch(replicaSet -> replicaSet.getDataNodeLocationsSize() <= 1);
   }
 
   /**
