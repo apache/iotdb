@@ -369,6 +369,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
     return this;
   }
