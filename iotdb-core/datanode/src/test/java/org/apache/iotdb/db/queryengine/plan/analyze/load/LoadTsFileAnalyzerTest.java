@@ -22,12 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.WritableView;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -47,6 +50,7 @@ import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -59,6 +63,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -154,7 +159,7 @@ public class LoadTsFileAnalyzerTest {
 
       final LoadTsFileTableSchemaCache schemaCache =
           new LoadTsFileTableSchemaCache(
-              new TableMetadataImpl(), createTableQueryContext("load_view", database), false);
+              new TableMetadataImpl(), createTableQueryContext("load_view", database), false, true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -178,6 +183,26 @@ public class LoadTsFileAnalyzerTest {
       }
     } finally {
       cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testTableSchemaCacheShouldThrowMismatchWhenVerifyingDataType() throws Exception {
+    final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(true);
+    try {
+      final InvocationTargetException exception =
+          Assert.assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  getVerifyTableDataTypeMethod()
+                      .invoke(
+                          schemaCache,
+                          createTableSchema(TSDataType.INT64),
+                          createTableSchema(TSDataType.DOUBLE)));
+
+      Assert.assertTrue(exception.getCause() instanceof LoadAnalyzeTypeMismatchException);
+    } finally {
+      schemaCache.close();
     }
   }
 
@@ -207,7 +232,8 @@ public class LoadTsFileAnalyzerTest {
           new LoadTsFileTableSchemaCache(
               new TableMetadataImpl(),
               createTableQueryContext("load_projection_view", database),
-              false);
+              false,
+              true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -260,7 +286,8 @@ public class LoadTsFileAnalyzerTest {
           new LoadTsFileTableSchemaCache(
               new TableMetadataImpl(),
               createTableQueryContext("load_view_object", database),
-              false);
+              false,
+              true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setCurrentFileContainsObjectColumn(true);
@@ -311,7 +338,10 @@ public class LoadTsFileAnalyzerTest {
 
       final LoadTsFileTableSchemaCache schemaCache =
           new LoadTsFileTableSchemaCache(
-              new TableMetadataImpl(), createTableQueryContext("load_view_mod", database), false);
+              new TableMetadataImpl(),
+              createTableQueryContext("load_view_mod", database),
+              false,
+              true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -371,7 +401,8 @@ public class LoadTsFileAnalyzerTest {
           new LoadTsFileTableSchemaCache(
               new TableMetadataImpl(),
               createTableQueryContext("load_view_fully_deleted_mod", database),
-              false);
+              false,
+              true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -432,7 +463,8 @@ public class LoadTsFileAnalyzerTest {
           new LoadTsFileTableSchemaCache(
               new TableMetadataImpl(),
               createTableQueryContext("load_non_identity_view", database),
-              false);
+              false,
+              true);
       try {
         schemaCache.setDatabase(database);
         schemaCache.setTableSchemaMap(
@@ -470,6 +502,21 @@ public class LoadTsFileAnalyzerTest {
       }
     } finally {
       cache.invalid(database);
+    }
+  }
+
+  @Test
+  public void testTableSchemaCacheShouldNotThrowMismatchWhenSkippingDataTypeVerification()
+      throws Exception {
+    final LoadTsFileTableSchemaCache schemaCache = createTableSchemaCache(false);
+    try {
+      getVerifyTableDataTypeMethod()
+          .invoke(
+              schemaCache,
+              createTableSchema(TSDataType.INT64),
+              createTableSchema(TSDataType.DOUBLE));
+    } finally {
+      schemaCache.close();
     }
   }
 
@@ -550,6 +597,33 @@ public class LoadTsFileAnalyzerTest {
     currentModifications.append(modification.keyOfPatternTree(), modification);
   }
 
+  private LoadTsFileTableSchemaCache createTableSchemaCache(final boolean shouldVerifyDataType)
+      throws LoadRuntimeOutOfMemoryException {
+    return new LoadTsFileTableSchemaCache(
+        null, new MPPQueryContext(new QueryId("load_test")), false, shouldVerifyDataType);
+  }
+
+  private Method getVerifyTableDataTypeMethod() throws NoSuchMethodException {
+    final Method method =
+        LoadTsFileTableSchemaCache.class.getDeclaredMethod(
+            "verifyTableDataTypeAndGenerateTagColumnMapper",
+            org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class,
+            org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema.class);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema
+      createTableSchema(final TSDataType fieldType) {
+    return new org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema(
+        "table1",
+        Arrays.asList(
+            new ColumnSchema(
+                "tag1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
+            new ColumnSchema(
+                "s1", TypeFactory.getType(fieldType), false, TsTableColumnCategory.FIELD)));
+  }
+
   private boolean containsDevice(final Set<IDeviceID> devices, final String... expectedSegments) {
     return devices.stream()
         .anyMatch(device -> Arrays.equals(device.getSegments(), expectedSegments));
@@ -572,7 +646,7 @@ public class LoadTsFileAnalyzerTest {
     private final Set<List<Object>> verifiedDevices = new HashSet<>();
 
     private TrackingLoadTsFileTableSchemaCache() throws LoadRuntimeOutOfMemoryException {
-      super(null, new MPPQueryContext(new QueryId("load_test")), false);
+      super(null, new MPPQueryContext(new QueryId("load_test")), false, true);
     }
 
     @Override
