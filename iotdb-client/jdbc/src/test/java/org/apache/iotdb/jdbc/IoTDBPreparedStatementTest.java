@@ -70,6 +70,7 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
   }
 
   @SuppressWarnings("resource")
@@ -133,6 +134,27 @@ public class IoTDBPreparedStatementTest {
         new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
 
     assertNull(ps.getMetaData());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedPreparedStatementRejectsParameterOperations() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    ps.close();
+
+    assertTrue(ps.isClosed());
+    assertThrows(SQLException.class, () -> ps.clearParameters());
+    assertThrows(SQLException.class, () -> ps.setInt(1, 1));
+    assertThrows(SQLException.class, () -> ps.setString(1, "x"));
+    assertThrows(
+        SQLException.class,
+        () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[] {1}), 1));
+    assertThrows(SQLException.class, () -> ps.getParameterMetaData());
+    assertThrows(SQLException.class, () -> metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getPrecision(1));
   }
 
   @SuppressWarnings("resource")

@@ -243,6 +243,7 @@ public class IoTDBJDBCResultSetTest {
         resultStr.append("\n");
         fetchResultsResp.hasResultSet = false; // at the second time to fetch
       }
+      Assert.assertFalse(resultSet.next());
       String standard =
           "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
               + "2,2.22,40000,null,2.22,\n"
@@ -279,6 +280,26 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertTrue(resultSet.next());
       Assert.assertEquals(resultSet.getTimestamp(1), resultSet.getTimestamp("Time"));
     }
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedResultSetRejectsCachedReads() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertTrue(resultSet.next());
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> resultSet.next());
+    Assert.assertThrows(SQLException.class, () -> resultSet.getString(1));
+    Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("Time"));
+    Assert.assertThrows(SQLException.class, () -> resultSet.getMetaData());
+    Assert.assertThrows(SQLException.class, () -> resultSet.wasNull());
   }
 
   @SuppressWarnings("resource")

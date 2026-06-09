@@ -99,6 +99,8 @@ public class IoTDBTablePreparedStatementTest {
     when(client.executePreparedStatement(any(TSExecutePreparedReq.class)))
         .thenReturn(execStatementResp);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+    when(client.deallocatePreparedStatement(any())).thenReturn(Status_SUCCESS);
+    when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
   }
 
   /** Count the number of '?' placeholders in a SQL string, ignoring those inside quotes */
@@ -160,6 +162,28 @@ public class IoTDBTablePreparedStatementTest {
 
     assertEquals(Types.INTEGER, metadata.getParameterType(1));
     assertTrue(metadata.isSigned(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testClosedTablePreparedStatementRejectsParameterOperations() throws Exception {
+    IoTDBTablePreparedStatement ps =
+        new IoTDBTablePreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ParameterMetaData metadata = ps.getParameterMetaData();
+
+    ps.close();
+
+    assertTrue(ps.isClosed());
+    assertThrows(SQLException.class, () -> ps.clearParameters());
+    assertThrows(SQLException.class, () -> ps.getMetaData());
+    assertThrows(SQLException.class, () -> ps.setInt(1, 1));
+    assertThrows(SQLException.class, () -> ps.setString(1, "x"));
+    assertThrows(
+        SQLException.class,
+        () -> ps.setBinaryStream(1, new ByteArrayInputStream(new byte[] {1}), 1));
+    assertThrows(SQLException.class, () -> ps.getParameterMetaData());
+    assertThrows(SQLException.class, () -> metadata.getParameterCount());
+    assertThrows(SQLException.class, () -> metadata.getParameterType(1));
   }
 
   @SuppressWarnings("resource")

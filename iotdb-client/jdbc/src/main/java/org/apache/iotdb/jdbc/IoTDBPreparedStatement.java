@@ -105,7 +105,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void clearParameters() {
+  public void clearParameters() throws SQLException {
+    checkConnection("clearParameters");
     this.parameters.clear();
   }
 
@@ -134,10 +135,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public ParameterMetaData getParameterMetaData() {
+  public ParameterMetaData getParameterMetaData() throws SQLException {
+    checkConnection("getParameterMetaData");
     return new ParameterMetaData() {
       @Override
-      public int getParameterCount() {
+      public int getParameterCount() throws SQLException {
+        checkConnection("getParameterMetaData");
         return parameterCount;
       }
 
@@ -223,10 +226,16 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   private void checkParameterMetadataIndex(int param) throws SQLException {
-    checkParameterIndex(param);
+    checkConnection("getParameterMetaData");
+    checkParameterIndexRange(param);
   }
 
   private void checkParameterIndex(int param) throws SQLException {
+    checkConnection("set parameter");
+    checkParameterIndexRange(param);
+  }
+
+  private void checkParameterIndexRange(int param) throws SQLException {
     if (param < 1 || param > parameterCount) {
       throw new SQLException(
           "Parameter index out of range: " + param + " (expected 1-" + parameterCount + ")");
@@ -275,6 +284,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+    checkParameterIndex(parameterIndex);
     if (length < 0) {
       throw new SQLException("length must be >= 0");
     }
@@ -332,6 +342,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.BINARY);
       return;
     }
+    checkParameterIndex(parameterIndex);
     Binary binary = new Binary(x);
     setParameter(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
   }
@@ -374,6 +385,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.DATE);
       return;
     }
+    checkParameterIndex(parameterIndex);
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     setParameter(parameterIndex, "'" + dateFormat.format(x) + "'");
   }
@@ -1048,6 +1060,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.TIMESTAMP);
       return;
     }
+    checkParameterIndex(parameterIndex);
     ZonedDateTime zonedDateTime =
         ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
     setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -1059,6 +1072,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.TIMESTAMP);
       return;
     }
+    checkParameterIndex(parameterIndex);
     ZonedDateTime zonedDateTime = null;
     if (cal != null) {
       zonedDateTime =

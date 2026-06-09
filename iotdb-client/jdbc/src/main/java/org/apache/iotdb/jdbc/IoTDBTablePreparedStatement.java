@@ -145,7 +145,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   @Override
-  public void clearParameters() {
+  public void clearParameters() throws SQLException {
+    checkConnection("clearParameters");
     this.parameters.clear();
     if (serverSidePrepared) {
       for (int i = 0; i < parameterCount; i++) {
@@ -261,6 +262,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
+    checkConnection("getMetaData");
     if (resultSet != null) {
       return resultSet.getMetaData();
     }
@@ -268,10 +270,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   @Override
-  public ParameterMetaData getParameterMetaData() {
+  public ParameterMetaData getParameterMetaData() throws SQLException {
+    checkConnection("getParameterMetaData");
     return new ParameterMetaData() {
       @Override
-      public int getParameterCount() {
+      public int getParameterCount() throws SQLException {
+        checkConnection("getParameterMetaData");
         return parameterCount;
       }
 
@@ -529,13 +533,16 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    if (index < 1 || index > parameterCount) {
-      throw new SQLException(
-          "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
-    }
+    checkConnection("set parameter");
+    checkParameterIndexRange(index);
   }
 
   private void checkParameterMetadataIndex(int index) throws SQLException {
+    checkConnection("getParameterMetaData");
+    checkParameterIndexRange(index);
+  }
+
+  private void checkParameterIndexRange(int index) throws SQLException {
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
           "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
@@ -586,6 +593,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+    checkParameterIndex(parameterIndex);
     if (length < 0) {
       throw new SQLException("length must be >= 0");
     }
