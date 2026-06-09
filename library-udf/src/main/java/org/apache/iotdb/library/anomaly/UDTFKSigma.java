@@ -33,7 +33,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /** This function detects outliers which lies over average +/- k * sigma. */
 public class UDTFKSigma implements UDTF {
-  private static final int DEFAULT_WINDOW_SIZE = 10;
+  private static final int DEFAULT_WINDOW_SIZE = 10000;
 
   private double mean = 0.0;
   private double variance = 0.0;

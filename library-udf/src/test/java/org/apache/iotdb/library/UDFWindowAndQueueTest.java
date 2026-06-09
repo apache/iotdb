@@ -117,7 +117,7 @@ public class UDFWindowAndQueueTest {
     kSigma.validate(new UDFParameterValidator(parameters));
     kSigma.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
 
-    Assert.assertEquals(10, getWindowSize(kSigma));
+    Assert.assertEquals(10000, getWindowSize(kSigma));
   }
 
   @Test
@@ -132,6 +132,26 @@ public class UDFWindowAndQueueTest {
     kSigma.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
 
     Assert.assertEquals(3, getWindowSize(kSigma));
+  }
+
+  @Test
+  public void testKSigmaDefaultWindowMatchesAnomalyITExpectation() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("k", "1.0");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFKSigma kSigma = new UDTFKSigma();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    kSigma.validate(new UDFParameterValidator(parameters));
+    kSigma.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    double[] values = {0, 50, 100, 150, 200, 200, 200, 200, 200, 200, 150, 100, 50, 0};
+    for (int i = 0; i < values.length; i++) {
+      kSigma.transform(new DoubleRow((i + 1) * 100L, values[i]), collector);
+    }
+    kSigma.terminate(collector);
+
+    Assert.assertEquals(Arrays.asList(100L, 200L, 1300L, 1400L), collector.timestamps);
+    Assert.assertEquals(Arrays.asList(0.0, 50.0, 50.0, 0.0), collector.values);
   }
 
   @Test
