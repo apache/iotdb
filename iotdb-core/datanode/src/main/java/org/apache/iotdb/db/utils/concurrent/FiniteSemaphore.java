@@ -32,6 +32,9 @@ public class FiniteSemaphore {
   private int permit;
 
   public FiniteSemaphore(int capacity, int permit) {
+    if (capacity < 0 || permit < 0) {
+      throw new IllegalArgumentException("Capacity and initial permits should be non-negative.");
+    }
     if (capacity < permit) {
       throw new IllegalArgumentException(DataNodeMiscMessages.CAPACITY_LARGER_THAN_INITIAL_PERMITS);
     }
