@@ -147,6 +147,9 @@ public class TagLogFile implements AutoCloseable {
     blockOffset.add(position);
     // Read the first block
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
+    if (position == fileChannel.size()) {
+      return blockOffset;
+    }
     IOUtils.readFully(fileChannel, byteBuffer, position);
     byteBuffer.flip();
     if (byteBuffer.limit() > 0) { // This indicates that there is data at this position
