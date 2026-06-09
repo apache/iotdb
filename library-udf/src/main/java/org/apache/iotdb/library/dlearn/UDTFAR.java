@@ -66,8 +66,11 @@ public class UDTFAR implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (!row.isNull(0)) {
-      timeWindow.add(row.getTime());
-      valueWindow.add(Util.getValueAsDouble(row));
+      double value = Util.getValueAsDouble(row);
+      if (Double.isFinite(value)) {
+        timeWindow.add(row.getTime());
+        valueWindow.add(value);
+      }
     }
   }
 

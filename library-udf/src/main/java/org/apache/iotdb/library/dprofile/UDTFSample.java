@@ -36,6 +36,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -108,6 +109,9 @@ public class UDTFSample implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     // pool sampling
     int x;
     if (this.num < this.k) {
@@ -127,17 +131,24 @@ public class UDTFSample implements UDTF {
   @SuppressWarnings("javabugs:S6320")
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     // equal-distance sampling
-    int n = rowWindow.windowSize();
-
-    if (this.k < n) {
-      if (this.method == Method.TRIANGLE) {
-        List<Pair<Long, Double>> input = new LinkedList<>();
-        for (int i = 0; i < n; i++) {
-          Row row = rowWindow.getRow(i);
-          long time = row.getTime();
-          double data = Util.getValueAsDouble(row);
+    if (this.method == Method.TRIANGLE) {
+      List<Pair<Long, Double>> input = new LinkedList<>();
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        if (row.isNull(0)) {
+          continue;
+        }
+        long time = row.getTime();
+        double data = Util.getValueAsDouble(row);
+        if (Double.isFinite(data)) {
           input.add(Pair.of(time, data));
         }
+      }
+      int n = input.size();
+      if (n == 0) {
+        return;
+      }
+      if (this.k < n) {
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
           List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
@@ -166,25 +177,41 @@ public class UDTFSample implements UDTF {
             }
           }
         } else { // For corner case of k == 1 and k == 2
-          Row row = rowWindow.getRow(0); // Put first element
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+          Pair<Long, Double> row = input.get(0); // Put first element
+          putNumericValue(collector, row.getLeft(), row.getRight());
           if (k == 2) {
-            row = rowWindow.getRow(n - 1); // Put last element
-            Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+            row = input.get(n - 1); // Put last element
+            putNumericValue(collector, row.getLeft(), row.getRight());
           }
         }
-      } else { // Method.ISOMETRIC
-        for (long i = 0; i < this.k; i++) {
-          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
-          Row row = rowWindow.getRow((int) j);
-          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+      } else { // when k is larger than series length, output all points
+        for (Pair<Long, Double> row : input) {
+          putNumericValue(collector, row.getLeft(), row.getRight());
         }
       }
-    } else { // when k is larger than series length, output all points
+    } else {
+      List<Row> validRows = new ArrayList<>();
       RowIterator iterator = rowWindow.getRowIterator();
       while (iterator.hasNextRow()) {
         Row row = iterator.next();
-        Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+        if (!row.isNull(0)) {
+          validRows.add(row);
+        }
+      }
+      int n = validRows.size();
+      if (n == 0) {
+        return;
+      }
+      if (this.k < n) {
+        for (long i = 0; i < this.k; i++) {
+          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
+          Row row = validRows.get((int) j);
+          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+        }
+      } else { // when k is larger than series length, output all points
+        for (Row row : validRows) {
+          Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
+        }
       }
     }
   }
@@ -198,6 +225,31 @@ public class UDTFSample implements UDTF {
         Pair<Long, Object> p = samples[i];
         Util.putValue(pc, dataType, p.getLeft(), p.getRight());
       }
+    }
+  }
+
+  private void putNumericValue(PointCollector collector, long time, double value) throws Exception {
+    switch (dataType) {
+      case INT32:
+        collector.putInt(time, (int) value);
+        break;
+      case INT64:
+        collector.putLong(time, (long) value);
+        break;
+      case FLOAT:
+        collector.putFloat(time, (float) value);
+        break;
+      case DOUBLE:
+        collector.putDouble(time, value);
+        break;
+      case TIMESTAMP:
+      case DATE:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      default:
+        throw new NoNumberException();
     }
   }
 }

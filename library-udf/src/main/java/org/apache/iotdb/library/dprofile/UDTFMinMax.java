@@ -54,8 +54,11 @@ public class UDTFMinMax implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter $min$ should be smaller than $max$.",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter $min$ and $max$ should be finite, and $min$ should be smaller than $max$.",
             validator.getParameters().getDoubleOrDefault("min", -Double.MAX_VALUE),
             validator.getParameters().getDoubleOrDefault("max", Double.MAX_VALUE));
     if (validator

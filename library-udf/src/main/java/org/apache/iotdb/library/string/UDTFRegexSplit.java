@@ -57,6 +57,9 @@ public class UDTFRegexSplit implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     String[] splitResult = row.getString(0).split(regex);
     if (index == -1) {
       collector.putInt(row.getTime(), splitResult.length);

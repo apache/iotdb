@@ -84,6 +84,9 @@ public class UDTFIFFT implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.getTime() < 0 || row.getTime() >= Integer.MAX_VALUE / 2) {
+      return;
+    }
     if (!row.isNull(0) && !row.isNull(1)) {
       double realValue = Util.getValueAsDouble(row, 0);
       double imagValue = Util.getValueAsDouble(row, 1);

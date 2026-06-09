@@ -47,14 +47,21 @@ public class UDTFValueRepair implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
         .validate(
-            x -> (double) x > 0,
-            "Parameter $sigma$ should be larger than 0.",
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            "Parameter $sigma$ should be finite and larger than 0.",
             validator.getParameters().getDoubleOrDefault("sigma", 1.0))
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter $minSpeed$ should be smaller than $maxSpeed$.",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter $minSpeed$ and $maxSpeed$ should be finite, and $minSpeed$ should be smaller than $maxSpeed$.",
             validator.getParameters().getDoubleOrDefault("minSpeed", -1),
-            validator.getParameters().getDoubleOrDefault("maxSpeed", 1));
+            validator.getParameters().getDoubleOrDefault("maxSpeed", 1))
+        .validate(
+            x -> Double.isFinite((double) x),
+            "Parameter $center$ should be finite.",
+            validator.getParameters().getDoubleOrDefault("center", 0));
   }
 
   @Override
@@ -73,47 +80,62 @@ public class UDTFValueRepair implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     ValueRepair vr;
-    if ("screen".equalsIgnoreCase(method)) {
-      Screen screen = new Screen(rowWindow.getRowIterator());
-      if (!Double.isNaN(minSpeed)) {
-        screen.setSmin(minSpeed);
+    try {
+      if ("screen".equalsIgnoreCase(method)) {
+        Screen screen = new Screen(rowWindow.getRowIterator());
+        if (!Double.isNaN(minSpeed)) {
+          screen.setSmin(minSpeed);
+        }
+        if (!Double.isNaN(maxSpeed)) {
+          screen.setSmax(maxSpeed);
+        }
+        vr = screen;
+      } else if ("lsgreedy".equalsIgnoreCase(method)) {
+        LsGreedy lsGreedy = new LsGreedy(rowWindow.getRowIterator());
+        if (!Double.isNaN(sigma)) {
+          lsGreedy.setSigma(sigma);
+        }
+        lsGreedy.setCenter(center);
+        vr = lsGreedy;
+      } else {
+        throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD_WITH_DOT);
       }
-      if (!Double.isNaN(maxSpeed)) {
-        screen.setSmax(maxSpeed);
+      vr.repair();
+    } catch (UDFException e) {
+      if (LibraryUdfMessages.AT_LEAST_TWO_NON_NAN_VALUES_NEEDED.equals(e.getMessage())) {
+        return;
       }
-      vr = screen;
-    } else if ("lsgreedy".equalsIgnoreCase(method)) {
-      LsGreedy lsGreedy = new LsGreedy(rowWindow.getRowIterator());
-      if (!Double.isNaN(sigma)) {
-        lsGreedy.setSigma(sigma);
-      }
-      lsGreedy.setCenter(center);
-      vr = lsGreedy;
-    } else {
-      throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD_WITH_DOT);
+      throw e;
     }
-    vr.repair();
     double[] repaired = vr.getRepaired();
     long[] time = vr.getTime();
     switch (rowWindow.getDataType(0)) {
       case DOUBLE:
         for (int i = 0; i < time.length; i++) {
-          collector.putDouble(time[i], repaired[i]);
+          if (Double.isFinite(repaired[i])) {
+            collector.putDouble(time[i], repaired[i]);
+          }
         }
         break;
       case FLOAT:
         for (int i = 0; i < time.length; i++) {
-          collector.putFloat(time[i], (float) repaired[i]);
+          if (Double.isFinite(repaired[i])) {
+            collector.putFloat(time[i], (float) repaired[i]);
+          }
         }
         break;
       case INT32:
         for (int i = 0; i < time.length; i++) {
-          collector.putInt(time[i], (int) Math.round(repaired[i]));
+          if (Double.isFinite(repaired[i])) {
+            collector.putInt(time[i], (int) Math.round(repaired[i]));
+          }
         }
         break;
       case INT64:
         for (int i = 0; i < time.length; i++) {
-          collector.putLong(time[i], Math.round(repaired[i]));
+          if (Double.isFinite(repaired[i])) {
+            collector.putLong(time[i], Math.round(repaired[i]));
+          }
         }
         break;
       case TIMESTAMP:

@@ -75,28 +75,39 @@ public class UDTFValueFill implements UDTF {
     } else {
       throw new UDFException(LibraryUdfMessages.ILLEGAL_METHOD);
     }
+    if (!vf.hasValidValue()) {
+      return;
+    }
     vf.fill();
     double[] repaired = vf.getFilled();
     long[] time = vf.getTime();
     switch (rowWindow.getDataType(0)) {
       case DOUBLE:
         for (int i = 0; i < time.length; i++) {
-          collector.putDouble(time[i], repaired[i]);
+          if (Double.isFinite(repaired[i])) {
+            collector.putDouble(time[i], repaired[i]);
+          }
         }
         break;
       case FLOAT:
         for (int i = 0; i < time.length; i++) {
-          collector.putFloat(time[i], (float) repaired[i]);
+          if (Double.isFinite(repaired[i])) {
+            collector.putFloat(time[i], (float) repaired[i]);
+          }
         }
         break;
       case INT32:
         for (int i = 0; i < time.length; i++) {
-          collector.putInt(time[i], (int) Math.round(repaired[i]));
+          if (Double.isFinite(repaired[i])) {
+            collector.putInt(time[i], (int) Math.round(repaired[i]));
+          }
         }
         break;
       case INT64:
         for (int i = 0; i < time.length; i++) {
-          collector.putLong(time[i], Math.round(repaired[i]));
+          if (Double.isFinite(repaired[i])) {
+            collector.putLong(time[i], Math.round(repaired[i]));
+          }
         }
         break;
       case TEXT:

@@ -55,8 +55,8 @@ public class UDTFKSigma implements UDTF {
             "Window size should be larger than 0.",
             validator.getParameters().getIntOrDefault("window", DEFAULT_WINDOW_SIZE))
         .validate(
-            x -> (double) x > 0,
-            "Parameter k should be larger than 0.",
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            "Parameter k should be finite and larger than 0.",
             validator.getParameters().getDoubleOrDefault("k", 3));
   }
 

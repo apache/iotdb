@@ -79,6 +79,9 @@ public class UDTFRegexMatch implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     Matcher matcher = pattern.matcher(row.getString(0));
     if (matcher.find() && matcher.groupCount() >= group) {
       collector.putString(row.getTime(), matcher.group(group));

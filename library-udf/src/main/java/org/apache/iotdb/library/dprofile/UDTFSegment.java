@@ -54,8 +54,8 @@ public class UDTFSegment implements UDTF {
             "Window size should be a positive integer.",
             validator.getParameters().getIntOrDefault("window", 10))
         .validate(
-            x -> (double) x >= 0,
-            "Error bound should be no less than 0.",
+            x -> Double.isFinite((double) x) && (double) x >= 0,
+            "Error bound should be finite and no less than 0.",
             validator.getParameters().getDoubleOrDefault("error", 0.1))
         .validate(
             x ->

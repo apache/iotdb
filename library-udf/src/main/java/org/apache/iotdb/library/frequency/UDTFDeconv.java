@@ -75,9 +75,20 @@ public class UDTFDeconv implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
+    if (list1.isEmpty() && list2.isEmpty()) {
+      return;
+    }
     if (list2.isEmpty()) { // Exception: divided by zero
       throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
-    } else if (list2.size() > list1.size()) { // order of divisor is larger than dividend
+    }
+    int divisorDegree = list2.size() - 1;
+    while (divisorDegree >= 0 && list2.get(divisorDegree) == 0.0D) {
+      divisorDegree--;
+    }
+    if (divisorDegree < 0) {
+      throw new ArithmeticException(LibraryUdfMessages.DIVIDED_BY_ZERO);
+    }
+    if (divisorDegree + 1 > list1.size()) { // order of divisor is larger than dividend
       if (isQuotientResult(result)) { // quotient
         collector.putDouble(0, 0);
       } else { // residue
@@ -86,9 +97,9 @@ public class UDTFDeconv implements UDTF {
         }
       }
     } else { // order of divisor is no larger than dividend
-      double[] q = new double[list1.size() - list2.size() + 1];
+      double[] q = new double[list1.size() - divisorDegree];
       Double[] r = list1.toArray(new Double[0]);
-      int m = list2.size() - 1;
+      int m = divisorDegree;
       for (int i = q.length - 1; i >= 0; i--) {
         q[i] = r[i + m] / list2.get(m);
         r[i + m] = 0.0D;

@@ -66,8 +66,12 @@ public class UDAFDtw implements UDTF {
       if (row.isNull(0) || row.isNull(1)) {
         continue;
       }
-      a.add(Util.getValueAsDouble(row, 0));
-      b.add(Util.getValueAsDouble(row, 1));
+      double left = Util.getValueAsDouble(row, 0);
+      double right = Util.getValueAsDouble(row, 1);
+      if (Double.isFinite(left) && Double.isFinite(right)) {
+        a.add(left);
+        b.add(right);
+      }
     }
     m = a.size();
     if (m == 0) {

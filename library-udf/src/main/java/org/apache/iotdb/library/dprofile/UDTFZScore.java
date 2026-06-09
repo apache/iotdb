@@ -58,8 +58,12 @@ public class UDTFZScore implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            x -> ((Double) x) > 0,
-            "Parameter \"sd\" is illegal. It should be larger than 0.",
+            x -> Double.isFinite((double) x),
+            "Parameter \"avg\" is illegal. It should be finite.",
+            validator.getParameters().getDoubleOrDefault("avg", 0.0))
+        .validate(
+            x -> Double.isFinite((double) x) && (double) x > 0,
+            "Parameter \"sd\" is illegal. It should be finite and larger than 0.",
             validator.getParameters().getDoubleOrDefault("sd", 1.0));
     if (validator
         .getParameters()

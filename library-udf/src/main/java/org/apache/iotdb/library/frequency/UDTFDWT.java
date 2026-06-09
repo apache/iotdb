@@ -60,7 +60,15 @@ public class UDTFDWT implements UDTF {
         .validate(
             x -> (int) x > 0,
             "layer has to be a positive integer.",
-            validator.getParameters().getIntOrDefault("layer", 1));
+            validator.getParameters().getIntOrDefault("layer", 1))
+        .validate(
+            params ->
+                !((String) params[0]).equals("")
+                    || ((String) params[1]).equals("")
+                    || DWTUtil.isFiniteCoefficientList((String) params[1]),
+            "coef should be finite double,double... when method is blank.",
+            validator.getParameters().getStringOrDefault("method", ""),
+            validator.getParameters().getStringOrDefault("coef", ""));
   }
 
   @Override

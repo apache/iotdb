@@ -133,8 +133,11 @@ public class UDTFCluster implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (!row.isNull(0)) {
-      timestamps.add(row.getTime());
-      values.add(Util.getValueAsDouble(row));
+      double value = Util.getValueAsDouble(row);
+      if (Double.isFinite(value)) {
+        timestamps.add(row.getTime());
+        values.add(value);
+      }
     }
   }
 

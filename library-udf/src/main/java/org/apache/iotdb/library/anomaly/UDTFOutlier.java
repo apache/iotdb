@@ -58,8 +58,8 @@ public class UDTFOutlier implements UDTF {
             "Parameter k should be a positive integer.",
             validator.getParameters().getIntOrDefault("k", 3))
         .validate(
-            x -> (double) x >= 0,
-            "Parameter r should be non-negative.",
+            x -> Double.isFinite((double) x) && (double) x >= 0,
+            "Parameter r should be finite and non-negative.",
             validator.getParameters().getDoubleOrDefault("r", 5))
         .validate(
             x -> (int) x > 0,

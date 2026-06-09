@@ -95,6 +95,9 @@ public class UDTFRegexReplace implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
+    if (row.isNull(0)) {
+      return;
+    }
     String origin = row.getString(0);
     Matcher matcher = pattern.matcher(origin);
     String result = getResult(origin, matcher);

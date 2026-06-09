@@ -44,8 +44,11 @@ public class UDTFRange implements UDTF {
         .validateRequiredAttribute("lower_bound")
         .validateRequiredAttribute("upper_bound")
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter \"lower_bound\" should be smaller than \"upper_bound\".",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter \"lower_bound\" and \"upper_bound\" should be finite, and \"lower_bound\" should be smaller than \"upper_bound\".",
             validator.getParameters().getDouble("lower_bound"),
             validator.getParameters().getDouble("upper_bound"));
   }
@@ -87,13 +90,14 @@ public class UDTFRange implements UDTF {
         break;
       case FLOAT:
         floatValue = row.getFloat(0);
-        if (floatValue > upperBound || floatValue < lowerBound) {
+        if (Float.isFinite(floatValue) && (floatValue > upperBound || floatValue < lowerBound)) {
           collector.putFloat(timestamp, floatValue);
         }
         break;
       case DOUBLE:
         doubleValue = row.getDouble(0);
-        if (doubleValue > upperBound || doubleValue < lowerBound) {
+        if (Double.isFinite(doubleValue)
+            && (doubleValue > upperBound || doubleValue < lowerBound)) {
           collector.putDouble(timestamp, doubleValue);
         }
         break;

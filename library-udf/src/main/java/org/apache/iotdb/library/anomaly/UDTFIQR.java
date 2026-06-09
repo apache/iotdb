@@ -59,8 +59,11 @@ public class UDTFIQR implements UDTF {
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
             validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
-            params -> (double) params[0] < (double) params[1],
-            "parameter $q1$ should be smaller than $q3$",
+            params ->
+                Double.isFinite((double) params[0])
+                    && Double.isFinite((double) params[1])
+                    && (double) params[0] < (double) params[1],
+            "parameter $q1$ and $q3$ should be finite, and $q1$ should be smaller than $q3$",
             validator.getParameters().getDoubleOrDefault("q1", -1),
             validator.getParameters().getDoubleOrDefault("q3", 1));
     if (validator
