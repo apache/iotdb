@@ -250,6 +250,10 @@ public class SnapshotLoader {
 
   private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
       throws IOException, DiskSpaceInsufficientException {
+    if (!sourceDir.exists()) {
+      throw new IOException(
+          String.format("Cannot find snapshot directory %s", sourceDir.getAbsolutePath()));
+    }
     File seqFileDir =
         new File(
             sourceDir,
@@ -267,10 +271,8 @@ public class SnapshotLoader {
                 + File.separator
                 + dataRegionId);
     if (!seqFileDir.exists() && !unseqFileDir.exists()) {
-      throw new IOException(
-          String.format(
-              "Cannot find %s or %s",
-              seqFileDir.getAbsolutePath(), unseqFileDir.getAbsolutePath()));
+      LOGGER.warn("No seq or unseq files in snapshot {}, skip creating file links", sourceDir);
+      return;
     }
     FolderManager folderManager =
         new FolderManager(
