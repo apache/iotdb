@@ -197,6 +197,25 @@ public class SelectAliasReuseTest {
   }
 
   @Test
+  public void orderByWindowFunctionAliasExpressionUsesOrderByScope() {
+    String sql = "SELECT row_number() OVER (ORDER BY s1) AS rn FROM table1 ORDER BY rn + 1";
+
+    AnalyzedQuery analyzedQuery = analyze(sql);
+    OrderBy orderBy = analyzedQuery.query.getOrderBy().get();
+    List<FunctionCall> selectWindowFunctions =
+        analyzedQuery.analysis.getWindowFunctions(analyzedQuery.query);
+    Expression orderByExpression =
+        analyzedQuery.analysis.getOrderByExpressions(analyzedQuery.query).get(0);
+
+    assertEquals(1, selectWindowFunctions.size());
+    assertEquals("row_number", selectWindowFunctions.get(0).getName().getSuffix());
+    assertTrue(analyzedQuery.analysis.getOrderByWindowFunctions(orderBy).isEmpty());
+    assertTrue(orderByExpression instanceof ArithmeticBinaryExpression);
+
+    new PlanTester().createPlan(sql);
+  }
+
+  @Test
   public void duplicateAliasesAreAmbiguous() {
     assertAnalyzeSemanticException(
         "SELECT s1 AS x, s2 AS x FROM table1 ORDER BY x", "Column alias 'x' is ambiguous");
