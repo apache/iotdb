@@ -2351,6 +2351,14 @@ public class CommonConfig {
     this.pipeAutoSplitFullEnabled = pipeAutoSplitFullEnabled;
   }
 
+  public boolean getSubscriptionEnabled() {
+    return subscriptionEnabled;
+  }
+
+  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
+    this.subscriptionEnabled = subscriptionEnabled;
+  }
+
   public float getSubscriptionCacheMemoryUsagePercentage() {
     return subscriptionCacheMemoryUsagePercentage;
   }

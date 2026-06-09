@@ -92,6 +92,11 @@ public class TopicMeta {
     final Map<String, String> copiedAttributes = new HashMap<>(config.getAttribute());
     if (Objects.nonNull(updatedAttributes)) {
       copiedAttributes.putAll(updatedAttributes);
+      if ((updatedAttributes.containsKey(TopicConstant.OWNER_ID_KEY)
+              || updatedAttributes.containsKey(TopicConstant.OWNER_EPOCH_KEY))
+          && !updatedAttributes.containsKey(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY)) {
+        copiedAttributes.remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+      }
     }
 
     final TopicMeta copied = new TopicMeta(topicName, creationTime, copiedAttributes);
@@ -129,6 +134,12 @@ public class TopicMeta {
 
   public Long getOwnerLeaseExpireTimeMs() {
     return ownerLeaseExpireTimeMs;
+  }
+
+  public long getOwnerLeaseRemainingTimeMs() {
+    return Objects.nonNull(ownerLeaseExpireTimeMs)
+        ? ownerLeaseExpireTimeMs - System.currentTimeMillis()
+        : -1L;
   }
 
   public void transferOwner(final String ownerId, final long ownerEpoch) {
@@ -173,6 +184,54 @@ public class TopicMeta {
     } else {
       config.getAttribute().remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
     }
+  }
+
+  public void renewOwnerLease(
+      final String ownerId, final long ownerEpoch, final long ownerLeaseExpireTimeMs) {
+    if (!isOwnerFencingEnabled()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease should not be renewed when owner fencing is disabled,"
+                  + " topic: %s",
+              topicName));
+    }
+    if (!Objects.equals(this.ownerId, ownerId) || this.ownerEpoch != ownerEpoch) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease should be renewed by current owner, topic: %s,"
+                  + " current owner-id: %s, current owner-epoch: %s, request owner-id: %s,"
+                  + " request owner-epoch: %s",
+              topicName, this.ownerId, this.ownerEpoch, ownerId, ownerEpoch));
+    }
+    if (Objects.nonNull(this.ownerLeaseExpireTimeMs)
+        && System.currentTimeMillis() > this.ownerLeaseExpireTimeMs) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease has expired, topic: %s, owner-id: %s,"
+                  + " owner-epoch: %s, owner-lease-expire-time-ms: %s",
+              topicName, this.ownerId, this.ownerEpoch, this.ownerLeaseExpireTimeMs));
+    }
+    if (ownerLeaseExpireTimeMs <= System.currentTimeMillis()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease expire time should be in the future, topic: %s,"
+                  + " owner-lease-expire-time-ms: %s",
+              topicName, ownerLeaseExpireTimeMs));
+    }
+    if (Objects.nonNull(this.ownerLeaseExpireTimeMs)
+        && ownerLeaseExpireTimeMs <= this.ownerLeaseExpireTimeMs) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease expire time should increase, topic: %s,"
+                  + " current owner-lease-expire-time-ms: %s, request owner-lease-expire-time-ms:"
+                  + " %s",
+              topicName, this.ownerLeaseExpireTimeMs, ownerLeaseExpireTimeMs));
+    }
+
+    this.ownerLeaseExpireTimeMs = ownerLeaseExpireTimeMs;
+    config
+        .getAttribute()
+        .put(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
   }
 
   public void clearOwner() {

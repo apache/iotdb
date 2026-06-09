@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -325,14 +326,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    // TODO: do something
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    final TSStatus renewalStatus = renewTopicOwnerLeases(consumerConfig, subscribedTopicNames);
+    if (renewalStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(renewalStatus);
+    }
+
     final TSStatus ownerStatus =
-        SubscriptionAgent.topic()
-            .checkTopicOwners(
-                consumerConfig,
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic().checkTopicOwners(consumerConfig, subscribedTopicNames);
     if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(ownerStatus);
     }
@@ -341,11 +345,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // fetch subscribed topics
     final Map<String, TopicConfig> topics =
-        SubscriptionAgent.topic()
-            .getTopicConfigs(
-                SubscriptionAgent.consumer()
-                    .getTopicNamesSubscribedByConsumer(
-                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
+        SubscriptionAgent.topic().getTopicConfigs(subscribedTopicNames);
 
     // fetch available endpoints
     final Map<Integer, TEndPoint> endPoints = new HashMap<>();
@@ -385,6 +385,65 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
         RpcUtils.SUCCESS_STATUS, topics, endPoints, topicNamesToUnsubscribe);
+  }
+
+  private TSStatus renewTopicOwnerLeases(
+      final ConsumerConfig consumerConfig, final Set<String> subscribedTopicNames)
+      throws SubscriptionException {
+    final Map<String, Long> renewedTopicOwnerLeaseExpireTimeMs =
+        SubscriptionAgent.topic()
+            .getTopicOwnerLeaseRenewalExpireTimeMs(consumerConfig, subscribedTopicNames);
+    if (renewedTopicOwnerLeaseExpireTimeMs.isEmpty()) {
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      for (final Map.Entry<String, Long> entry : renewedTopicOwnerLeaseExpireTimeMs.entrySet()) {
+        final String topicName = entry.getKey();
+        final long ownerLeaseExpireTimeMs = entry.getValue();
+        final TSStatus status =
+            configNodeClient.renewTopicOwnerLease(
+                new TRenewTopicOwnerLeaseReq(
+                    topicName,
+                    consumerConfig.getOwnerId(),
+                    consumerConfig.getOwnerEpoch(),
+                    ownerLeaseExpireTimeMs));
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn(
+              "Subscription: failed to renew owner lease for topic {}, owner-id: {},"
+                  + " owner-epoch: {}, result status is {}.",
+              topicName,
+              consumerConfig.getOwnerId(),
+              consumerConfig.getOwnerEpoch(),
+              status);
+          return status;
+        }
+
+        final TSStatus localStatus =
+            SubscriptionAgent.topic()
+                .renewLocalTopicOwnerLease(
+                    topicName,
+                    consumerConfig.getOwnerId(),
+                    consumerConfig.getOwnerEpoch(),
+                    ownerLeaseExpireTimeMs);
+        if (localStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn(
+              "Subscription: failed to renew local owner lease for topic {}, owner-id: {},"
+                  + " owner-epoch: {}, result status is {}.",
+              topicName,
+              consumerConfig.getOwnerId(),
+              consumerConfig.getOwnerEpoch(),
+              localStatus);
+        }
+      }
+    } catch (final ClientManagerException | TException e) {
+      throw new SubscriptionException(
+          String.format(
+              "Subscription: failed to renew owner leases for consumer %s, exception is %s.",
+              consumerConfig, e));
+    }
+    return RpcUtils.SUCCESS_STATUS;
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {

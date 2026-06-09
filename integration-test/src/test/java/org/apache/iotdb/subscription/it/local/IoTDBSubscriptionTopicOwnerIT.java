@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionOwnerFencedException;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
+import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
@@ -44,10 +45,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
+
+  private static final Pattern OWNER_LEASE_EXPIRE_TIME_MS_PATTERN =
+      Pattern.compile("owner-lease-expire-time-ms=([0-9]+)");
 
   @Override
   @Before
@@ -125,6 +131,70 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Test
+  public void testHeartbeatRenewsOwnerLeaseAndAlterOwnerWaitsForLeaseExpiration() throws Exception {
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    final String topicName = "topic_owner_lease_renewal";
+    final long heartbeatIntervalMs = 1000L;
+    final long initialOwnerLeaseExpireTimeMs = System.currentTimeMillis() + 2500L;
+
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
+      session.open();
+      final Properties properties = new Properties();
+      properties.put(TopicConstant.PATH_KEY, "root.topic_owner.**");
+      properties.put(TopicConstant.START_TIME_KEY, "0");
+      properties.put(TopicConstant.OWNER_ID_KEY, "sn1");
+      properties.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+      properties.put(
+          TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY,
+          String.valueOf(initialOwnerLeaseExpireTimeMs));
+      session.createTopic(topicName, properties);
+
+      try (final SubscriptionTreePullConsumer currentOwnerConsumer =
+          new SubscriptionTreePullConsumer.Builder()
+              .host(host)
+              .port(port)
+              .consumerId("current_sn")
+              .consumerGroupId("topic_owner_lease_group")
+              .ownerId("sn1")
+              .ownerEpoch(5L)
+              .heartbeatIntervalMs(heartbeatIntervalMs)
+              .autoCommit(false)
+              .buildPullConsumer()) {
+        currentOwnerConsumer.open();
+        currentOwnerConsumer.subscribe(topicName);
+
+        final AtomicReference<Long> renewedOwnerLeaseExpireTimeMs =
+            new AtomicReference<>(initialOwnerLeaseExpireTimeMs);
+        IoTDBSubscriptionITConstant.AWAIT.untilAsserted(
+            () -> {
+              final Long ownerLeaseExpireTimeMs = getOwnerLeaseExpireTimeMs(session, topicName);
+              Assert.assertNotNull(ownerLeaseExpireTimeMs);
+              Assert.assertTrue(ownerLeaseExpireTimeMs > initialOwnerLeaseExpireTimeMs);
+              renewedOwnerLeaseExpireTimeMs.set(ownerLeaseExpireTimeMs);
+            });
+
+        final long alterStartTimeMs = System.currentTimeMillis();
+        session.alterTopicOwner(topicName, "sn2", 6L);
+        final long alterElapsedTimeMs = System.currentTimeMillis() - alterStartTimeMs;
+
+        final long ownerLeaseRemainingTimeMs =
+            renewedOwnerLeaseExpireTimeMs.get() - alterStartTimeMs;
+        if (ownerLeaseRemainingTimeMs > 500L) {
+          Assert.assertTrue(alterElapsedTimeMs >= ownerLeaseRemainingTimeMs - 250L);
+        }
+
+        final String topicAttributes = getTopicAttributes(session, topicName);
+        Assert.assertTrue(topicAttributes.contains("owner-id=sn2"));
+        Assert.assertTrue(topicAttributes.contains("owner-epoch=6"));
+        Assert.assertFalse(topicAttributes.contains("owner-lease-expire-time-ms="));
+      } finally {
+        session.dropTopicIfExists(topicName);
+      }
+    }
+  }
+
   private void insertData() throws Exception {
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 10; i++) {
@@ -146,5 +216,23 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
       }
     }
     return rowCount;
+  }
+
+  private static String getTopicAttributes(
+      final SubscriptionTreeSession session, final String topicName) throws Exception {
+    for (final Topic topic : session.getTopics()) {
+      if (topicName.equals(topic.getTopicName())) {
+        return topic.getTopicAttributes();
+      }
+    }
+    Assert.fail("Topic " + topicName + " should exist.");
+    return "";
+  }
+
+  private static Long getOwnerLeaseExpireTimeMs(
+      final SubscriptionTreeSession session, final String topicName) throws Exception {
+    final Matcher matcher =
+        OWNER_LEASE_EXPIRE_TIME_MS_PATTERN.matcher(getTopicAttributes(session, topicName));
+    return matcher.find() ? Long.parseLong(matcher.group(1)) : null;
   }
 }

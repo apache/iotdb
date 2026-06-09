@@ -31,7 +31,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return false;
+    return COMMON_CONFIG.getSubscriptionEnabled();
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

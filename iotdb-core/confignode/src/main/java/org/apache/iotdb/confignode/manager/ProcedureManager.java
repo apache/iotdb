@@ -154,6 +154,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -1737,12 +1738,59 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTopic(TAlterTopicReq req) {
+    boolean isOwnerLeaseRenewalBlocked = false;
+    try {
+      isOwnerLeaseRenewalBlocked =
+          configManager
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .blockOwnerLeaseRenewalIfOwnerTransfer(req);
+      while (true) {
+        final TopicMeta updatedTopicMeta =
+            configManager
+                .getSubscriptionManager()
+                .getSubscriptionCoordinator()
+                .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+        if (updatedTopicMeta == null) {
+          return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+              .setMessage(
+                  String.format(
+                      ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+                      req.getTopicName()));
+        }
+
+        AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
+        executor.submitProcedure(procedure);
+        TSStatus status = waitingProcedureFinished(procedure);
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        if (isOwnerLeaseRenewalBlocked && isOwnerLeaseNotExpiredConflict(status)) {
+          continue;
+        }
+        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    } finally {
+      if (isOwnerLeaseRenewalBlocked) {
+        configManager
+            .getSubscriptionManager()
+            .getSubscriptionCoordinator()
+            .unblockOwnerLeaseRenewal(req.getTopicName());
+      }
+    }
+  }
+
+  public TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req) {
     try {
       final TopicMeta updatedTopicMeta =
           configManager
               .getSubscriptionManager()
               .getSubscriptionCoordinator()
-              .buildAlteredTopicMeta(req);
+              .buildRenewedTopicOwnerLeaseMeta(req);
       if (updatedTopicMeta == null) {
         return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
             .setMessage(
@@ -1761,7 +1809,7 @@ public class ProcedureManager {
             .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode())
           .setMessage(e.getMessage());
     }
   }
@@ -1980,6 +2028,12 @@ public class ProcedureManager {
           + " Please manually check later whether the procedure is executed successfully.";
     }
     return message;
+  }
+
+  private static boolean isOwnerLeaseNotExpiredConflict(final TSStatus status) {
+    return Objects.nonNull(status)
+        && Objects.nonNull(status.getMessage())
+        && status.getMessage().contains("owner lease has not expired");
   }
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {

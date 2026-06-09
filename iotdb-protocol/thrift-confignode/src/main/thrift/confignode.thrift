@@ -1012,6 +1012,13 @@ struct TAlterTopicReq {
     3: required set<string> subscribedConsumerGroupIds
 }
 
+struct TRenewTopicOwnerLeaseReq {
+    1: required string topicName
+    2: required string ownerId
+    3: required i64 ownerEpoch
+    4: required i64 ownerLeaseExpireTimeMs
+}
+
 struct TGetAllTopicInfoResp {
     1: required common.TSStatus status
     2: required list<binary> allTopicInfo
@@ -1932,6 +1939,9 @@ service IConfigNodeRPCService {
 
   /** Alter Topic */
   common.TSStatus alterTopic(TAlterTopicReq req)
+
+  /** Renew topic owner lease */
+  common.TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req)
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)

@@ -125,6 +125,96 @@ public class TopicDeSerTest {
   }
 
   @Test
+  public void testDeepCopyWithUpdatedAttributesTransfersOwnerAndClearsExistingLease() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+    topicAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY,
+        String.valueOf(System.currentTimeMillis() + 60000));
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    final Map<String, String> updatedAttributes = new HashMap<>();
+    updatedAttributes.put(TopicConstant.OWNER_ID_KEY, "sn2");
+    updatedAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "6");
+    final TopicMeta updatedTopicMeta = topicMeta.deepCopyWithUpdatedAttributes(updatedAttributes);
+
+    Assert.assertEquals("sn2", updatedTopicMeta.getOwnerId());
+    Assert.assertEquals(6L, updatedTopicMeta.getOwnerEpoch());
+    Assert.assertNull(updatedTopicMeta.getOwnerLeaseExpireTimeMs());
+    Assert.assertFalse(
+        updatedTopicMeta.getConfig().hasAttribute(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY));
+  }
+
+  @Test
+  public void testRenewTopicOwnerLease() {
+    final long ownerLeaseExpireTimeMs = System.currentTimeMillis() + 60000;
+    final long renewedOwnerLeaseExpireTimeMs = ownerLeaseExpireTimeMs + 60000;
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+    topicAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    topicMeta.renewOwnerLease("sn1", 5L, renewedOwnerLeaseExpireTimeMs);
+
+    Assert.assertEquals(
+        renewedOwnerLeaseExpireTimeMs, topicMeta.getOwnerLeaseExpireTimeMs().longValue());
+    Assert.assertEquals(
+        renewedOwnerLeaseExpireTimeMs,
+        topicMeta.getConfig().getLong(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY).longValue());
+  }
+
+  @Test
+  public void testRenewTopicOwnerLeaseRejectsInvalidProgression() {
+    final long ownerLeaseExpireTimeMs = System.currentTimeMillis() + 60000;
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+    topicAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn2", 5L, ownerLeaseExpireTimeMs + 60000));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn1", 4L, ownerLeaseExpireTimeMs + 60000));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn1", 5L, ownerLeaseExpireTimeMs));
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn1", 5L, System.currentTimeMillis() - 1));
+  }
+
+  @Test
+  public void testRenewTopicOwnerLeaseRejectsExpiredLease() {
+    final Map<String, String> topicAttributes = new HashMap<>();
+    topicAttributes.put(TopicConstant.OWNER_ID_KEY, "sn1");
+    topicAttributes.put(TopicConstant.OWNER_EPOCH_KEY, "5");
+    topicAttributes.put(
+        TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY,
+        String.valueOf(System.currentTimeMillis() - 1));
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, topicAttributes);
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn1", 5L, System.currentTimeMillis() + 60000));
+  }
+
+  @Test
+  public void testRenewTopicOwnerLeaseRejectsDisabledOwnerFencing() {
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, new HashMap<>());
+
+    Assert.assertThrows(
+        IllegalArgumentException.class,
+        () -> topicMeta.renewOwnerLease("sn1", 5L, System.currentTimeMillis() + 60000));
+  }
+
+  @Test
   public void testSequentialTopicMetaDeserializeDoesNotConsumeNextTopic() throws IOException {
     final TopicMeta firstTopicMeta = new TopicMeta("first_topic", 1, new HashMap<>());
     final TopicMeta secondTopicMeta = new TopicMeta("second_topic", 2, new HashMap<>());

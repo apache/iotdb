@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
@@ -51,7 +52,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
@@ -67,6 +71,8 @@ public class SubscriptionCoordinator {
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
   private final SubscriptionMetaSyncer subscriptionMetaSyncer;
+  private final Set<String> blockedOwnerLeaseRenewalTopics =
+      Collections.synchronizedSet(new HashSet<>());
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
@@ -163,9 +169,79 @@ public class SubscriptionCoordinator {
     return status;
   }
 
+  public boolean blockOwnerLeaseRenewalIfOwnerTransfer(TAlterTopicReq req) {
+    final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+    final TopicMeta updatedTopicMeta = buildAlteredTopicMeta(req);
+    if (Objects.isNull(currentTopicMeta)
+        || Objects.isNull(updatedTopicMeta)
+        || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
+      return false;
+    }
+
+    blockedOwnerLeaseRenewalTopics.add(req.getTopicName());
+    return true;
+  }
+
+  public void unblockOwnerLeaseRenewal(String topicName) {
+    blockedOwnerLeaseRenewalTopics.remove(topicName);
+  }
+
+  public TopicMeta buildAlteredTopicMetaAfterOwnerLeaseExpired(TAlterTopicReq req)
+      throws InterruptedException {
+    while (true) {
+      final TopicMeta currentTopicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+      final TopicMeta updatedTopicMeta = buildAlteredTopicMeta(req);
+      if (Objects.isNull(currentTopicMeta)
+          || Objects.isNull(updatedTopicMeta)
+          || Objects.equals(currentTopicMeta.getOwnerId(), updatedTopicMeta.getOwnerId())) {
+        return updatedTopicMeta;
+      }
+
+      final long ownerLeaseRemainingTimeMs = currentTopicMeta.getOwnerLeaseRemainingTimeMs();
+      if (Objects.isNull(currentTopicMeta.getOwnerLeaseExpireTimeMs())
+          || ownerLeaseRemainingTimeMs <= 0) {
+        return updatedTopicMeta;
+      }
+
+      Thread.sleep(Math.min(ownerLeaseRemainingTimeMs + 1, 1000L));
+    }
+  }
+
   public TopicMeta buildAlteredTopicMeta(TAlterTopicReq req) {
     return subscriptionInfo.deepCopyTopicMetaWithUpdatedAttributes(
         req.getTopicName(), req.getTopicAttributes());
+  }
+
+  public TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req) {
+    if (blockedOwnerLeaseRenewalTopics.contains(req.getTopicName())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SUBSCRIPTION_OWNER_FENCED,
+          String.format(
+              "Subscription: topic %s owner lease renewal is blocked by a pending owner transfer.",
+              req.getTopicName()));
+    }
+
+    final TSStatus status = configManager.getProcedureManager().renewTopicOwnerLease(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "Failed to renew topic {} owner lease for owner {} epoch {}, result status is {}.",
+          req.getTopicName(),
+          req.getOwnerId(),
+          req.getOwnerEpoch(),
+          status);
+    }
+    return status;
+  }
+
+  public TopicMeta buildRenewedTopicOwnerLeaseMeta(TRenewTopicOwnerLeaseReq req) {
+    final TopicMeta topicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
+    if (Objects.isNull(topicMeta)) {
+      return null;
+    }
+
+    topicMeta.renewOwnerLease(
+        req.getOwnerId(), req.getOwnerEpoch(), req.getOwnerLeaseExpireTimeMs());
+    return topicMeta;
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {

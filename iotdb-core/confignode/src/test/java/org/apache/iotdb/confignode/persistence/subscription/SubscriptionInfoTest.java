@@ -135,6 +135,32 @@ public class SubscriptionInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), alterStatus.getCode());
     Assert.assertEquals("sn2", subscriptionInfo.getTopicMeta(topicName).getOwnerId());
     Assert.assertEquals(6L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
+    Assert.assertNull(subscriptionInfo.getTopicMeta(topicName).getOwnerLeaseExpireTimeMs());
+  }
+
+  @Test
+  public void testAlterTopicRenewsOwnerLease() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final long ownerLeaseExpireTimeMs = System.currentTimeMillis() + 60000;
+    final long renewedOwnerLeaseExpireTimeMs = ownerLeaseExpireTimeMs + 60000;
+    final TopicMeta initialTopicMeta =
+        createTopicMeta(topicName, "sn1", 5L, ownerLeaseExpireTimeMs);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo.createTopic(new CreateTopicPlan(initialTopicMeta)).getCode());
+
+    final TopicMeta renewedTopicMeta = initialTopicMeta.deepCopy();
+    renewedTopicMeta.renewOwnerLease("sn1", 5L, renewedOwnerLeaseExpireTimeMs);
+    final TSStatus alterStatus = subscriptionInfo.alterTopic(new AlterTopicPlan(renewedTopicMeta));
+
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), alterStatus.getCode());
+    Assert.assertEquals("sn1", subscriptionInfo.getTopicMeta(topicName).getOwnerId());
+    Assert.assertEquals(5L, subscriptionInfo.getTopicMeta(topicName).getOwnerEpoch());
+    Assert.assertEquals(
+        renewedOwnerLeaseExpireTimeMs,
+        subscriptionInfo.getTopicMeta(topicName).getOwnerLeaseExpireTimeMs().longValue());
   }
 
   @Test
