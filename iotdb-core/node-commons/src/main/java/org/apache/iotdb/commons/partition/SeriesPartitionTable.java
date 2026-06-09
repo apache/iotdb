@@ -265,13 +265,31 @@ public class SeriesPartitionTable {
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
-          <= currentTimeSlot.getStartTime()) {
+      if (isTimePartitionExpired(timePartitionSlot, timePartitionInterval, TTL, currentTimeSlot)) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
       }
     }
     return removedTimePartitions;
+  }
+
+  private static boolean isTimePartitionExpired(
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval,
+      long TTL,
+      TTimePartitionSlot currentTimeSlot) {
+    long partitionEndTime =
+        saturatingAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
+    long expireTime = saturatingAdd(partitionEndTime, TTL);
+    return expireTime <= currentTimeSlot.getStartTime();
+  }
+
+  private static long saturatingAdd(long left, long right) {
+    long result = left + right;
+    if (((left ^ result) & (right ^ result)) < 0) {
+      return left < 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+    return result;
   }
 
   public void merge(SeriesPartitionTable sourceMap) {

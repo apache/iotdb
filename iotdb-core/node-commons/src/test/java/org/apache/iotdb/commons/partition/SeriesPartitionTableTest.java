@@ -108,4 +108,26 @@ public class SeriesPartitionTableTest {
     table1.deserialize(inputStream, protocol);
     Assert.assertEquals(table0, table1);
   }
+
+  @Test
+  public void autoCleanPartitionTableShouldNotExpireOnOverflow() {
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
+
+    SeriesPartitionTable table = new SeriesPartitionTable();
+    TTimePartitionSlot nearMaxSlot = new TTimePartitionSlot(Long.MAX_VALUE - 1);
+    table.putDataPartition(nearMaxSlot, consensusGroupId);
+    Assert.assertTrue(
+        table.autoCleanPartitionTable(0, new TTimePartitionSlot(Long.MAX_VALUE - 1)).isEmpty());
+    Assert.assertTrue(table.getSeriesPartitionMap().containsKey(nearMaxSlot));
+
+    table = new SeriesPartitionTable();
+    TTimePartitionSlot normalSlot = new TTimePartitionSlot(0);
+    table.putDataPartition(normalSlot, consensusGroupId);
+    Assert.assertTrue(
+        table
+            .autoCleanPartitionTable(
+                Long.MAX_VALUE - 1, new TTimePartitionSlot(Long.MAX_VALUE - 1))
+            .isEmpty());
+    Assert.assertTrue(table.getSeriesPartitionMap().containsKey(normalSlot));
+  }
 }

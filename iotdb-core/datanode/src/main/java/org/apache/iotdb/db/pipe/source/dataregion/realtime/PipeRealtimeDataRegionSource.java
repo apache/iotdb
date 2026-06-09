@@ -251,11 +251,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     }
 
     startTimePartitionIdLowerBound =
-        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+        TimePartitionUtils.isTimePartitionStartTime(realtimeDataExtractionStartTime)
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime) + 1;
     endTimePartitionIdUpperBound =
-        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
+        TimePartitionUtils.isTimePartitionStartTime(realtimeDataExtractionEndTime)
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 

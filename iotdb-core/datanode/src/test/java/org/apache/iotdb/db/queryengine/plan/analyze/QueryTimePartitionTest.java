@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
@@ -568,6 +569,32 @@ public class QueryTimePartitionTest {
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3),
             new TTimePartitionSlot(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5));
+    assertEquals(expected.size(), res.left.size());
+    for (int i = 0; i < expected.size(); i++) {
+      assertEquals(expected.get(i), res.left.get(i));
+    }
+    assertFalse(res.right.left);
+    assertFalse(res.right.right);
+  }
+
+  @Test
+  public void testEstimateTimePartitionSlotMemoryWithOverflow() {
+    assertEquals(Long.MAX_VALUE, AnalyzeVisitor.estimateTimePartitionSlotMemory(Long.MAX_VALUE));
+  }
+
+  @Test
+  public void testTimePartitionSlotListWithUpperOverflowPartition() {
+    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+    long partitionStartTime = TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).startTime;
+
+    Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        getTimePartitionSlotList(
+            TimeFilterApi.between(partitionStartTime - 1, Long.MAX_VALUE - 1), context);
+    List<TTimePartitionSlot> expected =
+        Arrays.asList(
+            TimePartitionUtils.getTimePartitionSlot(partitionStartTime - 1),
+            new TTimePartitionSlot(partitionStartTime));
+
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));

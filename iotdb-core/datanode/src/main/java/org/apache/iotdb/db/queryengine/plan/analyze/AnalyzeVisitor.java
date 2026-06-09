@@ -2234,11 +2234,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        // beware of overflow
-        endTime =
-            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
-                ? endTime + TimePartitionUtils.getTimePartitionInterval()
-                : Long.MAX_VALUE;
+        endTime = TimePartitionUtils.getTimePartitionUpperBound(endTime);
       } else {
         index++;
         if (index < size) {
@@ -2267,8 +2263,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
-    context.reserveMemoryForFrontEnd(
-        RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
+    context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+  }
+
+  static long estimateTimePartitionSlotMemory(long timePartitionSlotCount) {
+    long timePartitionSlotSize = RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class);
+    return timePartitionSlotCount > Long.MAX_VALUE / timePartitionSlotSize
+        ? Long.MAX_VALUE
+        : timePartitionSlotSize * timePartitionSlotCount;
   }
 
   private void analyzeInto(

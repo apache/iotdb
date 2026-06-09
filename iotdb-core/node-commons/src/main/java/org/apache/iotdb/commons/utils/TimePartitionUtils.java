@@ -31,44 +31,46 @@ public class TimePartitionUtils {
    * Time partition origin for dividing database, the time unit is the same with IoTDB's
    * TimestampPrecision
    */
-  private static long timePartitionOrigin =
+  private static volatile long timePartitionOrigin =
       CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
-  private static long timePartitionInterval =
+  private static volatile long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
-  private static final BigInteger bigTimePartitionOrigin = BigInteger.valueOf(timePartitionOrigin);
-  private static final BigInteger bigTimePartitionInterval =
-      BigInteger.valueOf(timePartitionInterval);
-  private static final boolean originMayCauseOverflow = (timePartitionOrigin != 0);
-  private static final long timePartitionLowerBoundWithoutOverflow;
-  private static final long timePartitionUpperBoundWithoutOverflow;
+  private static volatile boolean originMayCauseOverflow;
+  private static volatile long timePartitionLowerBoundWithoutOverflow;
+  private static volatile long timePartitionUpperBoundWithoutOverflow;
 
   static {
+    updateTimePartitionBound();
+  }
+
+  private static void updateTimePartitionBound() {
     long minPartition = getTimePartitionIdWithoutOverflow(Long.MIN_VALUE);
     long maxPartition = getTimePartitionIdWithoutOverflow(Long.MAX_VALUE);
     BigInteger minPartitionStartTime =
         BigInteger.valueOf(minPartition)
-            .multiply(bigTimePartitionInterval)
-            .add(bigTimePartitionOrigin);
+            .multiply(BigInteger.valueOf(timePartitionInterval))
+            .add(BigInteger.valueOf(timePartitionOrigin));
     BigInteger maxPartitionEndTime =
         BigInteger.valueOf(maxPartition)
-            .multiply(bigTimePartitionInterval)
-            .add(bigTimePartitionInterval)
-            .add(bigTimePartitionOrigin);
+            .multiply(BigInteger.valueOf(timePartitionInterval))
+            .add(BigInteger.valueOf(timePartitionInterval))
+            .add(BigInteger.valueOf(timePartitionOrigin));
     if (minPartitionStartTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
       timePartitionLowerBoundWithoutOverflow =
-          minPartitionStartTime.add(bigTimePartitionInterval).longValue();
+          minPartitionStartTime.add(BigInteger.valueOf(timePartitionInterval)).longValue();
     } else {
       timePartitionLowerBoundWithoutOverflow = minPartitionStartTime.longValue();
     }
     if (maxPartitionEndTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
       timePartitionUpperBoundWithoutOverflow =
-          maxPartitionEndTime.subtract(bigTimePartitionInterval).longValue();
+          maxPartitionEndTime.subtract(BigInteger.valueOf(timePartitionInterval)).longValue();
     } else {
       timePartitionUpperBoundWithoutOverflow = maxPartitionEndTime.longValue();
     }
+    originMayCauseOverflow = (timePartitionOrigin != 0);
   }
 
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
@@ -86,10 +88,7 @@ public class TimePartitionUtils {
       return Long.MIN_VALUE;
     }
     if (originMayCauseOverflow) {
-      return BigInteger.valueOf(getTimePartitionIdWithoutOverflow(time))
-          .multiply(bigTimePartitionInterval)
-          .add(bigTimePartitionOrigin)
-          .longValue();
+      return getTimePartitionStartTime(getTimePartitionIdWithoutOverflow(time));
     } else {
       return getTimePartitionId(time) * timePartitionInterval + timePartitionOrigin;
     }
@@ -105,7 +104,14 @@ public class TimePartitionUtils {
         : lowerBound + timePartitionInterval;
   }
 
+  public static boolean isTimePartitionStartTime(long time) {
+    return getTimePartitionLowerBound(time) == time;
+  }
+
   public static long getTimePartitionId(long time) {
+    if (originMayCauseOverflow) {
+      return getTimePartitionIdWithoutOverflow(time);
+    }
     time -= timePartitionOrigin;
     return time > 0 || time % timePartitionInterval == 0
         ? time / timePartitionInterval
@@ -113,7 +119,8 @@ public class TimePartitionUtils {
   }
 
   public static long getTimePartitionIdWithoutOverflow(long time) {
-    BigInteger bigTime = BigInteger.valueOf(time).subtract(bigTimePartitionOrigin);
+    BigInteger bigTime = BigInteger.valueOf(time).subtract(BigInteger.valueOf(timePartitionOrigin));
+    BigInteger bigTimePartitionInterval = BigInteger.valueOf(timePartitionInterval);
     BigInteger partitionId =
         bigTime.compareTo(BigInteger.ZERO) > 0
                 || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)
@@ -123,7 +130,7 @@ public class TimePartitionUtils {
   }
 
   public static long getStartTimeByPartitionId(long partitionId) {
-    return (partitionId * timePartitionInterval) + timePartitionOrigin;
+    return getTimePartitionStartTime(partitionId);
   }
 
   public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
@@ -142,40 +149,48 @@ public class TimePartitionUtils {
     if (timeFilter == null) {
       return true;
     }
-
-    long partitionEndTime =
-        partitionStartTime >= timePartitionLowerBoundWithoutOverflow
-            ? Long.MAX_VALUE
-            : (partitionStartTime + timePartitionInterval - 1);
+    long partitionEndTime = getTimePartitionUpperBound(partitionStartTime);
+    partitionEndTime = partitionEndTime == Long.MAX_VALUE ? Long.MAX_VALUE : partitionEndTime - 1;
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
-    long partitionStartTime;
-    if (originMayCauseOverflow) {
-      partitionStartTime =
-          BigInteger.valueOf(partitionId)
-              .multiply(bigTimePartitionInterval)
-              .add(bigTimePartitionOrigin)
-              .longValue();
-    } else {
-      partitionStartTime = partitionId * timePartitionInterval + timePartitionOrigin;
+    return satisfyPartitionStartTime(timeFilter, getTimePartitionStartTime(partitionId));
+  }
+
+  private static long getTimePartitionStartTime(long partitionId) {
+    BigInteger partitionStartTime =
+        BigInteger.valueOf(partitionId)
+            .multiply(BigInteger.valueOf(timePartitionInterval))
+            .add(BigInteger.valueOf(timePartitionOrigin));
+    if (partitionStartTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
+      return Long.MIN_VALUE;
     }
-    return satisfyPartitionStartTime(timeFilter, partitionStartTime);
+    if (partitionStartTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+      return Long.MAX_VALUE;
+    }
+    return partitionStartTime.longValue();
   }
 
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
+    updateTimePartitionBound();
+  }
+
+  public static void setTimePartitionOrigin(long timePartitionOrigin) {
+    TimePartitionUtils.timePartitionOrigin = timePartitionOrigin;
+    updateTimePartitionBound();
   }
 
   public static long getEstimateTimePartitionSize(long startTime, long endTime) {
-    if (endTime > 0 && startTime < 0) {
-      return BigInteger.valueOf(endTime)
-              .subtract(BigInteger.valueOf(startTime))
-              .divide(bigTimePartitionInterval)
-              .longValue()
-          + 1;
+    BigInteger estimateSize =
+        BigInteger.valueOf(endTime)
+            .subtract(BigInteger.valueOf(startTime))
+            .divide(BigInteger.valueOf(timePartitionInterval))
+            .add(BigInteger.ONE);
+    if (estimateSize.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+      return Long.MAX_VALUE;
     }
-    return (endTime - startTime) / timePartitionInterval + 1;
+    return estimateSize.longValue();
   }
 }
