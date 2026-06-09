@@ -73,7 +73,7 @@ public class IoTDBDataBackTool {
 
   private static final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
   static String sourcePath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-  static boolean IS_OBJECT_STORAGE = false;
+  static boolean isObjectStorage = false;
   static String DEFAULT_DN_DATA_DIRS =
       "data"
           + File.separator
@@ -570,7 +570,7 @@ public class IoTDBDataBackTool {
       for (int c = 0; c < subPatternDirs.length; c++) {
         if (c == subPatternDirs.length - 1 && i == patternDirs.length - 1) {
           if (subPatternDirs[c].equals("OBJECT_STORAGE")) {
-            IS_OBJECT_STORAGE = true;
+            isObjectStorage = true;
           } else {
             tmpDnDataDirs.append(subPatternDirs[c]);
           }
@@ -584,7 +584,7 @@ public class IoTDBDataBackTool {
         }
       }
     }
-    if (IS_OBJECT_STORAGE) {
+    if (isObjectStorage) {
       return tmpDnDataDirs.toString().substring(0, tmpDnDataDirs.toString().length() - 1);
     }
     return tmpDnDataDirs.toString();
