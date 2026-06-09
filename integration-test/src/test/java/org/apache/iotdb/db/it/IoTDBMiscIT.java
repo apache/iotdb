@@ -59,7 +59,7 @@ public class IoTDBMiscIT {
       assertEquals(3, collectCompressionRatioFiles(nodeWrapper).size());
 
       statement.execute("drop database root.comprssion_ratio_file");
-      // one global file and system region file
+      // one global file
       // deleting a file may not be sensed by other processes instantly
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)

@@ -443,18 +443,25 @@ public class TableDiskUsageIndex {
 
     @Override
     public void apply(TableDiskUsageIndex tableDiskUsageIndex) {
-      tableDiskUsageIndex.writerMap.computeIfPresent(
-          regionId,
-          (k, writer) -> {
-            if (writer.getActiveReaderNum() > 0) {
-              // If there are active readers, defer removal until all readers finish
-              writer.setRemovedFuture(future);
-              return writer;
-            }
-            writer.close();
-            future.complete(null);
-            return null;
-          });
+      DataRegionTableSizeIndexWriter removedWriter = null;
+      try {
+        removedWriter =
+            tableDiskUsageIndex.writerMap.computeIfPresent(
+                regionId,
+                (k, writer) -> {
+                  if (writer.getActiveReaderNum() > 0) {
+                    // If there are active readers, defer removal until all readers finish
+                    writer.setRemovedFuture(future);
+                    return writer;
+                  }
+                  writer.close();
+                  return null;
+                });
+      } finally {
+        if (removedWriter == null) {
+          future.complete(null);
+        }
+      }
     }
   }
 

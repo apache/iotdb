@@ -184,6 +184,32 @@ public class IoTDBSnapshotTest {
   }
 
   @Test
+  public void testLoadEmptySnapshotWithoutLog() throws IOException {
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
+    File snapshotDir = new File("target" + File.separator + "empty-snapshot");
+    try {
+      if (snapshotDir.exists()) {
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      }
+      Assert.assertTrue(snapshotDir.mkdirs());
+
+      DataRegion dataRegion =
+          new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
+              .loadSnapshotForStateMachine();
+
+      Assert.assertNotNull(dataRegion);
+      assertEquals(0, dataRegion.getTsFileManager().getTsFileList(true).size());
+      assertEquals(0, dataRegion.getTsFileManager().getTsFileList(false).size());
+    } finally {
+      FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
+    }
+  }
+
+  @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
     String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();

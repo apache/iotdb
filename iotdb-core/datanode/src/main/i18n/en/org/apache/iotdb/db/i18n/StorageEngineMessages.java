@@ -359,10 +359,26 @@ public final class StorageEngineMessages {
   // ======================== Snapshot ========================
 
   public static final String EXCEPTION_LOAD_SNAPSHOT = "Exception occurs while load snapshot from {}";
+  public static final String LOADING_SNAPSHOT_FOR = "Loading snapshot for {}-{}, source directory is {}";
+  public static final String EXCEPTION_LOADING_SNAPSHOT_FOR = "Exception occurs when loading snapshot for {}-{}";
   public static final String READING_SNAPSHOT_LOG_FILE = "Reading snapshot log file {}";
   public static final String REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR = "Remove all data files in original data dir";
   public static final String FAILED_TO_REMOVE_ORIGIN_DATA_FILES = "Failed to remove origin data files";
   public static final String MOVING_SNAPSHOT_FILE_TO_DATA_DIRS = "Moving snapshot file to data dirs";
+  public static final String CANNOT_FIND_SNAPSHOT_DIRECTORY = "Cannot find snapshot directory %s";
+  public static final String NO_SEQ_OR_UNSEQ_FILES_IN_SNAPSHOT =
+      "No seq or unseq files in snapshot {}, skip creating file links";
+  public static final String EXCEPTION_DELETING_TIME_PARTITION_DIR =
+      "Exception occurs when deleting time partition directory for {}-{}";
+  public static final String CANNOT_CREATE_LINK_FALLBACK_COPY =
+      "Cannot create link from {} to {}, fallback to copy";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE =
+      "Failed to process file {} in dir {}: {}";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES =
+      "Failed to process file after retries. Source: %s, Target suffix: %s";
+  public static final String SNAPSHOT_FILE_NUM_MISMATCH =
+      "The file num in log is %d, while file num in disk is %d";
+  public static final String SNAPSHOT_FILE_NOT_IN_LOG = "File %s is not in the log file list";
   public static final String NO_COMPRESSION_RATIO_FILE_IN_DIR = "No compression ratio file in dir {}";
   public static final String CANNOT_LOAD_COMPRESSION_RATIO = "Cannot load compression ratio from {}";
   public static final String LOADED_COMPRESSION_RATIO = "Loaded compression ratio from {}";
