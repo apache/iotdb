@@ -39,7 +39,7 @@ public class IoTDBDataNodeReceiverTest {
     try {
       final LoadTsFileStatement statement =
           IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
-              "root.test.sg_0", tsFile.toString(), true);
+              "root.test.sg_0", tsFile.toString(), true, true);
 
       Assert.assertEquals("root.test.sg_0", statement.getDatabase());
       Assert.assertEquals(2, statement.getDatabaseLevel());
@@ -54,16 +54,17 @@ public class IoTDBDataNodeReceiverTest {
     try {
       final Map<String, String> attributes =
           IoTDBDataNodeReceiver.buildLoadTsFileAttributesForAsync(
-              "root.test.sg_0", true, true, true);
+              "root.test.sg_0", true, false, true);
 
       Assert.assertEquals(
           "root.test.sg_0", attributes.get(LoadTsFileConfigurator.DATABASE_NAME_KEY));
       Assert.assertEquals("2", attributes.get(LoadTsFileConfigurator.DATABASE_LEVEL_KEY));
 
       final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.toString());
-      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, true);
+      ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, false);
       Assert.assertEquals("root.test.sg_0", statement.getDatabase());
       Assert.assertEquals(2, statement.getDatabaseLevel());
+      Assert.assertTrue(statement.isVerifySchema());
     } finally {
       Files.deleteIfExists(tsFile);
     }
@@ -75,7 +76,8 @@ public class IoTDBDataNodeReceiverTest {
     final Path tsFile = Files.createTempFile("pipe-load-default-database-level", ".tsfile");
     try {
       final LoadTsFileStatement statement =
-          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(null, tsFile.toString(), true);
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              null, tsFile.toString(), true, true);
 
       Assert.assertNull(statement.getDatabase());
       Assert.assertEquals(
@@ -92,7 +94,7 @@ public class IoTDBDataNodeReceiverTest {
     try {
       final LoadTsFileStatement statement =
           IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
-              "root.test.sg_0", tsFile.toString(), true);
+              "root.test.sg_0", tsFile.toString(), true, true);
       final long receiverId = System.nanoTime();
       final Exception exception = new RuntimeException("repeated receiver exception " + receiverId);
 
@@ -103,6 +105,37 @@ public class IoTDBDataNodeReceiverTest {
       Assert.assertTrue(
           IoTDBDataNodeReceiver.shouldLogStatementException(
               receiverId, statement, new RuntimeException("another receiver exception")));
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
+
+  @Test
+  public void testLoadTsFileSyncStatementVerifiesSchemaWhenConvertingType() throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-convert-verify-schema", ".tsfile");
+    try {
+      final LoadTsFileStatement statement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), false, true);
+
+      Assert.assertTrue(statement.isConvertOnTypeMismatch());
+      Assert.assertTrue(statement.isVerifySchema());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
+  }
+
+  @Test
+  public void testLoadTsFileSyncStatementCanSkipVerifySchemaWhenNotConvertingType()
+      throws Exception {
+    final Path tsFile = Files.createTempFile("pipe-load-no-convert-no-verify-schema", ".tsfile");
+    try {
+      final LoadTsFileStatement statement =
+          IoTDBDataNodeReceiver.buildLoadTsFileStatementForSync(
+              "root.test.sg_0", tsFile.toString(), false, false);
+
+      Assert.assertFalse(statement.isConvertOnTypeMismatch());
+      Assert.assertFalse(statement.isVerifySchema());
     } finally {
       Files.deleteIfExists(tsFile);
     }
