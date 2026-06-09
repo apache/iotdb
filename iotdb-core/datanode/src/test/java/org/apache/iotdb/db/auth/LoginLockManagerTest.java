@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.db.auth.LoginLockManager.UserLockInfo;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -139,6 +143,66 @@ public class LoginLockManagerTest {
     assertTrue(
         "User@IP should be locked after max attempts",
         lockManager.checkLock(TEST_USER_ID, TEST_IP));
+  }
+
+  @Test
+  public void testLockMessagesLoggedOnlyWhenThresholdFirstReached() {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LoginLockManager.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      for (int i = 0; i < failedLoginAttemptsPerUser + 2; i++) {
+        lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      }
+
+      assertEquals(1, countLogEvents(appender, DataNodeMiscMessages.IP_LOCKED));
+      assertEquals(1, countLogEvents(appender, "User ID '{}' locked due to {} failed attempts"));
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  public void testPotentialAttackWarningsLoggedOnlyOnceWhileThresholdExceeded() {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LoginLockManager.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      for (int i = 0; i < 55; i++) {
+        lockManager.recordFailure(TEST_USER_ID + i, TEST_IP);
+      }
+      for (int i = 0; i < 5; i++) {
+        lockManager.recordFailure(TEST_USER_ID + i, TEST_IP);
+      }
+
+      for (int i = 0; i < 105; i++) {
+        lockManager.recordFailure(OTHER_USER_ID, "172.16.0." + i);
+      }
+      for (int i = 0; i < 5; i++) {
+        lockManager.recordFailure(OTHER_USER_ID, "172.16.0." + i);
+      }
+
+      assertEquals(1, countLogEvents(appender, DataNodeMiscMessages.IP_LOCKED_MULTIPLE_USERS));
+      assertEquals(1, countLogEvents(appender, DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS));
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    return appender.list.stream()
+        .filter(event -> messagePattern.equals(event.getMessage()))
+        .count();
   }
 
   @Test

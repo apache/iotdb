@@ -19,8 +19,18 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
+
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class JVMCommonUtilsTest {
 
@@ -38,5 +48,38 @@ public class JVMCommonUtilsTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void getDiskFreeRatioWarnsOnlyOnceWhileDiskWarningPersists() throws IOException {
+    Path dir = Files.createTempDirectory("jvm-common-utils-test");
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(JVMCommonUtils.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    JVMCommonUtils.resetDiskWarningLastPrintTimes();
+    JVMCommonUtils.setDiskSpaceWarningThreshold(1.1);
+    try {
+      JVMCommonUtils.getDiskFreeRatio(dir.toString());
+      JVMCommonUtils.getDiskFreeRatio(dir.toString());
+
+      Assert.assertEquals(1, countLogEvents(appender, UtilMessages.DISK_ABOVE_WARNING_THRESHOLD));
+    } finally {
+      JVMCommonUtils.setDiskSpaceWarningThreshold(
+          CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold());
+      JVMCommonUtils.resetDiskWarningLastPrintTimes();
+      logger.detachAppender(appender);
+      appender.stop();
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
+    return appender.list.stream()
+        .filter(event -> messagePattern.equals(event.getMessage()))
+        .count();
   }
 }
