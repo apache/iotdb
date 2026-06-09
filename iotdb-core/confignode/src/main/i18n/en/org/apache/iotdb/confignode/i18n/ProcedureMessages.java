@@ -448,7 +448,7 @@ public final class ProcedureMessages {
 
   public static final String
       FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE =
-          "Cannot remove DataNode because data_replication_factor is 1 or at least one DataRegion has only one replica. Removing a DataNode may cause data loss. Increase data_replication_factor and ensure each DataRegion has more than one replica before removing DataNodes.";
+          "Cannot remove DataNode because data_replication_factor is 1 or at least one DataRegion has only one replica. Removing DataNodes is not supported with single replica.";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
