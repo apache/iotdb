@@ -30,9 +30,11 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -227,6 +229,11 @@ public class IoTDBJDBCResultSetTest {
           Assert.assertTrue(resultSet.wasNull());
           Assert.assertNull(resultSet.getTimestamp(4));
           Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getBigDecimal(4, 2));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getBigDecimal("root.vehicle.d0.s0", 2));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(4, -1));
           firstRow = false;
         }
         for (int i = 1; i <= colCount; i++) {
@@ -274,6 +281,20 @@ public class IoTDBJDBCResultSetTest {
     }
   }
 
+  @SuppressWarnings("resource")
+  @Test
+  public void testInvalidBigDecimalConversionThrowsSQLException() throws Exception {
+    mockTextQueryResponse();
+
+    Assert.assertTrue(statement.execute("select s3 from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal(2));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getBigDecimal("root.vehicle.d0.s3"));
+    }
+  }
+
   private void mockVehicleQueryResponse() {
     List<String> columns = new ArrayList<>();
     columns.add("root.vehicle.d0.s2");
@@ -311,6 +332,25 @@ public class IoTDBJDBCResultSetTest {
         .doReturn("FLOAT")
         .when(fetchMetadataResp)
         .getDataType();
+  }
+
+  private void mockTextQueryResponse() {
+    List<String> columns = new ArrayList<>(Collections.singletonList("root.vehicle.d0.s3"));
+    List<String> dataTypeList = new ArrayList<>(Collections.singletonList("TEXT"));
+
+    when(execResp.isSetColumns()).thenReturn(true);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.isSetDataTypeList()).thenReturn(true);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    when(execResp.isSetOperationType()).thenReturn(true);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    when(execResp.isSetQueryId()).thenReturn(true);
+    when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(new ArrayList<>(Collections.singletonList(0)));
+    execResp.queryResult = fakedTextFetchTsBlockResult();
   }
 
   private void constructObjectList(List<Object> standardObject) {
@@ -406,6 +446,24 @@ public class IoTDBJDBCResultSetTest {
 
       tsBlockBuilder.declarePosition();
     }
+
+    ByteBuffer tsBlock = null;
+    try {
+      tsBlock = new TsBlockSerde().serialize(tsBlockBuilder.build());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return Collections.singletonList(tsBlock);
+  }
+
+  private List<ByteBuffer> fakedTextFetchTsBlockResult() {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(1L);
+    tsBlockBuilder
+        .getColumnBuilder(0)
+        .writeBinary(new Binary("not-a-number", TSFileConfig.STRING_CHARSET));
+    tsBlockBuilder.declarePosition();
 
     ByteBuffer tsBlock = null;
     try {

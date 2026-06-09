@@ -83,6 +83,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }) // ignore Cognitive Complexity of methods should not be too high
   @Override
   public String getCatalogName(int column) throws SQLException {
+    checkColumnIndex(column);
     String systemSchmea = "_system_schmea";
     String system = "_system";
     String systemUser = "_system_user";
@@ -92,9 +93,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     String systemNull = "";
     String columnName = columnInfoList.get(column - 1);
     List<String> listColumns = columnInfoList;
-    if (column < 1 || column > columnInfoList.size()) {
-      throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
-    }
     if ("SHOW".equals(operationType)) {
       if ("count".equals(listColumns.get(0))) {
         return systemDatabase;
@@ -135,16 +133,22 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     } else if (!"FILL".equals(operationType)) {
       return systemNull;
     }
-    if (nonAlign) {
-      return sgColumns.get(column - 1);
-    } else {
-      return sgColumns.get(column - 2);
+    if (sgColumns == null || sgColumns.isEmpty()) {
+      return systemNull;
     }
+    int sgColumnIndex = nonAlign ? column - 1 : column - 2;
+    if (sgColumnIndex < 0 || sgColumnIndex >= sgColumns.size()) {
+      return systemNull;
+    }
+    return sgColumns.get(sgColumnIndex);
   }
 
   @Override
   public String getColumnClassName(int column) throws SQLException {
     String columnTypeName = getColumnTypeName(column);
+    if (columnTypeName == null) {
+      return null;
+    }
     switch (columnTypeName) {
       case TIMESTAMP:
         return Timestamp.class.getName();
@@ -210,7 +214,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return Types.TIMESTAMP;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
 
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
@@ -244,7 +248,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return TIMESTAMP;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     String typeString = columnType.toUpperCase();
     if (BOOLEAN.equals(typeString)
         || INT32.equals(typeString)
@@ -267,7 +271,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 3;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
         return 1;
@@ -299,7 +303,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 0;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType = getColumnTypeString(column);
     switch (columnType.toUpperCase()) {
       case BOOLEAN:
       case INT32:
@@ -337,47 +341,67 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public boolean isAutoIncrement(int arg0) throws SQLException {
+  public boolean isAutoIncrement(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public boolean isCaseSensitive(int arg0) throws SQLException {
+  public boolean isCaseSensitive(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isCurrency(int arg0) throws SQLException {
+  public boolean isCurrency(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public boolean isDefinitelyWritable(int arg0) throws SQLException {
+  public boolean isDefinitelyWritable(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
   }
 
   @Override
-  public int isNullable(int arg0) throws SQLException {
+  public int isNullable(int column) throws SQLException {
+    checkColumnIndex(column);
     return 1;
   }
 
   @Override
-  public boolean isReadOnly(int arg0) throws SQLException {
+  public boolean isReadOnly(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isSearchable(int arg0) throws SQLException {
+  public boolean isSearchable(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isSigned(int arg0) throws SQLException {
+  public boolean isSigned(int column) throws SQLException {
+    checkColumnIndex(column);
     return true;
   }
 
   @Override
-  public boolean isWritable(int arg0) throws SQLException {
+  public boolean isWritable(int column) throws SQLException {
+    checkColumnIndex(column);
     return false;
+  }
+
+  private String getColumnTypeString(int column) throws SQLException {
+    if (columnTypeList == null || column > columnTypeList.size()) {
+      throw new SQLException(String.format(JdbcMessages.COLUMN_DOES_NOT_EXIST, column));
+    }
+    String columnType = columnTypeList.get(column - 1);
+    if (columnType == null) {
+      throw new SQLException(String.format(JdbcMessages.COLUMN_DOES_NOT_EXIST, column));
+    }
+    return columnType;
   }
 }

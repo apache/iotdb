@@ -274,17 +274,25 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public BigDecimal getBigDecimal(String columnName) throws SQLException {
     String value = getValueByName(columnName);
-    if (value != null) {
-      return new BigDecimal(value);
-    } else {
+    if (value == null) {
       return null;
+    }
+    try {
+      return new BigDecimal(value);
+    } catch (NumberFormatException e) {
+      throw new SQLException(e.getMessage(), e);
     }
   }
 
   @Override
   public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-    MathContext mc = new MathContext(scale);
-    return getBigDecimal(columnIndex).round(mc);
+    try {
+      MathContext mc = new MathContext(scale);
+      BigDecimal value = getBigDecimal(columnIndex);
+      return value == null ? null : value.round(mc);
+    } catch (IllegalArgumentException e) {
+      throw new SQLException(e.getMessage(), e);
+    }
   }
 
   @Override

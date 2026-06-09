@@ -73,6 +73,8 @@ public class IoTDBStatement implements Statement {
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
+  private static final String CANNOT_AFTER_STATEMENT_CLOSED =
+      "Cannot %s after statement has been closed!";
 
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
@@ -191,7 +193,8 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void addBatch(String sql) {
+  public void addBatch(String sql) throws SQLException {
+    checkConnection("addBatch");
     if (batchSQLList == null) {
       batchSQLList = new ArrayList<>();
     }
@@ -217,7 +220,12 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void clearBatch() {
+  public void clearBatch() throws SQLException {
+    checkConnection("clearBatch");
+    clearBatchInternal();
+  }
+
+  private void clearBatchInternal() {
     if (batchSQLList == null) {
       batchSQLList = new ArrayList<>();
     }
@@ -225,7 +233,8 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public void clearWarnings() {
+  public void clearWarnings() throws SQLException {
+    checkConnection("clearWarnings");
     warningChain = null;
   }
 
@@ -273,7 +282,6 @@ public class IoTDBStatement implements Statement {
   @Override
   public boolean execute(String sql) throws SQLException {
     checkConnection("execute");
-    isClosed = false;
     try {
       return executeSQL(sql);
     } catch (TException e) {
@@ -415,14 +423,13 @@ public class IoTDBStatement implements Statement {
   @Override
   public int[] executeBatch() throws SQLException {
     checkConnection("executeBatch");
-    isClosed = false;
     try {
       return executeBatchSQL();
     } catch (TException e) {
       throw new SQLException(
           "Fail to reconnect to server when executing batch sqls. please check server status", e);
     } finally {
-      clearBatch();
+      clearBatchInternal();
     }
   }
 
@@ -478,7 +485,6 @@ public class IoTDBStatement implements Statement {
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
-    isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
@@ -545,7 +551,6 @@ public class IoTDBStatement implements Statement {
   @Override
   public int executeUpdate(String sql) throws SQLException {
     checkConnection("execute update");
-    isClosed = false;
     try {
       return executeUpdateSQL(sql);
     } catch (TException e) {
@@ -588,7 +593,8 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public Connection getConnection() {
+  public Connection getConnection() throws SQLException {
+    checkConnection("getConnection");
     return connection;
   }
 
@@ -639,6 +645,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
+    checkConnection("getMaxRows");
     return this.maxRows;
   }
 
@@ -653,6 +660,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean getMoreResults() throws SQLException {
+    checkConnection("getMoreResults");
     return false;
   }
 
@@ -662,7 +670,8 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public int getQueryTimeout() {
+  public int getQueryTimeout() throws SQLException {
+    checkConnection("getQueryTimeout");
     return this.queryTimeout;
   }
 
@@ -689,6 +698,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetHoldability() throws SQLException {
+    checkConnection("getResultSetHoldability");
     return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
@@ -699,12 +709,14 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public int getUpdateCount() {
+  public int getUpdateCount() throws SQLException {
+    checkConnection("getUpdateCount");
     return -1;
   }
 
   @Override
-  public SQLWarning getWarnings() {
+  public SQLWarning getWarnings() throws SQLException {
+    checkConnection("getWarnings");
     return warningChain;
   }
 
@@ -738,9 +750,12 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(JdbcMessages.NOT_SUPPORT_SET_ESCAPE_PROCESSING);
   }
 
-  private void checkConnection(String action) throws SQLException {
+  protected void checkConnection(String action) throws SQLException {
     if (connection == null || connection.isClosed()) {
       throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
+    if (isClosed) {
+      throw new SQLException(String.format(CANNOT_AFTER_STATEMENT_CLOSED, action));
     }
   }
 

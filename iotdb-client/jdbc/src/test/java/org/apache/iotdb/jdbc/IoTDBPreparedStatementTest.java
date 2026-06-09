@@ -43,6 +43,7 @@ import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -123,6 +124,15 @@ public class IoTDBPreparedStatementTest {
     assertEquals(0, metadata.getPrecision(1));
     assertEquals(Types.NULL, metadata.getParameterType(1));
     assertEquals(ParameterMetaData.parameterModeUnknown, metadata.getParameterMode(1));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void getMetaDataReturnsNullWhenNoResultSetExists() throws Exception {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+
+    assertNull(ps.getMetaData());
   }
 
   @SuppressWarnings("resource")

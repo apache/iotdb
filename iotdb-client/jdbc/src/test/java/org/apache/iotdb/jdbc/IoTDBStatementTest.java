@@ -40,6 +40,7 @@ import java.time.ZoneId;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -135,6 +136,25 @@ public class IoTDBStatementTest {
     IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID);
 
     assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, statement.getResultSetHoldability());
+  }
+
+  @Test
+  public void testClosedStatementRejectsOperations() throws SQLException {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 0, -1L);
+
+    statement.close();
+
+    assertTrue(statement.isClosed());
+    assertThrows(SQLException.class, () -> statement.execute("select 1"));
+    assertThrows(SQLException.class, () -> statement.executeQuery("select 1"));
+    assertThrows(
+        SQLException.class,
+        () -> statement.executeUpdate("insert into root.sg.d(time,s) values(1,1)"));
+    assertThrows(SQLException.class, () -> statement.executeBatch());
+    assertThrows(SQLException.class, () -> statement.addBatch("select 1"));
+    assertThrows(SQLException.class, () -> statement.clearBatch());
+    assertThrows(SQLException.class, () -> statement.getFetchSize());
+    assertThrows(SQLException.class, () -> statement.getWarnings());
   }
 
   @Test(expected = SQLException.class)
