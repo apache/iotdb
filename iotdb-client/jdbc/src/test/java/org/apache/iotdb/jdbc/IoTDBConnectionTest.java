@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -74,6 +75,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testSetTimeZone() throws IoTDBSQLException, TException {
+    openConnection(connection);
     String timeZone = "Asia/Shanghai";
     when(client.setTimeZone(any(TSSetTimeZoneReq.class))).thenReturn(new TSStatus(successStatus));
     connection.setClient(client);
@@ -103,6 +105,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testSetTimeZoneRejectsInvalidZoneBeforeRpc() throws TException {
+    openConnection(connection);
     connection.setClient(client);
 
     assertThrows(IoTDBSQLException.class, () -> connection.setTimeZone("invalid-zone"));
@@ -143,6 +146,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testGetServerProperties() throws TException {
+    openConnection(connection);
     final String version = "v0.1";
     @SuppressWarnings("serial")
     final List<String> supportedAggregationTime =
@@ -168,6 +172,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void setTimeoutTest() throws SQLException {
+    openConnection(connection);
     connection.setQueryTimeout(60);
     Assert.assertEquals(60, connection.getQueryTimeout());
   }
@@ -303,8 +308,20 @@ public class IoTDBConnectionTest {
     assertThrows(SQLException.class, () -> connection.rollback());
     assertThrows(SQLException.class, () -> connection.rollback((Savepoint) null));
     assertThrows(SQLException.class, () -> connection.setNetworkTimeout(null, 0));
+    assertThrows(SQLException.class, () -> connection.setQueryTimeout(60));
     assertThrows(SQLException.class, () -> connection.setSavepoint());
     assertThrows(SQLException.class, () -> connection.setSavepoint("s"));
+    assertThrows(IoTDBSQLException.class, () -> connection.setTimeZone("+07:00"));
+    assertThrows(TException.class, () -> connection.getServerProperties());
+  }
+
+  @Test
+  public void testClosedConnectionDoesNotReconnect() {
+    TTransport transport = org.mockito.Mockito.mock(TTransport.class);
+    setTransport(connection, transport);
+
+    assertFalse(connection.reconnect());
+    verify(transport, never()).close();
   }
 
   private void openConnection(IoTDBConnection target) {
@@ -312,6 +329,16 @@ public class IoTDBConnectionTest {
       Field isClosedField = IoTDBConnection.class.getDeclaredField("isClosed");
       isClosedField.setAccessible(true);
       isClosedField.setBoolean(target, false);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  private void setTransport(IoTDBConnection target, TTransport transport) {
+    try {
+      Field transportField = IoTDBConnection.class.getDeclaredField("transport");
+      transportField.setAccessible(true);
+      transportField.set(target, transport);
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(e);
     }

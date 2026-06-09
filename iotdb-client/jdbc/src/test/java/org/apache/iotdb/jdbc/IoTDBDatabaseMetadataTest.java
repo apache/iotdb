@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
@@ -53,6 +54,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class IoTDBDatabaseMetadataTest {
@@ -106,12 +109,25 @@ public class IoTDBDatabaseMetadataTest {
   }
 
   @Test
-  public void testClosedConnectionRejectsMetadataWrapperMethods() throws SQLException {
+  public void testClosedConnectionRejectsMetadataOperations() throws SQLException, TException {
     when(connection.isClosed()).thenReturn(true);
 
     assertThrows(SQLException.class, () -> databaseMetaData.isWrapperFor(DatabaseMetaData.class));
     assertThrows(SQLException.class, () -> databaseMetaData.unwrap(DatabaseMetaData.class));
     assertThrows(SQLException.class, () -> databaseMetaData.getConnection());
+    assertThrows(SQLException.class, () -> databaseMetaData.getURL());
+    assertThrows(SQLException.class, () -> databaseMetaData.getUserName());
+    assertThrows(SQLException.class, () -> databaseMetaData.isReadOnly());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseProductVersion());
+    assertThrows(SQLException.class, () -> databaseMetaData.getSystemFunctions());
+    assertThrows(SQLException.class, () -> databaseMetaData.getMaxConnections());
+    assertThrows(SQLException.class, () -> databaseMetaData.getMaxStatementLength());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseMajorVersion());
+    assertThrows(SQLException.class, () -> databaseMetaData.getDatabaseMinorVersion());
+    assertThrows(
+        SQLException.class, () -> ((IoTDBDatabaseMetadata) databaseMetaData).getMetadataInJson());
+    assertEquals("", databaseMetaData.toString());
+    verify(client, never()).fetchMetadata(any(TSFetchMetadataReq.class));
   }
 
   @Test
