@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -126,7 +127,12 @@ public class FileMetrics implements IMetricSet {
   }
 
   public Map<Integer, Long> getRegionSizeMap() {
-    return TS_FILE_METRICS.getRegionSizeMap();
+    Map<Integer, Long> regionSizeMap = new HashMap<>(TS_FILE_METRICS.getRegionSizeMap());
+    OBJECT_FILE_METRICS
+        .getRegionSizeMap()
+        .forEach(
+            (regionId, objectFileSize) -> regionSizeMap.merge(regionId, objectFileSize, Long::sum));
+    return regionSizeMap;
   }
 
   private static class FileMetricsInstanceHolder {

@@ -28,6 +28,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -224,5 +225,16 @@ public class ObjectFileMetrics implements IMetricSet {
         updateObjectFileSizeMap(entry.getKey(), innerEntry.getKey(), 0);
       }
     }
+  }
+
+  public Map<Integer, Long> getRegionSizeMap() {
+    Map<Integer, Long> regionSizeMap = new HashMap<>();
+    for (Map<String, Pair<Long, Gauge>> map : dataRegionObjectFileSizeMap.values()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
+        Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
+        regionSizeMap.merge(regionId, regionSizeEntry.getValue().getLeft(), Long::sum);
+      }
+    }
+    return regionSizeMap;
   }
 }
