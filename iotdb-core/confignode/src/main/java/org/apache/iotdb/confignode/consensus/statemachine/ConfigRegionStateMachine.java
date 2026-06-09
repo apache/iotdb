@@ -77,6 +77,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   private static final ExecutorService threadPool =
       IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.CONFIG_NODE_RECOVER.getName());
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final long WAIT_LOAD_READY_TIMEOUT_MS =
+      CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2;
+  private static final long WAIT_LOAD_READY_INTERVAL_MS = 100;
   private final ConfigPlanExecutor executor;
   private final AtomicBoolean leaderServicesReady;
   private final AtomicLong leaderServicesEpoch;
@@ -311,17 +314,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       configManager.getLoadManager().startTopologyService();
     }
 
-    threadPool.submit(() -> startLeaderServicesAfterLoadReady(epoch));
+    threadPool.submit(() -> startLeaderServicesAndWaitLoadReady(epoch));
   }
 
-  private void startLeaderServicesAfterLoadReady(final long epoch) {
-    if (!configManager.getLoadManager().isLoadReady()) {
-      LOGGER.info(
-          "Current ConfigNode(nodeId: {}, ip: {}) starts leader services while load warm-up is"
-              + " still in progress.",
-          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          currentNodeTEndPoint);
-    }
+  private void startLeaderServicesAndWaitLoadReady(final long epoch) {
     synchronized (leaderServicesLock) {
       if (!isCurrentLeaderServicesEpoch(epoch)) {
         LOGGER.info(
@@ -392,12 +388,43 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       }
     }
 
+    boolean loadReady = waitForLoadReady(epoch);
+    if (!isCurrentLeaderServicesEpoch(epoch)) {
+      return;
+    }
+    if (!loadReady) {
+      LOGGER.info(
+          "Current ConfigNode(nodeId: {}, ip: {}) finished starting leader services while load"
+              + " warm-up is still in progress: {}",
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          currentNodeTEndPoint,
+          configManager.getLoadManager().getLoadReadyReason());
+    }
+
     if (isCurrentLeaderServicesEpoch(epoch)) {
       LOGGER.info(
           ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_AS_CONFIG_REGION_LEADER_IS,
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           currentNodeTEndPoint);
     }
+  }
+
+  private boolean waitForLoadReady(final long epoch) {
+    long startTime = System.currentTimeMillis();
+    while (isCurrentLeaderServicesEpoch(epoch)
+        && System.currentTimeMillis() - startTime < WAIT_LOAD_READY_TIMEOUT_MS) {
+      if (configManager.getLoadManager().isLoadReady()) {
+        return true;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(WAIT_LOAD_READY_INTERVAL_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption while waiting for ConfigNode leader load warm-up.", e);
+        return false;
+      }
+    }
+    return isCurrentLeaderServicesEpoch(epoch) && configManager.getLoadManager().isLoadReady();
   }
 
   public boolean areLeaderServicesReady() {

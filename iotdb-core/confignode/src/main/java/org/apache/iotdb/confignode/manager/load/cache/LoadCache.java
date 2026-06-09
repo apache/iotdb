@@ -365,31 +365,22 @@ public class LoadCache {
         .ifPresent(group -> group.cacheHeartbeatSample(sample));
   }
 
-  public void cacheDataNodeHeartbeatFailureSample(int nodeId, long sampleTimestamp) {
-    cacheUnreportedDataNodeRegionHeartbeatSamples(nodeId, Collections.emptySet(), sampleTimestamp);
-  }
-
   public void cacheUnreportedDataNodeRegionHeartbeatSamples(
-      int nodeId, Set<TConsensusGroupId> reportedRegionGroupIds, long sampleTimestamp) {
-    getRegionGroupIdsByDataNodeId(nodeId)
-        .forEach(
-            regionGroupId -> {
-              if (reportedRegionGroupIds.contains(regionGroupId)) {
-                return;
-              }
-              cacheRegionHeartbeatSample(
-                  regionGroupId,
-                  nodeId,
-                  new RegionHeartbeatSample(sampleTimestamp, RegionStatus.Unknown),
-                  false);
-            });
-  }
-
-  private List<TConsensusGroupId> getRegionGroupIdsByDataNodeId(int nodeId) {
-    return regionGroupCacheMap.entrySet().stream()
-        .filter(entry -> entry.getValue().getRegionLocations().contains(nodeId))
-        .map(Map.Entry::getKey)
-        .collect(Collectors.toList());
+      int nodeId,
+      Set<TConsensusGroupId> regionGroupIdsOnDataNode,
+      Set<TConsensusGroupId> reportedRegionGroupIds,
+      long sampleTimestamp) {
+    regionGroupIdsOnDataNode.forEach(
+        regionGroupId -> {
+          if (reportedRegionGroupIds.contains(regionGroupId)) {
+            return;
+          }
+          cacheRegionHeartbeatSample(
+              regionGroupId,
+              nodeId,
+              new RegionHeartbeatSample(sampleTimestamp, RegionStatus.Unknown),
+              false);
+        });
   }
 
   /** Update the NodeStatistics of all Nodes. */
@@ -478,10 +469,6 @@ public class LoadCache {
     return regionGroupIdsMap;
   }
 
-  public List<TConsensusGroupId> getAllRegionGroupIds() {
-    return new ArrayList<>(regionGroupCacheMap.keySet());
-  }
-
   /**
    * Get the RegionGroupStatistics of all RegionGroups.
    *
@@ -541,23 +528,17 @@ public class LoadCache {
             unreadyNodes.add(nodeId);
           }
         });
-    List<String> unreadyReasons = new ArrayList<>();
-    Collections.sort(unreadyNodes);
-    addUnreadyReason(unreadyReasons, "nodes", unreadyNodes);
-    return unreadyReasons;
-  }
-
-  private void addUnreadyReason(List<String> reasons, String entityName, List<?> unreadyEntities) {
-    if (unreadyEntities.isEmpty()) {
-      return;
+    if (unreadyNodes.isEmpty()) {
+      return Collections.emptyList();
     }
-    List<?> entitiesToPrint =
-        unreadyEntities.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyEntities.size()));
+    Collections.sort(unreadyNodes);
+    List<Integer> nodesToPrint =
+        unreadyNodes.subList(0, Math.min(MAX_UNREADY_ENTITY_PRINT, unreadyNodes.size()));
     String suffix =
-        unreadyEntities.size() > MAX_UNREADY_ENTITY_PRINT
-            ? "...(" + (unreadyEntities.size() - MAX_UNREADY_ENTITY_PRINT) + " more)"
+        unreadyNodes.size() > MAX_UNREADY_ENTITY_PRINT
+            ? "...(" + (unreadyNodes.size() - MAX_UNREADY_ENTITY_PRINT) + " more)"
             : "";
-    reasons.add(entityName + "=" + entitiesToPrint + suffix);
+    return Collections.singletonList("nodes=" + nodesToPrint + suffix);
   }
 
   /**

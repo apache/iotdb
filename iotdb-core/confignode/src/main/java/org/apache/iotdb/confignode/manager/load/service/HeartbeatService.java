@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.service;
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -261,6 +262,7 @@ public class HeartbeatService {
           new DataNodeHeartbeatHandler(
               dataNodeId,
               configManager.getLoadManager(),
+              getRegionGroupIds(dataNodeId),
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),
@@ -273,6 +275,12 @@ public class HeartbeatService {
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
+  }
+
+  private Set<TConsensusGroupId> getRegionGroupIds(int dataNodeId) {
+    return configManager.getPartitionManager().getAllReplicaSets(dataNodeId).stream()
+        .map(replicaSet -> replicaSet.getRegionId())
+        .collect(Collectors.toSet());
   }
 
   /**
