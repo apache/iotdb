@@ -4215,7 +4215,6 @@ public class StatementAnalyzer {
 
       for (SortItem item : sortItems) {
         Expression expression = item.getSortKey();
-        Scope expressionScope = orderByScope;
 
         if (expression instanceof LongLiteral) {
           // this is an ordinal in the output tuple
@@ -4227,12 +4226,10 @@ public class StatementAnalyzer {
           }
 
           expression = new FieldReference(toIntExact(ordinal - 1));
-          expressionScope = orderByScope;
         } else {
           Optional<SelectAlias> selectAlias = resolveOrderBySelectAlias(expression, selectAliases);
           if (selectAlias.isPresent()) {
             expression = new FieldReference(selectAlias.get().getPosition() - 1);
-            expressionScope = orderByScope;
           }
         }
 
@@ -4243,7 +4240,7 @@ public class StatementAnalyzer {
                 sessionContext,
                 statementAnalyzerFactory,
                 accessControl,
-                expressionScope,
+                orderByScope,
                 analysis,
                 expression,
                 WarningCollector.NOOP,
