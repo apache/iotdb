@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -153,6 +154,123 @@ public class IoTDBJDBCResultSetTest {
     /*
      * step 1: execute statement
      */
+    mockVehicleQueryResponse();
+
+    boolean hasResultSet = statement.execute(testSql);
+    Assert.assertTrue(hasResultSet);
+
+    verify(fetchMetadataResp, times(0)).getDataType();
+
+    /*
+     * step 2: fetch result
+     */
+    fetchResultsResp.hasResultSet = true; // at the first time to fetch
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.isWrapperFor(IoTDBJDBCResultSet.class));
+      Assert.assertTrue(resultSet.isWrapperFor(ResultSet.class));
+      Assert.assertFalse(resultSet.isWrapperFor(String.class));
+      Assert.assertFalse(resultSet.isWrapperFor(null));
+      Assert.assertSame(resultSet, resultSet.unwrap(IoTDBJDBCResultSet.class));
+      Assert.assertSame(resultSet, resultSet.unwrap(ResultSet.class));
+      Assert.assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
+      Assert.assertEquals(ResultSet.FETCH_FORWARD, resultSet.getFetchDirection());
+      resultSet.setFetchDirection(ResultSet.FETCH_FORWARD);
+      Assert.assertThrows(
+          SQLException.class, () -> resultSet.setFetchDirection(ResultSet.FETCH_REVERSE));
+      Assert.assertEquals(Config.DEFAULT_FETCH_SIZE, resultSet.getFetchSize());
+      resultSet.setFetchSize(123);
+      Assert.assertEquals(123, resultSet.getFetchSize());
+      resultSet.setFetchSize(0);
+      Assert.assertEquals(Config.DEFAULT_FETCH_SIZE, resultSet.getFetchSize());
+      Assert.assertThrows(SQLException.class, () -> resultSet.setFetchSize(-1));
+      Assert.assertNull(resultSet.getWarnings());
+      resultSet.clearWarnings();
+
+      // check columnInfoMap
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
+      Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
+      Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
+
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      // check columnInfoList
+      Assert.assertEquals("Time", resultSetMetaData.getColumnName(1));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(2));
+      Assert.assertEquals("root.vehicle.d0.s1", resultSetMetaData.getColumnName(3));
+      Assert.assertEquals("root.vehicle.d0.s0", resultSetMetaData.getColumnName(4));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(5));
+      // check columnTypeList
+      Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(2));
+      Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+      Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+      // check fetched result
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      List<Object> resultObjectList = new ArrayList<>();
+      for (int i = 1; i < colCount + 1; i++) { // meta title
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      boolean firstRow = true;
+      while (resultSet.next()) { // data
+        if (firstRow) {
+          Assert.assertNull(resultSet.getDate(4));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getTime(4));
+          Assert.assertTrue(resultSet.wasNull());
+          Assert.assertNull(resultSet.getTimestamp(4));
+          Assert.assertTrue(resultSet.wasNull());
+          firstRow = false;
+        }
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
+          resultObjectList.add(resultSet.getObject(i));
+        }
+        resultStr.append("\n");
+        fetchResultsResp.hasResultSet = false; // at the second time to fetch
+      }
+      String standard =
+          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+              + "2,2.22,40000,null,2.22,\n"
+              + "3,3.33,null,null,3.33,\n"
+              + "4,4.44,null,null,4.44,\n"
+              + "50,null,50000,null,null,\n"
+              + "100,null,199,null,null,\n"
+              + "101,null,199,null,null,\n"
+              + "103,null,199,null,null,\n"
+              + "105,11.11,199,33333,11.11,\n"
+              + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
+      Assert.assertEquals(standard, resultStr.toString());
+      List<Object> standardObject = new ArrayList<>();
+      constructObjectList(standardObject);
+      Assert.assertEquals(standardObject.size(), resultObjectList.size());
+      for (int i = 0; i < standardObject.size(); i++) {
+        Assert.assertEquals(standardObject.get(i), resultObjectList.get(i));
+      }
+    }
+
+    // The client get TSQueryDataSet at the first request
+    verify(fetchResultsResp, times(0)).getStatus();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testTimestampByNameUsesConnectionTimePrecision() throws Exception {
+    when(connection.getTimeFactor()).thenReturn(1_000_000);
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    try (ResultSet resultSet = statement.getResultSet()) {
+      Assert.assertTrue(resultSet.next());
+      Assert.assertEquals(resultSet.getTimestamp(1), resultSet.getTimestamp("Time"));
+    }
+  }
+
+  private void mockVehicleQueryResponse() {
     List<String> columns = new ArrayList<>();
     columns.add("root.vehicle.d0.s2");
     columns.add("root.vehicle.d0.s1");
@@ -189,83 +307,6 @@ public class IoTDBJDBCResultSetTest {
         .doReturn("FLOAT")
         .when(fetchMetadataResp)
         .getDataType();
-
-    boolean hasResultSet = statement.execute(testSql);
-    Assert.assertTrue(hasResultSet);
-
-    verify(fetchMetadataResp, times(0)).getDataType();
-
-    /*
-     * step 2: fetch result
-     */
-    fetchResultsResp.hasResultSet = true; // at the first time to fetch
-
-    try (ResultSet resultSet = statement.getResultSet()) {
-      Assert.assertTrue(resultSet.isWrapperFor(IoTDBJDBCResultSet.class));
-      Assert.assertTrue(resultSet.isWrapperFor(ResultSet.class));
-      Assert.assertFalse(resultSet.isWrapperFor(String.class));
-      Assert.assertFalse(resultSet.isWrapperFor(null));
-      Assert.assertSame(resultSet, resultSet.unwrap(IoTDBJDBCResultSet.class));
-      Assert.assertSame(resultSet, resultSet.unwrap(ResultSet.class));
-      Assert.assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, resultSet.getHoldability());
-
-      // check columnInfoMap
-      Assert.assertEquals(1, resultSet.findColumn("Time"));
-      Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
-      Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
-      Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
-
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      // check columnInfoList
-      Assert.assertEquals("Time", resultSetMetaData.getColumnName(1));
-      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(2));
-      Assert.assertEquals("root.vehicle.d0.s1", resultSetMetaData.getColumnName(3));
-      Assert.assertEquals("root.vehicle.d0.s0", resultSetMetaData.getColumnName(4));
-      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(5));
-      // check columnTypeList
-      Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(2));
-      Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
-      Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-      // check fetched result
-      int colCount = resultSetMetaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      List<Object> resultObjectList = new ArrayList<>();
-      for (int i = 1; i < colCount + 1; i++) { // meta title
-        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      resultStr.append("\n");
-      while (resultSet.next()) { // data
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
-          resultObjectList.add(resultSet.getObject(i));
-        }
-        resultStr.append("\n");
-        fetchResultsResp.hasResultSet = false; // at the second time to fetch
-      }
-      String standard =
-          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
-              + "2,2.22,40000,null,2.22,\n"
-              + "3,3.33,null,null,3.33,\n"
-              + "4,4.44,null,null,4.44,\n"
-              + "50,null,50000,null,null,\n"
-              + "100,null,199,null,null,\n"
-              + "101,null,199,null,null,\n"
-              + "103,null,199,null,null,\n"
-              + "105,11.11,199,33333,11.11,\n"
-              + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
-      Assert.assertEquals(standard, resultStr.toString());
-      List<Object> standardObject = new ArrayList<>();
-      constructObjectList(standardObject);
-      Assert.assertEquals(standardObject.size(), resultObjectList.size());
-      for (int i = 0; i < standardObject.size(); i++) {
-        Assert.assertEquals(standardObject.get(i), resultObjectList.get(i));
-      }
-    }
-
-    // The client get TSQueryDataSet at the first request
-    verify(fetchResultsResp, times(0)).getStatus();
   }
 
   private void constructObjectList(List<Object> standardObject) {

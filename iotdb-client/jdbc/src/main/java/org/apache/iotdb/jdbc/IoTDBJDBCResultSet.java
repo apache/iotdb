@@ -67,8 +67,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
-
 public class IoTDBJDBCResultSet implements ResultSet {
 
   public static final String OBJECT_ERR_MSG = "OBJECT Type only support getString";
@@ -211,8 +209,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public void clearWarnings() throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public void clearWarnings() {
+    warningChain = null;
   }
 
   @Override
@@ -448,7 +446,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Date getDate(int columnIndex) throws SQLException {
-    return DateUtils.parseIntToDate(getInt(columnIndex));
+    int date = getInt(columnIndex);
+    return wasNull() ? null : DateUtils.parseIntToDate(date);
   }
 
   @Override
@@ -496,18 +495,24 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public void setFetchDirection(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public void setFetchDirection(int direction) throws SQLException {
+    if (direction != ResultSet.FETCH_FORWARD) {
+      throw new SQLException(String.format(JdbcMessages.DIRECTION_NOT_SUPPORTED, direction));
+    }
   }
 
   @Override
-  public int getFetchSize() throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public int getFetchSize() {
+    return ioTDBRpcDataSet.getFetchSize();
   }
 
   @Override
-  public void setFetchSize(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public void setFetchSize(int fetchSize) throws SQLException {
+    if (fetchSize < 0) {
+      throw new SQLException(
+          String.format(JdbcMessages.FETCH_SIZE_MUST_BE_NON_NEGATIVE, fetchSize));
+    }
+    ioTDBRpcDataSet.setFetchSize(fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize);
   }
 
   @Override
@@ -720,8 +725,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Time getTime(int columnIndex) throws SQLException {
-    long time = statement.getMilliSecond(getLong(columnIndex));
-    return new Time(time);
+    long time = getLong(columnIndex);
+    return wasNull() ? null : new Time(statement.getMilliSecond(time));
   }
 
   @Override
@@ -741,12 +746,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    return convertToTimestamp(getLong(columnIndex), statement.getTimeFactor());
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnIndex);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public Timestamp getTimestamp(String columnName) throws SQLException {
-    return new Timestamp(getLong(columnName));
+    try {
+      return ioTDBRpcDataSet.getTimestamp(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
