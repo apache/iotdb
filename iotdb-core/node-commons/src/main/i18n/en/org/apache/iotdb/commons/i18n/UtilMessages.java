@@ -87,6 +87,7 @@ public final class UtilMessages {
       "Renamed file {} to {} because it already exists in the target directory: {}";
   public static final String COPIED_FILE_ALREADY_EXISTS =
       "Copy file {} to {} because it already exists in the target directory: {}";
+  public static final String ILLEGAL_EMPTY_PATH = "The path cannot be empty. ";
   public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
       "The path cannot be '.', '..', './' or '.\\'. ";
 

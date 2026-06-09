@@ -568,6 +568,9 @@ public class FileUtils {
   }
 
   public static String getIllegalError4Directory(final String path) {
+    if (path == null || path.isEmpty()) {
+      return UtilMessages.ILLEGAL_EMPTY_PATH;
+    }
     if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
       return UtilMessages.ILLEGAL_PATH_DOTS_OR_SEPARATORS;
     }
