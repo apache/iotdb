@@ -295,12 +295,13 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     final RelationalDeleteDataNode that = (RelationalDeleteDataNode) obj;
     return this.getPlanNodeId().equals(that.getPlanNodeId())
         && Objects.equals(this.modEntries, that.modEntries)
-        && Objects.equals(this.databaseName, that.databaseName);
+        && Objects.equals(this.databaseName, that.databaseName)
+        && Objects.equals(this.progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), modEntries, databaseName);
+    return Objects.hash(getPlanNodeId(), modEntries, databaseName, progressIndex);
   }
 
   public String toString() {

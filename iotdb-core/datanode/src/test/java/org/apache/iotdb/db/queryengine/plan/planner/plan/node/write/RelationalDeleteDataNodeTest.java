@@ -76,7 +76,6 @@ public class RelationalDeleteDataNodeTest {
                     new DeletionPredicate("table1", new NOP(), Arrays.asList("s1", "s2")),
                     new TimeRange(0, 10))),
             "nezha");
-    relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
 
     ByteBuffer buffer = relationalDeleteDataNode.serializeToByteBuffer();
     assertEquals(relationalDeleteDataNode, PlanNodeType.deserialize(buffer));
@@ -107,6 +106,7 @@ public class RelationalDeleteDataNodeTest {
     deserialized.setPlanNodeId(relationalDeleteDataNode.getPlanNodeId());
     assertEquals(relationalDeleteDataNode, deserialized);
 
+    relationalDeleteDataNode.setProgressIndex(new IoTProgressIndex(0, 1L));
     buffer = relationalDeleteDataNode.serializeToDAL();
     deserialized = DeleteNodeType.deserializeFromDAL(buffer);
     // plan node id is not serialized to DAL, manually set it to pass comparison
