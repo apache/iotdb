@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
@@ -129,6 +130,7 @@ public class IoTDBConnectionTest {
             return Constant.TABLE_DIALECT;
           }
         };
+    openConnection(tableConnection);
 
     assertThrows(SQLException.class, () -> tableConnection.setCatalog(null));
     assertThrows(SQLException.class, () -> tableConnection.setSchema(null));
@@ -166,9 +168,18 @@ public class IoTDBConnectionTest {
   }
 
   @Test
-  public void testStandardConnectionStateMethods() throws SQLException {
+  public void testStandardConnectionStateMethods() throws Exception {
+    openConnection(connection);
+
+    assertFalse(connection.getAutoCommit());
+    connection.setAutoCommit(true);
+    assertTrue(connection.getAutoCommit());
+    assertEquals("Apache IoTDB", connection.getCatalog());
     assertEquals(ResultSet.HOLD_CURSORS_OVER_COMMIT, connection.getHoldability());
-    assertFalse(connection.isValid(0));
+    assertEquals(Connection.TRANSACTION_NONE, connection.getTransactionIsolation());
+    assertFalse(connection.isReadOnly());
+    connection.setReadOnly(false);
+    assertTrue(connection.isValid(0));
   }
 
   @Test(expected = SQLException.class)
@@ -177,7 +188,9 @@ public class IoTDBConnectionTest {
   }
 
   @Test
-  public void testWrapperMethods() throws SQLException {
+  public void testWrapperMethods() throws Exception {
+    openConnection(connection);
+
     assertTrue(connection.isWrapperFor(IoTDBConnection.class));
     assertTrue(connection.isWrapperFor(Connection.class));
     assertFalse(connection.isWrapperFor(String.class));
@@ -187,7 +200,49 @@ public class IoTDBConnectionTest {
   }
 
   @Test(expected = SQLException.class)
-  public void testUnwrapRejectsUnsupportedClass() throws SQLException {
+  public void testUnwrapRejectsUnsupportedClass() throws Exception {
+    openConnection(connection);
+
     connection.unwrap(String.class);
+  }
+
+  @Test
+  public void testClosedConnectionRejectsOperations() throws SQLException {
+    assertTrue(connection.isClosed());
+    assertFalse(connection.isValid(0));
+
+    assertThrows(SQLException.class, () -> connection.isWrapperFor(Connection.class));
+    assertThrows(SQLException.class, () -> connection.unwrap(Connection.class));
+    assertThrows(SQLException.class, () -> connection.clearWarnings());
+    assertThrows(SQLException.class, () -> connection.commit());
+    assertThrows(SQLException.class, () -> connection.createStatement());
+    assertThrows(
+        SQLException.class,
+        () -> connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    assertThrows(SQLException.class, () -> connection.prepareStatement("SELECT ?"));
+    assertThrows(SQLException.class, () -> connection.getAutoCommit());
+    assertThrows(SQLException.class, () -> connection.setAutoCommit(true));
+    assertThrows(SQLException.class, () -> connection.getCatalog());
+    assertThrows(SQLException.class, () -> connection.setCatalog("root"));
+    assertThrows(SQLException.class, () -> connection.getHoldability());
+    assertThrows(SQLException.class, () -> connection.getMetaData());
+    assertThrows(SQLException.class, () -> connection.getNetworkTimeout());
+    assertThrows(SQLException.class, () -> connection.getSchema());
+    assertThrows(SQLException.class, () -> connection.setSchema("root"));
+    assertThrows(SQLException.class, () -> connection.getTransactionIsolation());
+    assertThrows(SQLException.class, () -> connection.getWarnings());
+    assertThrows(SQLException.class, () -> connection.isReadOnly());
+    assertThrows(SQLException.class, () -> connection.setReadOnly(false));
+    assertThrows(SQLException.class, () -> connection.rollback());
+  }
+
+  private void openConnection(IoTDBConnection target) {
+    try {
+      Field isClosedField = IoTDBConnection.class.getDeclaredField("isClosed");
+      isClosedField.setAccessible(true);
+      isClosedField.setBoolean(target, false);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(e);
+    }
   }
 }

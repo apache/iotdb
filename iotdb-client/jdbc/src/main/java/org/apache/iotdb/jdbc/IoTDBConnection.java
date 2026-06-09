@@ -154,11 +154,13 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
+    checkOpen("isWrapperFor");
     return JdbcWrapperUtils.isWrapperFor(this, arg0);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
+    checkOpen("unwrap");
     return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
@@ -168,7 +170,8 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void clearWarnings() {
+  public void clearWarnings() throws SQLException {
+    checkOpen("clearWarnings");
     warningChain = null;
   }
 
@@ -192,7 +195,9 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void commit() throws SQLException {}
+  public void commit() throws SQLException {
+    checkOpen("commit");
+  }
 
   @Override
   public Array createArrayOf(String arg0, Object[] arg1) throws SQLException {
@@ -221,15 +226,14 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    if (isClosed) {
-      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
-    }
+    checkOpen("createStatement");
     return new IoTDBStatement(this, getClient(), sessionId, zoneId, charset, queryTimeout);
   }
 
   @Override
   public Statement createStatement(int resultSetType, int resultSetConcurrency)
       throws SQLException {
+    checkOpen("createStatement");
     if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
       throw new SQLException(
           String.format(
@@ -253,22 +257,26 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean getAutoCommit() {
+  public boolean getAutoCommit() throws SQLException {
+    checkOpen("getAutoCommit");
     return autoCommit;
   }
 
   @Override
-  public void setAutoCommit(boolean arg0) {
+  public void setAutoCommit(boolean arg0) throws SQLException {
+    checkOpen("setAutoCommit");
     autoCommit = arg0;
   }
 
   @Override
-  public String getCatalog() {
+  public String getCatalog() throws SQLException {
+    checkOpen("getCatalog");
     return APACHE_IOTDB;
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
+    checkOpen("setCatalog");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       if (arg0 == null) {
         throw new SQLException("catalog cannot be null");
@@ -310,7 +318,8 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getHoldability() {
+  public int getHoldability() throws SQLException {
+    checkOpen("getHoldability");
     return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
@@ -321,9 +330,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public DatabaseMetaData getMetaData() throws SQLException {
-    if (isClosed) {
-      throw new SQLException(JdbcMessages.CANNOT_CREATE_STATEMENT_CLOSED);
-    }
+    checkOpen("getMetaData");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
     }
@@ -331,12 +338,14 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getNetworkTimeout() {
+  public int getNetworkTimeout() throws SQLException {
+    checkOpen("getNetworkTimeout");
     return networkTimeout;
   }
 
   @Override
   public String getSchema() throws SQLException {
+    checkOpen("getSchema");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return getDatabase();
     }
@@ -345,6 +354,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setSchema(String arg0) throws SQLException {
+    checkOpen("setSchema");
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       if (arg0 == null) {
@@ -369,7 +379,8 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public int getTransactionIsolation() {
+  public int getTransactionIsolation() throws SQLException {
+    checkOpen("getTransactionIsolation");
     return Connection.TRANSACTION_NONE;
   }
 
@@ -389,7 +400,8 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public SQLWarning getWarnings() {
+  public SQLWarning getWarnings() throws SQLException {
+    checkOpen("getWarnings");
     return warningChain;
   }
 
@@ -399,12 +411,14 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean isReadOnly() {
+  public boolean isReadOnly() throws SQLException {
+    checkOpen("isReadOnly");
     return false;
   }
 
   @Override
   public void setReadOnly(boolean readonly) throws SQLException {
+    checkOpen("setReadOnly");
     if (readonly) {
       throw new SQLException(JdbcMessages.NOT_SUPPORT_READ_ONLY);
     }
@@ -441,6 +455,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
+    checkOpen("prepareStatement");
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return new IoTDBTablePreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
     } else {
@@ -482,12 +497,14 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public void rollback() {
+  public void rollback() throws SQLException {
+    checkOpen("rollback");
     // do nothing in rollback
   }
 
   @Override
-  public void rollback(Savepoint arg0) {
+  public void rollback(Savepoint arg0) throws SQLException {
+    checkOpen("rollback");
     // do nothing in rollback
   }
 
@@ -554,13 +571,13 @@ public class IoTDBConnection implements Connection {
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(
               params.getHost(),
               params.getPort(),
-              getNetworkTimeout(),
+              networkTimeout,
               params.getTrustStore(),
               params.getTrustStorePwd());
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              params.getHost(), params.getPort(), getNetworkTimeout());
+              params.getHost(), params.getPort(), networkTimeout);
     }
     if (!transport.isOpen()) {
       transport.open();
@@ -719,5 +736,11 @@ public class IoTDBConnection implements Connection {
 
   public String getDatabase() {
     return params.getDb().orElse(null);
+  }
+
+  private void checkOpen(String action) throws SQLException {
+    if (isClosed) {
+      throw new SQLException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
   }
 }
