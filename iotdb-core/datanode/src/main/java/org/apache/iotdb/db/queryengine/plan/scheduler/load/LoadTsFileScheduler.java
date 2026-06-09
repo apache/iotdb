@@ -791,12 +791,13 @@ public class LoadTsFileScheduler implements IScheduler {
         final TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
         final Map<TTimePartitionSlot, Integer> slotIndexes =
             partitionSlotIndexes.computeIfAbsent(device, key -> new HashMap<>());
-        Integer partitionSlotIndex = slotIndexes.get(timePartitionSlot);
-        if (partitionSlotIndex == null) {
-          partitionSlotIndex = partitionSlotList.size();
-          slotIndexes.put(timePartitionSlot, partitionSlotIndex);
-          partitionSlotList.add(new Pair<>(device, timePartitionSlot));
-        }
+        final int partitionSlotIndex =
+            slotIndexes.computeIfAbsent(
+                timePartitionSlot,
+                slot -> {
+                  partitionSlotList.add(new Pair<>(device, slot));
+                  return partitionSlotList.size() - 1;
+                });
         chunkPartitionIndexes[i] = partitionSlotIndex;
       }
 

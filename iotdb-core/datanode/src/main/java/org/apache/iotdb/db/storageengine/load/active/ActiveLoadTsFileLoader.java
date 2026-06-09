@@ -172,24 +172,25 @@ public class ActiveLoadTsFileLoader {
         if (!loadEntry.isPresent()) {
           return;
         }
+        final ActiveLoadPendingQueue.ActiveLoadEntry activeLoadEntry = loadEntry.get();
 
         try {
-          final TSStatus result = loadTsFile(loadEntry.get(), session);
+          final TSStatus result = loadTsFile(activeLoadEntry, session);
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             LOGGER.info(
                 "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
-                loadEntry.get().getFile(),
-                loadEntry.get().isGeneratedByPipe());
+                activeLoadEntry.getFile(),
+                activeLoadEntry.isGeneratedByPipe());
           } else {
-            handleLoadFailure(loadEntry.get(), result);
+            handleLoadFailure(activeLoadEntry, result);
           }
         } catch (final FileNotFoundException e) {
-          handleFileNotFoundException(loadEntry.get());
+          handleFileNotFoundException(activeLoadEntry);
         } catch (final Exception e) {
-          handleOtherException(loadEntry.get(), e);
+          handleOtherException(activeLoadEntry, e);
         } finally {
-          pendingQueue.removeFromLoading(loadEntry.get().getFile());
+          pendingQueue.removeFromLoading(activeLoadEntry.getFile());
         }
       }
     } finally {

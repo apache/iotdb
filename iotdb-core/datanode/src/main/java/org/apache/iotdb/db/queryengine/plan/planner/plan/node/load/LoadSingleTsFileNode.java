@@ -49,7 +49,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -88,7 +90,6 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return resource.getDevices().isEmpty();
   }
 
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean needDecodeTsFile(
       Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
           partitionFetcher) {
@@ -100,10 +101,16 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         new ArrayList<>(resource.getDevices().size() << 1);
     for (final IDeviceID device : resource.getDevices()) {
       // iterating the index, must present
-      final TTimePartitionSlot startSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(device).get());
-      final TTimePartitionSlot endSlot =
-          TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(device).get());
+      final Optional<Long> startTime = resource.getStartTime(device);
+      if (!startTime.isPresent()) {
+        throw new NoSuchElementException("No value present");
+      }
+      final Optional<Long> endTime = resource.getEndTime(device);
+      if (!endTime.isPresent()) {
+        throw new NoSuchElementException("No value present");
+      }
+      final TTimePartitionSlot startSlot = TimePartitionUtils.getTimePartitionSlot(startTime.get());
+      final TTimePartitionSlot endSlot = TimePartitionUtils.getTimePartitionSlot(endTime.get());
       slotList.add(new Pair<>(device, startSlot));
       if (!startSlot.equals(endSlot)) {
         slotList.add(new Pair<>(device, endSlot));
