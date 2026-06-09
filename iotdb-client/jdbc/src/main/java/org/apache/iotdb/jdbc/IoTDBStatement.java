@@ -183,12 +183,14 @@ public class IoTDBStatement implements Statement {
   }
 
   @Override
-  public boolean isWrapperFor(Class<?> iface) {
+  public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    checkConnection("isWrapperFor");
     return JdbcWrapperUtils.isWrapperFor(this, iface);
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
+    checkConnection("unwrap");
     return JdbcWrapperUtils.unwrap(this, iface);
   }
 
