@@ -117,15 +117,12 @@ Check only:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:check`
 
 Auto-fix:
 
 `./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
 
-`./mvnw -P with-cpp -pl example/client-cpp-example spotless:apply`
 
-On Windows PowerShell, a comma inside `-pl` can be parsed incorrectly; use the two commands above, or quote the full `-pl` value, for example `./mvnw -P with-cpp "-pl=iotdb-client/client-cpp,example/client-cpp-example" spotless:check`.
 
 Temporarily skip Spotless (not recommended except emergency CI triage):
 

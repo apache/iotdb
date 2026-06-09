@@ -20,15 +20,15 @@
 
 -->
 <assembly>
-    <id>client-cpp-${os.classifier}-bin</id>
+    <id>client-cpp-${client.cpp.package.classifier}-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-client-cpp-${client.cpp.package.classifier}-bin</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.basedir}/../iotdb-client/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
+            <directory>${project.basedir}/../iotdb-client/client-cpp/target/iotdb-session-cpp-${project.version}-${client.cpp.package.classifier}</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
