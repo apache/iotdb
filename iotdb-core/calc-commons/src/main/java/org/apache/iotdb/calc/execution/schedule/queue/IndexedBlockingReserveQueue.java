@@ -83,4 +83,10 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     Preconditions.checkState(reservedSize > 0, "No reserved space is available.");
     this.reservedSize--;
   }
+
+  @Override
+  public synchronized void clear() {
+    super.clear();
+    reservedSize = 0;
+  }
 }

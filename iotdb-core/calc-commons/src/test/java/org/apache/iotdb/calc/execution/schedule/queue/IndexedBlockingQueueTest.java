@@ -74,6 +74,21 @@ public class IndexedBlockingQueueTest {
     Assert.assertThrows(IllegalStateException.class, queue::decreaseReservedSize);
   }
 
+  @Test
+  public void testClearReleasesReservedSpace() throws InterruptedException {
+    ReserveQueue queue = new ReserveQueue(1);
+    Element first = new Element(1);
+    Element second = new Element(2);
+
+    queue.push(first);
+    Assert.assertSame(first, queue.poll());
+    queue.clear();
+
+    queue.push(second);
+    Assert.assertEquals(1, queue.size());
+    Assert.assertSame(second, queue.poll());
+  }
+
   private static class SimpleQueue extends IndexedBlockingQueue<Element> {
     private final Queue<Element> elements = new ArrayDeque<>();
     private final Map<ID, Element> keyedElements = new HashMap<>();
