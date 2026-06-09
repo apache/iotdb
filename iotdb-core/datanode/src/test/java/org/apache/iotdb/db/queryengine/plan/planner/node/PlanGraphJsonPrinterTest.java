@@ -19,11 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.node;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
@@ -36,10 +47,15 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNo
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -47,6 +63,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -433,5 +453,121 @@ public class PlanGraphJsonPrinterTest {
 
     assertEquals("ExplainAnalyzeNode-ea", root.get("name").getAsString());
     assertTrue(root.has("properties"));
+  }
+
+  @Test
+  public void testTreeDeviceTableScanProperties() {
+    Symbol time = new Symbol("time");
+    Symbol value = new Symbol("value");
+    Symbol tag = new Symbol("tag1");
+    List<DeviceEntry> deviceEntries =
+        Collections.singletonList(
+            new AlignedDeviceEntry(new StringArrayDeviceID("table1", "d1"), new Binary[0]));
+    TreeDeviceViewScanNode scanNode =
+        new TreeDeviceViewScanNode(
+            new PlanNodeId("scan"),
+            new QualifiedObjectName("testdb", "table1"),
+            Arrays.asList(time, value),
+            ImmutableMap.of(
+                time,
+                new ColumnSchema(
+                    "time",
+                    TypeFactory.getType(TSDataType.TIMESTAMP),
+                    false,
+                    TsTableColumnCategory.TIME),
+                value,
+                new ColumnSchema(
+                    "value",
+                    TypeFactory.getType(TSDataType.INT64),
+                    false,
+                    TsTableColumnCategory.FIELD)),
+            deviceEntries,
+            ImmutableMap.of(tag, 0),
+            Ordering.DESC,
+            new ComparisonExpression(
+                ComparisonExpression.Operator.GREATER_THAN,
+                new SymbolReference("time"),
+                new GenericLiteral("INT64", "100")),
+            new ComparisonExpression(
+                ComparisonExpression.Operator.GREATER_THAN,
+                new SymbolReference("value"),
+                new GenericLiteral("INT64", "10")),
+            100,
+            5,
+            true,
+            false,
+            "root.testdb",
+            ImmutableMap.of("s1", "value"));
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 7));
+    scanNode.setRegionReplicaSet(regionReplicaSet);
+
+    JsonObject root =
+        JsonParser.parseString(PlanGraphJsonPrinter.toPrettyJson(scanNode)).getAsJsonObject();
+    JsonObject props = root.getAsJsonObject("properties");
+
+    assertEquals("TreeDeviceViewScanNode-scan", root.get("name").getAsString());
+    assertEquals("testdb.table1", props.get("QualifiedTableName").getAsString());
+    assertEquals("1", props.get("DeviceNumber").getAsString());
+    assertEquals("DESC", props.get("ScanOrder").getAsString());
+    assertTrue(props.has("TimePredicate"));
+    assertTrue(props.has("PushDownPredicate"));
+    assertEquals("5", props.get("PushDownOffset").getAsString());
+    assertEquals("100", props.get("PushDownLimit").getAsString());
+    assertEquals("true", props.get("PushDownLimitToEachDevice").getAsString());
+    assertEquals("7", props.get("RegionId").getAsString());
+    assertEquals("root.testdb", props.get("TreeDB").getAsString());
+    assertTrue(props.get("MeasurementToColumnName").getAsString().contains("s1=value"));
+  }
+
+  @Test
+  public void testAggregationNodeProperties() {
+    Symbol group = new Symbol("device");
+    Symbol value = new Symbol("value");
+    Symbol mask = new Symbol("mask");
+    Symbol output = new Symbol("sum_value");
+    ResolvedFunction function =
+        new ResolvedFunction(
+            new BoundSignature(
+                "sum",
+                TypeFactory.getType(TSDataType.INT64),
+                Collections.singletonList(TypeFactory.getType(TSDataType.INT64))),
+            new FunctionId("sum"),
+            FunctionKind.AGGREGATE,
+            true,
+            FunctionNullability.getAggregationFunctionNullability(1));
+    AggregationNode.Aggregation aggregation =
+        new AggregationNode.Aggregation(
+            function,
+            Collections.singletonList(new SymbolReference("value")),
+            true,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(mask));
+    AggregationNode aggregationNode =
+        new AggregationNode(
+            new PlanNodeId("agg"),
+            new ExchangeNode(new PlanNodeId("source")),
+            ImmutableMap.of(output, aggregation),
+            AggregationNode.singleGroupingSet(Collections.singletonList(group)),
+            Collections.singletonList(group),
+            AggregationNode.Step.SINGLE,
+            Optional.empty(),
+            Optional.empty());
+
+    JsonObject root =
+        JsonParser.parseString(PlanGraphJsonPrinter.toPrettyJson(aggregationNode))
+            .getAsJsonObject();
+    JsonObject props = root.getAsJsonObject("properties");
+    JsonObject firstAggregator = props.getAsJsonArray("Aggregators").get(0).getAsJsonObject();
+
+    assertEquals("AggregationNode-agg", root.get("name").getAsString());
+    assertEquals("sum(INT64):INT64", firstAggregator.get("function").getAsString());
+    assertEquals("mask", firstAggregator.get("mask").getAsString());
+    assertTrue(firstAggregator.get("distinct").getAsBoolean());
+    assertEquals("device", props.getAsJsonArray("GroupingKeys").get(0).getAsString());
+    assertTrue(props.get("Streamable").getAsBoolean());
+    assertEquals("device", props.getAsJsonArray("PreGroupedSymbols").get(0).getAsString());
+    assertEquals("SINGLE", props.get("Step").getAsString());
   }
 }

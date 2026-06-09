@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -33,6 +34,7 @@ import org.junit.Test;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ExplainFormatTest {
@@ -88,6 +90,24 @@ public class ExplainFormatTest {
     assertEquals(stmt, explain.getStatement());
   }
 
+  @Test
+  public void testExplainNodeOutputFormatParticipatesInNodeSemantics() {
+    Statement stmt = parseSQL("SELECT * FROM table1");
+    NodeLocation location = new NodeLocation(1, 1);
+    Explain defaultExplain = new Explain(location, stmt);
+    Explain jsonExplain = new Explain(location, stmt, ExplainOutputFormat.JSON);
+    Explain sameJsonExplain = new Explain(new NodeLocation(2, 1), stmt, ExplainOutputFormat.JSON);
+
+    assertEquals(ExplainOutputFormat.GRAPHVIZ, defaultExplain.getOutputFormat());
+    assertEquals(ExplainOutputFormat.JSON, jsonExplain.getOutputFormat());
+    assertEquals(stmt, jsonExplain.getChildren().get(0));
+    assertEquals(jsonExplain, sameJsonExplain);
+    assertEquals(jsonExplain.hashCode(), sameJsonExplain.hashCode());
+    assertNotEquals(defaultExplain, jsonExplain);
+    assertTrue(jsonExplain.toString().contains("outputFormat=JSON"));
+    assertTrue(jsonExplain.ramBytesUsed() > 0);
+  }
+
   @Test(expected = Exception.class)
   public void testExplainInvalidFormat() {
     parseSQL("EXPLAIN (FORMAT XML) SELECT * FROM table1");
@@ -131,6 +151,26 @@ public class ExplainFormatTest {
     assertEquals(ExplainOutputFormat.JSON, explainAnalyze.getOutputFormat());
     assertTrue(explainAnalyze.isVerbose());
     assertEquals(stmt, explainAnalyze.getStatement());
+  }
+
+  @Test
+  public void testExplainAnalyzeNodeOutputFormatParticipatesInNodeSemantics() {
+    Statement stmt = parseSQL("SELECT * FROM table1");
+    NodeLocation location = new NodeLocation(1, 1);
+    ExplainAnalyze defaultAnalyze = new ExplainAnalyze(location, false, stmt);
+    ExplainAnalyze jsonAnalyze = new ExplainAnalyze(location, true, stmt, ExplainOutputFormat.JSON);
+    ExplainAnalyze sameJsonAnalyze =
+        new ExplainAnalyze(new NodeLocation(2, 1), true, stmt, ExplainOutputFormat.JSON);
+
+    assertEquals(ExplainOutputFormat.TEXT, defaultAnalyze.getOutputFormat());
+    assertEquals(ExplainOutputFormat.JSON, jsonAnalyze.getOutputFormat());
+    assertEquals(stmt, jsonAnalyze.getChildren().get(0));
+    assertEquals(jsonAnalyze, sameJsonAnalyze);
+    assertEquals(jsonAnalyze.hashCode(), sameJsonAnalyze.hashCode());
+    assertNotEquals(defaultAnalyze, jsonAnalyze);
+    assertNotEquals(new ExplainAnalyze(stmt, false, ExplainOutputFormat.JSON), jsonAnalyze);
+    assertTrue(jsonAnalyze.toString().contains("outputFormat=JSON"));
+    assertTrue(jsonAnalyze.ramBytesUsed() > 0);
   }
 
   @Test(expected = Exception.class)
