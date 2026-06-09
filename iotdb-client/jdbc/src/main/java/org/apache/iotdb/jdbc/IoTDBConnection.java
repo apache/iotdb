@@ -571,6 +571,7 @@ public class IoTDBConnection implements Connection {
   }
 
   public void setQueryTimeout(int seconds) throws SQLException {
+    checkOpen("setQueryTimeout");
     if (seconds < 0) {
       throw new SQLException(
           String.format(JdbcMessages.QUERY_TIMEOUT_MUST_BE_NON_NEGATIVE, seconds));
@@ -719,6 +720,9 @@ public class IoTDBConnection implements Connection {
   }
 
   public boolean reconnect() {
+    if (isClosed) {
+      return false;
+    }
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       try {
@@ -751,6 +755,7 @@ public class IoTDBConnection implements Connection {
   }
 
   public void setTimeZone(String timeZone) throws TException, IoTDBSQLException {
+    checkOpenForIoTDBException("setTimeZone");
     ZoneId newZoneId = parseTimeZone(timeZone);
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, timeZone);
     TSStatus resp = getClient().setTimeZone(req);
@@ -776,6 +781,7 @@ public class IoTDBConnection implements Connection {
   }
 
   public ServerProperties getServerProperties() throws TException {
+    checkOpenForTException("getServerProperties");
     return getClient().getProperties();
   }
 
@@ -808,6 +814,19 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLClientInfoException(
           String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action), null);
+    }
+  }
+
+  private void checkOpenForIoTDBException(String action) throws IoTDBSQLException {
+    if (isClosed) {
+      throw new IoTDBSQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
+    }
+  }
+
+  private void checkOpenForTException(String action) throws TException {
+    if (isClosed) {
+      throw new TException(String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, action));
     }
   }
 }
