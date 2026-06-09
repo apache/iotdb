@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -44,6 +45,9 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -84,6 +88,12 @@ public class ConsensusManager {
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
+  }
+
+  @TestOnly
+  ConsensusManager(IManager configManager, IConsensus consensusImpl) {
+    this.configManager = configManager;
+    this.consensusImpl = consensusImpl;
   }
 
   public void start() throws IOException {
@@ -289,7 +299,11 @@ public class ConsensusManager {
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    try {
+      consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    } catch (ConsensusGroupAlreadyExistException e) {
+      LOGGER.info("ConfigNode local peer has already been created: {}", e.getMessage());
+    }
   }
 
   /**
@@ -306,6 +320,9 @@ public class ConsensusManager {
               DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
+    } catch (PeerAlreadyInConsensusGroupException e) {
+      LOGGER.info(
+          "ConfigNode peer {} has already been added: {}", configNodeLocation, e.getMessage());
     } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }
@@ -326,6 +343,10 @@ public class ConsensusManager {
               DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
+      return true;
+    } catch (PeerNotInConsensusGroupException e) {
+      LOGGER.info(
+          "ConfigNode peer {} has already been removed: {}", configNodeLocation, e.getMessage());
       return true;
     } catch (ConsensusException e) {
       return false;
