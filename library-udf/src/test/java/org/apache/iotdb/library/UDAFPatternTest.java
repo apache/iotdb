@@ -215,6 +215,36 @@ public class UDAFPatternTest {
   }
 
   @Test
+  public void testDTWMatchUsesSinglePointDistance() throws Exception {
+    UDAFDTWMatch dtwMatch = new UDAFDTWMatch();
+    UDFParameters parameters = createDtwParameters("10.0", "1");
+    dtwMatch.validate(new UDFParameterValidator(parameters));
+    dtwMatch.beforeStart(parameters, new UDAFConfigurations());
+    DTWState state = (DTWState) dtwMatch.createState();
+    state.reset();
+
+    Column[] columns =
+        new Column[] {
+          new TestColumn(TSDataType.DOUBLE, new long[0], new double[] {1.0}, new boolean[] {false}),
+          new TestColumn(TSDataType.INT64, new long[] {1L}, new double[0], new boolean[] {false})
+        };
+    dtwMatch.addInput(state, columns, null);
+
+    Assert.assertTrue(state.getMatchResults().isEmpty());
+
+    UDAFDTWMatch exactMatch = new UDAFDTWMatch();
+    UDFParameters exactParameters = createDtwParameters("1.0", "0");
+    exactMatch.validate(new UDFParameterValidator(exactParameters));
+    exactMatch.beforeStart(exactParameters, new UDAFConfigurations());
+    DTWState exactState = (DTWState) exactMatch.createState();
+    exactState.reset();
+
+    exactMatch.addInput(exactState, columns, null);
+
+    Assert.assertEquals(1, exactState.getMatchResults().size());
+  }
+
+  @Test
   public void testMatchUDAFsSkipNullAndInvalidRows() throws Exception {
     Column[] columns = buildPatternInputColumns();
 
@@ -254,6 +284,41 @@ public class UDAFPatternTest {
     patternMatch.outputFinal(state, new ResultValue(resultBuilder));
 
     Assert.assertTrue(resultBuilder.build().isNull(0));
+  }
+
+  @Test
+  public void testPatternMatchFlatInputFallsBackToDtw() throws Exception {
+    UDAFPatternMatch patternMatch = new UDAFPatternMatch();
+    UDFParameters parameters = createPatternParameters("1,2", "5.0,5.0", "0");
+    patternMatch.validate(new UDFParameterValidator(parameters));
+    patternMatch.beforeStart(parameters, new UDAFConfigurations());
+    PatternState state = (PatternState) patternMatch.createState();
+    state.reset();
+    state.updateBuffer(1L, 5.0);
+    state.updateBuffer(2L, 5.0);
+
+    RecordingColumnBuilder resultBuilder = new RecordingColumnBuilder(TSDataType.TEXT);
+    patternMatch.outputFinal(state, new ResultValue(resultBuilder));
+
+    Assert.assertFalse(resultBuilder.build().isNull(0));
+  }
+
+  @Test
+  public void testPatternMatchNonMonotonicInputFallsBackToDtw() throws Exception {
+    UDAFPatternMatch patternMatch = new UDAFPatternMatch();
+    UDFParameters parameters = createPatternParameters("1,2,3", "1.0,2.0,3.0", "0");
+    patternMatch.validate(new UDFParameterValidator(parameters));
+    patternMatch.beforeStart(parameters, new UDAFConfigurations());
+    PatternState state = (PatternState) patternMatch.createState();
+    state.reset();
+    state.updateBuffer(1L, 1.0);
+    state.updateBuffer(3L, 2.0);
+    state.updateBuffer(2L, 3.0);
+
+    RecordingColumnBuilder resultBuilder = new RecordingColumnBuilder(TSDataType.TEXT);
+    patternMatch.outputFinal(state, new ResultValue(resultBuilder));
+
+    Assert.assertFalse(resultBuilder.build().isNull(0));
   }
 
   @Test
@@ -305,18 +370,27 @@ public class UDAFPatternTest {
   }
 
   private static UDFParameters createPatternParameters() {
+    return createPatternParameters("1,2", "1.0,2.0", "100");
+  }
+
+  private static UDFParameters createPatternParameters(
+      String timePattern, String valuePattern, String threshold) {
     Map<String, String> attributes = new HashMap<>();
-    attributes.put("timePattern", "1,2");
-    attributes.put("valuePattern", "1.0,2.0");
-    attributes.put("threshold", "100");
+    attributes.put("timePattern", timePattern);
+    attributes.put("valuePattern", valuePattern);
+    attributes.put("threshold", threshold);
     return new UDFParameters(
         Collections.singletonList("s1"), Collections.singletonList(Type.DOUBLE), attributes);
   }
 
   private static UDFParameters createDtwParameters() {
+    return createDtwParameters("1.0,3.0", "100");
+  }
+
+  private static UDFParameters createDtwParameters(String pattern, String threshold) {
     Map<String, String> attributes = new HashMap<>();
-    attributes.put("pattern", "1.0,3.0");
-    attributes.put("threshold", "100");
+    attributes.put("pattern", pattern);
+    attributes.put("threshold", threshold);
     return new UDFParameters(
         Collections.singletonList("s1"), Collections.singletonList(Type.DOUBLE), attributes);
   }

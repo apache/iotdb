@@ -92,9 +92,9 @@ public class UDTFPtnSym implements UDTF {
       }
     }
     for (int len = 3; len <= m; len++) {
-      for (int i = 1, j = len; j <= m; j++) {
+      for (int i = 1, j = len; j <= m; i++, j++) {
         dp[i][j] =
-            Math.pow(Math.abs(a.get(0) - a.get(j - 1)), 2)
+            Math.pow(Math.abs(a.get(i - 1) - a.get(j - 1)), 2)
                 + Math.min(Math.min(dp[i + 1][j], dp[i][j - 1]), dp[i + 1][j - 1]);
       }
     }

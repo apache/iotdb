@@ -1272,6 +1272,45 @@ public class UDFWindowAndQueueTest {
   }
 
   @Test
+  public void testPatternSymmetryUsesFullWindowDtwCost() throws Exception {
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("window", "4");
+    attributes.put("threshold", "1650");
+    UDFParameters parameters = createSingleDoubleSeriesParameters(attributes);
+    UDTFPtnSym ptnSym = new UDTFPtnSym();
+    RecordingPointCollector collector = new RecordingPointCollector();
+
+    ptnSym.validate(new UDFParameterValidator(parameters));
+    ptnSym.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    ptnSym.transform(
+        new SimpleRowWindow(
+            new DoubleRow(1, 0.0),
+            new DoubleRow(2, 10.0),
+            new DoubleRow(3, 20.0),
+            new DoubleRow(4, 40.0)),
+        collector);
+
+    Assert.assertTrue(collector.timestamps.isEmpty());
+    Assert.assertTrue(collector.values.isEmpty());
+
+    attributes.put("threshold", "0");
+    parameters = createSingleDoubleSeriesParameters(attributes);
+    ptnSym = new UDTFPtnSym();
+    ptnSym.validate(new UDFParameterValidator(parameters));
+    ptnSym.beforeStart(parameters, new UDTFConfigurations(ZoneId.systemDefault()));
+    ptnSym.transform(
+        new SimpleRowWindow(
+            new DoubleRow(5, 1.0),
+            new DoubleRow(6, 2.0),
+            new DoubleRow(7, 2.0),
+            new DoubleRow(8, 1.0)),
+        collector);
+
+    Assert.assertEquals(Collections.singletonList(5L), collector.timestamps);
+    Assert.assertEquals(0.0, collector.values.get(0), 0.0);
+  }
+
+  @Test
   public void testDtwEmptyInputProducesNoOutput() throws Exception {
     UDAFDtw dtw = new UDAFDtw();
     UDFParameters parameters = createTwoDoubleSeriesParameters(Collections.emptyMap());

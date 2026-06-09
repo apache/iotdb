@@ -118,25 +118,27 @@ public class UDAFDTWMatch implements UDAF {
 
   private float calculateDTW(Double[] series1, Double[] series2) {
     int n = series1.length;
-    double[][] dtw = new double[n][n];
+    int m = series2.length;
+    if (n == 0 || m == 0) {
+      return Float.POSITIVE_INFINITY;
+    }
 
-    // Initialize the DTW matrix
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < n; j++) {
+    double[][] dtw = new double[n + 1][m + 1];
+    for (int i = 0; i <= n; i++) {
+      for (int j = 0; j <= m; j++) {
         dtw[i][j] = Double.POSITIVE_INFINITY;
       }
     }
     dtw[0][0] = 0;
 
-    // Compute the DTW distance
-    for (int i = 1; i < n; i++) {
-      for (int j = 1; j < n; j++) {
-        double cost = Math.abs(series1[i] - series2[j]);
+    for (int i = 1; i <= n; i++) {
+      for (int j = 1; j <= m; j++) {
+        double cost = Math.abs(series1[i - 1] - series2[j - 1]);
         dtw[i][j] = cost + Math.min(Math.min(dtw[i - 1][j], dtw[i][j - 1]), dtw[i - 1][j - 1]);
       }
     }
 
-    return (float) dtw[n - 1][n - 1];
+    return (float) dtw[n][m];
   }
 
   @Override

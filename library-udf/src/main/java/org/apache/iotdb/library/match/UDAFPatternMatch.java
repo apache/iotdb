@@ -40,6 +40,7 @@ import org.apache.tsfile.utils.BitMap;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -113,17 +114,20 @@ public class UDAFPatternMatch implements UDAF {
       resultValue.setNull();
       return;
     }
-    PatternExecutor executor = new PatternExecutor();
 
-    List<Point> sourcePointsExtract = executor.scalePoint(times, values);
-    List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);
+    List<PatternResult> results = Collections.emptyList();
+    if (hasPositiveTimeRange(times) && hasPositiveValueRange(values)) {
+      PatternExecutor executor = new PatternExecutor();
+      List<Point> sourcePointsExtract = executor.scalePoint(times, values);
+      List<Point> queryPointsExtract = executor.extractPoints(timePattern, valuePattern);
 
-    executor.setPoints(queryPointsExtract);
-    PatternContext ctx = new PatternContext();
-    ctx.setThreshold(threshold);
-    ctx.setDataPoints(sourcePointsExtract);
-    // State only records time and recorded values, and the final result is calculated
-    List<PatternResult> results = executor.executeQuery(ctx);
+      executor.setPoints(queryPointsExtract);
+      PatternContext ctx = new PatternContext();
+      ctx.setThreshold(threshold);
+      ctx.setDataPoints(sourcePointsExtract);
+      // State only records time and recorded values, and the final result is calculated
+      results = executor.executeQuery(ctx);
+    }
     if (!results.isEmpty()) {
       resultValue.setBinary(new Binary(results.toString(), Charset.defaultCharset()));
     } else {
@@ -138,6 +142,28 @@ public class UDAFPatternMatch implements UDAF {
         resultValue.setNull();
       }
     }
+  }
+
+  private static boolean hasPositiveTimeRange(List<Long> times) {
+    long previous = times.get(0);
+    for (int i = 1; i < times.size(); i++) {
+      long time = times.get(i);
+      if (time <= previous) {
+        return false;
+      }
+      previous = time;
+    }
+    return true;
+  }
+
+  private static boolean hasPositiveValueRange(List<Double> values) {
+    double min = Double.POSITIVE_INFINITY;
+    double max = Double.NEGATIVE_INFINITY;
+    for (double value : values) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+    return min < max;
   }
 
   @Override
