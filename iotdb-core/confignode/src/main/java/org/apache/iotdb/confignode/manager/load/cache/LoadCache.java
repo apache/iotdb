@@ -99,8 +99,6 @@ public class LoadCache {
   private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
-  // Map<RegionGroupId, Set<DataNodeId that has reported leader judgment>>
-  private final Map<TConsensusGroupId, Set<Integer>> consensusGroupHeartbeatSampledNodeMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
   private Map<Integer, Set<Integer>> topologyGraph;
@@ -113,7 +111,6 @@ public class LoadCache {
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.regionRawSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
-    this.consensusGroupHeartbeatSampledNodeMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
     this.topologyGraph = new HashMap<>();
     this.topologyUpdated = new AtomicBoolean(false);
@@ -179,7 +176,6 @@ public class LoadCache {
       Map<String, List<TRegionReplicaSet>> regionReplicaMap) {
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
-    consensusGroupHeartbeatSampledNodeMap.clear();
     regionReplicaMap.forEach(
         (database, regionReplicaSets) ->
             regionReplicaSets.forEach(
@@ -197,8 +193,6 @@ public class LoadCache {
                               .collect(Collectors.toSet()),
                           isStrongConsistency));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
-                  consensusGroupHeartbeatSampledNodeMap.put(
-                      regionGroupId, ConcurrentHashMap.newKeySet());
                 }));
   }
 
@@ -207,7 +201,6 @@ public class LoadCache {
     nodeCacheMap.clear();
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
-    consensusGroupHeartbeatSampledNodeMap.clear();
   }
 
   /**
@@ -310,7 +303,6 @@ public class LoadCache {
         regionGroupId,
         new RegionGroupCache(database, regionGroupId, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
-    consensusGroupHeartbeatSampledNodeMap.put(regionGroupId, ConcurrentHashMap.newKeySet());
   }
 
   /**
@@ -373,41 +365,6 @@ public class LoadCache {
         .ifPresent(group -> group.cacheHeartbeatSample(sample));
   }
 
-  public void cacheConsensusGroupHeartbeatSample(
-      TConsensusGroupId regionGroupId,
-      int nodeId,
-      boolean isLeader,
-      long logicalTimestamp,
-      boolean cacheLeader) {
-    consensusGroupHeartbeatSampledNodeMap
-        .computeIfAbsent(regionGroupId, empty -> ConcurrentHashMap.newKeySet())
-        .add(nodeId);
-    if (cacheLeader && isLeader) {
-      cacheConsensusSample(
-          regionGroupId, new ConsensusGroupHeartbeatSample(logicalTimestamp, nodeId));
-    } else if (cacheLeader
-        && isConsensusGroupHeartbeatFullySampled(regionGroupId)
-        && !Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
-            .map(AbstractLoadCache::hasHeartbeatSample)
-            .orElse(false)) {
-      cacheConsensusSample(
-          regionGroupId,
-          new ConsensusGroupHeartbeatSample(
-              logicalTimestamp, ConsensusGroupCache.UN_READY_LEADER_ID));
-    }
-  }
-
-  private boolean isConsensusGroupHeartbeatFullySampled(TConsensusGroupId regionGroupId) {
-    return Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
-        .map(RegionGroupCache::getRegionLocations)
-        .map(
-            regionLocations ->
-                consensusGroupHeartbeatSampledNodeMap
-                    .getOrDefault(regionGroupId, Collections.emptySet())
-                    .containsAll(regionLocations))
-        .orElse(false);
-  }
-
   public void cacheDataNodeHeartbeatFailureSample(int nodeId, long sampleTimestamp) {
     cacheUnreportedDataNodeRegionHeartbeatSamples(nodeId, Collections.emptySet(), sampleTimestamp);
   }
@@ -425,8 +382,6 @@ public class LoadCache {
                   nodeId,
                   new RegionHeartbeatSample(sampleTimestamp, RegionStatus.Unknown),
                   false);
-              cacheConsensusGroupHeartbeatSample(
-                  regionGroupId, nodeId, false, sampleTimestamp, false);
             });
   }
 
@@ -823,7 +778,6 @@ public class LoadCache {
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     regionGroupCacheMap.remove(consensusGroupId);
     consensusGroupCacheMap.remove(consensusGroupId);
-    consensusGroupHeartbeatSampledNodeMap.remove(consensusGroupId);
   }
 
   /**
