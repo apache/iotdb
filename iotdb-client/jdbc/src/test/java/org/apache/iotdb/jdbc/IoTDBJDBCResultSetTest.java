@@ -192,6 +192,10 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
       Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
       Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.findColumn("missing"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getString(0));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getObject("missing"));
+      Assert.assertThrows(SQLException.class, () -> resultSet.getTimestamp("missing"));
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       // check columnInfoList

@@ -71,6 +71,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
+  private final int parameterCount;
 
   /** save the SQL parameters as (paramLoc,paramValue) pairs. */
   private final Map<Integer, String> parameters = new HashMap<>();
@@ -85,6 +86,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       throws SQLException {
     super(connection, client, sessionId, zoneId, charset);
     this.sql = sql;
+    this.parameterCount = splitSqlStatement(sql).size() - 1;
   }
 
   // Only for tests
@@ -93,6 +95,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       throws SQLException {
     super(connection, client, sessionId, zoneId, TSFileConfig.STRING_CHARSET);
     this.sql = sql;
+    this.parameterCount = splitSqlStatement(sql).size() - 1;
   }
 
   @Override
@@ -130,7 +133,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     return new ParameterMetaData() {
       @Override
       public int getParameterCount() {
-        return parameters.size();
+        return parameterCount;
       }
 
       @Override
@@ -215,9 +218,19 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   private void checkParameterMetadataIndex(int param) throws SQLException {
-    if (param < 1 || !parameters.containsKey(param)) {
-      throw new SQLException("Parameter index is not set: " + param);
+    checkParameterIndex(param);
+  }
+
+  private void checkParameterIndex(int param) throws SQLException {
+    if (param < 1 || param > parameterCount) {
+      throw new SQLException(
+          "Parameter index out of range: " + param + " (expected 1-" + parameterCount + ")");
     }
+  }
+
+  private void setParameter(int parameterIndex, String value) throws SQLException {
+    checkParameterIndex(parameterIndex);
+    this.parameters.put(parameterIndex, value);
   }
 
   private String getParameterMetadataValue(int param) throws SQLException {
@@ -271,7 +284,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       for (byte b : bytes) {
         sb.append(String.format("%02x", b));
       }
-      this.parameters.put(parameterIndex, "X'" + sb.toString() + "'");
+      setParameter(parameterIndex, "X'" + sb.toString() + "'");
     } catch (IOException e) {
       throw new SQLException(Constant.PARAMETER_SUPPORTED);
     }
@@ -299,8 +312,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setBoolean(int parameterIndex, boolean x) {
-    this.parameters.put(parameterIndex, Boolean.toString(x));
+  public void setBoolean(int parameterIndex, boolean x) throws SQLException {
+    setParameter(parameterIndex, Boolean.toString(x));
   }
 
   @Override
@@ -315,7 +328,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       return;
     }
     Binary binary = new Binary(x);
-    this.parameters.put(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
+    setParameter(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
   }
 
   @Override
@@ -357,7 +370,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       return;
     }
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    this.parameters.put(parameterIndex, "'" + dateFormat.format(x) + "'");
+    setParameter(parameterIndex, "'" + dateFormat.format(x) + "'");
   }
 
   @Override
@@ -366,23 +379,23 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setDouble(int parameterIndex, double x) {
-    this.parameters.put(parameterIndex, Double.toString(x));
+  public void setDouble(int parameterIndex, double x) throws SQLException {
+    setParameter(parameterIndex, Double.toString(x));
   }
 
   @Override
-  public void setFloat(int parameterIndex, float x) {
-    this.parameters.put(parameterIndex, Float.toString(x));
+  public void setFloat(int parameterIndex, float x) throws SQLException {
+    setParameter(parameterIndex, Float.toString(x));
   }
 
   @Override
-  public void setInt(int parameterIndex, int x) {
-    this.parameters.put(parameterIndex, Integer.toString(x));
+  public void setInt(int parameterIndex, int x) throws SQLException {
+    setParameter(parameterIndex, Integer.toString(x));
   }
 
   @Override
-  public void setLong(int parameterIndex, long x) {
-    this.parameters.put(parameterIndex, Long.toString(x));
+  public void setLong(int parameterIndex, long x) throws SQLException {
+    setParameter(parameterIndex, Long.toString(x));
   }
 
   @Override
@@ -418,7 +431,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
-    this.parameters.put(parameterIndex, "NULL");
+    setParameter(parameterIndex, "NULL");
   }
 
   @Override
@@ -945,11 +958,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public void setString(int parameterIndex, String x) {
+  public void setString(int parameterIndex, String x) throws SQLException {
     if (x == null) {
-      this.parameters.put(parameterIndex, null);
+      setParameter(parameterIndex, null);
     } else {
-      this.parameters.put(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
+      setParameter(parameterIndex, "'" + escapeSingleQuotes(x) + "'");
     }
   }
 
@@ -964,6 +977,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.TIME);
       return;
     }
+    checkParameterIndex(parameterIndex);
     try {
       long time = x.getTime();
       String timeprecision = client.getProperties().getTimestampPrecision();
@@ -992,6 +1006,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setNull(parameterIndex, Types.TIME);
       return;
     }
+    checkParameterIndex(parameterIndex);
     try {
       ZonedDateTime zonedDateTime = null;
       long time = x.getTime();
@@ -1015,8 +1030,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       } else {
         zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), super.zoneId);
       }
-      this.parameters.put(
-          parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
       logger.error(
           String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
@@ -1031,8 +1045,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
     ZonedDateTime zonedDateTime =
         ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
-    this.parameters.put(
-        parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override
@@ -1049,8 +1062,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     } else {
       zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
     }
-    this.parameters.put(
-        parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    setParameter(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override

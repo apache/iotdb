@@ -230,7 +230,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public int findColumn(String columnName) {
+  public int findColumn(String columnName) throws SQLException {
+    if (!ioTDBRpcDataSet.getColumnNameList().contains(columnName)) {
+      throw new SQLException("Unknown column name: " + columnName);
+    }
     return ioTDBRpcDataSet.findColumn(columnName);
   }
 
@@ -263,7 +266,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
     try {
       return getBigDecimal(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -316,7 +319,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return new SerialBlob(binary.getValues());
       }
       return null;
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -338,7 +341,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return new SerialBlob(binary.getValues());
       }
       return null;
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -347,7 +350,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public boolean getBoolean(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getBoolean(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -356,7 +359,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public boolean getBoolean(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getBoolean(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -388,7 +391,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         String s = ioTDBRpcDataSet.getString(columnIndex);
         return s == null ? null : s.getBytes(charset);
       }
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -409,7 +412,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         String s = ioTDBRpcDataSet.getString(columnName);
         return s == null ? null : s.getBytes(charset);
       }
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -472,7 +475,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return ioTDBRpcDataSet.getFloat(columnIndex);
       }
       return getDouble(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -484,7 +487,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         return ioTDBRpcDataSet.getFloat(columnName);
       }
       return ioTDBRpcDataSet.getDouble(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -519,7 +522,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public float getFloat(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getFloat(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -528,7 +531,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public float getFloat(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getFloat(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -542,7 +545,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public int getInt(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getInt(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -551,7 +554,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public int getInt(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getInt(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -560,7 +563,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public long getLong(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getLong(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -569,7 +572,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public long getLong(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getLong(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -629,7 +632,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Object getObject(int columnIndex) throws SQLException {
     try {
       return getObject(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -713,7 +716,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public String getString(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getString(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -748,7 +751,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
     try {
       return ioTDBRpcDataSet.getTimestamp(columnIndex);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -757,7 +760,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Timestamp getTimestamp(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getTimestamp(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -1309,7 +1312,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected String getValueByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getString(columnName);
-    } catch (StatementExecutionException | IllegalArgumentException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }
@@ -1317,7 +1320,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected Object getObjectByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getObject(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException | IndexOutOfBoundsException e) {
       throw new SQLException(e.getMessage());
     }
   }

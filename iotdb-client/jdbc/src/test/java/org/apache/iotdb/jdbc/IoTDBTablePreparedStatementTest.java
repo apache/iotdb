@@ -153,6 +153,8 @@ public class IoTDBTablePreparedStatementTest {
     assertEquals(1, metadata.getParameterCount());
     assertThrows(SQLException.class, () -> metadata.getParameterType(0));
     assertThrows(SQLException.class, () -> metadata.isSigned(2));
+    assertThrows(SQLException.class, () -> ps.setInt(0, 1));
+    assertThrows(SQLException.class, () -> ps.setInt(2, 1));
 
     ps.setInt(1, 1);
 
@@ -330,6 +332,10 @@ public class IoTDBTablePreparedStatementTest {
     String sql = "INSERT INTO users(time,email) VALUES(1, ?)";
     IoTDBTablePreparedStatement ps =
         new IoTDBTablePreparedStatement(connection, client, sessionId, sql, zoneId);
+
+    assertEquals(1, ps.getParameterMetaData().getParameterCount());
+    assertThrows(SQLException.class, () -> ps.setString(0, null));
+    assertThrows(SQLException.class, () -> ps.setString(2, null));
 
     ps.setString(1, null);
     ps.execute();

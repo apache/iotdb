@@ -120,7 +120,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
       this.serverSidePrepared = false;
-      this.parameterCount = 0;
+      this.parameterCount = splitSqlStatement(sql).size() - 1;
       this.parameterValues = null;
       this.parameterTypes = null;
     }
@@ -525,9 +525,6 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
-    if (!serverSidePrepared) {
-      return;
-    }
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
           "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
