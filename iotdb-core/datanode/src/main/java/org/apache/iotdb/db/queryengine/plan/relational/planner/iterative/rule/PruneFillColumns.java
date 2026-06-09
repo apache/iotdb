@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 
 import com.google.common.collect.ImmutableSet;
@@ -50,6 +51,10 @@ public class PruneFillColumns extends ProjectOffPushDownRule<FillNode> {
       PreviousFillNode previousFillNode = (PreviousFillNode) fillNode;
       previousFillNode.getHelperColumn().ifPresent(referencedInputs::add);
       previousFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
+    } else if (fillNode instanceof NextFillNode) {
+      NextFillNode nextFillNode = (NextFillNode) fillNode;
+      nextFillNode.getHelperColumn().ifPresent(referencedInputs::add);
+      nextFillNode.getGroupingKeys().ifPresent(keys -> referencedInputs.addAll(keys));
     } else if (fillNode instanceof LinearFillNode) {
       LinearFillNode linearFillNode = (LinearFillNode) fillNode;
       referencedInputs.add(linearFillNode.getHelperColumn());
