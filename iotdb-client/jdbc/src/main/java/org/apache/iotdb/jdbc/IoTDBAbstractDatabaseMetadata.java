@@ -2284,6 +2284,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public Connection getConnection() throws SQLException {
+    checkConnectionOpen();
     return connection;
   }
 
@@ -2858,11 +2859,20 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
+    checkConnectionOpen();
     return JdbcWrapperUtils.unwrap(this, arg0);
   }
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
+    checkConnectionOpen();
     return JdbcWrapperUtils.isWrapperFor(this, arg0);
+  }
+
+  private void checkConnectionOpen() throws SQLException {
+    if (connection == null || connection.isClosed()) {
+      throw new SQLException(
+          String.format(JdbcMessages.CANNOT_AFTER_CONNECTION_CLOSED, "get metadata"));
+    }
   }
 }

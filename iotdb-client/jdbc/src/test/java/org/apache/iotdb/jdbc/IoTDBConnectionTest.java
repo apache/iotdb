@@ -39,6 +39,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -213,27 +214,85 @@ public class IoTDBConnectionTest {
 
     assertThrows(SQLException.class, () -> connection.isWrapperFor(Connection.class));
     assertThrows(SQLException.class, () -> connection.unwrap(Connection.class));
+    assertThrows(SQLException.class, () -> connection.abort(null));
     assertThrows(SQLException.class, () -> connection.clearWarnings());
     assertThrows(SQLException.class, () -> connection.commit());
+    assertThrows(SQLException.class, () -> connection.createArrayOf("TEXT", new Object[0]));
+    assertThrows(SQLException.class, () -> connection.createBlob());
+    assertThrows(SQLException.class, () -> connection.createClob());
+    assertThrows(SQLException.class, () -> connection.createNClob());
+    assertThrows(SQLException.class, () -> connection.createSQLXML());
     assertThrows(SQLException.class, () -> connection.createStatement());
     assertThrows(
         SQLException.class,
         () -> connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    assertThrows(
+        SQLException.class,
+        () ->
+            connection.createStatement(
+                ResultSet.TYPE_FORWARD_ONLY,
+                ResultSet.CONCUR_READ_ONLY,
+                ResultSet.HOLD_CURSORS_OVER_COMMIT));
+    assertThrows(SQLException.class, () -> connection.createStruct("TEXT", new Object[0]));
     assertThrows(SQLException.class, () -> connection.prepareStatement("SELECT ?"));
+    assertThrows(SQLException.class, () -> connection.prepareStatement("SELECT ?", 0));
+    assertThrows(SQLException.class, () -> connection.prepareStatement("SELECT ?", new int[0]));
+    assertThrows(SQLException.class, () -> connection.prepareStatement("SELECT ?", new String[0]));
+    assertThrows(
+        SQLException.class,
+        () ->
+            connection.prepareStatement(
+                "SELECT ?", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    assertThrows(
+        SQLException.class,
+        () ->
+            connection.prepareStatement(
+                "SELECT ?",
+                ResultSet.TYPE_FORWARD_ONLY,
+                ResultSet.CONCUR_READ_ONLY,
+                ResultSet.HOLD_CURSORS_OVER_COMMIT));
+    assertThrows(SQLException.class, () -> connection.prepareCall("CALL x"));
+    assertThrows(
+        SQLException.class,
+        () ->
+            connection.prepareCall(
+                "CALL x", ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
+    assertThrows(
+        SQLException.class,
+        () ->
+            connection.prepareCall(
+                "CALL x",
+                ResultSet.TYPE_FORWARD_ONLY,
+                ResultSet.CONCUR_READ_ONLY,
+                ResultSet.HOLD_CURSORS_OVER_COMMIT));
     assertThrows(SQLException.class, () -> connection.getAutoCommit());
     assertThrows(SQLException.class, () -> connection.setAutoCommit(true));
     assertThrows(SQLException.class, () -> connection.getCatalog());
     assertThrows(SQLException.class, () -> connection.setCatalog("root"));
+    assertThrows(SQLException.class, () -> connection.getClientInfo());
+    assertThrows(SQLException.class, () -> connection.getClientInfo("time_zone"));
     assertThrows(SQLException.class, () -> connection.getHoldability());
+    assertThrows(
+        SQLException.class, () -> connection.setHoldability(ResultSet.HOLD_CURSORS_OVER_COMMIT));
     assertThrows(SQLException.class, () -> connection.getMetaData());
     assertThrows(SQLException.class, () -> connection.getNetworkTimeout());
     assertThrows(SQLException.class, () -> connection.getSchema());
     assertThrows(SQLException.class, () -> connection.setSchema("root"));
     assertThrows(SQLException.class, () -> connection.getTransactionIsolation());
+    assertThrows(
+        SQLException.class, () -> connection.setTransactionIsolation(Connection.TRANSACTION_NONE));
+    assertThrows(SQLException.class, () -> connection.getTypeMap());
+    assertThrows(SQLException.class, () -> connection.setTypeMap(null));
     assertThrows(SQLException.class, () -> connection.getWarnings());
     assertThrows(SQLException.class, () -> connection.isReadOnly());
     assertThrows(SQLException.class, () -> connection.setReadOnly(false));
+    assertThrows(SQLException.class, () -> connection.nativeSQL("SELECT 1"));
+    assertThrows(SQLException.class, () -> connection.releaseSavepoint(null));
     assertThrows(SQLException.class, () -> connection.rollback());
+    assertThrows(SQLException.class, () -> connection.rollback((Savepoint) null));
+    assertThrows(SQLException.class, () -> connection.setNetworkTimeout(null, 0));
+    assertThrows(SQLException.class, () -> connection.setSavepoint());
+    assertThrows(SQLException.class, () -> connection.setSavepoint("s"));
   }
 
   private void openConnection(IoTDBConnection target) {
