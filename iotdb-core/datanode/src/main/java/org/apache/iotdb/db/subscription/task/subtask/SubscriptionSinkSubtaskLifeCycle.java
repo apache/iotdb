@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskLifeCycle;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -49,8 +51,10 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     }
 
     if (registeredTaskCount == 0) {
-      // bind prefetching queue
-      SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionSinkSubtask) subtask);
+      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          ((SubscriptionSinkSubtask) subtask).getTopicName())) {
+        SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionSinkSubtask) subtask);
+      }
       executor.register(subtask);
       runningTaskCount = 0;
     }
@@ -64,8 +68,7 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
   }
 
   @Override
-  public synchronized boolean deregister(
-      final String pipeNameToDeregister, final long creationTimeToDeregister, final int regionId) {
+  public synchronized boolean deregister(final CommitterKey committerKey) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException(DataNodeMiscMessages.REGISTERED_TASK_COUNT_LE_ZERO);
     }
@@ -99,6 +102,8 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     // when dropping the subscription.
     final String consumerGroupId = ((SubscriptionSinkSubtask) subtask).getConsumerGroupId();
     final String topicName = ((SubscriptionSinkSubtask) subtask).getTopicName();
-    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
+    }
   }
 }

@@ -1699,6 +1699,12 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# When loading snapshot, try keeping TsFiles in the same disk as the snapshot dir.
+# This may reduce file copies but may also result in a worse disk load-balance
+# effectiveMode: hot_reload
+# Datatype: boolean
+keep_same_disk_when_loading_snapshot=true
+
 ####################
 ### Blob Allocator Configuration
 ####################
@@ -1960,6 +1966,15 @@ pipe_air_gap_receiver_port=9780
 # effectiveMode: hot_reload
 # Datatype: double
 pipe_all_sinks_rate_limit_bytes_per_second=-1
+
+####################
+### Subscription Consensus Configuration
+####################
+
+# The interval at which an idle consensus-subscription queue advances its writer safe-time barrier by watermark.
+# effectiveMode: restart
+# Datatype: long(duration)
+subscription_consensus_idle_safe_time_barrier_interval_ms=10000
 
 ####################
 ### RatisConsensus Configuration

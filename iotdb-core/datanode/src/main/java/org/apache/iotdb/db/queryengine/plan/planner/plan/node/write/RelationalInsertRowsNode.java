@@ -124,7 +124,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(stream);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -144,7 +144,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(buffer);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -185,6 +185,9 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       } else {
         tmpNode = new RelationalInsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.setPhysicalTime(getPhysicalTime());
+        tmpNode.setNodeId(getNodeId());
+        tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }

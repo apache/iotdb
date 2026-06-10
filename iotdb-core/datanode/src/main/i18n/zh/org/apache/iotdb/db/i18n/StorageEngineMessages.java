@@ -359,10 +359,26 @@ public final class StorageEngineMessages {
   // ======================== Snapshot ========================
 
   public static final String EXCEPTION_LOAD_SNAPSHOT = "从 {} 加载快照时发生异常";
+  public static final String LOADING_SNAPSHOT_FOR = "正在为 {}-{} 加载快照，源目录为 {}";
+  public static final String EXCEPTION_LOADING_SNAPSHOT_FOR = "为 {}-{} 加载快照时发生异常";
   public static final String READING_SNAPSHOT_LOG_FILE = "正在读取快照日志文件 {}";
   public static final String REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR = "移除原始数据目录中的所有数据文件";
   public static final String FAILED_TO_REMOVE_ORIGIN_DATA_FILES = "移除原始数据文件失败";
   public static final String MOVING_SNAPSHOT_FILE_TO_DATA_DIRS = "正在将快照文件移动到数据目录";
+  public static final String CANNOT_FIND_SNAPSHOT_DIRECTORY = "找不到快照目录 %s";
+  public static final String NO_SEQ_OR_UNSEQ_FILES_IN_SNAPSHOT =
+      "快照 {} 中没有顺序或乱序文件，跳过创建文件链接";
+  public static final String EXCEPTION_DELETING_TIME_PARTITION_DIR =
+      "删除 {}-{} 的时间分区目录时发生异常";
+  public static final String CANNOT_CREATE_LINK_FALLBACK_COPY =
+      "无法创建从 {} 到 {} 的链接，回退为复制";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE =
+      "处理文件 {} 失败，所在目录为 {}: {}";
+  public static final String FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES =
+      "重试后仍无法处理文件。源文件: %s，目标后缀: %s";
+  public static final String SNAPSHOT_FILE_NUM_MISMATCH =
+      "日志中的文件数为 %d，但磁盘中的文件数为 %d";
+  public static final String SNAPSHOT_FILE_NOT_IN_LOG = "文件 %s 不在日志文件列表中";
   public static final String NO_COMPRESSION_RATIO_FILE_IN_DIR = "目录 {} 中没有压缩率文件";
   public static final String CANNOT_LOAD_COMPRESSION_RATIO = "无法从 {} 加载压缩率";
   public static final String LOADED_COMPRESSION_RATIO = "已从 {} 加载压缩率";
@@ -511,4 +527,8 @@ public final class StorageEngineMessages {
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "字符串 '%s' 不是合法的修复日志";
 
   public static final String WRONG_LOAD_COMMAND_S = "错误的 load 命令 %s。";
+
+  public static final String FAILED_TO_FIND_DATA_REGION = "共识组 %s 底层状态机创建失败, 因为 DataRegion 没找到。";
+
+  public static final String DATA_REGION_IS_NULL = "Data region 是空";
 }

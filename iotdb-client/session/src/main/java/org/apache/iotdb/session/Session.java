@@ -129,6 +129,7 @@ public class Session implements ISession {
   protected List<String> nodeUrls;
   protected String username;
   protected String password;
+  protected boolean useEncryptedPassword;
   protected int fetchSize;
   protected boolean useSSL;
   protected String trustStore;
@@ -463,6 +464,7 @@ public class Session implements ISession {
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
+    this.useEncryptedPassword = builder.useEncryptedPassword;
     this.fetchSize = builder.fetchSize;
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
@@ -849,31 +851,12 @@ public class Session implements ISession {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
     request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
-    request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    request.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
-    if (measurementAliasList != null) {
-      measurementAliasList =
-          measurementAliasList.stream()
-              .map(value -> value != null ? value : "")
-              .collect(Collectors.toList());
-    }
-    request.setMeasurementAlias(measurementAliasList);
-    if (tagsList != null) {
-      tagsList =
-          tagsList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setTagsList(tagsList);
-    if (attributesList != null) {
-      attributesList =
-          attributesList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setAttributesList(attributesList);
+    request.setDataTypes(toDataTypeOrdinals(dataTypes));
+    request.setEncodings(toEncodingOrdinals(encodings));
+    request.setCompressors(toCompressionOrdinals(compressors));
+    request.setMeasurementAlias(replaceNullStrings(measurementAliasList));
+    request.setTagsList(replaceNullMaps(tagsList));
+    request.setAttributesList(replaceNullMaps(attributesList));
     return request;
   }
 
@@ -913,47 +896,14 @@ public class Session implements ISession {
     TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
 
     request.setPaths(paths);
-
-    List<Integer> dataTypeOrdinals = new ArrayList<>(dataTypes.size());
-    for (TSDataType dataType : dataTypes) {
-      dataTypeOrdinals.add(dataType.ordinal());
-    }
-    request.setDataTypes(dataTypeOrdinals);
-
-    List<Integer> encodingOrdinals = new ArrayList<>(dataTypes.size());
-    for (TSEncoding encoding : encodings) {
-      encodingOrdinals.add(encoding.ordinal());
-    }
-    request.setEncodings(encodingOrdinals);
-
-    List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
-    for (CompressionType compression : compressors) {
-      compressionOrdinals.add((int) compression.serialize());
-    }
-    request.setCompressors(compressionOrdinals);
+    request.setDataTypes(toDataTypeOrdinals(dataTypes));
+    request.setEncodings(toEncodingOrdinals(encodings));
+    request.setCompressors(toCompressionOrdinals(compressors));
 
     request.setPropsList(propsList);
-    if (tagsList != null) {
-      tagsList =
-          tagsList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setTagsList(tagsList);
-    if (attributesList != null) {
-      attributesList =
-          attributesList.stream()
-              .map(value -> value != null ? value : new HashMap<String, String>())
-              .collect(Collectors.toList());
-    }
-    request.setAttributesList(attributesList);
-    if (measurementAliasList != null) {
-      measurementAliasList =
-          measurementAliasList.stream()
-              .map(value -> value != null ? value : "")
-              .collect(Collectors.toList());
-    }
-    request.setMeasurementAliasList(measurementAliasList);
+    request.setTagsList(replaceNullMaps(tagsList));
+    request.setAttributesList(replaceNullMaps(attributesList));
+    request.setMeasurementAliasList(replaceNullStrings(measurementAliasList));
 
     return request;
   }
@@ -1817,19 +1767,23 @@ public class Session implements ISession {
       List<String> measurementsList,
       List<TSDataType> types,
       List<Object> valuesList) {
-    Map<String, Object> nullMap = new HashMap<>();
+    Map<String, Object> nullMap = logger.isInfoEnabled() ? new HashMap<>() : null;
     for (int i = valuesList.size() - 1; i >= 0; i--) {
       if (valuesList.get(i) == null) {
-        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        if (nullMap != null) {
+          nullMap.put(measurementsList.get(i), valuesList.get(i));
+        }
         valuesList.remove(i);
         measurementsList.remove(i);
         types.remove(i);
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
+    } else if (nullMap != null) {
       logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
@@ -1865,18 +1819,22 @@ public class Session implements ISession {
    */
   private boolean filterNullValueAndMeasurementWithStringType(
       List<String> valuesList, String deviceId, List<String> measurementsList) {
-    Map<String, Object> nullMap = new HashMap<>();
+    Map<String, Object> nullMap = logger.isInfoEnabled() ? new HashMap<>() : null;
     for (int i = valuesList.size() - 1; i >= 0; i--) {
       if (valuesList.get(i) == null) {
-        nullMap.put(measurementsList.get(i), valuesList.get(i));
+        if (nullMap != null) {
+          nullMap.put(measurementsList.get(i), valuesList.get(i));
+        }
         valuesList.remove(i);
         measurementsList.remove(i);
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      if (nullMap != null) {
+        logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
+      }
       return true;
-    } else {
+    } else if (nullMap != null) {
       logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
@@ -2620,7 +2578,65 @@ public class Session implements ISession {
    * @return ordered list
    */
   private static <T> List<T> sortList(List<T> source, Integer[] index) {
-    return Arrays.stream(index).map(source::get).collect(Collectors.toList());
+    List<T> sortedList = new ArrayList<>(index.length);
+    for (int position : index) {
+      sortedList.add(source.get(position));
+    }
+    return sortedList;
+  }
+
+  private static List<Integer> toDataTypeOrdinals(List<TSDataType> dataTypes) {
+    List<Integer> ordinals = new ArrayList<>(dataTypes.size());
+    for (TSDataType dataType : dataTypes) {
+      ordinals.add(dataType.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<Integer> toEncodingOrdinals(List<TSEncoding> encodings) {
+    List<Integer> ordinals = new ArrayList<>(encodings.size());
+    for (TSEncoding encoding : encodings) {
+      ordinals.add(encoding.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<Integer> toCompressionOrdinals(List<CompressionType> compressors) {
+    List<Integer> ordinals = new ArrayList<>(compressors.size());
+    for (CompressionType compression : compressors) {
+      ordinals.add((int) compression.serialize());
+    }
+    return ordinals;
+  }
+
+  private static List<Byte> toEnumOrdinalsAsBytes(List<? extends Enum<?>> enumValues) {
+    List<Byte> ordinals = new ArrayList<>(enumValues.size());
+    for (Enum<?> enumValue : enumValues) {
+      ordinals.add((byte) enumValue.ordinal());
+    }
+    return ordinals;
+  }
+
+  private static List<String> replaceNullStrings(List<String> values) {
+    if (values == null) {
+      return null;
+    }
+    List<String> replacedValues = new ArrayList<>(values.size());
+    for (String value : values) {
+      replacedValues.add(value != null ? value : "");
+    }
+    return replacedValues;
+  }
+
+  private static List<Map<String, String>> replaceNullMaps(List<Map<String, String>> values) {
+    if (values == null) {
+      return null;
+    }
+    List<Map<String, String>> replacedValues = new ArrayList<>(values.size());
+    for (Map<String, String> value : values) {
+      replacedValues.add(value != null ? value : new HashMap<>());
+    }
+    return replacedValues;
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(
@@ -2818,10 +2834,7 @@ public class Session implements ISession {
     } else {
       TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       request.setWriteToTable(true);
-      request.setColumnCategories(
-          tablet.getColumnTypes().stream()
-              .map(t -> (byte) t.ordinal())
-              .collect(Collectors.toList()));
+      request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
       try {
         getDefaultSessionConnection().insertTablet(request);
       } catch (RedirectException ignored) {
@@ -2887,8 +2900,7 @@ public class Session implements ISession {
     Tablet tablet = entry.getValue();
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
     request.setWriteToTable(true);
-    request.setColumnCategories(
-        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
+    request.setColumnCategories(toEnumOrdinalsAsBytes(tablet.getColumnTypes()));
     try {
       connection.insertTablet(request);
     } catch (RedirectException e) {
@@ -2930,9 +2942,7 @@ public class Session implements ISession {
                         TSInsertTabletReq request = genTSInsertTabletReq(subTablet, false, false);
                         request.setWriteToTable(true);
                         request.setColumnCategories(
-                            subTablet.getColumnTypes().stream()
-                                .map(t -> (byte) t.ordinal())
-                                .collect(Collectors.toList()));
+                            toEnumOrdinalsAsBytes(subTablet.getColumnTypes()));
                         InsertConsumer<TSInsertTabletReq> insertConsumer =
                             SessionConnection::insertTablet;
                         try {
@@ -3902,10 +3912,9 @@ public class Session implements ISession {
     TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
     req.setName(templateName);
     req.setMeasurements(measurementsPath);
-    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    req.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
+    req.setDataTypes(toDataTypeOrdinals(dataTypes));
+    req.setEncodings(toEncodingOrdinals(encodings));
+    req.setCompressors(toCompressionOrdinals(compressors));
     req.setIsAligned(true);
     getDefaultSessionConnection().appendSchemaTemplate(req);
   }
@@ -3948,10 +3957,9 @@ public class Session implements ISession {
     TSAppendSchemaTemplateReq req = new TSAppendSchemaTemplateReq();
     req.setName(templateName);
     req.setMeasurements(measurementsPath);
-    req.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    req.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    req.setCompressors(
-        compressors.stream().map(i -> (int) i.serialize()).collect(Collectors.toList()));
+    req.setDataTypes(toDataTypeOrdinals(dataTypes));
+    req.setEncodings(toEncodingOrdinals(encodings));
+    req.setCompressors(toCompressionOrdinals(compressors));
     req.setIsAligned(false);
     getDefaultSessionConnection().appendSchemaTemplate(req);
   }

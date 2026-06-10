@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
@@ -130,9 +130,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
 
-  // Pipe name, creation time, region id
-  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
-      ConcurrentHashMap.newKeySet();
+  private final Set<CommitterKey> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -271,7 +269,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   sealedFile.left));
         }
       } catch (final Exception e) {
-        LOGGER.warn(DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH, dbTsFilePairs, e);
+        PipeLogger.log(
+            ignored ->
+                LOGGER.warn(DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_BATCH, dbTsFilePairs, e),
+            e,
+            "Failed to transfer tsfile batch (%s).",
+            dbTsFilePairs);
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
           addFailureEventsToRetryQueue(events, e);
         }
@@ -457,23 +460,33 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             },
             transferTsFileClientManager.getExecutor());
 
-    if (PipeConfig.getInstance().isTransferTsFileSync() || !isRealtimeFirst) {
+    if (PipeConfig.getInstance().isTransferTsFileSync()) {
       try {
         completableFuture.get();
       } catch (final Exception e) {
         if (e instanceof InterruptedException) {
           Thread.currentThread().interrupt();
-          LOGGER.warn(
-              DataNodePipeMessages.TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED,
-              pipeTransferTsFileHandler.getTsFile(),
-              e);
+          PipeLogger.log(
+              ignored ->
+                  LOGGER.warn(
+                      DataNodePipeMessages.TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY_WAS_INTERRUPTED,
+                      pipeTransferTsFileHandler.getTsFile(),
+                      e),
+              e,
+              "Transfer tsfile event %s asynchronously was interrupted.",
+              pipeTransferTsFileHandler.getTsFile());
         }
 
         pipeTransferTsFileHandler.onError(e);
-        LOGGER.warn(
-            DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
-            pipeTransferTsFileHandler.getTsFile(),
-            e);
+        PipeLogger.log(
+            ignored ->
+                LOGGER.warn(
+                    DataNodePipeMessages.FAILED_TO_TRANSFER_TSFILE_EVENT_ASYNCHRONOUSLY,
+                    pipeTransferTsFileHandler.getTsFile(),
+                    e),
+            e,
+            "Failed to transfer tsfile event %s asynchronously.",
+            pipeTransferTsFileHandler.getTsFile());
       }
     }
   }
@@ -510,9 +523,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   @Override
   public TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
-    if (Objects.isNull(compressionTimer) && Objects.nonNull(attributeSortedString)) {
-      compressionTimer =
-          PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(attributeSortedString);
+    if (Objects.isNull(compressionTimer) && Objects.nonNull(sinkTaskId)) {
+      compressionTimer = PipeDataRegionSinkMetrics.getInstance().getCompressionTimer(sinkTaskId);
     }
     return super.compressIfNeeded(req);
   }
@@ -749,16 +761,20 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   @Override
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
+    discardEventsOfPipe(new CommitterKey(pipeNameToDrop, creationTimeToDrop, regionId, -1));
+  }
+
+  @Override
+  public synchronized void discardEventsOfPipe(final CommitterKey committerKey) {
+    droppedPipeTaskKeys.add(committerKey);
 
     if (isTabletBatchModeEnabled && Objects.nonNull(tabletBatchBuilder)) {
-      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
+      tabletBatchBuilder.discardEventsOfPipe(committerKey);
     }
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && isDroppedPipe(
-                  (EnrichedEvent) event, pipeNameToDrop, creationTimeToDrop, regionId)) {
+              && isDroppedPipe((EnrichedEvent) event, committerKey)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
             return true;
@@ -769,8 +785,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     retryTsFileQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && isDroppedPipe(
-                  (EnrichedEvent) event, pipeNameToDrop, creationTimeToDrop, regionId)) {
+              && isDroppedPipe((EnrichedEvent) event, committerKey)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
             return true;
@@ -872,18 +887,14 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   private boolean isDroppedPipe(final EnrichedEvent event) {
-    return droppedPipeTaskKeys.contains(
-        new Triple<>(event.getPipeName(), event.getCreationTime(), event.getRegionId()));
+    return droppedPipeTaskKeys.stream().anyMatch(key -> isDroppedPipe(event, key));
   }
 
-  private static boolean isDroppedPipe(
-      final EnrichedEvent event,
-      final String pipeNameToDrop,
-      final long creationTimeToDrop,
-      final int regionId) {
-    return pipeNameToDrop.equals(event.getPipeName())
-        && creationTimeToDrop == event.getCreationTime()
-        && regionId == event.getRegionId();
+  private static boolean isDroppedPipe(final EnrichedEvent event, final CommitterKey committerKey) {
+    return committerKey.getPipeName().equals(event.getPipeName())
+        && committerKey.getCreationTime() == event.getCreationTime()
+        && committerKey.getRegionId() == event.getRegionId()
+        && (committerKey.getRestartTimes() < 0 || committerKey.equals(event.getCommitterKey()));
   }
 
   @Override

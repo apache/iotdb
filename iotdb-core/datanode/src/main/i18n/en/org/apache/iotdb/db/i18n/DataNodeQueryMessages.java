@@ -136,6 +136,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "Free more memory than has been reserved.";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "Estimated mods tree size decreased from %d to %d for TsFile %s.";
 
   // --- Execution / Operator ---
 
@@ -259,6 +261,8 @@ public final class DataNodeQueryMessages {
       "Left hand expression is not an identifier: ";
   public static final String THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER =
       "The left hand value must be an identifier: ";
+  public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
+      "The table '%s' does not contain a time column";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "The operator of tag predicate must be '=' for ";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =
@@ -1422,5 +1426,10 @@ public final class DataNodeQueryMessages {
 
   public static final String CANT_CONNECT_TO_NODE_PREFIX = "can't connect to node ";
   public static final String REMOVE_AINODE_FAILED = "Remove AINode failed: ";
+
+  public static final String QUERY_TIMEOUT_IN_FETCH_SCHEMA = "Query execution is time out while fetching schema";
+
+  public static final String QUERY_EXECUTION_MISSING = "Query execution %s is missing during fetching device schema";
+
   private DataNodeQueryMessages() {}
 }

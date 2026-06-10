@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.BitMapUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -180,7 +181,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
     RelationalInsertTabletNode split =
         new RelationalInsertTabletNode(
             getPlanNodeId(),
@@ -277,7 +278,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList) {
-    super.subSerialize(buffer, rangeList);
+    subSerialize(buffer, rangeList, getEncodedSearchIndex());
+  }
+
+  @Override
+  void subSerialize(IWALByteBufferView buffer, List<int[]> rangeList, long encodedSearchIndex) {
+    super.subSerialize(buffer, rangeList, encodedSearchIndex);
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         buffer.put(columnCategories[i].getCategory());
@@ -323,7 +329,12 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   int subSerializeSize(int start, int end) {
-    return super.subSerializeSize(start, end) + columnCategories.length * Byte.BYTES;
+    return super.subSerializeSize(start, end) + getValidMeasurementNumber() * Byte.BYTES;
+  }
+
+  @Override
+  int subSerializeSize(List<int[]> rangeList) {
+    return super.subSerializeSize(rangeList) + getValidMeasurementNumber() * Byte.BYTES;
   }
 
   @Override
@@ -442,7 +453,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         if (dataTypes[i] != null) {
           System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[i] != null) {
+        if (subNode.bitMaps != null
+            && subNode.bitMaps[i] != null
+            && i < this.bitMaps.length
+            && this.bitMaps[i] != null) {
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }
@@ -451,6 +465,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
     subNode.setRange(locs);
     subNode.setDataRegionReplicaSet(entry.getKey());
+    subNode.bitMaps = BitMapUtils.compactBitMaps(subNode.bitMaps, subNode.rowCount);
     result.add(subNode);
     return result;
   }

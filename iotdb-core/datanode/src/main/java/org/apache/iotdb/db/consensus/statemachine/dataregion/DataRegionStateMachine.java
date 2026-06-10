@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -159,6 +160,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
       PlanNode planNode = getPlanNode(req);
       if (planNode instanceof SearchNode) {
         ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
+        ((SearchNode) planNode).setPhysicalTime(indexedRequest.getPhysicalTime());
+        ((SearchNode) planNode).setNodeId(indexedRequest.getNodeId());
+        ((SearchNode) planNode).setSyncIndex(indexedRequest.getSyncIndex());
         searchNodes.add((SearchNode) planNode);
       } else {
         logger.warn(DataNodeMiscMessages.UNEXPECTED_PLAN_NODE_TYPE, planNode.getClass());
@@ -248,6 +252,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public DataSet read(IConsensusRequest request) {
+    if (region == null) {
+      logger.error(StorageEngineMessages.DATA_REGION_IS_NULL);
+      return null;
+    }
     if (request instanceof GetConsensusReqReaderPlan) {
       return region.getWALNode().orElseThrow(UnsupportedOperationException::new);
     } else {

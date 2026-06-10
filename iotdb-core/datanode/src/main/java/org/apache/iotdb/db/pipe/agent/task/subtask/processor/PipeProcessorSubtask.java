@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
@@ -181,6 +182,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                     }
                   },
                   "PipeProcessorSubtask::executeOnce");
+              if (tsFileInsertionEvent.isGeneratedByHistoricalExtractor()) {
+                PipeTerminateEvent.markHistoricalTsFileSplit(
+                    tsFileInsertionEvent.getPipeName(),
+                    tsFileInsertionEvent.getCreationTime(),
+                    regionId);
+              }
               if (ex.get() != null) {
                 throw ex.get();
               }

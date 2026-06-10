@@ -424,44 +424,31 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
-    return handleAccountUnlock(
-        authorStatement,
-        authorStatement.getUserName(),
-        false,
-        () -> onOperatePermissionSuccess(authorStatement));
+    return handleAccountUnlock(authorStatement, false);
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
       RelationalAuthorStatement authorStatement) {
-    return handleAccountUnlock(
-        authorStatement,
-        authorStatement.getUserName(),
-        true,
-        () -> onOperatePermissionSuccess(authorStatement));
+    return handleAccountUnlock(authorStatement, true);
   }
 
   private SettableFuture<ConfigTaskResult> handleAccountUnlock(
-      Object authorStatement, String username, boolean isRelational, Runnable successCallback) {
+      Object authorStatement, boolean isRelational) {
 
     if (isUnlockStatement(authorStatement, isRelational)) {
-      final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-      final User user;
-      try {
-        user = getUser(username, false);
-      } catch (final IoTDBRuntimeException e) {
-        future.setException(e);
-        return future;
-      }
       String loginAddr =
           isRelational
               ? ((RelationalAuthorStatement) authorStatement).getLoginAddr()
               : ((AuthorStatement) authorStatement).getLoginAddr();
 
-      LoginLockManager.getInstance().unlock(user.getUserId(), loginAddr);
-      successCallback.run();
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      return future;
+      // Reuse roleName to carry the optional login address for the internal unlock broadcast.
+      if (isRelational) {
+        ((RelationalAuthorStatement) authorStatement).setRoleName(loginAddr);
+      } else {
+        ((AuthorStatement) authorStatement).setRoleName(loginAddr);
+      }
+      return operatePermissionInternal(authorStatement, isRelational);
     }
     return operatePermissionInternal(authorStatement, isRelational);
   }
@@ -748,7 +735,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
       throws AuthException {
-    if (authorStatement.getAuthorType() == null) {
+    if (authorStatement.getNodeNameList() == null) {
       authorStatement.setNodeNameList(new ArrayList<>());
     }
     return new TAuthorizerReq(

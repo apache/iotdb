@@ -556,7 +556,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   protected int subSerializeSize() {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
+    size += WALWriteUtils.sizeToWrite(targetPath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
 
@@ -620,8 +620,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
+    serializeToWAL(buffer, getEncodedSearchIndex());
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer, long encodedSearchIndex) {
     buffer.putShort(getType().getNodeType());
-    buffer.putLong(searchIndex);
+    buffer.putLong(encodedSearchIndex);
     subSerialize(buffer);
   }
 
@@ -702,7 +706,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     long searchIndex = stream.readLong();
     InsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -793,7 +797,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     InsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 

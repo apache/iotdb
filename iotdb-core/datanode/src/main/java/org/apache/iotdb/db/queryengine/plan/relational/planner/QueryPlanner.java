@@ -35,11 +35,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFill
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -61,6 +63,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecifi
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -68,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -792,7 +796,14 @@ public class QueryPlanner {
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new SemanticException(DataNodeQueryMessages.FROM_CLAUSE_MUST_NOT_BE_EMPTY);
+      return new PlanBuilder(
+          new TranslationMap(
+              outerContext,
+              analysis.getImplicitFromScope(node),
+              analysis,
+              ImmutableList.of(),
+              new PlannerContext(new TableMetadataImpl(), new InternalTypeManager())),
+          new ValuesNode(queryIdAllocator.genPlanNodeId(), 1));
     }
   }
 
@@ -1285,6 +1296,27 @@ public class QueryPlanner {
                 subPlan.getRoot(),
                 previousFillAnalysis.getTimeBound().orElse(null),
                 previousFillHelperColumn,
+                groupingKeys));
+      case NEXT:
+        Analysis.NextFillAnalysis nextFillAnalysis =
+            (Analysis.NextFillAnalysis) analysis.getFill(fill.get());
+        Symbol nextFillHelperColumn = null;
+        if (nextFillAnalysis.getFieldReference().isPresent()) {
+          nextFillHelperColumn = subPlan.translate(nextFillAnalysis.getFieldReference().get());
+        }
+
+        if (nextFillAnalysis.getGroupingKeys().isPresent()) {
+          List<FieldReference> fieldReferenceList = nextFillAnalysis.getGroupingKeys().get();
+          groupingKeys = new ArrayList<>(fieldReferenceList.size());
+          subPlan = fillGroup(subPlan, fieldReferenceList, groupingKeys, nextFillHelperColumn);
+        }
+
+        return subPlan.withNewRoot(
+            new NextFillNode(
+                queryIdAllocator.genPlanNodeId(),
+                subPlan.getRoot(),
+                nextFillAnalysis.getTimeBound().orElse(null),
+                nextFillHelperColumn,
                 groupingKeys));
       case LINEAR:
         Analysis.LinearFillAnalysis linearFillAnalysis =

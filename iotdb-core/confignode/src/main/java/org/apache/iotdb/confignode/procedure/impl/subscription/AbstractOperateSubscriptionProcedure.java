@@ -254,6 +254,7 @@ public abstract class AbstractOperateSubscriptionProcedure
                     getProcId(),
                     getOperation().name(),
                     e.getMessage())));
+        return Flow.NO_MORE_STATE;
       }
     }
 

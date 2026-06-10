@@ -51,35 +51,35 @@ public class ShowDBTask implements IConfigTask {
   private final ShowDB node;
 
   // judge whether the specific database can be seen, dbName should be without `root.` prefix
-  private final Predicate<String> canSeenDB;
+  private final Predicate<String> canSeeDB;
 
-  public ShowDBTask(final ShowDB node, final Predicate<String> canSeenDB) {
+  public ShowDBTask(final ShowDB node, final Predicate<String> canSeeDB) {
     this.node = node;
-    this.canSeenDB = canSeenDB;
+    this.canSeeDB = canSeeDB;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDatabases(node, canSeenDB);
+    return configTaskExecutor.showDatabases(node, canSeeDB);
   }
 
   public static void buildTSBlock(
       final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
       final boolean isDetails,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     if (isDetails) {
-      buildTSBlockForDetails(databaseInfoMap, future, canSeenDB);
+      buildTSBlockForDetails(databaseInfoMap, future, canSeeDB);
     } else {
-      buildTSBlockForNonDetails(databaseInfoMap, future, canSeenDB);
+      buildTSBlockForNonDetails(databaseInfoMap, future, canSeeDB);
     }
   }
 
   private static void buildTSBlockForNonDetails(
       final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -93,7 +93,7 @@ public class ShowDBTask implements IConfigTask {
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       final String dbName = entry.getKey();
-      if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
+      if (Boolean.FALSE.equals(canSeeDB.test(dbName))) {
         continue;
       }
       if (dbName.equals(INFORMATION_DATABASE)) {
@@ -127,7 +127,7 @@ public class ShowDBTask implements IConfigTask {
   private static void buildTSBlockForDetails(
       final Map<String, TDatabaseInfo> databaseMap,
       final SettableFuture<ConfigTaskResult> future,
-      final Predicate<String> canSeenDB) {
+      final Predicate<String> canSeeDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -141,7 +141,7 @@ public class ShowDBTask implements IConfigTask {
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       final String dbName = entry.getKey();
-      if (!canSeenDB.test(dbName)) {
+      if (!canSeeDB.test(dbName)) {
         continue;
       }
       if (dbName.equals(INFORMATION_DATABASE)) {

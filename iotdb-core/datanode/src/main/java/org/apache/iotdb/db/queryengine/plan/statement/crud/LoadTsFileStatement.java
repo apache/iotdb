@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -44,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ASYNC_LOAD_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
@@ -335,6 +338,28 @@ public class LoadTsFileStatement extends Statement {
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+  }
+
+  public void updateDatabaseLevelByTreeDatabase() {
+    final Integer databaseLevel = getDatabaseLevelByTreeDatabase(database);
+    if (databaseLevel != null) {
+      this.databaseLevel = databaseLevel;
+    }
+  }
+
+  public static Integer getDatabaseLevelByTreeDatabase(final String database) {
+    if (database == null) {
+      return null;
+    }
+    try {
+      final String[] nodes = PathUtils.splitPathToDetachedNodes(database);
+      if (nodes.length > 1 && PATH_ROOT.equals(nodes[0])) {
+        return nodes.length - 1;
+      }
+    } catch (final IllegalPathException ignored) {
+      // Keep the configured database level when database is not a legal tree path.
+    }
+    return null;
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

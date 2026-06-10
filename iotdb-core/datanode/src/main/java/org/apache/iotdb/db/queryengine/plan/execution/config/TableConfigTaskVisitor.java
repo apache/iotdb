@@ -99,6 +99,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ClearCacheTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CountDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableViewTask;
@@ -156,6 +157,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
@@ -419,6 +421,15 @@ public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryC
   public IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
+        node,
+        databaseName ->
+            canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));
+  }
+
+  @Override
+  public IConfigTask visitCountDB(final CountDB node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new CountDBTask(
         node,
         databaseName ->
             canShowDB(accessControl, context.getSession().getUserName(), databaseName, context));

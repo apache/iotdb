@@ -782,14 +782,29 @@ public class LoadTsFileScheduler implements IScheduler {
         return;
       }
 
+      final List<Pair<IDeviceID, TTimePartitionSlot>> partitionSlotList = new ArrayList<>();
+      final int[] chunkPartitionIndexes = new int[nonDirectionalChunkData.size()];
+      final Map<IDeviceID, Map<TTimePartitionSlot, Integer>> partitionSlotIndexes = new HashMap<>();
+      for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
+        final ChunkData chunkData = nonDirectionalChunkData.get(i);
+        final IDeviceID device = chunkData.getDevice();
+        final TTimePartitionSlot timePartitionSlot = chunkData.getTimePartitionSlot();
+        final Map<TTimePartitionSlot, Integer> slotIndexes =
+            partitionSlotIndexes.computeIfAbsent(device, key -> new HashMap<>());
+        Integer partitionSlotIndex = slotIndexes.get(timePartitionSlot);
+        if (partitionSlotIndex == null) {
+          partitionSlotIndex = partitionSlotList.size();
+          slotIndexes.put(timePartitionSlot, partitionSlotIndex);
+          partitionSlotList.add(new Pair<>(device, timePartitionSlot));
+        }
+        chunkPartitionIndexes[i] = partitionSlotIndex;
+      }
+
       List<TRegionReplicaSet> replicaSets =
           scheduler.partitionFetcher.queryDataPartition(
-              nonDirectionalChunkData.stream()
-                  .map(data -> new Pair<>(data.getDevice(), data.getTimePartitionSlot()))
-                  .collect(Collectors.toList()),
-              scheduler.queryContext.getSession().getUserName());
-      for (int i = 0; i < replicaSets.size(); i++) {
-        final TRegionReplicaSet replicaSet = replicaSets.get(i);
+              partitionSlotList, scheduler.queryContext.getSession().getUserName());
+      for (int i = 0, size = nonDirectionalChunkData.size(); i < size; i++) {
+        final TRegionReplicaSet replicaSet = replicaSets.get(chunkPartitionIndexes[i]);
         final TConsensusGroupId regionId = replicaSet.getRegionId();
         if (regionId2ReplicaSetAndNode.containsKey(regionId)
             && !Objects.equals(regionId2ReplicaSetAndNode.get(regionId).getLeft(), replicaSet)) {
@@ -864,7 +879,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
     public List<TRegionReplicaSet> queryDataPartition(
         List<Pair<IDeviceID, TTimePartitionSlot>> slotList, String userName) {
-      List<TRegionReplicaSet> replicaSets = new ArrayList<>();
+      List<TRegionReplicaSet> replicaSets = new ArrayList<>(slotList.size());
       int size = slotList.size();
 
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
@@ -872,42 +887,41 @@ public class LoadTsFileScheduler implements IScheduler {
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
         DataPartition dataPartition =
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
-        replicaSets.addAll(
-            subSlotList.stream()
-                .map(
-                    pair ->
-                        // database is an explicit database hint for table-model loads and
-                        // pipe-generated tree-model loads.
-                        database != null
-                            ? dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right, database)
-                            : dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right))
-                .collect(Collectors.toList()));
+        for (final Pair<IDeviceID, TTimePartitionSlot> pair : subSlotList) {
+          // database is an explicit database hint for table-model loads and
+          // pipe-generated tree-model loads.
+          replicaSets.add(
+              database != null
+                  ? dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right, database)
+                  : dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right));
+        }
       }
       return replicaSets;
     }
 
     private List<DataPartitionQueryParam> toQueryParam(
         List<Pair<IDeviceID, TTimePartitionSlot>> slots) {
-      return slots.stream()
-          .collect(
-              Collectors.groupingBy(
-                  Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toSet())))
-          .entrySet()
-          .stream()
-          .map(
-              entry -> {
-                DataPartitionQueryParam queryParam =
-                    new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
-                // database is an explicit database hint for table-model loads and
-                // pipe-generated tree-model loads.
-                if (database != null) {
-                  queryParam.setDatabaseName(database);
-                }
-                return queryParam;
-              })
-          .collect(Collectors.toList());
+      final Map<IDeviceID, Set<TTimePartitionSlot>> device2TimePartitionSlots = new HashMap<>();
+      for (final Pair<IDeviceID, TTimePartitionSlot> slot : slots) {
+        device2TimePartitionSlots
+            .computeIfAbsent(slot.left, key -> new HashSet<>())
+            .add(slot.right);
+      }
+
+      final List<DataPartitionQueryParam> queryParams =
+          new ArrayList<>(device2TimePartitionSlots.size());
+      for (final Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
+          device2TimePartitionSlots.entrySet()) {
+        final DataPartitionQueryParam queryParam =
+            new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
+        // database is an explicit database hint for table-model loads and
+        // pipe-generated tree-model loads.
+        if (database != null) {
+          queryParam.setDatabaseName(database);
+        }
+        queryParams.add(queryParam);
+      }
+      return queryParams;
     }
   }
 }
