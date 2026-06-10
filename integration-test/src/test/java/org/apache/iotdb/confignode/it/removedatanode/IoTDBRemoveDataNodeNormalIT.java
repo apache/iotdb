@@ -136,15 +136,19 @@ public class IoTDBRemoveDataNodeNormalIT {
   //  }
 
   @Test
-  public void failWhenDataReplicationFactorIsOneUseSQL() throws Exception {
+  public void failWhenRemovingLastSingleReplicaDataNodeUseSQL() throws Exception {
+    // With a single replica (schema_replication_factor and data_replication_factor are both 1),
+    // removing DataNodes is still supported as long as more than one DataNode remains, but the last
+    // remaining DataNode cannot be removed because there is nowhere to migrate its regions to.
+    // Here we set up 1C2D with single replica and try to remove both DataNodes, which must fail.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-        .setSchemaReplicationFactor(3)
+        .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(1)
         .setDefaultDataRegionGroupNumPerDatabase(1);
-    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+    EnvFactory.getEnv().initClusterEnvironment(1, 2);
 
     try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         final Statement statement = makeItCloseQuietly(connection.createStatement());
@@ -155,12 +159,13 @@ public class IoTDBRemoveDataNodeNormalIT {
       }
 
       final String removeDataNodeSQL =
-          generateRemoveString(selectRemoveDataNodes(allDataNodeId, 1));
+          generateRemoveString(selectRemoveDataNodes(allDataNodeId, allDataNodeId.size()));
       try {
         statement.execute(removeDataNodeSQL);
-        Assert.fail("Remove DataNode should fail when data_replication_factor is 1");
+        Assert.fail(
+            "Remove DataNode should fail when it would leave no DataNode under single replica");
       } catch (final IoTDBSQLException e) {
-        Assert.assertTrue(e.getMessage(), e.getMessage().contains("data_replication_factor is 1"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("single replica"));
         Assert.assertFalse(
             e.getMessage(), e.getMessage().contains("Failed to remove all requested data nodes"));
       }

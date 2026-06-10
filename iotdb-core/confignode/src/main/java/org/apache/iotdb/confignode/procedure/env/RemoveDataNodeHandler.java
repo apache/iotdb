@@ -559,14 +559,6 @@ public class RemoveDataNodeHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
 
-    if (hasSingleDataRegionReplica()) {
-      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-      status.setMessage(
-          ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE);
-      LOGGER.error(status.getMessage());
-      return status;
-    }
-
     int availableDatanodeSize =
         configManager
             .getNodeManager()
@@ -574,7 +566,7 @@ public class RemoveDataNodeHandler {
             .size();
     // when the configuration is one replication, it will be failed if the data node is not in
     // running state.
-    if (CONF.getSchemaReplicationFactor() == 1) {
+    if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
       final List<TDataNodeLocation> notRunningDataNodes =
           removedDataNodes.stream()
               .filter(
@@ -607,31 +599,23 @@ public class RemoveDataNodeHandler {
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-      status.setMessage(
-          String.format(
-              "Can't remove datanode due to the limit of replication factor, "
-                  + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
-              availableDatanodeSize,
-              NodeInfo.getMinimumDataNode(),
-              (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+      if (NodeInfo.getMinimumDataNode() == 1) {
+        // With a single replica (schema_replication_factor and data_replication_factor are both 1)
+        // the only copy of each region lives on one DataNode, so the last remaining DataNode cannot
+        // be removed: there is nowhere to migrate its regions to.
+        status.setMessage(
+            ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_THE_LAST_SINGLE_REPLICA);
+      } else {
+        status.setMessage(
+            String.format(
+                "Can't remove datanode due to the limit of replication factor, "
+                    + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+                availableDatanodeSize,
+                NodeInfo.getMinimumDataNode(),
+                (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+      }
     }
     return status;
-  }
-
-  private boolean hasSingleDataRegionReplica() {
-    return CONF.getDataReplicationFactor() == 1
-        || configManager
-            .getClusterSchemaManager()
-            .getMatchedDatabaseSchemasByName(
-                configManager.getClusterSchemaManager().getDatabaseNames(null), null)
-            .values()
-            .stream()
-            .anyMatch(databaseSchema -> databaseSchema.getDataReplicationFactor() == 1)
-        || configManager
-            .getPartitionManager()
-            .getAllReplicaSets(TConsensusGroupType.DataRegion)
-            .stream()
-            .anyMatch(replicaSet -> replicaSet.getDataNodeLocationsSize() <= 1);
   }
 
   /**

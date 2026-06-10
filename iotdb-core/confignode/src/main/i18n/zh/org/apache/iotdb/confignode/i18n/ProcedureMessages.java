@@ -447,8 +447,8 @@ public final class ProcedureMessages {
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
 
   public static final String
-      FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE =
-          "不能移除 DataNode，因为 data_replication_factor 为 1，或至少存在一个 DataRegion 只有一个副本。单副本不支持移除 DataNode。";
+      FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_THE_LAST_SINGLE_REPLICA =
+          "集群为单副本（schema_replication_factor 与 data_replication_factor 均为 1）时，不能移除最后一个 DataNode：单副本下没有其它节点可供迁移 Region，因此仅当移除后仍保留多于一个 DataNode 时才支持移除 DataNode。";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =

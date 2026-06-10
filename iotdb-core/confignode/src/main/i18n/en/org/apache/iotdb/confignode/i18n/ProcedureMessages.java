@@ -447,8 +447,8 @@ public final class ProcedureMessages {
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
 
   public static final String
-      FAILED_TO_REMOVE_DATA_NODE_BECAUSE_DATA_REPLICATION_FACTOR_IS_ONE =
-          "Cannot remove DataNode because data_replication_factor is 1 or at least one DataRegion has only one replica. Removing DataNodes is not supported with single replica.";
+      FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_THE_LAST_SINGLE_REPLICA =
+          "Cannot remove the last DataNode when the cluster keeps a single replica (schema_replication_factor and data_replication_factor are both 1). With a single replica there is nowhere to migrate the regions to, so removing DataNodes is only supported when more than one DataNode remains.";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =
