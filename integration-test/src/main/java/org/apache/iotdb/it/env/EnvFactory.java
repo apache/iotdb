@@ -43,7 +43,7 @@ public class EnvFactory {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         logger.info(">>>>>>>{}", System.getProperty("TestEnv"));
-        EnvType envType = EnvType.Remote;
+        EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
           case Simple:
           case TABLE_SIMPLE:
