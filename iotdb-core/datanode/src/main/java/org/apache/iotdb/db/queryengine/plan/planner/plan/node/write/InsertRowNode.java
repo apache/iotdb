@@ -432,8 +432,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     time = byteBuffer.getLong();
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(deserializeString(byteBuffer));
+          DataNodeDevicePathCache.getInstance().getPartialPath(deserializeString(byteBuffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }

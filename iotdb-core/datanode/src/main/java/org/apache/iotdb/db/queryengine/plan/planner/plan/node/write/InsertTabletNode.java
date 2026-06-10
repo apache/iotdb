@@ -683,8 +683,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public void subDeserialize(ByteBuffer buffer) {
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((deserializeString(buffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath((deserializeString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }

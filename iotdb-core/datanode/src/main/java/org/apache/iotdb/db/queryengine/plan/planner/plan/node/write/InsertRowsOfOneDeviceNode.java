@@ -236,8 +236,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((deserializeString(byteBuffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath((deserializeString(byteBuffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
     }
