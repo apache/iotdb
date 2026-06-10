@@ -116,7 +116,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
       final Long lastSampleTime = pathLastObjectCache.getPartialPathLastObject(timeSeriesSuffix);
 
       if (lastSampleTime == null
-          || Math.abs(currentRowTime - lastSampleTime) >= intervalInCurrentPrecision) {
+          || isTimeDistanceGreaterThanOrEqual(currentRowTime, lastSampleTime)) {
         try {
           rowCollector.collectRow(row);
 
@@ -134,5 +134,10 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
         }
       }
     }
+  }
+
+  private boolean isTimeDistanceGreaterThanOrEqual(long left, long right) {
+    long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, intervalInCurrentPrecision) >= 0;
   }
 }

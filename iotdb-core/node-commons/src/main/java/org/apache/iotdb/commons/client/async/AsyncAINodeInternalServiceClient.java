@@ -145,7 +145,7 @@ public class AsyncAINodeInternalServiceClient extends IAINodeRPCService.AsyncCli
           new AsyncAINodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

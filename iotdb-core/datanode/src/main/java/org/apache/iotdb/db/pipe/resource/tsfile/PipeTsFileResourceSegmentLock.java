@@ -78,17 +78,21 @@ public class PipeTsFileResourceSegmentLock {
 
   public void lock(final File file) {
     initIfNecessary();
-    locks[Math.abs(file.hashCode()) % locks.length].lock();
+    locks[getLockIndex(file)].lock();
   }
 
   public boolean tryLock(final File file, final long timeout, final TimeUnit timeUnit)
       throws InterruptedException {
     initIfNecessary();
-    return locks[Math.abs(file.hashCode()) % locks.length].tryLock(timeout, timeUnit);
+    return locks[getLockIndex(file)].tryLock(timeout, timeUnit);
   }
 
   public void unlock(final File file) {
     initIfNecessary();
-    locks[Math.abs(file.hashCode()) % locks.length].unlock();
+    locks[getLockIndex(file)].unlock();
+  }
+
+  private int getLockIndex(final File file) {
+    return (int) (Math.abs((long) file.hashCode()) % locks.length);
   }
 }

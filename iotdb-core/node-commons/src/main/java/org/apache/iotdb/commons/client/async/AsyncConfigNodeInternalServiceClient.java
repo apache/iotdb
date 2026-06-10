@@ -190,7 +190,7 @@ public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.
           new AsyncConfigNodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 

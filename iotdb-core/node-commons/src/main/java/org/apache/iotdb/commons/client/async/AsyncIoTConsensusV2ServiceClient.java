@@ -171,7 +171,7 @@ public class AsyncIoTConsensusV2ServiceClient extends IoTConsensusV2IService.Asy
           new AsyncIoTConsensusV2ServiceClient(
               thriftClientProperty,
               endPoint,
-              tManagers[clientCnt.incrementAndGet() % tManagers.length],
+              tManagers[Math.floorMod(clientCnt.incrementAndGet(), tManagers.length)],
               clientManager));
     }
 
