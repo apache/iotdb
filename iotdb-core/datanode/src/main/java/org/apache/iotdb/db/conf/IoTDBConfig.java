@@ -1062,6 +1062,15 @@ public class IoTDBConfig {
 
   private int dataRatisConsensusMaxRetryAttempts = 10;
   private int schemaRatisConsensusMaxRetryAttempts = 10;
+
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever. Pushed from the ConfigNode.
+   */
+  private int dataRatisConsensusReconfigurationMaxRetryAttempts = 15;
+
+  private int schemaRatisConsensusReconfigurationMaxRetryAttempts = 15;
   private long dataRatisConsensusInitialSleepTimeMs = 100L;
   private long schemaRatisConsensusInitialSleepTimeMs = 100L;
   private long dataRatisConsensusMaxSleepTimeMs = 10000L;
@@ -3830,6 +3839,26 @@ public class IoTDBConfig {
 
   public void setSchemaRatisConsensusMaxRetryAttempts(int schemaRatisConsensusMaxRetryAttempts) {
     this.schemaRatisConsensusMaxRetryAttempts = schemaRatisConsensusMaxRetryAttempts;
+  }
+
+  public int getDataRatisConsensusReconfigurationMaxRetryAttempts() {
+    return dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRatisConsensusReconfigurationMaxRetryAttempts(
+      int dataRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.dataRatisConsensusReconfigurationMaxRetryAttempts =
+        dataRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRatisConsensusReconfigurationMaxRetryAttempts() {
+    return schemaRatisConsensusReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+      int schemaRatisConsensusReconfigurationMaxRetryAttempts) {
+    this.schemaRatisConsensusReconfigurationMaxRetryAttempts =
+        schemaRatisConsensusReconfigurationMaxRetryAttempts;
   }
 
   public long getDataRatisConsensusInitialSleepTimeMs() {
