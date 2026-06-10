@@ -97,6 +97,9 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
+  private static final int DEFAULT_CLUSTER_READY_RETRY_COUNT = 30;
+  private static final String CLUSTER_READY_RETRY_COUNT_PROPERTY =
+      "integrationTest.clusterReadyRetryCount";
 
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
@@ -105,7 +108,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
-  protected int retryCount = 30;
+  protected int retryCount = getDefaultClusterReadyRetryCount();
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private List<String> configNodeKillPoints = new ArrayList<>();
   private List<String> dataNodeKillPoints = new ArrayList<>();
@@ -126,6 +129,12 @@ public abstract class AbstractEnv implements BaseEnv {
   protected AbstractEnv(final long startTime) {
     this.startTime = startTime;
     this.clusterConfig = new MppClusterConfig();
+  }
+
+  private static int getDefaultClusterReadyRetryCount() {
+    final int configuredRetryCount =
+        Integer.getInteger(CLUSTER_READY_RETRY_COUNT_PROPERTY, DEFAULT_CLUSTER_READY_RETRY_COUNT);
+    return configuredRetryCount > 0 ? configuredRetryCount : DEFAULT_CLUSTER_READY_RETRY_COUNT;
   }
 
   @Override
@@ -421,12 +430,14 @@ public abstract class AbstractEnv implements BaseEnv {
         processStatusMap.clear();
 
         showClusterResp = client.showCluster();
+        showClusterStatus = showClusterResp.getStatus();
+        actualNodeSize = showClusterResp.getNodeStatusSize();
+        lastNodeStatus = showClusterResp.getNodeStatus();
 
         // Check resp status
         if (showClusterResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           passed = false;
           showClusterPassed = false;
-          showClusterStatus = showClusterResp.getStatus();
         }
 
         // Check the number of nodes
@@ -436,7 +447,6 @@ public abstract class AbstractEnv implements BaseEnv {
                 + aiNodeWrapperList.size()) {
           passed = false;
           nodeSizePassed = false;
-          actualNodeSize = showClusterResp.getNodeStatusSize();
         }
 
         // Check the status of nodes
@@ -444,7 +454,6 @@ public abstract class AbstractEnv implements BaseEnv {
           passed = nodeStatusCheck.test(showClusterResp.getNodeStatus());
           if (!passed) {
             nodeStatusPassed = false;
-            lastNodeStatus = showClusterResp.getNodeStatus();
           }
         }
 
@@ -530,8 +539,93 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
 
+    dumpTestJVMSnapshotQuietly("cluster status check failed");
     throw new AssertionError(
-        String.format("After %d times retry, the cluster can't work!", retryCount));
+        buildClusterStatusFailureMessage(
+            showClusterPassed,
+            nodeSizePassed,
+            nodeStatusPassed,
+            processStatusPassed,
+            showClusterStatus,
+            actualNodeSize,
+            lastNodeStatus,
+            processStatusMap,
+            lastException));
+  }
+
+  private String buildClusterStatusFailureMessage(
+      final boolean showClusterPassed,
+      final boolean nodeSizePassed,
+      final boolean nodeStatusPassed,
+      final boolean processStatusPassed,
+      final TSStatus showClusterStatus,
+      final int actualNodeSize,
+      final Map<Integer, String> lastNodeStatus,
+      final Map<AbstractNodeWrapper, Integer> processStatusMap,
+      final Exception lastException) {
+    final StringBuilder builder =
+        new StringBuilder(
+            String.format("After %d times retry, the cluster status check failed", retryCount));
+    builder
+        .append(": showClusterPassed=")
+        .append(showClusterPassed)
+        .append(", nodeSizePassed=")
+        .append(nodeSizePassed)
+        .append(", nodeStatusPassed=")
+        .append(nodeStatusPassed)
+        .append(", processStatusPassed=")
+        .append(processStatusPassed)
+        .append(", expectedNodeSize=")
+        .append(
+            configNodeWrapperList.size() + dataNodeWrapperList.size() + aiNodeWrapperList.size())
+        .append(", actualNodeSize=")
+        .append(actualNodeSize);
+    if (showClusterStatus != null) {
+      builder.append(", showClusterStatus=").append(showClusterStatus);
+    }
+    if (lastNodeStatus != null) {
+      builder.append(", lastNodeStatus=").append(lastNodeStatus);
+    }
+    if (!processStatusMap.isEmpty()) {
+      builder.append(", processStatus=").append(formatProcessStatus(processStatusMap));
+    }
+    if (lastException != null) {
+      builder
+          .append(", lastException=")
+          .append(lastException.getClass().getName())
+          .append(": ")
+          .append(lastException.getMessage());
+    }
+    builder.append(", logDirs=").append(getClusterLogDirs());
+    return builder.toString();
+  }
+
+  private Map<String, Integer> formatProcessStatus(
+      final Map<AbstractNodeWrapper, Integer> processStatusMap) {
+    final Map<String, Integer> result = new LinkedHashMap<>();
+    processStatusMap.forEach(
+        (nodeWrapper, statusCode) -> result.put(nodeWrapper.getId(), statusCode));
+    return result;
+  }
+
+  private List<String> getClusterLogDirs() {
+    final List<AbstractNodeWrapper> allNodeWrappers = new ArrayList<>();
+    allNodeWrappers.addAll(configNodeWrapperList);
+    allNodeWrappers.addAll(dataNodeWrapperList);
+    allNodeWrappers.addAll(aiNodeWrapperList);
+    return allNodeWrappers.stream()
+        .map(AbstractNodeWrapper::getLogDirPath)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private void dumpTestJVMSnapshotQuietly(final String reason) {
+    try {
+      logger.info("Dumping test JVM snapshots because {}.", reason);
+      dumpTestJVMSnapshot();
+    } catch (final Exception e) {
+      logger.warn("Failed to dump test JVM snapshots after {}", reason, e);
+    }
   }
 
   private void handleProcessStatus(Map<AbstractNodeWrapper, Integer> processStatusMap) {
@@ -976,6 +1070,7 @@ public abstract class AbstractEnv implements BaseEnv {
             .collect(Collectors.toList());
     final RequestDelegate<Void> testDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT, this);
+    final Map<String, String> lastConnectionFailures = Collections.synchronizedMap(new HashMap<>());
     for (final DataNodeWrapper dataNode : dataNodeWrapperList) {
       final String dataNodeEndpoint = dataNode.getIpAndPortString();
       testDelegate.addRequest(
@@ -994,6 +1089,8 @@ public abstract class AbstractEnv implements BaseEnv {
                 return null;
               } catch (final Exception e) {
                 lastException = e;
+                lastConnectionFailures.put(
+                    dataNodeEndpoint, e.getClass().getName() + ": " + e.getMessage());
                 TimeUnit.SECONDS.sleep(1L);
               }
             }
@@ -1007,8 +1104,11 @@ public abstract class AbstractEnv implements BaseEnv {
       testDelegate.requestAll();
     } catch (final Exception e) {
       logger.error("exception in test Cluster with RPC, message: {}", e.getMessage(), e);
+      dumpTestJVMSnapshotQuietly("JDBC connection check failed");
       throw new AssertionError(
-          String.format("After %d times retry, the cluster can't work!", retryCount));
+          String.format(
+              "After %d times retry, JDBC connections to DataNodes are not ready. endpoints=%s, lastConnectionFailures=%s, logDirs=%s",
+              retryCount, endpoints, lastConnectionFailures, getClusterLogDirs()));
     }
   }
 
