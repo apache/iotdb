@@ -722,6 +722,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "config_node_ratis_max_retry_attempts",
                 String.valueOf(conf.getConfigNodeRatisMaxRetryAttempts()))));
+    conf.setConfigNodeRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "config_node_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getConfigNodeRatisReconfigurationMaxRetryAttempts()))));
     conf.setConfigNodeRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -738,6 +743,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "data_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getDataRegionRatisMaxRetryAttempts()))));
+    conf.setDataRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "data_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getDataRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setDataRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(
@@ -754,6 +764,11 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "schema_region_ratis_max_retry_attempts",
                 String.valueOf(conf.getSchemaRegionRatisMaxRetryAttempts()))));
+    conf.setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_ratis_reconfiguration_max_retry_attempts",
+                String.valueOf(conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts()))));
     conf.setSchemaRegionRatisInitialSleepTimeMs(
         Long.parseLong(
             properties.getProperty(

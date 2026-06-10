@@ -275,6 +275,21 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     return this;
   }

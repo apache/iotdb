@@ -390,6 +390,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
