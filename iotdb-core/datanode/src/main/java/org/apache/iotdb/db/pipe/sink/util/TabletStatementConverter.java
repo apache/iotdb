@@ -76,6 +76,17 @@ public class TabletStatementConverter {
    */
   public static InsertTabletStatement deserializeStatementFromTabletFormat(
       final ByteBuffer byteBuffer, final boolean readDatabaseName) throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, readDatabaseName, true);
+  }
+
+  public static InsertTabletStatement deserializeLegacyStatementFromTabletFormat(
+      final ByteBuffer byteBuffer) throws IllegalPathException {
+    return deserializeStatementFromTabletFormat(byteBuffer, false, false);
+  }
+
+  private static InsertTabletStatement deserializeStatementFromTabletFormat(
+      final ByteBuffer byteBuffer, final boolean readDatabaseName, final boolean readColumnCategory)
+      throws IllegalPathException {
     final InsertTabletStatement statement = new InsertTabletStatement();
 
     // Calculate memory size during deserialization, use INSTANCE_SIZE constant
@@ -121,9 +132,11 @@ public class TabletStatementConverter {
         final Pair<String, TSDataType> pair = readMeasurement(byteBuffer);
         measurement[i] = pair.getLeft();
         dataTypes[i] = pair.getRight();
-        columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnCategory(
-                ColumnCategory.values()[byteBuffer.get()]);
+        if (readColumnCategory) {
+          columnCategories[i] =
+              TsTableColumnCategory.fromTsFileColumnCategory(
+                  ColumnCategory.values()[byteBuffer.get()]);
+        }
 
         // Calculate memory for each measurement string
         if (measurement[i] != null) {

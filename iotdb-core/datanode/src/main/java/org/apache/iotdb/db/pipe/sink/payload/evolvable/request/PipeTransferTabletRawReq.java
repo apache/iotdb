@@ -112,6 +112,14 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(final ByteBuffer buffer) {
+    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
+
+    tabletReq.deserializeTPipeTransferRawReq(buffer);
+
+    return tabletReq;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferReq(
@@ -135,27 +143,36 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
-
-    final ByteBuffer buffer = transferReq.body;
-    final int startPosition = buffer.position();
-    try {
-      // V1: no databaseName, readDatabaseName = false
-      final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
-      tabletReq.isAligned = insertTabletStatement.isAligned();
-      // devicePath is already set in deserializeStatementFromTabletFormat for V1 format
-      tabletReq.statement = insertTabletStatement;
-    } catch (final Exception e) {
-      buffer.position(startPosition);
-      tabletReq.tablet = Tablet.deserialize(buffer);
-      tabletReq.isAligned = ReadWriteIOUtils.readBool(buffer);
-    }
+    final PipeTransferTabletRawReq tabletReq = toTPipeTransferRawReq(transferReq.body);
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
 
     return tabletReq;
+  }
+
+  private void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
+    final int startPosition = buffer.position();
+    try {
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeLegacyStatementFromTabletFormat(buffer);
+      isAligned = insertTabletStatement.isAligned();
+      statement = insertTabletStatement;
+      return;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+    }
+
+    try {
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
+      isAligned = insertTabletStatement.isAligned();
+      statement = insertTabletStatement;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+      tablet = Tablet.deserialize(buffer);
+      isAligned = ReadWriteIOUtils.readBool(buffer);
+    }
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////

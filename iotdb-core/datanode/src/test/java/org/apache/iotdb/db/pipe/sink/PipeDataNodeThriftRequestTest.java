@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -495,6 +498,42 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqWithLegacyTabletFormat() throws IOException {
+    final List<ByteBuffer> tabletBuffers = new ArrayList<>();
+    tabletBuffers.add(serializeLegacyTabletRawBuffer(false));
+    tabletBuffers.add(serializeLegacyTabletRawBuffer(true));
+
+    final PipeTransferTabletBatchReq req =
+        PipeTransferTabletBatchReq.toTPipeTransferReq(Collections.emptyList(), tabletBuffers);
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(2, deserializedReq.getTabletReqs().size());
+    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+    Assert.assertTrue(deserializedReq.getTabletReqs().get(1).getIsAligned());
+
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(1).constructStatement());
+  }
+
+  @Test
+  public void testPipeTransferTabletRawReqWithLegacyTabletFormat() throws IOException {
+    final TPipeTransferReq req = new TPipeTransferReq();
+    req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    req.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();
+    req.body = serializeLegacyTabletRawBuffer(true);
+
+    final PipeTransferTabletRawReq deserializedReq =
+        PipeTransferTabletRawReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertTrue(deserializedReq.getIsAligned());
+    assertLegacyTabletStatement(deserializedReq.constructStatement());
+  }
+
+  @Test
   public void testPipeTransferTabletBatchReqV2() throws IOException {
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
@@ -769,5 +808,57 @@ public class PipeDataNodeThriftRequestTest {
 
     Assert.assertEquals(resp.getStatus(), deserializeResp.getStatus());
     Assert.assertEquals(resp.getEndWritingOffset(), deserializeResp.getEndWritingOffset());
+  }
+
+  private static ByteBuffer serializeLegacyTabletRawBuffer(final boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write("root.sg.d", outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      writeLegacyMeasurementSchema(outputStream, "s1", TSDataType.INT32);
+      writeLegacyMeasurementSchema(outputStream, "s2", TSDataType.TEXT);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2L, outputStream);
+      ReadWriteIOUtils.write(1L, outputStream);
+
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(2, outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(new Binary("2", TSFileConfig.STRING_CHARSET), outputStream);
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+      ReadWriteIOUtils.write(new Binary("1", TSFileConfig.STRING_CHARSET), outputStream);
+
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private static void writeLegacyMeasurementSchema(
+      final DataOutputStream outputStream, final String measurement, final TSDataType dataType)
+      throws IOException {
+    ReadWriteIOUtils.write((byte) 1, outputStream);
+    ReadWriteIOUtils.write(measurement, outputStream);
+    ReadWriteIOUtils.write(dataType.serialize(), outputStream);
+    ReadWriteIOUtils.write(TSEncoding.PLAIN.serialize(), outputStream);
+    ReadWriteIOUtils.write(CompressionType.UNCOMPRESSED.serialize(), outputStream);
+    ReadWriteIOUtils.write(0, outputStream);
+  }
+
+  private static void assertLegacyTabletStatement(final InsertTabletStatement statement) {
+    Assert.assertEquals("root.sg.d", statement.getDevicePath().getFullPath());
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, statement.getMeasurements());
+    Assert.assertArrayEquals(
+        new TSDataType[] {TSDataType.INT32, TSDataType.TEXT}, statement.getDataTypes());
+    Assert.assertEquals(2, statement.getRowCount());
   }
 }
