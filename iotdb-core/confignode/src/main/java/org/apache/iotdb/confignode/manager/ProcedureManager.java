@@ -226,14 +226,21 @@ public class ProcedureManager {
   }
 
   public void startExecutor() {
+    startExecutor(null);
+  }
+
+  public void startExecutor(final Runnable beforeStartingWorkers) {
     if (!executor.isRunning()) {
       executor.init(CONFIG_NODE_CONFIG.getProcedureCoreWorkerThreadsCount());
-      executor.startWorkers();
       executor.startCompletedCleaner(
           CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
       executor.addInternalProcedure(partitionTableCleaner);
       store.start();
+      if (beforeStartingWorkers != null) {
+        beforeStartingWorkers.run();
+      }
+      executor.startWorkers();
       LOGGER.info(ManagerMessages.PROCEDUREMANAGER_IS_STARTED_SUCCESSFULLY);
     }
   }
@@ -248,6 +255,10 @@ public class ProcedureManager {
       }
       executor.removeInternalProcedure(partitionTableCleaner);
     }
+  }
+
+  public boolean isProcedureExecutionThread() {
+    return ProcedureExecutor.isProcedureExecutionThread();
   }
 
   @TestOnly

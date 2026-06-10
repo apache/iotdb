@@ -222,6 +222,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
   private static final long RETRY_INTERVAL_MS = 1000L;
   private static final long WAIT_CN_LEADER_ELECTION_INTERVAL_MS = 2000L;
+  private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
 
   private static final String UNSUPPORTED_INVOCATION =
       "This method is not supported for invocation by DataNode";
@@ -401,10 +402,31 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         return true;
       }
+      if (status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
+        if (!isFirstInitiated) {
+          logger.info(
+              "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry."
+                  + " Reason: {}",
+              configNode,
+              config.getAddressAndPort(),
+              status.getMessage());
+        }
+        try {
+          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn(DataNodeMiscMessages.UNEXPECTED_INTERRUPTION_CONNECT_CONFIG_NODE_BREAK);
+        }
+        return true;
+      }
       return false;
     } finally {
       isFirstInitiated = false;
     }
+  }
+
+  private boolean isConfigNodeLeaderWarmingUp(TSStatus status) {
+    return status.getCode() == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode();
   }
 
   /**
@@ -478,20 +500,33 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
+    boolean leaderWarmingUpObserved = false;
+    long leaderWarmingUpRetryDeadline = 0;
+    for (int i = 0;
+        i < RETRY_NUM
+            || (leaderWarmingUpObserved
+                && System.currentTimeMillis() < leaderWarmingUpRetryDeadline);
+        i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
 
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
+        if (isConfigNodeLeaderWarmingUp(resp.status) && !leaderWarmingUpObserved) {
+          leaderWarmingUpObserved = true;
+          leaderWarmingUpRetryDeadline =
+              System.currentTimeMillis() + REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS;
+        }
 
         // set latest config node list
-        List<TEndPoint> newConfigNodes = new ArrayList<>();
-        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
-          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        if (resp.isSetConfigNodeList()) {
+          List<TEndPoint> newConfigNodes = new ArrayList<>();
+          for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+            newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+          }
+          configNodes = newConfigNodes;
         }
-        configNodes = newConfigNodes;
       } catch (TException e) {
         String message =
             String.format(
