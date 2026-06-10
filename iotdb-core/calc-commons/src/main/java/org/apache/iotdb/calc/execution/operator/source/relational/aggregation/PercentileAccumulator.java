@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
@@ -35,7 +40,10 @@ public class PercentileAccumulator implements TableAccumulator {
 
   private final TSDataType seriesDataType;
   private Percentile percentile = new Percentile();
+  // percentage is a query-level constant; it is read once from the first input/intermediate and
+  // kept fixed afterwards, so it never gets reset to 0 by a later all-null batch.
   private double percentage;
+  private boolean percentageInitialized;
 
   private final MemoryReservationManager memoryReservationManager;
   private long previousPercentileSize;
@@ -63,7 +71,10 @@ public class PercentileAccumulator implements TableAccumulator {
       throw new SemanticException(
           String.format("PERCENTILE requires 2 arguments, but got %d", arguments.length));
     }
-    percentage = arguments[1].getDouble(0);
+    if (!percentageInitialized) {
+      percentage = arguments[1].getDouble(0);
+      percentageInitialized = true;
+    }
     switch (seriesDataType) {
       case INT32:
         addIntInput(arguments[0], mask);
@@ -91,7 +102,13 @@ public class PercentileAccumulator implements TableAccumulator {
       if (!argument.isNull(i)) {
         byte[] data = argument.getBinary(i).getValues();
         ByteBuffer buffer = ByteBuffer.wrap(data);
-        this.percentage = ReadWriteIOUtils.readDouble(buffer);
+        // Always consume the leading 8 bytes so the buffer position is correct for deserialize,
+        // but only keep the percentage once: every partial carries the same query-level constant.
+        double serializedPercentage = ReadWriteIOUtils.readDouble(buffer);
+        if (!percentageInitialized) {
+          percentage = serializedPercentage;
+          percentageInitialized = true;
+        }
         percentile.merge(Percentile.deserialize(buffer));
       }
     }
@@ -101,7 +118,8 @@ public class PercentileAccumulator implements TableAccumulator {
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     int percentileDataLength = percentile.getSerializedSize();
-    ByteBuffer buffer = ByteBuffer.allocate(8 + percentileDataLength);
+    // Use long arithmetic to avoid integer overflow
+    ByteBuffer buffer = ByteBuffer.allocate(Math.toIntExact(8L + percentileDataLength));
     ReadWriteIOUtils.write(percentage, buffer);
     percentile.serialize(buffer);
     columnBuilder.writeBinary(new Binary(buffer.array()));
@@ -147,6 +165,7 @@ public class PercentileAccumulator implements TableAccumulator {
   @Override
   public void reset() {
     percentile = new Percentile();
+    percentageInitialized = false;
     updateMemoryReservation();
   }
 
