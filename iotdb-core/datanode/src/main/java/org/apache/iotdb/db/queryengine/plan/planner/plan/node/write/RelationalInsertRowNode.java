@@ -43,6 +43,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RelationalInsertRowNode extends InsertRowNode {
 
@@ -91,10 +93,11 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
-      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
+      final List<Integer> presentTagColumnIndices = getPresentTagColumnIndices();
+      String[] deviceIdSegments = new String[presentTagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < tagColumnIndices.size(); i++) {
-        final Integer columnIndex = tagColumnIndices.get(i);
+      for (int i = 0; i < presentTagColumnIndices.size(); i++) {
+        final Integer columnIndex = presentTagColumnIndices.get(i);
         final Object value =
             getValues() != null && columnIndex < getValues().length
                 ? getValues()[columnIndex]
@@ -105,6 +108,22 @@ public class RelationalInsertRowNode extends InsertRowNode {
     }
 
     return deviceID;
+  }
+
+  private List<Integer> getPresentTagColumnIndices() {
+    final List<Integer> presentTagColumnIndices = new ArrayList<>();
+    final Object[] values = getValues();
+    for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG
+          && measurements != null
+          && i < measurements.length
+          && measurements[i] != null
+          && values != null
+          && i < values.length) {
+        presentTagColumnIndices.add(i);
+      }
+    }
+    return presentTagColumnIndices;
   }
 
   @Override

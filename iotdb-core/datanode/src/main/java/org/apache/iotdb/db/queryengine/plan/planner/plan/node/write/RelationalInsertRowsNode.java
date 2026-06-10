@@ -82,11 +82,23 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     final TsTableColumnCategory[] columnCategories = insertRowNode.getColumnCategories();
     final List<Integer> currentTagColumnIndices = new ArrayList<>();
     for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
-      if (columnCategories[i] == TsTableColumnCategory.TAG) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG
+          && isTagColumnPresent(insertRowNode, i)) {
         currentTagColumnIndices.add(i);
       }
     }
     return currentTagColumnIndices;
+  }
+
+  private boolean isTagColumnPresent(final InsertRowNode insertRowNode, final int columnIndex) {
+    final String[] measurements = insertRowNode.getMeasurements();
+    final Object[] values = insertRowNode.getValues();
+    return measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && measurements[columnIndex] != null
+        && values != null
+        && columnIndex < values.length;
   }
 
   private Object getValue(final InsertRowNode insertRowNode, final int columnIndex) {

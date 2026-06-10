@@ -332,8 +332,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
-    Object[] values = initTabletValuesForSplit(dataTypes.length, count, dataTypes);
-    BitMap[] newBitMaps = initBitmapsForSplit(dataTypes.length, count);
+    final int columnSize = getColumnArrayLength();
+    Object[] values = initTabletValuesForSplit(columnSize, count, dataTypes);
+    BitMap[] newBitMaps = initBitmapsForSplit(columnSize, count);
     return new InsertTabletNode(
         getPlanNodeId(),
         targetPath,
@@ -371,11 +372,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         if (hasColumnForSplit(k)) {
           System.arraycopy(columns[k], start, subNode.columns[k], destLoc, length);
         }
-        if (subNode.bitMaps != null
-            && subNode.bitMaps[k] != null
-            && k < this.bitMaps.length
-            && this.bitMaps[k] != null) {
-          BitMap.copyOfRange(this.bitMaps[k], start, subNode.bitMaps[k], destLoc, length);
+        final BitMap bitMap = getBitMapIfPresent(k);
+        if (subNode.bitMaps != null && subNode.bitMaps[k] != null && bitMap != null) {
+          BitMap.copyOfRange(bitMap, start, subNode.bitMaps[k], destLoc, length);
         }
       }
       destLoc += length;
@@ -412,7 +411,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       int columnSize, int rowSize, TSDataType[] dataTypes, boolean forSplit) {
     Object[] values = new Object[columnSize];
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null || forSplit && !hasColumnForSplit(i)) {
+      if (dataTypes == null
+          || i >= dataTypes.length
+          || dataTypes[i] == null
+          || forSplit && !hasColumnForSplit(i)) {
         continue;
       }
       switch (dataTypes[i]) {
@@ -475,6 +477,29 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return hasBitMap ? splitBitMaps : null;
   }
 
+  protected int getColumnArrayLength() {
+    int length = 0;
+    if (measurements != null) {
+      length = Math.max(length, measurements.length);
+    }
+    if (measurementSchemas != null) {
+      length = Math.max(length, measurementSchemas.length);
+    }
+    if (dataTypes != null) {
+      length = Math.max(length, dataTypes.length);
+    }
+    if (columns != null) {
+      length = Math.max(length, columns.length);
+    }
+    if (bitMaps != null) {
+      length = Math.max(length, bitMaps.length);
+    }
+    if (columnCategories != null) {
+      length = Math.max(length, columnCategories.length);
+    }
+    return length;
+  }
+
   protected boolean hasColumnForSplit(int index) {
     return dataTypes != null
         && index < dataTypes.length
@@ -489,12 +514,19 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public void markFailedMeasurement(int index) {
-    if (measurements[index] == null) {
+    if (measurements == null
+        || index < 0
+        || index >= measurements.length
+        || measurements[index] == null) {
       return;
     }
     measurements[index] = null;
-    dataTypes[index] = null;
-    columns[index] = null;
+    if (dataTypes != null && index < dataTypes.length) {
+      dataTypes[index] = null;
+    }
+    if (columns != null && index < columns.length) {
+      columns[index] = null;
+    }
     measurementColumnCnt = -1;
   }
 
@@ -540,7 +572,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write(getValidMeasurementNumber(), buffer);
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
 
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -559,7 +591,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write(getValidMeasurementNumber(), stream);
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
 
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -575,7 +607,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(ByteBuffer buffer) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -586,7 +618,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; dataTypes != null && i < dataTypes.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -613,17 +645,18 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private void writeBitMaps(ByteBuffer buffer) {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), buffer);
     if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
         // ignore failed partial insert and null columns
         if (!shouldSerializeMeasurement(i)) {
           continue;
         }
 
-        if (bitMaps[i] == null) {
+        final BitMap bitMap = getBitMapIfPresent(i);
+        if (bitMap == null) {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), buffer);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), buffer);
-          buffer.put(bitMaps[i].getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
+          buffer.put(bitMap.getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
         }
       }
     }
@@ -633,17 +666,18 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private void writeBitMaps(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
     if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
         // ignore failed partial insert and null columns
         if (!shouldSerializeMeasurement(i)) {
           continue;
         }
 
-        if (bitMaps[i] == null) {
+        final BitMap bitMap = getBitMapIfPresent(i);
+        if (bitMap == null) {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-          stream.write(bitMaps[i].getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
+          stream.write(bitMap.getByteArray(), 0, BitMap.getSizeOfBytes(rowCount));
         }
       }
     }
@@ -651,7 +685,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize values, ignoring failed time series */
   private void writeValues(ByteBuffer buffer) {
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0; columns != null && i < columns.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -662,7 +696,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize values, ignoring failed time series */
   private void writeValues(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0; columns != null && i < columns.length; i++) {
       // ignore failed partial insert and null columns
       if (!shouldSerializeMeasurement(i)) {
         continue;
@@ -867,19 +901,20 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     // bitmaps size
     size += Byte.BYTES;
     if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
         // ignore failed partial insert and null columns
-        if (!shouldSerializeMeasurement(i)) {
+        if (!shouldSerializeMeasurementToWAL(i)) {
           continue;
         }
 
         size += Byte.BYTES;
-        if (bitMaps[i] != null) {
+        final BitMap bitMap = getBitMapIfPresent(i);
+        if (bitMap != null) {
           BitMap partBitMap = new BitMap(rowNumInRange);
           int copiedLength = 0;
           for (int[] range : rangeList) {
             int len = range[1] - range[0];
-            BitMap.copyOfRange(bitMaps[i], range[0], partBitMap, copiedLength, len);
+            BitMap.copyOfRange(bitMap, range[0], partBitMap, copiedLength, len);
             copiedLength += len;
           }
           size += partBitMap.getByteArray().length;
@@ -887,8 +922,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
     // values size
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (!shouldSerializeMeasurement(i)) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (!shouldSerializeMeasurementToWAL(i)) {
         continue;
       }
       for (int[] range : rangeList) {
@@ -983,7 +1018,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurement schemas, ignoring failed time series */
   protected void writeMeasurementSchemas(IWALByteBufferView buffer) {
-    buffer.putInt(getValidMeasurementNumber());
+    buffer.putInt(getValidMeasurementNumberForWAL());
     serializeMeasurementSchemasToWAL(buffer);
   }
 
@@ -1000,13 +1035,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected void writeBitMaps(IWALByteBufferView buffer, List<int[]> rangeList, int rowNumInRange) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
+      for (int i = 0; measurements != null && i < measurements.length; i++) {
         // ignore failed partial insert and null columns
-        if (!shouldSerializeMeasurement(i)) {
+        if (!shouldSerializeMeasurementToWAL(i)) {
           continue;
         }
 
-        if (bitMaps[i] == null) {
+        final BitMap bitMap = getBitMapIfPresent(i);
+        if (bitMap == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
@@ -1014,7 +1050,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           int copiedLength = 0;
           for (int[] startEnd : rangeList) {
             int len = startEnd[1] - startEnd[0];
-            BitMap.copyOfRange(bitMaps[i], startEnd[0], partBitMap, copiedLength, len);
+            BitMap.copyOfRange(bitMap, startEnd[0], partBitMap, copiedLength, len);
             copiedLength += len;
           }
           buffer.put(partBitMap.getByteArray());
@@ -1025,9 +1061,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize values, ignoring failed time series */
   protected void writeValues(IWALByteBufferView buffer, List<int[]> rangeList) {
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
       // ignore failed partial insert and null columns
-      if (!shouldSerializeMeasurement(i)) {
+      if (!shouldSerializeMeasurementToWAL(i)) {
         continue;
       }
       for (int[] startEnd : rangeList) {
@@ -1041,6 +1077,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int validMeasurementNumber = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
+  protected int getValidMeasurementNumberForWAL() {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         validMeasurementNumber++;
       }
     }
@@ -1065,7 +1111,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
-      if (shouldSerializeMeasurement(i)) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
       }
     }
@@ -1075,7 +1121,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @Override
   protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
     for (int i = 0; measurements != null && i < measurements.length; i++) {
-      if (shouldSerializeMeasurement(i)) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         WALWriteUtils.write(measurementSchemas[i], buffer);
       }
     }
@@ -1093,6 +1139,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         && columns != null
         && index < columns.length
         && columns[index] != null;
+  }
+
+  protected boolean shouldSerializeMeasurementToWAL(int index) {
+    return shouldSerializeMeasurement(index)
+        && measurementSchemas != null
+        && index < measurementSchemas.length
+        && measurementSchemas[index] != null;
   }
 
   private void serializeColumn(
@@ -1267,8 +1320,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     for (int i = 0; i < columns.length; i++) {
-      if (dataTypes[i] != null) {
-        switch (dataTypes[i]) {
+      final TSDataType dataType = getDataType(i);
+      if (dataType != null) {
+        switch (dataType) {
           case INT32:
           case DATE:
             if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
@@ -1305,10 +1359,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             }
             break;
           default:
-            throw new UnSupportedDataTypeException(
-                String.format(DATATYPE_UNSUPPORTED, dataTypes[i]));
+            throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
         }
-      } else if (!columns[i].equals(columns)) {
+      } else if (!Objects.equals(this.columns[i], columns[i])) {
         return false;
       }
     }
@@ -1329,8 +1382,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     // get non-null value
     int lastIdx = Math.min(endOffset - 1, rowCount - 1);
-    if (bitMaps != null && bitMaps[measurementIndex] != null) {
-      BitMap bitMap = bitMaps[measurementIndex];
+    final BitMap bitMap = getBitMapIfPresent(measurementIndex);
+    if (bitMap != null) {
       while (lastIdx >= startOffset) {
         if (!bitMap.isMarked(lastIdx)) {
           break;
@@ -1360,7 +1413,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return null;
     }
 
-    final BitMap bitMap = bitMaps == null ? null : bitMaps[measurementIndex];
+    final BitMap bitMap = getBitMapIfPresent(measurementIndex);
     int lastIdx = Math.min(endOffset - 1, rowCount - 1);
     while (lastIdx >= startOffset) {
       if (results[lastIdx] != null
@@ -1389,6 +1442,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         && dataTypes[measurementIndex] != null
         && (columnCategories == null || measurementIndex < columnCategories.length)
         && isWritableFieldMeasurement(measurementIndex);
+  }
+
+  private BitMap getBitMapIfPresent(final int measurementIndex) {
+    return bitMaps != null && measurementIndex >= 0 && measurementIndex < bitMaps.length
+        ? bitMaps[measurementIndex]
+        : null;
   }
 
   private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {

@@ -20,17 +20,22 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class InsertStatementPartialInsertTest {
 
@@ -174,6 +179,112 @@ public class InsertStatementPartialInsertTest {
 
     Assert.assertArrayEquals(
         new Object[] {"root.sg.d1"}, statement.getTableDeviceID(0).getSegments());
+  }
+
+  @Test
+  public void testGetDataTypeReturnsNullForShortTypeArray() throws Exception {
+    final InsertRowStatement rowStatement = createInsertRowStatement();
+    rowStatement.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    Assert.assertEquals(TSDataType.INT32, rowStatement.getDataType(0));
+    Assert.assertNull(rowStatement.getDataType(1));
+
+    final InsertTabletStatement tabletStatement = createInsertTabletStatement();
+    tabletStatement.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    Assert.assertEquals(TSDataType.INT32, tabletStatement.getDataType(0));
+    Assert.assertNull(tabletStatement.getDataType(1));
+  }
+
+  @Test
+  public void testBaseSettersExpandShortArrays() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    statement.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)});
+    statement.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.FIELD});
+
+    statement.setDataType(TSDataType.INT64, 1);
+    statement.setMeasurementSchema(new MeasurementSchema("s2", TSDataType.INT64), 1);
+    statement.setColumnCategory(TsTableColumnCategory.TAG, 1);
+
+    Assert.assertEquals(TSDataType.INT64, statement.getDataType(1));
+    Assert.assertEquals("s2", statement.getMeasurementSchemas()[1].getMeasurementName());
+    Assert.assertEquals(TsTableColumnCategory.TAG, statement.getColumnCategories()[1]);
+  }
+
+  @Test
+  public void testInsertColumnWithNullDataTypesKeepsArraysAligned() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.setDataTypes(null);
+
+    final ColumnSchema columnSchema =
+        new ColumnSchema(
+            "tag1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG);
+    statement.insertColumn(1, columnSchema);
+
+    Assert.assertEquals(3, statement.getMeasurements().length);
+    Assert.assertEquals(3, statement.getDataTypes().length);
+    Assert.assertEquals(3, statement.getValues().length);
+    Assert.assertNull(statement.getDataType(0));
+    Assert.assertEquals(TSDataType.STRING, statement.getDataType(1));
+    Assert.assertNull(statement.getDataType(2));
+  }
+
+  @Test
+  public void testRebuildArraysAfterExpansionHandlesShortValueArrays() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    statement.setValues(new Object[] {1});
+    statement.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD});
+
+    statement.rebuildArraysAfterExpansion(new int[] {-1, 0, 1}, new String[] {"tag1", "s1", "s2"});
+
+    Assert.assertArrayEquals(new String[] {"tag1", "s1", "s2"}, statement.getMeasurements());
+    Assert.assertArrayEquals(new Object[] {null, 1, null}, statement.getValues());
+    Assert.assertEquals(TSDataType.STRING, statement.getDataType(0));
+    Assert.assertEquals(TSDataType.INT32, statement.getDataType(1));
+    Assert.assertNull(statement.getDataType(2));
+    Assert.assertEquals(TsTableColumnCategory.TAG, statement.getColumnCategories()[0]);
+  }
+
+  @Test
+  public void testInsertRowStatementSwapColumnInvalidatesTableDeviceId() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.setColumnCategories(
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.TAG});
+    statement.setValues(new Object[] {"tag1", "tag2"});
+
+    Assert.assertArrayEquals(
+        new Object[] {"root.sg.d1", "tag1", "tag2"}, statement.getTableDeviceID().getSegments());
+
+    statement.swapColumn(0, 1);
+
+    Assert.assertArrayEquals(
+        new Object[] {"root.sg.d1", "tag2", "tag1"}, statement.getTableDeviceID().getSegments());
+  }
+
+  @Test
+  public void testDeviceMeasurementMapSkipsMissingRowValues() throws Exception {
+    final InsertRowStatement statement = createInsertRowStatement();
+    statement.setValues(new Object[] {1});
+
+    final Map<PartialPath, List<Pair<String, Integer>>> result =
+        statement.getMapFromDeviceToMeasurementAndIndex();
+
+    Assert.assertEquals(1, result.get(statement.getDevicePath()).size());
+    Assert.assertEquals("s1", result.get(statement.getDevicePath()).get(0).left);
+  }
+
+  @Test
+  public void testDeviceMeasurementMapSkipsMissingTabletColumns() throws Exception {
+    final InsertTabletStatement statement = createInsertTabletStatement();
+    statement.setColumns(new Object[] {new int[] {1, 2}});
+
+    final Map<PartialPath, List<Pair<String, Integer>>> result =
+        statement.getMapFromDeviceToMeasurementAndIndex();
+
+    Assert.assertEquals(1, result.get(statement.getDevicePath()).size());
+    Assert.assertEquals("s1", result.get(statement.getDevicePath()).get(0).left);
   }
 
   private static InsertRowStatement createInsertRowStatement() throws Exception {

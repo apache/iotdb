@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.commons.schema.table;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class InsertNodeMeasurementInfoTest {
@@ -57,5 +60,24 @@ public class InsertNodeMeasurementInfoTest {
     assertArrayEquals(new String[] {"tag1", null, "s1"}, measurementInfoMeasurements);
     assertArrayEquals(new String[] {"tag1", "attr1", "s1"}, statementMeasurements);
     assertTrue(delegateCalled.get());
+  }
+
+  @Test
+  public void testGetTypeReturnsNullForShortDataTypes() {
+    final InsertNodeMeasurementInfo measurementInfo =
+        new InsertNodeMeasurementInfo(
+            "table1",
+            null,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32},
+            index -> null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    assertEquals(TSDataType.INT32, measurementInfo.getType(0));
+    assertNull(measurementInfo.getType(1));
   }
 }

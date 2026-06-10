@@ -135,7 +135,7 @@ public class InsertNodeMeasurementInfo {
   }
 
   public TSDataType getType(int index) {
-    if (dataTypes == null) {
+    if (dataTypes == null || index < 0 || index >= dataTypes.length) {
       return null;
     }
     return dataTypes[index];

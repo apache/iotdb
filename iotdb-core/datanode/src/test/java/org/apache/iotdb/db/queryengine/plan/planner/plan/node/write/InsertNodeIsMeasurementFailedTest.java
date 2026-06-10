@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -128,6 +130,25 @@ public class InsertNodeIsMeasurementFailedTest {
     assertNotNull(node.composeTimeValuePair(2));
   }
 
+  @Test
+  public void testRelationalInsertRowNode_deviceIDSkipsMissingTagValue()
+      throws IllegalPathException {
+    RelationalInsertRowNode node = buildRelationalInsertRowNodeWithTwoTags(new Object[] {"tag0"});
+
+    assertArrayEquals(new Object[] {"table1", "tag0"}, node.getDeviceID().getSegments());
+  }
+
+  @Test
+  public void testRelationalInsertRowsNode_deviceIDSkipsMissingTagValue()
+      throws IllegalPathException {
+    RelationalInsertRowNode rowNode =
+        buildRelationalInsertRowNodeWithTwoTags(new Object[] {"tag0"});
+    RelationalInsertRowsNode rowsNode = new RelationalInsertRowsNode(new PlanNodeId("test"));
+    rowsNode.addOneInsertRowNode(rowNode, 0);
+
+    assertArrayEquals(new Object[] {"table1", "tag0"}, rowsNode.getDeviceID(0).getSegments());
+  }
+
   // -----------------------------------------------------------------------
   // InsertTabletNode
   // -----------------------------------------------------------------------
@@ -182,6 +203,47 @@ public class InsertNodeIsMeasurementFailedTest {
   }
 
   @Test
+  public void testInsertTabletNode_markFailedMeasurementHandlesShortColumns()
+      throws IllegalPathException {
+    InsertTabletNode node = buildInsertTabletNode(new String[] {"s0", "s1"});
+    node.setColumns(new Object[] {new int[] {1, 2}});
+
+    node.markFailedMeasurement(1);
+
+    assertTrue(node.isMeasurementFailed(1));
+    assertNull(node.getDataType(1));
+  }
+
+  @Test
+  public void testInsertTabletNode_getDataTypeReturnsNullForShortDataTypes()
+      throws IllegalPathException {
+    InsertTabletNode node = buildInsertTabletNode(new String[] {"s0", "s1"});
+    node.setDataTypes(new TSDataType[] {TSDataType.INT32});
+
+    assertNotNull(node.getDataType(0));
+    assertNull(node.getDataType(1));
+  }
+
+  @Test
+  public void testInsertTabletNode_composeLastTimeValuePairHandlesShortBitMaps()
+      throws IllegalPathException {
+    InsertTabletNode node = buildInsertTabletNode(new String[] {"s0", "s1"});
+    node.setBitMaps(new BitMap[0]);
+
+    assertNotNull(node.composeLastTimeValuePair(1));
+  }
+
+  @Test
+  public void testInsertTabletNode_equalsHandlesShortDataTypes() throws IllegalPathException {
+    InsertTabletNode left = buildInsertTabletNode(new String[] {"s0", "s1"});
+    InsertTabletNode right = buildInsertTabletNode(new String[] {"s0", "s1"});
+    left.setDataTypes(new TSDataType[] {TSDataType.INT32});
+    right.setDataTypes(new TSDataType[] {TSDataType.INT32});
+
+    assertFalse(left.equals(right));
+  }
+
+  @Test
   public void testRelationalInsertTabletNode_nonFieldColumnsDoNotComposeLastCacheValue()
       throws IllegalPathException {
     RelationalInsertTabletNode node = buildRelationalInsertTabletNode();
@@ -189,6 +251,14 @@ public class InsertNodeIsMeasurementFailedTest {
     assertNull(node.composeLastTimeValuePair(0));
     assertNull(node.composeLastTimeValuePair(1));
     assertNotNull(node.composeLastTimeValuePair(2));
+  }
+
+  @Test
+  public void testRelationalInsertTabletNode_deviceIDSkipsMissingTagColumn()
+      throws IllegalPathException {
+    RelationalInsertTabletNode node = buildRelationalInsertTabletNodeWithTwoTags();
+
+    assertArrayEquals(new Object[] {"table1", "tag0"}, node.getDeviceID(0).getSegments());
   }
 
   // -----------------------------------------------------------------------
@@ -249,6 +319,30 @@ public class InsertNodeIsMeasurementFailedTest {
         });
   }
 
+  private static RelationalInsertRowNode buildRelationalInsertRowNodeWithTwoTags(Object[] values)
+      throws IllegalPathException {
+    String[] measurements = {"tag0", "tag1", "field0"};
+    TSDataType[] dataTypes = {TSDataType.STRING, TSDataType.STRING, TSDataType.INT32};
+    MeasurementSchema[] schemas = {
+      new MeasurementSchema("tag0", TSDataType.STRING),
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("field0", TSDataType.INT32)
+    };
+    return new RelationalInsertRowNode(
+        new PlanNodeId("test"),
+        new PartialPath("table1", false),
+        true,
+        measurements,
+        dataTypes,
+        schemas,
+        1L,
+        values,
+        false,
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD
+        });
+  }
+
   private static InsertTabletNode buildInsertTabletNode(String[] measurementNames)
       throws IllegalPathException {
     int n = measurementNames.length;
@@ -304,6 +398,32 @@ public class InsertNodeIsMeasurementFailedTest {
         1,
         new TsTableColumnCategory[] {
           TsTableColumnCategory.TAG, TsTableColumnCategory.ATTRIBUTE, TsTableColumnCategory.FIELD
+        });
+  }
+
+  private static RelationalInsertTabletNode buildRelationalInsertTabletNodeWithTwoTags()
+      throws IllegalPathException {
+    String[] measurements = {"tag0", "tag1", "field0"};
+    TSDataType[] dataTypes = {TSDataType.STRING, TSDataType.STRING, TSDataType.INT32};
+    MeasurementSchema[] schemas = {
+      new MeasurementSchema("tag0", TSDataType.STRING),
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("field0", TSDataType.INT32)
+    };
+    Object[] columns = {new Binary[] {new Binary("tag0".getBytes(StandardCharsets.UTF_8))}};
+    return new RelationalInsertTabletNode(
+        new PlanNodeId("test"),
+        new PartialPath("table1", false),
+        true,
+        measurements,
+        dataTypes,
+        schemas,
+        new long[] {1L},
+        null,
+        columns,
+        1,
+        new TsTableColumnCategory[] {
+          TsTableColumnCategory.TAG, TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD
         });
   }
 }

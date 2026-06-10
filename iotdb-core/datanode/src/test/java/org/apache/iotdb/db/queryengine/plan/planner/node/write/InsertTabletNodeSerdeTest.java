@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTe
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -266,6 +267,44 @@ public class InsertTabletNodeSerdeTest {
     InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
     Assert.assertArrayEquals(
         new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testSerializeToWALWithoutMeasurementSchemas() throws Exception {
+    InsertTabletNode insertTabletNode = getInsertTabletNode();
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(new String[0], tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testSerializeToWALWithShortBitMaps() throws Exception {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+    BitMap bitMap = new BitMap(insertTabletNode.getRowCount());
+    bitMap.mark(0);
+    insertTabletNode.setBitMaps(new BitMap[] {bitMap});
+
+    byte[] bytes = new byte[insertTabletNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "\u6e7f\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+    Assert.assertNotNull(tmpNode.getBitMaps());
+    Assert.assertTrue(tmpNode.getBitMaps()[0].isMarked(0));
   }
 
   @Test

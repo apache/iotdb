@@ -220,6 +220,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    if (dataTypes == null
+        || values == null
+        || columnIndex < 0
+        || columnIndex >= dataTypes.length
+        || columnIndex >= values.length
+        || dataTypes[columnIndex] == null) {
+      return false;
+    }
     if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
           dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
@@ -389,12 +397,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       TSDataType[] dataTypes = new TSDataType[pairList.size()];
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
-        copiedValues[i] = this.values[realIndex];
+        copiedValues[i] =
+            this.values != null && realIndex < this.values.length ? this.values[realIndex] : null;
         measurements[i] =
             Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
-        measurementSchemas[i] = this.measurementSchemas[realIndex];
-        dataTypes[i] = this.dataTypes[realIndex];
-        if (this.measurementIsAligned != null) {
+        measurementSchemas[i] =
+            this.measurementSchemas != null && realIndex < this.measurementSchemas.length
+                ? this.measurementSchemas[realIndex]
+                : null;
+        dataTypes[i] =
+            this.dataTypes != null && realIndex < this.dataTypes.length
+                ? this.dataTypes[realIndex]
+                : null;
+        if (this.measurementIsAligned != null && realIndex < this.measurementIsAligned.length) {
           statement.setAligned(this.measurementIsAligned[realIndex]);
         }
       }
@@ -441,14 +456,22 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSDataType getDataType(int index) {
-    if (isNeedInferType && (dataTypes == null || dataTypes[index] == null)) {
+    if (index < 0 || measurements == null || index >= measurements.length) {
+      return null;
+    }
+    if (isNeedInferType
+        && (dataTypes == null || index >= dataTypes.length || dataTypes[index] == null)) {
       if (dataTypes == null) {
         dataTypes = new TSDataType[measurements.length];
+      } else if (index >= dataTypes.length) {
+        dataTypes = Arrays.copyOf(dataTypes, measurements.length);
       }
-      dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values[index], true);
+      dataTypes[index] =
+          TypeInferenceUtils.getPredictedDataType(
+              values != null && index < values.length ? values[index] : null, true);
       return dataTypes[index];
     } else {
-      return dataTypes != null ? dataTypes[index] : null;
+      return dataTypes != null && index < dataTypes.length ? dataTypes[index] : null;
     }
   }
 
@@ -471,6 +494,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
+    } else if (index >= measurementSchemas.length) {
+      measurementSchemas = Arrays.copyOf(measurementSchemas, measurements.length);
     }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
@@ -505,6 +530,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (this.measurementIsAligned == null) {
       this.measurementIsAligned = new boolean[this.measurements.length];
       Arrays.fill(this.measurementIsAligned, this.isAligned);
+    } else if (index >= this.measurementIsAligned.length) {
+      this.measurementIsAligned =
+          Arrays.copyOf(this.measurementIsAligned, this.measurements.length);
     }
     this.measurementIsAligned[index] = isAligned;
   }
@@ -575,17 +603,23 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   public void insertColumn(int pos, ColumnSchema columnSchema) {
     super.insertColumn(pos, columnSchema);
-    Object[] tmpValues = new Object[values.length + 1];
-    System.arraycopy(values, 0, tmpValues, 0, pos);
-    System.arraycopy(values, pos, tmpValues, pos + 1, values.length - pos);
+    Object[] tmpValues = new Object[measurements.length];
+    copyWithInsertedSlot(values, tmpValues, pos);
     values = tmpValues;
+    deviceID = null;
   }
 
   @TableModel
   @Override
   public void swapColumn(int src, int target) {
     super.swapColumn(src, target);
+    if (values == null) {
+      values = new Object[measurements.length];
+    } else if (values.length < measurements.length) {
+      values = Arrays.copyOf(values, measurements.length);
+    }
     CommonUtils.swapArray(values, src, target);
+    deviceID = null;
   }
 
   @TableModel
@@ -619,15 +653,19 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         }
       } else {
         // Copy from old array
-        values[newIdx] = oldValues[oldIdx];
+        if (oldValues != null && oldIdx < oldValues.length) {
+          values[newIdx] = oldValues[oldIdx];
+        }
         if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
-          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+          newMeasurementIsAligned[newIdx] =
+              oldIdx < oldMeasurementIsAligned.length && oldMeasurementIsAligned[oldIdx];
         }
       }
     }
 
     // Replace old array with new array
     measurementIsAligned = newMeasurementIsAligned;
+    deviceID = null;
   }
 
   @Override
@@ -643,6 +681,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (values != null) {
       values = columnsToKeep.stream().filter(i -> i < values.length).map(i -> values[i]).toArray();
     }
+    deviceID = null;
   }
 
   @Override
