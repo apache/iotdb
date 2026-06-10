@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -413,7 +414,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    serializeString(devicePath.getFullPath(), buffer);
     writeMeasurementsOrSchemas(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -423,7 +424,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeString(devicePath.getFullPath(), stream);
     writeMeasurementsOrSchemas(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -444,9 +445,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(buffer);
+        serializeMeasurementSchema(measurementSchemas[i], buffer);
       } else {
-        ReadWriteIOUtils.write(measurements[i], buffer);
+        serializeString(measurements[i], buffer);
       }
     }
   }
@@ -463,9 +464,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(stream);
+        serializeMeasurementSchema(measurementSchemas[i], stream);
       } else {
-        ReadWriteIOUtils.write(measurements[i], stream);
+        serializeString(measurements[i], stream);
       }
     }
   }
@@ -682,8 +683,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public void subDeserialize(ByteBuffer buffer) {
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath((deserializeString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -695,12 +695,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (hasSchema) {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurementSchemas[i] = deserializeMeasurementSchema(buffer);
         measurements[i] = measurementSchemas[i].getMeasurementId();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {
-        measurements[i] = ReadWriteIOUtils.readString(buffer);
+        measurements[i] = deserializeString(buffer);
       }
     }
 
@@ -738,7 +738,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   int subSerializeSize(int start, int end) {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
+    size += WALWriteUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
     size += serializeMeasurementSchemasSize();
@@ -943,7 +943,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     searchIndex = stream.readLong();
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream));
+          DataNodeDevicePathCache.getInstance().getPartialPath(WALReadUtils.readString(stream));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -979,8 +979,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     searchIndex = buffer.getLong();
     try {
       devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
+          DataNodeDevicePathCache.getInstance().getPartialPath((WALReadUtils.readString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
@@ -129,7 +130,7 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
   public int serializedSize() {
     int size = FIXED_SERIALIZED_SIZE;
     for (PartialPath path : pathList) {
-      size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
+      size += WALWriteUtils.sizeToWrite(path.getFullPath());
     }
     return size;
   }
@@ -153,10 +154,9 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     for (int i = 0; i < size; i++) {
       try {
         pathList.add(
-            DataNodeDevicePathCache.getInstance()
-                .getPartialPath(ReadWriteIOUtils.readString(stream)));
+            DataNodeDevicePathCache.getInstance().getPartialPath(WALReadUtils.readString(stream)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException("Cannot deserialize DeleteDataNode", e);
       }
     }
     long deleteStartTime = stream.readLong();
@@ -174,9 +174,9 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     List<PartialPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       try {
-        pathList.add(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+        pathList.add(new PartialPath(WALReadUtils.readString(buffer)));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+        throw new IllegalArgumentException("Cannot deserialize DeleteDataNode", e);
       }
     }
     long deleteStartTime = buffer.getLong();
