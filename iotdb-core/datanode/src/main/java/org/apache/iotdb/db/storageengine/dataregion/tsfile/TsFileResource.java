@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1056,13 +1055,6 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   /**
-   * @return whether the given time falls in ttl
-   */
-  private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
-  }
-
-  /**
    * Check whether the given device may still alive or not. Return false if the device does not
    * exist or out of dated.
    */
@@ -1293,15 +1285,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
   public static int checkAndCompareFileName(String fileName1, String fileName2) throws IOException {
     TsFileNameGenerator.TsFileName tsFileName1 = TsFileNameGenerator.getTsFileName(fileName1);
     TsFileNameGenerator.TsFileName tsFileName2 = TsFileNameGenerator.getTsFileName(fileName2);
-    long timeDiff = tsFileName1.getTime() - tsFileName2.getTime();
-    if (timeDiff != 0) {
-      return timeDiff < 0 ? -1 : 1;
+    int timeCompare = Long.compare(tsFileName1.getTime(), tsFileName2.getTime());
+    if (timeCompare != 0) {
+      return timeCompare;
     }
-    long versionDiff = tsFileName1.getVersion() - tsFileName2.getVersion();
-    if (versionDiff != 0) {
-      return versionDiff < 0 ? -1 : 1;
-    }
-    return 0;
+    return Long.compare(tsFileName1.getVersion(), tsFileName2.getVersion());
   }
 
   /**
@@ -1322,11 +1310,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
           TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
       TsFileNameGenerator.TsFileName n2 =
           TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-      long versionDiff = n2.getVersion() - n1.getVersion();
-      if (versionDiff != 0) {
-        return versionDiff < 0 ? -1 : 1;
-      }
-      return 0;
+      return Long.compare(n2.getVersion(), n1.getVersion());
     } catch (IOException e) {
       LOGGER.error(StorageEngineMessages.FILE_NAME_NOT_STANDARD, e);
       throw new RuntimeException(e.getMessage());

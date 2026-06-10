@@ -108,6 +108,36 @@ public class TsFileResourceTest {
   }
 
   @Test
+  public void testCheckAndCompareFileNameWithLongBoundary() throws IOException {
+    String minTimeFile = TsFileNameGenerator.generateNewTsFileName(Long.MIN_VALUE, 0, 0, 0);
+    String maxTimeFile = TsFileNameGenerator.generateNewTsFileName(Long.MAX_VALUE, 0, 0, 0);
+
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(minTimeFile, maxTimeFile) < 0);
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(maxTimeFile, minTimeFile) > 0);
+
+    String minVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MIN_VALUE, 0, 0);
+    String maxVersionFile = TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0);
+
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(minVersionFile, maxVersionFile) < 0);
+    Assert.assertTrue(TsFileResource.checkAndCompareFileName(maxVersionFile, minVersionFile) > 0);
+  }
+
+  @Test
+  public void testCompareFileCreationOrderByDescWithLongBoundaryVersion() {
+    TsFileResource minVersionResource =
+        new TsFileResource(
+            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MIN_VALUE, 0, 0)));
+    TsFileResource maxVersionResource =
+        new TsFileResource(
+            new File(TsFileNameGenerator.generateNewTsFileName(0, Long.MAX_VALUE, 0, 0)));
+
+    Assert.assertTrue(
+        TsFileResource.compareFileCreationOrderByDesc(maxVersionResource, minVersionResource) < 0);
+    Assert.assertTrue(
+        TsFileResource.compareFileCreationOrderByDesc(minVersionResource, maxVersionResource) > 0);
+  }
+
+  @Test
   public void testDegradeAndFileTimeIndex() {
     Assert.assertEquals(ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     tsFileResource.degradeTimeIndex();

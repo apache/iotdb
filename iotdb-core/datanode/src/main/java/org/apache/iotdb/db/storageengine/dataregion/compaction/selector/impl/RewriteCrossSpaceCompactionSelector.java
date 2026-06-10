@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -360,7 +361,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       boolean isInsertionTask) {
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
     long startTime = System.currentTimeMillis();
-    long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    long ttlLowerBound = CommonUtils.getTTLLowerBound(Long.MAX_VALUE);
     // we record the variable `candidate` here is used for selecting more than one
     // CrossCompactionTaskResources in this method.
     // Add read lock for candidate source files to avoid being deleted during the selection.

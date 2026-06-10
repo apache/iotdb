@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
@@ -77,6 +76,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.utils.CommonUtils.getTTLLowerBound;
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
@@ -1391,7 +1391,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 String.format(
                     "Insertion time [%s] is less than ttl time bound [%s]",
                     DateTimeUtils.convertLongToDate(currTime),
-                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
+                    DateTimeUtils.convertLongToDate(getTTLLowerBound(ttl))));
       } else {
         if (firstAliveLoc == -1) {
           firstAliveLoc = loc;
@@ -1405,8 +1405,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     if (firstAliveLoc == -1) {
       // no alive data
-      throw new OutOfTTLException(
-          getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
+      throw new OutOfTTLException(getTimes()[getTimes().length - 1], getTTLLowerBound(ttl));
     }
     return firstAliveLoc;
   }
