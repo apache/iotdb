@@ -233,6 +233,8 @@ public class ConsensusManager {
                                       .setClientRetryMaxSleepTimeMs(
                                           CONF.getConfigNodeRatisMaxSleepTimeMs())
                                       .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                                      .setReconfigurationMaxRetryAttempts(
+                                          CONF.getConfigNodeRatisReconfigurationMaxRetryAttempts())
                                       .build())
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()

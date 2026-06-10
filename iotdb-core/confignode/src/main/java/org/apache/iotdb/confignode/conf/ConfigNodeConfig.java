@@ -318,6 +318,16 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisInitialSleepTimeMs = 100;
   private long schemaRegionRatisMaxSleepTimeMs = 10000;
 
+  /**
+   * RatisConsensus protocol, max retry attempts for a configuration change (add/remove peer). Uses
+   * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
+   * reconfiguration -- and hence a region migration -- forever.
+   */
+  private int configNodeRatisReconfigurationMaxRetryAttempts = 600;
+
+  private int dataRegionRatisReconfigurationMaxRetryAttempts = 600;
+  private int schemaRegionRatisReconfigurationMaxRetryAttempts = 600;
+
   private long configNodeRatisPreserveLogsWhenPurge = 1000;
   private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
   private long dataRegionRatisPreserveLogsWhenPurge = 1000;
@@ -1115,6 +1125,36 @@ public class ConfigNodeConfig {
 
   public void setSchemaRegionRatisMaxRetryAttempts(int schemaRegionRatisMaxRetryAttempts) {
     this.schemaRegionRatisMaxRetryAttempts = schemaRegionRatisMaxRetryAttempts;
+  }
+
+  public int getConfigNodeRatisReconfigurationMaxRetryAttempts() {
+    return configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setConfigNodeRatisReconfigurationMaxRetryAttempts(
+      int configNodeRatisReconfigurationMaxRetryAttempts) {
+    this.configNodeRatisReconfigurationMaxRetryAttempts =
+        configNodeRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getDataRegionRatisReconfigurationMaxRetryAttempts() {
+    return dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setDataRegionRatisReconfigurationMaxRetryAttempts(
+      int dataRegionRatisReconfigurationMaxRetryAttempts) {
+    this.dataRegionRatisReconfigurationMaxRetryAttempts =
+        dataRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public int getSchemaRegionRatisReconfigurationMaxRetryAttempts() {
+    return schemaRegionRatisReconfigurationMaxRetryAttempts;
+  }
+
+  public void setSchemaRegionRatisReconfigurationMaxRetryAttempts(
+      int schemaRegionRatisReconfigurationMaxRetryAttempts) {
+    this.schemaRegionRatisReconfigurationMaxRetryAttempts =
+        schemaRegionRatisReconfigurationMaxRetryAttempts;
   }
 
   public long getSchemaRegionRatisInitialSleepTimeMs() {
