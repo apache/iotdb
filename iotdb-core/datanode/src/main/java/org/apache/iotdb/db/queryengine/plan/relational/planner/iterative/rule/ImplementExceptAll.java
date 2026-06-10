@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
@@ -52,7 +53,8 @@ public class ImplementExceptAll implements Rule<ExceptNode> {
   private final Metadata metadata;
 
   public ImplementExceptAll(Metadata metadata) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -73,7 +75,8 @@ public class ImplementExceptAll implements Rule<ExceptNode> {
 
     checkState(
         !translationResult.getCountSymbols().isEmpty(),
-        "ExceptNode translation result has no count symbols");
+        DataNodeQueryMessages
+            .EXCEPTION_EXCEPTNODE_TRANSLATION_RESULT_HAS_NO_COUNT_SYMBOLS_8653930E);
 
     // 2. add the filter node above the result node from translation process
     // filter condition : row_number <= greatest(...greatest((greatest(count1 - count2, 0) - count3,

@@ -104,7 +104,8 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
-          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THE_PLANNODE_IS_NULL_DURING_LOCAL_EXECUTION_MAYBE_CAUSED_C5B942CA,
           TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
     }
     LocalExecutionPlanContext context =
@@ -143,7 +144,8 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
     if (Objects.isNull(plan)) {
       throw new IoTDBRuntimeException(
-          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THE_PLANNODE_IS_NULL_DURING_LOCAL_EXECUTION_MAYBE_CAUSED_C5B942CA,
           TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
     }
     LocalExecutionPlanContext context =
@@ -209,17 +211,17 @@ public class LocalExecutionPlanner {
     if (OPERATORS_MEMORY_BLOCK.allocate(estimatedMemorySize)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            DataNodeQueryMessages.CONSUMEMEMORY_CONSUME_ARG_CURRENT_REMAINING_MEMORY_ARG,
             estimatedMemorySize,
             OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
       }
     } else {
       throw new MemoryNotEnoughException(
           String.format(
-              "There is not enough memory to execute current fragment instance, "
-                  + "current remaining free memory is %dB, "
-                  + "estimated memory usage for current fragment instance is %dB",
-              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(), estimatedMemorySize));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_TO_EXECUTE_CURRENT_FRAGMENT_INSTANCE_6071A581,
+              OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
+              estimatedMemorySize));
     }
     stateMachine.addStateChangeListener(
         newState -> {
@@ -229,7 +231,7 @@ public class LocalExecutionPlanner {
               OPERATORS_MEMORY_BLOCK.release(estimatedMemorySize);
               if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(
-                    "[ReleaseMemory] release: {}, current remaining memory: {}",
+                    DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,
                     estimatedMemorySize,
                     OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
               }
@@ -298,22 +300,21 @@ public class LocalExecutionPlanner {
       final String contextHolder) {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
-          "Bytes to reserve from free memory for operators should be larger than 0");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BYTES_TO_RESERVE_FROM_FREE_MEMORY_FOR_OPERATORS_SHOULD_BE_4DC404D5);
     }
     if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            DataNodeQueryMessages.CONSUMEMEMORY_CONSUME_ARG_CURRENT_REMAINING_MEMORY_ARG,
             memoryInBytes,
             OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes());
       }
     } else {
       throw new MemoryNotEnoughException(
           String.format(
-              "There is not enough memory for Query %s, the contextHolder is %s,"
-                  + "current remaining free memory is %dB, "
-                  + "already reserved memory for this context in total is %dB, "
-                  + "the memory requested this time is %dB",
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THERE_IS_NOT_ENOUGH_MEMORY_FOR_QUERY_S_THE_CONTEXTHOLDER_546CDD02,
               queryId,
               contextHolder,
               OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
@@ -325,7 +326,8 @@ public class LocalExecutionPlanner {
   public void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     if (memoryInBytes <= 0) {
       throw new IllegalArgumentException(
-          "Bytes to release to free memory for operators should be larger than 0");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BYTES_TO_RELEASE_TO_FREE_MEMORY_FOR_OPERATORS_SHOULD_BE_3E5B0CB1);
     }
     OPERATORS_MEMORY_BLOCK.release(memoryInBytes);
   }

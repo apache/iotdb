@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -36,12 +38,12 @@ public class NumericParameter extends DataTypeParameter {
 
   public NumericParameter(String value) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public NumericParameter(@Nonnull NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public String getValue() {

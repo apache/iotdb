@@ -518,4 +518,78 @@ public final class ConfigNodeMessages {
 
   public static final String AUTHENTICATION_FAILED = "认证失败。";
   private ConfigNodeMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String MESSAGE_ILLEGAL_PATTERN_PATH_ARG_PATTERN_PATH_SHOULD_END_OTHERWISE_IT_50E969BB =
+      "Illegal pattern 路径: %s, pattern 路径 应end with **, otherwise, it 应be a specific 数据库 or device"
+      + " 路径 without *";
+  public static final String MESSAGE_NUMBER_TTL_RULES_HAS_REACHED_LIMIT_8575FF1E = "The number of TTL rules has reached the limit ";
+  public static final String MESSAGE_CAPACITY_ARG_REQUESTED_TOTAL_ARG_PLEASE_DELETE_SOME_EXISTING_RULES_35B24B22 = "(capacity: %d, requested total: %d). Please 删除 some existing rules first.";
+  public static final String LOG_EXITS_JVM_MEMORY_USAGE_ARG_0BCD1CCF = " exits. Jvm memory usage: {}";
+  public static final String EXCEPTION_TOPOLOGY_PROBING_BASE_INTERVAL_MS_MUST_POSITIVE_BUT_GOT_18C9B7A2 = "topology_probing_base_interval_in_ms 必须be positive, but got: ";
+  public static final String EXCEPTION_TOPOLOGY_PROBING_TIMEOUT_RATIO_MUST_0_1_BUT_GOT_FBD0E28B = "topology_probing_超时_ratio 必须be in (0, 1), but got: ";
+  public static final String EXCEPTION_DATA_CONFIGNODE_SYSTEM_CONFIGNODE_SYSTEM_PROPERTIES_786349AB = "data/config节点/system/config节点-system.properties. ";
+  public static final String EXCEPTION_PLEASE_DELETE_DATA_DIR_DATA_CONFIGNODE_RESTART_AGAIN_8527BE66 = "Please 删除 data dir data/config节点 and re开始 again.";
+  public static final String EXCEPTION_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_SET_E7A83ED6 = "the config_节点_consensus_protocol_class is set to";
+  public static final String EXCEPTION_AVAILABLE_ONLY_SCHEMA_REPLICATION_FACTOR_SET_1_45667207 = "available only when 模式_replication_factor is set to 1";
+  public static final String EXCEPTION_MESSAGE_E81C4E4F = "or";
+  public static final String EXCEPTION_AVAILABLE_ONLY_DATA_REPLICATION_FACTOR_SET_1_71748D3D = "available only when data_replication_factor is set to 1";
+  public static final String EXCEPTION_ARG_ARG_6E068B23 = "%s or %s";
+  public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUS_84350FD1 = "the 模式Region doesn't support org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String EXCEPTION_SCHEMAREGION_DOESN_T_SUPPORT_ORG_APACHE_IOTDB_CONSENSUS_IOT_IOTCONSENSUSV2_BA353C6D = "the 模式Region doesn't support org.apache.iotdb.consensus.iot.IoTConsensusV2";
+  public static final String EXCEPTION_GREEDY_MIN_COST_FLOW_HASH_C07DA2EE = "GREEDY or MIN_COST_FLOW or HASH";
+  public static final String EXCEPTION_UNRECOGNIZED_LEADER_DISTRIBUTION_POLICY_SET_F9FFB410 = "an unrecognized leader_distribution_policy is set";
+  public static final String EXCEPTION_LEADER_GREEDY_55C6B994 = "LEADER or GREEDY";
+  public static final String EXCEPTION_UNRECOGNIZED_ROUTE_PRIORITY_POLICY_SET_C0012AE4 = "an unrecognized route_priority_policy is set";
+  public static final String EXCEPTION_THERE_NO_AVAILABLE_ARG_DATABASES_ARG_CURRENTLY_9B8297B3 = "There are no available %s for 数据库s: %s currently, ";
+  public static final String EXCEPTION_PLEASE_USE_SHOW_CLUSTER_SHOW_REGIONS_CHECK_CLUSTER_STATUS_611120DF = "please use \"show cluster\" or \"show regions\" to check the cluster 状态";
+  public static final String EXCEPTION_SCHEMAREGIONGROUPS_3C409207 = "模式RegionGroups";
+  public static final String EXCEPTION_DATAREGIONGROUPS_945CCE78 = "DataRegionGroups";
+  public static final String EXCEPTION_DATANODE_NOT_ENOUGH_PLEASE_REGISTER_MORE_9F5EEDF5 = "Data节点 不是enough, please 注册 more. ";
+  public static final String EXCEPTION_CURRENT_DATANODES_ARG_REPLICATIONFACTOR_ARG_5D686D2B = "当前Data节点s: %s, replicationFactor: %d";
+  public static final String EXCEPTION_THERE_NO_AVAILABLE_AINODES_CURRENTLY_PLEASE_USE_SHOW_CLUSTER_CHECK_FD32EB52 = "There are no available AI节点s currently, please use \"show cluster\" to check the cluster 状态.";
+  public static final String EXCEPTION_ADD_CONSENSUSGROUP_ARG_FAILED_D3FDDC1B = "Add ConsensusGroup to: %s 失败.";
+  public static final String EXCEPTION_ADD_PEER_ARG_FAILED_17DEB6CA = "Add peer: %s 失败.";
+  public static final String EXCEPTION_DATABASE_ARG_DOESN_T_EXIST_778BBF66 = "数据库: %s doesn't exist.";
+  public static final String LOG_REDIRECTION_RECOMMENDED_REMOVECONFIGNODE_BUT_NO_LEADER_ENDPOINT_PROVIDED_ABORT_RETRY_520A4C64 = "Redirection recommended for 移除Config节点 but no leader endpoint provided, abort retry.";
+  public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_RESPONSE_ARG_691ABC90 = "无法写入 audit log to Data节点 {}, response: {}";
+  public static final String LOG_FAILED_WRITE_AUDIT_LOG_DATANODE_ARG_90F15E13 = "无法写入 audit log to Data节点 {}";
+  public static final String EXCEPTION_UNKNOWN_PHYSICALPLANTYPE_ARG_7F21B699 = "未知的PhysicalPlanType: %d";
+  public static final String LOG_CANNOT_READ_MORE_PHYSICALPLANS_ARG_SUCCESSFULLY_READ_INDEX_ARG_REASON_2EC90E78 = "无法读取 more PhysicalPlans from {}, 成功fully 读取 index is {}. The reason is";
+  public static final String EXCEPTION_FILE_11296840 = "文件: ";
+  public static final String EXCEPTION_ARG_CALCULATED_ARG_0EEEE191 = "%d Calculated: %d.";
+  public static final String LOG_CANNOT_DESERIALIZE_PHYSICALPLANS_BYTEBUFFER_IGNORE_REMAINING_LOGS_06AE778F = "无法de序列化 PhysicalPlans from ByteBuffer, ignore remaining logs";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_SCHEMAREPLICATIONFACTOR_YET_AD96111F = "无法alter 数据库. Doesn't support ALTER 模式ReplicationFactor yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_DATAREPLICATIONFACTOR_YET_2E7FF6E7 = "无法alter 数据库. Doesn't support ALTER DataReplicationFactor yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONORIGIN_YET_B315F2E3 = "无法alter 数据库. Doesn't support ALTER TimePartitionOrigin yet.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TIMEPARTITIONINTERVAL_YET_F539A76F = "无法alter 数据库. Doesn't support ALTER TimePartitionInterval yet.";
+  public static final String MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_TARGET_CONFIGNODE_NOT_CURRENT_CONFIGNODE_608E64F9 = "移除 ConsensusGroup 失败，原因：the target Config节点 不是当前Config节点.";
+  public static final String MESSAGE_REMOVE_CONSENSUSGROUP_FAILED_BECAUSE_INTERNAL_FAILURE_SEE_OTHER_LOGS_MORE_51858EC2 = "移除 ConsensusGroup 失败，原因：internal failure. See other logs for more details";
+  public static final String EXCEPTION_LOADPIPETASKINFOEXCEPTION_2270468E = "加载PipeTaskInfo异常=";
+  public static final String EXCEPTION_LOADPIPEPLUGININFOEXCEPTION_40362E11 = ", 加载PipePluginInfo异常=";
+  public static final String MESSAGE_FAILED_SET_PIPE_STATUS_STOPPED_RUNTIME_EXCEPTION_FLAG_BECAUSE_BFEA15AA = "无法set pipe 状态 with 停止ped-by-runtime-异常 flag,，原因：";
+  public static final String EXCEPTION_UNKNOWN_TYPE_7618F8F4 = "未知的type: ";
+  public static final String EXCEPTION_NO_SUCH_USER_ARG_D11B1046 = "No such 用户 : %s";
+  public static final String EXCEPTION_NO_SUCH_USER_ID_99CA691B = "No such 用户 id: ";
+  public static final String LOG_HANDLING_COMMIT_PROGRESS_META_CHANGES_FA21A080 = "Handling commit progress meta changes ...";
+  public static final String EXCEPTION_FAILED_CREATE_ALTER_TOPIC_ILLEGAL_ARG_ARG_EXPECTED_1_POSITIVE_A33070FB = "无法创建 or alter 主题, illegal %s=%s, expected -1 or a positive long value";
+  public static final String LOG_TRYING_GET_MAX_TTL_UNDER_ONE_DATABASE_USE_LONG_MAX_9D70ACB2 = " when trying to get max ttl under one 数据库, use Long.MAX_VALUE.";
+  public static final String MESSAGE_ENABLE_IOTDB_CLUSTER_S_DATA_SERVICE_PLEASE_REGISTER_ARG_MORE_F48F3890 = "To enable IoTDB-Cluster's data service, please 注册 %d more IoTDB-Data节点";
+  public static final String MESSAGE_APPLY_NEW_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_1BB6A6BF = "Apply new Config节点 失败，原因：当前Config节点 can't store Config节点 information.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_CONFIGNODE_8AB3BCB4 = "移除 Config节点 失败，原因：当前Config节点 can't store Config节点 information.";
+  public static final String LOG_NODE_ARG_REGION_ARG_70A7CD4F = "节点: {}, region: {}";
+  public static final String LOG_NO_NEED_REMOVE_IT_NODE_ARG_REGION_ARG_D14062CE = "no need to 移除 it, 节点: {}, region: {}";
+  public static final String LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E = "pid={} 失败 in the 写入 update API executing the consensus layer due to: ";
+  public static final String LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5 = "pid={} 失败 in the 写入 删除 API executing the consensus layer due to: ";
+  public static final String LOG_NEW_LEADER_NODEID_ARG_0A63760B = "the new leader is [节点Id:{}]";
+  public static final String LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261 = "开始 cleaning up related services";
+  public static final String LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F = "all services on old leader are unavailable now.";
+  public static final String LOG_FILEPATH_ARG_RETRY_ARG_16284354 = "文件路径: {}, retry: {}";
+  public static final String EXCEPTION_COLON_5D70AD09 = ":";
+  public static final String MESSAGE_COLON_CEFF3F4D = ": ";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3 = "Procedure type 不能为空";
+  public static final String EXCEPTION_DOT_9D9B854A = ".";
+
 }

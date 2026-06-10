@@ -276,7 +276,7 @@ public class ConsensusManager {
       if (oldWalDir.exists() && !oldWalDir.renameTo(new File(getConfigRegionDir()))) {
         LOGGER.warn(
             ManagerMessages.UPGRADE_CONFIGNODE_CONSENSUS_WAL_DIR_FOR_SIMPLECONSENSUS_FROM_VERSION_1
-                + "you maybe need to rename the simple dir to 0_0 manually.");
+                + ManagerMessages.LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9);
       }
     }
   }
@@ -302,7 +302,9 @@ public class ConsensusManager {
     try {
       consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
     } catch (ConsensusGroupAlreadyExistException e) {
-      LOGGER.info("ConfigNode local peer has already been created: {}", e.getMessage());
+      LOGGER.info(
+          ManagerMessages.LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F,
+          e.getMessage());
     }
   }
 
@@ -322,7 +324,9 @@ public class ConsensusManager {
               configNodeLocation.getConsensusEndPoint()));
     } catch (PeerAlreadyInConsensusGroupException e) {
       LOGGER.info(
-          "ConfigNode peer {} has already been added: {}", configNodeLocation, e.getMessage());
+          ManagerMessages.LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0,
+          configNodeLocation,
+          e.getMessage());
     } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }
@@ -346,7 +350,9 @@ public class ConsensusManager {
       return true;
     } catch (PeerNotInConsensusGroupException e) {
       LOGGER.info(
-          "ConfigNode peer {} has already been removed: {}", configNodeLocation, e.getMessage());
+          ManagerMessages.LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE,
+          configNodeLocation,
+          e.getMessage());
       return true;
     } catch (ConsensusException e) {
       return false;
@@ -467,10 +473,12 @@ public class ConsensusManager {
           }
         }
         result.setMessage(
-            "The current ConfigNode is leader but not ready yet, please try again later.");
+            ManagerMessages
+                .MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645);
       } else {
         result.setMessage(
-            "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+            ManagerMessages
+                .MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D);
       }
       TConfigNodeLocation leaderLocation = getLeaderLocation();
       if (leaderLocation != null) {

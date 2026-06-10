@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.core.type;
 
+import org.apache.iotdb.metrics.core.i18n.MetricsCoreMessages;
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
@@ -49,7 +50,9 @@ public class IoTDBTimer extends AbstractMetricMBean implements Timer, IoTDBTimer
       return new IoTDBTimerHistogramSnapshot(timer);
     } catch (ArrayIndexOutOfBoundsException e) {
       LOGGER.warn(
-          "Detected an error while taking snapshot, may cause a miss during this recording.", e);
+          MetricsCoreMessages
+              .LOG_DETECTED_ERROR_TAKING_SNAPSHOT_MAY_CAUSE_MISS_DURING_RECORDING_2BAE49C4,
+          e);
       return null;
     }
   }

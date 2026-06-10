@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 
@@ -88,7 +89,8 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported source dataType: %s", childColumnTransformer.getType().getTypeEnum()));
+                CalcMessages.EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_ARG_678B759C,
+                childColumnTransformer.getType().getTypeEnum()));
     }
   }
 }

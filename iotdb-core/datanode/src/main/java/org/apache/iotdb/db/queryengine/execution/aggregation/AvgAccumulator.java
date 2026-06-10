@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -66,14 +67,19 @@ public class AvgAccumulator implements Accumulator {
       case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG_S_D1DAD6A6,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | countValue1 | sumValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        partialResult.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -87,7 +93,9 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        input.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (input[0].isNull(0)) {
       return;
     }
@@ -129,7 +137,9 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of Avg should be 2");
+    checkArgument(
+        columnBuilders.length == 2,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_AVG_SHOULD_BE_2_7A8C375E);
     if (!initResult) {
       columnBuilders[0].appendNull();
       columnBuilders[1].appendNull();

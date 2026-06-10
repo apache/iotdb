@@ -538,7 +538,8 @@ public class LogDispatcher {
         lastIdleWriterSafeTimeBarrierSentTimeMs = now;
       } else {
         logger.debug(
-            "{}: Failed to send idle writer safe-time barrier to {}. status={}",
+            IoTConsensusMessages
+                .LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD,
             impl.getThisNode().getGroupId(),
             peer,
             status);

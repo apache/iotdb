@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Correla
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
@@ -155,7 +156,9 @@ public class TransformCorrelatedGlobalAggregationWithProjection
   private final PlannerContext plannerContext;
 
   public TransformCorrelatedGlobalAggregationWithProjection(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   @Override
@@ -167,7 +170,7 @@ public class TransformCorrelatedGlobalAggregationWithProjection
   public Result apply(CorrelatedJoinNode correlatedJoinNode, Captures captures, Context context) {
     checkArgument(
         correlatedJoinNode.getJoinType() == INNER || correlatedJoinNode.getJoinType() == LEFT,
-        "unexpected correlated join type: %s",
+        DataNodeQueryMessages.EXCEPTION_UNEXPECTED_CORRELATED_JOIN_TYPE_COLON_ARG_27E8EC42,
         correlatedJoinNode.getJoinType());
 
     // if there is another aggregation below the AggregationNode, handle both

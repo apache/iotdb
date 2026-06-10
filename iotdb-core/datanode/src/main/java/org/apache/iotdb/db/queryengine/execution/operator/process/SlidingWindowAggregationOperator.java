@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -67,7 +68,8 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     super(operatorContext, aggregators, child, ascending, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
-        "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
+        DataNodeQueryMessages
+            .EXCEPTION_GROUPBYTIMEPARAMETER_CANNOT_BE_NULL_IN_SLIDINGWINDOWAGGREGATIONOPERATOR_BA42E30D);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     if (outputEndTime) {

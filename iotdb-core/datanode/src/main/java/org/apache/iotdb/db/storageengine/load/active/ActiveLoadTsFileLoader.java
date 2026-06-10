@@ -111,7 +111,8 @@ public class ActiveLoadTsFileLoader {
                 });
           } catch (final IOException e) {
             LOGGER.warn(
-                "Error occurred during creating fail directory {} for active load.",
+                StorageEngineMessages
+                    .STORAGE_LOG_ERROR_OCCURRED_DURING_CREATING_FAIL_DIRECTORY_FOR_ACTIVE_7D3BEB38,
                 failDirFile.getAbsoluteFile(),
                 e);
           }
@@ -178,7 +179,8 @@ public class ActiveLoadTsFileLoader {
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             LOGGER.info(
-                "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
+                StorageEngineMessages
+                    .STORAGE_LOG_SUCCESSFULLY_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_ADB5FEC9,
                 loadEntry.get().getFile(),
                 loadEntry.get().isGeneratedByPipe());
           } else {
@@ -271,7 +273,8 @@ public class ActiveLoadTsFileLoader {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
     if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, status.getMessage())) {
       LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_STATUS_FILE_F43E9EF7,
           entry.getFile(),
           entry.isGeneratedByPipe(),
           status);
@@ -281,7 +284,8 @@ public class ActiveLoadTsFileLoader {
 
   private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
     LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
+        StorageEngineMessages
+            .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_FILE_5EE1FA08,
         entry.getFile(),
         entry.isGeneratedByPipe());
     removeFileAndResourceAndModsToFailDir(entry.getFile());
@@ -291,7 +295,8 @@ public class ActiveLoadTsFileLoader {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
     if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
       LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
+          StorageEngineMessages
+              .STORAGE_LOG_FAILED_TO_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_BECAUSE_OF_07946D74,
           entry.getFile(),
           entry.isGeneratedByPipe(),
           e);

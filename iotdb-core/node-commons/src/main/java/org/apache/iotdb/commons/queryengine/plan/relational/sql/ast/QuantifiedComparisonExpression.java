@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -49,10 +51,11 @@ public class QuantifiedComparisonExpression extends Expression {
       Expression value,
       Expression subquery) {
     super(null);
-    this.operator = requireNonNull(operator, "operator is null");
-    this.quantifier = requireNonNull(quantifier, "quantifier is null");
-    this.value = requireNonNull(value, "value is null");
-    this.subquery = requireNonNull(subquery, "subquery is null");
+    this.operator = requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    this.quantifier =
+        requireNonNull(quantifier, QueryMessages.EXCEPTION_QUANTIFIER_IS_NULL_7B81C096);
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.subquery = requireNonNull(subquery, QueryMessages.EXCEPTION_SUBQUERY_IS_NULL_F0E1842F);
   }
 
   public QuantifiedComparisonExpression(
@@ -61,11 +64,12 @@ public class QuantifiedComparisonExpression extends Expression {
       Quantifier quantifier,
       Expression value,
       Expression subquery) {
-    super(requireNonNull(location, "location is null"));
-    this.operator = requireNonNull(operator, "operator is null");
-    this.quantifier = requireNonNull(quantifier, "quantifier is null");
-    this.value = requireNonNull(value, "value is null");
-    this.subquery = requireNonNull(subquery, "subquery is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.operator = requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    this.quantifier =
+        requireNonNull(quantifier, QueryMessages.EXCEPTION_QUANTIFIER_IS_NULL_7B81C096);
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
+    this.subquery = requireNonNull(subquery, QueryMessages.EXCEPTION_SUBQUERY_IS_NULL_F0E1842F);
   }
 
   public ComparisonExpression.Operator getOperator() {

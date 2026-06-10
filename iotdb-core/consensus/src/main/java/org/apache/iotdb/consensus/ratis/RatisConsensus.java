@@ -484,7 +484,8 @@ class RatisConsensus implements IConsensus {
                         .setGroupId(request.getRaftGroupId())
                         .setException(
                             new ReadIndexException(
-                                "internal GRPC connection error:", ioe.getCause()))
+                                RatisMessages.EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15,
+                                ioe.getCause()))
                         .setSuccess(false)
                         .build();
                   } else {
@@ -673,7 +674,7 @@ class RatisConsensus implements IConsensus {
     if (localRaftPeerSet.equals(correctRaftPeerSet)) {
       // configurations are the same
       logger.info(
-          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          RatisMessages.LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA,
           localRaftPeerSet);
       return;
     }

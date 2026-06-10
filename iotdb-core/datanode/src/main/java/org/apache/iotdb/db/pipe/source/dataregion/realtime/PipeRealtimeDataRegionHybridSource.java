@@ -63,8 +63,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported event type %s for hybrid realtime extractor %s",
-              eventToExtract.getClass(), this));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_9C4F4C82,
+              eventToExtract.getClass(),
+              this));
     }
   }
 
@@ -123,8 +125,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported state %s for hybrid realtime extractor %s",
-                state, PipeRealtimeDataRegionHybridSource.class.getName()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_UNSUPPORTED_STATE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_43BD62C2,
+                state,
+                PipeRealtimeDataRegionHybridSource.class.getName()));
     }
   }
 
@@ -170,8 +174,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported state %s for hybrid realtime extractor %s",
-                state, PipeRealtimeDataRegionHybridSource.class.getName()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_UNSUPPORTED_STATE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_43BD62C2,
+                state,
+                PipeRealtimeDataRegionHybridSource.class.getName()));
     }
   }
 
@@ -234,8 +240,10 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported event type %s for hybrid realtime extractor %s to supply.",
-                eventToSupply.getClass(), this));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_474BAAC2,
+                eventToSupply.getClass(),
+                this));
       }
 
       realtimeEvent.decreaseReferenceCount(
@@ -262,10 +270,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       // this event is not reliable anymore. but the data represented by this event
       // has been carried by the following tsfile event, so we can just discard this event.
       event.getTsFileEpoch().migrateState(this, s -> TsFileEpoch.State.USING_BOTH);
-      LOGGER.warn(
-          "Discard tablet event {} because it is not reliable anymore. "
-              + "Change the state of TsFileEpoch to USING_BOTH.",
-          event);
+      LOGGER.warn(DataNodePipeMessages.DISCARD_TABLET_EVENT_BECAUSE_IT_IS_NOT, event);
       return null;
     }
   }

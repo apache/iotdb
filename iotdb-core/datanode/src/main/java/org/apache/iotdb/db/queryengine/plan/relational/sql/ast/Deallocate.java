@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -49,7 +50,9 @@ public final class Deallocate extends Statement {
 
   public Deallocate(NodeLocation location, Identifier statementName) {
     super(location);
-    this.statementName = requireNonNull(statementName, "statementName is null");
+    this.statementName =
+        requireNonNull(
+            statementName, DataNodeQueryMessages.EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4);
   }
 
   public Identifier getStatementName() {

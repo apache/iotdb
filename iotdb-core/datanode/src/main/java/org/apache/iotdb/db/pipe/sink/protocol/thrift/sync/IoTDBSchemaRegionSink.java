@@ -116,8 +116,10 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer schema region write plan %s, because %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_SCHEMA_REGION_WRITE_PLAN_S_BECAUSE_AEB210C7,
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(),
+              e.getMessage()),
           e);
     }
 
@@ -212,8 +214,12 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal snapshot file %s, %s and %s, because %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, e.getMessage()),
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_SNAPSHOT_FILE_S_S_AND_S_BECAUSE_5EF373E6,
+              mTreeSnapshotFile,
+              tagLogSnapshotFile,
+              attributeSnapshotFile,
+              e.getMessage()),
           e);
     }
 

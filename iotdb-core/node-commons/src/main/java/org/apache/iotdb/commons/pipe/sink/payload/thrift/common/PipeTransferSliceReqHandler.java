@@ -79,7 +79,7 @@ public class PipeTransferSliceReqHandler {
     }
     if (originReqType != req.getOriginReqType()) {
       LOGGER.warn(
-          "Origin request type mismatch: expected {}, actual {}",
+          PipeMessages.LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE,
           originReqType,
           req.getOriginReqType());
       clear();
@@ -87,7 +87,7 @@ public class PipeTransferSliceReqHandler {
     }
     if (originBodySize != req.getOriginBodySize()) {
       LOGGER.warn(
-          "Origin body size mismatch: expected {}, actual {}",
+          PipeMessages.LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75,
           originBodySize,
           req.getOriginBodySize());
       clear();
@@ -100,7 +100,9 @@ public class PipeTransferSliceReqHandler {
     }
     if (sliceBodies.size() != req.getSliceIndex()) {
       LOGGER.warn(
-          "Invalid slice index: expected {}, actual {}", sliceBodies.size(), req.getSliceIndex());
+          PipeMessages.LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628,
+          sliceBodies.size(),
+          req.getSliceIndex());
       clear();
       return false;
     }

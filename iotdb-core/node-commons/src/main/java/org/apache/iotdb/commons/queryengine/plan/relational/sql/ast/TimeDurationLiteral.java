@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -38,12 +40,12 @@ public class TimeDurationLiteral extends Literal {
 
   public TimeDurationLiteral(TimeDuration value) {
     super(null);
-    this.value = requireNonNull(value, "value is null");
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public TimeDurationLiteral(NodeLocation location, TimeDuration value) {
-    super(requireNonNull(location, "location is null"));
-    this.value = requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.value = requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
   }
 
   public TimeDuration getValue() {

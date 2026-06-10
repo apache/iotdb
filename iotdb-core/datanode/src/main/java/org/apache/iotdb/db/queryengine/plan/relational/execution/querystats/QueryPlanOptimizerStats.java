@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.execution.querystats;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -32,7 +34,7 @@ public class QueryPlanOptimizerStats {
   private final AtomicLong failures = new AtomicLong();
 
   public QueryPlanOptimizerStats(String rule) {
-    this.rule = requireNonNull(rule, "rule is null");
+    this.rule = requireNonNull(rule, DataNodeQueryMessages.EXCEPTION_RULE_IS_NULL_5387C8CC);
   }
 
   public void record(long nanos, boolean applied) {
@@ -76,7 +78,8 @@ public class QueryPlanOptimizerStats {
   public QueryPlanOptimizerStats merge(QueryPlanOptimizerStats other) {
     checkArgument(
         rule.equals(other.getRule()),
-        "Cannot merge stats for different rules: %s and %s",
+        DataNodeQueryMessages
+            .EXCEPTION_CANNOT_MERGE_STATS_FOR_DIFFERENT_RULES_COLON_ARG_AND_ARG_F0A5D5E6,
         rule,
         other.getRule());
 

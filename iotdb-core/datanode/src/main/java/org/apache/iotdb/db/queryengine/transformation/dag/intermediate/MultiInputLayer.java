@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.transformation.datastructure.iterator.RowListForwardIterator;
 import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -272,7 +273,8 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              DataNodeQueryMessages
+                  .LAYERROWWINDOWREADER_INDEX_OVERFLOW_BEGININDEX_ARG_ENDINDEX_ARG_WINDOWSIZE_ARG,
               beginIndex,
               endIndex,
               windowSize);
@@ -661,6 +663,7 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
     throw new UnsupportedOperationException(
-        "StateWindowAccessStrategy only support one input series for now.");
+        DataNodeQueryMessages
+            .QUERY_EXCEPTION_STATEWINDOWACCESSSTRATEGY_ONLY_SUPPORT_ONE_INPUT_SERIES_6856E52C);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -92,7 +93,8 @@ public class CumulateTableFunction implements TableFunction {
 
     if (size % step != 0) {
       throw new UDFException(
-          "Cumulative table function requires size must be an integral multiple of step.");
+          CommonMessages
+              .EXCEPTION_CUMULATIVE_TABLE_FUNCTION_REQUIRES_SIZE_MUST_INTEGRAL_MULTIPLE_STEP_D8A9DA94);
     }
 
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);

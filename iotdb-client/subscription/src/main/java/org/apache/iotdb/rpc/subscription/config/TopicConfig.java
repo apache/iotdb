@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -206,7 +207,8 @@ public class TopicConfig extends PipeParameters {
   public Map<String, String> getAttributesWithSourceMode() {
     if (isConsensusMode()) {
       throw new IllegalArgumentException(
-          "Consensus mode topic should not generate pipe source attributes");
+          SubscriptionMessages
+              .EXCEPTION_CONSENSUS_MODE_TOPIC_SHOULD_NOT_GENERATE_PIPE_SOURCE_ATTRIBUTES_BBDFF732);
     }
     return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : LIVE_MODE_CONFIG;
   }

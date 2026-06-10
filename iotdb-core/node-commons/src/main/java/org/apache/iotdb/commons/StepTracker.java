@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +58,7 @@ class Metric {
     if (invokeCount % printRate == 0) {
       logger.info(
           String.format(
-              "step metrics [%d]-[%s] - Total: %d, SUM: %.2fms, AVG: %fms, Last%dAVG: %fms",
+              CommonMessages.LOG_STEP_METRICS_ARG_ARG_TOTAL_ARG_SUM_2FMS_AVG_ARG_87491AB0,
               Thread.currentThread().getId(),
               stepName,
               invokeCount,

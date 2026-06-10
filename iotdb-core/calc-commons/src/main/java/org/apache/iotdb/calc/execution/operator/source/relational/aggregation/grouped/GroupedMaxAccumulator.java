@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.gr
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.FloatBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -77,7 +78,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -110,7 +113,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
 
     return INSTANCE_SIZE + valuesSize + inits.sizeOf();
@@ -145,7 +150,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -178,7 +185,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 
@@ -216,7 +225,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                  seriesDataType));
       }
     }
   }
@@ -253,7 +264,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                  seriesDataType));
       }
     }
   }
@@ -289,7 +302,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+              String.format(
+                  CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                  seriesDataType));
       }
     }
   }
@@ -326,7 +341,9 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MAX Aggregation: %s", seriesDataType));
+            String.format(
+                CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_MAX_AGGREGATION_ARG_CCB09C60,
+                seriesDataType));
     }
   }
 

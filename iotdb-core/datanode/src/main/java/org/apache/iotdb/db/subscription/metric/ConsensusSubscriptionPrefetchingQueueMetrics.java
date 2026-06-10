@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -64,7 +65,8 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     }
     if (!queueMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from consensus subscription prefetching queue metrics, queue map not empty");
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9);
     }
   }
 
@@ -150,8 +152,8 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
   public void deregister(final String id) {
     if (!queueMap.containsKey(id)) {
       LOGGER.warn(
-          "Failed to deregister consensus subscription prefetching queue metrics, "
-              + "ConsensusPrefetchingQueue({}) does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091,
           id);
       return;
     }
@@ -222,7 +224,9 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
     final Rate rate = rateMap.get(id);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark transfer event rate, ConsensusPrefetchingQueue({}) does not exist", id);
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_CONSENSUSPREFETCHINGQUEUE_FE9B91C3,
+          id);
       return;
     }
     rate.mark(size);

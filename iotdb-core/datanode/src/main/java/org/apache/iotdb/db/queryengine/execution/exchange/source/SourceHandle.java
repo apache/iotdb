@@ -171,21 +171,39 @@ public class SourceHandle implements ISourceHandle {
       boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
+    this.remoteEndpoint =
+        Validate.notNull(
+            remoteEndpoint,
+            DataNodeQueryMessages.EXCEPTION_REMOTEENDPOINT_CAN_NOT_BE_NULL_DOT_DE2B5885);
     this.remoteFragmentInstanceId =
-        Validate.notNull(remoteFragmentInstanceId, "remoteFragmentInstanceId can not be null.");
+        Validate.notNull(
+            remoteFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_REMOTEFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_C2449A29);
     this.localFragmentInstanceId =
-        Validate.notNull(localFragmentInstanceId, "localFragmentInstanceId can not be null.");
+        Validate.notNull(
+            localFragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_LOCALFRAGMENTINSTANCEID_CAN_NOT_BE_NULL_DOT_37F5917D);
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId, "localPlanNodeId can not be null.");
+    this.localPlanNodeId =
+        Validate.notNull(
+            localPlanNodeId,
+            DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
     this.localMemoryManager =
-        Validate.notNull(localMemoryManager, "localMemoryManager can not be null.");
-    this.executorService = Validate.notNull(executorService, "executorService can not be null.");
-    this.serde = Validate.notNull(serde, "serde can not be null.");
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCALMEMORYMANAGER_CAN_NOT_BE_NULL_DOT_7A46C6CE);
+    this.executorService =
+        Validate.notNull(
+            executorService,
+            DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_BC459BD4);
+    this.serde =
+        Validate.notNull(serde, DataNodeQueryMessages.EXCEPTION_SERDE_CAN_NOT_BE_NULL_DOT_D46F66E7);
     this.sourceHandleListener =
-        Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+        Validate.notNull(
+            sourceHandleListener,
+            DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.isHighestPriority = isHighestPriority;
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
@@ -368,7 +386,7 @@ public class SourceHandle implements ISourceHandle {
       int startSequenceId, List<Long> dataBlockSizes) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "[ReceiveNewTsBlockNotification] [{}, {}), each size is: {}",
+          DataNodeQueryMessages.RECEIVENEWTSBLOCKNOTIFICATION_ARG_ARG_EACH_SIZE_IS_ARG,
           startSequenceId,
           startSequenceId + dataBlockSizes.size(),
           dataBlockSizes);
@@ -561,17 +579,21 @@ public class SourceHandle implements ISourceHandle {
     GetDataBlocksTask(int startSequenceId, int endSequenceId, long reservedBytes) {
       Validate.isTrue(
           startSequenceId >= 0,
-          "Start sequence ID should be greater than or equal to zero. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_START_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_OR_EQUAL_TO_ZERO_DOT_START_SEQUENCE_ID__D3C0AAB7
               + startSequenceId);
       this.startSequenceId = startSequenceId;
       Validate.isTrue(
           endSequenceId > startSequenceId,
-          "End sequence ID should be greater than the start sequence ID. Start sequence ID: "
+          DataNodeQueryMessages
+                  .EXCEPTION_END_SEQUENCE_ID_SHOULD_BE_GREATER_THAN_THE_START_SEQUENCE_ID_DOT_START_SEQUENCE__DF1AA2A1
               + startSequenceId
-              + ", end sequence ID: "
+              + DataNodeQueryMessages.EXCEPTION_COMMA_END_SEQUENCE_ID_COLON_DB1AF173
               + endSequenceId);
       this.endSequenceId = endSequenceId;
-      Validate.isTrue(reservedBytes > 0L, "Reserved bytes should be greater than zero.");
+      Validate.isTrue(
+          reservedBytes > 0L,
+          DataNodeQueryMessages.EXCEPTION_RESERVED_BYTES_SHOULD_BE_GREATER_THAN_ZERO_DOT_64086BE5);
       this.reservedBytes = reservedBytes;
     }
 
@@ -581,7 +603,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[StartPullTsBlocksFromRemote] {}-{} [{}, {}) ",
+              DataNodeQueryMessages.STARTPULLTSBLOCKSFROMREMOTE_ARG_ARG_ARG_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle,
               startSequenceId,
@@ -759,7 +781,7 @@ public class SourceHandle implements ISourceHandle {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+              DataNodeQueryMessages.SENDCLOSESINKCHANNELEVENT_TO_SHUFFLESINKHANDLE_ARG_INDEX_ARG,
               remoteFragmentInstanceId,
               indexOfUpstreamSinkHandle);
         }

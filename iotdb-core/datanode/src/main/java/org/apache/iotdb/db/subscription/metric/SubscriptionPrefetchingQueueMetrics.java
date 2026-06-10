@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -65,7 +66,8 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
     }
     if (!prefetchingQueueMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from subscription prefetching queue metrics, prefetching queue map not empty");
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C);
     }
   }
 
@@ -119,7 +121,8 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
   public void deregister(final String id) {
     if (!prefetchingQueueMap.containsKey(id)) {
       LOGGER.warn(
-          "Failed to deregister subscription prefetching queue metrics, SubscriptionPrefetchingQueue({}) does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7,
           id);
       return;
     }
@@ -167,7 +170,8 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
     final Rate rate = rateMap.get(id);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark transfer event rate, SubscriptionPrefetchingQueue({}) does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5,
           id);
       return;
     }

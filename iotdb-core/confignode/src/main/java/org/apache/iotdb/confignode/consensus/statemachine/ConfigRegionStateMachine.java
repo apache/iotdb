@@ -237,7 +237,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
           ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-              + "the new leader is [nodeId:{}]",
+              + ConfigNodeMessages.LOG_NEW_LEADER_NODEID_ARG_0A63760B,
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -251,7 +251,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + "start cleaning up related services",
+            + ConfigNodeMessages.LOG_START_CLEANING_UP_RELATED_SERVICES_A409E261,
         currentNodeId,
         currentNodeTEndPoint);
     // Stop leader scheduling services
@@ -276,7 +276,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     LOGGER.info(
         ConfigNodeMessages.CURRENT_NODE_NODEID_IP_PORT_IS_NO_LONGER_THE_LEADER
-            + "all services on old leader are unavailable now.",
+            + ConfigNodeMessages.LOG_ALL_SERVICES_OLD_LEADER_UNAVAILABLE_NOW_8A22E60F,
         currentNodeId,
         currentNodeTEndPoint);
   }
@@ -375,7 +375,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         } catch (IOException e) {
           LOGGER.warn(
               ConfigNodeMessages.CAN_T_CLOSE_STANDALONELOG_FOR_CONFIGNODE_SIMPLECONSENSUS_MODE
-                  + "filePath: {}, retry: {}",
+                  + ConfigNodeMessages.LOG_FILEPATH_ARG_RETRY_ARG_16284354,
               simpleLogFile.getAbsolutePath(),
               retry);
           try {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -49,7 +50,8 @@ public class MarkDistinctHash {
   }
 
   public Column markDistinctRows(Column[] columns) {
-    checkArgument(columns.length > 0, "columns shouldn't be empty here");
+    checkArgument(
+        columns.length > 0, QueryMessages.EXCEPTION_COLUMNS_SHOULDN_QUOTE_T_BE_EMPTY_HERE_34E44AAA);
     int[] groupIds = groupByHash.getGroupIds(columns);
     return processNextGroupIds(
         groupByHash.getGroupCount(), groupIds, columns[0].getPositionCount());

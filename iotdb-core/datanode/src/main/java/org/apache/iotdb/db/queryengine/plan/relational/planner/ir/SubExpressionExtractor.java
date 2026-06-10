@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;
@@ -43,6 +44,7 @@ public final class SubExpressionExtractor {
   public static Stream<Node> preOrder(Node node) {
     return stream(
         Traverser.forTree((SuccessorsFunction<Node>) Node::getChildren)
-            .depthFirstPreOrder(requireNonNull(node, "node is null")));
+            .depthFirstPreOrder(
+                requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A)));
   }
 }

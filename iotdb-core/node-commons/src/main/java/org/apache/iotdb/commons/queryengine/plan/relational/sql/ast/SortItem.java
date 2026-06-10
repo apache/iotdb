@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -60,7 +62,7 @@ public class SortItem extends Node {
 
   public SortItem(
       NodeLocation location, Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.ordering = ordering;
     this.sortKey = sortKey;
     this.nullOrdering = nullOrdering;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.exception;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class IllegalPrivilegeException extends MetadataException {
@@ -27,12 +28,17 @@ public class IllegalPrivilegeException extends MetadataException {
 
   public IllegalPrivilegeException(Integer priv) {
     super(
-        String.format("%s is not a legal privilege", PrivilegeType.values()[priv].toString()),
+        String.format(
+            CommonMessages.EXCEPTION_ARG_NOT_LEGAL_PRIVILEGE_504838E8,
+            PrivilegeType.values()[priv].toString()),
         TSStatusCode.ILLEGAL_PRIVILEGE.getStatusCode(),
         true);
   }
 
   public IllegalPrivilegeException(String reason) {
-    super(String.format("%s", reason), TSStatusCode.ILLEGAL_PATH.getStatusCode(), true);
+    super(
+        String.format(CommonMessages.EXCEPTION_ARG_634FCEDB, reason),
+        TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+        true);
   }
 }

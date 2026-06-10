@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,9 +53,9 @@ public class TableMetadata {
       List<ColumnMetadata> columns,
       Map<String, Object> properties,
       Optional<String> comment) {
-    requireNonNull(table, "table is null");
-    requireNonNull(columns, "columns is null");
-    requireNonNull(comment, "comment is null");
+    requireNonNull(table, DataNodeQueryMessages.EXCEPTION_TABLE_IS_NULL_8DDD9098);
+    requireNonNull(columns, DataNodeQueryMessages.EXCEPTION_COLUMNS_IS_NULL_6C8F32B3);
+    requireNonNull(comment, DataNodeQueryMessages.EXCEPTION_COMMENT_IS_NULL_0AD46118);
 
     this.table = table;
     this.columns = new ArrayList<>(columns);

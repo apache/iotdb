@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -53,7 +55,8 @@ public class Captures {
   public <T> T get(Capture<T> capture) {
     if (this.equals(NIL)) {
       throw new NoSuchElementException(
-          "Requested value for unknown Capture. Was it registered in the Pattern?");
+          CalcMessages
+              .EXCEPTION_REQUESTED_VALUE_UNKNOWN_CAPTURE_WAS_IT_REGISTERED_PATTERN_C77DF7E9);
     }
     if (this.capture.equals(capture)) {
       return (T) value;

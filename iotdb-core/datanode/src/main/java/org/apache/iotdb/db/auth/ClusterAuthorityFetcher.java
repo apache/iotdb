@@ -607,7 +607,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
     if (user == null && force) {
       throw new IoTDBRuntimeException(
-          "User " + userName + " does not exist", TSStatusCode.USER_NOT_EXIST.getStatusCode());
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8, userName),
+          TSStatusCode.USER_NOT_EXIST.getStatusCode());
     }
     return user;
   }

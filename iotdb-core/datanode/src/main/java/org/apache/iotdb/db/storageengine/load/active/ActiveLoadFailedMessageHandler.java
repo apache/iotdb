@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,8 @@ public class ActiveLoadFailedMessageHandler {
                   "memory",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_MEMORY_9A60DF29,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
               // system is read only
@@ -50,7 +52,8 @@ public class ActiveLoadFailedMessageHandler {
                   "read only",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the system is read only, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_THE_16FA5F18,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
               // Timed out to wait for procedure return. The procedure is still running.
@@ -58,7 +61,8 @@ public class ActiveLoadFailedMessageHandler {
                   "procedure return",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to time out to wait for procedure return, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_TIME_E18630DE,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
               // DataNode is not enough, please register more.
@@ -66,7 +70,8 @@ public class ActiveLoadFailedMessageHandler {
                   "not enough",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to the datanode is not enough, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_THE_5F811A8B,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
               // Fail to connect to any config node. Please check status of ConfigNodes or logs of
@@ -75,7 +80,8 @@ public class ActiveLoadFailedMessageHandler {
                   "any config node",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to fail to connect to any config node, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_FAIL_F59307B8,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
               // Current query is time out, query start time is 1729653161797, ddl is
@@ -85,7 +91,8 @@ public class ActiveLoadFailedMessageHandler {
                   "query is time out",
                   filePair ->
                       LOGGER.info(
-                          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to current query is time out, will retry later.",
+                          StorageEngineMessages
+                              .STORAGE_LOG_REJECTING_AUTO_LOAD_TSFILE_ISGENERATEDBYPIPE_DUE_TO_CURRENT_264E12EE,
                           filePair.getFile(),
                           filePair.isGeneratedByPipe()));
             }

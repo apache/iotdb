@@ -77,7 +77,7 @@ public class CastComputation extends Computation {
       }
     } else {
       throw new UnsupportedOperationException(
-          "Target type is not a GenericDataType: " + targetType);
+          CalcMessages.EXCEPTION_TARGET_TYPE_NOT_GENERICDATATYPE_CB87EF37 + targetType);
     }
   }
 }

@@ -190,7 +190,9 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         return TimeFilterApi.ltEq(value);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported expression type %s", expressionType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_EXPRESSION_TYPE_S_7C6F99A9,
+                expressionType));
     }
   }
 
@@ -226,7 +228,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       // 1 NOT BETWEEN time AND 0 => TRUE
       checkArgument(
           value <= maxValue,
-          String.format("Predicate [%s] should be simplified in previous step", betweenExpression));
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+              betweenExpression));
       return isNot ? TimeFilterApi.gt(value) : TimeFilterApi.ltEq(value);
     }
 
@@ -243,7 +248,10 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     // 1 NOT BETWEEN 0 AND time => time < 1
     checkArgument(
         value >= minValue,
-        String.format("Predicate [%s] should be simplified in previous step", betweenExpression));
+        String.format(
+            DataNodeQueryMessages
+                .EXCEPTION_PREDICATE_LEFT_BRACKET_ARG_RIGHT_BRACKET_SHOULD_BE_SIMPLIFIED_IN_PREVIOUS_STEP_9262C154,
+            betweenExpression));
     return isNot ? TimeFilterApi.lt(value) : TimeFilterApi.gtEq(value);
   }
 

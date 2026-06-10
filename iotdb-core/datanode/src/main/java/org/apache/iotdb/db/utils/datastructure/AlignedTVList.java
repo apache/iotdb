@@ -2011,7 +2011,9 @@ public abstract class AlignedTVList extends TVList {
               TSDataType.TEXT, getBinaryByValueIndex(valueIndex, validColumnIndex));
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataTypeList.get(columnIndex)));
+              String.format(
+                  DataNodeMiscMessages.MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                  dataTypeList.get(columnIndex)));
       }
     }
 

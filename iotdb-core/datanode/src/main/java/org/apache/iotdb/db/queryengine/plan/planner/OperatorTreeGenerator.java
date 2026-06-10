@@ -377,7 +377,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     context.getDriverContext().setInputDriver(true);
 
     if (!predicateCanPushIntoScan) {
-      checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
+      checkState(
+          !context.isBuildPlanUseTemplate(),
+          DataNodeQueryMessages.EXCEPTION_PUSH_DOWN_PREDICATE_IS_NOT_SUPPORTED_YET_178F04A1);
       Operator rootOperator =
           constructFilterOperator(
               pushDownPredicate,
@@ -587,7 +589,10 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       int index = inputColumnNames.indexOf(outputColumnName);
       if (index < 0 && !outputColumnName.equals(TIMESTAMP_EXPRESSION_STRING)) {
         throw new IllegalStateException(
-            String.format("Cannot find column [%s] in child's output", outputColumnName));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_CANNOT_FIND_COLUMN_S_IN_CHILD_S_OUTPUT_10FBE4C8,
+                outputColumnName));
       }
       remainingColumnIndexList.add(index);
     }
@@ -719,7 +724,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
-          "descriptor's input expression size is not 1");
+          DataNodeQueryMessages
+              .EXCEPTION_DESCRIPTOR_QUOTE_S_INPUT_EXPRESSION_SIZE_IS_NOT_1_DA4BED50);
 
       Expression expression = descriptor.getInputExpressions().get(0);
       if (expression instanceof TimeSeriesOperand) {
@@ -760,8 +766,10 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
                 Collections.singletonList(new InputLocation[] {new InputLocation(0, -1)})));
       } else {
         throw new IllegalArgumentException(
-            "descriptor's input expression must be TimeSeriesOperand/TimestampOperand, current is "
-                + expression);
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_DESCRIPTOR_S_INPUT_EXPRESSION_MUST_BE_TIMESERIESOPERAND_F4F66475,
+                expression));
       }
     }
 
@@ -1183,7 +1191,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     if (!sortItemList.get(0).getSortKey().equalsIgnoreCase("Device")) {
       throw new IllegalStateException(
-          "AggregationMergeSortNode without order by device should not appear here");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_AGGREGATIONMERGESORTNODE_WITHOUT_ORDER_BY_DEVICE_SHOULD_7AED85D1);
     }
 
     boolean timeAscending = true;
@@ -1688,7 +1697,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getGroupByLevelDescriptors().isEmpty(),
-        "GroupByLevel descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_GROUPBYLEVEL_DESCRIPTORLIST_CANNOT_BE_EMPTY_34604314);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -1741,10 +1750,13 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
   @Override
   public Operator visitGroupByTag(GroupByTagNode node, LocalExecutionPlanContext context) {
-    checkArgument(!node.getTagKeys().isEmpty(), "GroupByTag tag keys cannot be empty");
+    checkArgument(
+        !node.getTagKeys().isEmpty(),
+        DataNodeQueryMessages.EXCEPTION_GROUPBYTAG_TAG_KEYS_CANNOT_BE_EMPTY_5D649624);
     checkArgument(
         node.getTagValuesToAggregationDescriptors().size() >= 1,
-        "GroupByTag aggregation descriptors cannot be empty");
+        DataNodeQueryMessages
+            .EXCEPTION_GROUPBYTAG_AGGREGATION_DESCRIPTORS_CANNOT_BE_EMPTY_82EC14EB);
 
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
@@ -1812,7 +1824,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       SlidingWindowAggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1918,7 +1930,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       Map<String, List<InputLocation>> layout) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     Operator child = node.getChild().accept(this, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -2047,7 +2059,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
-        "Aggregation descriptorList cannot be empty");
+        DataNodeQueryMessages.EXCEPTION_AGGREGATION_DESCRIPTORLIST_CANNOT_BE_EMPTY_490C1740);
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
     boolean ascending = node.getScanOrder() == ASC;
     List<TreeAggregator> aggregators = new ArrayList<>();
@@ -2595,7 +2607,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     }
 
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -2637,7 +2650,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
     checkArgument(
-        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
     ISinkHandle sinkHandle =
@@ -3207,7 +3221,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unexpected PlanNode in getOutputColumnTypesOfTimeJoinNode, type: %s",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNEXPECTED_PLANNODE_IN_GETOUTPUTCOLUMNTYPESOFTIMEJOINNODE_00FAAEED,
                 child.getOutputColumnNames()));
       }
     }
@@ -3768,7 +3783,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
         List<String> measurementList = alignedPath.getMeasurementList();
         if (measurementList.size() != entry.getValue().size()) {
           throw new IllegalArgumentException(
-              "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_SIZE_OF_MEASUREMENTLIST_AND_TIMESERIESSCHEMAINFOLIST_A6649661);
         }
         int size = measurementList.size();
         List<IMeasurementSchema> schemaList = new ArrayList<>(size);

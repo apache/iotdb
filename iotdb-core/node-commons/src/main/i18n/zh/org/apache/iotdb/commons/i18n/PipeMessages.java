@@ -853,4 +853,54 @@ public final class PipeMessages {
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
 
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_UNSUPPORTED_PIPERUNTIMEEXCEPTION_TYPE_ARG_C5D5D84C = "不支持的PipeRuntime异常 type %s.";
+  public static final String LOG_SUBSCRIPTIONENABLED_ARG_6F9EC0F9 = "订阅Enabled: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSPREFETCHEXECUTORMAXTHREADNUM_ARG_94D0BD76 = "订阅ConsensusPrefetchExecutorMaxTh读取Num: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXDELAYINMS_ARG_38C2CB8B = "订阅ConsensusBatchMaxDelayInMs: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXSIZEINBYTES_ARG_F8D28441 = "订阅ConsensusBatchMaxSizeInBytes: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXTABLETCOUNT_ARG_60BB1D6A = "订阅ConsensusBatchMaxTabletCount: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSBATCHMAXWALENTRIES_ARG_9BF1CAE4 = "订阅ConsensusBatchMaxWalEntries: {}";
+  public static final String LOG_SUBSCRIPTIONCONSENSUSIDLESAFETIMEBARRIERINTERVALMS_ARG_A6944544 = "订阅ConsensusIdleSafeTimeBarrierIntervalMs: {}";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484 = "Unexpected EOF 读取ing region progress key length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE = "Unexpected EOF 读取ing region progress key";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0 = "Unexpected EOF 读取ing region progress value length";
+  public static final String EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521 = "Unexpected EOF 读取ing region progress value";
+  public static final String EXCEPTION_FAILED_ADD_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_EF08EE87 = "无法add 订阅 to 消费者 group meta: 消费者 %s 不exist in 消费者 group %s";
+  public static final String EXCEPTION_FAILED_REMOVE_SUBSCRIPTION_CONSUMER_GROUP_META_CONSUMER_ARG_DOES_NOT_75C319C3 = "无法移除 订阅 from 消费者 group meta: 消费者 %s 不exist in 消费者 group %s";
+  public static final String EXCEPTION_PATH_PATTERN_ARG_NOT_VALID_SOURCE_ONLY_PREFIX_FULL_PATH_784778B8 = "The 路径 pattern %s 不是valid for the source. Only prefix or full 路径 is allowed.";
+  public static final String EXCEPTION_CAPTURE_TREE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_29A08445 = "capture.tree 不能be specified to false when double living is enabled";
+  public static final String EXCEPTION_CAPTURE_TABLE_CAN_NOT_SPECIFIED_FALSE_DOUBLE_LIVING_ENABLED_8AEB8F7B = "capture.table 不能be specified to false when double living is enabled";
+  public static final String EXCEPTION_FORWARDING_PIPE_REQUESTS_CAN_NOT_SPECIFIED_TRUE_DOUBLE_LIVING_ENABLED_B000E8A1 = "forwarding-pipe-requests 不能be specified to true when double living is enabled";
+  public static final String EXCEPTION_PARAMETERS_SET_ARG_NOT_ALLOWED_SKIPIF_2B9AA054 = "参数s in set %s 不是allowed in 'skipif'";
+  public static final String LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5 = "用户 conflict 异常: discarded data info，原因：{}. data: {}. receiver 消息: {}. 状态: {}";
+  public static final String LOG_RE_INCREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_B8DAAAEE = "re-increase reference count to event that has 已经been released: {}, stack trace: {}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_94C472FC = "increase reference count 失败, EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_EVENT_HAS_ALREADY_BEEN_RELEASED_ARG_STACK_99FCAB8B = "decrease reference count to event that has 已经been released: {}, stack trace: {}";
+  public static final String LOG_RESOURCE_REFERENCE_COUNT_DECREASED_0_BUT_FAILED_RELEASE_RESOURCE_ENRICHEDEVENT_A02A86AF =
+      "resource reference count is decreased to 0, but 无法release the resource, EnrichedEvent: {},"
+      + " stack trace: {}";
+  public static final String LOG_REFERENCE_COUNT_DECREASED_ARG_EVENT_ARG_STACK_TRACE_ARG_A4BF56FC = "reference count is decreased to {}, event: {}, stack trace: {}";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_FAILED_ENRICHEDEVENT_ARG_STACK_TRACE_ARG_6A2024AB = "decrease reference count 失败, EnrichedEvent: {}, stack trace: {}";
+  public static final String LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038 = "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}";
+  public static final String LOG_UNKNOWN_PATTERN_FORMAT_ARG_USE_PREFIX_MATCHING_FORMAT_DEFAULT_E7B9EFEC = "未知的pattern format: {}, use prefix matching format by default.";
+  public static final String LOG_PIPE_LISTENING_QUEUE_SNAPSHOT_CACHE_UPDATED_ARG_414EE914 = "Pipe listening queue snapshot cache is updated: {}";
+  public static final String LOG_FAILED_SERIALIZE_FILE_BECAUSE_FILE_ARG_ALREADY_EXIST_FACC5C4C = "无法序列化 to 文件,，原因：文件 {} is 已经exist.";
+  public static final String LOG_FAILED_DESERIALIZE_FILE_FILE_ARG_DOES_NOT_EXIST_2356708C = "无法de序列化 from 文件, 文件 {} 不exist.";
+  public static final String EXCEPTION_UNKNOWN_PIPE_RUNTIME_META_VERSION_C2F4B575 = "未知的pipe runtime meta version: ";
+  public static final String EXCEPTION_ROOT_CAUSE_A22E94DE = ", root cause: ";
+  public static final String LOG_SUCCESSFULLY_EXECUTED_SUBTASK_ARG_ARG_AFTER_ARG_RETRIES_70972F07 = "成功fully executed subtask {}({}) after {} retries.";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PIPEPLUGINMETAKEEPER_NULL_0C9BD2E2 = "无法reflect PipePlugin instance,，原因：PipePluginMetaKeeper is null.";
+  public static final String EXCEPTION_FAILED_REFLECT_PIPEPLUGIN_INSTANCE_BECAUSE_PLUGIN_NAME_NULL_416BD04D = "无法reflect PipePlugin instance,，原因：plugin name is null.";
+  public static final String LOG_IOTDBSINK_ARG_ARG_4E140C06 = "IoTDBSink {} = {}";
+  public static final String EXCEPTION_SOCKET_ARG_CLOSED_WILL_TRY_HANDSHAKE_02562BF1 = "Socket %s is 关闭d, will try to handshake";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "Network 错误 when transfer 文件 %s,，原因：%s.";
+  public static final String LOG_ORIGIN_REQUEST_TYPE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_D96D10AE = "Origin request type mismatch: expected {}, actual {}";
+  public static final String LOG_ORIGIN_BODY_SIZE_MISMATCH_EXPECTED_ARG_ACTUAL_ARG_5D410B75 = "Origin body size mismatch: expected {}, actual {}";
+  public static final String LOG_INVALID_SLICE_INDEX_EXPECTED_ARG_ACTUAL_ARG_2AC41628 = "无效的slice index: expected {}, actual {}";
+  public static final String EXCEPTION_DECOMPRESSED_LENGTH_SHOULD_BETWEEN_0_ARG_BUT_GOT_ARG_488B3073 = "Decompressed length 应be between 0 and %d, but got %d.";
+  public static final String EXCEPTION_COMMA_50AD1C01 = ", ";
+
 }

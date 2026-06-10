@@ -323,7 +323,7 @@ public class SchemaUtils {
     try {
       status = env.getConfigManager().getConsensusManager().write(plan);
     } catch (final ConsensusException e) {
-      logger.warn("Failed in the write API executing the consensus layer due to: ", e);
+      logger.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

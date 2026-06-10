@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -191,7 +192,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
 
     LOGGER.warn(
-        "SubscriptionPipeTabletEventBatch {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_ONLY_SUPPORT_CONVERT_PIPEINSERTNODETABLETINSERTIONEVENT_B888B8AA,
         this,
         tabletInsertionEvent);
     return null;
@@ -281,7 +283,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
     if (iteratedCount.incrementAndGet() % ITERATED_COUNT_REPORT_FREQ == 0) {
       LOGGER.info(
-          "{} has been iterated {} times, current TsFileInsertionEvent {}",
+          DataNodePipeMessages
+              .PIPE_LOG_HAS_BEEN_ITERATED_TIMES_CURRENT_TSFILEINSERTIONEVENT_0939C298,
           this,
           iteratedCount,
           Objects.isNull(currentTsFileInsertionEvent)
@@ -298,13 +301,15 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             currentTabletInsertionEventsIterator.next();
         if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
           LOGGER.warn(
-              "SubscriptionPipeTabletEventBatch: Unexpected tablet insertion event {}, skipping it.",
+              DataNodePipeMessages
+                  .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_UNEXPECTED_TABLET_INSERTION_8FB1B507,
               tabletInsertionEvent);
         } else {
           if (!((PipeRawTabletInsertionEvent) tabletInsertionEvent)
               .increaseReferenceCount(this.getClass().getName())) {
             LOGGER.warn(
-                "SubscriptionPipeTabletEventBatch: Failed to increase the reference count of event {}, skipping it.",
+                DataNodePipeMessages
+                    .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_FAILED_TO_INCREASE_THE_595722D8,
                 ((PipeRawTabletInsertionEvent) tabletInsertionEvent).coreReportMessage());
           } else {
             iterationSnapshot.addParsedEnrichedEvent(
@@ -333,7 +338,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     if (enrichedEvent instanceof TsFileInsertionEvent) {
       if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
         LOGGER.warn(
-            "SubscriptionPipeTabletEventBatch {} override non-null currentTabletInsertionEventsIterator when iterating (broken invariant).",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_OVERRIDE_NON_NULL_CURRENTTABLETINSERTIONEVENTSITERATOR_2633B158,
             this);
       }
       final PipeTsFileInsertionEvent tsFileInsertionEvent =
@@ -354,7 +360,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       return convertToTablets((TabletInsertionEvent) enrichedEvent);
     } else {
       LOGGER.warn(
-          "SubscriptionPipeTabletEventBatch {} ignore EnrichedEvent {} when iterating (broken invariant).",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_IGNORE_ENRICHEDEVENT_WHEN_E6BAEACE,
           this,
           enrichedEvent);
       return null;

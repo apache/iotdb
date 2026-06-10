@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -342,7 +343,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriteContext context) {
-      checkArgument(node.getPredicate() != null, "Filter predicate of FilterNode is null");
+      checkArgument(
+          node.getPredicate() != null,
+          DataNodeQueryMessages.EXCEPTION_FILTER_PREDICATE_OF_FILTERNODE_IS_NULL_C3964179);
 
       Expression predicate = combineConjuncts(node.getPredicate(), context.inheritedPredicate);
 
@@ -702,9 +705,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               queryContext);
       if (deviceEntriesMap.size() > 1) {
         throw new SemanticException(
-            "Tree device view with multiple databases("
+            DataNodeQueryMessages.TREE_DEVICE_VIEW_WITH_MULTIPLE_DATABASES
                 + deviceEntriesMap.keySet()
-                + ") is unsupported yet.");
+                + DataNodeQueryMessages.IS_UNSUPPORTED_YET);
       }
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
@@ -759,7 +762,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
         if (dataPartition.getDataPartitionMap().size() > 1) {
           throw new IllegalStateException(
-              "Table model can only process data only in one database yet!");
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_TABLE_MODEL_CAN_ONLY_PROCESS_DATA_ONLY_IN_ONE_DATABASE_YET_AB8C1EF5);
         }
 
         if (dataPartition.getDataPartitionMap().isEmpty()) {
@@ -837,7 +841,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           break;
         default:
           throw new IllegalArgumentException(
-              "Unsupported join type in predicate push down: " + node.getJoinType().name());
+              String.format(
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_UNSUPPORTED_JOIN_TYPE_IN_PREDICATE_PUSH_DOWN_S_4493D86C,
+                  node.getJoinType().name()));
       }
 
       // newJoinPredicate = simplifyExpression(newJoinPredicate);
@@ -1260,7 +1267,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       Set<Symbol> predicateSymbols = extractUnique(inheritedPredicate);
       checkState(
           !predicateSymbols.contains(node.getIdColumn()),
-          "UniqueId in predicate is not yet supported");
+          DataNodeQueryMessages.EXCEPTION_UNIQUEID_IN_PREDICATE_IS_NOT_YET_SUPPORTED_7B5D2EAF);
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       return node.replaceChildren(ImmutableList.of(rewrittenChild));
     }
@@ -1336,7 +1343,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     private JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
       checkArgument(
           EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
-          "Unsupported join type: %s",
+          DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_JOIN_TYPE_COLON_ARG_9FB6751B,
           node.getJoinType());
 
       if (node.getJoinType() == JoinNode.JoinType.INNER) {
@@ -1489,11 +1496,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         List<Expression> expressionsCanPushDown,
         List<Expression> expressionsCannotPushDown,
         @Nullable String timeColumnName) {
-      this.metadataExpressions = requireNonNull(metadataExpressions, "metadataExpressions is null");
+      this.metadataExpressions =
+          requireNonNull(
+              metadataExpressions,
+              DataNodeQueryMessages.EXCEPTION_METADATAEXPRESSIONS_IS_NULL_3752914C);
       this.expressionsCanPushDown =
-          requireNonNull(expressionsCanPushDown, "expressionsCanPushDown is null");
+          requireNonNull(
+              expressionsCanPushDown,
+              DataNodeQueryMessages.EXCEPTION_EXPRESSIONSCANPUSHDOWN_IS_NULL_DC8DFEB3);
       this.expressionsCannotPushDown =
-          requireNonNull(expressionsCannotPushDown, "expressionsCannotPushDown is null");
+          requireNonNull(
+              expressionsCannotPushDown,
+              DataNodeQueryMessages.EXCEPTION_EXPRESSIONSCANNOTPUSHDOWN_IS_NULL_63BC9AF9);
       this.timeColumnName = timeColumnName;
     }
 

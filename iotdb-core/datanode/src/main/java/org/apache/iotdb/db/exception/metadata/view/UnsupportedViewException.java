@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.exception.metadata.view;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class UnsupportedViewException extends MetadataException {
 
-  private static final String VIEW_IS_UNSUPPORTED = "View unsupported, because: %s";
+  private static final String VIEW_IS_UNSUPPORTED = DataNodeSchemaMessages.VIEW_IS_UNSUPPORTED_FMT;
 
   public UnsupportedViewException(String message) {
     super(

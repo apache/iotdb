@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,7 +57,9 @@ public class PatternAggregators {
 
   public void copy(int parent, int child) {
     ensureCapacity(child);
-    checkState(values[child] == null, "overriding aggregations for child thread");
+    checkState(
+        values[child] == null,
+        CalcMessages.EXCEPTION_OVERRIDING_AGGREGATIONS_FOR_CHILD_THREAD_9C84E47D);
 
     if (values[parent] != null) {
       PatternAggregator[] aggregations = new PatternAggregator[patternAggregators.size()];

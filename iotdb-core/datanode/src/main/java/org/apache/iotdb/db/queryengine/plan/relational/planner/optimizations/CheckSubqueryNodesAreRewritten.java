@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import java.util.List;
 
@@ -58,8 +59,10 @@ public class CheckSubqueryNodesAreRewritten implements PlanOptimizer {
   private SemanticException error(List<Symbol> correlation) {
     checkState(
         !correlation.isEmpty(),
-        "All the non correlated subqueries should be rewritten at this point");
+        DataNodeQueryMessages
+            .EXCEPTION_ALL_THE_NON_CORRELATED_SUBQUERIES_SHOULD_BE_REWRITTEN_AT_THIS_POINT_B4614541);
     throw new SemanticException(
-        "Given correlated subquery is not supported", SEMANTIC_ERROR.getStatusCode());
+        DataNodeQueryMessages.GIVEN_CORRELATED_SUBQUERY_IS_NOT_SUPPORTED,
+        SEMANTIC_ERROR.getStatusCode());
   }
 }

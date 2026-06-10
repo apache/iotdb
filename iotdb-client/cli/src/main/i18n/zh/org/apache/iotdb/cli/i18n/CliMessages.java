@@ -67,4 +67,23 @@ public final class CliMessages {
   public static final String CANNOT_CONVERT = "%s 无法转换为 %s";
 
   private CliMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_HANDSHAKE_ERROR_TARGET_SERVER_IP_ARG_PORT_ARG_BECAUSE_ARG_9D522E62 = "Handshake 错误 with target server ip: %s, port: %s,，原因： %s.";
+  public static final String EXCEPTION_NETWORK_ERROR_SEAL_FILE_ARG_BECAUSE_ARG_62E92EE8 = "Network 错误 when seal 文件 %s,，原因：%s.";
+  public static final String EXCEPTION_SEAL_FILE_ARG_ERROR_RESULT_STATUS_ARG_FE3B82AC = "Seal 文件 %s 错误, result 状态 %s.";
+  public static final String EXCEPTION_NETWORK_ERROR_TRANSFER_FILE_ARG_BECAUSE_ARG_BC25323C = "Network 错误 when transfer 文件 %s,，原因：%s.";
+  public static final String EXCEPTION_TRANSFER_FILE_ARG_ERROR_RESULT_STATUS_ARG_E565D9FD = "Transfer 文件 %s 错误, result 状态 %s.";
+  public static final String LOG_TARGETDATADIR_PARAMETER_EXCEPTION_NUMBER_ORIGINAL_PATHS_DOES_NOT_MATCH_NUMBER_8B31BF59 = "-targetdatadir 参数 异常, the number of original 路径s 不match the number of specified 路径s";
+  public static final String LOG_TARGETWALDIR_PARAMETER_EXCEPTION_NUMBER_ORIGINAL_PATHS_DOES_NOT_MATCH_NUMBER_94AFE885 = "-targetwaldir 参数 异常, the number of original 路径s 不match the number of specified 路径s";
+  public static final String LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_ARG_371383B7 = "The 目录 to be backed up cannot be in the source 目录, please check:{},{},{}";
+  public static final String LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_ARG_6DA7D5DA = "The 目录 to be backed up cannot be in the source 目录, please check:{},{}";
+  public static final String LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_CFA67674 = "The 目录 to be backed up cannot be in the source 目录, please check:{}";
+  public static final String LOG_TOTAL_FILE_NUMBER_A1554ADC = "total 文件 number:";
+  public static final String LOG_VERIFY_NUMBER_FILES_E171592C = ",verify the number of 文件s:";
+  public static final String LOG_BACKUP_FILE_NUMBER_72FC1312 = ",backup 文件 number:";
+  public static final String LOG_INPUT_TIME_FORMAT_ARG_NOT_SUPPORTED_00172A7B = "Input time format {} 不是supported, ";
+  public static final String LOG_PLEASE_INPUT_LIKE_YYYY_MM_DD_HH_MM_SS_SSS_9318BFC7 = "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n";
+
 }

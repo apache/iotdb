@@ -282,7 +282,9 @@ public class AlignedChunkData implements ChunkData {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", dataType));
+                  String.format(
+                      StorageEngineMessages.STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                      dataType));
           }
         }
       }
@@ -424,7 +426,10 @@ public class AlignedChunkData implements ChunkData {
                 break;
               default:
                 throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+                    String.format(
+                        StorageEngineMessages
+                            .STORAGE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4,
+                        chunkHeader.getDataType()));
             }
           }
         }

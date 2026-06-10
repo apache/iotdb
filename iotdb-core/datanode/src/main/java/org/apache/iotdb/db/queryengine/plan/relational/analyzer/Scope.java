@@ -75,12 +75,19 @@ public class Scope {
       RelationType relation,
       Map<String, WithQuery> namedQueries,
       List<Identifier> tables) {
-    this.parent = requireNonNull(parent, "parent is null");
-    this.relationId = requireNonNull(relationId, "relationId is null");
+    this.parent = requireNonNull(parent, DataNodeQueryMessages.EXCEPTION_PARENT_IS_NULL_ED81BAD8);
+    this.relationId =
+        requireNonNull(relationId, DataNodeQueryMessages.EXCEPTION_RELATIONID_IS_NULL_C4683108);
     this.queryBoundary = queryBoundary;
-    this.relation = requireNonNull(relation, "relation is null");
-    this.namedQueries = ImmutableMap.copyOf(requireNonNull(namedQueries, "namedQueries is null"));
-    this.tables = new ArrayList<>(requireNonNull(tables, "tables is null"));
+    this.relation =
+        requireNonNull(relation, DataNodeQueryMessages.EXCEPTION_RELATION_IS_NULL_890596ED);
+    this.namedQueries =
+        ImmutableMap.copyOf(
+            requireNonNull(
+                namedQueries, DataNodeQueryMessages.EXCEPTION_NAMEDQUERIES_IS_NULL_AFDE9A4A));
+    this.tables =
+        new ArrayList<>(
+            requireNonNull(tables, DataNodeQueryMessages.EXCEPTION_TABLES_IS_NULL_2012309E));
   }
 
   public void addTable(Table table) {
@@ -257,7 +264,7 @@ public class Scope {
             () ->
                 new SemanticException(
                     new IoTDBException(
-                        String.format("Column '%s' cannot be resolved", name),
+                        String.format(DataNodeQueryMessages.COLUMN_S_CANNOT_BE_RESOLVED, name),
                         TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode())));
   }
 
@@ -366,26 +373,34 @@ public class Scope {
     }
 
     public Builder withRelationType(RelationId relationId, RelationType relationType) {
-      this.relationId = requireNonNull(relationId, "relationId is null");
-      this.relationType = requireNonNull(relationType, "relationType is null");
+      this.relationId =
+          requireNonNull(relationId, DataNodeQueryMessages.EXCEPTION_RELATIONID_IS_NULL_C4683108);
+      this.relationType =
+          requireNonNull(
+              relationType, DataNodeQueryMessages.EXCEPTION_RELATIONTYPE_IS_NULL_62DDF9C1);
       return this;
     }
 
     public Builder withParent(Scope parent) {
-      checkArgument(!this.parent.isPresent(), "parent is already set");
+      checkArgument(
+          !this.parent.isPresent(), DataNodeQueryMessages.EXCEPTION_PARENT_IS_ALREADY_SET_835DE0A5);
       this.parent = Optional.of(parent);
       return this;
     }
 
     public Builder withOuterQueryParent(Scope parent) {
-      checkArgument(!this.parent.isPresent(), "parent is already set");
+      checkArgument(
+          !this.parent.isPresent(), DataNodeQueryMessages.EXCEPTION_PARENT_IS_ALREADY_SET_835DE0A5);
       this.parent = Optional.of(parent);
       this.queryBoundary = true;
       return this;
     }
 
     public Builder withNamedQuery(String name, WithQuery withQuery) {
-      checkArgument(!containsNamedQuery(name), "Query '%s' is already added", name);
+      checkArgument(
+          !containsNamedQuery(name),
+          DataNodeQueryMessages.EXCEPTION_QUERY_QUOTE_ARG_QUOTE_IS_ALREADY_ADDED_F3D47DBD,
+          name);
       namedQueries.put(name, withQuery);
       return this;
     }
@@ -411,11 +426,18 @@ public class Scope {
 
     public AsteriskedIdentifierChainBasis(
         BasisType basisType, Optional<Scope> scope, Optional<RelationType> relationType) {
-      this.basisType = requireNonNull(basisType, "basisType is null");
-      this.scope = requireNonNull(scope, "scope is null");
-      this.relationType = requireNonNull(relationType, "relationType is null");
-      checkArgument(basisType == FIELD || scope.isPresent(), "missing scope");
-      checkArgument(basisType == FIELD || relationType.isPresent(), "missing relationType");
+      this.basisType =
+          requireNonNull(basisType, DataNodeQueryMessages.EXCEPTION_BASISTYPE_IS_NULL_33E4F842);
+      this.scope = requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
+      this.relationType =
+          requireNonNull(
+              relationType, DataNodeQueryMessages.EXCEPTION_RELATIONTYPE_IS_NULL_62DDF9C1);
+      checkArgument(
+          basisType == FIELD || scope.isPresent(),
+          DataNodeQueryMessages.EXCEPTION_MISSING_SCOPE_D573869F);
+      checkArgument(
+          basisType == FIELD || relationType.isPresent(),
+          DataNodeQueryMessages.EXCEPTION_MISSING_RELATIONTYPE_679D3CFA);
     }
 
     public BasisType getBasisType() {

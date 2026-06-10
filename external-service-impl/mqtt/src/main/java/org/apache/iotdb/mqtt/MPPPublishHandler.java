@@ -95,7 +95,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     if (msg.getClientID() == null || msg.getClientID().trim().isEmpty()) {
       LOG.error(
-          "Connection refused: client_id is missing or empty. A valid client_id is required to establish a connection.");
+          MqttMessages
+              .LOG_CONNECTION_REFUSED_CLIENT_ID_MISSING_EMPTY_VALID_CLIENT_ID_REQUIRED_A566DC15);
     }
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
@@ -136,7 +137,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         String username = msg.getUsername();
         MqttQoS qos = msg.getQos();
         LOG.debug(
-            "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
+            MqttMessages
+                .LOG_RECEIVE_PUBLISH_MESSAGE_CLIENTID_ARG_USERNAME_ARG_QOS_ARG_TOPIC_7E60C3A6,
             clientId,
             username,
             qos,
@@ -197,13 +199,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         LOG.warn(
-            "mqtt json insert error, code={}, message={}",
+            MqttMessages.LOG_MQTT_JSON_INSERT_ERROR_CODE_ARG_MESSAGE_ARG_B1A78FBD,
             tsStatus.getCode(),
             tsStatus.getMessage());
       }
     } catch (Exception e) {
       LOG.warn(
-          "meet error when inserting database {}, table {}, tags {}, attributes {}, fields {}, at time {}, because ",
+          MqttMessages.LOG_MEET_ERROR_INSERTING_DATABASE_ARG_TABLE_ARG_TAGS_ARG_ATTRIBUTES_173457D5,
           message.getDatabase(),
           message.getTable(),
           message.getTagKeys(),
@@ -316,14 +318,14 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
           LOG.warn(
-              "mqtt json insert error, code={}, message={}",
+              MqttMessages.LOG_MQTT_JSON_INSERT_ERROR_CODE_ARG_MESSAGE_ARG_B1A78FBD,
               tsStatus.getCode(),
               tsStatus.getMessage());
         }
       }
     } catch (Exception e) {
       LOG.warn(
-          "meet error when inserting device {}, measurements {}, at time {}, because ",
+          MqttMessages.LOG_MEET_ERROR_INSERTING_DEVICE_ARG_MEASUREMENTS_ARG_AT_TIME_ARG_680D67D2,
           message.getDevice(),
           message.getMeasurements(),
           message.getTimestamp(),

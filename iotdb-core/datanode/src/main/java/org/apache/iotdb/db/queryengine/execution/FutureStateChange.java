@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -66,7 +68,7 @@ public class FutureStateChange<T> {
   }
 
   private void fireStateChange(T newState, Executor executor) {
-    requireNonNull(executor, "executor is null");
+    requireNonNull(executor, DataNodeQueryMessages.EXCEPTION_EXECUTOR_IS_NULL_7FBE03A4);
     Set<SettableFuture<T>> futures;
     synchronized (listeners) {
       futures = ImmutableSet.copyOf(listeners);

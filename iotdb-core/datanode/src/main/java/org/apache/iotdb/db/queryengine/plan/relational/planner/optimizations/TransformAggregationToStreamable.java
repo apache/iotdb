@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNod
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -91,7 +92,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Void context) {
       throw new RuntimeException(
-          "This optimizer should be used before optimizer of PushAggregationIntoTableScan");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THIS_OPTIMIZER_SHOULD_BE_USED_BEFORE_OPTIMIZER_OF_PUSHAGGREGATIONINTOTABLESCAN_9F6016E3);
     }
   }
 
@@ -202,7 +204,8 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     public List<Symbol> visitAggregationTableScan(
         AggregationTableScanNode node, GroupContext context) {
       throw new RuntimeException(
-          "This optimizer should be used before optimizer of PushAggregationIntoTableScan");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_THIS_OPTIMIZER_SHOULD_BE_USED_BEFORE_OPTIMIZER_OF_PUSHAGGREGATIONINTOTABLESCAN_9F6016E3);
     }
   }
 

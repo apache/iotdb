@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
@@ -192,7 +193,10 @@ public class SettleSelectorImpl implements ISettleSelector {
       return createTask(partiallyDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
-          "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
+          StorageEngineMessages.STORAGE_LOG_CANNOT_SELECT_FILE_FOR_SETTLE_COMPACTION_08C958D3,
+          storageGroupName,
+          dataRegionId,
+          e);
     }
     return Collections.emptyList();
   }

@@ -23,6 +23,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
@@ -202,8 +203,11 @@ abstract class AbstractSubscriptionSession {
       if (fields.size() != 2) {
         throw new SubscriptionException(
             String.format(
-                "Unexpected fields %s was obtained during SHOW TOPIC...",
-                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
+                SubscriptionMessages
+                    .EXCEPTION_UNEXPECTED_FIELDS_ARG_WAS_OBTAINED_DURING_SHOW_TOPIC_30B5D702,
+                fields.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(SubscriptionMessages.FIELD_SEPARATOR))));
       }
       topics.add(new Topic(fields.get(0).getStringValue(), fields.get(1).getStringValue()));
     }
@@ -219,8 +223,11 @@ abstract class AbstractSubscriptionSession {
       if (fields.size() != 4) {
         throw new SubscriptionException(
             String.format(
-                "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
-                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
+                SubscriptionMessages
+                    .EXCEPTION_UNEXPECTED_FIELDS_ARG_WAS_OBTAINED_DURING_SHOW_SUBSCRIPTION_71F9C549,
+                fields.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining(SubscriptionMessages.FIELD_SEPARATOR))));
       }
       subscriptions.add(
           new Subscription(

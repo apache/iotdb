@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
@@ -68,15 +69,15 @@ public class Query extends Statement {
       Optional<Offset> offset,
       Optional<Node> limit) {
     super(location);
-    requireNonNull(with, "with is null");
-    requireNonNull(queryBody, "queryBody is null");
-    requireNonNull(fill, "fill is null");
-    requireNonNull(orderBy, "orderBy is null");
-    requireNonNull(offset, "offset is null");
-    requireNonNull(limit, "limit is null");
+    requireNonNull(with, QueryMessages.EXCEPTION_WITH_IS_NULL_20C2A1AE);
+    requireNonNull(queryBody, QueryMessages.EXCEPTION_QUERYBODY_IS_NULL_E3EB26CA);
+    requireNonNull(fill, QueryMessages.EXCEPTION_FILL_IS_NULL_3548C13D);
+    requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+    requireNonNull(offset, QueryMessages.EXCEPTION_OFFSET_IS_NULL_82BA6093);
+    requireNonNull(limit, QueryMessages.EXCEPTION_LIMIT_IS_NULL_2EE9FA0F);
     checkArgument(
         !limit.isPresent() || limit.get() instanceof Limit,
-        "limit must be optional of either FetchFirst or Limit type");
+        QueryMessages.EXCEPTION_LIMIT_MUST_BE_OPTIONAL_OF_EITHER_FETCHFIRST_OR_LIMIT_TYPE_0636CAA9);
 
     this.with = with;
     this.queryBody = queryBody;

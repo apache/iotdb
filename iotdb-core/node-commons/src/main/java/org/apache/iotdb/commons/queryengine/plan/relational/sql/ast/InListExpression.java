@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -42,15 +44,15 @@ public class InListExpression extends Expression {
 
   public InListExpression(List<Expression> values) {
     super(null);
-    requireNonNull(values, "values is null");
-    checkArgument(!values.isEmpty(), "values cannot be empty");
+    requireNonNull(values, QueryMessages.EXCEPTION_VALUES_IS_NULL_F1D7D3D8);
+    checkArgument(!values.isEmpty(), QueryMessages.EXCEPTION_VALUES_CANNOT_BE_EMPTY_F18F863D);
     this.values = ImmutableList.copyOf(values);
   }
 
   public InListExpression(NodeLocation location, List<Expression> values) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(values, "values is null");
-    checkArgument(!values.isEmpty(), "values cannot be empty");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(values, QueryMessages.EXCEPTION_VALUES_IS_NULL_F1D7D3D8);
+    checkArgument(!values.isEmpty(), QueryMessages.EXCEPTION_VALUES_CANNOT_BE_EMPTY_F18F863D);
     this.values = ImmutableList.copyOf(values);
   }
 

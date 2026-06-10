@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -74,7 +75,8 @@ public class Assignments {
   }
 
   public Assignments(Map<Symbol, Expression> assignments) {
-    this.assignments = requireNonNull(assignments, "assignments is null");
+    this.assignments =
+        requireNonNull(assignments, QueryMessages.EXCEPTION_ASSIGNMENTS_IS_NULL_1FD6142D);
   }
 
   public List<Symbol> getOutputs() {
@@ -191,8 +193,9 @@ public class Assignments {
     private final Expression expression;
 
     public Assignment(Symbol output, Expression expression) {
-      this.output = requireNonNull(output, "output is null");
-      this.expression = requireNonNull(expression, "expression is null");
+      this.output = requireNonNull(output, QueryMessages.EXCEPTION_OUTPUT_IS_NULL_3CDA316E);
+      this.expression =
+          requireNonNull(expression, QueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
     }
 
     public Symbol getOutput() {
@@ -223,7 +226,8 @@ public class Assignments {
         Expression assignment = assignments.get(symbol);
         checkState(
             assignment.equals(expression),
-            "Symbol %s already has assignment %s, while adding %s",
+            QueryMessages
+                .EXCEPTION_SYMBOL_ARG_ALREADY_HAS_ASSIGNMENT_ARG_COMMA_WHILE_ADDING_ARG_EE8CADA3,
             symbol,
             assignment,
             expression);

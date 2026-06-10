@@ -149,7 +149,8 @@ public class IoTDBDataBackTool {
       if (!targetDataDirParam.isEmpty()) {
         if (!matchPattern(targetDataDirParam, dnDataDirs)) {
           LOGGER.error(
-              "-targetdatadir parameter exception, the number of original paths does not match the number of specified paths");
+              CliMessages
+                  .LOG_TARGETDATADIR_PARAMETER_EXCEPTION_NUMBER_ORIGINAL_PATHS_DOES_NOT_MATCH_NUMBER_8B31BF59);
           isVaild = false;
         }
         if (targetPathVild(targetDataDirParam)) {
@@ -161,7 +162,8 @@ public class IoTDBDataBackTool {
       if (!targetWalDirParam.isEmpty()) {
         if (!matchPattern(targetWalDirParam, dnWalDirs)) {
           LOGGER.error(
-              "-targetwaldir parameter exception, the number of original paths does not match the number of specified paths");
+              CliMessages
+                  .LOG_TARGETWALDIR_PARAMETER_EXCEPTION_NUMBER_ORIGINAL_PATHS_DOES_NOT_MATCH_NUMBER_94AFE885);
           isVaild = false;
         }
         if (targetPathVild(targetWalDirParam)) {
@@ -375,26 +377,30 @@ public class IoTDBDataBackTool {
                 && targetDataDirParam.length() > 0
                 && targetWalDirParam.length() > 0) {
               LOGGER.error(
-                  "The directory to be backed up cannot be in the source directory, please check:{},{},{}",
+                  CliMessages
+                      .LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_ARG_371383B7,
                   targetDirParam,
                   targetDataDirParam,
                   targetWalDirParam);
               System.exit(0);
             } else if (targetDirParam.length() > 0 && targetDataDirParam.length() > 0) {
               LOGGER.error(
-                  "The directory to be backed up cannot be in the source directory, please check:{},{}",
+                  CliMessages
+                      .LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_ARG_6DA7D5DA,
                   targetDirParam,
                   targetDataDirParam);
               System.exit(0);
             } else if (targetDirParam.length() > 0 && targetWalDirParam.length() > 0) {
               LOGGER.error(
-                  "The directory to be backed up cannot be in the source directory, please check:{},{}",
+                  CliMessages
+                      .LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_ARG_6DA7D5DA,
                   targetDirParam,
                   targetWalDirParam);
               System.exit(0);
             } else if (targetDirParam.length() > 0) {
               LOGGER.error(
-                  "The directory to be backed up cannot be in the source directory, please check:{}",
+                  CliMessages
+                      .LOG_DIRECTORY_BACKED_UP_CANNOT_SOURCE_DIRECTORY_PLEASE_CHECK_ARG_CFA67674,
                   targetDirParam);
               System.exit(0);
             }
@@ -930,14 +936,17 @@ public class IoTDBDataBackTool {
               if (processFileCount.get() > targetFileCount.get()) {
                 writeFileData(filename, processFileCount.get());
                 LOGGER.info(
-                    "total file number:"
+                    CliMessages.LOG_TOTAL_FILE_NUMBER_A1554ADC
                         + fileCount
-                        + ",verify the number of files:"
+                        + CliMessages.LOG_VERIFY_NUMBER_FILES_E171592C
                         + targetFileCount);
               } else {
                 writeFileData(filename, targetFileCount.get());
                 LOGGER.info(
-                    "total file number:" + fileCount + ",backup file number:" + targetFileCount);
+                    CliMessages.LOG_TOTAL_FILE_NUMBER_A1554ADC
+                        + fileCount
+                        + CliMessages.LOG_BACKUP_FILE_NUMBER_72FC1312
+                        + targetFileCount);
               }
               return FileVisitResult.CONTINUE;
             }
@@ -1000,14 +1009,17 @@ public class IoTDBDataBackTool {
               if (processFileCount.get() > targetFileCount.get()) {
                 writeFileData(filename, processFileCount.get());
                 LOGGER.info(
-                    "total file number:"
+                    CliMessages.LOG_TOTAL_FILE_NUMBER_A1554ADC
                         + fileCount
-                        + ",verify the number of files:"
+                        + CliMessages.LOG_VERIFY_NUMBER_FILES_E171592C
                         + targetFileCount);
               } else {
                 writeFileData(filename, targetFileCount.get());
                 LOGGER.info(
-                    "total file number:" + fileCount + ",backup file number:" + targetFileCount);
+                    CliMessages.LOG_TOTAL_FILE_NUMBER_A1554ADC
+                        + fileCount
+                        + CliMessages.LOG_BACKUP_FILE_NUMBER_72FC1312
+                        + targetFileCount);
               }
               return FileVisitResult.CONTINUE;
             }

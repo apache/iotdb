@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -123,7 +124,7 @@ public class CompactionEstimateUtils {
               }
             } else {
               LOGGER.warn(
-                  "{} has null chunk metadata, file is {}",
+                  StorageEngineMessages.STORAGE_LOG_HAS_NULL_CHUNK_METADATA_FILE_IS_819E4A49,
                   device.toString() + "." + measurementChunkMetadataList.getKey(),
                   reader.getFileName());
             }
@@ -251,7 +252,9 @@ public class CompactionEstimateUtils {
           resources.get(j).readUnlock();
         }
         throw new CompactionSourceFileDeletedException(
-            "source file " + resource.getTsFilePath() + " is deleted");
+            String.format(
+                StorageEngineMessages.STORAGE_EXCEPTION_SOURCE_FILE_S_IS_DELETED_D2ED7D90,
+                resource.getTsFilePath()));
       }
     }
   }

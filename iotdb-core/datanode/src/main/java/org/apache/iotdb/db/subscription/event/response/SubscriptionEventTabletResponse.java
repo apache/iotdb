@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event.response;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -109,7 +110,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final CachedSubscriptionPollResponse previousResponse;
     if (Objects.isNull(previousResponse = poll())) {
       LOGGER.warn(
-          "SubscriptionEventTabletResponse {} is empty when fetching next response (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_EMPTY_WHEN_FETCHING_NEXT_4464E3F2,
           this);
     } else {
       previousResponse.closeMemoryBlock();
@@ -147,7 +149,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private void init() {
     if (!isEmpty()) {
       LOGGER.warn(
-          "SubscriptionEventTabletResponse {} is not empty when initializing (broken invariant)",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_NOT_EMPTY_WHEN_INITIALIZING_88F075C9,
           this);
       return;
     }
@@ -204,7 +207,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
         // TODO: split tablets
         LOGGER.warn(
-            "Detect large tablets with {} byte(s), current tablets size {} byte(s)",
+            DataNodePipeMessages
+                .PIPE_LOG_DETECT_LARGE_TABLETS_WITH_BYTE_S_CURRENT_TABLETS_SIZE_BYTE_4D472E38,
             bufferSize,
             currentTablets);
         response =
@@ -283,13 +287,15 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
       if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
-            "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
             commitContext,
             waitTimeSeconds);
         lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+            DataNodePipeMessages
+                .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
             commitContext,
             waitTimeSeconds);
       }
@@ -297,14 +303,17 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
         throw new PipeException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+            String.format(
+                DataNodePipeMessages.PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5,
+                waitTimeSeconds));
       }
     }
 
     final long currentTime = System.currentTimeMillis();
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
-        "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F,
         commitContext,
         waitTimeSeconds);
   }

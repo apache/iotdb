@@ -150,7 +150,8 @@ public class NodeInfo implements SnapshotProcessor {
       if (nextNodeId.get() < MINIMUM_DATANODE) {
         result.setMessage(
             String.format(
-                "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode",
+                ConfigNodeMessages
+                    .MESSAGE_ENABLE_IOTDB_CLUSTER_S_DATA_SERVICE_PLEASE_REGISTER_ARG_MORE_F48F3890,
                 MINIMUM_DATANODE - nextNodeId.get()));
       } else if (nextNodeId.get() == MINIMUM_DATANODE) {
         result.setMessage(
@@ -437,7 +438,8 @@ public class NodeInfo implements SnapshotProcessor {
       LOGGER.error(ConfigNodeMessages.UPDATE_ONLINE_CONFIGNODE_FAILED, e);
       status.setCode(TSStatusCode.ADD_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
-          "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+          ConfigNodeMessages
+              .MESSAGE_APPLY_NEW_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_1BB6A6BF);
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -472,7 +474,8 @@ public class NodeInfo implements SnapshotProcessor {
       LOGGER.error(ConfigNodeMessages.REMOVE_ONLINE_CONFIGNODE_FAILED, e);
       status.setCode(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode());
       status.setMessage(
-          "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+          ConfigNodeMessages
+              .MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CURRENT_CONFIGNODE_CAN_T_STORE_CONFIGNODE_8AB3BCB4);
     } finally {
       versionInfoReadWriteLock.writeLock().unlock();
       configNodeInfoReadWriteLock.writeLock().unlock();

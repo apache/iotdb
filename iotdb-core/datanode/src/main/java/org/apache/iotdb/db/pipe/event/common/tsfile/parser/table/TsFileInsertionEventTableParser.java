@@ -188,7 +188,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                   if (!skipIfNoPrivileges) {
                     throw new AccessDeniedException(
                         String.format(
-                            "No privilege for SELECT for user %s at table %s.%s",
+                            DataNodePipeMessages
+                                .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
                             entity.getUsername(),
                             sourceEvent.getTableModelDatabaseName(),
                             tableName));

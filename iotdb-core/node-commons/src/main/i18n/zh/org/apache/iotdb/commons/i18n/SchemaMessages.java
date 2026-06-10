@@ -76,4 +76,19 @@ public final class SchemaMessages {
 
   public static final String S_IS_NULL =
       "%s 为 null";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_DATABASE_MUST_SPECIFIED_SESSION_DATABASE_NOT_SET_CBF6F21F = "数据库 必须be specified when 会话 数据库 不是set";
+  public static final String MESSAGE_NOT_TTL_RULE_669A7BA4 = "Not TTL rule";
+  public static final String MESSAGE_SET_4BE61E08 = " set for ";
+  public static final String EXCEPTION_FAILED_GET_ORIGINAL_DATABASE_BECAUSE_ARG_NULL_TABLE_ARG_5AE54514 = "无法get the original 数据库,，原因：the %s is null for table %s";
+  public static final String EXCEPTION_FAILED_PARSE_TREE_VIEW_STRING_ARG_CONVERT_IDEVICEID_6E735586 = "无法parse the tree view string %s when convert to IDeviceID";
+  public static final String EXCEPTION_SESSION_IS_NULL_6CF0F47D = "session 不能为空";
+  public static final String EXCEPTION_NAME_IS_NULL_C8B35959 = "name 不能为空";
+  public static final String EXCEPTION_ARG_IS_NOT_LOWERCASE_COLON_ARG_D78298F6 = "%s is not lowercase: %s";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_OPERATOR_IS_NULL_F5BB9F59 = "operator 不能为空";
+  public static final String EXCEPTION_VALUE_IS_NULL_192F6BFF = "value 不能为空";
+
 }

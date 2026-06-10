@@ -100,7 +100,8 @@ public class SqlParser {
   }
 
   public SqlParser(BiConsumer<RelationalSqlLexer, RelationalSqlParser> initializer) {
-    this.initializer = requireNonNull(initializer, "initializer is null");
+    this.initializer =
+        requireNonNull(initializer, DataNodeQueryMessages.EXCEPTION_INITIALIZER_IS_NULL_2EEC3764);
   }
 
   public Statement createStatement(String sql, ZoneId zoneId, IClientSession clientSession) {
@@ -227,7 +228,8 @@ public class SqlParser {
       Token token = context.QUOTED_IDENTIFIER().getSymbol();
       if (token.getText().length() == 2) { // empty identifier
         throw new ParsingException(
-            "Zero-length delimited identifier not allowed",
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_ZERO_LENGTH_DELIMITED_IDENTIFIER_NOT_ALLOWED_00C9ADEC,
             null,
             token.getLine(),
             token.getCharPositionInLine() + 1);
@@ -238,7 +240,8 @@ public class SqlParser {
     public void exitBackQuotedIdentifier(RelationalSqlParser.BackQuotedIdentifierContext context) {
       Token token = context.BACKQUOTED_IDENTIFIER().getSymbol();
       throw new ParsingException(
-          "backquoted identifiers are not supported; use double quotes to quote identifiers",
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_BACKQUOTED_IDENTIFIERS_ARE_NOT_SUPPORTED_USE_DOUBLE_QUOTES_78BC7EE3,
           null,
           token.getLine(),
           token.getCharPositionInLine() + 1);
@@ -263,7 +266,8 @@ public class SqlParser {
       if (!(context.getChild(0) instanceof TerminalNode)) {
         int rule = ((ParserRuleContext) context.getChild(0)).getRuleIndex();
         throw new AssertionError(
-            "nonReserved can only contain tokens. Found nested rule: " + ruleNames.get(rule));
+            DataNodeQueryMessages.NON_RESERVED_CAN_ONLY_CONTAIN_TOKENS_FOUND_NESTED_RULE
+                + ruleNames.get(rule));
       }
 
       // replace nonReserved words with IDENT tokens

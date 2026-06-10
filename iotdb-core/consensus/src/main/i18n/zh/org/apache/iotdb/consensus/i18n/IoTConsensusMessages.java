@@ -296,4 +296,36 @@ public final class IoTConsensusMessages {
       "轮询和等待后被中断";
   public static final String INTERRUPTED_AFTER_GETTING_A_BATCH =
       "获取批次后被中断";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_ONNEWPEERCREATED_CALLBACK_FAILED_GROUP_ARG_2671FCDA = "onNewPeer创建d callback 失败 for group {}";
+  public static final String LOG_ONPEERREMOVED_CALLBACK_FAILED_GROUP_ARG_9B79CBAF = "onPeer移除d callback 失败 for group {}";
+  public static final String EXCEPTION_UNSUPPORTED_WRITER_META_VERSION_ARG_ARG_7D14E679 = "不支持的写入r meta version %d in %s";
+  public static final String LOG_WRITE_NO_SUBSCRIPTION_QUEUES_REGISTERED_0F4E697B = "写入() no 订阅 queues 注册ed, ";
+  public static final String LOG_GROUP_ARG_SEARCHINDEX_ARG_ARG_D5E034E6 = "group={}, searchIndex={}, this={}";
+  public static final String LOG_SUBSCRIPTIONQUEUES_ARG_ARG_6C4FE107 = ", 订阅Queues: {}, this: {}";
+  public static final String LOG_CANNOT_NOTIFY_ARG_BUILD_SYNC_LOG_CHANNEL_490770FB = "cannot notify {} to build sync log channel. ";
+  public static final String LOG_PLEASE_CHECK_STATUS_NODE_MANUALLY_40FBC9B3 = "Please check the 状态 of this 节点 manually";
+  public static final String LOG_FAILED_SYNC_WRITER_SAFE_TIME_BARRIER_PEER_ARG_GROUP_ARG_05A13E6A = "无法sync 写入r safe-time barrier to peer {} for group {}, ";
+  public static final String LOG_SAFEPT_ARG_WRITERNODEID_ARG_BARRIER_ARG_AC74618F = "safePt={}, 写入r节点Id={}, barrier={}";
+  public static final String LOG_RECOVERED_WRITER_META_GROUP_ARG_ARG_RECOVEREDLOCALSEQ_ARG_9B989AAC = "Recovered 写入r meta for group {} from {}, recoveredLocalSeq={}, ";
+  public static final String LOG_PERSISTEDLOCALSEQ_ARG_5EBAA9A5 = "persistedLocalSeq={}";
+  public static final String LOG_FAILED_LOAD_WRITER_META_GROUP_ARG_ARG_STARTING_FRESH_WRITER_A24EDEFE = "无法加载 写入r meta for group {} from {}. 开始ing fresh 写入r metadata.";
+  public static final String LOG_INITIALIZED_FRESH_WRITER_META_GROUP_ARG_RECOVEREDLOCALSEQ_ARG_A7254C6E = "Initialized fresh 写入r meta for group {}, recoveredLocalSeq={}";
+  public static final String LOG_FAILED_PERSIST_WRITER_META_GROUP_ARG_AT_LOCALSEQ_ARG_PT_3502F119 = "无法persist 写入r meta for group {} at localSeq={}, pt={}";
+  public static final String LOG_REGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_5102ABA0 = "注册ed 订阅 queue for group {}, ";
+  public static final String LOG_TOTAL_SUBSCRIPTION_QUEUES_ARG_CURRENTSEARCHINDEX_ARG_ARG_9BF9006A = "total 订阅 queues: {}, currentSearchIndex={}, this={}";
+  public static final String LOG_DEREGISTERED_SUBSCRIPTION_QUEUE_GROUP_ARG_REMAINING_SUBSCRIPTION_QUEUES_ARG_B86E31AF = "De注册ed 订阅 queue for group {}, remaining 订阅 queues: {}";
+  public static final String LOG_OBSERVED_INCOMPARABLE_WRITER_SAFE_TIME_BARRIER_WRITER_ARG_0F0C171D = "Observed incomparable 写入r safe-time barrier for 写入r {}. ";
+  public static final String LOG_KEEP_PENDINGSAFEPHYSICALTIME_ARG_PENDINGSAFELOCALSEQ_ARG_7123FD95 = "keep pendingSafePhysicalTime={}, pendingSafeLocalSeq={}, ";
+  public static final String LOG_IGNORE_SAFEPHYSICALTIME_ARG_SAFELOCALSEQ_ARG_A601C4D1 = "ignore safePhysicalTime={}, safeLocalSeq={}";
+  public static final String LOG_WRITE_OFFERING_ARG_SUBSCRIPTION_QUEUE_S_GROUP_ARG_SEARCHINDEX_ARG_A8489EDF = "写入() offering to {} 订阅 queue(s), group={}, searchIndex={}, requestType={}";
+  public static final String LOG_OFFER_RESULT_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_7ADC84C2 = "offer result={}, queueSize={}, queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ARG_ENTRY_S_LAST_ARG_MS_2AD8AB3D = "订阅 queue full, dropped {} entry(s) in the last {} ms, latest ";
+  public static final String LOG_SEARCHINDEX_ARG_QUEUESIZE_ARG_QUEUEREMAINING_ARG_2EA619ED = "searchIndex={}, queueSize={}, queueRemaining={}";
+  public static final String LOG_SUBSCRIPTION_QUEUE_FULL_DROPPED_ENTRY_SEARCHINDEX_ARG_DROPPEDCOUNT_ARG_61F126B8 = "订阅 queue full, dropped entry searchIndex={}, droppedCount={}";
+  public static final String LOG_RESERVED_ARG_BYTES_BATCH_ARG_ARG_CURRENT_TOTAL_USAGE_ARG_308AE9C2 = "Reserved {} bytes for batch {}-{}, 当前total usage {}";
+  public static final String LOG_ARG_FAILED_SEND_IDLE_WRITER_SAFE_TIME_BARRIER_ARG_STATUS_AE047EAD = "{}: 无法send idle 写入r safe-time barrier to {}. 状态={}";
+
 }

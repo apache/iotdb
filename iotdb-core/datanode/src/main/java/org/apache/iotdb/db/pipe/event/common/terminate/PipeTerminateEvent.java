@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -161,7 +162,8 @@ public class PipeTerminateEvent extends EnrichedEvent {
         snapshotAndClearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
     if (Objects.nonNull(summary)) {
       LOGGER.info(
-          "Pipe {}@{}: terminate event committed for historical transfer. creationTime: {}, shouldMark: {}. {}",
+          DataNodePipeMessages
+              .PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28,
           pipeName,
           dataRegionId,
           creationTime,

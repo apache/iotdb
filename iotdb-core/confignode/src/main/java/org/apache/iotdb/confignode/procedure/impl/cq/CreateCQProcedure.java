@@ -181,7 +181,8 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     Optional<CQInfo.CQEntry> cqEntry = getCurrentCQEntry(env);
     if (!cqEntry.isPresent()) {
       LOGGER.info(
-          "Skip recovering the schedule task of CQ {} because its metadata is unavailable.",
+          ProcedureMessages
+              .LOG_SKIP_RECOVERING_SCHEDULE_TASK_CQ_ARG_BECAUSE_ITS_METADATA_UNAVAILABLE_00286802,
           req.cqId);
       return;
     }

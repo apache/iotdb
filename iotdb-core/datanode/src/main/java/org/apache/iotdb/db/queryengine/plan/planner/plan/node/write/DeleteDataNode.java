@@ -393,7 +393,8 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
                 firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
                     && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
       throw new IllegalArgumentException(
-          "DeleteDataNodes which start time or end time are not same cannot be merged");
+          DataNodeQueryMessages
+              .QUERY_EXCEPTION_DELETEDATANODES_WHICH_START_TIME_OR_END_TIME_ARE_NOT_SAME_F396951C);
     }
     List<MeasurementPath> pathList =
         deleteDataNodes.stream()

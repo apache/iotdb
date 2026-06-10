@@ -405,7 +405,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return DeviceSchemaFetchScanNode.deserialize(buffer);
       case 97:
         throw new UnsupportedOperationException(
-            "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_YOU_SHOULD_NEVER_SEE_CONTINUOUSSAMESEARCHINDEXSEPARATORNODE_F380A4B6);
       case 98:
         return LastQueryScanNode.deserialize(buffer);
       case 99:
@@ -455,7 +456,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
         throw new UnsupportedOperationException(
-            "AggregationTreeDeviceViewScanNode should not be deserialized");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_AGGREGATIONTREEDEVICEVIEWSCANNODE_SHOULD_NOT_BE_DESERIALIZED_11788F1B);
       case 1023:
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
       case 1024:

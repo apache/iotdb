@@ -49,7 +49,7 @@ public final class CodecStrategiesFactory {
         try {
           if (input.length % 4 != 0) {
             throw new SemanticException(
-                "Base64 length must be a multiple of 4 (including padding '=')");
+                CalcMessages.EXCEPTION_BASE64_LENGTH_MUST_MULTIPLE_4_INCLUDING_PADDING_8717829D);
           }
           return Base64.getDecoder().decode(input);
         } catch (IllegalArgumentException e) {

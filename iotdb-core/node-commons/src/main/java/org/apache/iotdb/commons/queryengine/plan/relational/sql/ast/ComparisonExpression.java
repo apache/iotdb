@@ -109,9 +109,9 @@ public class ComparisonExpression extends Expression {
 
   public ComparisonExpression(Operator operator, Expression left, Expression right) {
     super(null);
-    requireNonNull(operator, "operator is null");
-    requireNonNull(left, "left is null");
-    requireNonNull(right, "right is null");
+    requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
 
     this.operator = operator;
     this.left = left;
@@ -120,10 +120,10 @@ public class ComparisonExpression extends Expression {
 
   public ComparisonExpression(
       @Nonnull NodeLocation location, Operator operator, Expression left, Expression right) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(operator, "operator is null");
-    requireNonNull(left, "left is null");
-    requireNonNull(right, "right is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(operator, QueryMessages.EXCEPTION_OPERATOR_IS_NULL_F5BB9F59);
+    requireNonNull(left, QueryMessages.EXCEPTION_LEFT_IS_NULL_2C1080C5);
+    requireNonNull(right, QueryMessages.EXCEPTION_RIGHT_IS_NULL_97BD6491);
 
     this.operator = operator;
     this.left = left;

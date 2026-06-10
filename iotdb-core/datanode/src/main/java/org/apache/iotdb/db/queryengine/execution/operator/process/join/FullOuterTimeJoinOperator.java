@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.AbstractConsumeAllOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
@@ -88,7 +89,10 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
       List<ColumnMerger> mergers,
       TimeComparator comparator) {
     super(operatorContext, children);
-    checkArgument(!children.isEmpty(), "child size of TimeJoinOperator should be larger than 0");
+    checkArgument(
+        !children.isEmpty(),
+        DataNodeQueryMessages
+            .EXCEPTION_CHILD_SIZE_OF_TIMEJOINOPERATOR_SHOULD_BE_LARGER_THAN_0_EDED9CB8);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.shadowInputIndex = new int[this.inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];

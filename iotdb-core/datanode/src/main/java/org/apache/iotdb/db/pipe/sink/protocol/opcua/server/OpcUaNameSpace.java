@@ -262,7 +262,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                     () ->
                         new PipeRuntimeCriticalException(
                             String.format(
-                                "The folder node for %s does not exist.",
+                                DataNodePipeMessages
+                                    .PIPE_EXCEPTION_THE_FOLDER_NODE_FOR_S_DOES_NOT_EXIST_CC0776AE,
                                 Arrays.toString(segments))));
       }
     }
@@ -376,7 +377,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                   .orElseThrow(
                       () ->
                           new PipeRuntimeCriticalException(
-                              String.format("The Node %s does not exist.", nodeId)));
+                              String.format(
+                                  DataNodePipeMessages
+                                      .PIPE_EXCEPTION_THE_NODE_S_DOES_NOT_EXIST_52F98935,
+                                  nodeId)));
     }
     return measurementNode;
   }

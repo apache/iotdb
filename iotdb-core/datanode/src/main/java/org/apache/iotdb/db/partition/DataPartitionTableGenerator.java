@@ -201,7 +201,7 @@ public class DataPartitionTableGenerator {
 
       status = TaskStatus.COMPLETED;
       LOG.info(
-          "DataPartitionTable generation completed successfully. Processed: {}, Failed: {}",
+          DataNodeMiscMessages.DATA_PARTITION_TABLE_GENERATION_COMPLETED_STATS,
           processedTimePartitions.get(),
           failedTimePartitions.get());
     } catch (Exception e) {

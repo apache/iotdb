@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
@@ -93,7 +94,8 @@ public class SubscriptionSinkSubtask extends PipeSinkSubtask {
 
     if (isConsensusDrivenTopic()) {
       LOGGER.warn(
-          "SubscriptionSinkSubtask for consensus topic [{}] failed unexpectedly, skip auto-resubmit",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTIONSINKSUBTASK_FOR_CONSENSUS_TOPIC_FAILED_UNEXPECTEDLY_FC41B565,
           topicName,
           throwable);
       return;

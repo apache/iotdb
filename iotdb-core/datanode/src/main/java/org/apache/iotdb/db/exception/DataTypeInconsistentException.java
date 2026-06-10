@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import org.apache.tsfile.enums.TSDataType;
 
 public class DataTypeInconsistentException extends WriteProcessException {
 
   public DataTypeInconsistentException(TSDataType existing, TSDataType incoming) {
-    super(
-        String.format(
-            "Inconsistent data types, existing data type: %s, incoming: %s", existing, incoming));
+    super(String.format(DataNodeMiscMessages.INCONSISTENT_DATA_TYPES_FMT, existing, incoming));
   }
 }

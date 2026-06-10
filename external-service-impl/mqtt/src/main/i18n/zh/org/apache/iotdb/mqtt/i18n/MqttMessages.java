@@ -46,9 +46,21 @@ public final class MqttMessages {
   public static final String FIND_MQTT_PLUGIN =
       "PayloadFormatManager()，找到 MQTT Payload 插件 {}。";
   public static final String MQTT_PLUGIN_JAR_URLS = "MQTT 插件 jarURLs：{}";
+  public static final String UNKNOWN_PAYLOAD_FORMAT_NAMED = "未知 payload format 名称：";
 
   // --- JSONPayloadFormatter ---
   public static final String PAYLOAD_INVALID = "payload 无效";
 
   private MqttMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_LINE_PATTERN_PARSING_FAILS_FAILED_LINE_MESSAGE_ARG_EXCEPTION_6EFB0EE2 = "The line pattern parsing fails, and the 失败 line 消息 is {} ,异常 is";
+  public static final String LOG_CONNECTION_REFUSED_CLIENT_ID_MISSING_EMPTY_VALID_CLIENT_ID_REQUIRED_A566DC15 = "连接 refused: client_id is missing or 为空. A valid client_id is required to establish a 连接.";
+  public static final String LOG_RECEIVE_PUBLISH_MESSAGE_CLIENTID_ARG_USERNAME_ARG_QOS_ARG_TOPIC_7E60C3A6 = "Receive publish 消息. clientId: {}, 用户name: {}, qos: {}, 主题: {}, pay加载: {}";
+  public static final String LOG_MQTT_JSON_INSERT_ERROR_CODE_ARG_MESSAGE_ARG_B1A78FBD = "mqtt json insert 错误, code={}, 消息={}";
+  public static final String LOG_MEET_ERROR_INSERTING_DATABASE_ARG_TABLE_ARG_TAGS_ARG_ATTRIBUTES_173457D5 = "meet 错误 when inserting 数据库 {}, table {}, tags {}, attributes {}, fields {}, at time {},，原因：";
+  public static final String LOG_MEET_ERROR_INSERTING_DEVICE_ARG_MEASUREMENTS_ARG_AT_TIME_ARG_680D67D2 = "meet 错误 when inserting device {}, measurements {}, at time {},，原因：";
+  public static final String LOG_START_MQTT_SERVICE_SUCCESSFULLY_LISTENING_IP_ARG_PORT_ARG_47CE46D5 = "开始 MQTT service 成功fully, listening on ip {} port {}";
+
 }

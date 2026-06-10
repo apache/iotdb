@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import static org.apache.iotdb.rpc.TSStatusCode.OBJECT_NOT_EXISTS;
 
 public class ObjectFileNotExist extends IoTDBRuntimeException {
 
-  private static final String ERROR_MSG = "Object file %s does not exist";
+  private static final String ERROR_MSG =
+      CommonMessages.EXCEPTION_OBJECT_FILE_ARG_DOES_NOT_EXIST_7EA8CB1C;
 
   public ObjectFileNotExist(String relativeObjectPath) {
     super(

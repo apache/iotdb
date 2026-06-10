@@ -91,13 +91,15 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
 
   @Override
   public void update(Procedure<ConfigNodeProcedureEnv> procedure) throws Exception {
-    Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
+    Objects.requireNonNull(
+        ProcedureFactory.getProcedureType(procedure),
+        ConfigNodeMessages.EXCEPTION_PROCEDURE_TYPE_IS_NULL_93147BD3);
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
       configManager.getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn(
-          "pid={} Failed in the write update API executing the consensus layer due to: ",
+          ConfigNodeMessages.LOG_PID_ARG_FAILED_WRITE_UPDATE_API_EXECUTING_CONSENSUS_LAYER_824FB30E,
           procedure.getProcId(),
           e);
       // In consensus layer API, do nothing but just throw an exception to let upper caller handle
@@ -121,7 +123,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
       configManager.getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn(
-          "pid={} Failed in the write delete API executing the consensus layer due to: ",
+          ConfigNodeMessages.LOG_PID_ARG_FAILED_WRITE_DELETE_API_EXECUTING_CONSENSUS_LAYER_0E758BF5,
           procId,
           e);
       // In consensus layer API, do nothing but just throw an exception to let upper caller handle

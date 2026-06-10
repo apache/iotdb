@@ -118,4 +118,14 @@ public final class RatisMessages {
       "JMX Reporter 在 RatisMetricRegistries 中已禁用";
   public static final String CONSOLE_REPORTER_DISABLED =
       "Console Reporter 在 RatisMetricRegistries 中已禁用";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_RESET_PEER_LIST_CURRENT_PEER_LIST_CORRECT_NOTHING_NEED_RESET_0E009CDA = "[RESET PEER LIST] The 当前peer list is correct, nothing need to be reset: {}";
+  public static final String EXCEPTION_INTERNAL_GRPC_CONNECTION_ERROR_59404D15 = "internal GRPC 连接 错误:";
+  public static final String LOG_FAILED_ARG_ATTEMPT_ARG_SLEEP_ARG_THEN_RETRY_36A9A0C2 = "失败 {}, attempt #{}, sleep {} and then retry";
+  public static final String LOG_ARG_INTERRUPTED_WAITING_RETRY_38D69BCC = "{}: interrupted when waiting for retry";
+  public static final String EXCEPTION_SUPPLIER_EQUALS_EQUALS_NULL_13BACC3E = "supplier == null";
+  public static final String EXCEPTION_CONDITION_EQUALS_EQUALS_NULL_E3A6C947 = "condition == null";
+
 }

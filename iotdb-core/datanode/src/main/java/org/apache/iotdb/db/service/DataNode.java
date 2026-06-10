@@ -347,7 +347,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   @Override
   protected void remove(Set<Integer> nodeIds) throws IoTDBException {
     throw new IoTDBException(
-        "The remove-datanode script has been deprecated. Please connect to the CLI and use SQL: remove datanode [datanode_id].",
+        DataNodeMiscMessages
+            .MISC_EXCEPTION_THE_REMOVE_DATANODE_SCRIPT_HAS_BEEN_DEPRECATED_PLEASE_CONNECT_F91DF360,
         -1);
   }
 
@@ -419,11 +420,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         || configurationResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // All tries failed
       logger.error(
-          "Cannot pull system configurations from ConfigNode-leader after {} retries.",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_LEADER_FE630DAE,
           DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot pull system configurations from ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_CANNOT_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_LEADER_BAD295DC);
     }
 
     /* Load system configurations */
@@ -462,7 +464,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initTimestampPrecision();
     long endTime = System.currentTimeMillis();
     logger.info(
-        "Successfully pull system configurations from ConfigNode-leader, which takes {} ms",
+        DataNodeMiscMessages
+            .MISC_LOG_SUCCESSFULLY_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_C8E04BF8,
         (endTime - startTime));
   }
 
@@ -571,8 +574,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // All tries failed
       logger.error(DataNodeMiscMessages.CANNOT_REGISTER_AFTER_RETRIES, DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot register into the cluster. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_CANNOT_REGISTER_INTO_THE_CLUSTER_PLEASE_CHECK_WHETHER_THE_D8B29F58);
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -590,7 +593,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       long endTime = System.currentTimeMillis();
 
       logger.info(
-          "Successfully register to the cluster: {} , which takes {} ms.",
+          DataNodeMiscMessages
+              .MISC_LOG_SUCCESSFULLY_REGISTER_TO_THE_CLUSTER_WHICH_TAKES_MS_ED479CA7,
           config.getClusterName(),
           (endTime - startTime));
     } else {
@@ -731,7 +735,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         break;
       } catch (TException | ClientManagerException e) {
         logger.warn(
-            "Cannot send restart request to the ConfigNode-leader, because: {}", e.getMessage());
+            DataNodeMiscMessages
+                .MISC_LOG_CANNOT_SEND_RESTART_REQUEST_TO_THE_CONFIGNODE_LEADER_BECAUSE_AB17D41A,
+            e.getMessage());
         retry--;
       }
 
@@ -747,11 +753,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     if (dataNodeRestartResp == null) {
       // All tries failed
       logger.error(
-          "Cannot send restart DataNode request to ConfigNode-leader after {} retries.",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_SEND_RESTART_DATANODE_REQUEST_TO_CONFIGNODE_LEADER_4F50C19F,
           DEFAULT_RETRY);
       throw new StartupException(
-          "Cannot send restart DataNode request to ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
+          DataNodeMiscMessages
+              .MISC_EXCEPTION_CANNOT_SEND_RESTART_DATANODE_REQUEST_TO_CONFIGNODE_LEADER_368BE214);
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -760,7 +767,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
       long endTime = System.currentTimeMillis();
       logger.info(
-          "Restart request to cluster: {} is accepted, which takes {} ms.",
+          DataNodeMiscMessages
+              .MISC_LOG_RESTART_REQUEST_TO_CLUSTER_IS_ACCEPTED_WHICH_TAKES_MS_E8305E02,
           config.getClusterName(),
           (endTime - startTime));
 
@@ -806,14 +814,16 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
       logger.info(
-          "SchemaRegion consensus start successfully, which takes {} ms.",
+          DataNodeMiscMessages
+              .MISC_LOG_SCHEMAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_3D1B8523,
           (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
       if (!isUsingIoTConsensusV2()) {
         DataRegionConsensusImpl.getInstance().start();
         long dataRegionEndTime = System.currentTimeMillis();
         logger.info(
-            "DataRegion consensus start successfully, which takes {} ms.",
+            DataNodeMiscMessages
+                .MISC_LOG_DATAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_2B2DB4CB,
             (dataRegionEndTime - schemaRegionEndTime));
         dataRegionConsensusStarted = true;
       }
@@ -866,7 +876,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     registerUdfServices();
 
     logger.info(
-        "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
+        DataNodeMiscMessages
+            .MISC_LOG_IOTDB_DATANODE_IS_SETTING_UP_SOME_DATABASES_MAY_NOT_BE_READY_961523F0);
     long startTime = System.currentTimeMillis();
     while (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
       try {
@@ -905,7 +916,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       DataRegionConsensusImpl.getInstance().start();
       long dataRegionEndTime = System.currentTimeMillis();
       logger.info(
-          "DataRegion consensus start successfully, which takes {} ms.",
+          DataNodeMiscMessages
+              .MISC_LOG_DATAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_2B2DB4CB,
           (dataRegionEndTime - dataRegionStartTime));
       dataRegionConsensusStarted = true;
     }
@@ -1169,14 +1181,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       for (TriggerExecutor triggerExecutor :
           TriggerManagementService.getInstance().getAllTriggerExecutors()) {
         logger.debug(
-            "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
+            DataNodeMiscMessages.MISC_LOG_GET_TRIGGER_EXECUTOR_1727D243,
+            triggerExecutor.getTriggerInformation().getTriggerName());
       }
     }
     // Start TriggerInformationUpdater
     triggerInformationUpdater.startTriggerInformationUpdater();
     long endTime = System.currentTimeMillis();
     logger.info(
-        "successfully registered all the triggers, which takes {} ms.", (endTime - startTime));
+        DataNodeMiscMessages
+            .MISC_LOG_SUCCESSFULLY_REGISTERED_ALL_THE_TRIGGERS_WHICH_TAKES_MS_246178BB,
+        (endTime - startTime));
   }
 
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
@@ -1253,7 +1268,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
 
     logger.info(
-        "Prepare external-service resources successfully, which takes {} ms.",
+        DataNodeMiscMessages
+            .MISC_LOG_PREPARE_EXTERNAL_SERVICE_RESOURCES_SUCCESSFULLY_WHICH_TAKES_00E62CB0,
         System.currentTimeMillis() - startTime);
   }
 

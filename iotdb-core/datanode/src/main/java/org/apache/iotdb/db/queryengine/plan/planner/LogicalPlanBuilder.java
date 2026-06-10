@@ -144,7 +144,8 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
     this.analysis = analysis;
-    Validate.notNull(context, "Query context cannot be null");
+    Validate.notNull(
+        context, DataNodeQueryMessages.EXCEPTION_QUERY_CONTEXT_CANNOT_BE_NULL_C4809234);
     this.context = context;
   }
 

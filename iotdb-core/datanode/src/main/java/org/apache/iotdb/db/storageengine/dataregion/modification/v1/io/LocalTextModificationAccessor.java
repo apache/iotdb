@@ -209,7 +209,11 @@ public class LocalTextModificationAccessor
       logger.debug(NO_MODIFICATION_MSG, filePath);
     } catch (IOException e) {
       logger.error(
-          "An error occurred when truncating modifications[{}] to size {}.", filePath, size, e);
+          StorageEngineMessages
+              .STORAGE_LOG_AN_ERROR_OCCURRED_WHEN_TRUNCATING_MODIFICATIONS_TO_SIZE_F8A0D6D5,
+          filePath,
+          size,
+          e);
     }
   }
 

@@ -109,7 +109,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
-            "Modifications size is {} for file Path: {} ",
+            StorageEngineMessages.STORAGE_LOG_MODIFICATIONS_SIZE_IS_FOR_FILE_PATH_EED7FD92,
             valueColumnsModifications.size(),
             resource.getTsFilePath());
         valueColumnsModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));

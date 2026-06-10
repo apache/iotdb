@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.sca
 
 import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
@@ -74,7 +75,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case DATE:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_SOURCE_DATATYPE_S_EA03E121,
+                layerReaderDataType));
     }
   }
 
@@ -146,7 +149,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case INT32:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();
@@ -222,7 +227,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case INT64:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();
@@ -298,7 +305,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case FLOAT:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();
@@ -374,7 +383,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case DOUBLE:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();
@@ -450,7 +461,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case BOOLEAN:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();
@@ -531,7 +544,9 @@ public class CastFunctionTransformer extends UnaryTransformer {
       case TEXT:
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerReaderDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_TARGET_DATATYPE_S_8DEFDAE6,
+                layerReaderDataType));
     }
 
     Column valueColumn = builder.build();

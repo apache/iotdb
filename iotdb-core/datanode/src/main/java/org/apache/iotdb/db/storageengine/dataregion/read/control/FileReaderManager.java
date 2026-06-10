@@ -230,7 +230,8 @@ public class FileReaderManager {
       readerMap.remove(tsFileID);
       refMap.remove(tsFileID);
       if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug("{} TsFileReader is closed because of no reference.", tsFilePath);
+        resourceLogger.debug(
+            StorageEngineMessages.TSFILE_READER_CLOSED_BECAUSE_NO_REFERENCE, tsFilePath);
       }
     }
   }
@@ -248,7 +249,7 @@ public class FileReaderManager {
       Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
       if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug("{} closedTsFileReader is closed.", entry.getKey());
+        resourceLogger.debug(StorageEngineMessages.CLOSED_TSFILE_READER_CLOSED, entry.getKey());
       }
       closedReferenceMap.remove(entry.getKey());
       iterator.remove();
@@ -258,7 +259,7 @@ public class FileReaderManager {
       Map.Entry<TsFileID, TsFileSequenceReader> entry = iterator.next();
       entry.getValue().close();
       if (resourceLogger.isDebugEnabled()) {
-        resourceLogger.debug("{} unclosedTsFileReader is closed.", entry.getKey());
+        resourceLogger.debug(StorageEngineMessages.UNCLOSED_TSFILE_READER_CLOSED, entry.getKey());
       }
       unclosedReferenceMap.remove(entry.getKey());
       iterator.remove();

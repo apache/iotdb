@@ -258,11 +258,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
       } catch (FragmentInstanceDispatchException e) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, e);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
+            duplicatedLoadCommandReq,
+            e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
         LOGGER.warn(
-            "Cannot dispatch LoadCommand for load operation {}", duplicatedLoadCommandReq, t);
+            DataNodeQueryMessages.CANNOT_DISPATCH_LOADCOMMAND_FOR_LOAD_OPERATION_ARG,
+            duplicatedLoadCommandReq,
+            t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -349,7 +353,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
           CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
-              "Load remote procedure call connection timeout is adjusted to {} ms ({} mins)",
+              DataNodeQueryMessages
+                  .LOAD_REMOTE_PROCEDURE_CALL_CONNECTION_TIMEOUT_IS_ADJUSTED_TO_ARG_MS_ARG_MINS,
               newConnectionTimeout,
               newConnectionTimeout / 60000.0);
         }

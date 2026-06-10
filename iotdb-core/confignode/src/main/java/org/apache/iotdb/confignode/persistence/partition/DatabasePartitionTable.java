@@ -542,7 +542,7 @@ public class DatabasePartitionTable {
     if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
       LOGGER.info(
           ConfigNodeMessages.NODE_IS_ALREADY_IN_REGION_LOCATIONS_WHEN_ADDREGIONNEWLOCATION_IN
-              + "node: {}, region: {}",
+              + ConfigNodeMessages.LOG_NODE_ARG_REGION_ARG_70A7CD4F,
           databaseName,
           node,
           regionId);
@@ -565,7 +565,7 @@ public class DatabasePartitionTable {
         .noneMatch(id -> id == nodeId)) {
       LOGGER.info(
           ConfigNodeMessages.NODE_IS_NOT_IN_REGION_LOCATIONS_WHEN_REMOVEREGIONOLDLOCATION_IN
-              + "no need to remove it, node: {}, region: {}",
+              + ConfigNodeMessages.LOG_NO_NEED_REMOVE_IT_NODE_ARG_REGION_ARG_D14062CE,
           databaseName,
           nodeId,
           regionId);

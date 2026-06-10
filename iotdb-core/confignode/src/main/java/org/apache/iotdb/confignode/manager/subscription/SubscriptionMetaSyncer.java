@@ -111,7 +111,9 @@ public class SubscriptionMetaSyncer {
     // sync commit progress if syncing consumer group meta successfully
     final TSStatus commitProgressSyncStatus = procedureManager.commitProgressSync();
     if (commitProgressSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to sync commit progress. Result status: {}.", commitProgressSyncStatus);
+      LOGGER.warn(
+          ManagerMessages.LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80,
+          commitProgressSyncStatus);
       return;
     }
 

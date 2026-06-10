@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 
@@ -43,8 +44,8 @@ public final class ExpressionExtractor {
   }
 
   public static List<Expression> extractExpressions(PlanNode plan, Lookup lookup) {
-    requireNonNull(plan, "plan is null");
-    requireNonNull(lookup, "lookup is null");
+    requireNonNull(plan, DataNodeQueryMessages.EXCEPTION_PLAN_IS_NULL_717C9DF7);
+    requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
 
     ImmutableList.Builder<Expression> expressionsBuilder = ImmutableList.builder();
     plan.accept(new Visitor(expressionsBuilder::add, true, lookup), null);
@@ -69,9 +70,10 @@ public final class ExpressionExtractor {
     private final Lookup lookup;
 
     Visitor(Consumer<Expression> consumer, boolean recursive, Lookup lookup) {
-      this.consumer = requireNonNull(consumer, "consumer is null");
+      this.consumer =
+          requireNonNull(consumer, DataNodeQueryMessages.EXCEPTION_CONSUMER_IS_NULL_B6207072);
       this.recursive = recursive;
-      this.lookup = requireNonNull(lookup, "lookup is null");
+      this.lookup = requireNonNull(lookup, DataNodeQueryMessages.EXCEPTION_LOOKUP_IS_NULL_B8FD7E65);
     }
 
     @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -119,7 +120,8 @@ public class LoadTsFileStatement extends Statement {
       if (file.listFiles() == null) {
         throw new FileNotFoundException(
             String.format(
-                "Can not find %s on this machine, notice that load can only handle files on this machine.",
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_CAN_NOT_FIND_S_ON_THIS_MACHINE_NOTICE_THAT_LOAD_CAN_ONLY_B7886C0E,
                 file.getPath()));
       }
       tsFiles.addAll(findAllTsFile(file, validateSourcePath));
@@ -187,8 +189,10 @@ public class LoadTsFileStatement extends Statement {
 
     throw new FileNotFoundException(
         String.format(
-            "Load TsFile source path %s is outside allowed directories %s.",
-            sourcePath, Arrays.toString(allowedDirs)));
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_LOAD_TSFILE_SOURCE_PATH_S_IS_OUTSIDE_ALLOWED_DIRECTORIES_85A6019F,
+            sourcePath,
+            Arrays.toString(allowedDirs)));
   }
 
   private static Path canonicalPath(final File file) throws FileNotFoundException {
@@ -197,8 +201,10 @@ public class LoadTsFileStatement extends Statement {
     } catch (final IOException e) {
       throw new FileNotFoundException(
           String.format(
-              "Failed to resolve canonical path for Load TsFile source %s: %s",
-              file.getPath(), e.getMessage()));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_FAILED_TO_RESOLVE_CANONICAL_PATH_FOR_LOAD_TSFILE_SOURCE_09CC9AC6,
+              file.getPath(),
+              e.getMessage()));
     }
   }
 

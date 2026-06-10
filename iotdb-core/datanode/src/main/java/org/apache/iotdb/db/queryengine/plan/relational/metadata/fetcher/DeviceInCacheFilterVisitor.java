@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -45,7 +46,10 @@ public class DeviceInCacheFilterVisitor extends SchemaFilterVisitor<AlignedDevic
   @Override
   protected Boolean visitNode(final SchemaFilter filter, final AlignedDeviceEntry deviceEntry) {
     throw new UnsupportedOperationException(
-        "The schema filter type " + filter.getSchemaFilterType() + " is not supported");
+        String.format(
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_SCHEMA_FILTER_TYPE_S_IS_NOT_SUPPORTED_200D1E0B,
+            filter.getSchemaFilterType()));
   }
 
   @Override

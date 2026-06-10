@@ -183,7 +183,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           return new TPipeTransferResp(
               new TSStatus(TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode())
                   .setMessage(
-                      "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
+                      ManagerMessages
+                          .MESSAGE_RECEIVER_CONFIGNODE_HAS_SET_UP_NEW_RECEIVER_SENDER_MUST_RE_77B80C51));
         }
         final TPipeTransferResp resp;
         final long startTime = System.nanoTime();

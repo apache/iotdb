@@ -150,15 +150,18 @@ public class QueryPlanner {
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
       PredicateWithUncorrelatedScalarSubqueryReconstructor
           predicateWithUncorrelatedScalarSubqueryReconstructor) {
-    requireNonNull(analysis, "analysis is null");
-    requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(queryContext, "queryContext is null");
-    requireNonNull(outerContext, "outerContext is null");
-    requireNonNull(session, "session is null");
-    requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    requireNonNull(
+        symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    requireNonNull(queryContext, DataNodeQueryMessages.EXCEPTION_QUERYCONTEXT_IS_NULL_761DB539);
+    requireNonNull(outerContext, DataNodeQueryMessages.EXCEPTION_OUTERCONTEXT_IS_NULL_031CD366);
+    requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    requireNonNull(
+        recursiveSubqueries, DataNodeQueryMessages.EXCEPTION_RECURSIVESUBQUERIES_IS_NULL_6AD8A180);
     requireNonNull(
         predicateWithUncorrelatedScalarSubqueryReconstructor,
-        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
+        DataNodeQueryMessages
+            .EXCEPTION_PREDICATEWITHUNCORRELATEDSCALARSUBQUERYRECONSTRUCTOR_IS_NULL_B264FEBC);
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -440,7 +443,9 @@ public class QueryPlanner {
         frameEnd = plan.getFrameOffsetSymbol();
       } else if (window.getFrame().isPresent()) {
         throw new IllegalArgumentException(
-            "unexpected window frame type: " + window.getFrame().get().getType());
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_WINDOW_FRAME_TYPE_S_F06F81B8,
+                window.getFrame().get().getType()));
       }
 
       subPlan =
@@ -943,7 +948,9 @@ public class QueryPlanner {
     // Generate GroupIdNode (multiple grouping sets) or ProjectNode (single grouping set)
     PlanNode groupId;
     Optional<Symbol> groupIdSymbol = Optional.empty();
-    checkArgument(groupingSets.size() == 1, "Only support one groupingSet now");
+    checkArgument(
+        groupingSets.size() == 1,
+        DataNodeQueryMessages.EXCEPTION_ONLY_SUPPORT_ONE_GROUPINGSET_NOW_A1277FA4);
 
     Assignments.Builder assignments = Assignments.builder();
     assignments.putIdentities(subPlan.getRoot().getOutputSymbols());
@@ -1511,8 +1518,9 @@ public class QueryPlanner {
               () ->
                   new IllegalArgumentException(
                       format(
-                          "No mapping for expression: %s (%s)",
-                          expression, System.identityHashCode(expression))));
+                          DataNodeQueryMessages.NO_MAPPING_FOR_EXPRESSION_WITH_IDENTITY_FMT,
+                          expression,
+                          System.identityHashCode(expression))));
     }
 
     public Optional<Symbol> tryGet(Expression expression) {

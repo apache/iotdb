@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Type;
@@ -140,8 +141,9 @@ public class PipeRow implements Row {
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "unsupported data type %s for column %s",
-                getDataType(columnIndex), columnNameStringList[columnIndex]));
+                DataNodePipeMessages.PIPE_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_FOR_COLUMN_S_9F870C01,
+                getDataType(columnIndex),
+                columnNameStringList[columnIndex]));
     }
   }
 
@@ -171,7 +173,9 @@ public class PipeRow implements Row {
       }
     }
     throw new PipeParameterNotValidException(
-        String.format("column %s not found", columnName.getFullPath()));
+        String.format(
+            DataNodePipeMessages.PIPE_EXCEPTION_COLUMN_S_NOT_FOUND_0FA13581,
+            columnName.getFullPath()));
   }
 
   @Override

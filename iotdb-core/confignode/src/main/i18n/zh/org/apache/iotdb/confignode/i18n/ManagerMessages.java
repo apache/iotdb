@@ -520,4 +520,125 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "移除 ConfigNode 失败，转移 ConfigNode leader 失败。";
 
   private ManagerMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075 = "订阅HandleLeaderChangeProcedure was submitted, procedureId: {}.";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F = "订阅HandleLeaderChangeProcedure was 无法submit.";
+  public static final String EXCEPTION_INVALID_2928F475 = " is invalid";
+  public static final String MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523 =
+      "无法创建 trigger[%s], the size of Jar is too large, you can increase the value of property"
+      + " 'config_节点_ratis_log_appender_buffer_size_max' on Config节点";
+  public static final String MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893 =
+      "无法创建 pipe plugin[%s], the size of Jar is too large, you can increase the value of property"
+      + " 'config_节点_ratis_log_appender_buffer_size_max' on Config节点";
+  public static final String MESSAGE_FAIL_CREATE_UDF_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_2F119802 =
+      "无法创建 UDF[%s], the size of Jar is too large, you can increase the value of property"
+      + " 'config_节点_ratis_log_appender_buffer_size_max' on Config节点";
+  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "无法序列化 region progress ";
+  public static final String MESSAGE_CONSENSUSMANAGER_TARGET_CONFIGNODE_NOT_INITIALIZED_4D386066 = "ConsensusManager of target-Config节点 不是initialized, ";
+  public static final String MESSAGE_PLEASE_MAKE_SURE_TARGET_CONFIGNODE_HAS_BEEN_STARTED_SUCCESSFULLY_C78201DC = "please make sure the target-Config节点 已开始ed 成功fully.";
+  public static final String MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF = "config_节点_consensus_protocol_class";
+  public static final String MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20 = "data_region_consensus_protocol_class";
+  public static final String MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF = "模式_region_consensus_protocol_class";
+  public static final String MESSAGE_SERIES_SLOT_NUM_115D9BE0 = "series_slot_num";
+  public static final String MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24 = "series_partition_executor_class";
+  public static final String MESSAGE_TIME_PARTITION_INTERVAL_CE476507 = "time_partition_interval";
+  public static final String MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5 = "模式_replication_factor";
+  public static final String MESSAGE_DATA_REPLICATION_FACTOR_22465D3B = "data_replication_factor";
+  public static final String MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC = "模式_region_per_data_节点";
+  public static final String MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5 = "data_region_per_data_节点";
+  public static final String MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95 = "读取_consistency_level";
+  public static final String MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA = "disk_space_警告_threshold";
+  public static final String MESSAGE_TIMESTAMP_PRECISION_9591C9C9 = "timestamp_precision";
+  public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "模式_engine_mode";
+  public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
+  public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "数据库_limit_threshold";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "Unexpected 错误 happened while setting space quota on 数据库: %s ";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "Unexpected 错误 happened while setting throttle quota on 用户: %s ";
+  public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "模式_模板 need two 文件s";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "Got IO异常 when de序列化 use&角色 文件, type:{}";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "Got IO异常 when de序列化 角色List";
+  public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "Got 异常 when deserializing ttl 文件";
+  public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "Unrecognized 节点 type. 无法de序列化 MTree from given buffer";
+  public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "Got IO异常 when construct 数据库 Tree";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "Got IO异常 when de序列化 模板 info";
+  public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "Measurements 不found for %s, cannot auto detect";
+  public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "无法take snapshot,，原因：snapshot 文件 [{}] is 已经exist.";
+  public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "无法加载 snapshot,snapshot 文件 [{}] 不是exist.";
+  public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";
+  public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "Config节点 local peer has 已经been 创建d: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "Config节点 peer {} has 已经been added: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "Config节点 peer {} has 已经been 移除d: {}";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "The 当前Config节点 is leader but 不读取y yet, please try again later.";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "The 当前Config节点 不是leader, please redirect to a new Config节点.";
+  public static final String LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80 = "无法sync commit progress. Result 状态: {}.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F = "无法alter 数据库. The 数据库 ";
+  public static final String MESSAGE_DOESN_T_EXIST_EED8C92E = " doesn't exist.";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_SCHEMAREGIONGROUPNUM_COULD_ONLY_INCREASED_B98229D3 = "无法alter 数据库. The 模式RegionGroupNum could only be increased. ";
+  public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "当前模式RegionGroupNum: %d, Alter 模式RegionGroupNum: %d";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "无法alter 数据库. The DataRegionGroupNum could only be increased. ";
+  public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "当前DataRegionGroupNum: %d, Alter DataRegionGroupNum: %d";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "无法创建 数据库. The 模式ReplicationFactor 应be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "无法创建 数据库. The dataReplicationFactor 应be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "无法创建 数据库. The timePartitionOrigin 应be non-negative.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F = "无法创建 数据库. The timePartitionInterval 应be positive.";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB = "无法创建 数据库. The 模式RegionGroupNum 应be positive.";
+  public static final String MESSAGE_ACCEPT_NODE_REGISTRATION_4133276A = "Accept 节点 registration.";
+  public static final String MESSAGE_ACCEPT_NODE_RESTART_1BC1A8DD = "Accept 节点 re开始.";
+  public static final String MESSAGE_REJECT_ARG_START_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_B9E197DB = "Reject %s 开始. Because the ClusterName of the 当前%s and the target cluster are inconsistent. ";
+  public static final String MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D = "ClusterName of the 当前节点: %s, ClusterName of the target cluster: %s.";
+  public static final String MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C = "\t1. Change the seed_config_节点 参数 in %s to join the correct cluster.";
+  public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\n\t2. Change the cluster_name 参数 in %s to match the target cluster";
+  public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
+      "Reject %s registration. Because the following ip:port: %s of the 当前%s is conflicted with"
+      + " other 注册ed 节点s in the cluster.";
+  public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA = "\t1. Use SQL: \"show cluster details\" to find out the conflict 节点s. 移除 them and retry 开始.";
+  public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\n\t2. Change the conflict ip:port configurations in %s 文件 and retry 开始.";
+  public static final String MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2 = "cluster id has 不generated, please try again later";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_2075F29D = "Reject %s re开始. Because the ClusterName of the 当前%s and the target cluster are inconsistent. ";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_NODEID_CURRENT_ARG_ARG_AC13EDD5 = "Reject %s re开始. Because the 节点Id of the 当前%s is %d.";
+  public static final String MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473 = "\t1. 删除 \"data\" dir and retry.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_THERE_NO_CORRESPONDING_ARG_WHOSE_NODEID_455578E9 = "Reject %s re开始. Because there are no corresponding %s(whose 节点Id=%d) in the cluster.";
+  public static final String MESSAGE_1_MAYBE_YOU_VE_ALREADY_REMOVED_CURRENT_ARG_WHOSE_NODEID_92165504 =
+      "\t1. Maybe you've 已经移除d the 当前%s(whose 节点Id=%d). Please 删除 the useless 'data' dir and retry"
+      + " 开始.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERID_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_0398A6CE = "Reject %s re开始. Because the clusterId of the 当前%s and the target cluster are inconsistent. ";
+  public static final String MESSAGE_CLUSTERID_CURRENT_NODE_ARG_CLUSTERID_TARGET_CLUSTER_ARG_23C42434 = "ClusterId of the 当前节点: %s, ClusterId of the target cluster: %s.";
+  public static final String MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559 = "\t1. Please check if the 节点 configuration or 路径 is correct.";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_INTERNAL_TENDPOINTS_ARG_CAN_T_MODIFIED_A58B99F0 = "Reject %s re开始. Because the internal TEndPoints of this %s can't be modified.";
+  public static final String MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034 = "\t1. Please keep the internal TEndPoints of this 节点 the same as before.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758 = "移除 Config节点 失败，原因：there is only one Config节点 in 当前Cluster.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315 = "移除 Config节点 失败，原因：there is no other Config节点 in Running 状态 in 当前Cluster.";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "移除 Config节点 失败，原因：the Config节点Group is on leader election, please retry.";
+  public static final String MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D = "Transfer Config节点 leader 失败，原因：不能find any running Config节点.";
+  public static final String MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603 = "The Config节点 to be 移除d is leader, 已经transfer Leader to ";
+  public static final String MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF = "The target Data节点 不是existed, please ensure your input <查询Id> is correct";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_D8AE1679 = "创建 模式Partition 失败，原因：the 数据库: %s 不是exists";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_2617832C = "创建 模式Partition 失败，原因：the 数据库: %s 不exist";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_F223D5C2 = "创建 DataPartition 失败，原因：the 数据库: %s 不是exists";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_D7A8C1FC = "创建 DataPartition 失败，原因：the 数据库: %s 不exist";
+  public static final String LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14 = "to RegionGroup {}, SeriesPartitionSlot Count: {}";
+  public static final String LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A = "RegionGroupId: {}, SeriesPartitionSlot Count: {}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_962E8672 = "Increase reference count for snapshot %s 错误. Holder 消息: %s";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_8C7FF9CE = "Decrease reference count for snapshot %s 错误. Holder 消息: %s";
+  public static final String MESSAGE_RECEIVER_CONFIGNODE_HAS_SET_UP_NEW_RECEIVER_SENDER_MUST_RE_77B80C51 =
+      "The receiver Config节点 has set up a new receiver and the sender 必须re-send its handshake"
+      + " request.";
+  public static final String LOG_IGNORE_EXCEPTION_2AC431FA = "Ignore this 异常.";
+  public static final String LOG_REPORTING_PIPE_META_ARG_REMAININGEVENTCOUNT_ARG_ESTIMATEDREMAININGTIME_ARG_E2727CB4 = "Reporting pipe meta: {}, remainingEventCount: {}, estimatedRemainingTime: {}";
+  public static final String LOG_PIPEMETAFROMAGENT_NULL_PIPEMETAFROMCOORDINATOR_ARG_36C513AE = "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}";
+  public static final String LOG_DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_DATANODE_ARG_PIPE_ARG_REMAININGEVENTCOUNT_7E6C52E9 =
+      "Detected historical pipe completion report from Data节点 {} for pipe {}. remainingEventCount:"
+      + " {}, remainingTime: {}, completedData节点s: {}";
+  public static final String LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255 =
+      "All Data节点s reported historical pipe {} completed. globalRemainingEventCount: {},"
+      + " globalRemainingTime: {}, staticMeta: {}";
+  public static final String LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F = "Updated progress index for (pipe name: {}, consensus group id: {}) ... ";
+  public static final String LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5 = "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}";
+  public static final String LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7 = "Detect PipeRuntimeConnectorCritical异常 %s ";
+  public static final String LOG_AGENT_STOP_PIPE_ARG_42212C21 = "from agent, 停止 pipe %s.";
+  public static final String LOG_CREATEREGIONGROUPS_REGIONGROUP_ARG_BELONGED_DATABASE_ARG_DATANODES_ARG_5270AB6B = "[创建RegionGroups] RegionGroup: {}, belonged 数据库: {}, on Data节点s: {}";
+  public static final String EXCEPTION_DATANODEID_SHOULD_NOT_BE_MINUS_1_HERE_5CB27796 = "dataNodeId should not be -1 here";
+
 }

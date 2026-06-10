@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -43,15 +45,15 @@ public final class GenericDataType extends DataType {
 
   public GenericDataType(Identifier name, List<DataTypeParameter> arguments) {
     super(null);
-    this.name = requireNonNull(name, "name is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public GenericDataType(
       @Nonnull NodeLocation location, Identifier name, List<DataTypeParameter> arguments) {
-    super(requireNonNull(location, "location is null"));
-    this.name = requireNonNull(name, "name is null");
-    this.arguments = requireNonNull(arguments, "arguments is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.arguments = requireNonNull(arguments, QueryMessages.EXCEPTION_ARGUMENTS_IS_NULL_B1F6D4F2);
   }
 
   public Identifier getName() {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -31,7 +33,7 @@ public class TypeId {
   private final String id;
 
   private TypeId(String id) {
-    this.id = requireNonNull(id, "id is null");
+    this.id = requireNonNull(id, QueryMessages.EXCEPTION_ID_IS_NULL_9D5D27B1);
   }
 
   public static TypeId of(String id) {

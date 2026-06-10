@@ -66,5 +66,17 @@ public final class RpcMessages {
   // SynchronizedHandler
   public static final String ERROR_IN_CALLING_METHOD = "调用方法时出错：";
 
+  // Shared fragments
+  public static final String EMPTY_MESSAGE = "";
+  public static final String REMOTE_ADDRESS_PREFIX = " 来自 ";
+
   private RpcMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B = "Size of columnIndex2TsBlockColumnIndexList %s doesn't equal to size of columnNameList %s.";
+  public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "无法fetch result from server,，原因：of network 连接: {} ";
+  public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
+  public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "later request in same group will be redirected to ";
+
 }

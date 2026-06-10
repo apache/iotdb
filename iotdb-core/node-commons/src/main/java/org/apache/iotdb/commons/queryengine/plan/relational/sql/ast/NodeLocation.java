@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -29,8 +31,14 @@ public final class NodeLocation {
   private final int column;
 
   public NodeLocation(int line, int column) {
-    checkArgument(line >= 1, "line must be at least one, got: %s", line);
-    checkArgument(column >= 1, "column must be at least one, got: %s", column);
+    checkArgument(
+        line >= 1,
+        QueryMessages.EXCEPTION_LINE_MUST_BE_AT_LEAST_ONE_COMMA_GOT_COLON_ARG_6BA7A99C,
+        line);
+    checkArgument(
+        column >= 1,
+        QueryMessages.EXCEPTION_COLUMN_MUST_BE_AT_LEAST_ONE_COMMA_GOT_COLON_ARG_4A529240,
+        column);
 
     this.line = line;
     this.column = column;

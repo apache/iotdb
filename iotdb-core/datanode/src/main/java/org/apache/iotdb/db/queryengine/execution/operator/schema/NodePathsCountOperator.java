@@ -24,6 +24,7 @@ import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -56,8 +57,11 @@ public class NodePathsCountOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(NodePathsCountOperator.class);
 
   public NodePathsCountOperator(OperatorContext operatorContext, Operator child) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.child = requireNonNull(child, "child operator is null");
+    this.operatorContext =
+        requireNonNull(
+            operatorContext, DataNodeSchemaMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
+    this.child =
+        requireNonNull(child, DataNodeSchemaMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
     this.isFinished = false;
     this.nodePaths = new HashSet<>();
     this.outputDataTypes =

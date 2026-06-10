@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,10 +38,11 @@ public class IrConcatenation extends IrRowPattern {
   private final List<IrRowPattern> patterns;
 
   public IrConcatenation(List<IrRowPattern> patterns) {
-    this.patterns = requireNonNull(patterns, "patterns is null");
+    this.patterns = requireNonNull(patterns, QueryMessages.EXCEPTION_PATTERNS_IS_NULL_7E0DDDF0);
     checkArgument(
         patterns.size() >= 2,
-        "pattern concatenation must have at least 2 elements (actual: %s)",
+        QueryMessages
+            .EXCEPTION_PATTERN_CONCATENATION_MUST_HAVE_AT_LEAST_2_ELEMENTS_LEFT_PAREN_ACTUAL_COLON_ARG__8B283563,
         patterns.size());
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
 import java.net.Socket;
@@ -80,7 +81,11 @@ public class ClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds == null) {
       throw new IllegalStateException(
-          "StatementId: " + statementId + " doesn't exist in this session " + this);
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_STATEMENTID_S_DOESN_T_EXIST_IN_THIS_SESSION_S_4AA25E49,
+              statementId,
+              this));
     }
     queryIds.add(queryId);
   }

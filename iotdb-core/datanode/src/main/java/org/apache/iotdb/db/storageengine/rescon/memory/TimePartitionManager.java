@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -131,7 +132,8 @@ public class TimePartitionManager {
         if (dataRegion != null) {
           dataRegion.degradeFlushTimeMap(timePartitionInfo.partitionId);
           logger.info(
-              "[{}]degrade LastFlushTimeMap of old TimePartitionInfo-{}, mem size is {}, remaining mem cost is {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_DEGRADE_LASTFLUSHTIMEMAP_OF_OLD_TIMEPARTITIONINFO_MEM_SIZE_BED053EE,
               timePartitionInfo.dataRegionId,
               timePartitionInfo.partitionId,
               timePartitionInfo.memSize,

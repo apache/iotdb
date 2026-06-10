@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.enums;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import com.codahale.metrics.Meter;
 
 public enum PipeRateAverage {
@@ -41,7 +43,8 @@ public enum PipeRateAverage {
       case NONE:
       default:
         throw new UnsupportedOperationException(
-            String.format("The type %s is not supported in pipe rate average.", this));
+            String.format(
+                CommonMessages.EXCEPTION_TYPE_ARG_NOT_SUPPORTED_PIPE_RATE_AVERAGE_F74694AD, this));
     }
   }
 }

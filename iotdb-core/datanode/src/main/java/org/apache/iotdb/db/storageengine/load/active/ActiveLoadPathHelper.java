@@ -264,12 +264,11 @@ public final class ActiveLoadPathHelper {
     try {
       final long threshold = Long.parseLong(value);
       if (threshold < 0) {
-        throw new SemanticException(
-            "Tablet conversion threshold must be a non-negative long value.");
+        throw new SemanticException(StorageEngineMessages.TABLET_CONVERSION_THRESHOLD_NON_NEGATIVE);
       }
     } catch (final NumberFormatException e) {
       throw new SemanticException(
-          String.format("Tablet conversion threshold '%s' is not a valid long value.", value));
+          String.format(StorageEngineMessages.TABLET_CONVERSION_THRESHOLD_NOT_VALID_LONG, value));
     }
   }
 

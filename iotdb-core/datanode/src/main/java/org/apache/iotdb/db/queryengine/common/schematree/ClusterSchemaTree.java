@@ -255,7 +255,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       } else if (measurementPathList.size() > 1) {
         throw new SemanticException(
             String.format(
-                "The source paths [%s] of view [%s] are multiple.",
+                DataNodeQueryMessages.THE_SOURCE_PATHS_S_OF_VIEW_S_ARE_MULTIPLE,
                 fullPath.getFullPath(),
                 schemaComputation
                     .getDevicePath()

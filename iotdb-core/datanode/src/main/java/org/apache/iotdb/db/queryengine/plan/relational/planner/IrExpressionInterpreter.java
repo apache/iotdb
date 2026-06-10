@@ -104,14 +104,20 @@ public class IrExpressionInterpreter {
       PlannerContext plannerContext,
       SessionInfo session,
       Map<NodeRef<Expression>, Type> expressionTypes) {
-    this.expression = requireNonNull(expression, "expression is null");
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.expression =
+        requireNonNull(expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_IS_NULL_16C079B5);
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
     this.metadata = plannerContext.getMetadata();
     this.literalInterpreter = new LiteralInterpreter(plannerContext, session);
     this.literalEncoder = new LiteralEncoder(plannerContext);
-    this.session = requireNonNull(session, "session is null");
+    this.session =
+        requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
     this.expressionTypes =
-        ImmutableMap.copyOf(requireNonNull(expressionTypes, "expressionTypes is null"));
+        ImmutableMap.copyOf(
+            requireNonNull(
+                expressionTypes, DataNodeQueryMessages.EXCEPTION_EXPRESSIONTYPES_IS_NULL_4107A4A2));
     verify(expressionTypes.containsKey(NodeRef.of(expression)));
     this.functionInvoker = new InterpretedFunctionInvoker();
     this.typeCoercion = new TypeCoercion(plannerContext.getTypeManager()::getType);
@@ -128,7 +134,8 @@ public class IrExpressionInterpreter {
     Object result = new Visitor(false).processWithExceptionHandling(expression, null);
     verify(
         !(result instanceof Expression),
-        "Expression interpreter returned an unresolved expression");
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51);
     return result;
   }
 
@@ -136,7 +143,8 @@ public class IrExpressionInterpreter {
     Object result = new Visitor(false).processWithExceptionHandling(expression, inputs);
     verify(
         !(result instanceof Expression),
-        "Expression interpreter returned an unresolved expression");
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_INTERPRETER_RETURNED_AN_UNRESOLVED_EXPRESSION_5BCE9A51);
     return result;
   }
 
@@ -332,7 +340,10 @@ public class IrExpressionInterpreter {
 
     private Type type(Expression expression) {
       Type type = expressionTypes.get(NodeRef.of(expression));
-      checkState(type != null, "Type not found for expression: %s", expression);
+      checkState(
+          type != null,
+          DataNodeQueryMessages.EXCEPTION_TYPE_NOT_FOUND_FOR_EXPRESSION_COLON_ARG_C26C9237,
+          expression);
       return type;
     }
 
@@ -369,7 +380,8 @@ public class IrExpressionInterpreter {
                   !(nestedOperand instanceof NullLiteral)
                       && !(nestedOperand instanceof Cast
                           && ((Cast) nestedOperand).getExpression() instanceof NullLiteral),
-                  "Null operand should have been removed by recursive coalesce processing");
+                  DataNodeQueryMessages
+                      .EXCEPTION_NULL_OPERAND_SHOULD_HAVE_BEEN_REMOVED_BY_RECURSIVE_COALESCE_PROCESSING_B6D4D443);
               return newOperands;
             }
           }
@@ -377,7 +389,8 @@ public class IrExpressionInterpreter {
           Expression expr = (Expression) value;
           verify(
               !(value instanceof NullLiteral),
-              "Null value is expected to be represented as null, not NullLiteral");
+              DataNodeQueryMessages
+                  .EXCEPTION_NULL_VALUE_IS_EXPECTED_TO_BE_REPRESENTED_AS_NULL_COMMA_NOT_NULLLITERAL_9B96D25A);
           // Skip duplicates unless they are non-deterministic.
           if (!isDeterministic(expr) || uniqueNewOperands.add(expr)) {
             newOperands.add(expr);
@@ -877,7 +890,7 @@ public class IrExpressionInterpreter {
       }
 
       if (optimize && hasUnresolvedValue(argumentValues)) {
-        verify(!node.isDistinct(), "distinct not supported");
+        verify(!node.isDistinct(), DataNodeQueryMessages.EXCEPTION_DISTINCT_NOT_SUPPORTED_0E97D0BB);
         //        verify(node.getOrderBy().isEmpty(), "order by not supported");
         //        verify(node.getFilter().isEmpty(), "filter not supported");
         //        verify(node.getWindow().isEmpty(), "window not supported");
@@ -934,7 +947,9 @@ public class IrExpressionInterpreter {
         return constructEvaluateFunction(node.getField(), session.getZoneId()).apply((Long) value);
       }
 
-      checkState(value instanceof Expression, "Value reach here must be Expression");
+      checkState(
+          value instanceof Expression,
+          DataNodeQueryMessages.EXCEPTION_VALUE_REACH_HERE_MUST_BE_EXPRESSION_C7CA1971);
       return new Extract((Expression) value, node.getField());
     }
 

@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.confignode.exception;
 
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+
 public class NoAvailableAINodeException extends ConfigNodeException {
   public NoAvailableAINodeException() {
     super(
-        "There are no available AINodes currently, please use \"show cluster\" to check the cluster status.");
+        ConfigNodeMessages
+            .EXCEPTION_THERE_NO_AVAILABLE_AINODES_CURRENTLY_PLEASE_USE_SHOW_CLUSTER_CHECK_FD32EB52);
   }
 }

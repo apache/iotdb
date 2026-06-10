@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -45,7 +47,9 @@ public class SearchedCaseExpression extends Expression {
 
   public SearchedCaseExpression(List<WhenClause> whenClauses) {
     super(null);
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
     this.defaultValue = null;
   }
 
@@ -53,7 +57,9 @@ public class SearchedCaseExpression extends Expression {
     super(null);
     int len = ReadWriteIOUtils.readInt(byteBuffer);
     Validate.isTrue(
-        len > 0, "the length of SearchedCaseExpression's whenClauses must greater than 0");
+        len > 0,
+        QueryMessages
+            .EXCEPTION_THE_LENGTH_OF_SEARCHEDCASEEXPRESSION_QUOTE_S_WHENCLAUSES_MUST_GREATER_THAN_0_D710DBF6);
 
     this.whenClauses = new ArrayList<>();
     for (int i = 0; i < len; i++) {
@@ -70,21 +76,29 @@ public class SearchedCaseExpression extends Expression {
 
   public SearchedCaseExpression(List<WhenClause> whenClauses, Expression defaultValue) {
     super(null);
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
+    this.defaultValue =
+        requireNonNull(defaultValue, QueryMessages.EXCEPTION_DEFAULTVALUE_IS_NULL_B1C8490D);
   }
 
   public SearchedCaseExpression(NodeLocation location, List<WhenClause> whenClauses) {
-    super(requireNonNull(location, "location is null"));
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
     this.defaultValue = null;
   }
 
   public SearchedCaseExpression(
       NodeLocation location, List<WhenClause> whenClauses, Expression defaultValue) {
-    super(requireNonNull(location, "location is null"));
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.whenClauses =
+        ImmutableList.copyOf(
+            requireNonNull(whenClauses, QueryMessages.EXCEPTION_WHENCLAUSES_IS_NULL_140535CF));
+    this.defaultValue =
+        requireNonNull(defaultValue, QueryMessages.EXCEPTION_DEFAULTVALUE_IS_NULL_B1C8490D);
   }
 
   public List<WhenClause> getWhenClauses() {

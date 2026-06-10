@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -191,13 +192,14 @@ public class ConfigExecution implements IQueryExecution {
     if ((Objects.nonNull(status) && isUserException(status))
         || userExceptionCodes.contains(errorCode)) {
       LOGGER.info(
-          "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
+          DataNodeQueryMessages
+              .FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG_MESSAGE_ARG_STATUS,
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
           cause.getMessage(),
           errorCode);
     } else {
       LOGGER.warn(
-          "Failures happened during running ConfigExecution when executing {}.",
+          DataNodeQueryMessages.FAILURES_HAPPENED_DURING_RUNNING_CONFIGEXECUTION_WHEN_EXECUTING_ARG,
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
           cause);
     }

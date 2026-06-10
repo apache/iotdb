@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.table.v1.handler;
 
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.table.v1.model.SQL;
 
@@ -32,40 +33,41 @@ public class RequestValidationHandler {
   private RequestValidationHandler() {}
 
   public static void validateSQL(SQL sql) {
-    Objects.requireNonNull(sql.getSql(), "sql should not be null");
+    Objects.requireNonNull(sql.getSql(), RestMessages.SQL_SHOULD_NOT_BE_NULL);
     if (sql.getRowLimit() != null) {
-      Validate.isTrue(sql.getRowLimit() > 0, "row_limit should be positive");
+      Validate.isTrue(sql.getRowLimit() > 0, RestMessages.ROW_LIMIT_SHOULD_BE_POSITIVE);
     }
   }
 
   public static void validateInsertTabletRequest(InsertTabletRequest insertTabletRequest) {
-    Objects.requireNonNull(insertTabletRequest.getDatabase(), "database should not be null");
-    Objects.requireNonNull(insertTabletRequest.getTable(), "table should not be null");
-    Objects.requireNonNull(insertTabletRequest.getColumnNames(), "column_names should not be null");
+    Objects.requireNonNull(insertTabletRequest.getDatabase(), RestMessages.DATABASE_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getTable(), RestMessages.TABLE_NOT_NULL);
     Objects.requireNonNull(
-        insertTabletRequest.getColumnCategories(), "column_categories should not be null");
-    Objects.requireNonNull(insertTabletRequest.getDataTypes(), "data_types should not be null");
-    Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
-    Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+        insertTabletRequest.getColumnNames(), RestMessages.COLUMN_NAMES_NOT_NULL);
+    Objects.requireNonNull(
+        insertTabletRequest.getColumnCategories(), RestMessages.COLUMN_CATEGORIES_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getDataTypes(), RestMessages.DATA_TYPES_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getTimestamps(), RestMessages.TIMESTAMPS_NOT_NULL);
+    Objects.requireNonNull(insertTabletRequest.getValues(), RestMessages.VALUES_NOT_NULL);
     List<String> errorMessages = new ArrayList<>();
     String table = insertTabletRequest.getTable();
     if (insertTabletRequest.getColumnCategories().size() == 0
         || insertTabletRequest.getColumnCategories().size()
             != insertTabletRequest.getColumnNames().size()) {
-      errorMessages.add("column_names and column_categories should have the same size");
+      errorMessages.add(RestMessages.COLUMN_NAMES_AND_COLUMN_CATEGORIES_SIZE_MISMATCH);
     }
     if (insertTabletRequest.getColumnCategories().size()
         != insertTabletRequest.getDataTypes().size()) {
-      errorMessages.add("column_categories and data_types should have the same size");
+      errorMessages.add(RestMessages.COLUMN_CATEGORIES_AND_DATA_TYPES_SIZE_MISMATCH);
     }
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
-      errorMessages.add("values and timestamps should have the same size");
+      errorMessages.add(RestMessages.VALUES_AND_TIMESTAMPS_SIZE_MISMATCH);
     }
 
     for (int i = 0; i < insertTabletRequest.getDataTypes().size(); i++) {
       String dataType = insertTabletRequest.getDataTypes().get(i);
       if (isDataType(dataType)) {
-        errorMessages.add("The " + dataType + " data type of " + table + " is illegal");
+        errorMessages.add(String.format(RestMessages.ILLEGAL_TABLE_DATA_TYPE, dataType, table));
       }
     }
 
@@ -73,15 +75,12 @@ public class RequestValidationHandler {
     for (int i = 0; i < insertTabletRequest.getValues().size(); i++) {
       List<Object> values = insertTabletRequest.getValues().get(i);
       if (dataTypeSize != values.size()) {
-        errorMessages.add(
-            "The number of values in the "
-                + (i + 1)
-                + "th row is not equal to the data_types size");
+        errorMessages.add(String.format(RestMessages.ROW_VALUES_SIZE_MISMATCH, i + 1));
       }
     }
 
     if (!errorMessages.isEmpty()) {
-      throw new RuntimeException(String.join(",", errorMessages));
+      throw new RuntimeException(String.join(RestMessages.ERROR_MESSAGE_SEPARATOR, errorMessages));
     }
   }
 

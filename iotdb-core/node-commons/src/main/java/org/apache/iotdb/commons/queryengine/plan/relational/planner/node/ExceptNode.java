@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -78,18 +79,18 @@ public class ExceptNode extends SetOperationNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "ExceptNode should never be serialized in current version");
+        QueryMessages.EXCEPTION_EXCEPTNODE_SHOULD_NEVER_SERIALIZED_CURRENT_VERSION_6F5B4EE0);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(
-        "ExceptNode should never be serialized in current version");
+        QueryMessages.EXCEPTION_EXCEPTNODE_SHOULD_NEVER_SERIALIZED_CURRENT_VERSION_6F5B4EE0);
   }
 
   public static ExceptNode deserialize(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "ExceptNode should never be deserialized in current version");
+        QueryMessages.EXCEPTION_EXCEPTNODE_SHOULD_NEVER_DESERIALIZED_CURRENT_VERSION_690C18F0);
   }
 
   @Override

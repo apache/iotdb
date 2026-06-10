@@ -20,17 +20,19 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class DatabaseNotSetException extends MetadataException {
 
   private static final long serialVersionUID = 3739300272099030533L;
 
-  public static final String DATABASE_NOT_SET = "Database is not set";
+  public static final String DATABASE_NOT_SET = DataNodeSchemaMessages.DATABASE_NOT_SET;
 
   public DatabaseNotSetException(String path) {
     super(
-        String.format("%s for current seriesPath: [%s]", DATABASE_NOT_SET, path),
+        String.format(
+            DataNodeSchemaMessages.DATABASE_NOT_SET_FOR_SERIES_PATH_FMT, DATABASE_NOT_SET, path),
         TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
   }
 }

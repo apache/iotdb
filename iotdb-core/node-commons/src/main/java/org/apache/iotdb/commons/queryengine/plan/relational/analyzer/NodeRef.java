@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 
 import static java.lang.System.identityHashCode;
@@ -32,7 +33,7 @@ public final class NodeRef<T extends Node> {
   private final T node;
 
   private NodeRef(T node) {
-    this.node = requireNonNull(node, "node is null");
+    this.node = requireNonNull(node, QueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
   }
 
   public T getNode() {

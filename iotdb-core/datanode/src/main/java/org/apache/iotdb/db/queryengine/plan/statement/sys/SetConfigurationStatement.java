@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -103,9 +104,10 @@ public class SetConfigurationStatement extends Statement implements IConfigState
 
     if (nodeId >= 0 || configItems.size() > 1) {
       throw new SemanticException(
-          "The parameters '"
+          DataNodeQueryMessages.THE_PARAMETERS
               + specialParam
-              + "'  must be consistent across the entire cluster and only one can be set at a time.");
+              + DataNodeQueryMessages
+                  .MUST_BE_CONSISTENT_ACROSS_THE_ENTIRE_CLUSTER_AND_ONLY_ONE_CAN_BE_SET_AT_A_TIME);
     }
   }
 }

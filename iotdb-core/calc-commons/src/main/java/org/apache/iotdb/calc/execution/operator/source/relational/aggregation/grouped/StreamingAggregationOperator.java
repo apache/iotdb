@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.AbstractOperator;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -95,7 +96,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
                     aggregators.stream().map(TableAggregator::getType))
                 .collect(Collectors.toList()));
     this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
-    checkArgument(!spillEnabled, "spill is not supported");
+    checkArgument(!spillEnabled, CalcMessages.EXCEPTION_SPILL_IS_NOT_SUPPORTED_E6E35549);
   }
 
   @Override
@@ -145,7 +146,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
   }
 
   private void processInput(TsBlock page) {
-    requireNonNull(page, "page is null");
+    requireNonNull(page, CalcMessages.EXCEPTION_PAGE_IS_NULL_4AA19E1C);
 
     if (currentGroup != null) {
       if (groupKeyComparator.compare(currentGroup, new SortKey(page, 0)) != 0) {
