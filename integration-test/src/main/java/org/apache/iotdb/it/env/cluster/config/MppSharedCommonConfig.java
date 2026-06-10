@@ -424,6 +424,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAutoResizingBufferMemoryProportion(
+      double autoResizingBufferMemoryProportion) {
+    dnConfig.setAutoResizingBufferMemoryProportion(autoResizingBufferMemoryProportion);
+    cnConfig.setAutoResizingBufferMemoryProportion(autoResizingBufferMemoryProportion);
+    return this;
+  }
+
+  @Override
   public CommonConfig setQuotaEnable(boolean quotaEnable) {
     dnConfig.setQuotaEnable(quotaEnable);
     cnConfig.setQuotaEnable(quotaEnable);

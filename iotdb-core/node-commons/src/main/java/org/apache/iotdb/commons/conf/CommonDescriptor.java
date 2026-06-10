@@ -300,6 +300,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
+    config.setAutoResizingBufferMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "auto_resizing_buffer_memory_proportion",
+                String.valueOf(config.getAutoResizingBufferMemoryProportion()))));
 
     config.setPathLogMaxSize(
         Integer.parseInt(

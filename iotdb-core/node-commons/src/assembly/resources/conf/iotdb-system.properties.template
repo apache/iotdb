@@ -786,6 +786,11 @@ partition_table_recover_max_read_megabytes_per_second=10
 # effectiveMode: restart
 datanode_memory_proportion=3:3:1:1:1:1
 
+# The proportion of GlobalMemoryManager used by AutoResizingBuffer.
+# effectiveMode: restart
+# Datatype: double
+auto_resizing_buffer_memory_proportion=0.01
+
 # Schema Memory Allocation Ratio: SchemaRegion, SchemaCache, and PartitionCache.
 # The parameter form is a:b:c, where a, b and c are integers. for example: 1:1:1 , 6:2:1
 # effectiveMode: restart

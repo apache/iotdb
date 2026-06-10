@@ -418,6 +418,15 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAutoResizingBufferMemoryProportion(
+      double autoResizingBufferMemoryProportion) {
+    setProperty(
+        "auto_resizing_buffer_memory_proportion",
+        String.valueOf(autoResizingBufferMemoryProportion));
+    return this;
+  }
+
+  @Override
   public CommonConfig setQuotaEnable(boolean quotaEnable) {
     setProperty("quota_enable", String.valueOf(quotaEnable));
     return this;

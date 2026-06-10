@@ -300,6 +300,12 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAutoResizingBufferMemoryProportion(
+      double autoResizingBufferMemoryProportion) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setQuotaEnable(boolean quotaEnable) {
     return this;
   }

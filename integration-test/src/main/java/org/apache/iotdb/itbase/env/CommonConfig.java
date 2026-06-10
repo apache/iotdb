@@ -134,6 +134,8 @@ public interface CommonConfig {
 
   CommonConfig setWriteMemoryProportion(String writeMemoryProportion);
 
+  CommonConfig setAutoResizingBufferMemoryProportion(double autoResizingBufferMemoryProportion);
+
   CommonConfig setClusterTimeseriesLimitThreshold(long clusterTimeseriesLimitThreshold);
 
   CommonConfig setClusterDeviceLimitThreshold(long clusterDeviceLimitThreshold);

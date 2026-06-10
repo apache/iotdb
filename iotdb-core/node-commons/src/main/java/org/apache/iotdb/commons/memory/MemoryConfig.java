@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.rpc.AutoResizingBufferMemoryControl;
 import org.apache.iotdb.rpc.AutoResizingBufferMemoryManager;
 
 public class MemoryConfig {
   private static final String AUTO_RESIZING_BUFFER_MEMORY_MANAGER_NAME = "AutoResizingBuffer";
   private static final String AUTO_RESIZING_BUFFER_MEMORY_BLOCK_NAME = "AutoResizingBufferBlock";
-  private static final int AUTO_RESIZING_BUFFER_MEMORY_RATIO_DENOMINATOR = 100;
 
   private final MemoryManager globalMemoryManager =
       new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
@@ -70,8 +70,11 @@ public class MemoryConfig {
             if (autoResizingBufferMemoryBlock == null
                 || autoResizingBufferMemoryBlock.isReleased()) {
               long autoResizingBufferMemorySize =
-                  globalMemoryManager.getTotalMemorySizeInBytes()
-                      / AUTO_RESIZING_BUFFER_MEMORY_RATIO_DENOMINATOR;
+                  (long)
+                      (globalMemoryManager.getTotalMemorySizeInBytes()
+                          * CommonDescriptor.getInstance()
+                              .getConfig()
+                              .getAutoResizingBufferMemoryProportion());
               MemoryManager autoResizingBufferMemoryManager =
                   globalMemoryManager.getOrCreateMemoryManager(
                       AUTO_RESIZING_BUFFER_MEMORY_MANAGER_NAME, autoResizingBufferMemorySize, true);
