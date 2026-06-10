@@ -358,6 +358,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     return transport;
   }
 
+  public TEndPoint getConfigNode() {
+    return configNode;
+  }
+
   public void syncLatestConfigNodeList() {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     cursor = 0;
@@ -491,6 +495,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
+        ConfigNodeInfo.getInstance().updateConfigNodeLocations(resp.getConfigNodeList());
         configNodes = newConfigNodes;
       } catch (TException e) {
         String message =

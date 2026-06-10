@@ -923,10 +923,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         .markTransfer(pipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
   }
 
-  protected void recordPipeReceiverRequest() {
-    PipeReceiverRuntimeRegistry.getInstance().markRequest(pipeReceiverRuntimeSessionKey.get());
-  }
-
   protected void clearPipeReceiverRuntime() {
     PipeReceiverRuntimeRegistry.getInstance()
         .deregister(pipeReceiverRuntimeSessionKey.getAndSet(null));

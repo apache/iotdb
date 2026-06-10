@@ -747,9 +747,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 null));
   }
 
-  private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
+  private Pair<TPipeTransferResp, Integer> handleTransferConfigPlan(final TPipeTransferReq req) {
     return ClusterConfigTaskExecutor.getInstance()
-        .handleTransferConfigPlan(getConfigReceiverId(), req);
+        .handleTransferConfigPlanAndGetReceiverNodeId(getConfigReceiverId(), req);
   }
 
   /** Used to identify the sender client */
@@ -798,14 +798,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp recordDataNodeTransferIfSuccess(final TPipeTransferResp resp) {
     if (isSuccess(resp)) {
       recordPipeReceiverTransfer();
-    } else {
-      recordPipeReceiverRequest();
     }
     return resp;
   }
 
   private TPipeTransferResp recordConfigNodeReceiverRuntimeIfSuccess(
-      final TPipeTransferResp resp, final TPipeTransferReq req) {
+      final Pair<TPipeTransferResp, Integer> respWithReceiverNodeId, final TPipeTransferReq req) {
+    final TPipeTransferResp resp = respWithReceiverNodeId.left;
     if (!PipeRequestType.isValidatedRequestType(req.getType())) {
       return resp;
     }
@@ -814,27 +813,27 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V1
         || requestType == PipeRequestType.HANDSHAKE_CONFIGNODE_V2) {
       if (isSuccess(resp)) {
-        recordConfigNodeHandshake(req, requestType);
+        recordConfigNodeHandshake(req, requestType, respWithReceiverNodeId.right);
       }
     } else {
       if (isSuccess(resp)) {
         PipeReceiverRuntimeRegistry.getInstance()
             .markTransfer(configPipeReceiverRuntimeSessionKey.get(), System.currentTimeMillis());
-      } else {
-        PipeReceiverRuntimeRegistry.getInstance()
-            .markRequest(configPipeReceiverRuntimeSessionKey.get());
       }
     }
     return resp;
   }
 
   private void recordConfigNodeHandshake(
-      final TPipeTransferReq req, final PipeRequestType requestType) {
+      final TPipeTransferReq req, final PipeRequestType requestType, final int receiverNodeId) {
     final String protocol = getProtocol(req);
     final String sessionKey =
         String.format(
             "%s-%s-%s-%s",
-            PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE, -1, protocol, getConfigReceiverId());
+            PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+            receiverNodeId,
+            protocol,
+            getConfigReceiverId());
     final String oldSessionKey = configPipeReceiverRuntimeSessionKey.getAndSet(sessionKey);
     if (!Objects.equals(oldSessionKey, sessionKey)) {
       PipeReceiverRuntimeRegistry.getInstance().deregister(oldSessionKey);
@@ -848,7 +847,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         .registerOrUpdateSession(
             sessionKey,
             PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
-            -1,
+            receiverNodeId,
             protocol,
             getSenderHost(),
             parseSenderPort(getSenderPort()),

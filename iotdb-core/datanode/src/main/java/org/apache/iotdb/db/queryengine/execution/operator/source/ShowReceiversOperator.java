@@ -140,7 +140,6 @@ public class ShowReceiversOperator implements SourceOperator {
           BytesUtils.valueOf(formatTime(snapshot.getLastHandshakeTime())));
       columnBuilders[11].writeBinary(
           BytesUtils.valueOf(formatTime(snapshot.getLastTransferTime())));
-      columnBuilders[12].writeLong(snapshot.getRequestNum());
       builder.declarePosition();
     }
     return builder.build();

@@ -253,8 +253,6 @@ public class InformationSchema {
     receiversTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
-    receiversTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.REQUEST_NUM_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(RECEIVERS, receiversTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);

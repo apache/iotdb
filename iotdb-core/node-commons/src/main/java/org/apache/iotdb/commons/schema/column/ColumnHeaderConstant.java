@@ -210,7 +210,6 @@ public class ColumnHeaderConstant {
   public static final String SENDER_CLUSTER_ID = "SenderClusterId";
   public static final String LAST_HANDSHAKE_TIME = "LastHandshakeTime";
   public static final String LAST_TRANSFER_TIME = "LastTransferTime";
-  public static final String REQUEST_NUM = "RequestNum";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -296,7 +295,6 @@ public class ColumnHeaderConstant {
   public static final String SENDER_CLUSTER_ID_TABLE_MODEL = "sender_cluster_id";
   public static final String LAST_HANDSHAKE_TIME_TABLE_MODEL = "last_handshake_time";
   public static final String LAST_TRANSFER_TIME_TABLE_MODEL = "last_transfer_time";
-  public static final String REQUEST_NUM_TABLE_MODEL = "request_num";
 
   public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
   public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
@@ -705,8 +703,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(RECEIVER_USER_NAME, TSDataType.TEXT),
           new ColumnHeader(SENDER_CLUSTER_ID, TSDataType.TEXT),
           new ColumnHeader(LAST_HANDSHAKE_TIME, TSDataType.TEXT),
-          new ColumnHeader(LAST_TRANSFER_TIME, TSDataType.TEXT),
-          new ColumnHeader(REQUEST_NUM, TSDataType.INT64));
+          new ColumnHeader(LAST_TRANSFER_TIME, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(

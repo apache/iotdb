@@ -31,7 +31,6 @@ import java.util.StringJoiner;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeReceiverRuntimeRegistry {
 
@@ -83,7 +82,6 @@ public class PipeReceiverRuntimeRegistry {
             session.senderClusterId = normalize(senderClusterId);
             session.lastHandshakeTime = handshakeTime;
             session.lastTransferTime = Math.max(session.lastTransferTime, handshakeTime);
-            session.requestNum.incrementAndGet();
             session.pipeId = isBlank(pipeName) ? null : formatPipeId(pipeName, pipeCreationTime);
           }
           return session;
@@ -97,16 +95,7 @@ public class PipeReceiverRuntimeRegistry {
     }
     synchronized (session) {
       session.lastTransferTime = Math.max(session.lastTransferTime, transferTime);
-      session.requestNum.incrementAndGet();
     }
-  }
-
-  public void markRequest(String connectionKey) {
-    final SessionRuntimeInfo session = sessionInfoMap.get(connectionKey);
-    if (session == null) {
-      return;
-    }
-    session.requestNum.incrementAndGet();
   }
 
   public void deregister(String connectionKey) {
@@ -141,7 +130,6 @@ public class PipeReceiverRuntimeRegistry {
             Math.max(aggregatedInfo.lastHandshakeTime, session.lastHandshakeTime);
         aggregatedInfo.lastTransferTime =
             Math.max(aggregatedInfo.lastTransferTime, session.lastTransferTime);
-        aggregatedInfo.requestNum += session.requestNum.get();
       }
     }
 
@@ -185,7 +173,6 @@ public class PipeReceiverRuntimeRegistry {
     private String senderClusterId = UNKNOWN;
     private long lastHandshakeTime;
     private long lastTransferTime;
-    private final AtomicLong requestNum = new AtomicLong();
     private String pipeId;
 
     private SessionRuntimeInfo(String connectionKey) {
@@ -269,7 +256,6 @@ public class PipeReceiverRuntimeRegistry {
     private int connectionCount;
     private long lastHandshakeTime;
     private long lastTransferTime;
-    private long requestNum;
 
     private AggregatedRuntimeInfo(GroupKey groupKey) {
       this.groupKey = groupKey;
@@ -292,8 +278,7 @@ public class PipeReceiverRuntimeRegistry {
           groupKey.userName,
           senderClusterIds.isEmpty() ? UNKNOWN : joinStringSet(senderClusterIds),
           lastHandshakeTime,
-          lastTransferTime,
-          requestNum);
+          lastTransferTime);
     }
   }
 

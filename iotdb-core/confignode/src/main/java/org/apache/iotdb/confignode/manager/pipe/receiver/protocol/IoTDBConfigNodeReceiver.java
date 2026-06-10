@@ -279,8 +279,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp recordConfigNodeTransferIfSuccess(final TPipeTransferResp resp) {
     if (isSuccess(resp)) {
       recordPipeReceiverTransfer();
-    } else {
-      recordPipeReceiverRequest();
     }
     return resp;
   }

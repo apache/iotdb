@@ -33,7 +33,6 @@ public class PipeReceiverRuntimeSnapshot {
   private final String senderClusterId;
   private final long lastHandshakeTime;
   private final long lastTransferTime;
-  private final long requestNum;
 
   public PipeReceiverRuntimeSnapshot(
       String receiverNodeType,
@@ -47,8 +46,7 @@ public class PipeReceiverRuntimeSnapshot {
       String userName,
       String senderClusterId,
       long lastHandshakeTime,
-      long lastTransferTime,
-      long requestNum) {
+      long lastTransferTime) {
     this.receiverNodeType = receiverNodeType;
     this.receiverNodeId = receiverNodeId;
     this.protocol = protocol;
@@ -61,7 +59,6 @@ public class PipeReceiverRuntimeSnapshot {
     this.senderClusterId = senderClusterId;
     this.lastHandshakeTime = lastHandshakeTime;
     this.lastTransferTime = lastTransferTime;
-    this.requestNum = requestNum;
   }
 
   public String getReceiverNodeType() {
@@ -114,9 +111,5 @@ public class PipeReceiverRuntimeSnapshot {
 
   public long getLastTransferTime() {
     return lastTransferTime;
-  }
-
-  public long getRequestNum() {
-    return requestNum;
   }
 }

@@ -740,7 +740,6 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[9].writeBinary(BytesUtils.valueOf(snapshot.getSenderClusterId()));
       writeTimestamp(columnBuilders[10], snapshot.getLastHandshakeTime());
       writeTimestamp(columnBuilders[11], snapshot.getLastTransferTime());
-      columnBuilders[12].writeLong(snapshot.getRequestNum());
       resultBuilder.declarePosition();
     }
 

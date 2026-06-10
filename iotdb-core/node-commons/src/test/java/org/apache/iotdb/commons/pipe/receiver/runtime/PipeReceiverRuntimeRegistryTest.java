@@ -58,7 +58,6 @@ public class PipeReceiverRuntimeRegistryTest {
         1,
         100);
     registry.markTransfer("data-1", 200);
-    registry.markRequest("data-1");
     registry.registerOrUpdateSession(
         "data-2",
         PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
@@ -101,7 +100,6 @@ public class PipeReceiverRuntimeRegistryTest {
     assertEquals("cluster-a;cluster-b", dataSnapshot.getSenderClusterId());
     assertEquals(150, dataSnapshot.getLastHandshakeTime());
     assertEquals(200, dataSnapshot.getLastTransferTime());
-    assertEquals(4, dataSnapshot.getRequestNum());
   }
 
   @Test

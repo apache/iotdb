@@ -21,12 +21,26 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CONNECTION_COUNT;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_HANDSHAKE_TIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_TRANSFER_TIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PIPE_COUNT;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PIPE_IDS;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PROTOCOL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_ID;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_TYPE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_USER_NAME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_ADDRESS;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_CLUSTER_ID;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_PORTS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -42,6 +56,25 @@ public class ShowReceiversOperatorTest {
   @After
   public void tearDown() {
     registry.clear();
+  }
+
+  @Test
+  public void testShowReceiversHeaderColumns() {
+    assertEquals(
+        ImmutableList.of(
+            RECEIVER_NODE_TYPE,
+            RECEIVER_NODE_ID,
+            PROTOCOL,
+            SENDER_ADDRESS,
+            SENDER_PORTS,
+            CONNECTION_COUNT,
+            PIPE_COUNT,
+            PIPE_IDS,
+            RECEIVER_USER_NAME,
+            SENDER_CLUSTER_ID,
+            LAST_HANDSHAKE_TIME,
+            LAST_TRANSFER_TIME),
+        DatasetHeaderFactory.getShowReceiversHeader().getRespColumns());
   }
 
   @Test
@@ -66,6 +99,7 @@ public class ShowReceiversOperatorTest {
     final TsBlock tsBlock = operator.next();
 
     assertEquals(1, tsBlock.getPositionCount());
+    assertEquals(12, tsBlock.getValueColumnCount());
     assertTrue(tsBlock.getColumn(1).isNull(0));
   }
 }

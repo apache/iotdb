@@ -22,15 +22,43 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschem
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CONNECTION_COUNT_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PIPE_COUNT_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PIPE_IDS_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.PROTOCOL_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_ID_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.RECEIVER_NODE_TYPE_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_ADDRESS_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_CLUSTER_ID_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.infoSchemaTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 
 public class ShowReceiversTest {
+
+  private static final ImmutableList<String> RECEIVERS_COLUMNS =
+      ImmutableList.of(
+          RECEIVER_NODE_TYPE_TABLE_MODEL,
+          RECEIVER_NODE_ID_TABLE_MODEL,
+          PROTOCOL_TABLE_MODEL,
+          SENDER_ADDRESS_TABLE_MODEL,
+          SENDER_PORTS_TABLE_MODEL,
+          CONNECTION_COUNT_TABLE_MODEL,
+          PIPE_COUNT_TABLE_MODEL,
+          PIPE_IDS_TABLE_MODEL,
+          USER_NAME,
+          SENDER_CLUSTER_ID_TABLE_MODEL,
+          LAST_HANDSHAKE_TIME_TABLE_MODEL,
+          LAST_TRANSFER_TIME_TABLE_MODEL);
 
   private final PlanTester planTester = new PlanTester();
 
@@ -39,7 +67,9 @@ public class ShowReceiversTest {
     final LogicalQueryPlan logicalQueryPlan = planTester.createPlan("show receivers");
     assertPlan(
         logicalQueryPlan,
-        output(infoSchemaTableScan("information_schema.receivers", Optional.empty())));
+        output(
+            infoSchemaTableScan(
+                "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS)));
   }
 
   @Test
@@ -48,6 +78,8 @@ public class ShowReceiversTest {
         planTester.createPlan("select * from information_schema.receivers");
     assertPlan(
         logicalQueryPlan,
-        output(infoSchemaTableScan("information_schema.receivers", Optional.empty())));
+        output(
+            infoSchemaTableScan(
+                "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS)));
   }
 }
