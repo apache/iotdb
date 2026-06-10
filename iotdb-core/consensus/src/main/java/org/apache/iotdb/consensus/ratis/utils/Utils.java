@@ -60,6 +60,7 @@ import javax.net.ssl.X509TrustManager;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
@@ -190,10 +191,19 @@ public class Utils {
 
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
-        new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
+        createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.write(protocol);
     return ByteBuffer.wrap(byteBuffer.getBuffer());
+  }
+
+  private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(
+      int initialCapacity) throws TException {
+    try {
+      return new AutoScalingBufferWriteTransport(initialCapacity);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
   }
 
   public static TSStatus deserializeFrom(ByteBuffer buffer) throws TException {
