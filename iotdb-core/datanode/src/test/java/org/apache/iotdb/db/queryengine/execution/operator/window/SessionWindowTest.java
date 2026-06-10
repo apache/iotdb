@@ -39,14 +39,32 @@ public class SessionWindowTest {
     Assert.assertFalse(window.satisfy(timeColumn, 1));
   }
 
+  @Test
+  public void skipPointsOutOfCurWindowHandlesOverflowedTimeDistance() {
+    SessionWindowManager manager = new SessionWindowManager(false, 1, true);
+    manager.initCurWindow();
+    Column previousTimeColumn = buildTimeColumn(Long.MIN_VALUE);
+    manager.getCurWindow().mergeOnePoint(new Column[] {previousTimeColumn}, 0);
+    manager.next();
+
+    TsBlock nextBlock = buildTsBlock(Long.MAX_VALUE);
+    TsBlock skippedBlock = manager.skipPointsOutOfCurWindow(nextBlock);
+
+    Assert.assertEquals(1, skippedBlock.getPositionCount());
+    Assert.assertEquals(Long.MAX_VALUE, skippedBlock.getTimeColumn().getLong(0));
+  }
+
   private Column buildTimeColumn(long... timestamps) {
+    return buildTsBlock(timestamps).getTimeColumn();
+  }
+
+  private TsBlock buildTsBlock(long... timestamps) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     for (long timestamp : timestamps) {
       builder.getTimeColumnBuilder().writeLong(timestamp);
       builder.getColumnBuilder(0).appendNull();
       builder.declarePosition();
     }
-    TsBlock tsBlock = builder.build();
-    return tsBlock.getTimeColumn();
+    return builder.build();
   }
 }

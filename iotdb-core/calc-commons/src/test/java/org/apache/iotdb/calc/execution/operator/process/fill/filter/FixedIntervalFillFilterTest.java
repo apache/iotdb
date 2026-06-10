@@ -31,4 +31,11 @@ public class FixedIntervalFillFilterTest {
     Assert.assertTrue(filter.needFill(Long.MIN_VALUE, Long.MIN_VALUE + 1));
     Assert.assertFalse(filter.needFill(Long.MIN_VALUE, Long.MAX_VALUE));
   }
+
+  @Test
+  public void needFillRejectsNegativeInterval() {
+    FixedIntervalFillFilter filter = new FixedIntervalFillFilter(-1);
+
+    Assert.assertFalse(filter.needFill(0, 0));
+  }
 }

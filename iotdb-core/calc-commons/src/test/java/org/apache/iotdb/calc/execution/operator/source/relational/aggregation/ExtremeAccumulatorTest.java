@@ -25,6 +25,8 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
 import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.junit.Assert;
@@ -77,6 +79,31 @@ public class ExtremeAccumulatorTest {
     Assert.assertEquals(Long.MIN_VALUE, longResult.build().getLong(0));
   }
 
+  @Test
+  public void groupedExtremeAccumulatorKeepsOriginalFloatingValues() {
+    GroupedExtremeAccumulator floatAccumulator = new GroupedExtremeAccumulator(TSDataType.FLOAT);
+    floatAccumulator.setGroupCount(1);
+    TsBlock floatBlock = buildFloatBlock(-5.5f, 4.5f);
+    floatAccumulator.addInput(
+        new int[] {0, 0},
+        new org.apache.tsfile.block.column.Column[] {floatBlock.getColumn(0)},
+        AggregationMask.createSelectAll(floatBlock.getPositionCount()));
+    ColumnBuilder floatResult = new FloatColumnBuilder(null, 1);
+    floatAccumulator.evaluateFinal(0, floatResult);
+    Assert.assertEquals(-5.5f, floatResult.build().getFloat(0), 0.001);
+
+    GroupedExtremeAccumulator doubleAccumulator = new GroupedExtremeAccumulator(TSDataType.DOUBLE);
+    doubleAccumulator.setGroupCount(1);
+    TsBlock doubleBlock = buildDoubleBlock(-10.25, 9.25);
+    doubleAccumulator.addInput(
+        new int[] {0, 0},
+        new org.apache.tsfile.block.column.Column[] {doubleBlock.getColumn(0)},
+        AggregationMask.createSelectAll(doubleBlock.getPositionCount()));
+    ColumnBuilder doubleResult = new DoubleColumnBuilder(null, 1);
+    doubleAccumulator.evaluateFinal(0, doubleResult);
+    Assert.assertEquals(-10.25, doubleResult.build().getDouble(0), 0.001);
+  }
+
   private TsBlock buildIntBlock(int... values) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     ColumnBuilder valueBuilder = builder.getValueColumnBuilders()[0];
@@ -94,6 +121,28 @@ public class ExtremeAccumulatorTest {
     for (int i = 0; i < values.length; i++) {
       builder.getTimeColumnBuilder().writeLong(i);
       valueBuilder.writeLong(values[i]);
+      builder.declarePosition();
+    }
+    return builder.build();
+  }
+
+  private TsBlock buildFloatBlock(float... values) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.FLOAT));
+    ColumnBuilder valueBuilder = builder.getValueColumnBuilders()[0];
+    for (int i = 0; i < values.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(i);
+      valueBuilder.writeFloat(values[i]);
+      builder.declarePosition();
+    }
+    return builder.build();
+  }
+
+  private TsBlock buildDoubleBlock(double... values) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.DOUBLE));
+    ColumnBuilder valueBuilder = builder.getValueColumnBuilders()[0];
+    for (int i = 0; i < values.length; i++) {
+      builder.getTimeColumnBuilder().writeLong(i);
+      valueBuilder.writeDouble(values[i]);
       builder.declarePosition();
     }
     return builder.build();
