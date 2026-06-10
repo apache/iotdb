@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import ast
 import os
 import re
 
@@ -337,7 +338,9 @@ class AINodeDescriptor(object):
 
                 if "ain_inference_model_mem_usage_map" in config_keys:
                     self._config.set_ain_inference_model_mem_usage_map(
-                        eval(file_configs["ain_inference_model_mem_usage_map"])
+                        ast.literal_eval(
+                            file_configs["ain_inference_model_mem_usage_map"]
+                        )
                     )
 
                 if "ain_inference_memory_usage_ratio" in config_keys:
