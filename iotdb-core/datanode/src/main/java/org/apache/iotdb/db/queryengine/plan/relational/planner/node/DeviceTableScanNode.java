@@ -41,7 +41,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,10 +273,6 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void appendDeviceEntry(DeviceEntry deviceEntry) {
     this.deviceEntries.add(deviceEntry);
-  }
-
-  public void sortDeviceEntries(Comparator<DeviceEntry> comparator) {
-    this.deviceEntries.sort(comparator);
   }
 
   public void setPushLimitToEachDevice(boolean pushLimitToEachDevice) {

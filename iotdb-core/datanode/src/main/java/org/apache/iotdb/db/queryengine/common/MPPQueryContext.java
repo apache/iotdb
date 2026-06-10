@@ -32,20 +32,27 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,6 +69,8 @@ import java.util.function.LongConsumer;
  * info and so on.
  */
 public class MPPQueryContext implements IAuditEntity {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MPPQueryContext.class);
+
   private String sql;
   private final QueryId queryId;
 
@@ -158,6 +167,8 @@ public class MPPQueryContext implements IAuditEntity {
   // Tables in the subquery
   private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
 
+  private List<ExternalTsFileQueryResource> externalTsFileQueryResources;
+
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -241,6 +252,46 @@ public class MPPQueryContext implements IAuditEntity {
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public ExternalTsFileQueryResource createExternalTsFileQueryResource(
+      String tableName, List<String> tsFilePaths) {
+    if (externalTsFileQueryResources == null) {
+      externalTsFileQueryResources = new ArrayList<>();
+    }
+    ExternalTsFileQueryResource externalTsFileQueryResource =
+        new ExternalTsFileQueryResource(
+            queryId,
+            Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+                .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+                .resolve(queryId.getId())
+                .resolve(String.valueOf(externalTsFileQueryResources.size())),
+            tableName,
+            tsFilePaths,
+            ignored -> {},
+            true);
+    externalTsFileQueryResources.add(externalTsFileQueryResource);
+    return externalTsFileQueryResource;
+  }
+
+  public void releaseExternalTsFileQueryResources() {
+    if (externalTsFileQueryResources == null) {
+      return;
+    }
+    for (ExternalTsFileQueryResource externalTsFileQueryResource : externalTsFileQueryResources) {
+      try {
+        externalTsFileQueryResource.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to release external TsFile query resource", e);
+      }
+    }
+    FileUtils.deleteFileOrDirectory(
+        Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
+            .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
+            .resolve(queryId.getId())
+            .toFile(),
+        true);
+    externalTsFileQueryResources = null;
   }
 
   public long getLocalQueryId() {

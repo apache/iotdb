@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
+package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
@@ -118,7 +118,7 @@ public class ReadTsFileTableFunction implements TableFunction {
   public TableFunctionProcessorProvider getProcessorProvider(
       TableFunctionHandle tableFunctionHandle) {
     throw new UnsupportedOperationException(
-        "read_tsfile must be planned as an ExternalTsFileScanNode");
+        "readTsFile must be planned as an ExternalTsFileScanNode");
   }
 
   private static String getRequiredStringArgument(Map<String, Argument> arguments, String name) {
@@ -172,7 +172,7 @@ public class ReadTsFileTableFunction implements TableFunction {
         if (normalizedTsFilePath.startsWith(dataDir) || dataDir.startsWith(normalizedTsFilePath)) {
           throw new UDFArgumentNotValidException(
               String.format(
-                  "read_tsfile path %s is not allowed because it may access IoTDB data directory %s",
+                  "readTsFile path %s is not allowed because it may access IoTDB data directory %s",
                   tsFilePath, dataDir));
         }
       }
@@ -400,30 +400,6 @@ public class ReadTsFileTableFunction implements TableFunction {
           UDFDataTypeTransformer.transformToUDFDataType(columnSchema.getType()));
     }
     return builder.build();
-  }
-
-  public static class ExternalTsFileDeviceOffset {
-
-    private final String tsFilePath;
-    private final long[] deviceMeasurementNodeOffset;
-
-    public ExternalTsFileDeviceOffset(String tsFilePath, long[] deviceMeasurementNodeOffset) {
-      this.tsFilePath = tsFilePath;
-      this.deviceMeasurementNodeOffset =
-          deviceMeasurementNodeOffset == null
-              ? null
-              : Arrays.copyOf(deviceMeasurementNodeOffset, deviceMeasurementNodeOffset.length);
-    }
-
-    public String getTsFilePath() {
-      return tsFilePath;
-    }
-
-    public long[] getDeviceMeasurementNodeOffset() {
-      return deviceMeasurementNodeOffset == null
-          ? null
-          : Arrays.copyOf(deviceMeasurementNodeOffset, deviceMeasurementNodeOffset.length);
-    }
   }
 
   public static class ReadTsFileTableFunctionHandle implements TableFunctionHandle {

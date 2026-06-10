@@ -297,28 +297,31 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       DeviceTableScanNode tableScanNode) {
     if (tableScanNode instanceof ExternalTsFileScanNode) {
       ExternalTsFileScanNode externalTsFileScanNode = (ExternalTsFileScanNode) tableScanNode;
-      return new ExternalTsFileAggregationScanNode(
-          id,
-          tableScanNode.getQualifiedObjectName(),
-          tableScanNode.getOutputSymbols(),
-          tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
-          tableScanNode.getTagAndAttributeIndexMap(),
-          tableScanNode.getScanOrder(),
-          tableScanNode.getTimePredicate().orElse(null),
-          tableScanNode.getPushDownPredicate(),
-          tableScanNode.getPushDownLimit(),
-          tableScanNode.getPushDownOffset(),
-          tableScanNode.isPushLimitToEachDevice(),
-          tableScanNode.containsNonAlignedDevice(),
-          projectNode == null ? null : projectNode.getAssignments(),
-          aggregationNode.getAggregations(),
-          aggregationNode.getGroupingSets(),
-          aggregationNode.getPreGroupedSymbols(),
-          aggregationNode.getStep(),
-          aggregationNode.getGroupIdSymbol(),
-          externalTsFileScanNode.getTsFilePaths(),
-          externalTsFileScanNode.getDeviceOffsets());
+      ExternalTsFileAggregationScanNode scanNode =
+          new ExternalTsFileAggregationScanNode(
+              id,
+              tableScanNode.getQualifiedObjectName(),
+              tableScanNode.getOutputSymbols(),
+              tableScanNode.getAssignments(),
+              tableScanNode.getTagAndAttributeIndexMap(),
+              tableScanNode.getScanOrder(),
+              tableScanNode.getTimePredicate().orElse(null),
+              tableScanNode.getPushDownPredicate(),
+              tableScanNode.getPushDownLimit(),
+              tableScanNode.getPushDownOffset(),
+              tableScanNode.isPushLimitToEachDevice(),
+              tableScanNode.containsNonAlignedDevice(),
+              projectNode == null ? null : projectNode.getAssignments(),
+              aggregationNode.getAggregations(),
+              aggregationNode.getGroupingSets(),
+              aggregationNode.getPreGroupedSymbols(),
+              aggregationNode.getStep(),
+              aggregationNode.getGroupIdSymbol(),
+              externalTsFileScanNode.getExternalTsFileQueryResource(),
+              externalTsFileScanNode.getDeviceEntryIndexes(),
+              externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+              externalTsFileScanNode.getSchemaFilter());
+      return scanNode;
     }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
@@ -381,7 +384,6 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           tableScanNode.getQualifiedObjectName(),
           tableScanNode.getOutputSymbols(),
           tableScanNode.getAssignments(),
-          tableScanNode.getDeviceEntries(),
           tableScanNode.getTagAndAttributeIndexMap(),
           tableScanNode.getScanOrder(),
           tableScanNode.getTimePredicate().orElse(null),
@@ -396,8 +398,10 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           aggregationNode.getPreGroupedSymbols(),
           step,
           aggregationNode.getGroupIdSymbol(),
-          externalTsFileScanNode.getTsFilePaths(),
-          externalTsFileScanNode.getDeviceOffsets());
+          externalTsFileScanNode.getExternalTsFileQueryResource(),
+          externalTsFileScanNode.getDeviceEntryIndexes(),
+          externalTsFileScanNode.getDeviceTaskPartitionIndex(),
+          externalTsFileScanNode.getSchemaFilter());
     }
     if (tableScanNode instanceof TreeDeviceViewScanNode) {
       TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;

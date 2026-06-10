@@ -73,7 +73,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolRefere
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -88,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementEx
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.DeviceTaskPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -737,46 +737,22 @@ public class TableDistributedPlanGenerator
         new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
     node.setRegionReplicaSet(localRegionReplicaSet);
     context.mostUsedRegion = node.getRegionReplicaSet();
-    List<PlanNode> resultNodes =
-        splitExternalTsFileScanByDeviceEntries(node, localRegionReplicaSet);
-    if (context.hasSortProperty) {
-      processSortProperty(node, resultNodes, context);
-    }
-    return resultNodes;
-  }
+    Optional<SortPropertyContext> sortPropertyContext =
+        context.hasSortProperty ? analyzeSortProperty(node, context) : Optional.empty();
+    int partitionCount = IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+    node.getExternalTsFileQueryResource()
+        .collectDeviceEntries(
+            node.getSchemaFilter(),
+            sortPropertyContext.map(propertyContext -> propertyContext.comparator).orElse(null),
+            partitionCount);
 
-  private List<PlanNode> splitExternalTsFileScanByDeviceEntries(
-      final ExternalTsFileScanNode node, final TRegionReplicaSet localRegionReplicaSet) {
-    List<DeviceEntry> deviceEntries = node.getDeviceEntries();
-    if (deviceEntries.size() <= 1) {
+    List<DeviceTaskPartition> partitions =
+        node.getExternalTsFileQueryResource().getDeviceTaskPartitions();
+    if (partitions.isEmpty()) {
       return Collections.singletonList(node);
     }
-
-    int splitCount =
-        Math.min(
-            deviceEntries.size(),
-            IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism());
-    if (splitCount <= 1) {
-      return Collections.singletonList(node);
-    }
-
-    List<List<DeviceEntry>> splitDeviceEntries = new ArrayList<>(splitCount);
-    List<List<List<ExternalTsFileDeviceOffset>>> splitDeviceOffsets = new ArrayList<>(splitCount);
-    for (int i = 0; i < splitCount; i++) {
-      splitDeviceEntries.add(new ArrayList<>());
-      splitDeviceOffsets.add(new ArrayList<>());
-    }
-    for (int i = 0; i < deviceEntries.size(); i++) {
-      splitDeviceEntries.get(i % splitCount).add(deviceEntries.get(i));
-      splitDeviceOffsets.get(i % splitCount).add(node.getDeviceOffsets().get(i));
-    }
-
-    List<PlanNode> result = new ArrayList<>(splitCount);
-    for (int i = 0; i < splitDeviceEntries.size(); i++) {
-      List<DeviceEntry> entries = splitDeviceEntries.get(i);
-      if (entries.isEmpty()) {
-        continue;
-      }
+    List<PlanNode> result = new ArrayList<>(partitions.size());
+    for (DeviceTaskPartition partition : partitions) {
       ExternalTsFileScanNode splitNode =
           new ExternalTsFileScanNode(
               queryId.genPlanNodeId(),
@@ -789,12 +765,16 @@ public class TableDistributedPlanGenerator
               node.getTimePredicate().orElse(null),
               node.getScanOrder(),
               node.isPushLimitToEachDevice(),
-              node.getTsFilePaths(),
-              entries,
-              splitDeviceOffsets.get(i));
+              node.getTagAndAttributeIndexMap(),
+              node.getExternalTsFileQueryResource(),
+              partition.getDeviceEntryIndexes(),
+              partition.getPartitionIndex(),
+              node.getSchemaFilter());
       splitNode.setRegionReplicaSet(localRegionReplicaSet);
       result.add(splitNode);
     }
+    sortPropertyContext.ifPresent(
+        propertyContext -> applySortProperty(node, result, propertyContext, false));
     return result;
   }
 
@@ -805,53 +785,28 @@ public class TableDistributedPlanGenerator
         new TRegionReplicaSet(null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation()));
     node.setRegionReplicaSet(localRegionReplicaSet);
     context.mostUsedRegion = node.getRegionReplicaSet();
-    List<PlanNode> resultNodes =
-        splitExternalTsFileAggregationScanByDeviceEntries(node, localRegionReplicaSet);
-    if (context.hasSortProperty) {
-      processSortProperty(node, resultNodes, context);
-    }
-    return resultNodes;
-  }
+    Optional<SortPropertyContext> sortPropertyContext =
+        context.hasSortProperty ? analyzeSortProperty(node, context) : Optional.empty();
+    int partitionCount = IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
+    node.getExternalTsFileQueryResource()
+        .collectDeviceEntries(
+            node.getSchemaFilter(),
+            sortPropertyContext.map(propertyContext -> propertyContext.comparator).orElse(null),
+            partitionCount);
 
-  private List<PlanNode> splitExternalTsFileAggregationScanByDeviceEntries(
-      final ExternalTsFileAggregationScanNode node, final TRegionReplicaSet localRegionReplicaSet) {
-    List<DeviceEntry> deviceEntries = node.getDeviceEntries();
-    if (deviceEntries.size() <= 1) {
+    List<DeviceTaskPartition> partitions =
+        node.getExternalTsFileQueryResource().getDeviceTaskPartitions();
+    if (partitions.isEmpty()) {
       return Collections.singletonList(node);
     }
-
-    int splitCount =
-        Math.min(
-            deviceEntries.size(),
-            IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism());
-    if (splitCount <= 1) {
-      return Collections.singletonList(node);
-    }
-
-    List<List<DeviceEntry>> splitDeviceEntries = new ArrayList<>(splitCount);
-    List<List<List<ExternalTsFileDeviceOffset>>> splitDeviceOffsets = new ArrayList<>(splitCount);
-    for (int i = 0; i < splitCount; i++) {
-      splitDeviceEntries.add(new ArrayList<>());
-      splitDeviceOffsets.add(new ArrayList<>());
-    }
-    for (int i = 0; i < deviceEntries.size(); i++) {
-      splitDeviceEntries.get(i % splitCount).add(deviceEntries.get(i));
-      splitDeviceOffsets.get(i % splitCount).add(node.getDeviceOffsets().get(i));
-    }
-
-    List<PlanNode> result = new ArrayList<>(splitCount);
-    for (int i = 0; i < splitDeviceEntries.size(); i++) {
-      List<DeviceEntry> entries = splitDeviceEntries.get(i);
-      if (entries.isEmpty()) {
-        continue;
-      }
+    List<PlanNode> result = new ArrayList<>(partitions.size());
+    for (DeviceTaskPartition partition : partitions) {
       ExternalTsFileAggregationScanNode splitNode =
           new ExternalTsFileAggregationScanNode(
               queryId.genPlanNodeId(),
               node.getQualifiedObjectName(),
               node.getOutputSymbols(),
               node.getAssignments(),
-              entries,
               node.getTagAndAttributeIndexMap(),
               node.getScanOrder(),
               node.getTimePredicate().orElse(null),
@@ -866,11 +821,15 @@ public class TableDistributedPlanGenerator
               node.getPreGroupedSymbols(),
               node.getStep(),
               node.getGroupIdSymbol(),
-              node.getTsFilePaths(),
-              splitDeviceOffsets.get(i));
+              node.getExternalTsFileQueryResource(),
+              partition.getDeviceEntryIndexes(),
+              partition.getPartitionIndex(),
+              node.getSchemaFilter());
       splitNode.setRegionReplicaSet(localRegionReplicaSet);
       result.add(splitNode);
     }
+    sortPropertyContext.ifPresent(
+        propertyContext -> applySortProperty(node, result, propertyContext, false));
     return result;
   }
 
@@ -1949,18 +1908,26 @@ public class TableDistributedPlanGenerator
       final DeviceTableScanNode deviceTableScanNode,
       final List<PlanNode> resultTableScanNodeList,
       final PlanContext context) {
+    Optional<SortPropertyContext> sortPropertyContext =
+        analyzeSortProperty(deviceTableScanNode, context);
+    if (!sortPropertyContext.isPresent()) {
+      return;
+    }
+    applySortProperty(
+        deviceTableScanNode, resultTableScanNodeList, sortPropertyContext.get(), true);
+  }
+
+  private Optional<SortPropertyContext> analyzeSortProperty(
+      DeviceTableScanNode deviceTableScanNode, PlanContext context) {
     final List<Symbol> newOrderingSymbols = new ArrayList<>();
     final List<SortOrder> newSortOrders = new ArrayList<>();
     final OrderingScheme expectedOrderingScheme = context.expectedOrderingScheme;
 
     boolean lastIsTimeRelated = false;
+    boolean scanOrderDesc = false;
     for (final Symbol symbol : expectedOrderingScheme.getOrderBy()) {
       if (timeRelatedSymbol(symbol, deviceTableScanNode)) {
-        if (!expectedOrderingScheme.getOrderings().get(symbol).isAscending()) {
-          // TODO(beyyes) move scan order judgement into logical plan optimizer
-          resultTableScanNodeList.forEach(
-              node -> ((DeviceTableScanNode) node).setScanOrder(Ordering.DESC));
-        }
+        scanOrderDesc = !expectedOrderingScheme.getOrderings().get(symbol).isAscending();
         newOrderingSymbols.add(symbol);
         newSortOrders.add(expectedOrderingScheme.getOrdering(symbol));
         lastIsTimeRelated = true;
@@ -1975,9 +1942,22 @@ public class TableDistributedPlanGenerator
 
     // no sort property can be pushed down into DeviceTableScanNode
     if (newOrderingSymbols.isEmpty()) {
-      return;
+      return Optional.empty();
     }
 
+    return Optional.of(
+        new SortPropertyContext(
+            newOrderingSymbols,
+            newSortOrders,
+            createDeviceEntryComparator(deviceTableScanNode, newOrderingSymbols, newSortOrders),
+            lastIsTimeRelated,
+            scanOrderDesc));
+  }
+
+  private Comparator<DeviceEntry> createDeviceEntryComparator(
+      DeviceTableScanNode deviceTableScanNode,
+      List<Symbol> newOrderingSymbols,
+      List<SortOrder> newSortOrders) {
     Optional<IDeviceID.TreeDeviceIdColumnValueExtractor> extractor =
         createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
@@ -2052,21 +2032,34 @@ public class TableDistributedPlanGenerator
         comparator = comparator.thenComparing(thenComparator);
       }
     }
+    return comparator;
+  }
 
+  private void applySortProperty(
+      final DeviceTableScanNode deviceTableScanNode,
+      final List<PlanNode> resultTableScanNodeList,
+      final SortPropertyContext sortPropertyContext,
+      final boolean sortDeviceEntries) {
     final Optional<OrderingScheme> newOrderingScheme =
         tableScanOrderingSchema(
             analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName()),
             deviceTableScanNode.getAssignments(),
-            newOrderingSymbols,
-            newSortOrders,
-            lastIsTimeRelated,
-            deviceTableScanNode.getDeviceEntries().size() == 1);
+            sortPropertyContext.orderingSymbols,
+            sortPropertyContext.sortOrders,
+            sortPropertyContext.lastIsTimeRelated,
+            resultTableScanNodeList.size() == 1
+                && ((DeviceTableScanNode) resultTableScanNodeList.get(0)).getDeviceEntries().size()
+                    == 1);
     for (final PlanNode planNode : resultTableScanNodeList) {
       final DeviceTableScanNode scanNode = (DeviceTableScanNode) planNode;
+      if (sortPropertyContext.scanOrderDesc) {
+        // TODO(beyyes) move scan order judgement into logical plan optimizer
+        scanNode.setScanOrder(Ordering.DESC);
+      }
       newOrderingScheme.ifPresent(
           orderingScheme -> nodeOrderingMap.put(scanNode.getPlanNodeId(), orderingScheme));
-      if (comparator != null) {
-        scanNode.sortDeviceEntries(comparator);
+      if (sortDeviceEntries && sortPropertyContext.comparator != null) {
+        scanNode.getDeviceEntries().sort(sortPropertyContext.comparator);
       }
     }
   }
@@ -2384,6 +2377,27 @@ public class TableDistributedPlanGenerator
             newUnionChildren,
             newSymbolMapping.build(),
             node.getOutputSymbols()));
+  }
+
+  private static class SortPropertyContext {
+    final List<Symbol> orderingSymbols;
+    final List<SortOrder> sortOrders;
+    final Comparator<DeviceEntry> comparator;
+    final boolean lastIsTimeRelated;
+    final boolean scanOrderDesc;
+
+    private SortPropertyContext(
+        List<Symbol> orderingSymbols,
+        List<SortOrder> sortOrders,
+        Comparator<DeviceEntry> comparator,
+        boolean lastIsTimeRelated,
+        boolean scanOrderDesc) {
+      this.orderingSymbols = orderingSymbols;
+      this.sortOrders = sortOrders;
+      this.comparator = comparator;
+      this.lastIsTimeRelated = lastIsTimeRelated;
+      this.scanOrderDesc = scanOrderDesc;
+    }
   }
 
   public static class PlanContext {

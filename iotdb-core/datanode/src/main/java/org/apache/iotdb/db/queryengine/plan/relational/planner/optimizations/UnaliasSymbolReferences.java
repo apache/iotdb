@@ -298,9 +298,12 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownOffset(),
               node.getTimePredicate().map(mapper::map).orElse(null),
               node.getScanOrder(),
-              node.getTsFilePaths(),
-              node.getDeviceEntries(),
-              node.getDeviceOffsets());
+              node.isPushLimitToEachDevice(),
+              node.getTagAndAttributeIndexMap(),
+              node.getExternalTsFileQueryResource(),
+              node.getDeviceEntryIndexes(),
+              node.getDeviceTaskPartitionIndex(),
+              node.getSchemaFilter());
       rewrittenNode.setRegionReplicaSet(node.getRegionReplicaSet());
       return new PlanAndMappings(rewrittenNode, mapping);
     }

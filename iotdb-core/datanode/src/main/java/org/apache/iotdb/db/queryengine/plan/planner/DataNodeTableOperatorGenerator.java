@@ -1138,7 +1138,10 @@ public class DataNodeTableOperatorGenerator
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
         new ExternalTsFileTableScanOperator(
-            parameter, node.getQualifiedObjectName().getObjectName(), node.getDeviceOffsets());
+            parameter,
+            node.getQualifiedObjectName().getObjectName(),
+            node.getExternalTsFileQueryResource(),
+            node.getDeviceTaskPartitionIndex());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
 
@@ -1638,7 +1641,10 @@ public class DataNodeTableOperatorGenerator
 
     ExternalTsFileAggTableScanOperator aggTableScanOperator =
         new ExternalTsFileAggTableScanOperator(
-            parameter, node.getQualifiedObjectName().getObjectName(), node.getDeviceOffsets());
+            parameter,
+            node.getQualifiedObjectName().getObjectName(),
+            node.getExternalTsFileQueryResource(),
+            node.getDeviceTaskPartitionIndex());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     addSource(

@@ -115,7 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.DataNodeTableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ReadTsFileTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ReadTsFileTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
@@ -1596,7 +1596,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
       TableFunctionInvocation node, TableFunctionInvocationAnalysis functionAnalysis) {
     if (!(functionAnalysis.getTableFunctionHandle()
         instanceof ReadTsFileTableFunction.ReadTsFileTableFunctionHandle)) {
-      throw new IllegalStateException("read_tsfile table function handle is invalid");
+      throw new IllegalStateException("readTsFile table function handle is invalid");
     }
 
     ReadTsFileTableFunction.ReadTsFileTableFunctionHandle handle =
@@ -1607,17 +1607,20 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
 
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     ImmutableMap.Builder<Symbol, ColumnSchema> assignmentsBuilder = ImmutableMap.builder();
+    Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
+    int tagIndex = 0;
     for (int i = 0; i < relationType.getAllFieldCount(); i++) {
       Field field = relationType.getFieldByIndex(i);
       Symbol symbol = symbolAllocator.newSymbol(field);
+      TsTableColumnCategory columnCategory = handle.getOutputColumnCategories().get(i);
       outputSymbolsBuilder.add(symbol);
       assignmentsBuilder.put(
           symbol,
           new ColumnSchema(
-              field.getName().orElse(null),
-              field.getType(),
-              field.isHidden(),
-              handle.getOutputColumnCategories().get(i)));
+              field.getName().orElse(null), field.getType(), field.isHidden(), columnCategory));
+      if (columnCategory == TsTableColumnCategory.TAG) {
+        tagAndAttributeIndexMap.put(symbol, tagIndex++);
+      }
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
@@ -1626,16 +1629,17 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
         createExternalTsFileQualifiedObjectName(handle.getTableName());
     analysis.addTableSchema(qualifiedObjectName, assignments);
 
-    return new RelationPlan(
+    ExternalTsFileScanNode scanNode =
         new ExternalTsFileScanNode(
             idAllocator.genPlanNodeId(),
             qualifiedObjectName,
             outputSymbols,
             assignments,
-            handle.getTsFilePaths()),
-        scope,
-        outputSymbols,
-        outerContext);
+            tagAndAttributeIndexMap,
+            queryContext.createExternalTsFileQueryResource(
+                handle.getTableName(), handle.getTsFilePaths()));
+
+    return new RelationPlan(scanNode, scope, outputSymbols, outerContext);
   }
 
   private QualifiedObjectName createExternalTsFileQualifiedObjectName(String tableName) {

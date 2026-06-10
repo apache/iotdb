@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.FileLoaderUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.DeviceOffset;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -86,7 +86,8 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
       TsFileResource resource,
       AlignedFullPath alignedPath,
       IDeviceID currentDeviceID,
-      List<ExternalTsFileDeviceOffset> currentDeviceOffsets,
+      List<DeviceOffset> currentDeviceOffsets,
+      List<String> tsFilePaths,
       FragmentInstanceContext context,
       Filter globalTimeFilter)
       throws IOException {
@@ -95,7 +96,7 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
     }
 
     long[] deviceMeasurementNodeOffset =
-        getDeviceMeasurementNodeOffset(currentDeviceOffsets, resource.getTsFilePath());
+        getDeviceMeasurementNodeOffset(currentDeviceOffsets, tsFilePaths, resource.getTsFilePath());
     if (deviceMeasurementNodeOffset == null) {
       return null;
     }
@@ -111,10 +112,10 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
   }
 
   private static long[] getDeviceMeasurementNodeOffset(
-      List<ExternalTsFileDeviceOffset> currentDeviceOffsets, String tsFilePath) {
-    for (ExternalTsFileDeviceOffset offset : currentDeviceOffsets) {
-      if (tsFilePath.equals(offset.getTsFilePath())) {
-        return offset.getDeviceMeasurementNodeOffset();
+      List<DeviceOffset> currentDeviceOffsets, List<String> tsFilePaths, String tsFilePath) {
+    for (DeviceOffset offset : currentDeviceOffsets) {
+      if (tsFilePath.equals(tsFilePaths.get(offset.getFileIndex()))) {
+        return offset.getMeasurementNodeOffset();
       }
     }
     return null;

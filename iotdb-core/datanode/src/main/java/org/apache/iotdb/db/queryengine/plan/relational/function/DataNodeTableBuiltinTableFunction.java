@@ -21,11 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.function;
 
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.i18n.QueryMessages;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ReadTsFileTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ReadTsFileTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,10 +42,9 @@ public enum DataNodeTableBuiltinTableFunction {
   }
 
   private static final Set<String> BUILT_IN_TABLE_FUNCTION_NAME =
-      new HashSet<>(
-          Arrays.stream(DataNodeTableBuiltinTableFunction.values())
-              .map(DataNodeTableBuiltinTableFunction::getFunctionName)
-              .collect(Collectors.toList()));
+      Arrays.stream(DataNodeTableBuiltinTableFunction.values())
+          .map(DataNodeTableBuiltinTableFunction::getFunctionName)
+          .collect(Collectors.toSet());
 
   public static Set<String> getBuiltInTableFunctionName() {
     return BUILT_IN_TABLE_FUNCTION_NAME;

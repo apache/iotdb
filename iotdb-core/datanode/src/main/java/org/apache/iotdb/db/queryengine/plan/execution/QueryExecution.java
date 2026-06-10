@@ -392,6 +392,7 @@ public class QueryExecution implements IQueryExecution {
       }
       cleanUpResultHandle();
     }
+    context.releaseExternalTsFileQueryResources();
   }
 
   /**

@@ -826,7 +826,6 @@ public class FragmentInstanceContext extends QueryContext {
           resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
         }
         externalTsFileResources.add(resource);
-        FileReaderManager.getInstance().increaseExternalFileReaderReference(externalTsFilePath);
       }
 
       this.sharedQueryDataSource =
@@ -1083,9 +1082,6 @@ public class FragmentInstanceContext extends QueryContext {
     }
 
     if (externalTsFileResources != null) {
-      for (TsFileResource tsFile : externalTsFileResources) {
-        FileReaderManager.getInstance().decreaseExternalFileReaderReference(tsFile.getTsFilePath());
-      }
       externalTsFileResources = null;
     }
 

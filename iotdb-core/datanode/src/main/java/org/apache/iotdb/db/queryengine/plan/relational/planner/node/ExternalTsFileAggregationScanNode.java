@@ -27,32 +27,32 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.ReadTsFileTableFunction.ExternalTsFileDeviceOffset;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
+import com.google.common.collect.Lists;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.IntStream;
 
 public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode {
-  private List<String> tsFilePaths;
-  private List<List<ExternalTsFileDeviceOffset>> deviceOffsets = Collections.emptyList();
+  private final ExternalTsFileQueryResource externalTsFileQueryResource;
+  private List<Integer> deviceEntryIndexes;
+  private int deviceTaskPartitionIndex = -1;
+  private SchemaFilter schemaFilter;
 
   public ExternalTsFileAggregationScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      List<DeviceEntry> deviceEntries,
       Map<Symbol, Integer> tagAndAttributeIndexMap,
       Ordering scanOrder,
       Expression timePredicate,
@@ -67,14 +67,16 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
       List<Symbol> preGroupedSymbols,
       AggregationNode.Step step,
       Optional<Symbol> groupIdSymbol,
-      List<String> tsFilePaths,
-      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
+      ExternalTsFileQueryResource externalTsFileQueryResource,
+      List<Integer> deviceEntryIndexes,
+      int deviceTaskPartitionIndex,
+      SchemaFilter schemaFilter) {
     super(
         id,
         qualifiedObjectName,
         outputSymbols,
         assignments,
-        deviceEntries,
+        Lists.transform(deviceEntryIndexes, externalTsFileQueryResource.getDeviceEntries()::get),
         tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
@@ -89,11 +91,11 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
         preGroupedSymbols,
         step,
         groupIdSymbol);
-    this.tsFilePaths = Collections.unmodifiableList(new ArrayList<>(tsFilePaths));
-    this.deviceOffsets = copyDeviceOffsets(deviceOffsets);
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+    this.deviceEntryIndexes = deviceEntryIndexes;
+    this.deviceTaskPartitionIndex = deviceTaskPartitionIndex;
+    this.schemaFilter = schemaFilter;
   }
-
-  protected ExternalTsFileAggregationScanNode() {}
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
@@ -107,7 +109,6 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
         qualifiedObjectName,
         outputSymbols,
         assignments,
-        deviceEntries,
         tagAndAttributeIndexMap,
         scanOrder,
         timePredicate,
@@ -122,47 +123,40 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
         preGroupedSymbols,
         step,
         groupIdSymbol,
-        tsFilePaths,
-        deviceOffsets);
+        externalTsFileQueryResource,
+        deviceEntryIndexes,
+        deviceTaskPartitionIndex,
+        schemaFilter);
   }
 
   public List<String> getTsFilePaths() {
-    return tsFilePaths;
+    return externalTsFileQueryResource.getTsFilePaths();
   }
 
-  public List<List<ExternalTsFileDeviceOffset>> getDeviceOffsets() {
-    return deviceOffsets;
+  public ExternalTsFileQueryResource getExternalTsFileQueryResource() {
+    return externalTsFileQueryResource;
+  }
+
+  public List<Integer> getDeviceEntryIndexes() {
+    return deviceEntryIndexes;
+  }
+
+  public int getDeviceTaskPartitionIndex() {
+    return deviceTaskPartitionIndex;
   }
 
   @Override
-  public void sortDeviceEntries(Comparator<DeviceEntry> comparator) {
-    int[] indexes =
-        IntStream.range(0, deviceEntries.size())
-            .boxed()
-            .sorted(
-                (left, right) ->
-                    comparator.compare(deviceEntries.get(left), deviceEntries.get(right)))
-            .mapToInt(Integer::intValue)
-            .toArray();
-    List<DeviceEntry> sortedDeviceEntries = new ArrayList<>(deviceEntries.size());
-    List<List<ExternalTsFileDeviceOffset>> sortedDeviceOffsets =
-        new ArrayList<>(deviceOffsets.size());
-    for (int index : indexes) {
-      sortedDeviceEntries.add(deviceEntries.get(index));
-      sortedDeviceOffsets.add(deviceOffsets.get(index));
-    }
-    this.deviceEntries = sortedDeviceEntries;
-    this.deviceOffsets = sortedDeviceOffsets;
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+    throw new UnsupportedOperationException(
+        "ExternalTsFileAggregationScanNode device entries must be set by device entry indexes");
   }
 
-  private static List<List<ExternalTsFileDeviceOffset>> copyDeviceOffsets(
-      List<List<ExternalTsFileDeviceOffset>> deviceOffsets) {
-    List<List<ExternalTsFileDeviceOffset>> copiedDeviceOffsets =
-        new ArrayList<>(deviceOffsets.size());
-    for (List<ExternalTsFileDeviceOffset> offsets : deviceOffsets) {
-      copiedDeviceOffsets.add(new ArrayList<>(offsets));
-    }
-    return copiedDeviceOffsets;
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
+  }
+
+  public void setSchemaFilter(SchemaFilter schemaFilter) {
+    this.schemaFilter = schemaFilter;
   }
 
   @Override
@@ -175,11 +169,6 @@ public class ExternalTsFileAggregationScanNode extends AggregationTableScanNode 
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(
         "ExternalTsFileAggregationScanNode cannot be serialized because it reads local external TsFiles");
-  }
-
-  public static ExternalTsFileAggregationScanNode deserialize(ByteBuffer byteBuffer) {
-    throw new UnsupportedOperationException(
-        "ExternalTsFileAggregationScanNode cannot be deserialized because it reads local external TsFiles");
   }
 
   @Override
