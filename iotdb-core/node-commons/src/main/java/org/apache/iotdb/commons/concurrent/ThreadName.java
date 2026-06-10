@@ -99,6 +99,7 @@ public enum ThreadName {
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+  CONFIG_NODE_LEADER_SERVICES_TRANSITION("ConfigNode-Leader-Services-Transition"),
   // -------------------------- Activation --------------------------
   ACTIVATION_SERVICE("Activation-Service"),
   // -------------------------- ConfigNode-Procedure ------------------------
@@ -384,7 +385,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
 
   private static final Set<ThreadName> configNodeRecoverThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER, CONFIG_NODE_LEADER_SERVICES_TRANSITION));
 
   private static final Set<ThreadName> configNodeActivationThreadNames =
       new HashSet<>(Collections.singletonList(ACTIVATION_SERVICE));

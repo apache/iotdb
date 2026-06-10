@@ -41,7 +41,7 @@ public class ConsensusGroupCache extends AbstractLoadCache {
     synchronized (slidingWindow) {
       lastSample = (ConsensusGroupHeartbeatSample) getLastSample();
     }
-    if (lastSample != null && lastSample.getLeaderId() != UN_READY_LEADER_ID) {
+    if (lastSample != null) {
       currentStatistics.set(
           new ConsensusGroupStatistics(System.nanoTime(), lastSample.getLeaderId()));
     }
