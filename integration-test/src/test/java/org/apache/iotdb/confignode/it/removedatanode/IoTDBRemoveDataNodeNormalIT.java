@@ -166,6 +166,9 @@ public class IoTDBRemoveDataNodeNormalIT {
         Assert.fail(
             "Remove DataNode should fail when it would leave no DataNode under single replica");
       } catch (final IoTDBSQLException e) {
+        // The unified rejection message reports the gap and, for a single replica, appends the
+        // "at least one DataNode must always remain" hint.
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("Cannot remove"));
         Assert.assertTrue(e.getMessage(), e.getMessage().contains("single replica"));
         Assert.assertFalse(
             e.getMessage(), e.getMessage().contains("Failed to remove all requested data nodes"));

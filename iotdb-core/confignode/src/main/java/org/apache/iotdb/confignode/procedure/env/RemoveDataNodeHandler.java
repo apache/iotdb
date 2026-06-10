@@ -599,21 +599,25 @@ public class RemoveDataNodeHandler {
                 .count();
     if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
       status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+      // Report the concrete numbers so operators can see the gap: how many DataNodes are being
+      // removed, how many are available, the minimum that must remain (the larger of the schema and
+      // data replication factors) and how many would be left.
+      String message =
+          String.format(
+              ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW,
+              removedDataNodeSize,
+              availableDatanodeSize,
+              NodeInfo.getMinimumDataNode(),
+              CONF.getSchemaReplicationFactor(),
+              CONF.getDataReplicationFactor(),
+              availableDatanodeSize - removedDataNodeSize);
       if (NodeInfo.getMinimumDataNode() == 1) {
         // With a single replica (schema_replication_factor and data_replication_factor are both 1)
-        // the only copy of each region lives on one DataNode, so the last remaining DataNode cannot
-        // be removed: there is nowhere to migrate its regions to.
-        status.setMessage(
-            ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_THE_LAST_SINGLE_REPLICA);
-      } else {
-        status.setMessage(
-            String.format(
-                "Can't remove datanode due to the limit of replication factor, "
-                    + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
-                availableDatanodeSize,
-                NodeInfo.getMinimumDataNode(),
-                (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+        // the only copy of each region lives on one DataNode, so at least one DataNode must always
+        // remain: there is nowhere to migrate its regions to.
+        message += ProcedureMessages.FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT;
       }
+      status.setMessage(message);
     }
     return status;
   }
