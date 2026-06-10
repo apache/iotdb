@@ -1,0 +1,118 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.rpc;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class AutoResizingBufferTest {
+
+  private final TestMemoryControl memoryControl = new TestMemoryControl();
+
+  @After
+  public void tearDown() {
+    AutoResizingBufferMemoryManager.resetMemoryControl();
+  }
+
+  @Test
+  public void testAllocateAndReleaseMemoryWhenResizing() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    AutoResizingBuffer buffer = new AutoResizingBuffer(100);
+    Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
+
+    buffer.resizeIfNecessary(200);
+    Assert.assertEquals(200, buffer.array().length);
+    Assert.assertEquals(200, memoryControl.getUsedMemoryInBytes());
+
+    setLastShrinkTime(buffer, System.currentTimeMillis() - RpcUtils.MIN_SHRINK_INTERVAL - 1);
+    for (int i = 0; i <= RpcUtils.MAX_BUFFER_OVERSIZE_TIME; i++) {
+      buffer.resizeIfNecessary(101);
+    }
+    Assert.assertEquals(150, buffer.array().length);
+    Assert.assertEquals(150, memoryControl.getUsedMemoryInBytes());
+
+    buffer.close();
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testThrowIOExceptionWhenMemoryIsInsufficient() throws Exception {
+    memoryControl.setLimit(120);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    AutoResizingBuffer buffer = new AutoResizingBuffer(100);
+    try {
+      buffer.resizeIfNecessary(200);
+      Assert.fail("Expected IOException");
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().contains("100"));
+      Assert.assertTrue(e.getMessage().contains("5"));
+    } finally {
+      Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
+      buffer.close();
+    }
+  }
+
+  private void setLastShrinkTime(AutoResizingBuffer buffer, long lastShrinkTime) throws Exception {
+    Field field = AutoResizingBuffer.class.getDeclaredField("lastShrinkTime");
+    field.setAccessible(true);
+    field.set(buffer, lastShrinkTime);
+  }
+
+  private static class TestMemoryControl implements AutoResizingBufferMemoryControl {
+
+    private final AtomicLong usedMemoryInBytes = new AtomicLong();
+    private long limit = Long.MAX_VALUE;
+
+    @Override
+    public boolean allocate(long sizeInBytes) {
+      while (true) {
+        long current = usedMemoryInBytes.get();
+        long next = current + sizeInBytes;
+        if (next > limit) {
+          return false;
+        }
+        if (usedMemoryInBytes.compareAndSet(current, next)) {
+          return true;
+        }
+      }
+    }
+
+    @Override
+    public void release(long sizeInBytes) {
+      usedMemoryInBytes.addAndGet(-sizeInBytes);
+    }
+
+    private long getUsedMemoryInBytes() {
+      return usedMemoryInBytes.get();
+    }
+
+    private void setLimit(long limit) {
+      this.limit = limit;
+    }
+  }
+}
