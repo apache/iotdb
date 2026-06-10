@@ -140,7 +140,8 @@ public class IoTDBRemoveDataNodeNormalIT {
     // With a single replica (schema_replication_factor and data_replication_factor are both 1),
     // removing DataNodes is still supported as long as more than one DataNode remains, but the last
     // remaining DataNode cannot be removed because there is nowhere to migrate its regions to.
-    // Here we set up 1C2D with single replica and try to remove both DataNodes, which must fail.
+    // Here we set up 1C1D with single replica and try to remove the only DataNode, which must fail
+    // because removing it would leave the cluster with no DataNode.
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -148,7 +149,7 @@ public class IoTDBRemoveDataNodeNormalIT {
         .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(1)
         .setDefaultDataRegionGroupNumPerDatabase(1);
-    EnvFactory.getEnv().initClusterEnvironment(1, 2);
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
 
     try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         final Statement statement = makeItCloseQuietly(connection.createStatement());
@@ -159,7 +160,7 @@ public class IoTDBRemoveDataNodeNormalIT {
       }
 
       final String removeDataNodeSQL =
-          generateRemoveString(selectRemoveDataNodes(allDataNodeId, allDataNodeId.size()));
+          generateRemoveString(selectRemoveDataNodes(allDataNodeId, 1));
       try {
         statement.execute(removeDataNodeSQL);
         Assert.fail(
