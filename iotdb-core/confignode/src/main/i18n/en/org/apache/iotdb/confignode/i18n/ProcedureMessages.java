@@ -445,6 +445,11 @@ public final class ProcedureMessages {
       "Failed to push topic meta to dataNodes, details: %s";
   public static final String FAILED_TO_REMOVE_DATA_NODE_BECAUSE_IT_IS_NOT_IN =
       "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication";
+
+  public static final String FAILED_TO_REMOVE_DATA_NODE_WOULD_LEAVE_TOO_FEW =
+      "Cannot remove %d DataNode(s): the cluster has %d available DataNode(s) and must retain at least %d of them (max(schema_replication_factor=%d, data_replication_factor=%d)) so that every region keeps enough replicas, but this request would leave only %d.";
+  public static final String FAILED_TO_REMOVE_DATA_NODE_SINGLE_REPLICA_HINT =
+      " With a single replica there is nowhere to migrate regions to, so at least one DataNode must always remain.";
   public static final String FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED =
       "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.";
   public static final String FAILED_TO_ROLLBACK_COMMIT_SET_TEMPLATE_ON_PATH_DUE_TO =

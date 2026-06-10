@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -36,10 +38,12 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -173,7 +177,11 @@ public class CreateRegionGroupsProcedure
                           }
                         }));
 
-        env.persistRegionGroup(persistPlan);
+        final TSStatus persistStatus = env.persistRegionGroup(persistPlan);
+        if (persistStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          setFailure(new ProcedureException(new IoTDBException(persistStatus)));
+          return Flow.NO_MORE_STATE;
+        }
         try {
           env.getConfigManager().getConsensusManager().write(offerPlan);
         } catch (final ConsensusException e) {
