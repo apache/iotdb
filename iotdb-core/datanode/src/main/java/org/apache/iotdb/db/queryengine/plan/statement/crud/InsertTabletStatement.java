@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.BitMapUtils;
 import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -390,7 +391,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
       if (this.nullBitMaps != null) {
-        statement.setBitMaps(copiedBitMaps);
+        statement.setBitMaps(BitMapUtils.compactBitMaps(copiedBitMaps, rowCount));
       }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
       insertTabletStatementList.add(statement);
@@ -833,7 +834,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           tabletColumnTypes,
           timestamps,
           tabletValues,
-          bitMaps,
+          BitMapUtils.compactBitMaps(bitMaps, rowSize),
           rowSize);
     } catch (final Exception e) {
       throw new MetadataException(
