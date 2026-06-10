@@ -21,7 +21,9 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -198,6 +200,8 @@ public class IoTDBJDBCResultSetTest {
       Assert.assertThrows(SQLException.class, () -> resultSet.getString(0));
       Assert.assertThrows(SQLException.class, () -> resultSet.getObject("missing"));
       Assert.assertThrows(SQLException.class, () -> resultSet.getTimestamp("missing"));
+      Assert.assertThrows(
+          SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getColumnTypeByIndex(0));
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       // check columnInfoList
@@ -316,6 +320,14 @@ public class IoTDBJDBCResultSetTest {
     Assert.assertThrows(SQLException.class, () -> resultSet.getType());
     Assert.assertThrows(SQLException.class, () -> resultSet.getWarnings());
     Assert.assertThrows(SQLException.class, () -> resultSet.wasNull());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).isSetTracingInfo());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp());
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getColumnTypeByIndex(1));
+    Assert.assertThrows(
+        SQLException.class, () -> ((IoTDBJDBCResultSet) resultSet).getOperationType());
 
     SQLException unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.absolute(1));
@@ -323,6 +335,158 @@ public class IoTDBJDBCResultSetTest {
     unsupportedException =
         Assert.assertThrows(SQLException.class, () -> resultSet.updateString(1, "x"));
     Assert.assertEquals("ResultSet has been closed", unsupportedException.getMessage());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testLocalResultSetCloseDoesNotCloseServerOperation() throws Exception {
+    ResultSet resultSet =
+        new IoTDBJDBCResultSet(
+            statement,
+            Collections.singletonList("s1"),
+            Collections.singletonList("INT32"),
+            Collections.singletonMap("s1", 0),
+            true,
+            client,
+            null,
+            -1,
+            sessionId,
+            Collections.<ByteBuffer>emptyList(),
+            null,
+            (long) 60 * 1000,
+            false,
+            zoneID);
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
+    verify(client, times(0)).closeOperation(any(TSCloseOperationReq.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testResultSetCloseClearsStatementQueryId() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    resultSet.close();
+    statement.cancel();
+
+    Assert.assertTrue(resultSet.isClosed());
+    verify(client, times(0)).cancelOperation(any(TSCancelOperationReq.class));
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testStatementCloseClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    statement.close();
+
+    Assert.assertTrue(statement.isClosed());
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> resultSet.next());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testFailedCloseStillMarksResultSetClosed() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    TSStatus closeFailure = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    closeFailure.setMessage("close failed");
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeFailure);
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertThrows(SQLException.class, resultSet::close);
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertThrows(SQLException.class, resultSet::next);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testStatementExecutionClosesPreviousResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet previousResultSet = statement.getResultSet();
+    Assert.assertFalse(previousResultSet.isClosed());
+
+    mockVehicleQueryResponse();
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    Assert.assertTrue(previousResultSet.isClosed());
+    Assert.assertThrows(SQLException.class, () -> previousResultSet.next());
+
+    ResultSet currentResultSet = statement.getResultSet();
+    Assert.assertNotSame(previousResultSet, currentResultSet);
+    Assert.assertFalse(currentResultSet.isClosed());
+
+    currentResultSet.close();
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExecuteUpdateClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+    when(client.executeUpdateStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    Assert.assertEquals(0, statement.executeUpdate("insert into root.sg.d(time,s) values(1,1)"));
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertNull(statement.getResultSet());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testGetMoreResultsClosesCurrentResultSet() throws Exception {
+    mockVehicleQueryResponse();
+
+    Assert.assertTrue(statement.execute("select * from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertFalse(resultSet.isClosed());
+
+    Assert.assertFalse(statement.getMoreResults());
+
+    Assert.assertTrue(resultSet.isClosed());
+    Assert.assertNull(statement.getResultSet());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testExhaustedResultSetIsNotReportedClosed() throws Exception {
+    mockTextQueryResponse();
+
+    Assert.assertTrue(statement.execute("select s3 from root.vehicle.d0"));
+
+    ResultSet resultSet = statement.getResultSet();
+    Assert.assertTrue(resultSet.next());
+    Assert.assertFalse(resultSet.next());
+    Assert.assertFalse(resultSet.isClosed());
+    Assert.assertEquals(ResultSet.TYPE_FORWARD_ONLY, resultSet.getType());
+
+    resultSet.close();
+
+    Assert.assertTrue(resultSet.isClosed());
   }
 
   @SuppressWarnings("resource")

@@ -83,6 +83,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private List<String> sgColumns = null;
   private Charset charset = TSFileConfig.STRING_CHARSET;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+  private final long queryId;
   private boolean explicitlyClosed = false;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -105,6 +106,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList)
       throws SQLException {
+    this.queryId = queryId;
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -115,7 +117,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             moreData,
             queryId,
             statement.getStmtId(),
-            client,
+            getResultSetClient(client, queryId),
             sessionId,
             dataSet,
             statement.getFetchSizeInternal(),
@@ -151,6 +153,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       boolean moreData,
       ZoneId zoneId)
       throws SQLException {
+    this.queryId = queryId;
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -161,7 +164,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
             moreData,
             queryId,
             ((IoTDBStatement) statement).getStmtId(),
-            client,
+            getResultSetClient(client, queryId),
             sessionId,
             dataSet,
             ((IoTDBStatement) statement).getFetchSizeInternal(),
@@ -177,6 +180,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
+  }
+
+  private static IClientRPCService.Iface getResultSetClient(
+      IClientRPCService.Iface client, long queryId) {
+    return queryId == -1 ? null : client;
   }
 
   @Override
@@ -224,11 +232,13 @@ public class IoTDBJDBCResultSet implements ResultSet {
     }
     try {
       ioTDBRpcDataSet.close();
-      explicitlyClosed = true;
+      statement.clearQueryId(queryId);
     } catch (StatementExecutionException e) {
       throw new SQLException(JdbcMessages.CLOSE_SERVER_SIDE_ERROR, e);
     } catch (TException e) {
       throw new SQLException(JdbcMessages.CLOSE_CONNECTING_ERROR, e);
+    } finally {
+      explicitlyClosed = true;
     }
   }
 
@@ -871,7 +881,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() {
-    return ioTDBRpcDataSet.isClosed();
+    return explicitlyClosed;
   }
 
   private void checkOpen() throws SQLException {
@@ -1387,46 +1397,60 @@ public class IoTDBJDBCResultSet implements ResultSet {
     }
   }
 
-  public boolean isSetTracingInfo() {
+  public boolean isSetTracingInfo() throws SQLException {
+    checkOpen();
     if (ioTDBRpcTracingInfo == null) {
       return false;
     }
     return ioTDBRpcTracingInfo.isSetTracingInfo();
   }
 
-  public List<String> getActivityList() {
+  public List<String> getActivityList() throws SQLException {
+    checkOpen();
     return ioTDBRpcTracingInfo.getActivityList();
   }
 
-  public List<Long> getElapsedTimeList() {
+  public List<Long> getElapsedTimeList() throws SQLException {
+    checkOpen();
     return ioTDBRpcTracingInfo.getElapsedTimeList();
   }
 
   public long getStatisticsByName(String name) throws Exception {
+    checkOpen();
     return ioTDBRpcTracingInfo.getStatisticsByName(name);
   }
 
   public String getStatisticsInfoByName(String name) throws Exception {
+    checkOpen();
     return ioTDBRpcTracingInfo.getStatisticsInfoByName(name);
   }
 
-  public boolean isIgnoreTimeStamp() {
+  public boolean isIgnoreTimeStamp() throws SQLException {
+    checkOpen();
     return ioTDBRpcDataSet.isIgnoreTimeStamp();
   }
 
-  public String getOperationType() {
+  public String getOperationType() throws SQLException {
+    checkOpen();
     return this.operationType;
   }
 
-  public List<String> getColumns() {
+  public List<String> getColumns() throws SQLException {
+    checkOpen();
     return this.columns;
   }
 
-  public List<String> getSgColumns() {
+  public List<String> getSgColumns() throws SQLException {
+    checkOpen();
     return sgColumns;
   }
 
-  public TSDataType getColumnTypeByIndex(int columnIndex) {
-    return ioTDBRpcDataSet.getDataType(columnIndex);
+  public TSDataType getColumnTypeByIndex(int columnIndex) throws SQLException {
+    checkOpen();
+    try {
+      return ioTDBRpcDataSet.getDataType(columnIndex);
+    } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 }

@@ -84,6 +84,18 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       ZoneId zoneId,
       Charset charset)
       throws SQLException {
+    this(connection, client, sessionId, requireNonNullSql(sql), zoneId, charset, true);
+  }
+
+  private IoTDBPreparedStatement(
+      IoTDBConnection connection,
+      Iface client,
+      Long sessionId,
+      String sql,
+      ZoneId zoneId,
+      Charset charset,
+      boolean validated)
+      throws SQLException {
     super(connection, client, sessionId, zoneId, charset);
     this.sql = sql;
     this.parameterCount = splitSqlStatement(sql).size() - 1;
@@ -93,9 +105,14 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   IoTDBPreparedStatement(
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
-    super(connection, client, sessionId, zoneId, TSFileConfig.STRING_CHARSET);
-    this.sql = sql;
-    this.parameterCount = splitSqlStatement(sql).size() - 1;
+    this(connection, client, sessionId, sql, zoneId, TSFileConfig.STRING_CHARSET);
+  }
+
+  private static String requireNonNullSql(String sql) throws SQLException {
+    if (sql == null) {
+      throw new SQLException("SQL statement cannot be null");
+    }
+    return sql;
   }
 
   @Override
@@ -113,18 +130,21 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public boolean execute() throws SQLException {
     checkConnection("execute");
+    closeCurrentResultSet();
     return super.execute(createCompleteSql(sql, parameters));
   }
 
   @Override
   public ResultSet executeQuery() throws SQLException {
     checkConnection("executeQuery");
+    closeCurrentResultSet();
     return super.executeQuery(createCompleteSql(sql, parameters));
   }
 
   @Override
   public int executeUpdate() throws SQLException {
     checkConnection("executeUpdate");
+    closeCurrentResultSet();
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 

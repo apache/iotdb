@@ -91,6 +91,18 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       ZoneId zoneId,
       Charset charset)
       throws SQLException {
+    this(connection, client, sessionId, requireNonNullSql(sql), zoneId, charset, true);
+  }
+
+  private IoTDBTablePreparedStatement(
+      IoTDBConnection connection,
+      Iface client,
+      Long sessionId,
+      String sql,
+      ZoneId zoneId,
+      Charset charset,
+      boolean validated)
+      throws SQLException {
     super(connection, client, sessionId, zoneId, charset);
     this.sql = sql;
     this.preparedStatementName = generateStatementName();
@@ -115,7 +127,14 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
           parameterTypes[i] = Types.NULL;
         }
       } catch (TException | StatementExecutionException e) {
-        throw new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
+        SQLException prepareException =
+            new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
+        try {
+          closeClientOperation();
+        } catch (SQLException closeException) {
+          prepareException.addSuppressed(closeException);
+        }
+        throw prepareException;
       }
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
@@ -131,6 +150,13 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
     this(connection, client, sessionId, sql, zoneId, TSFileConfig.STRING_CHARSET);
+  }
+
+  private static String requireNonNullSql(String sql) throws SQLException {
+    if (sql == null) {
+      throw new SQLException("SQL statement cannot be null");
+    }
+    return sql;
   }
 
   private String generateStatementName() {
@@ -160,9 +186,9 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   public boolean execute() throws SQLException {
     checkConnection("execute");
     if (isQueryStatement(sql)) {
-      TSExecuteStatementResp resp = executeInternal();
-      return resp.isSetQueryDataSet() || resp.isSetQueryResult();
+      return processQueryResult(executeInternal()) != null;
     } else {
+      closeCurrentResultSet();
       return super.execute(createCompleteSql(sql, parameters));
     }
   }
@@ -185,10 +211,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public int executeUpdate() throws SQLException {
     checkConnection("executeUpdate");
+    closeCurrentResultSet();
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
   private TSExecuteStatementResp executeInternal() throws SQLException {
+    closeCurrentResultSet();
     // Validate all parameters are set
     for (int i = 0; i < parameterCount; i++) {
       if (parameterTypes[i] == Types.NULL
@@ -218,31 +246,51 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private ResultSet processQueryResult(TSExecuteStatementResp resp) throws SQLException {
+    long queryId = resp.isSetQueryId() ? resp.getQueryId() : -1;
     if (resp.isSetQueryDataSet() || resp.isSetQueryResult()) {
-      this.resultSet =
-          new IoTDBJDBCResultSet(
-              this,
-              resp.getColumns(),
-              resp.getDataTypeList(),
-              resp.columnNameIndexMap,
-              resp.ignoreTimeStamp,
-              client,
-              sql,
-              resp.queryId,
-              sessionId,
-              resp.queryResult,
-              resp.tracingInfo,
-              (long) queryTimeout * 1000,
-              resp.isSetMoreData() && resp.isMoreData(),
-              zoneId);
+      setQueryId(queryId);
+      if (resp.queryResult == null) {
+        SQLException exception = new SQLException(JdbcMessages.QUERY_RESULT_SHOULD_NOT_BE_NULL);
+        throw closeQueryOperationOnResultSetCreationFailure(queryId, exception);
+      }
+      try {
+        this.resultSet =
+            new IoTDBJDBCResultSet(
+                this,
+                resp.getColumns(),
+                resp.getDataTypeList(),
+                resp.columnNameIndexMap,
+                resp.ignoreTimeStamp,
+                client,
+                sql,
+                queryId,
+                sessionId,
+                resp.queryResult,
+                resp.tracingInfo,
+                (long) queryTimeout * 1000,
+                resp.isSetMoreData() && resp.isMoreData(),
+                zoneId);
+      } catch (SQLException | RuntimeException e) {
+        throw closeQueryOperationOnResultSetCreationFailure(queryId, e);
+      }
       return resultSet;
+    }
+    if (queryId != -1) {
+      setQueryId(queryId);
+      closeQueryOperation(queryId);
     }
     return null;
   }
 
   @Override
   public void close() throws SQLException {
+    SQLException closeException = null;
     if (!isClosed() && serverSidePrepared) {
+      try {
+        closeCurrentResultSet();
+      } catch (SQLException e) {
+        closeException = mergeSQLException(closeException, e);
+      }
       // Deallocate prepared statement on server only if it was prepared server-side
       TSDeallocatePreparedReq req = new TSDeallocatePreparedReq();
       req.setSessionId(sessionId);
@@ -257,7 +305,14 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
         logger.warn(JdbcMessages.ERROR_DEALLOCATING_PREPARED_STATEMENT, e);
       }
     }
-    super.close();
+    try {
+      super.close();
+    } catch (SQLException e) {
+      closeException = mergeSQLException(closeException, e);
+    }
+    if (closeException != null) {
+      throw closeException;
+    }
   }
 
   @Override
