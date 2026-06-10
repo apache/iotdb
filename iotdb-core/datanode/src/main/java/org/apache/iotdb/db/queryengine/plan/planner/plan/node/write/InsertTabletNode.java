@@ -414,7 +414,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    serializeString(devicePath.getFullPath(), buffer);
     writeMeasurementsOrSchemas(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -424,7 +424,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeString(devicePath.getFullPath(), stream);
     writeMeasurementsOrSchemas(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -445,9 +445,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(buffer);
+        serializeMeasurementSchema(measurementSchemas[i], buffer);
       } else {
-        ReadWriteIOUtils.write(measurements[i], buffer);
+        serializeString(measurements[i], buffer);
       }
     }
   }
@@ -464,9 +464,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(stream);
+        serializeMeasurementSchema(measurementSchemas[i], stream);
       } else {
-        ReadWriteIOUtils.write(measurements[i], stream);
+        serializeString(measurements[i], stream);
       }
     }
   }
@@ -684,7 +684,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     try {
       devicePath =
           DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
+              .getPartialPath((deserializeString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -696,12 +696,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (hasSchema) {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurementSchemas[i] = deserializeMeasurementSchema(buffer);
         measurements[i] = measurementSchemas[i].getMeasurementId();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {
-        measurements[i] = ReadWriteIOUtils.readString(buffer);
+        measurements[i] = deserializeString(buffer);
       }
     }
 

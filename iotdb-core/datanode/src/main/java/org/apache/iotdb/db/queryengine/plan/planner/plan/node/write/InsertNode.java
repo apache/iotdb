@@ -34,9 +34,11 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALReadUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -44,7 +46,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -212,6 +216,102 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  protected static int serializeString(String value, ByteBuffer buffer) {
+    if (value == null) {
+      return ReadWriteIOUtils.write(-1, buffer);
+    }
+    byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+    int len = ReadWriteIOUtils.write(bytes.length, buffer);
+    buffer.put(bytes);
+    return len + bytes.length;
+  }
+
+  protected static int serializeString(String value, DataOutputStream stream) throws IOException {
+    if (value == null) {
+      return ReadWriteIOUtils.write(-1, stream);
+    }
+    byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+    int len = ReadWriteIOUtils.write(bytes.length, stream);
+    stream.write(bytes);
+    return len + bytes.length;
+  }
+
+  protected static String deserializeString(ByteBuffer buffer) {
+    int strLength = ReadWriteIOUtils.readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    byte[] bytes = new byte[strLength];
+    buffer.get(bytes);
+    return new String(bytes, TSFileConfig.STRING_CHARSET);
+  }
+
+  protected static void serializeMeasurementSchema(
+      MeasurementSchema measurementSchema, ByteBuffer buffer) {
+    serializeString(measurementSchema.getMeasurementId(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getTypeInByte(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getEncodingType().serialize(), buffer);
+    ReadWriteIOUtils.write(measurementSchema.getCompressor().serialize(), buffer);
+    serializeProps(measurementSchema.getProps(), buffer);
+  }
+
+  protected static void serializeMeasurementSchema(
+      MeasurementSchema measurementSchema, DataOutputStream stream) throws IOException {
+    serializeString(measurementSchema.getMeasurementId(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getTypeInByte(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getEncodingType().serialize(), stream);
+    ReadWriteIOUtils.write(measurementSchema.getCompressor().serialize(), stream);
+    serializeProps(measurementSchema.getProps(), stream);
+  }
+
+  protected static MeasurementSchema deserializeMeasurementSchema(ByteBuffer buffer) {
+    String measurementId = deserializeString(buffer);
+    byte type = ReadWriteIOUtils.readByte(buffer);
+    byte encoding = ReadWriteIOUtils.readByte(buffer);
+    byte compressor = ReadWriteIOUtils.readByte(buffer);
+    Map<String, String> props = deserializeProps(buffer);
+    return new MeasurementSchema(measurementId, type, encoding, compressor, props);
+  }
+
+  private static void serializeProps(Map<String, String> props, ByteBuffer buffer) {
+    if (props == null) {
+      ReadWriteIOUtils.write(0, buffer);
+      return;
+    }
+    ReadWriteIOUtils.write(props.size(), buffer);
+    for (Map.Entry<String, String> entry : props.entrySet()) {
+      serializeString(entry.getKey(), buffer);
+      serializeString(entry.getValue(), buffer);
+    }
+  }
+
+  private static void serializeProps(Map<String, String> props, DataOutputStream stream)
+      throws IOException {
+    if (props == null) {
+      ReadWriteIOUtils.write(0, stream);
+      return;
+    }
+    ReadWriteIOUtils.write(props.size(), stream);
+    for (Map.Entry<String, String> entry : props.entrySet()) {
+      serializeString(entry.getKey(), stream);
+      serializeString(entry.getValue(), stream);
+    }
+  }
+
+  private static Map<String, String> deserializeProps(ByteBuffer buffer) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    if (size <= 0) {
+      return null;
+    }
+    Map<String, String> props = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      props.put(deserializeString(buffer), deserializeString(buffer));
+    }
+    return props;
   }
 
   // region Serialization methods for WAL

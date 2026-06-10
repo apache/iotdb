@@ -239,13 +239,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(time, buffer);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    serializeString(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(time, stream);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    serializeString(devicePath.getFullPath(), stream);
     serializeMeasurementsAndValues(stream);
   }
 
@@ -282,9 +282,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(buffer);
+        serializeMeasurementSchema(measurementSchemas[i], buffer);
       } else {
-        ReadWriteIOUtils.write(measurements[i], buffer);
+        serializeString(measurements[i], buffer);
       }
     }
   }
@@ -304,9 +304,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       // serialize measurement schemas when exist
       if (measurementSchemas != null) {
-        measurementSchemas[i].serializeTo(stream);
+        serializeMeasurementSchema(measurementSchemas[i], stream);
       } else {
-        ReadWriteIOUtils.write(measurements[i], stream);
+        serializeString(measurements[i], stream);
       }
     }
   }
@@ -332,7 +332,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // and is forwarded to other nodes
       if (isNeedInferType) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
-        ReadWriteIOUtils.write(values[i].toString(), buffer);
+        serializeString(values[i].toString(), buffer);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], buffer);
         switch (dataTypes[i]) {
@@ -387,7 +387,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // and is forwarded to other nodes
       if (isNeedInferType) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, stream);
-        ReadWriteIOUtils.write(values[i].toString(), stream);
+        serializeString(values[i].toString(), stream);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], stream);
         switch (dataTypes[i]) {
@@ -433,7 +433,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     try {
       devicePath =
           DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(byteBuffer));
+              .getPartialPath(deserializeString(byteBuffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -448,12 +448,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     if (hasSchema) {
       measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurementSchemas[i] = deserializeMeasurementSchema(buffer);
         measurements[i] = measurementSchemas[i].getMeasurementId();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {
-        measurements[i] = ReadWriteIOUtils.readString(buffer);
+        measurements[i] = deserializeString(buffer);
       }
     }
 
@@ -477,7 +477,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
       if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
-        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
+        values[i] = typeNum == TYPE_RAW_STRING ? deserializeString(buffer) : null;
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
