@@ -920,8 +920,8 @@ public class RatisConfig {
       // A Ratis configuration change (add/remove peer) retries the "in progress / not ready"
       // failures with a fixed 2s interval. Bounding the number of attempts (instead of retrying
       // forever) prevents a killed ADDING peer that can never catch up from blocking the
-      // reconfiguration -- and hence the region migration -- indefinitely. 600 attempts ~= 20min.
-      private int reconfigurationMaxRetryAttempts = 600;
+      // reconfiguration -- and hence the region migration -- indefinitely. 15 attempts ~= 30s.
+      private int reconfigurationMaxRetryAttempts = 15;
 
       public Client build() {
         return new Client(

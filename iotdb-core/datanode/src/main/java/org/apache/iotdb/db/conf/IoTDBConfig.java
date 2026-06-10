@@ -1068,9 +1068,9 @@ public class IoTDBConfig {
    * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
    * reconfiguration -- and hence a region migration -- forever. Pushed from the ConfigNode.
    */
-  private int dataRatisConsensusReconfigurationMaxRetryAttempts = 600;
+  private int dataRatisConsensusReconfigurationMaxRetryAttempts = 15;
 
-  private int schemaRatisConsensusReconfigurationMaxRetryAttempts = 600;
+  private int schemaRatisConsensusReconfigurationMaxRetryAttempts = 15;
   private long dataRatisConsensusInitialSleepTimeMs = 100L;
   private long schemaRatisConsensusInitialSleepTimeMs = 100L;
   private long dataRatisConsensusMaxSleepTimeMs = 10000L;

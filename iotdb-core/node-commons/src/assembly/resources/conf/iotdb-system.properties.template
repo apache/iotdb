@@ -2063,9 +2063,9 @@ data_region_ratis_max_sleep_time_ms=10000
 # reconfiguration -- and therefore the whole region migration -- indefinitely.
 # effectiveMode: restart
 # Datatype: int
-config_node_ratis_reconfiguration_max_retry_attempts=600
-schema_region_ratis_reconfiguration_max_retry_attempts=600
-data_region_ratis_reconfiguration_max_retry_attempts=600
+config_node_ratis_reconfiguration_max_retry_attempts=15
+schema_region_ratis_reconfiguration_max_retry_attempts=15
+data_region_ratis_reconfiguration_max_retry_attempts=15
 
 # first election timeout
 # effectiveMode: restart

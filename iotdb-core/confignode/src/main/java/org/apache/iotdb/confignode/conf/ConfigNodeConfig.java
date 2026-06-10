@@ -323,10 +323,10 @@ public class ConfigNodeConfig {
    * a fixed 2s retry interval; bounding the attempts stops a killed ADDING peer from blocking the
    * reconfiguration -- and hence a region migration -- forever.
    */
-  private int configNodeRatisReconfigurationMaxRetryAttempts = 600;
+  private int configNodeRatisReconfigurationMaxRetryAttempts = 15;
 
-  private int dataRegionRatisReconfigurationMaxRetryAttempts = 600;
-  private int schemaRegionRatisReconfigurationMaxRetryAttempts = 600;
+  private int dataRegionRatisReconfigurationMaxRetryAttempts = 15;
+  private int schemaRegionRatisReconfigurationMaxRetryAttempts = 15;
 
   private long configNodeRatisPreserveLogsWhenPurge = 1000;
   private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
