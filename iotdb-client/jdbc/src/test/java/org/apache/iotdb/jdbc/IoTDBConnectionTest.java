@@ -24,10 +24,13 @@ import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
 import org.apache.thrift.TException;
@@ -44,10 +47,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.Savepoint;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -64,8 +69,11 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -157,6 +165,60 @@ public class IoTDBConnectionTest {
     assertNull(tableConnection.getCatalog());
     tableConnection.setCatalog(null);
     assertThrows(SQLException.class, () -> tableConnection.setSchema(null));
+  }
+
+  @Test
+  public void testTableCatalogAndSchemaCloseUseStatements() throws Exception {
+    IoTDBConnection tableConnection =
+        new IoTDBConnection() {
+          @Override
+          public String getSqlDialect() {
+            return Constant.TABLE_DIALECT;
+          }
+        };
+    openConnection(tableConnection);
+    tableConnection.setClient(client);
+    TSExecuteStatementResp resp = mock(TSExecuteStatementResp.class);
+    when(client.requestStatementId(anyLong())).thenReturn(1L, 2L);
+    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(resp);
+    when(resp.getStatus()).thenReturn(successStatus);
+    when(client.closeOperation(any())).thenReturn(successStatus);
+
+    tableConnection.setSchema("root");
+    tableConnection.setCatalog("root2");
+
+    verify(client, times(2)).closeOperation(any());
+  }
+
+  @Test
+  public void testPrepareStatementRejectsNullSqlBeforeRequestingStatementId() throws Exception {
+    openConnection(connection);
+    connection.setClient(client);
+
+    assertThrows(SQLException.class, () -> connection.prepareStatement(null));
+
+    verify(client, never()).requestStatementId(anyLong());
+    verify(client, never()).closeOperation(any());
+  }
+
+  @Test
+  public void testTablePrepareStatementRejectsNullSqlBeforeRequestingStatementId()
+      throws Exception {
+    IoTDBConnection tableConnection =
+        new IoTDBConnection() {
+          @Override
+          public String getSqlDialect() {
+            return Constant.TABLE_DIALECT;
+          }
+        };
+    openConnection(tableConnection);
+    tableConnection.setClient(client);
+
+    assertThrows(SQLException.class, () -> tableConnection.prepareStatement(null));
+
+    verify(client, never()).requestStatementId(anyLong());
+    verify(client, never()).prepareStatement(any(TSPrepareReq.class));
+    verify(client, never()).closeOperation(any());
   }
 
   @Test
@@ -496,6 +558,7 @@ public class IoTDBConnectionTest {
     assertThrows(SQLException.class, () -> connection.rollback());
     assertThrows(SQLException.class, () -> connection.rollback((Savepoint) null));
     assertThrows(SQLException.class, () -> connection.setNetworkTimeout(null, 0));
+    assertThrows(SQLException.class, () -> connection.getQueryTimeout());
     assertThrows(SQLException.class, () -> connection.setQueryTimeout(60));
     assertThrows(SQLException.class, () -> connection.setSavepoint());
     assertThrows(SQLException.class, () -> connection.setSavepoint("s"));
@@ -510,6 +573,64 @@ public class IoTDBConnectionTest {
 
     assertFalse(connection.reconnect());
     verify(transport, never()).close();
+  }
+
+  @Test
+  public void testCloseClosesCreatedStatements() throws Exception {
+    openConnection(connection);
+    connection.setClient(client);
+    when(client.requestStatementId(anyLong())).thenReturn(1L, 2L);
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    when(client.closeSession(any())).thenReturn(successStatus);
+
+    Statement statement = connection.createStatement();
+    PreparedStatement preparedStatement = connection.prepareStatement("SELECT ?");
+
+    connection.close();
+
+    assertTrue(connection.isClosed());
+    assertTrue(statement.isClosed());
+    assertTrue(preparedStatement.isClosed());
+    verify(client, times(2)).closeOperation(any());
+    verify(client).closeSession(any());
+  }
+
+  @Test
+  public void testCloseClosesCurrentResultSetFromCreatedStatement() throws Exception {
+    openConnection(connection);
+    connection.setClient(client);
+    when(client.requestStatementId(anyLong())).thenReturn(1L);
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    when(client.closeSession(any())).thenReturn(successStatus);
+
+    IoTDBStatement statement = (IoTDBStatement) connection.createStatement();
+    ResultSet resultSet = mock(ResultSet.class);
+    statement.resultSet = resultSet;
+
+    connection.close();
+
+    assertTrue(statement.isClosed());
+    verify(resultSet).close();
+    verify(client).closeOperation(any());
+    verify(client).closeSession(any());
+  }
+
+  @Test
+  public void testClosedStatementIsUnregisteredFromConnection() throws Exception {
+    openConnection(connection);
+    connection.setClient(client);
+    when(client.requestStatementId(anyLong())).thenReturn(1L);
+    when(client.closeOperation(any())).thenReturn(successStatus);
+    when(client.closeSession(any())).thenReturn(successStatus);
+
+    Statement statement = connection.createStatement();
+    statement.close();
+
+    connection.close();
+
+    assertTrue(statement.isClosed());
+    verify(client, times(1)).closeOperation(any());
+    verify(client).closeSession(any());
   }
 
   private void openConnection(IoTDBConnection target) {

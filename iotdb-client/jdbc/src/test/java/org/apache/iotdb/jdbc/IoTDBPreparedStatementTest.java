@@ -32,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.ParameterMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -44,6 +45,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +71,17 @@ public class IoTDBPreparedStatementTest {
 
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.closeOperation(any())).thenReturn(Status_SUCCESS);
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void testConstructorRejectsNullSqlBeforeRequestingStatementId() throws Exception {
+    assertThrows(
+        SQLException.class,
+        () -> new IoTDBPreparedStatement(connection, client, sessionId, null, zoneId));
+
+    verify(client, never()).requestStatementId(anyLong());
+    verify(client, never()).closeOperation(any());
   }
 
   @SuppressWarnings("resource")
@@ -181,6 +196,20 @@ public class IoTDBPreparedStatementTest {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     assertThrows(SQLException.class, () -> ps.execute());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void executeWithUnsetParameterClosesPreviousResultSet() throws SQLException {
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, "SELECT ?", zoneId);
+    ResultSet previousResultSet = mock(ResultSet.class);
+    ps.resultSet = previousResultSet;
+
+    assertThrows(SQLException.class, ps::execute);
+
+    verify(previousResultSet).close();
+    assertNull(ps.resultSet);
   }
 
   @SuppressWarnings("resource")
