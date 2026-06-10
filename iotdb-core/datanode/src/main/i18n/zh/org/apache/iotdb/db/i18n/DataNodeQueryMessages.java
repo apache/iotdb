@@ -136,6 +136,8 @@ public final class DataNodeQueryMessages {
 
   public static final String FREE_MORE_MEMORY_THAN_HAS_BEEN_RESERVED =
       "释放的内存超过已预留的量。";
+  public static final String ESTIMATED_MODS_TREE_SIZE_DECREASED =
+      "估算的 mods tree 大小从 %d 减少到 %d，TsFile：%s。";
 
   // --- Execution / Operator ---
 
@@ -258,6 +260,8 @@ public final class DataNodeQueryMessages {
       "左侧表达式不是标识符：";
   public static final String THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER =
       "左侧值必须是标识符：";
+  public static final String THE_TABLE_S_DOES_NOT_CONTAIN_A_TIME_COLUMN =
+      "表 '%s' 不包含时间列";
   public static final String THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR =
       "标签谓词的运算符必须为 '='，目标：";
   public static final String ONLY_TIME_FILTERS_ARE_SUPPORTED_IN_LAST_QUERY =

@@ -2214,6 +2214,11 @@ public class IoTDBDescriptor {
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
+
       // update Consensus config
       reloadConsensusProps(properties);
 
@@ -2964,6 +2969,17 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    // Optional fields: an old ConfigNode (rolling upgrade) will not set them, in which case the
+    // DataNode keeps its local default instead of overwriting it with 0.
+    if (ratisConfig.isSetDataReconfigurationMaxRetryAttempts()) {
+      conf.setDataRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getDataReconfigurationMaxRetryAttempts());
+    }
+    if (ratisConfig.isSetSchemaReconfigurationMaxRetryAttempts()) {
+      conf.setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getSchemaReconfigurationMaxRetryAttempts());
+    }
 
     conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
     conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());

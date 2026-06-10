@@ -104,6 +104,12 @@ struct TRatisConfig {
   34: required i64 dataRegionPeriodicSnapshotInterval
 
   35: required i32 ratisTransferLeaderTimeoutMs;
+
+  // Bound the retry attempts of a Ratis configuration change (add/remove peer) so a killed ADDING
+  // peer cannot block the reconfiguration forever. Optional for rolling-upgrade compatibility: an
+  // old ConfigNode will not set them and the DataNode falls back to its local default.
+  36: optional i32 schemaReconfigurationMaxRetryAttempts
+  37: optional i32 dataReconfigurationMaxRetryAttempts
 }
 
 struct TCQConfig {
@@ -1072,6 +1078,18 @@ struct TGetAllSubscriptionInfoResp {
     2: required list<binary> allSubscriptionInfo
 }
 
+struct TGetCommitProgressReq {
+    1: required string consumerGroupId
+    2: required string topicName
+    3: required i32 regionId
+    4: required i32 dataNodeId
+}
+
+struct TGetCommitProgressResp {
+    1: required common.TSStatus status
+    2: optional binary committedRegionProgress
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -1969,6 +1987,9 @@ service IConfigNodeRPCService {
   /** Get all subscription information. It is used for DataNode registration and restart */
   TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
 
+  /** Get committed search index from ConfigNode for recovery */
+  TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req)
+
   // ======================================================
   // TestTools
   // ======================================================
@@ -2071,4 +2092,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

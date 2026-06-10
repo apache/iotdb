@@ -1703,7 +1703,7 @@ region_migration_speed_limit_bytes_per_second = 50331648
 # This may reduce file copies but may also result in a worse disk load-balance
 # effectiveMode: hot_reload
 # Datatype: boolean
-keep_same_disk_when_loading_snapshot=false
+keep_same_disk_when_loading_snapshot=true
 
 ####################
 ### Blob Allocator Configuration
@@ -1968,6 +1968,15 @@ pipe_air_gap_receiver_port=9780
 pipe_all_sinks_rate_limit_bytes_per_second=-1
 
 ####################
+### Subscription Consensus Configuration
+####################
+
+# The interval at which an idle consensus-subscription queue advances its writer safe-time barrier by watermark.
+# effectiveMode: restart
+# Datatype: long(duration)
+subscription_consensus_idle_safe_time_barrier_interval_ms=10000
+
+####################
 ### RatisConsensus Configuration
 ####################
 
@@ -2046,6 +2055,17 @@ schema_region_ratis_max_sleep_time_ms=10000
 data_region_ratis_max_retry_attempts=10
 data_region_ratis_initial_sleep_time_ms=100
 data_region_ratis_max_sleep_time_ms=10000
+
+# Max retry attempts for a Ratis configuration change (add/remove peer), e.g. during region
+# migration or cluster scale-in/out. Unlike the request retry policy above, reconfiguration retries
+# use a fixed 2s interval, so this roughly caps the wait at (attempts * 2s). Bounding it (instead of
+# retrying forever) prevents a killed ADDING peer that can never catch up from blocking the
+# reconfiguration -- and therefore the whole region migration -- indefinitely.
+# effectiveMode: restart
+# Datatype: int
+config_node_ratis_reconfiguration_max_retry_attempts=15
+schema_region_ratis_reconfiguration_max_retry_attempts=15
+data_region_ratis_reconfiguration_max_retry_attempts=15
 
 # first election timeout
 # effectiveMode: restart
