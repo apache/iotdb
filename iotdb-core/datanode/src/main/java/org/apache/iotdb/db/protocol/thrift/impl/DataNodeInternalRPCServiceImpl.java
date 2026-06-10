@@ -99,6 +99,8 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -3166,8 +3168,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         REGION_MIGRATE_PROCESS,
         peers,
         regionId);
+    if (isRatisConsensusRegion(regionId)) {
+      KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
+    }
     status.setMessage(DataNodeMiscMessages.CREATE_NEW_REGION_PEER_SUCCEED_REGION_ID + regionId);
     return status;
+  }
+
+  private boolean isRatisConsensusRegion(ConsensusGroupId regionId) {
+    return regionId instanceof DataRegionId
+        ? ConsensusFactory.RATIS_CONSENSUS.equals(
+            IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())
+        : ConsensusFactory.RATIS_CONSENSUS.equals(
+            IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass());
   }
 
   @Override

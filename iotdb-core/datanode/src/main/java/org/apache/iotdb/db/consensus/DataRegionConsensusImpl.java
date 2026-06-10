@@ -273,6 +273,8 @@ public class DataRegionConsensusImpl {
                               CONF.getDataRatisConsensusInitialSleepTimeMs())
                           .setClientRetryMaxSleepTimeMs(CONF.getDataRatisConsensusMaxSleepTimeMs())
                           .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
+                          .setReconfigurationMaxRetryAttempts(
+                              CONF.getDataRatisConsensusReconfigurationMaxRetryAttempts())
                           .build())
                   .setImpl(
                       RatisConfig.Impl.newBuilder()
