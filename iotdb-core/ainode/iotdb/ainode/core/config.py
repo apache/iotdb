@@ -414,7 +414,9 @@ class AINodeDescriptor(object):
                     )
 
             except BadNodeUrlException:
-                logger.warning("Cannot load AINode conf file, use default configuration.")
+                logger.warning(
+                    "Cannot load AINode conf file, use default configuration."
+                )
 
             except Exception as e:
                 logger.warning(

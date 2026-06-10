@@ -16,8 +16,8 @@
 # under the License.
 #
 import os
-import signal
 import shutil
+import signal
 import threading
 from datetime import datetime
 

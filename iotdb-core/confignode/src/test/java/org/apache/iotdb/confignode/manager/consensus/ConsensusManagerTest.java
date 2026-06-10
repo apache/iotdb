@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.confignode.manager.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
+import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,6 +49,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -93,8 +99,7 @@ public class ConsensusManagerTest {
   @Test
   public void startShouldCreateSeedPeerOnFirstStart() throws Exception {
     IConsensus consensus = Mockito.mock(IConsensus.class);
-    ConsensusManager consensusManager =
-        new ConsensusManager(Mockito.mock(IManager.class), consensus);
+    ConsensusManager consensusManager = newConsensusManager(consensus);
 
     consensusManager.start();
 
@@ -118,8 +123,27 @@ public class ConsensusManagerTest {
         .when(consensus)
         .createLocalPeer(
             Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
-    ConsensusManager consensusManager =
-        new ConsensusManager(Mockito.mock(IManager.class), consensus);
+    ConsensusManager consensusManager = newConsensusManager(consensus);
+
+    IOException exception = Assert.assertThrows(IOException.class, consensusManager::start);
+
+    Assert.assertTrue(exception.getMessage().contains("Failed to create local"));
+    Mockito.verify(consensus).start();
+    Mockito.verify(consensus)
+        .createLocalPeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
+    Assert.assertFalse(consensusManager.isInitialized());
+  }
+
+  @Test
+  public void startShouldFailWhenSeedPeerAlreadyExistsOnFirstStart() throws Exception {
+    IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.doThrow(
+            new ConsensusGroupAlreadyExistException(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID))
+        .when(consensus)
+        .createLocalPeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
+    ConsensusManager consensusManager = newConsensusManager(consensus);
 
     IOException exception = Assert.assertThrows(IOException.class, consensusManager::start);
 
@@ -136,8 +160,7 @@ public class ConsensusManagerTest {
     writeSystemProperties();
     createConsensusStateFile();
     IConsensus consensus = Mockito.mock(IConsensus.class);
-    ConsensusManager consensusManager =
-        new ConsensusManager(Mockito.mock(IManager.class), consensus);
+    ConsensusManager consensusManager = newConsensusManager(consensus);
 
     consensusManager.start();
 
@@ -146,6 +169,82 @@ public class ConsensusManagerTest {
         .createLocalPeer(
             Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
     Assert.assertTrue(consensusManager.isInitialized());
+  }
+
+  @Test
+  public void createPeerForConsensusGroupShouldIgnoreAlreadyCreatedLocalPeer() throws Exception {
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.doThrow(
+            new ConsensusGroupAlreadyExistException(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID))
+        .when(consensus)
+        .createLocalPeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
+
+    newConsensusManager(consensus)
+        .createPeerForConsensusGroup(Collections.singletonList(newConfigNodeLocation(1)));
+
+    Mockito.verify(consensus)
+        .createLocalPeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.anyList());
+  }
+
+  @Test
+  public void addConfigNodePeerShouldIgnoreAlreadyAddedPeer() throws Exception {
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.doThrow(
+            new PeerAlreadyInConsensusGroupException(
+                ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID,
+                new Peer(
+                    ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID,
+                    1,
+                    new TEndPoint("127.0.0.1", 10720))))
+        .when(consensus)
+        .addRemotePeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.any(Peer.class));
+
+    newConsensusManager(consensus).addConfigNodePeer(newConfigNodeLocation(1));
+
+    Mockito.verify(consensus)
+        .addRemotePeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.any(Peer.class));
+  }
+
+  @Test
+  public void addConfigNodePeerShouldKeepFailingForOtherConsensusErrors() throws Exception {
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.doThrow(new ConsensusException("reconfiguration failed"))
+        .when(consensus)
+        .addRemotePeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.any(Peer.class));
+
+    Assert.assertThrows(
+        AddPeerException.class,
+        () -> newConsensusManager(consensus).addConfigNodePeer(newConfigNodeLocation(1)));
+  }
+
+  @Test
+  public void removeConfigNodePeerShouldIgnoreAlreadyRemovedPeer() throws Exception {
+    final IConsensus consensus = Mockito.mock(IConsensus.class);
+    Mockito.doThrow(
+            new PeerNotInConsensusGroupException(
+                ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID, "127.0.0.1:10720"))
+        .when(consensus)
+        .removeRemotePeer(
+            Mockito.eq(ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID), Mockito.any(Peer.class));
+
+    Assert.assertTrue(
+        newConsensusManager(consensus).removeConfigNodePeer(newConfigNodeLocation(1)));
+  }
+
+  private ConsensusManager newConsensusManager(final IConsensus consensus) {
+    return new ConsensusManager(Mockito.mock(IManager.class), consensus);
+  }
+
+  private static TConfigNodeLocation newConfigNodeLocation(final int configNodeId) {
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint("127.0.0.1", 10710 + configNodeId),
+        new TEndPoint("127.0.0.1", 10720 + configNodeId));
   }
 
   private void writeSystemProperties() throws IOException {

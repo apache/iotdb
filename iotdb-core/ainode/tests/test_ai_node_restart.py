@@ -124,11 +124,15 @@ class AINodeRestartTest(unittest.TestCase):
 
             self.assertEqual(7, descriptor.get_config().get_ainode_id())
 
-    def test_start_with_invalid_local_system_properties_backs_up_and_does_not_connect(self):
+    def test_start_with_invalid_local_system_properties_backs_up_and_does_not_connect(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             system_dir = Path(temp_dir)
             system_properties = system_dir / "system.properties"
-            system_properties.write_text("cluster_name=defaultCluster\n", encoding="utf-8")
+            system_properties.write_text(
+                "cluster_name=defaultCluster\n", encoding="utf-8"
+            )
             config = FakeConfig(str(system_dir), -1)
 
             with mock.patch.object(
@@ -143,9 +147,7 @@ class AINodeRestartTest(unittest.TestCase):
 
             self.assertEqual(-1, config.get_ainode_id())
             self.assertTrue(system_properties.exists())
-            self.assertEqual(
-                1, len(list(system_dir.glob("system.properties.*.bak")))
-            )
+            self.assertEqual(1, len(list(system_dir.glob("system.properties.*.bak"))))
 
     def test_restart_failure_backs_up_old_system_properties_and_does_not_register(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -172,9 +174,7 @@ class AINodeRestartTest(unittest.TestCase):
 
             self.assertEqual(3, config.get_ainode_id())
             self.assertEqual("ainode_id=3\n", system_properties.read_text("utf-8"))
-            self.assertEqual(
-                1, len(list(system_dir.glob("system.properties.*.bak")))
-            )
+            self.assertEqual(1, len(list(system_dir.glob("system.properties.*.bak"))))
             client.node_register.assert_not_called()
 
 

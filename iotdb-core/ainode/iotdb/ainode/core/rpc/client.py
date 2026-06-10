@@ -212,7 +212,10 @@ class ConfigNodeClient(object):
             try:
                 resp = self._client.restartAINode(req)
                 if not self._update_config_node_leader(resp.status):
-                    if resp.status.code != TSStatusCode.SUCCESS_STATUS.get_status_code():
+                    if (
+                        resp.status.code
+                        != TSStatusCode.SUCCESS_STATUS.get_status_code()
+                    ):
                         logger.warning(
                             "AINode restart is rejected by ConfigNode. "
                             "The local system.properties will be kept and AINode will not "
