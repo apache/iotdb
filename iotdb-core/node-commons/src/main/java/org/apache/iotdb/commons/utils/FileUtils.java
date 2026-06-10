@@ -54,6 +54,7 @@ public class FileUtils {
       "Renamed file {} to {} because it already exists in the target directory: {}";
   private static final String COPY_FILE_MESSAGE =
       "Copy file {} to {} because it already exists in the target directory: {}";
+  private static final String ILLEGAL_EMPTY_PATH_MESSAGE = "The path cannot be empty. ";
   private static final String ILLEGAL_PATH_MESSAGE =
       "The path cannot be '.', '..', './' or '.\\'. ";
 
@@ -556,6 +557,9 @@ public class FileUtils {
   }
 
   public static String getIllegalError4Directory(final String path) {
+    if (path == null || path.isEmpty()) {
+      return ILLEGAL_EMPTY_PATH_MESSAGE;
+    }
     if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
       return ILLEGAL_PATH_MESSAGE;
     }
