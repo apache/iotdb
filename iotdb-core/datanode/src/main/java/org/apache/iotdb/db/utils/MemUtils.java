@@ -72,6 +72,7 @@ public class MemUtils {
 
   public static long getRowRecordSize(
       List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
+    // dataTypes contains only non-null FIELD types, in the same order as non-null FIELD values.
     if (dataTypes == null) {
       return 0L;
     }
@@ -92,6 +93,7 @@ public class MemUtils {
    */
   public static long getAlignedRowRecordSize(
       List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
+    // dataTypes contains only non-null FIELD types, in the same order as non-null FIELD values.
     if (dataTypes == null) {
       return 8L + 4L;
     }

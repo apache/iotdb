@@ -405,47 +405,47 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   protected Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
+    return initTabletValues(columnSize, rowSize, dataTypes, false);
+  }
+
+  private Object[] initTabletValues(
+      int columnSize, int rowSize, TSDataType[] dataTypes, boolean forSplit) {
     Object[] values = new Object[columnSize];
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] != null) {
-        switch (dataTypes[i]) {
-          case TEXT:
-          case BLOB:
-          case STRING:
-          case OBJECT:
-            values[i] = new Binary[rowSize];
-            break;
-          case FLOAT:
-            values[i] = new float[rowSize];
-            break;
-          case INT32:
-          case DATE:
-            values[i] = new int[rowSize];
-            break;
-          case TIMESTAMP:
-          case INT64:
-            values[i] = new long[rowSize];
-            break;
-          case DOUBLE:
-            values[i] = new double[rowSize];
-            break;
-          case BOOLEAN:
-            values[i] = new boolean[rowSize];
-            break;
-        }
+      if (dataTypes[i] == null || forSplit && !hasColumnForSplit(i)) {
+        continue;
+      }
+      switch (dataTypes[i]) {
+        case TEXT:
+        case BLOB:
+        case STRING:
+        case OBJECT:
+          values[i] = new Binary[rowSize];
+          break;
+        case FLOAT:
+          values[i] = new float[rowSize];
+          break;
+        case INT32:
+        case DATE:
+          values[i] = new int[rowSize];
+          break;
+        case TIMESTAMP:
+        case INT64:
+          values[i] = new long[rowSize];
+          break;
+        case DOUBLE:
+          values[i] = new double[rowSize];
+          break;
+        case BOOLEAN:
+          values[i] = new boolean[rowSize];
+          break;
       }
     }
     return values;
   }
 
   protected Object[] initTabletValuesForSplit(int columnSize, int rowSize, TSDataType[] dataTypes) {
-    Object[] values = initTabletValues(columnSize, rowSize, dataTypes);
-    for (int i = 0; i < values.length; i++) {
-      if (!hasColumnForSplit(i)) {
-        values[i] = null;
-      }
-    }
-    return values;
+    return initTabletValues(columnSize, rowSize, dataTypes, true);
   }
 
   protected BitMap[] initBitmaps(int columnSize, int rowSize) {
@@ -1041,6 +1041,20 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int validMeasurementNumber = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
       if (shouldSerializeMeasurement(i)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
+  @Override
+  public int getValidMeasurementNumber(boolean countFieldOnly) {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (isValidMeasurement(i, countFieldOnly)
+          && columns != null
+          && i < columns.length
+          && columns[i] != null) {
         validMeasurementNumber++;
       }
     }

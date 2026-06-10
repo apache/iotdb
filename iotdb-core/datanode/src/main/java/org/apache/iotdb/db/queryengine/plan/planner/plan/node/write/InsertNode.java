@@ -190,6 +190,10 @@ public abstract class InsertNode extends SearchNode {
   }
 
   public boolean isValidMeasurement(int i) {
+    return isValidMeasurement(i, true);
+  }
+
+  public boolean isValidMeasurement(int i, boolean countFieldOnly) {
     return measurements != null
         && i >= 0
         && i < measurements.length
@@ -197,8 +201,7 @@ public abstract class InsertNode extends SearchNode {
         && measurementSchemas != null
         && i < measurementSchemas.length
         && measurementSchemas[i] != null
-        && (columnCategories == null
-            || i < columnCategories.length && columnCategories[i] == TsTableColumnCategory.FIELD);
+        && (!countFieldOnly || isFieldMeasurement(i));
   }
 
   public void setMeasurements(String[] measurements) {
@@ -367,6 +370,16 @@ public abstract class InsertNode extends SearchNode {
     return validMeasurementNumber;
   }
 
+  public int getValidMeasurementNumber(boolean countFieldOnly) {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (isValidMeasurement(i, countFieldOnly)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
   public boolean isMeasurementFailed(int index) {
     return measurements == null
         || index < 0
@@ -375,8 +388,13 @@ public abstract class InsertNode extends SearchNode {
   }
 
   protected boolean isWritableFieldMeasurement(int index) {
-    return !isMeasurementFailed(index)
-        && (columnCategories == null || columnCategories[index] == TsTableColumnCategory.FIELD);
+    return !isMeasurementFailed(index) && isFieldMeasurement(index);
+  }
+
+  public boolean isFieldMeasurement(int index) {
+    return columnCategories == null
+        || index < columnCategories.length
+            && columnCategories[index] == TsTableColumnCategory.FIELD;
   }
 
   public boolean allMeasurementFailed() {

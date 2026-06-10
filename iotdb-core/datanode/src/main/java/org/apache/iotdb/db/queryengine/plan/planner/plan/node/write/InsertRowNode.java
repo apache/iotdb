@@ -266,6 +266,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return validMeasurementNumber;
   }
 
+  @Override
+  public int getValidMeasurementNumber(boolean countFieldOnly) {
+    int validMeasurementNumber = 0;
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (values != null && i < values.length && isValidMeasurement(i, countFieldOnly)) {
+        validMeasurementNumber++;
+      }
+    }
+    return validMeasurementNumber;
+  }
+
   protected int getValidMeasurementNumberForWAL() {
     int validMeasurementNumber = 0;
     for (int i = 0; measurements != null && i < measurements.length; i++) {
