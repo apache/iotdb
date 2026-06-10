@@ -48,7 +48,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,9 +66,24 @@ public class M4TableFunction implements TableFunction {
 
   private static final String OUTPUT_WINDOW_START_COLUMN = "window_start";
   private static final String OUTPUT_WINDOW_END_COLUMN = "window_end";
+  private static final String OUTPUT_WINDOW_INDEX_COLUMN = "window_index";
+  private static final String PARTITION_TYPES_PROPERTY = "__M4_PARTITION_TYPES";
   private static final String PARTICIPANT_TYPES_PROPERTY = "__M4_PARTICIPANT_TYPES";
   private static final long UNSPECIFIED_SLIDE = Long.MIN_VALUE;
   private static final long INVALID_INDEX = -1;
+  private static final Set<Type> SUPPORTED_PARTITION_TYPES =
+      new HashSet<>(
+          Arrays.asList(
+              Type.BOOLEAN,
+              Type.INT32,
+              Type.INT64,
+              Type.FLOAT,
+              Type.DOUBLE,
+              Type.TEXT,
+              Type.TIMESTAMP,
+              Type.DATE,
+              Type.BLOB,
+              Type.STRING));
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -113,12 +127,26 @@ public class M4TableFunction implements TableFunction {
     Set<Integer> excludedIndexes = new HashSet<>(partitionIndexes);
     excludedIndexes.add(timeColumnIndex);
 
+    boolean isTimeWindow =
+        arguments.containsKey(WINDOW_MODE_PARAMETER_NAME)
+            && (boolean) ((ScalarArgument) arguments.get(WINDOW_MODE_PARAMETER_NAME)).getValue();
+
     List<Integer> participantIndexes = new ArrayList<>();
+    List<Type> partitionTypes = new ArrayList<>();
     List<Type> participantTypes = new ArrayList<>();
-    DescribedSchema.Builder schemaBuilder =
-        new DescribedSchema.Builder()
-            .addField(OUTPUT_WINDOW_START_COLUMN, Type.TIMESTAMP)
-            .addField(OUTPUT_WINDOW_END_COLUMN, Type.TIMESTAMP);
+    DescribedSchema.Builder schemaBuilder = new DescribedSchema.Builder();
+    if (isTimeWindow) {
+      schemaBuilder
+          .addField(OUTPUT_WINDOW_START_COLUMN, Type.TIMESTAMP)
+          .addField(OUTPUT_WINDOW_END_COLUMN, Type.TIMESTAMP);
+    } else {
+      schemaBuilder.addField(OUTPUT_WINDOW_INDEX_COLUMN, Type.INT64);
+    }
+    for (int partitionIndex : partitionIndexes) {
+      Type type = tableArgument.getFieldTypes().get(partitionIndex);
+      partitionTypes.add(type);
+      schemaBuilder.addField(tableArgument.getFieldNames().get(partitionIndex).get(), type);
+    }
 
     for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
       if (excludedIndexes.contains(i)) {
@@ -148,23 +176,23 @@ public class M4TableFunction implements TableFunction {
       throw new UDFException("Invalid scalar argument SLIDE, should be a positive value");
     }
 
-    boolean isTimeWindow =
-        arguments.containsKey(WINDOW_MODE_PARAMETER_NAME)
-            && (boolean) ((ScalarArgument) arguments.get(WINDOW_MODE_PARAMETER_NAME)).getValue();
-
-    MapTableFunctionHandle handle =
+    MapTableFunctionHandle.Builder handleBuilder =
         new MapTableFunctionHandle.Builder()
             .addProperty(WINDOW_MODE_PARAMETER_NAME, isTimeWindow)
             .addProperty(SIZE_PARAMETER_NAME, size)
             .addProperty(SLIDE_PARAMETER_NAME, slide)
-            .addProperty(
-                ORIGIN_PARAMETER_NAME,
-                ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue())
-            .addProperty(PARTICIPANT_TYPES_PROPERTY, joinTypes(participantTypes))
-            .build();
+            .addProperty(PARTITION_TYPES_PROPERTY, joinTypes(partitionTypes))
+            .addProperty(PARTICIPANT_TYPES_PROPERTY, joinTypes(participantTypes));
+    if (isTimeWindow) {
+      handleBuilder.addProperty(
+          ORIGIN_PARAMETER_NAME,
+          ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue());
+    }
+    MapTableFunctionHandle handle = handleBuilder.build();
 
     List<Integer> requiredColumns = new ArrayList<>();
     requiredColumns.add(timeColumnIndex);
+    requiredColumns.addAll(partitionIndexes);
     requiredColumns.addAll(participantIndexes);
 
     return TableFunctionAnalysis.builder()
@@ -187,16 +215,19 @@ public class M4TableFunction implements TableFunction {
     boolean isTimeWindow = (boolean) handle.getProperty(WINDOW_MODE_PARAMETER_NAME);
     long size = (long) handle.getProperty(SIZE_PARAMETER_NAME);
     long slide = (long) handle.getProperty(SLIDE_PARAMETER_NAME);
-    long origin = (long) handle.getProperty(ORIGIN_PARAMETER_NAME);
+    long origin = isTimeWindow ? (long) handle.getProperty(ORIGIN_PARAMETER_NAME) : 0L;
+    Type[] partitionTypes = parseTypes((String) handle.getProperty(PARTITION_TYPES_PROPERTY));
     Type[] participantTypes = parseTypes((String) handle.getProperty(PARTICIPANT_TYPES_PROPERTY));
 
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        M4Column[] participantColumns = createColumns(participantTypes);
+        M4Column[] partitionColumns = createColumns(partitionTypes, 1);
+        M4Column[] participantColumns = createColumns(participantTypes, partitionTypes.length + 1);
         return isTimeWindow
-            ? new TimeWindowM4DataProcessor(size, slide, origin, participantColumns)
-            : new CountWindowM4DataProcessor(size, slide, participantColumns);
+            ? new TimeWindowM4DataProcessor(
+                size, slide, origin, partitionColumns, participantColumns)
+            : new CountWindowM4DataProcessor(size, slide, partitionColumns, participantColumns);
       }
     };
   }
@@ -212,12 +243,12 @@ public class M4TableFunction implements TableFunction {
   private static List<Integer> getPartitionIndexes(TableArgument tableArgument) {
     List<Integer> indexes = new ArrayList<>();
     for (String partitionColumn : tableArgument.getPartitionBy()) {
-      indexes.add(
-          findColumnIndex(tableArgument, partitionColumn, new LinkedHashSet<>(Type.allTypes())));
+      indexes.add(findColumnIndex(tableArgument, partitionColumn, SUPPORTED_PARTITION_TYPES));
     }
     return indexes;
   }
 
+  // BLOB can be used as a partition column because M4 only needs to read/write it there
   private static boolean isComparableType(Type type) {
     return type != Type.BLOB && type != Type.OBJECT;
   }
@@ -245,10 +276,10 @@ public class M4TableFunction implements TableFunction {
     return types;
   }
 
-  private static M4Column[] createColumns(Type[] types) {
+  private static M4Column[] createColumns(Type[] types, int firstInputIndex) {
     M4Column[] columns = new M4Column[types.length];
     for (int i = 0; i < types.length; i++) {
-      columns[i] = new M4Column(i + 1, ValueOperator.fromType(types[i]));
+      columns[i] = new M4Column(firstInputIndex + i, ValueOperator.fromType(types[i]));
     }
     return columns;
   }
@@ -335,6 +366,22 @@ public class M4TableFunction implements TableFunction {
       }
     },
     TEXT(Type.TEXT) {
+      @Override
+      Object read(Record record, int index) {
+        return record.getBinary(index);
+      }
+
+      @Override
+      int compare(Object left, Object right) {
+        return ((Binary) left).compareTo((Binary) right);
+      }
+
+      @Override
+      void write(ColumnBuilder builder, Object value) {
+        builder.writeBinary((Binary) value);
+      }
+    },
+    BLOB(Type.BLOB) {
       @Override
       Object read(Record record, int index) {
         return record.getBinary(index);
@@ -501,70 +548,78 @@ public class M4TableFunction implements TableFunction {
 
   private abstract static class WindowState {
     protected final ColumnWindowState[] columnStates;
+    protected final Object[] partitionValues;
 
-    private WindowState(int columnCount) {
-      columnStates = new ColumnWindowState[columnCount];
-      for (int i = 0; i < columnCount; i++) {
+    private WindowState(int partitionColumnCount, int participantColumnCount) {
+      partitionValues = new Object[partitionColumnCount];
+      columnStates = new ColumnWindowState[participantColumnCount];
+      for (int i = 0; i < participantColumnCount; i++) {
         columnStates[i] = new ColumnWindowState();
       }
     }
 
-    protected abstract long getOutputWindowStart();
+    protected abstract void writeWindowColumns(List<ColumnBuilder> properColumnBuilders);
 
-    protected abstract long getOutputWindowEnd();
+    protected abstract int getWindowColumnCount();
   }
 
   private static class TimeWindowState extends WindowState {
     private final long windowStart;
     private final long endExclusive;
 
-    private TimeWindowState(long windowStart, long endExclusive, int columnCount) {
-      super(columnCount);
+    private TimeWindowState(
+        long windowStart, long endExclusive, int partitionColumnCount, int participantColumnCount) {
+      super(partitionColumnCount, participantColumnCount);
       this.windowStart = windowStart;
       this.endExclusive = endExclusive;
     }
 
     @Override
-    protected long getOutputWindowStart() {
-      return windowStart;
+    protected void writeWindowColumns(List<ColumnBuilder> properColumnBuilders) {
+      properColumnBuilders.get(0).writeLong(windowStart);
+      properColumnBuilders.get(1).writeLong(endExclusive);
     }
 
     @Override
-    protected long getOutputWindowEnd() {
-      return endExclusive;
+    protected int getWindowColumnCount() {
+      return 2;
     }
   }
 
   private static class CountWindowState extends WindowState {
     private final long endExclusive;
-    private long windowStart = Long.MIN_VALUE;
-    private long windowEnd = Long.MIN_VALUE;
+    private final long windowIndex;
 
-    private CountWindowState(long endExclusive, int columnCount) {
-      super(columnCount);
+    private CountWindowState(
+        long endExclusive, long windowIndex, int partitionColumnCount, int participantColumnCount) {
+      super(partitionColumnCount, participantColumnCount);
       this.endExclusive = endExclusive;
+      this.windowIndex = windowIndex;
     }
 
     @Override
-    protected long getOutputWindowStart() {
-      return windowStart;
+    protected void writeWindowColumns(List<ColumnBuilder> properColumnBuilders) {
+      properColumnBuilders.get(0).writeLong(windowIndex);
     }
 
     @Override
-    protected long getOutputWindowEnd() {
-      return windowEnd;
+    protected int getWindowColumnCount() {
+      return 1;
     }
   }
 
   private abstract static class AbstractM4DataProcessor implements TableFunctionDataProcessor {
     protected final long size;
     protected final long slide;
+    protected final M4Column[] partitionColumns;
     protected final M4Column[] participantColumns;
     protected long curIndex = 0;
 
-    protected AbstractM4DataProcessor(long size, long slide, M4Column[] participantColumns) {
+    protected AbstractM4DataProcessor(
+        long size, long slide, M4Column[] partitionColumns, M4Column[] participantColumns) {
       this.size = size;
       this.slide = slide;
+      this.partitionColumns = partitionColumns;
       this.participantColumns = participantColumns;
     }
 
@@ -581,6 +636,11 @@ public class M4TableFunction implements TableFunction {
         Record input, long time, List<ColumnBuilder> properColumnBuilders);
 
     protected final void updateWindow(WindowState windowState, Record input, long time) {
+      for (int i = 0; i < partitionColumns.length; i++) {
+        if (windowState.partitionValues[i] == null && !partitionColumns[i].isNull(input)) {
+          windowState.partitionValues[i] = partitionColumns[i].read(input);
+        }
+      }
       for (int i = 0; i < participantColumns.length; i++) {
         if (!participantColumns[i].isNull(input)) {
           windowState.columnStates[i].update(
@@ -603,9 +663,17 @@ public class M4TableFunction implements TableFunction {
       }
 
       for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-        properColumnBuilders.get(0).writeLong(windowState.getOutputWindowStart());
-        properColumnBuilders.get(1).writeLong(windowState.getOutputWindowEnd());
-        int outputColumnIndex = 2;
+        windowState.writeWindowColumns(properColumnBuilders);
+        int outputColumnIndex = windowState.getWindowColumnCount();
+        for (int columnIndex = 0; columnIndex < partitionColumns.length; columnIndex++) {
+          Object value = windowState.partitionValues[columnIndex];
+          if (value == null) {
+            properColumnBuilders.get(outputColumnIndex++).appendNull();
+          } else {
+            partitionColumns[columnIndex].write(
+                properColumnBuilders.get(outputColumnIndex++), value);
+          }
+        }
         for (int columnIndex = 0; columnIndex < participantColumns.length; columnIndex++) {
           List<Candidate> candidates = candidatesByColumn.get(columnIndex);
           if (rowIndex < candidates.size()) {
@@ -633,18 +701,18 @@ public class M4TableFunction implements TableFunction {
     private long nextWindowStart;
 
     private TimeWindowM4DataProcessor(
-        long size, long slide, long origin, M4Column[] participantColumns) {
-      super(size, slide, participantColumns);
+        long size,
+        long slide,
+        long origin,
+        M4Column[] partitionColumns,
+        M4Column[] participantColumns) {
+      super(size, slide, partitionColumns, participantColumns);
       this.origin = origin;
     }
 
     @Override
     protected void processRecord(
         Record input, long time, List<ColumnBuilder> properColumnBuilders) {
-      if (time < origin) {
-        return;
-      }
-
       while (!activeWindows.isEmpty() && activeWindows.peekFirst().endExclusive <= time) {
         outputWindow(activeWindows.removeFirst(), properColumnBuilders);
       }
@@ -664,7 +732,10 @@ public class M4TableFunction implements TableFunction {
       while (nextWindowStart <= time && getWindowEnd(nextWindowStart) > time) {
         activeWindows.addLast(
             new TimeWindowState(
-                nextWindowStart, getWindowEnd(nextWindowStart), participantColumns.length));
+                nextWindowStart,
+                getWindowEnd(nextWindowStart),
+                partitionColumns.length,
+                participantColumns.length));
         nextWindowStart += slide;
       }
 
@@ -686,9 +757,11 @@ public class M4TableFunction implements TableFunction {
     private final Deque<CountWindowState> activeWindows = new ArrayDeque<>();
     private long rowCount = 0;
     private long nextWindowStart = 0;
+    private long nextWindowIndex = 0;
 
-    private CountWindowM4DataProcessor(long size, long slide, M4Column[] participantColumns) {
-      super(size, slide, participantColumns);
+    private CountWindowM4DataProcessor(
+        long size, long slide, M4Column[] partitionColumns, M4Column[] participantColumns) {
+      super(size, slide, partitionColumns, participantColumns);
     }
 
     @Override
@@ -704,15 +777,15 @@ public class M4TableFunction implements TableFunction {
 
       while (nextWindowStart <= rowCount) {
         activeWindows.addLast(
-            new CountWindowState(getWindowEnd(nextWindowStart), participantColumns.length));
+            new CountWindowState(
+                getWindowEnd(nextWindowStart),
+                nextWindowIndex++,
+                partitionColumns.length,
+                participantColumns.length));
         nextWindowStart += slide;
       }
 
       for (CountWindowState activeWindow : activeWindows) {
-        if (activeWindow.windowStart == Long.MIN_VALUE) {
-          activeWindow.windowStart = time;
-        }
-        activeWindow.windowEnd = time;
         updateWindow(activeWindow, input, time);
       }
       rowCount++;

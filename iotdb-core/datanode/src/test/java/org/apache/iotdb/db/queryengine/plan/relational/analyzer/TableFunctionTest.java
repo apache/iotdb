@@ -498,6 +498,7 @@ public class TableFunctionTest {
             "testdb.table1",
             ImmutableMap.<String, String>builder()
                 .put("time", "time")
+                .put("tag1", "tag1")
                 .put("tag2", "tag2")
                 .put("tag3", "tag3")
                 .put("attr1", "attr1")
@@ -514,6 +515,7 @@ public class TableFunctionTest {
                 .properOutputs(
                     "window_start",
                     "window_end",
+                    "m4_tag1",
                     "m4_tag2_time",
                     "m4_tag2",
                     "m4_tag3_time",
@@ -528,13 +530,14 @@ public class TableFunctionTest {
                     "m4_s2",
                     "m4_s3_time",
                     "m4_s3")
-                .requiredSymbols("time", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .requiredSymbols("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
                 .handle(
                     new MapTableFunctionHandle.Builder()
                         .addProperty("SIZE", 3600000L)
                         .addProperty("SLIDE", 3600000L)
                         .addProperty("ORIGIN", 0L)
                         .addProperty("__M4_WINDOW_MODE", true)
+                        .addProperty("__M4_PARTITION_TYPES", "STRING")
                         .addProperty(
                             "__M4_PARTICIPANT_TYPES",
                             "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
@@ -558,6 +561,7 @@ public class TableFunctionTest {
             "testdb.table1",
             ImmutableMap.<String, String>builder()
                 .put("time", "time")
+                .put("tag1", "tag1")
                 .put("tag2", "tag2")
                 .put("tag3", "tag3")
                 .put("attr1", "attr1")
@@ -572,8 +576,8 @@ public class TableFunctionTest {
             builder
                 .name("m4")
                 .properOutputs(
-                    "window_start",
-                    "window_end",
+                    "window_index",
+                    "m4_tag1",
                     "m4_tag2_time",
                     "m4_tag2",
                     "m4_tag3_time",
@@ -588,13 +592,13 @@ public class TableFunctionTest {
                     "m4_s2",
                     "m4_s3_time",
                     "m4_s3")
-                .requiredSymbols("time", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
+                .requiredSymbols("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3")
                 .handle(
                     new MapTableFunctionHandle.Builder()
                         .addProperty("SIZE", 5L)
                         .addProperty("SLIDE", 5L)
-                        .addProperty("ORIGIN", 0L)
                         .addProperty("__M4_WINDOW_MODE", false)
+                        .addProperty("__M4_PARTITION_TYPES", "STRING")
                         .addProperty(
                             "__M4_PARTICIPANT_TYPES",
                             "STRING,STRING,STRING,STRING,INT64,INT64,DOUBLE")
@@ -625,6 +629,31 @@ public class TableFunctionTest {
       fail();
     } catch (SemanticException e) {
       assertEquals("The ORIGIN argument is only supported in time window mode.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testM4RejectsMismatchedSlideMode() {
+    String sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 1h, SLIDE => 5)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The SLIDE argument must have the same window mode as the SIZE argument.",
+          e.getMessage());
+    }
+
+    sql =
+        "SELECT * FROM M4(DATA => table1 PARTITION BY tag1 ORDER BY time, TIMECOL => 'time', SIZE => 5, SLIDE => 1h)";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals(
+          "The SLIDE argument must have the same window mode as the SIZE argument.",
+          e.getMessage());
     }
   }
 

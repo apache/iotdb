@@ -4894,7 +4894,8 @@ public class StatementAnalyzer {
         Scope argumentScope = analysis.getScope(argument.getRelation());
         if (argument.isPassThroughColumns()) {
           argumentScope.getRelationType().getAllFields().forEach(fields::add);
-        } else if (argument.getPartitionBy().isPresent()) {
+        } else if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)
+            && argument.getPartitionBy().isPresent()) {
           argument.getPartitionBy().get().stream()
               .map(expression -> validateAndGetInputField(expression, argumentScope))
               .forEach(fields::add);
@@ -5042,11 +5043,27 @@ public class StatementAnalyzer {
       if (!(sizeArgument.getValue() instanceof Expression)) {
         throw new SemanticException(
             String.format(
-                "Invalid argument %s. Expected scalar argument, got table",
+                "Invalid argument %s. Expected scalar argument",
                 M4TableFunction.SIZE_PARAMETER_NAME));
       }
 
       boolean isTimeWindow = sizeArgument.getValue() instanceof TimeDurationLiteral;
+      Optional<TableFunctionArgument> slideArgument =
+          findOptionalTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SLIDE_PARAMETER_NAME);
+      if (slideArgument.isPresent()) {
+        if (!(slideArgument.get().getValue() instanceof Expression)) {
+          throw new SemanticException(
+              String.format(
+                  "Invalid argument %s. Expected scalar argument",
+                  M4TableFunction.SLIDE_PARAMETER_NAME));
+        }
+        boolean isTimeSlide = slideArgument.get().getValue() instanceof TimeDurationLiteral;
+        if (isTimeWindow != isTimeSlide) {
+          throw new SemanticException(
+              "The SLIDE argument must have the same window mode as the SIZE argument.");
+        }
+      }
       if (!isTimeWindow
           && containsTableFunctionArgument(
               arguments, parameterSpecifications, M4TableFunction.ORIGIN_PARAMETER_NAME)) {
