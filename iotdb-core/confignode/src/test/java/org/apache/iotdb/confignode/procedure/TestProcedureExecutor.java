@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.procedure.entity.NoopProcedure;
 import org.apache.iotdb.confignode.procedure.entity.StuckProcedure;
 import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
 import org.junit.Assert;
@@ -115,6 +116,20 @@ public class TestProcedureExecutor extends TestProcedureBase {
     Assert.assertEquals(1, blockingProcedure.getExecutionCount());
   }
 
+  @Test
+  public void testInternalProcedureCanBeDeduplicatedAndRemoved() throws InterruptedException {
+    CompletingInternalProcedure internalProcedure = new CompletingInternalProcedure();
+
+    procExecutor.addInternalProcedure(internalProcedure);
+    procExecutor.addInternalProcedure(internalProcedure);
+
+    Assert.assertTrue(internalProcedure.awaitExecution(30, TimeUnit.SECONDS));
+    Assert.assertFalse(internalProcedure.awaitExecution(300, TimeUnit.MILLISECONDS));
+    Assert.assertEquals(1, internalProcedure.getExecutionCount());
+
+    Assert.assertTrue(procExecutor.removeInternalProcedure(internalProcedure));
+  }
+
   private int waitThreadCount(final int expectedThreads) {
     long startTime = System.currentTimeMillis();
     while (procExecutor.isRunning()
@@ -153,6 +168,31 @@ public class TestProcedureExecutor extends TestProcedureBase {
 
     private void releaseExecutions(int permits) {
       finish.release(permits);
+    }
+
+    private int getExecutionCount() {
+      return executionCount.get();
+    }
+  }
+
+  private static class CompletingInternalProcedure extends InternalProcedure<TestProcEnv> {
+
+    private final Semaphore entered = new Semaphore(0);
+    private final AtomicInteger executionCount = new AtomicInteger();
+
+    private CompletingInternalProcedure() {
+      super(0);
+    }
+
+    @Override
+    protected void periodicExecute(TestProcEnv env) {
+      executionCount.incrementAndGet();
+      entered.release();
+      setState(ProcedureState.SUCCESS);
+    }
+
+    private boolean awaitExecution(long timeout, TimeUnit unit) throws InterruptedException {
+      return entered.tryAcquire(timeout, unit);
     }
 
     private int getExecutionCount() {
