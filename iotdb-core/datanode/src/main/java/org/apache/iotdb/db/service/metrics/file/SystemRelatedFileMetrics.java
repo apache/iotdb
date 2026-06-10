@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.metrics.file;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -47,6 +48,7 @@ public class SystemRelatedFileMetrics implements IMetricSet {
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemRelatedFileMetrics.class);
   private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final Runtime runtime = Runtime.getRuntime();
+  private final LogThrottler openFileHandlersFailureLogThrottler = new LogThrottler();
   private String[] getOpenFileNumberCommand;
 
   @SuppressWarnings("squid:S1075")
@@ -100,10 +102,14 @@ public class SystemRelatedFileMetrics implements IMetricSet {
         WinNT.HANDLE hProcess = Kernel32.INSTANCE.GetCurrentProcess();
         IntByReference handleCount = new IntByReference();
         boolean success = Kernel32Ext.INSTANCE.GetProcessHandleCount(hProcess, handleCount);
+        openFileHandlersFailureLogThrottler.reset();
         return success ? handleCount.getValue() : 0L;
       }
-    } catch (IOException e) {
-      LOGGER.warn(DataNodeMiscMessages.FAILED_GET_OPEN_FILE_NUMBER, e);
+      openFileHandlersFailureLogThrottler.reset();
+    } catch (IOException | NumberFormatException e) {
+      if (openFileHandlersFailureLogThrottler.shouldLog(LogThrottler.getFailureSignature(e))) {
+        LOGGER.warn(DataNodeMiscMessages.FAILED_GET_OPEN_FILE_NUMBER, e);
+      }
     }
     return fdCount;
   }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -58,6 +59,7 @@ public class PipeHeartbeatScheduler {
 
   private final ConfigManager configManager;
   private final PipeHeartbeatParser pipeHeartbeatParser;
+  private final LogThrottler heartbeatFailureLogThrottler = new LogThrottler();
 
   private Future<?> heartbeatFuture;
 
@@ -81,14 +83,18 @@ public class PipeHeartbeatScheduler {
 
   private synchronized void heartbeat() {
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
+      heartbeatFailureLogThrottler.reset();
       return;
     }
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
-          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
+      if (heartbeatFailureLogThrottler.shouldLog("coordinator-lock-held", "locked")) {
+        LOGGER.warn(
+            ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
+      }
       return;
     }
+    heartbeatFailureLogThrottler.reset("coordinator-lock-held");
 
     // Data node heartbeat
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
@@ -129,8 +135,12 @@ public class PipeHeartbeatScheduler {
               null,
               configNodeResp.getPipeRemainingEventCountList(),
               configNodeResp.getPipeRemainingTimeList()));
+      heartbeatFailureLogThrottler.reset("config-node-pipe-meta-collect");
     } catch (final Exception e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK, e);
+      if (heartbeatFailureLogThrottler.shouldLog(
+          "config-node-pipe-meta-collect", LogThrottler.getFailureSignature(e))) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_COLLECT_PIPE_META_LIST_FROM_CONFIG_NODE_TASK, e);
+      }
     }
   }
 
@@ -138,6 +148,7 @@ public class PipeHeartbeatScheduler {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
+      heartbeatFailureLogThrottler.reset();
       LOGGER.info(ManagerMessages.PIPEHEARTBEAT_IS_STOPPED_SUCCESSFULLY);
     }
   }

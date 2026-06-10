@@ -70,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -80,6 +81,11 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInternalLocalReporter.class);
+  static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
+  private static final String UPDATE_METRIC_CONNECTION_FAILURE =
+      "Failed to update the value of metric because of connection failure, because ";
+  private static final String UPDATE_METRIC_INTERNAL_FAILURE =
+      "Failed to update the value of metric because of internal error, because ";
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
   private final SessionInfo sessionInfo;
@@ -87,6 +93,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   private final ISchemaFetcher schemaFetcher;
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final Map<String, FailureLogState> updateMetricStatusFailureLogStates =
+      new ConcurrentHashMap<>();
+  private final Map<String, FailureLogState> updateMetricConnectionFailureLogStates =
+      new ConcurrentHashMap<>();
+  private final Map<String, FailureLogState> updateMetricInternalFailureLogStates =
+      new ConcurrentHashMap<>();
+  private final Map<String, FailureLogState> autoCreateTimeseriesFailureLogStates =
+      new ConcurrentHashMap<>();
 
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -154,6 +168,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       currentServiceFuture = null;
     }
     clear();
+    clearFailureLogStates();
     LOGGER.info(DataNodeMiscMessages.INTERNAL_REPORTER_STOP);
     return true;
   }
@@ -174,14 +189,14 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
               result = insertRecord(valueMap, prefix, time);
             }
             if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, result);
+              logUpdateMetricStatusFailureIfNecessary(prefix, result);
+            } else {
+              clearUpdateMetricFailureLogStates(prefix);
             }
           } catch (IoTDBConnectionException e1) {
-            LOGGER.warn(
-                "Failed to update the value of metric because of connection failure, because ", e1);
+            logUpdateMetricConnectionFailureIfNecessary(prefix, e1);
           } catch (IllegalPathException | QueryProcessException e2) {
-            LOGGER.warn(
-                "Failed to update the value of metric because of internal error, because ", e2);
+            logUpdateMetricInternalFailureIfNecessary(prefix, e2);
           }
         });
   }
@@ -242,7 +257,9 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
         COORDINATOR.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, result.status);
+      logAutoCreateTimeseriesFailureIfNecessary(prefix, paths, result.status);
+    } else {
+      clearFailureLogState(autoCreateTimeseriesFailureLogStates, prefix);
     }
   }
 
@@ -251,5 +268,108 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     for (Map.Entry<String, Map<String, Object>> value : valueMap.entrySet()) {
       writeMetricToIoTDB(value.getValue(), value.getKey(), time);
     }
+  }
+
+  private void logUpdateMetricStatusFailureIfNecessary(String prefix, TSStatus status) {
+    if (shouldLogFailure(
+        updateMetricStatusFailureLogStates, prefix, getStatusFailureSignature(status))) {
+      LOGGER.warn(DataNodeMiscMessages.FAILED_UPDATE_METRIC_VALUE, status);
+    }
+  }
+
+  private void logUpdateMetricConnectionFailureIfNecessary(
+      String prefix, IoTDBConnectionException e) {
+    if (shouldLogFailure(
+        updateMetricConnectionFailureLogStates, prefix, getExceptionFailureSignature(e))) {
+      LOGGER.warn(UPDATE_METRIC_CONNECTION_FAILURE, e);
+    }
+  }
+
+  private void logUpdateMetricInternalFailureIfNecessary(String prefix, Exception e) {
+    if (shouldLogFailure(
+        updateMetricInternalFailureLogStates, prefix, getExceptionFailureSignature(e))) {
+      LOGGER.warn(UPDATE_METRIC_INTERNAL_FAILURE, e);
+    }
+  }
+
+  private void logAutoCreateTimeseriesFailureIfNecessary(
+      String prefix, List<String> paths, TSStatus status) {
+    if (shouldLogFailure(
+        autoCreateTimeseriesFailureLogStates, prefix, getStatusFailureSignature(status))) {
+      LOGGER.warn(DataNodeMiscMessages.FAILED_AUTO_CREATE_TIMESERIES, paths, status);
+    }
+  }
+
+  private void clearUpdateMetricFailureLogStates(String prefix) {
+    clearFailureLogState(updateMetricStatusFailureLogStates, prefix);
+    clearFailureLogState(updateMetricConnectionFailureLogStates, prefix);
+    clearFailureLogState(updateMetricInternalFailureLogStates, prefix);
+  }
+
+  private void clearFailureLogStates() {
+    updateMetricStatusFailureLogStates.clear();
+    updateMetricConnectionFailureLogStates.clear();
+    updateMetricInternalFailureLogStates.clear();
+    autoCreateTimeseriesFailureLogStates.clear();
+  }
+
+  private static String getStatusFailureSignature(TSStatus status) {
+    return status.getCode() + ":" + status.getMessage();
+  }
+
+  private static String getExceptionFailureSignature(Exception e) {
+    return e.getClass().getName() + ":" + e.getMessage();
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureSignature) {
+    return shouldLogFailure(failureLogState, failureSignature, System.currentTimeMillis());
+  }
+
+  static boolean shouldLogFailure(
+      Map<String, FailureLogState> failureLogStateMap, String key, String failureSignature) {
+    return shouldLogFailure(
+        failureLogStateMap.computeIfAbsent(key, ignored -> new FailureLogState()),
+        failureSignature);
+  }
+
+  static boolean shouldLogFailure(
+      Map<String, FailureLogState> failureLogStateMap,
+      String key,
+      String failureSignature,
+      long currentTime) {
+    return shouldLogFailure(
+        failureLogStateMap.computeIfAbsent(key, ignored -> new FailureLogState()),
+        failureSignature,
+        currentTime);
+  }
+
+  static boolean shouldLogFailure(
+      FailureLogState failureLogState, String failureSignature, long currentTime) {
+    synchronized (failureLogState) {
+      if (!failureSignature.equals(failureLogState.lastFailureSignature)
+          || currentTime >= failureLogState.nextLogTime) {
+        failureLogState.lastFailureSignature = failureSignature;
+        failureLogState.nextLogTime = currentTime + FAILURE_LOG_INTERVAL;
+        return true;
+      }
+      return false;
+    }
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    synchronized (failureLogState) {
+      failureLogState.lastFailureSignature = "";
+      failureLogState.nextLogTime = 0L;
+    }
+  }
+
+  static void clearFailureLogState(
+      Map<String, FailureLogState> failureLogStateMap, String failureKey) {
+    failureLogStateMap.remove(failureKey);
+  }
+
+  static class FailureLogState {
+    private String lastFailureSignature = "";
+    private long nextLogTime = 0L;
   }
 }

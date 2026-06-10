@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.junit.Assert;
@@ -47,6 +48,36 @@ public class JVMCommonUtilsTest {
       Assert.assertEquals(17, JVMCommonUtils.getJdkVersion());
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void unexpectedDiskSpaceErrorsLoggedOnlyOnceWhileErrorPersists() {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(JVMCommonUtils.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.ERROR);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.setContext(logger.getLoggerContext());
+    appender.start();
+    logger.addAppender(appender);
+
+    JVMCommonUtils.resetDiskWarningLastPrintTimes();
+    try {
+      JVMCommonUtils.getUsableSpace(null);
+      JVMCommonUtils.getUsableSpace(null);
+      Assert.assertEquals(
+          1, countLogEvents(appender, UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE_FOR_DIR));
+
+      JVMCommonUtils.getDiskFreeRatio(null);
+      JVMCommonUtils.getDiskFreeRatio(null);
+      Assert.assertEquals(
+          1, countLogEvents(appender, UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE));
+    } finally {
+      JVMCommonUtils.resetDiskWarningLastPrintTimes();
+      logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
+      appender.stop();
     }
   }
 

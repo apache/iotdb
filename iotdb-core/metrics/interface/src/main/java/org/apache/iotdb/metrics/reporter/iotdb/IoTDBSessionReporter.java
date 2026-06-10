@@ -48,12 +48,15 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBSessionReporter extends IoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
+  private static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final IoTDBReporterConfig ioTDBReporterConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private final FailureLogState asyncReportFailureLogState = new FailureLogState();
+  private final FailureLogState insertFailureLogState = new FailureLogState();
 
   /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
@@ -119,8 +122,9 @@ public class IoTDBSessionReporter extends IoTDBReporter {
                   values.put(prefix, value);
                 }
                 writeMetricsToIoTDB(values, System.currentTimeMillis());
+                clearFailureLogState(asyncReportFailureLogState);
               } catch (Throwable t) {
-                LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED, t);
+                logAsyncReportFailureIfNecessary(t);
               }
             },
             1,
@@ -164,8 +168,9 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
     try {
       sessionPool.insertRecord(prefix, time, sensors, dataTypes, values);
+      clearFailureLogState(insertFailureLogState);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
+      logInsertFailureIfNecessary(e);
     }
   }
 
@@ -195,8 +200,48 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
     try {
       sessionPool.insertRecords(deviceIds, times, sensors, dataTypes, values);
+      clearFailureLogState(insertFailureLogState);
     } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logInsertFailureIfNecessary(e);
+    }
+  }
+
+  private void logAsyncReportFailureIfNecessary(Throwable t) {
+    if (shouldLogFailure(
+        asyncReportFailureLogState, MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED)) {
+      LOGGER.error(MetricsMessages.IOTDB_SESSION_REPORTER_START_FAILED, t);
+    }
+  }
+
+  private void logInsertFailureIfNecessary(Exception e) {
+    if (shouldLogFailure(
+        insertFailureLogState, MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED)) {
       LOGGER.warn(MetricsMessages.IOTDB_SESSION_REPORTER_INSERT_FAILED, e);
     }
+  }
+
+  static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    synchronized (failureLogState) {
+      long currentTime = System.currentTimeMillis();
+      if (!failureMessage.equals(failureLogState.lastFailure)
+          || currentTime >= failureLogState.nextLogTime) {
+        failureLogState.lastFailure = failureMessage;
+        failureLogState.nextLogTime = currentTime + FAILURE_LOG_INTERVAL;
+        return true;
+      }
+      return false;
+    }
+  }
+
+  static void clearFailureLogState(FailureLogState failureLogState) {
+    synchronized (failureLogState) {
+      failureLogState.lastFailure = "";
+      failureLogState.nextLogTime = 0L;
+    }
+  }
+
+  static class FailureLogState {
+    private long nextLogTime = 0L;
+    private String lastFailure = "";
   }
 }

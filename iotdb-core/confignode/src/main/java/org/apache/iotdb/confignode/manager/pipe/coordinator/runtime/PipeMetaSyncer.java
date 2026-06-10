@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -52,6 +53,7 @@ public class PipeMetaSyncer {
       PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
+  private final LogThrottler syncFailureLogThrottler = new LogThrottler();
 
   private Future<?> metaSyncFuture;
 
@@ -95,10 +97,13 @@ public class PipeMetaSyncer {
     isLastPipeSyncSuccessful = false;
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
-      LOGGER.warn(
-          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
+      if (syncFailureLogThrottler.shouldLog("coordinator-lock-held", "locked")) {
+        LOGGER.warn(
+            ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
+      }
       return;
     }
+    syncFailureLogThrottler.reset("coordinator-lock-held");
 
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
@@ -129,27 +134,38 @@ public class PipeMetaSyncer {
             procedureManager.pipeHandleMetaChangeWithBlock(true, false);
         if (handleMetaChangeStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           successfulSync = true;
+          syncFailureLogThrottler.reset("handle-pipe-meta-change");
         } else {
-          LOGGER.warn(
-              ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
-              handleMetaChangeStatus);
+          if (syncFailureLogThrottler.shouldLog(
+              "handle-pipe-meta-change", getStatusFailureSignature(handleMetaChangeStatus))) {
+            LOGGER.warn(
+                ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
+                handleMetaChangeStatus);
+          }
         }
       }
 
       if (successfulSync) {
+        syncFailureLogThrottler.reset();
         LOGGER.info(
             ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS);
         isLastPipeSyncSuccessful = true;
       }
     } else {
-      LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
+      if (syncFailureLogThrottler.shouldLog(
+          "pipe-meta-sync", getStatusFailureSignature(metaSyncStatus))) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
+      }
+      return;
     }
+    syncFailureLogThrottler.reset("pipe-meta-sync");
   }
 
   public synchronized void stop() {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
+      syncFailureLogThrottler.reset();
       LOGGER.info(ManagerMessages.PIPEMETASYNCER_IS_STOPPED_SUCCESSFULLY);
     }
   }
@@ -158,9 +174,12 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
+      if (syncFailureLogThrottler.shouldLog("auto-restart-lock", "locked")) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
+      }
       return false;
     }
+    syncFailureLogThrottler.reset("auto-restart-lock");
     try {
       return pipeTaskInfo.get().autoRestart();
     } finally {
@@ -175,8 +194,12 @@ public class PipeMetaSyncer {
           .getEnv()
           .getRegionMaintainHandler()
           .checkAndRepairConsensusPipes();
+      syncFailureLogThrottler.reset("check-and-repair-consensus-pipes");
     } catch (Exception e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES, e);
+      if (syncFailureLogThrottler.shouldLog(
+          "check-and-repair-consensus-pipes", LogThrottler.getFailureSignature(e))) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES, e);
+      }
     }
   }
 
@@ -184,14 +207,21 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
+      if (syncFailureLogThrottler.shouldLog("handle-successful-restart-lock", "locked")) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
+      }
       return false;
     }
+    syncFailureLogThrottler.reset("handle-successful-restart-lock");
     try {
       pipeTaskInfo.get().handleSuccessfulRestart();
       return true;
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
+  }
+
+  private static String getStatusFailureSignature(TSStatus status) {
+    return status.getCode() + ":" + status.getMessage();
   }
 }

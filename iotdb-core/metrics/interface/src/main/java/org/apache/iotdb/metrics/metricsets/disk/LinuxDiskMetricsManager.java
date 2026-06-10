@@ -30,11 +30,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -54,14 +55,17 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LinuxDiskMetricsManager.class);
 
   @SuppressWarnings("squid:S1075")
-  private static final String DISK_STATUS_FILE_PATH = "/proc/diskstats";
+  private static final String DEFAULT_DISK_STATUS_FILE_PATH = "/proc/diskstats";
 
   @SuppressWarnings("squid:S1075")
-  private static final String DISK_ID_PATH = "/sys/block";
+  private static final String DEFAULT_DISK_ID_PATH = "/sys/block";
 
   @SuppressWarnings("squid:S1075")
-  private static final String DISK_SECTOR_SIZE_PATH = "/sys/block/%s/queue/hw_sector_size";
+  private static final String DEFAULT_DISK_SECTOR_SIZE_PATH = "/sys/block/%s/queue/hw_sector_size";
 
+  private final String diskStatusFilePath;
+  private final String diskIdPath;
+  private final String diskSectorSizePath;
   private final String processIoStatusPath;
   private static final int DISK_ID_OFFSET = 3;
   private static final int DISK_READ_COUNT_OFFSET = 4;
@@ -77,10 +81,13 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private static final int DEFAULT_SECTOR_SIZE = 512;
   private static final double BYTES_PER_KB = 1024.0;
   private static final long UPDATE_SMALLEST_INTERVAL = 10000L;
+  private static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
   private Set<String> diskIdSet;
   private final Map<String, Integer> diskSectorSizeMap;
   private long lastUpdateTime = 0L;
   private long updateInterval = 1L;
+  private final FailureLogState diskInfoFailureLogState = new FailureLogState();
+  private final FailureLogState processInfoFailureLogState = new FailureLogState();
 
   // Disk IO status structure
   private final Map<String, Long> lastReadOperationCountForDisk;
@@ -113,9 +120,23 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private long lastWriteOpsCountForProcess = 0L;
 
   public LinuxDiskMetricsManager() {
-    processIoStatusPath =
+    this(
+        DEFAULT_DISK_STATUS_FILE_PATH,
+        DEFAULT_DISK_ID_PATH,
+        DEFAULT_DISK_SECTOR_SIZE_PATH,
         String.format(
-            "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
+            "/proc/%s/io", MetricConfigDescriptor.getInstance().getMetricConfig().getPid()));
+  }
+
+  LinuxDiskMetricsManager(
+      String diskStatusFilePath,
+      String diskIdPath,
+      String diskSectorSizePath,
+      String processIoStatusPath) {
+    this.diskStatusFilePath = diskStatusFilePath;
+    this.diskIdPath = diskIdPath;
+    this.diskSectorSizePath = diskSectorSizePath;
+    this.processIoStatusPath = processIoStatusPath;
     collectDiskId();
     // leave one entry to avoid hashmap resizing
     diskSectorSizeMap = new HashMap<>(diskIdSet.size() + 1, 1);
@@ -324,12 +345,18 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private void collectDiskId() {
-    File diskIdFolder = new File(DISK_ID_PATH);
+    File diskIdFolder = new File(diskIdPath);
     if (!diskIdFolder.exists()) {
+      diskIdSet = Collections.emptySet();
+      return;
+    }
+    File[] diskIdFiles = diskIdFolder.listFiles();
+    if (diskIdFiles == null) {
+      diskIdSet = Collections.emptySet();
       return;
     }
     diskIdSet =
-        new ArrayList<>(Arrays.asList(Objects.requireNonNull(diskIdFolder.listFiles())))
+        new ArrayList<>(Arrays.asList(diskIdFiles))
             .stream()
                 .filter(x -> !x.getName().startsWith("loop") && !x.getName().startsWith("ram"))
                 .map(File::getName)
@@ -338,8 +365,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
 
   private void collectDiskInfo() {
     for (String diskId : diskIdSet) {
-      String diskSectorSizePath = String.format(DISK_SECTOR_SIZE_PATH, diskId);
-      File diskSectorSizeFile = new File(diskSectorSizePath);
+      String currentDiskSectorSizePath = String.format(diskSectorSizePath, diskId);
+      File diskSectorSizeFile = new File(currentDiskSectorSizePath);
       try (Scanner scanner = new Scanner(Files.newInputStream(diskSectorSizeFile.toPath()))) {
         if (scanner.hasNext()) {
           int sectorSize = Integer.parseInt(scanner.nextLine());
@@ -365,9 +392,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   }
 
   private void updateDiskInfo() {
-    File diskStatsFile = new File(DISK_STATUS_FILE_PATH);
+    File diskStatsFile = new File(diskStatusFilePath);
     if (!diskStatsFile.exists()) {
-      LOGGER.warn(MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE, DISK_STATUS_FILE_PATH);
+      logCannotFindDiskIoStatusFileIfNecessary();
       return;
     }
 
@@ -419,8 +446,9 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
               diskId, diskInfo, offsetArray[index], lastMapArray[index], incrementMapArray[index]);
         }
       }
+      clearFailureLogState(diskInfoFailureLogState);
     } catch (IOException e) {
-      LOGGER.error(MetricsMessages.ERROR_UPDATING_DISK_IO_INFO, e);
+      logErrorUpdatingDiskIoInfoIfNecessary(e);
     }
   }
 
@@ -445,7 +473,8 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
   private void updateProcessInfo() {
     File processStatInfoFile = new File(processIoStatusPath);
     if (!processStatInfoFile.exists()) {
-      LOGGER.warn(MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE, processIoStatusPath);
+      logCannotFindProcessIoStatusFileIfNecessary();
+      return;
     }
 
     try (Scanner processStatsScanner =
@@ -466,9 +495,64 @@ public class LinuxDiskMetricsManager implements IDiskMetricsManager {
           lastAttemptWriteSizeForProcess = Long.parseLong(infoLine.split(":\\s")[1]);
         }
       }
+      clearFailureLogState(processInfoFailureLogState);
     } catch (IOException e) {
+      logErrorUpdatingProcessIoInfoIfNecessary(e);
+    }
+  }
+
+  private void logCannotFindDiskIoStatusFileIfNecessary() {
+    if (shouldLogFailure(
+        diskInfoFailureLogState,
+        MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE + diskStatusFilePath)) {
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_DISK_IO_STATUS_FILE, diskStatusFilePath);
+    }
+  }
+
+  private void logErrorUpdatingDiskIoInfoIfNecessary(IOException e) {
+    if (shouldLogFailure(diskInfoFailureLogState, MetricsMessages.ERROR_UPDATING_DISK_IO_INFO)) {
+      LOGGER.error(MetricsMessages.ERROR_UPDATING_DISK_IO_INFO, e);
+    }
+  }
+
+  private void logCannotFindProcessIoStatusFileIfNecessary() {
+    if (shouldLogFailure(
+        processInfoFailureLogState,
+        MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE + processIoStatusPath)) {
+      LOGGER.warn(MetricsMessages.CANNOT_FIND_PROCESS_IO_STATUS_FILE, processIoStatusPath);
+    }
+  }
+
+  private void logErrorUpdatingProcessIoInfoIfNecessary(IOException e) {
+    if (shouldLogFailure(
+        processInfoFailureLogState, MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO)) {
       LOGGER.error(MetricsMessages.ERROR_UPDATING_PROCESS_IO_INFO, e);
     }
+  }
+
+  private static boolean shouldLogFailure(FailureLogState failureLogState, String failureMessage) {
+    synchronized (failureLogState) {
+      long currentTime = System.currentTimeMillis();
+      if (!failureMessage.equals(failureLogState.lastFailure)
+          || currentTime >= failureLogState.nextLogTime) {
+        failureLogState.lastFailure = failureMessage;
+        failureLogState.nextLogTime = currentTime + FAILURE_LOG_INTERVAL;
+        return true;
+      }
+      return false;
+    }
+  }
+
+  private static void clearFailureLogState(FailureLogState failureLogState) {
+    synchronized (failureLogState) {
+      failureLogState.lastFailure = "";
+      failureLogState.nextLogTime = 0L;
+    }
+  }
+
+  private static class FailureLogState {
+    private long nextLogTime = 0L;
+    private String lastFailure = "";
   }
 
   private void checkUpdate() {

@@ -44,8 +44,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -53,12 +57,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
 
+  private static final long ACTIVE_LOAD_FAILURE_LOG_INTERVAL_MS = TimeUnit.HOURS.toMillis(1);
+
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
 
   private final AtomicBoolean isReadOnlyLogPrinted = new AtomicBoolean(false);
+  private final AtomicLong lastScanFailureLogTime = new AtomicLong(0L);
+  private final AtomicLong lastHotReloadFailureLogTime = new AtomicLong(0L);
+  private final ConcurrentMap<String, AtomicLong> lastDirScanFailureLogTimeMap =
+      new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, AtomicLong> lastPermissionCheckFailureLogTimeMap =
+      new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, AtomicLong> lastCreateDirectoryFailureLogTimeMap =
+      new ConcurrentHashMap<>();
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
@@ -73,8 +87,11 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private void scanSafely() {
     try {
       scan();
+      lastScanFailureLogTime.set(0L);
     } catch (final Exception e) {
-      LOGGER.warn(StorageEngineMessages.ERROR_ACTIVE_LOAD_DIR_SCANNING, e);
+      if (shouldPrintFailureLog(lastScanFailureLogTime)) {
+        LOGGER.warn(StorageEngineMessages.ERROR_ACTIVE_LOAD_DIR_SCANNING, e);
+      }
     }
   }
 
@@ -132,10 +149,14 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                         isTableModel,
                         isGeneratedByPipe);
                   });
+          lastDirScanFailureLogTimeMap.remove(listeningDir);
         } catch (UncheckedIOException e) {
           LOGGER.debug(StorageEngineMessages.FILE_DELETED_IGNORE_EXCEPTION);
+          lastDirScanFailureLogTimeMap.remove(listeningDir);
         } catch (final Exception e) {
-          LOGGER.warn(StorageEngineMessages.EXCEPTION_SCANNING_DIR, listeningDir, e);
+          if (shouldPrintFailureLog(lastDirScanFailureLogTimeMap, listeningDir)) {
+            LOGGER.warn(StorageEngineMessages.EXCEPTION_SCANNING_DIR, listeningDir, e);
+          }
         }
       }
     }
@@ -168,12 +189,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       }
 
       noPermissionDirs.remove(listeningDir);
+      lastPermissionCheckFailureLogTimeMap.remove(listeningDir);
       return true;
     } catch (final Exception e) {
-      LOGGER.error(
-          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
-          listeningDir,
-          e);
+      if (shouldPrintFailureLog(lastPermissionCheckFailureLogTimeMap, listeningDir)) {
+        LOGGER.error(
+            "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+            listeningDir,
+            e);
+      }
       return false;
     }
   }
@@ -213,21 +237,40 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       ActiveLoadingFilesNumberMetricsSet.getInstance().updatePendingDirList(listeningDirs);
       ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
+      lastHotReloadFailureLogTime.set(0L);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Error occurred during hot reload active load dirs. "
-              + "Current active load listening dirs: {}.",
-          listeningDirs,
-          e);
+      if (shouldPrintFailureLog(lastHotReloadFailureLogTime)) {
+        LOGGER.warn(
+            "Error occurred during hot reload active load dirs. "
+                + "Current active load listening dirs: {}.",
+            listeningDirs,
+            e);
+      }
     }
   }
 
   private void createDirectoriesIfNotExists(final String dirPath) {
     try {
       FileUtils.forceMkdir(new File(dirPath));
+      lastCreateDirectoryFailureLogTimeMap.remove(dirPath);
     } catch (final IOException e) {
-      LOGGER.warn(StorageEngineMessages.ERROR_CREATING_DIR_FOR_ACTIVE_LOAD, dirPath, e);
+      if (shouldPrintFailureLog(lastCreateDirectoryFailureLogTimeMap, dirPath)) {
+        LOGGER.warn(StorageEngineMessages.ERROR_CREATING_DIR_FOR_ACTIVE_LOAD, dirPath, e);
+      }
     }
+  }
+
+  private static boolean shouldPrintFailureLog(AtomicLong lastLogTime) {
+    long now = System.currentTimeMillis();
+    long previousLogTime = lastLogTime.get();
+    return (previousLogTime == 0L || now - previousLogTime >= ACTIVE_LOAD_FAILURE_LOG_INTERVAL_MS)
+        && lastLogTime.compareAndSet(previousLogTime, now);
+  }
+
+  private static boolean shouldPrintFailureLog(
+      ConcurrentMap<String, AtomicLong> lastLogTimeMap, String key) {
+    return shouldPrintFailureLog(
+        lastLogTimeMap.computeIfAbsent(String.valueOf(key), value -> new AtomicLong(0L)));
   }
 
   // Metrics

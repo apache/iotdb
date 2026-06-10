@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 public class ScheduledExecutorUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(ScheduledExecutorUtil.class);
+  static final long SCHEDULE_TASK_FAILED_LOG_INTERVAL_MS = TimeUnit.MINUTES.toMillis(5);
 
   /**
    * A safe wrapper method to make sure the exception thrown by the previous running will not affect
@@ -150,19 +151,7 @@ public class ScheduledExecutorUtil {
       TimeUnit unit,
       boolean unsafe) {
     return executor.scheduleAtFixedRate(
-        () -> {
-          try {
-            command.run();
-          } catch (Throwable t) {
-            logger.error(CommonMessages.SCHEDULE_TASK_FAILED, t);
-            if (unsafe) {
-              throw t;
-            }
-          }
-        },
-        initialDelay,
-        period,
-        unit);
+        wrapScheduleCommand(command, unsafe), initialDelay, period, unit);
   }
 
   @SuppressWarnings("unsafeThreadSchedule")
@@ -174,19 +163,64 @@ public class ScheduledExecutorUtil {
       TimeUnit unit,
       boolean unsafe) {
     return executor.scheduleWithFixedDelay(
-        () -> {
-          try {
-            command.run();
-          } catch (Throwable t) {
-            logger.error(CommonMessages.SCHEDULE_TASK_FAILED, t);
-            if (unsafe) {
-              throw t;
-            }
-          }
-        },
-        initialDelay,
-        delay,
-        unit);
+        wrapScheduleCommand(command, unsafe), initialDelay, delay, unit);
+  }
+
+  private static Runnable wrapScheduleCommand(Runnable command, boolean unsafe) {
+    FailureLogState failureLogState = new FailureLogState();
+    return () -> {
+      try {
+        command.run();
+        failureLogState.clear();
+      } catch (Throwable t) {
+        if (shouldLogFailure(failureLogState, t, System.currentTimeMillis())) {
+          logger.error(CommonMessages.SCHEDULE_TASK_FAILED, t);
+        }
+        if (unsafe) {
+          throw t;
+        }
+      }
+    };
+  }
+
+  static boolean shouldLogFailure(
+      FailureLogState failureLogState, Throwable failure, long currentTime) {
+    return failureLogState.shouldLog(getFailureSignature(failure), currentTime);
+  }
+
+  private static String getFailureSignature(Throwable failure) {
+    StringBuilder builder = new StringBuilder(failure.getClass().getName());
+    if (failure.getMessage() != null) {
+      builder.append(':').append(failure.getMessage());
+    }
+    Throwable cause = failure.getCause();
+    if (cause != null) {
+      builder.append(";cause=").append(cause.getClass().getName());
+      if (cause.getMessage() != null) {
+        builder.append(':').append(cause.getMessage());
+      }
+    }
+    return builder.toString();
+  }
+
+  static class FailureLogState {
+
+    private String lastFailureSignature;
+    private long nextLogTime;
+
+    private boolean shouldLog(String failureSignature, long currentTime) {
+      if (!failureSignature.equals(lastFailureSignature) || currentTime >= nextLogTime) {
+        lastFailureSignature = failureSignature;
+        nextLogTime = currentTime + SCHEDULE_TASK_FAILED_LOG_INTERVAL_MS;
+        return true;
+      }
+      return false;
+    }
+
+    void clear() {
+      lastFailureSignature = null;
+      nextLogTime = 0;
+    }
   }
 
   public static RuntimeException propagate(Throwable throwable) {

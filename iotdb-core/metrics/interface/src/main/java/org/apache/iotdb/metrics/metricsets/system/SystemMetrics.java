@@ -44,10 +44,15 @@ import java.nio.file.FileStore;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
   private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final long FAILURE_LOG_INTERVAL = TimeUnit.MINUTES.toMillis(5);
   private final Runtime runtime = Runtime.getRuntime();
   private final String[] getSystemMemoryCommand = new String[] {"/bin/sh", "-c", "free"};
   private final String[] linuxMemoryTitles =
@@ -62,6 +67,8 @@ public class SystemMetrics implements IMetricSet {
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private Set<FileStore> fileStores = new HashSet<>();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
+  private final ConcurrentMap<String, AtomicLong> fileStoreStatisticFailureLastLogTimeMap =
+      new ConcurrentHashMap<>();
 
   public SystemMetrics() {
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -338,8 +345,9 @@ public class SystemMetrics implements IMetricSet {
     for (FileStore fileStore : fileStores) {
       try {
         sysTotalSpace += fileStore.getTotalSpace();
+        resetFileStoreStatisticFailureLogTime(fileStore, SystemMetric.SYS_DISK_TOTAL_SPACE);
       } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
+        logFileStoreStatisticFailureIfNecessary(fileStore, SystemMetric.SYS_DISK_TOTAL_SPACE, e);
       }
     }
     return sysTotalSpace;
@@ -350,8 +358,9 @@ public class SystemMetrics implements IMetricSet {
     for (FileStore fileStore : fileStores) {
       try {
         sysFreeSpace += fileStore.getUnallocatedSpace();
+        resetFileStoreStatisticFailureLogTime(fileStore, SystemMetric.SYS_DISK_FREE_SPACE);
       } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
+        logFileStoreStatisticFailureIfNecessary(fileStore, SystemMetric.SYS_DISK_FREE_SPACE, e);
       }
     }
     return sysFreeSpace;
@@ -362,11 +371,36 @@ public class SystemMetrics implements IMetricSet {
     for (FileStore fileStore : fileStores) {
       try {
         sysAvailableSpace += fileStore.getUsableSpace();
+        resetFileStoreStatisticFailureLogTime(fileStore, SystemMetric.SYS_DISK_AVAILABLE_SPACE);
       } catch (IOException e) {
-        logger.error(FAILED_TO_STATISTIC, fileStore, e);
+        logFileStoreStatisticFailureIfNecessary(
+            fileStore, SystemMetric.SYS_DISK_AVAILABLE_SPACE, e);
       }
     }
     return sysAvailableSpace;
+  }
+
+  private void logFileStoreStatisticFailureIfNecessary(
+      FileStore fileStore, SystemMetric systemMetric, IOException e) {
+    AtomicLong lastLogTime =
+        fileStoreStatisticFailureLastLogTimeMap.computeIfAbsent(
+            getFileStoreStatisticFailureKey(fileStore, systemMetric), key -> new AtomicLong(0L));
+    long currentTime = System.currentTimeMillis();
+    long previousLogTime = lastLogTime.get();
+    if ((previousLogTime == 0L || currentTime - previousLogTime >= FAILURE_LOG_INTERVAL)
+        && lastLogTime.compareAndSet(previousLogTime, currentTime)) {
+      logger.error(FAILED_TO_STATISTIC, fileStore, e);
+    }
+  }
+
+  private void resetFileStoreStatisticFailureLogTime(
+      FileStore fileStore, SystemMetric systemMetric) {
+    fileStoreStatisticFailureLastLogTimeMap.remove(
+        getFileStoreStatisticFailureKey(fileStore, systemMetric));
+  }
+
+  private String getFileStoreStatisticFailureKey(FileStore fileStore, SystemMetric systemMetric) {
+    return systemMetric + ":" + fileStore;
   }
 
   public static SystemMetrics getInstance() {

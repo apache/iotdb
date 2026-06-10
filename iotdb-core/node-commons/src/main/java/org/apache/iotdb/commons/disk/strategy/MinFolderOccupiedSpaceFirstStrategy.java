@@ -21,10 +21,17 @@ package org.apache.iotdb.commons.disk.strategy;
 import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
+  private static final long CANNOT_CALCULATE_OCCUPIED_SPACE_LOG_INTERVAL_MS = 3600 * 1000L;
+  private static final ConcurrentMap<String, AtomicLong>
+      CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP = new ConcurrentHashMap<>();
 
   @Override
   public int nextFolderIndex() throws DiskSpaceInsufficientException {
@@ -47,8 +54,9 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       long space = 0;
       try {
         space = JVMCommonUtils.getOccupiedSpace(folder);
+        resetCannotCalculateOccupiedSpaceLogTime(folder);
       } catch (IOException e) {
-        LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
+        logCannotCalculateOccupiedSpaceIfNecessary(folder, e);
         continue;
       }
       if (space < minSpace) {
@@ -62,5 +70,27 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     }
 
     return minIndex;
+  }
+
+  private static void logCannotCalculateOccupiedSpaceIfNecessary(String folder, IOException e) {
+    AtomicLong lastLogTime =
+        CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.computeIfAbsent(
+            folder, key -> new AtomicLong(0L));
+    long now = System.currentTimeMillis();
+    long previousLogTime = lastLogTime.get();
+    if ((previousLogTime == 0
+            || now - previousLogTime >= CANNOT_CALCULATE_OCCUPIED_SPACE_LOG_INTERVAL_MS)
+        && lastLogTime.compareAndSet(previousLogTime, now)) {
+      LOGGER.error(UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE, folder, e);
+    }
+  }
+
+  private static void resetCannotCalculateOccupiedSpaceLogTime(String folder) {
+    CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.remove(folder);
+  }
+
+  @TestOnly
+  public static void resetCannotCalculateOccupiedSpaceLogTimes() {
+    CANNOT_CALCULATE_OCCUPIED_SPACE_LAST_LOG_TIME_MAP.clear();
   }
 }

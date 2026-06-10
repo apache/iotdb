@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.commons.utils.LogThrottler;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -49,6 +50,7 @@ public class SubscriptionMetaSyncer {
       SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
+  private final LogThrottler syncFailureLogThrottler = new LogThrottler();
 
   private Future<?> metaSyncFuture;
 
@@ -84,10 +86,14 @@ public class SubscriptionMetaSyncer {
     isLastSubscriptionSyncSuccessful = false;
 
     if (configManager.getSubscriptionManager().getSubscriptionCoordinator().isLocked()) {
-      LOGGER.warn(
-          ManagerMessages.SUBSCRIPTIONCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
+      if (syncFailureLogThrottler.shouldLog("coordinator-lock-held", "locked")) {
+        LOGGER.warn(
+            ManagerMessages
+                .SUBSCRIPTIONCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF);
+      }
       return;
     }
+    syncFailureLogThrottler.reset("coordinator-lock-held");
 
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
@@ -95,26 +101,38 @@ public class SubscriptionMetaSyncer {
     // TODO: consider drop the topic which is subscribed by consumers
     final TSStatus topicMetaSyncStatus = procedureManager.topicMetaSync();
     if (topicMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS, topicMetaSyncStatus);
+      if (syncFailureLogThrottler.shouldLog(
+          "topic-meta-sync", getStatusFailureSignature(topicMetaSyncStatus))) {
+        LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_TOPIC_META_RESULT_STATUS, topicMetaSyncStatus);
+      }
       return;
     }
+    syncFailureLogThrottler.reset("topic-meta-sync");
 
     // sync consumer meta if syncing topic meta successfully
     final TSStatus consumerGroupMetaSyncStatus = procedureManager.consumerGroupMetaSync();
     if (consumerGroupMetaSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          ManagerMessages.FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS,
-          consumerGroupMetaSyncStatus);
+      if (syncFailureLogThrottler.shouldLog(
+          "consumer-group-meta-sync", getStatusFailureSignature(consumerGroupMetaSyncStatus))) {
+        LOGGER.warn(
+            ManagerMessages.FAILED_TO_SYNC_CONSUMER_GROUP_META_RESULT_STATUS,
+            consumerGroupMetaSyncStatus);
+      }
       return;
     }
+    syncFailureLogThrottler.reset("consumer-group-meta-sync");
 
     // sync commit progress if syncing consumer group meta successfully
     final TSStatus commitProgressSyncStatus = procedureManager.commitProgressSync();
     if (commitProgressSyncStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to sync commit progress. Result status: {}.", commitProgressSyncStatus);
+      if (syncFailureLogThrottler.shouldLog(
+          "commit-progress-sync", getStatusFailureSignature(commitProgressSyncStatus))) {
+        LOGGER.warn("Failed to sync commit progress. Result status: {}.", commitProgressSyncStatus);
+      }
       return;
     }
 
+    syncFailureLogThrottler.reset();
     LOGGER.info(
         ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_SUBSCRIPTIONINFO_IS_EMPTY_DURING_THIS);
     isLastSubscriptionSyncSuccessful = true;
@@ -124,7 +142,12 @@ public class SubscriptionMetaSyncer {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
+      syncFailureLogThrottler.reset();
       LOGGER.info(ManagerMessages.SUBSCRIPTIONMETASYNCER_IS_STOPPED_SUCCESSFULLY);
     }
+  }
+
+  private static String getStatusFailureSignature(TSStatus status) {
+    return status.getCode() + ":" + status.getMessage();
   }
 }
