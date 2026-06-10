@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.math.BigInteger;
+
 /**
  * This class iteratively generates pre-aggregated time windows.
  *
@@ -71,7 +73,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   }
 
   private TimeRange getLeftmostTimeRange() {
-    long retEndTime = Math.min(startTime + curInterval, endTime);
+    long retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(startTime, curInterval), endTime);
     updateIntervalAndStep();
     return new TimeRange(startTime, retEndTime);
   }
@@ -79,13 +81,14 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   private TimeRange getRightmostTimeRange() {
     long retStartTime;
     long retEndTime;
-    long intervalNum = (long) Math.ceil((endTime - startTime) / (double) slidingStep);
-    retStartTime = slidingStep * (intervalNum - 1) + startTime;
-    if (isIntervalCyclicChange && endTime - retStartTime > interval % slidingStep) {
-      retStartTime += interval % slidingStep;
+    retStartTime = ITimeRangeIterator.rightmostTimeRangeStart(startTime, endTime, slidingStep);
+    if (isIntervalCyclicChange
+        && ITimeRangeIterator.isTimeRangeDistanceGreaterThan(
+            retStartTime, endTime, interval % slidingStep)) {
+      retStartTime = ITimeRangeIterator.saturatingAdd(retStartTime, interval % slidingStep);
       updateIntervalAndStep();
     }
-    retEndTime = Math.min(retStartTime + curInterval, endTime);
+    retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(retStartTime, curInterval), endTime);
     updateIntervalAndStep();
     return new TimeRange(retStartTime, retEndTime);
   }
@@ -105,18 +108,24 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     long retEndTime;
     long curStartTime = curTimeRange.getMin();
     if (isAscending) {
+      if (!ITimeRangeIterator.canMoveForward(curStartTime, curSlidingStep, endTime)) {
+        return false;
+      }
       retStartTime = curStartTime + curSlidingStep;
       // This is an open interval , [0-100)
       if (retStartTime >= endTime) {
         return false;
       }
     } else {
+      if (!ITimeRangeIterator.canMoveBackward(curStartTime, curSlidingStep, startTime)) {
+        return false;
+      }
       retStartTime = curStartTime - curSlidingStep;
       if (retStartTime < startTime) {
         return false;
       }
     }
-    retEndTime = Math.min(retStartTime + curInterval, endTime);
+    retEndTime = Math.min(ITimeRangeIterator.saturatingAdd(retStartTime, curInterval), endTime);
     updateIntervalAndStep();
     curTimeRange = new TimeRange(retStartTime, retEndTime);
     hasCachedTimeRange = true;
@@ -177,19 +186,24 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   @Override
   public long getTotalIntervalNum() {
-    long queryRange = endTime - startTime;
     if (slidingStep >= interval || interval % slidingStep == 0) {
-      return (long) Math.ceil(queryRange / (double) slidingStep);
+      return ITimeRangeIterator.ceilDivTimeRange(startTime, endTime, slidingStep);
     }
 
     long interval1 = interval % slidingStep;
     long interval2 = slidingStep - interval % slidingStep;
-    long intervalNum = Math.floorDiv(queryRange, interval1 + interval2);
-    long tmpStartTime = startTime + intervalNum * (interval1 + interval2);
-    if (tmpStartTime + interval1 > endTime) {
-      return intervalNum * 2 + 1;
-    } else {
-      return intervalNum * 2 + 2;
-    }
+    BigInteger queryRange = BigInteger.valueOf(endTime).subtract(BigInteger.valueOf(startTime));
+    BigInteger intervalNum = queryRange.divide(BigInteger.valueOf(interval1 + interval2));
+    BigInteger result =
+        intervalNum
+            .multiply(BigInteger.valueOf(2))
+            .add(
+                queryRange
+                            .remainder(BigInteger.valueOf(interval1 + interval2))
+                            .compareTo(BigInteger.valueOf(interval1))
+                        < 0
+                    ? BigInteger.ONE
+                    : BigInteger.valueOf(2));
+    return ITimeRangeIterator.saturateToLong(result);
   }
 }

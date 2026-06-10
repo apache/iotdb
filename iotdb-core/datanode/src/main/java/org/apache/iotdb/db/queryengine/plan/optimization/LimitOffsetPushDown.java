@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.math.BigInteger;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,6 +69,11 @@ import java.util.concurrent.TimeUnit;
  *     group of series under an aligned device is queried, and all queried data is in one region.
  */
 public class LimitOffsetPushDown implements PlanOptimizer {
+
+  private static final BigInteger BIG_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
+  private static final BigInteger BIG_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
+  private static final BigInteger BIG_INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
+  private static final BigInteger BIG_INTEGER_MIN = BigInteger.valueOf(Integer.MIN_VALUE);
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
@@ -320,8 +326,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     // Evaluate the day of month as 28 days
     long totalStep = slidingStep.getMinTotalDuration(TimeUnit.MILLISECONDS);
-    long size = (endTime - startTime + totalStep - 1) / totalStep;
-    if (size > offsetSize) {
+    BigInteger size = ceilDivTimeRange(startTime, endTime, totalStep);
+    if (size.compareTo(BigInteger.valueOf(offsetSize)) > 0) {
       TimeZone timeZone = TimeZone.getTimeZone(zoneId);
       // ordering in group by month must be ascending
       long newStartTime =
@@ -351,10 +357,19 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
   private static TimeDuration calculateEndTimeDuration(
       TimeDuration slidingStep, TimeDuration interval, long limitSize, long offsetSize) {
-    long length = offsetSize + limitSize - 1;
+    BigInteger length =
+        BigInteger.valueOf(offsetSize).add(BigInteger.valueOf(limitSize)).subtract(BigInteger.ONE);
     // startTime + offsetSize * step + (limitSize - 1) * step + interval
-    int monthDuration = (int) (length * slidingStep.monthDuration + interval.monthDuration);
-    long nonMonthDuration = length * slidingStep.nonMonthDuration + interval.nonMonthDuration;
+    int monthDuration =
+        saturateToInt(
+            length
+                .multiply(BigInteger.valueOf(slidingStep.monthDuration))
+                .add(BigInteger.valueOf(interval.monthDuration)));
+    long nonMonthDuration =
+        saturateToLong(
+            length
+                .multiply(BigInteger.valueOf(slidingStep.nonMonthDuration))
+                .add(BigInteger.valueOf(interval.nonMonthDuration)));
     return new TimeDuration(monthDuration, nonMonthDuration);
   }
 
@@ -373,18 +388,26 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long interval = groupByTimeComponent.getInterval().nonMonthDuration;
     long limitSize = queryStatement.getRowLimit();
     long offsetSize = queryStatement.getRowOffset();
-    long size = (endTime - startTime + step - 1) / step;
-    if (size > offsetSize) {
+    BigInteger size = ceilDivTimeRange(startTime, endTime, step);
+    if (size.compareTo(BigInteger.valueOf(offsetSize)) > 0) {
       if (queryStatement.getResultTimeOrder() == Ordering.ASC) {
-        startTime = startTime + offsetSize * step;
+        startTime = addTimeDuration(startTime, BigInteger.valueOf(offsetSize), step, 0);
       } else {
-        long startTimeInterval = size - offsetSize - limitSize;
-        startTime = startTime + (startTimeInterval < 0 ? 0 : startTimeInterval) * step;
+        BigInteger startTimeInterval =
+            size.subtract(BigInteger.valueOf(offsetSize)).subtract(BigInteger.valueOf(limitSize));
+        startTime =
+            addTimeDuration(
+                startTime,
+                startTimeInterval.signum() < 0 ? BigInteger.ZERO : startTimeInterval,
+                step,
+                0);
       }
       endTime =
           limitSize == 0
               ? endTime
-              : Math.min(endTime, startTime + (limitSize - 1) * step + interval);
+              : Math.min(
+                  endTime,
+                  addTimeDuration(startTime, BigInteger.valueOf(limitSize - 1), step, interval));
       groupByTimeComponent.setEndTime(endTime);
       groupByTimeComponent.setStartTime(startTime);
     } else {
@@ -423,8 +446,11 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
     long slidingStep = groupByTimeComponent.getSlidingStep().nonMonthDuration;
-    long size = (endTime - startTime + slidingStep - 1) / slidingStep;
-    if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
+    BigInteger size = ceilDivTimeRange(startTime, endTime, slidingStep);
+    if (size.signum() == 0
+        || size.multiply(BigInteger.valueOf(deviceNames.size()))
+                .compareTo(BigInteger.valueOf(queryStatement.getRowOffset()))
+            <= 0) {
       // resultSet is empty
       queryStatement.setResultSetEmpty(true);
       return deviceNames;
@@ -433,19 +459,20 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long limitSize = queryStatement.getRowLimit();
     long offsetSize = queryStatement.getRowOffset();
     List<PartialPath> optimizedDeviceNames = new ArrayList<>();
-    int startDeviceIndex = (int) (offsetSize / size);
+    int startDeviceIndex = saturateToInt(BigInteger.valueOf(offsetSize).divide(size));
     int endDeviceIndex =
         limitSize == 0
             ? deviceNames.size() - 1
-            : (int)
-                ((limitSize - ((startDeviceIndex + 1) * size - offsetSize) + size - 1) / size
-                    + startDeviceIndex);
+            : calculateEndDeviceIndex(size, limitSize, offsetSize, startDeviceIndex);
 
     int index = 0;
     while (index < startDeviceIndex) {
       index++;
     }
-    queryStatement.setRowOffset(offsetSize - startDeviceIndex * size);
+    queryStatement.setRowOffset(
+        saturateToLong(
+            BigInteger.valueOf(offsetSize)
+                .subtract(BigInteger.valueOf(startDeviceIndex).multiply(size))));
 
     // if only refer to one device, optimize the time parameter
     if (startDeviceIndex == endDeviceIndex) {
@@ -464,5 +491,55 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
   private static boolean hasLimitOffset(QueryStatement queryStatement) {
     return queryStatement.hasLimit() || queryStatement.hasOffset();
+  }
+
+  private static BigInteger ceilDivTimeRange(long startTime, long endTime, long divisor) {
+    return BigInteger.valueOf(endTime)
+        .subtract(BigInteger.valueOf(startTime))
+        .add(BigInteger.valueOf(divisor).subtract(BigInteger.ONE))
+        .divide(BigInteger.valueOf(divisor));
+  }
+
+  private static long addTimeDuration(
+      long startTime, BigInteger stepCount, long step, long interval) {
+    return saturateToLong(
+        BigInteger.valueOf(startTime)
+            .add(stepCount.multiply(BigInteger.valueOf(step)))
+            .add(BigInteger.valueOf(interval)));
+  }
+
+  private static int calculateEndDeviceIndex(
+      BigInteger size, long limitSize, long offsetSize, int startDeviceIndex) {
+    BigInteger firstDeviceRemaining =
+        BigInteger.valueOf(startDeviceIndex + 1L)
+            .multiply(size)
+            .subtract(BigInteger.valueOf(offsetSize));
+    return saturateToInt(
+        BigInteger.valueOf(limitSize)
+            .subtract(firstDeviceRemaining)
+            .add(size)
+            .subtract(BigInteger.ONE)
+            .divide(size)
+            .add(BigInteger.valueOf(startDeviceIndex)));
+  }
+
+  private static long saturateToLong(BigInteger value) {
+    if (value.compareTo(BIG_LONG_MAX) > 0) {
+      return Long.MAX_VALUE;
+    }
+    if (value.compareTo(BIG_LONG_MIN) < 0) {
+      return Long.MIN_VALUE;
+    }
+    return value.longValue();
+  }
+
+  private static int saturateToInt(BigInteger value) {
+    if (value.compareTo(BIG_INTEGER_MAX) > 0) {
+      return Integer.MAX_VALUE;
+    }
+    if (value.compareTo(BIG_INTEGER_MIN) < 0) {
+      return Integer.MIN_VALUE;
+    }
+    return value.intValue();
   }
 }

@@ -17,31 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.calc.execution.operator.process.fill.filter;
+package org.apache.iotdb.db.pipe.processor.downsampling;
 
-import org.apache.iotdb.calc.execution.operator.process.fill.IFillFilter;
+public class DownSamplingTimeUtils {
 
-public class FixedIntervalFillFilter implements IFillFilter {
-
-  // the time precision of this field is same as the system time_precision configuration.
-  private final long timeInterval;
-
-  public FixedIntervalFillFilter(long timeInterval) {
-    this.timeInterval = timeInterval;
+  private DownSamplingTimeUtils() {
+    // Utility class.
   }
 
-  @Override
-  public boolean needFill(long time, long previousTime) {
-    // the reason that we use Math.abs is that we may use order by time desc which will cause
-    // previousTime is larger than time
-    return !isTimeDistanceGreaterThan(time, previousTime, timeInterval);
+  public static boolean isTimeDistanceLessThanOrEqualTo(long left, long right, long distance) {
+    if (distance < 0) {
+      return false;
+    }
+    long difference = left >= right ? left - right : right - left;
+    return difference >= 0 && difference <= distance;
   }
 
-  private static boolean isTimeDistanceGreaterThan(long left, long right, long distance) {
+  public static boolean isTimeDistanceGreaterThanOrEqualTo(long left, long right, long distance) {
     if (distance < 0) {
       return true;
     }
     long difference = left >= right ? left - right : right - left;
-    return difference < 0 || difference > distance;
+    return difference < 0 || difference >= distance;
+  }
+
+  public static double timeDifferenceAsDouble(long left, long right) {
+    return (double) left - (double) right;
   }
 }

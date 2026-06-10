@@ -178,14 +178,20 @@ public class SeriesPartitionTable {
       TConsensusGroupId regionId, long startTime, long endTime) {
     if (regionId.getId() == -1) {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .collect(Collectors.toList());
     } else {
       return seriesPartitionMap.keySet().stream()
-          .filter(e -> e.getStartTime() >= startTime && e.getStartTime() < endTime)
+          .filter(e -> isTimeSlotInQueryRange(e, startTime, endTime))
           .filter(e -> seriesPartitionMap.get(e).contains(regionId))
           .collect(Collectors.toList());
     }
+  }
+
+  private static boolean isTimeSlotInQueryRange(
+      TTimePartitionSlot timePartitionSlot, long startTime, long endTime) {
+    final long slotStartTime = timePartitionSlot.getStartTime();
+    return slotStartTime >= startTime && (endTime == Long.MAX_VALUE || slotStartTime < endTime);
   }
 
   /**

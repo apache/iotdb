@@ -66,39 +66,39 @@ public class DataNodeDateTimeUtils {
     switch (durationUnit) {
       case y:
       case year:
-        res *= 365 * 86_400_000L;
+        res = Math.multiplyExact(value, 365 * 86_400_000L);
         break;
       case mo:
       case month:
         if (currentTime == -1) {
-          res *= 30 * 86_400_000L;
+          res = Math.multiplyExact(value, 30 * 86_400_000L);
         } else {
           Calendar calendar = Calendar.getInstance();
           calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
-          calendar.add(Calendar.MONTH, (int) (value));
-          res = calendar.getTimeInMillis() - currentTime;
+          calendar.add(Calendar.MONTH, Math.toIntExact(value));
+          res = Math.subtractExact(calendar.getTimeInMillis(), currentTime);
         }
         break;
       case w:
       case week:
-        res *= 7 * 86_400_000L;
+        res = Math.multiplyExact(value, 7 * 86_400_000L);
         break;
       case d:
       case day:
-        res *= 86_400_000L;
+        res = Math.multiplyExact(value, 86_400_000L);
         break;
       case h:
       case hour:
-        res *= 3_600_000L;
+        res = Math.multiplyExact(value, 3_600_000L);
         break;
       case m:
       case minute:
-        res *= 60_000L;
+        res = Math.multiplyExact(value, 60_000L);
         break;
       case s:
       case second:
-        res *= 1_000L;
+        res = Math.multiplyExact(value, 1_000L);
         break;
       default:
         break;
@@ -112,7 +112,7 @@ public class DataNodeDateTimeUtils {
           || unit.equals(DateTimeUtils.DurationUnit.microsecond.toString())) {
         return value;
       } else {
-        return res * 1000;
+        return Math.multiplyExact(res, 1000);
       }
     } else if ("ns".equals(timestampPrecision) || "nanosecond".equals(timestampPrecision)) {
       if (unit.equals(DateTimeUtils.DurationUnit.ns.toString())
@@ -120,9 +120,9 @@ public class DataNodeDateTimeUtils {
         return value;
       } else if (unit.equals(DateTimeUtils.DurationUnit.us.toString())
           || unit.equals(DateTimeUtils.DurationUnit.microsecond.toString())) {
-        return value * 1000;
+        return Math.multiplyExact(value, 1000);
       } else {
-        return res * 1000_000;
+        return Math.multiplyExact(res, 1000_000);
       }
     } else {
       if (unit.equals(DateTimeUtils.DurationUnit.ns.toString())
@@ -157,8 +157,7 @@ public class DataNodeDateTimeUtils {
     for (int i = 0; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
-        temp *= 10;
-        temp += (ch - '0');
+        temp = Math.addExact(Math.multiplyExact(temp, 10), ch - '0');
       } else {
         String unit = String.valueOf(duration.charAt(i));
         // This is to identify units with two letters.
@@ -168,12 +167,17 @@ public class DataNodeDateTimeUtils {
         }
         unit = unit.toLowerCase();
         if (convertYearToMonth && unit.equals("y")) {
-          temp *= 12;
+          temp = Math.multiplyExact(temp, 12);
           unit = "mo";
         }
-        total +=
-            convertDurationStrToLong(
-                currentTime == -1 ? -1 : currentTime + total, temp, unit, timestampPrecision);
+        total =
+            Math.addExact(
+                total,
+                convertDurationStrToLong(
+                    currentTime == -1 ? -1 : Math.addExact(currentTime, total),
+                    temp,
+                    unit,
+                    timestampPrecision));
         temp = 0;
       }
     }
@@ -229,8 +233,7 @@ public class DataNodeDateTimeUtils {
     for (; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
-        temp *= 10;
-        temp += (ch - '0');
+        temp = Math.addExact(Math.multiplyExact(temp, 10), ch - '0');
       } else {
         StringBuilder unit = new StringBuilder(String.valueOf(duration.charAt(i)));
         i++;
@@ -241,19 +244,22 @@ public class DataNodeDateTimeUtils {
         }
         i--;
         if ("y".contentEquals(unit) || "year".contentEquals(unit)) {
-          monthDuration += temp * 12;
+          monthDuration = Math.addExact(monthDuration, Math.multiplyExact(temp, 12));
           temp = 0;
           continue;
         }
         if ("mo".contentEquals(unit) || "month".contentEquals(unit)) {
-          monthDuration += temp;
+          monthDuration = Math.addExact(monthDuration, temp);
           temp = 0;
           continue;
         }
-        nonMonthDuration += convertDurationStrToLong(-1, temp, unit.toString(), currTimePrecision);
+        nonMonthDuration =
+            Math.addExact(
+                nonMonthDuration,
+                convertDurationStrToLong(-1, temp, unit.toString(), currTimePrecision));
         temp = 0;
       }
     }
-    return new TimeDuration((int) monthDuration, nonMonthDuration);
+    return new TimeDuration(Math.toIntExact(monthDuration), nonMonthDuration);
   }
 }

@@ -24,6 +24,10 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceGreaterThanOrEqualTo;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.isTimeDistanceLessThanOrEqualTo;
+import static org.apache.iotdb.db.pipe.processor.downsampling.DownSamplingTimeUtils.timeDifferenceAsDouble;
+
 public class SwingingDoorTrendingFilter<T> {
 
   private final SwingingDoorTrendingSamplingProcessor processor;
@@ -85,14 +89,13 @@ public class SwingingDoorTrendingFilter<T> {
   }
 
   private boolean tryFilter(final long timestamp, final T value) {
-    final long timeDiff = timestamp - lastStoredTimestamp;
-    final long absTimeDiff = Math.abs(timeDiff);
-
-    if (absTimeDiff <= processor.getCompressionMinTimeInterval()) {
+    if (isTimeDistanceLessThanOrEqualTo(
+        timestamp, lastStoredTimestamp, processor.getCompressionMinTimeInterval())) {
       return false;
     }
 
-    if (absTimeDiff >= processor.getCompressionMaxTimeInterval()) {
+    if (isTimeDistanceGreaterThanOrEqualTo(
+        timestamp, lastStoredTimestamp, processor.getCompressionMaxTimeInterval())) {
       reset(timestamp, value);
       return true;
     }
@@ -114,6 +117,7 @@ public class SwingingDoorTrendingFilter<T> {
     final double doubleValue = Double.parseDouble(value.toString());
     final double lastStoredDoubleValue = Double.parseDouble(lastStoredValue.toString());
     final double valueDiff = doubleValue - lastStoredDoubleValue;
+    final double timeDiff = timeDifferenceAsDouble(timestamp, lastStoredTimestamp);
 
     final double currentUpperSlope = (valueDiff - processor.getCompressionDeviation()) / timeDiff;
     if (currentUpperSlope > upperDoor) {

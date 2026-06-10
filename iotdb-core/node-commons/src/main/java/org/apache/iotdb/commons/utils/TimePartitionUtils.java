@@ -98,10 +98,28 @@ public class TimePartitionUtils {
     if (time >= timePartitionUpperBoundWithoutOverflow) {
       return Long.MAX_VALUE;
     }
-    long lowerBound = getTimePartitionLowerBound(time);
-    return lowerBound == Long.MIN_VALUE
-        ? timePartitionLowerBoundWithoutOverflow
-        : lowerBound + timePartitionInterval;
+    if (time < timePartitionLowerBoundWithoutOverflow) {
+      return timePartitionLowerBoundWithoutOverflow;
+    }
+    return getTimePartitionLowerBound(time) + timePartitionInterval;
+  }
+
+  public static long getTimePartitionEndTime(long time) {
+    long upperBound = getTimePartitionUpperBound(time);
+    if (upperBound != Long.MAX_VALUE) {
+      return upperBound - 1;
+    }
+    return getTimePartitionLowerBound(time) == getTimePartitionLowerBound(Long.MAX_VALUE)
+        ? Long.MAX_VALUE
+        : Long.MAX_VALUE - 1;
+  }
+
+  public static boolean isAfterOrEqualToTimePartitionUpperBound(
+      long time, long timePartitionStartTime, long timePartitionUpperBound) {
+    if (timePartitionUpperBound != Long.MAX_VALUE) {
+      return time >= timePartitionUpperBound;
+    }
+    return time == Long.MAX_VALUE && getTimePartitionLowerBound(time) != timePartitionStartTime;
   }
 
   public static boolean isTimePartitionStartTime(long time) {
@@ -149,8 +167,7 @@ public class TimePartitionUtils {
     if (timeFilter == null) {
       return true;
     }
-    long partitionEndTime = getTimePartitionUpperBound(partitionStartTime);
-    partitionEndTime = partitionEndTime == Long.MAX_VALUE ? Long.MAX_VALUE : partitionEndTime - 1;
+    long partitionEndTime = getTimePartitionEndTime(partitionStartTime);
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 

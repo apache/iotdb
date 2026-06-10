@@ -260,13 +260,10 @@ public class TsFileSplitter {
 
         int satisfiedLength = 0;
         long endTime =
-            timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-        // beware of overflow
-        if (endTime <= timePartitionSlot.getStartTime()) {
-          endTime = Long.MAX_VALUE;
-        }
+            TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
         for (int i = 0; i < times.length; i++) {
-          if (times[i] >= endTime) {
+          if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+              times[i], timePartitionSlot.getStartTime(), endTime)) {
             chunkData.writeDecodePage(times, values, satisfiedLength);
             if (isAligned) {
               pageIndex2ChunkData
@@ -279,10 +276,7 @@ public class TsFileSplitter {
             timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
             satisfiedLength = 0;
             endTime =
-                timePartitionSlot.getStartTime() + TimePartitionUtils.getTimePartitionInterval();
-            if (endTime <= timePartitionSlot.getStartTime()) {
-              endTime = Long.MAX_VALUE;
-            }
+                TimePartitionUtils.getTimePartitionUpperBound(timePartitionSlot.getStartTime());
             chunkData = ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
           }
           satisfiedLength += 1;

@@ -129,4 +129,26 @@ public class SeriesPartitionTableTest {
             .isEmpty());
     Assert.assertTrue(table.getSeriesPartitionMap().containsKey(normalSlot));
   }
+
+  @Test
+  public void getTimeSlotListShouldIncludeLongMaxSlotWithUnboundedEndTime() {
+    final TConsensusGroupId consensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
+    final TConsensusGroupId allRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
+    final TTimePartitionSlot previousSlot = new TTimePartitionSlot(Long.MAX_VALUE - 1);
+    final TTimePartitionSlot lastSlot = new TTimePartitionSlot(Long.MAX_VALUE);
+
+    final SeriesPartitionTable table = new SeriesPartitionTable();
+    table.putDataPartition(previousSlot, consensusGroupId);
+    table.putDataPartition(lastSlot, consensusGroupId);
+
+    final List<TTimePartitionSlot> expected = new ArrayList<>();
+    expected.add(previousSlot);
+    expected.add(lastSlot);
+
+    Assert.assertEquals(
+        expected, table.getTimeSlotList(allRegionId, Long.MAX_VALUE - 1, Long.MAX_VALUE));
+    Assert.assertEquals(
+        expected, table.getTimeSlotList(consensusGroupId, Long.MAX_VALUE - 1, Long.MAX_VALUE));
+  }
 }

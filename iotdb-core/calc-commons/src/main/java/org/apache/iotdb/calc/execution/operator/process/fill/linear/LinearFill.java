@@ -156,9 +156,8 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private double getFactor(long currentTime) {
-    return nextTimeInCurrentColumn - previousTime == 0
-        ? 0.0
-        : ((double) (currentTime - previousTime)) / (nextTimeInCurrentColumn - previousTime);
+    double timeRange = (double) nextTimeInCurrentColumn - (double) previousTime;
+    return timeRange == 0 ? 0.0 : ((double) currentTime - (double) previousTime) / timeRange;
   }
 
   /**

@@ -286,7 +286,8 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        long nextWindowTimeEnd =
+            Math.min(saturatingAdd(nextWindowTimeBegin, timeInterval), displayWindowEnd);
         while (currentEndTime < nextWindowTimeEnd) {
           final YieldableState state = parentLayerReader.yield();
           if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -357,7 +358,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
-            nextWindowTimeBegin + timeInterval - 1);
+            saturatingAdd(nextWindowTimeBegin, timeInterval - 1));
 
         hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -366,7 +367,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       @Override
       public void readyForNext() {
         hasCached = false;
-        nextWindowTimeBegin += slidingStep;
+        nextWindowTimeBegin = saturatingAdd(nextWindowTimeBegin, slidingStep);
 
         safetyPile.moveForwardTo(nextIndexBegin + 1);
         tvList.setEvictionUpperBound(safetyLine.getSafetyLine());

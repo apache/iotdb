@@ -254,7 +254,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     for (int i = 1; i < rowCount; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = getDeviceID(i);
-      if (times[i] >= upperBoundOfTimePartition || !currDeviceId.equals(nextDeviceId)) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+              times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)
+          || !currDeviceId.equals(nextDeviceId)) {
         final PartitionSplitInfo splitInfo =
             deviceIDSplitInfoMap.computeIfAbsent(
                 currDeviceId, deviceID1 -> new PartitionSplitInfo());
@@ -393,7 +395,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= upperBoundOfTimePartition) {
+      if (TimePartitionUtils.isAfterOrEqualToTimePartitionUpperBound(
+          times[i], timePartitionSlot.getStartTime(), upperBoundOfTimePartition)) {
         result.add(timePartitionSlot);
         // next init
         upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);

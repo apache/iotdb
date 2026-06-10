@@ -68,10 +68,12 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -275,6 +277,17 @@ public class AnalyzeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testRightClosedGroupByTimePredicateWithLongMaxEndTime() {
+    String sql = "select count(s1) from root.sg.d1 " + "group by ((0, 9223372036854775807], 10ms);";
+
+    Analysis actualAnalysis = analyzeSQL(sql);
+
+    assertEquals(
+        or(groupByTime(1, Long.MAX_VALUE, 10, 10), eq(time(), longValue(Long.MAX_VALUE))),
+        actualAnalysis.getGlobalTimePredicate());
   }
 
   @Test

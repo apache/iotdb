@@ -2095,13 +2095,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setGroupByTimeParameter(groupByTimeParameter);
 
     Expression globalTimePredicate = analysis.getGlobalTimePredicate();
-    Expression groupByTimePredicate = ExpressionFactory.groupByTime(groupByTimeParameter);
+    Expression groupByTimePredicate = getGroupByTimePredicate(groupByTimeParameter);
     if (globalTimePredicate == null) {
       globalTimePredicate = groupByTimePredicate;
     } else {
       globalTimePredicate = ExpressionFactory.and(globalTimePredicate, groupByTimePredicate);
     }
     analysis.setGlobalTimePredicate(globalTimePredicate);
+  }
+
+  private static Expression getGroupByTimePredicate(GroupByTimeParameter groupByTimeParameter) {
+    if (groupByTimeParameter.isLeftCRightO()
+        || groupByTimeParameter.getEndTime() != Long.MAX_VALUE) {
+      return ExpressionFactory.groupByTime(groupByTimeParameter);
+    }
+    GroupByTimeParameter rightOpenParameter =
+        new GroupByTimeParameter(
+            groupByTimeParameter.getStartTime() + 1,
+            groupByTimeParameter.getEndTime(),
+            groupByTimeParameter.getInterval(),
+            groupByTimeParameter.getSlidingStep(),
+            true);
+    return ExpressionFactory.or(
+        ExpressionFactory.groupByTime(rightOpenParameter),
+        ExpressionFactory.eq(
+            ExpressionFactory.time(), ExpressionFactory.longValue(Long.MAX_VALUE)));
   }
 
   static void analyzeFill(Analysis analysis, QueryStatement queryStatement) {

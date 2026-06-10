@@ -309,10 +309,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         (int)
             Math.min(
                 MAX_NUMBER_OF_FAKE_PAGE, Math.max(1, rowNum / MAX_NUMBER_OF_POINTS_IN_FAKE_PAGE));
-    long timeInterval = (chunkEndTime - chunkStartTime + 1) / pageNum;
-    for (int i = 0; i < pageNum; i++) {
-      long pageStartTime = chunkStartTime + i * timeInterval;
-      long pageEndTime = (i == pageNum - 1) ? chunkEndTime : (pageStartTime + timeInterval - 1);
+    for (long[] pageTimeRange :
+        MemChunkTimeRangeUtils.splitFakePageTimeRanges(chunkStartTime, chunkEndTime, pageNum)) {
+      long pageStartTime = pageTimeRange[0];
+      long pageEndTime = pageTimeRange[1];
 
       Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[dataTypes.size()];
       for (int column = 0; column < dataTypes.size(); column++) {

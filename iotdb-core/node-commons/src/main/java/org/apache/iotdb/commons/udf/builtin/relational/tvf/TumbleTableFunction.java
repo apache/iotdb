@@ -38,12 +38,15 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.getWindowStart;
+import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.saturateToLong;
 import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class TumbleTableFunction implements TableFunction {
@@ -145,9 +148,11 @@ public class TumbleTableFunction implements TableFunction {
       // find the proper window
       long timeValue = input.getLong(0);
       if (timeValue >= origin) {
-        long windowStart = origin + (timeValue - origin) / size * size;
-        properColumnBuilders.get(0).writeLong(windowStart);
-        properColumnBuilders.get(1).writeLong(windowStart + size);
+        BigInteger windowStart = getWindowStart(timeValue, origin, size);
+        properColumnBuilders.get(0).writeLong(saturateToLong(windowStart));
+        properColumnBuilders
+            .get(1)
+            .writeLong(saturateToLong(windowStart.add(BigInteger.valueOf(size))));
         passThroughIndexBuilder.writeLong(curIndex);
       }
       curIndex++;

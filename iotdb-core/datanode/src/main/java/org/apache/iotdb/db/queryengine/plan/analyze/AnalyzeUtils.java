@@ -532,12 +532,20 @@ public class AnalyzeUtils {
 
       switch (comparisonExpression.getOperator()) {
         case LESS_THAN:
+          if (rightHandValue == Long.MIN_VALUE) {
+            throw new SemanticException(
+                "The time predicate does not select any time range: " + comparisonExpression);
+          }
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue - 1));
           break;
         case LESS_THAN_OR_EQUAL:
           timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
           break;
         case GREATER_THAN:
+          if (rightHandValue == Long.MAX_VALUE) {
+            throw new SemanticException(
+                "The time predicate does not select any time range: " + comparisonExpression);
+          }
           timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
           break;
         case GREATER_THAN_OR_EQUAL:

@@ -443,6 +443,25 @@ public class AccumulatorTest {
   }
 
   @Test
+  public void timeDurationAccumulatorSaturatesOverflow() {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(Long.MIN_VALUE);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(1);
+    tsBlockBuilder.declarePosition();
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(Long.MAX_VALUE);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(2);
+    tsBlockBuilder.declarePosition();
+    TsBlock tsBlock = tsBlockBuilder.build();
+
+    TimeDurationAccumulator accumulator = new TimeDurationAccumulator();
+    accumulator.addInput(new Column[] {tsBlock.getTimeColumn(), tsBlock.getColumn(0)}, null);
+
+    ColumnBuilder finalResult = new LongColumnBuilder(null, 1);
+    accumulator.outputFinal(finalResult);
+    Assert.assertEquals(Long.MAX_VALUE, finalResult.build().getLong(0));
+  }
+
+  @Test
   public void maxValueAccumulatorTest() {
     Accumulator extremeAccumulator =
         AccumulatorFactory.createBuiltinAccumulator(
