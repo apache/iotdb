@@ -46,6 +46,10 @@ public class LockQueue {
   }
 
   public void waitProcedure(Procedure<?> procedure) {
+    if (deque.stream()
+        .anyMatch(waitingProcedure -> waitingProcedure.getProcId() == procedure.getProcId())) {
+      return;
+    }
     deque.addLast(procedure);
   }
 

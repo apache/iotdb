@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -62,6 +63,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private volatile long lastUpdate;
 
   private final AtomicReference<byte[]> result = new AtomicReference<>();
+  private final AtomicBoolean executing = new AtomicBoolean(false);
   private volatile boolean locked = false;
   private boolean lockedWhenLoading = false;
 
@@ -256,6 +258,14 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   // -------------------------Internal methods - called by the procedureExecutor------------------
+  final boolean tryAcquireExecution() {
+    return executing.compareAndSet(false, true);
+  }
+
+  final void releaseExecution() {
+    executing.set(false);
+  }
+
   /**
    * Internal method called by the ProcedureExecutor that starts the user-level code execute().
    *

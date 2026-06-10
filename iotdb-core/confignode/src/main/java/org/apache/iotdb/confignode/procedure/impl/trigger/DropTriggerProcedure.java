@@ -180,7 +180,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     if (that instanceof DropTriggerProcedure) {
       DropTriggerProcedure thatProc = (DropTriggerProcedure) that;
       return thatProc.getProcId() == this.getProcId()
-          && thatProc.getCurrentState().equals(this.getCurrentState())
+          && Objects.equals(thatProc.getCurrentState(), this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
           && thatProc.isGeneratedByPipe == this.isGeneratedByPipe
           && (thatProc.triggerName).equals(this.triggerName);

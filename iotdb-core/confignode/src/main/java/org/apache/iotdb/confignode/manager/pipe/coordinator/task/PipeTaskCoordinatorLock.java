@@ -46,17 +46,10 @@ public class PipeTaskCoordinatorLock {
     LOGGER.debug(
         ManagerMessages.PIPETASKCOORDINATOR_LOCK_WAITING_FOR_THREAD,
         Thread.currentThread().getName());
-    try {
-      semaphore.acquire();
-      LOGGER.debug(
-          ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
-          Thread.currentThread().getName());
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error(
-          ManagerMessages.INTERRUPTED_WHILE_WAITING_FOR_PIPETASKCOORDINATOR_LOCK_CURRENT_THREAD,
-          Thread.currentThread().getName());
-    }
+    semaphore.acquireUninterruptibly();
+    LOGGER.debug(
+        ManagerMessages.PIPETASKCOORDINATOR_LOCK_ACQUIRED_BY_THREAD,
+        Thread.currentThread().getName());
   }
 
   public boolean tryLock() {
