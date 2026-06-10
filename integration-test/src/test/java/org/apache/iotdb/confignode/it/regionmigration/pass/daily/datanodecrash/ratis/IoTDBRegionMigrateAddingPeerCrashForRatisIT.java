@@ -21,30 +21,15 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.
 
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateITFrameworkForRatis;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateAddingPeerCrashForRatisIT
-    extends IoTDBRegionOperationReliabilityITFramework {
-
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionRatisReconfigurationMaxRetryAttempts(3)
-        .setSchemaRegionRatisReconfigurationMaxRetryAttempts(3);
-  }
+    extends IoTDBRegionMigrateITFrameworkForRatis {
 
   @Test
   public void addingPeerCrashShouldFailAndRollback() throws Exception {
