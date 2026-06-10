@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -112,10 +114,11 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public static PipeTransferTabletRawReq toTPipeTransferRawReq(final ByteBuffer buffer) {
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
-    tabletReq.deserializeTPipeTransferRawReq(buffer);
+    tabletReq.deserializeTPipeTransferRawReq(buffer, tabletStringInternPool);
 
     return tabletReq;
   }
@@ -143,7 +146,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
-    final PipeTransferTabletRawReq tabletReq = toTPipeTransferRawReq(transferReq.body);
+    final PipeTransferTabletRawReq tabletReq =
+        toTPipeTransferRawReq(transferReq.body, new TabletStringInternPool());
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
@@ -151,11 +155,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  private void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
+  private void deserializeTPipeTransferRawReq(
+      final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     final int startPosition = buffer.position();
     try {
       final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeLegacyStatementFromTabletFormat(buffer);
+          TabletStatementConverter.deserializeLegacyStatementFromTabletFormat(
+              buffer, tabletStringInternPool);
       isAligned = insertTabletStatement.isAligned();
       statement = insertTabletStatement;
       return;
@@ -165,12 +171,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
     try {
       final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, false);
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, false, tabletStringInternPool);
       isAligned = insertTabletStatement.isAligned();
       statement = insertTabletStatement;
     } catch (final Exception e) {
       buffer.position(startPosition);
-      tablet = Tablet.deserialize(buffer);
+      tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
       isAligned = ReadWriteIOUtils.readBool(buffer);
     }
   }

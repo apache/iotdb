@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeTabletUtils.TabletStringInternPool;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
@@ -129,6 +130,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   public static PipeTransferTabletBatchReq fromTPipeTransferReq(
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
+    final TabletStringInternPool tabletStringInternPool = new TabletStringInternPool();
 
     // Binary size, for rolling upgrade
     ReadWriteIOUtils.readInt(transferReq.body);
@@ -141,7 +143,8 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
-      batchReq.tabletReqs.add(PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body));
+      batchReq.tabletReqs.add(
+          PipeTransferTabletRawReq.toTPipeTransferRawReq(transferReq.body, tabletStringInternPool));
     }
 
     batchReq.version = transferReq.version;
