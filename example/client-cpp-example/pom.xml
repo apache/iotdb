@@ -28,6 +28,9 @@
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB: Example: CPP Client</name>
+    <properties>
+        <client.cpp.package.classifier>${os.classifier}</client.cpp.package.classifier>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -98,7 +101,7 @@
                                     <artifactId>client-cpp</artifactId>
                                     <version>${project.version}</version>
                                     <type>zip</type>
-                                    <classifier>${os.classifier}</classifier>
+                                    <classifier>${client.cpp.package.classifier}</classifier>
                                     <overWrite>true</overWrite>
                                 </artifactItem>
                             </artifactItems>
@@ -140,6 +143,67 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>.os-unix</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-x86_64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>linux-aarch64-glibc2.28</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-x86_64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>macos-aarch64</client.cpp.package.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
+            </properties>
+        </profile>
         <profile>
             <id>spotless-cpp</id>
             <activation>

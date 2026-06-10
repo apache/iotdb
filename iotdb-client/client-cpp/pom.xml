@@ -87,7 +87,7 @@
                             <url>${catch2.url}</url>
                             <unpack>false</unpack>
                             <outputDirectory>${project.build.directory}/test/catch2</outputDirectory>
-                            <skip>${ctest.skip.tests}</skip>
+                            <skip>${maven.test.skip}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -163,12 +163,14 @@
                         </goals>
                         <phase>pre-integration-test</phase>
                         <configuration>
-                            <skip>${ctest.skip.tests}</skip>
+                            <skip>${maven.test.skip}</skip>
                             <name>iotdb-server</name>
                             <waitForInterrupt>false</waitForInterrupt>
                             <waitAfterLaunch>45</waitAfterLaunch>
                             <processLogFile>${cmake.project.dir}/test.log</processLogFile>
                             <arguments>
+                                <argument>${iotdb.shell.command}</argument>
+                                <argument>${iotdb.shell.option}</argument>
                                 <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
                             </arguments>
                         </configuration>
@@ -186,6 +188,8 @@
                             <waitAfterLaunch>5</waitAfterLaunch>
                             <processLogFile>${cmake.project.dir}/stop.log</processLogFile>
                             <arguments>
+                                <argument>${iotdb.shell.command}</argument>
+                                <argument>${iotdb.shell.option}</argument>
                                 <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
                             </arguments>
                         </configuration>
@@ -273,6 +277,8 @@
                 </os>
             </activation>
             <properties>
+                <iotdb.shell.command>bash</iotdb.shell.command>
+                <iotdb.shell.option>-c</iotdb.shell.option>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
@@ -289,6 +295,8 @@
                 </os>
             </activation>
             <properties>
+                <iotdb.shell.command>bash</iotdb.shell.command>
+                <iotdb.shell.option>-c</iotdb.shell.option>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>linux</os.suffix>
@@ -304,6 +312,8 @@
                 </os>
             </activation>
             <properties>
+                <iotdb.shell.command>bash</iotdb.shell.command>
+                <iotdb.shell.option>-c</iotdb.shell.option>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
@@ -319,6 +329,8 @@
                 </os>
             </activation>
             <properties>
+                <iotdb.shell.command>bash</iotdb.shell.command>
+                <iotdb.shell.option>-c</iotdb.shell.option>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
                 <os.suffix>mac</os.suffix>
@@ -333,8 +345,10 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
+                <iotdb.shell.command>cmd</iotdb.shell.command>
+                <iotdb.shell.option>/c</iotdb.shell.option>
+                <iotdb.start.script>start-standalone.bat</iotdb.start.script>
+                <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
                 <client.cpp.package.classifier>windows-x86_64-msvc14.3</client.cpp.package.classifier>
             </properties>

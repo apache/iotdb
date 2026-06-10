@@ -33,6 +33,19 @@ ENDIF()
 set(IOTDB_SDK_ROOT "${CMAKE_SOURCE_DIR}/client"
     CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)")
 
+if(NOT EXISTS "${IOTDB_SDK_ROOT}/include/Session.h"
+        OR NOT EXISTS "${IOTDB_SDK_ROOT}/include/SessionC.h")
+    file(GLOB _iotdb_sdk_dirs LIST_DIRECTORIES true "${IOTDB_SDK_ROOT}/iotdb-session-cpp-*")
+    foreach(_iotdb_sdk_dir IN LISTS _iotdb_sdk_dirs)
+        if(EXISTS "${_iotdb_sdk_dir}/include/Session.h"
+                AND EXISTS "${_iotdb_sdk_dir}/include/SessionC.h")
+            set(IOTDB_SDK_ROOT "${_iotdb_sdk_dir}"
+                CACHE PATH "Unpacked IoTDB C++ SDK directory (contains include/ and lib/)" FORCE)
+            break()
+        endif()
+    endforeach()
+endif()
+
 INCLUDE_DIRECTORIES("${IOTDB_SDK_ROOT}/include")
 
 option(WITH_SSL "Build with SSL support" OFF)
@@ -54,6 +67,18 @@ ENDIF()
 if(WIN32)
     set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/iotdb_session.lib")
     set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/iotdb_session.dll")
+    if(NOT EXISTS "${_iotdb_link_lib}" AND CMAKE_BUILD_TYPE)
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/${CMAKE_BUILD_TYPE}/iotdb_session.lib")
+        set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/${CMAKE_BUILD_TYPE}/iotdb_session.dll")
+    endif()
+    if(NOT EXISTS "${_iotdb_link_lib}")
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/Release/iotdb_session.lib")
+        set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/Release/iotdb_session.dll")
+    endif()
+    if(NOT EXISTS "${_iotdb_link_lib}")
+        set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/Debug/iotdb_session.lib")
+        set(_iotdb_runtime   "${IOTDB_SDK_ROOT}/lib/Debug/iotdb_session.dll")
+    endif()
 elseif(APPLE)
     set(_iotdb_link_lib "${IOTDB_SDK_ROOT}/lib/libiotdb_session.dylib")
     set(_iotdb_runtime   "${_iotdb_link_lib}")

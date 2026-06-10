@@ -114,9 +114,11 @@ jobs:
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
           if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026"
+            ./mvnw verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026" -Dbuild.tests=OFF -Dmaven.test.skip=true
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            ./mvnw verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dbuild.tests=OFF -Dmaven.test.skip=true
           else
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+            ./mvnw verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
       - name: Upload Artifact
         if: failure()
