@@ -1016,7 +1016,7 @@ struct TRenewTopicOwnerLeaseReq {
     1: required string topicName
     2: required string ownerId
     3: required i64 ownerEpoch
-    4: required i64 ownerLeaseExpireTimeMs
+    4: required i64 ownerLeaseDurationMs
 }
 
 struct TGetAllTopicInfoResp {

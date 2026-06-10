@@ -125,13 +125,13 @@ public interface ISubscriptionTableSession extends AutoCloseable {
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**
-   * Transfers a topic owner to the specified owner id, epoch, and lease expire time.
+   * Transfers a topic owner to the specified owner id, epoch, and lease duration.
    *
    * @param topicName If the topic name contains single quotes, the passed parameter needs to be
    *     enclosed in backticks.
    * @param ownerId The new topic owner id.
    * @param ownerEpoch The new monotonically increasing topic owner epoch.
-   * @param ownerLeaseExpireTimeMs The owner lease expire time in milliseconds.
+   * @param ownerLeaseDurationMs The owner lease duration in milliseconds.
    * @throws IoTDBConnectionException If a connection issue occurs.
    * @throws StatementExecutionException If the SQL statement execution fails.
    */
@@ -139,7 +139,7 @@ public interface ISubscriptionTableSession extends AutoCloseable {
       final String topicName,
       final String ownerId,
       final long ownerEpoch,
-      final Long ownerLeaseExpireTimeMs)
+      final Long ownerLeaseDurationMs)
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**

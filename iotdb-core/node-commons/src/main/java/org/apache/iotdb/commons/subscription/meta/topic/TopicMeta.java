@@ -49,6 +49,7 @@ public class TopicMeta {
   private String ownerId;
   private long ownerEpoch;
   private long ownerLastTransferTimeMs;
+  private Long ownerLeaseDurationMs;
   private Long ownerLeaseExpireTimeMs;
 
   // TODO: remove this variable later
@@ -82,6 +83,7 @@ public class TopicMeta {
     copied.ownerId = ownerId;
     copied.ownerEpoch = ownerEpoch;
     copied.ownerLastTransferTimeMs = ownerLastTransferTimeMs;
+    copied.ownerLeaseDurationMs = ownerLeaseDurationMs;
     copied.ownerLeaseExpireTimeMs = ownerLeaseExpireTimeMs;
 
     copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
@@ -96,6 +98,11 @@ public class TopicMeta {
               || updatedAttributes.containsKey(TopicConstant.OWNER_EPOCH_KEY))
           && !updatedAttributes.containsKey(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY)) {
         copiedAttributes.remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+      }
+      if ((updatedAttributes.containsKey(TopicConstant.OWNER_ID_KEY)
+              || updatedAttributes.containsKey(TopicConstant.OWNER_EPOCH_KEY))
+          && !updatedAttributes.containsKey(TopicConstant.OWNER_LEASE_DURATION_MS_KEY)) {
+        copiedAttributes.remove(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
       }
     }
 
@@ -136,6 +143,10 @@ public class TopicMeta {
     return ownerLeaseExpireTimeMs;
   }
 
+  public Long getOwnerLeaseDurationMs() {
+    return ownerLeaseDurationMs;
+  }
+
   public long getOwnerLeaseRemainingTimeMs() {
     return Objects.nonNull(ownerLeaseExpireTimeMs)
         ? ownerLeaseExpireTimeMs - System.currentTimeMillis()
@@ -148,6 +159,14 @@ public class TopicMeta {
 
   public void transferOwner(
       final String ownerId, final long ownerEpoch, final Long ownerLeaseExpireTimeMs) {
+    transferOwner(ownerId, ownerEpoch, null, ownerLeaseExpireTimeMs);
+  }
+
+  public void transferOwner(
+      final String ownerId,
+      final long ownerEpoch,
+      final Long ownerLeaseDurationMs,
+      final Long ownerLeaseExpireTimeMs) {
     if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
       throw new IllegalArgumentException("Subscription topic owner id should not be empty");
     }
@@ -168,14 +187,29 @@ public class TopicMeta {
                   + " current owner-epoch: %s, current owner-lease-expire-time-ms: %s",
               topicName, this.ownerId, this.ownerEpoch, this.ownerLeaseExpireTimeMs));
     }
+    if (Objects.nonNull(ownerLeaseDurationMs) && ownerLeaseDurationMs <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease duration should be positive, topic: %s,"
+                  + " owner-lease-duration-ms: %s",
+              topicName, ownerLeaseDurationMs));
+    }
 
     this.ownerId = ownerId;
     this.ownerEpoch = ownerEpoch;
+    this.ownerLeaseDurationMs = ownerLeaseDurationMs;
     this.ownerLeaseExpireTimeMs = ownerLeaseExpireTimeMs;
     this.ownerLastTransferTimeMs = System.currentTimeMillis();
 
     config.getAttribute().put(TopicConstant.OWNER_ID_KEY, ownerId);
     config.getAttribute().put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
+    if (Objects.nonNull(ownerLeaseDurationMs)) {
+      config
+          .getAttribute()
+          .put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
+    } else {
+      config.getAttribute().remove(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+    }
     if (Objects.nonNull(ownerLeaseExpireTimeMs)) {
       config
           .getAttribute()
@@ -219,10 +253,10 @@ public class TopicMeta {
               topicName, ownerLeaseExpireTimeMs));
     }
     if (Objects.nonNull(this.ownerLeaseExpireTimeMs)
-        && ownerLeaseExpireTimeMs <= this.ownerLeaseExpireTimeMs) {
+        && ownerLeaseExpireTimeMs < this.ownerLeaseExpireTimeMs) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner lease expire time should increase, topic: %s,"
+              "Subscription topic owner lease expire time should not decrease, topic: %s,"
                   + " current owner-lease-expire-time-ms: %s, request owner-lease-expire-time-ms:"
                   + " %s",
               topicName, this.ownerLeaseExpireTimeMs, ownerLeaseExpireTimeMs));
@@ -234,13 +268,37 @@ public class TopicMeta {
         .put(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
   }
 
+  public long renewOwnerLeaseWithDuration(
+      final String ownerId, final long ownerEpoch, final long ownerLeaseDurationMs) {
+    if (ownerLeaseDurationMs <= 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease duration should be positive, topic: %s,"
+                  + " owner-lease-duration-ms: %s",
+              topicName, ownerLeaseDurationMs));
+    }
+    final long requestedOwnerLeaseExpireTimeMs = System.currentTimeMillis() + ownerLeaseDurationMs;
+    final long ownerLeaseExpireTimeMs =
+        Objects.nonNull(this.ownerLeaseExpireTimeMs)
+            ? Math.max(requestedOwnerLeaseExpireTimeMs, this.ownerLeaseExpireTimeMs)
+            : requestedOwnerLeaseExpireTimeMs;
+    renewOwnerLease(ownerId, ownerEpoch, ownerLeaseExpireTimeMs);
+    this.ownerLeaseDurationMs = ownerLeaseDurationMs;
+    config
+        .getAttribute()
+        .put(TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
+    return ownerLeaseExpireTimeMs;
+  }
+
   public void clearOwner() {
     ownerId = null;
     ownerEpoch = -1L;
     ownerLastTransferTimeMs = -1L;
+    ownerLeaseDurationMs = null;
     ownerLeaseExpireTimeMs = null;
     config.getAttribute().remove(TopicConstant.OWNER_ID_KEY);
     config.getAttribute().remove(TopicConstant.OWNER_EPOCH_KEY);
+    config.getAttribute().remove(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
     config.getAttribute().remove(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
   }
 
@@ -423,10 +481,22 @@ public class TopicMeta {
               "Subscription topic owner epoch should be set when %s is set",
               TopicConstant.OWNER_ID_KEY));
     }
+    final Long ownerLeaseDurationMs =
+        topicConfig.getLong(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
+    Long ownerLeaseExpireTimeMs = topicConfig.getLong(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+    if (Objects.nonNull(ownerLeaseDurationMs)) {
+      if (ownerLeaseDurationMs <= 0) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Subscription topic owner lease duration should be positive when %s is set",
+                TopicConstant.OWNER_LEASE_DURATION_MS_KEY));
+      }
+      if (Objects.isNull(ownerLeaseExpireTimeMs)) {
+        ownerLeaseExpireTimeMs = System.currentTimeMillis() + ownerLeaseDurationMs;
+      }
+    }
     transferOwner(
-        configuredOwnerId,
-        configuredOwnerEpoch,
-        topicConfig.getLong(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY));
+        configuredOwnerId, configuredOwnerEpoch, ownerLeaseDurationMs, ownerLeaseExpireTimeMs);
   }
 
   /////////////////////////////// utilities ///////////////////////////////
@@ -509,13 +579,20 @@ public class TopicMeta {
         && Objects.equals(config, that.config)
         && Objects.equals(ownerId, that.ownerId)
         && ownerEpoch == that.ownerEpoch
+        && Objects.equals(ownerLeaseDurationMs, that.ownerLeaseDurationMs)
         && Objects.equals(ownerLeaseExpireTimeMs, that.ownerLeaseExpireTimeMs);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        topicName, creationTime, config, ownerId, ownerEpoch, ownerLeaseExpireTimeMs);
+        topicName,
+        creationTime,
+        config,
+        ownerId,
+        ownerEpoch,
+        ownerLeaseDurationMs,
+        ownerLeaseExpireTimeMs);
   }
 
   @Override
@@ -533,6 +610,8 @@ public class TopicMeta {
         + ownerEpoch
         + ", ownerLastTransferTimeMs="
         + ownerLastTransferTimeMs
+        + ", ownerLeaseDurationMs="
+        + ownerLeaseDurationMs
         + ", ownerLeaseExpireTimeMs="
         + ownerLeaseExpireTimeMs
         + '}';

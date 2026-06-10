@@ -606,6 +606,7 @@ public abstract class AbstractSubscriptionProvider {
       case 1906: // SUBSCRIPTION_CLOSE_ERROR
       case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
       case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
+      case 1913: // SUBSCRIPTION_SEEK_ERROR
         {
           final String errorMessage =
               String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);
@@ -615,11 +616,11 @@ public abstract class AbstractSubscriptionProvider {
       case 1911: // SUBSCRIPTION_PIPE_TIMEOUT_ERROR
         throw new SubscriptionPipeTimeoutException(
             String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
-      case 1913: // SUBSCRIPTION_OWNER_FENCED
-      case 1914: // SUBSCRIPTION_OWNER_REQUIRED
-      case 1915: // SUBSCRIPTION_OWNER_EPOCH_REQUIRED
-      case 1916: // SUBSCRIPTION_OWNER_LEASE_EXPIRED
-      case 1917: // SUBSCRIPTION_OWNER_EPOCH_CONFLICT
+      case 1914: // SUBSCRIPTION_OWNER_FENCED
+      case 1915: // SUBSCRIPTION_OWNER_REQUIRED
+      case 1916: // SUBSCRIPTION_OWNER_EPOCH_REQUIRED
+      case 1917: // SUBSCRIPTION_OWNER_LEASE_EXPIRED
+      case 1918: // SUBSCRIPTION_OWNER_EPOCH_CONFLICT
         {
           final String errorMessage =
               String.format(INTERNAL_ERROR_FORMATTER, status.code, status.message);

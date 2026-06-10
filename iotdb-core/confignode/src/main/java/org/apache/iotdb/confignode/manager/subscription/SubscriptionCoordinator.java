@@ -239,8 +239,8 @@ public class SubscriptionCoordinator {
       return null;
     }
 
-    topicMeta.renewOwnerLease(
-        req.getOwnerId(), req.getOwnerEpoch(), req.getOwnerLeaseExpireTimeMs());
+    topicMeta.renewOwnerLeaseWithDuration(
+        req.getOwnerId(), req.getOwnerEpoch(), req.getOwnerLeaseDurationMs());
     return topicMeta;
   }
 

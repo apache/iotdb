@@ -91,9 +91,9 @@ public class SubscriptionTableSession extends AbstractSubscriptionSession
       final String topicName,
       final String ownerId,
       final long ownerEpoch,
-      final Long ownerLeaseExpireTimeMs)
+      final Long ownerLeaseDurationMs)
       throws IoTDBConnectionException, StatementExecutionException {
-    super.alterTopicOwner(topicName, ownerId, ownerEpoch, ownerLeaseExpireTimeMs);
+    super.alterTopicOwner(topicName, ownerId, ownerEpoch, ownerLeaseDurationMs);
   }
 
   @Override

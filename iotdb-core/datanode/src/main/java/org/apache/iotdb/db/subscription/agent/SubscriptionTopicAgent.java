@@ -270,7 +270,7 @@ public class SubscriptionTopicAgent {
     return RpcUtils.SUCCESS_STATUS;
   }
 
-  public Map<String, Long> getTopicOwnerLeaseRenewalExpireTimeMs(
+  public Map<String, Long> getTopicOwnerLeaseRenewalDurationMs(
       final ConsumerConfig consumerConfig, final Iterable<String> topicNames) {
     final String requestOwnerId = consumerConfig.getOwnerId();
     final Long requestOwnerEpoch = consumerConfig.getOwnerEpoch();
@@ -278,10 +278,7 @@ public class SubscriptionTopicAgent {
       return new HashMap<>();
     }
 
-    final long now = System.currentTimeMillis();
-    final long ownerLeaseRenewalThresholdMs = consumerConfig.getHeartbeatIntervalMs();
-    final long ownerLeaseExtensionMs = consumerConfig.getHeartbeatIntervalMs() * 3;
-    final Map<String, Long> renewedTopicOwnerLeaseExpireTimeMs = new HashMap<>();
+    final Map<String, Long> renewedTopicOwnerLeaseDurationMs = new HashMap<>();
     acquireReadLock();
     try {
       for (final String topicName : topicNames) {
@@ -290,44 +287,15 @@ public class SubscriptionTopicAgent {
             || !topicMeta.isOwnerFencingEnabled()
             || !Objects.equals(topicMeta.getOwnerId(), requestOwnerId)
             || topicMeta.getOwnerEpoch() != requestOwnerEpoch
-            || Objects.isNull(topicMeta.getOwnerLeaseExpireTimeMs())) {
+            || Objects.isNull(topicMeta.getOwnerLeaseDurationMs())) {
           continue;
         }
 
-        final long ownerLeaseRemainingTimeMs = topicMeta.getOwnerLeaseExpireTimeMs() - now;
-        if (ownerLeaseRemainingTimeMs >= 0
-            && ownerLeaseRemainingTimeMs <= ownerLeaseRenewalThresholdMs) {
-          renewedTopicOwnerLeaseExpireTimeMs.put(topicName, now + ownerLeaseExtensionMs);
-        }
+        renewedTopicOwnerLeaseDurationMs.put(topicName, topicMeta.getOwnerLeaseDurationMs());
       }
     } finally {
       releaseReadLock();
     }
-    return renewedTopicOwnerLeaseExpireTimeMs;
-  }
-
-  public TSStatus renewLocalTopicOwnerLease(
-      final String topicName,
-      final String ownerId,
-      final long ownerEpoch,
-      final long ownerLeaseExpireTimeMs) {
-    acquireWriteLock();
-    try {
-      final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
-      if (Objects.isNull(topicMeta)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.TOPIC_NOT_EXIST_ERROR,
-            String.format(
-                "Subscription: failed to renew topic %s owner lease locally because topic does not"
-                    + " exist.",
-                topicName));
-      }
-      topicMeta.renewOwnerLease(ownerId, ownerEpoch, ownerLeaseExpireTimeMs);
-      return RpcUtils.SUCCESS_STATUS;
-    } catch (final IllegalArgumentException e) {
-      return RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT, e.getMessage());
-    } finally {
-      releaseWriteLock();
-    }
+    return renewedTopicOwnerLeaseDurationMs;
   }
 }

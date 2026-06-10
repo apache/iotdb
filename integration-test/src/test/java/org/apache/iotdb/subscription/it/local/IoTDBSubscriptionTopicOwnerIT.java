@@ -137,7 +137,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     final String topicName = "topic_owner_lease_renewal";
     final long heartbeatIntervalMs = 1000L;
-    final long initialOwnerLeaseExpireTimeMs = System.currentTimeMillis() + 2500L;
+    final long ownerLeaseDurationMs = 2500L;
 
     try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
@@ -147,9 +147,12 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
       properties.put(TopicConstant.OWNER_ID_KEY, "sn1");
       properties.put(TopicConstant.OWNER_EPOCH_KEY, "5");
       properties.put(
-          TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY,
-          String.valueOf(initialOwnerLeaseExpireTimeMs));
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
       session.createTopic(topicName, properties);
+
+      final Long initialOwnerLeaseExpireTimeMs = getOwnerLeaseExpireTimeMs(session, topicName);
+      Assert.assertNotNull(initialOwnerLeaseExpireTimeMs);
+      Assert.assertTrue(initialOwnerLeaseExpireTimeMs > System.currentTimeMillis());
 
       try (final SubscriptionTreePullConsumer currentOwnerConsumer =
           new SubscriptionTreePullConsumer.Builder()
@@ -188,6 +191,7 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
         final String topicAttributes = getTopicAttributes(session, topicName);
         Assert.assertTrue(topicAttributes.contains("owner-id=sn2"));
         Assert.assertTrue(topicAttributes.contains("owner-epoch=6"));
+        Assert.assertFalse(topicAttributes.contains("owner-lease-duration-ms="));
         Assert.assertFalse(topicAttributes.contains("owner-lease-expire-time-ms="));
       } finally {
         session.dropTopicIfExists(topicName);

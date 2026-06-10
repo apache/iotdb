@@ -74,6 +74,7 @@ public class TopicConstant {
 
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";
+  public static final String OWNER_LEASE_DURATION_MS_KEY = "owner-lease-duration-ms";
   public static final String OWNER_LEASE_EXPIRE_TIME_MS_KEY = "owner-lease-expire-time-ms";
 
   private TopicConstant() {

@@ -412,25 +412,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TSStatus renewTopicOwnerLeases(
       final ConsumerConfig consumerConfig, final Set<String> subscribedTopicNames)
       throws SubscriptionException {
-    final Map<String, Long> renewedTopicOwnerLeaseExpireTimeMs =
+    final Map<String, Long> renewedTopicOwnerLeaseDurationMs =
         SubscriptionAgent.topic()
-            .getTopicOwnerLeaseRenewalExpireTimeMs(consumerConfig, subscribedTopicNames);
-    if (renewedTopicOwnerLeaseExpireTimeMs.isEmpty()) {
+            .getTopicOwnerLeaseRenewalDurationMs(consumerConfig, subscribedTopicNames);
+    if (renewedTopicOwnerLeaseDurationMs.isEmpty()) {
       return RpcUtils.SUCCESS_STATUS;
     }
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      for (final Map.Entry<String, Long> entry : renewedTopicOwnerLeaseExpireTimeMs.entrySet()) {
+      for (final Map.Entry<String, Long> entry : renewedTopicOwnerLeaseDurationMs.entrySet()) {
         final String topicName = entry.getKey();
-        final long ownerLeaseExpireTimeMs = entry.getValue();
+        final long ownerLeaseDurationMs = entry.getValue();
         final TSStatus status =
             configNodeClient.renewTopicOwnerLease(
                 new TRenewTopicOwnerLeaseReq(
                     topicName,
                     consumerConfig.getOwnerId(),
                     consumerConfig.getOwnerEpoch(),
-                    ownerLeaseExpireTimeMs));
+                    ownerLeaseDurationMs));
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.warn(
               "Subscription: failed to renew owner lease for topic {}, owner-id: {},"
@@ -440,23 +440,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               consumerConfig.getOwnerEpoch(),
               status);
           return status;
-        }
-
-        final TSStatus localStatus =
-            SubscriptionAgent.topic()
-                .renewLocalTopicOwnerLease(
-                    topicName,
-                    consumerConfig.getOwnerId(),
-                    consumerConfig.getOwnerEpoch(),
-                    ownerLeaseExpireTimeMs);
-        if (localStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Subscription: failed to renew local owner lease for topic {}, owner-id: {},"
-                  + " owner-epoch: {}, result status is {}.",
-              topicName,
-              consumerConfig.getOwnerId(),
-              consumerConfig.getOwnerEpoch(),
-              localStatus);
         }
       }
     } catch (final ClientManagerException | TException e) {

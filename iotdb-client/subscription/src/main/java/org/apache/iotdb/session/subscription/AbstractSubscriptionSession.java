@@ -145,7 +145,7 @@ abstract class AbstractSubscriptionSession {
       final String topicName,
       final String ownerId,
       final long ownerEpoch,
-      final Long ownerLeaseExpireTimeMs)
+      final Long ownerLeaseDurationMs)
       throws IoTDBConnectionException, StatementExecutionException {
     if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
       throw new StatementExecutionException("Topic owner id should not be empty.");
@@ -154,9 +154,9 @@ abstract class AbstractSubscriptionSession {
     final Properties properties = new Properties();
     properties.put(TopicConstant.OWNER_ID_KEY, ownerId);
     properties.put(TopicConstant.OWNER_EPOCH_KEY, String.valueOf(ownerEpoch));
-    if (Objects.nonNull(ownerLeaseExpireTimeMs)) {
+    if (Objects.nonNull(ownerLeaseDurationMs)) {
       properties.put(
-          TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY, String.valueOf(ownerLeaseExpireTimeMs));
+          TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
     }
     alterTopic(topicName, properties, true);
   }
@@ -295,6 +295,7 @@ abstract class AbstractSubscriptionSession {
   private static boolean containsOwnerAttribute(final Properties properties) {
     return properties.containsKey(TopicConstant.OWNER_ID_KEY)
         || properties.containsKey(TopicConstant.OWNER_EPOCH_KEY)
+        || properties.containsKey(TopicConstant.OWNER_LEASE_DURATION_MS_KEY)
         || properties.containsKey(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
   }
 }
