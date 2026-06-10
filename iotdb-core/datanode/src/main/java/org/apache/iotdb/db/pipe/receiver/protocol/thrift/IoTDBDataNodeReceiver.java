@@ -867,7 +867,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (req.getBody() == null) {
       return params;
     }
-    final ByteBuffer body = req.getBody().duplicate();
+    final ByteBuffer body = req.body.duplicate();
     body.rewind();
     final int size = ReadWriteIOUtils.readInt(body);
     for (int i = 0; i < size; ++i) {
