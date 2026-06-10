@@ -208,7 +208,7 @@ countDatabasesStatement
     : COUNT DATABASES
     ;
 
-dacreateDbStatement
+createDbStatement
     : CREATE DATABASE (IF NOT EXISTS)? database=identifier (WITH properties)?
     ;
 
