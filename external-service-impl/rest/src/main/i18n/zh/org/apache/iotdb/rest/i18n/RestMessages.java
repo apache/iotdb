@@ -76,6 +76,6 @@ public final class RestMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE = "不支持的data type: ";
+  public static final String EXCEPTION_UNSUPPORTED_DATA_TYPE_0521CEDE = "不支持的数据类型: ";
 
 }

@@ -261,26 +261,25 @@ public final class SessionMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583 = "Protocol differ, Client version is {}}, but Server version is {}";
-  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "Protocol 不supported, Client version is %s, but Server version is %s";
-  public static final String LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA = "Retry attempt #{}, result {}, 异常 {}";
+  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_9C8EC583 = "协议不同，客户端版本为 {}}，服务器版本为 {}";
+  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "协议不支持，客户端版本为 %s，服务器版本为 %s";
+  public static final String LOG_RETRY_ATTEMPT_ARG_RESULT_ARG_EXCEPTION_ARG_20E5D9DA = "第 {} 次重试，结果 {}，异常 {}";
   public static final String LOG_ALL_VALUES_NULL_SUBMISSION_IGNORED_DEVICEID_ARG_TIME_ARG_MEASUREMENTS_07AFDDFE =
-      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements"
-      + " are [{}]";
-  public static final String EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B = "deviceIds, times, measurementsList and valuesList's size 应be equal";
-  public static final String EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C = "prefix路径s, times, subMeasurementsList and valuesList's size 应be equal";
-  public static final String EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A = "times, subMeasurementsList and valuesList's size 应be equal";
-  public static final String EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24 = "Different length of measurements, datatypes, encodings ";
-  public static final String EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E = "or compressors when 创建 device 模板.";
-  public static final String EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577 = "Given device 路径 list 应not be  or contains null.";
-  public static final String EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084 = "You 应specify either 节点Urls or (host + rpcPort), but 不both";
-  public static final String LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B = "无法put values for measurement {}, type={}";
-  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s 不是supported.";
-  public static final String LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7 = "无法change back sql_dialect by executing: set sql_dialect={}";
-  public static final String LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA = "无法change back 数据库 by executing: use {}";
-  public static final String LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A = "the 会话Pool has wait for {} seconds to get a new 连接: {} with {}";
-  public static final String LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E = "当前occupied size {}, queue size {}, considered size {} ";
-  public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "retry to execute statement on %s 失败 %d times: %s";
-  public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "会话Pool doesn't support executing %s directly";
+      "所有值均为 null，本次提交被忽略，deviceId 为 [{}]，time 为 [{}]，measurements 为 [{}]";
+  public static final String EXCEPTION_DEVICEIDS_TIMES_MEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_EC87D88B = "deviceIds、times、measurementsList 和 valuesList 的大小应相等";
+  public static final String EXCEPTION_PREFIXPATHS_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_1465011C = "prefixPaths、times、subMeasurementsList 和 valuesList 的大小应相等";
+  public static final String EXCEPTION_TIMES_SUBMEASUREMENTSLIST_VALUESLIST_S_SIZE_SHOULD_EQUAL_002C539A = "times、subMeasurementsList 和 valuesList 的大小应相等";
+  public static final String EXCEPTION_DIFFERENT_LENGTH_MEASUREMENTS_DATATYPES_ENCODINGS_ED354A24 = "measurements、datatypes、encodings 的长度不同 ";
+  public static final String EXCEPTION_COMPRESSORS_CREATE_DEVICE_TEMPLATE_BBDBB28E = "或创建设备模板时的压缩器。";
+  public static final String EXCEPTION_GIVEN_DEVICE_PATH_LIST_SHOULD_NOT_CONTAINS_NULL_E9132577 = "给定的设备路径列表不应为空，也不应包含 null。";
+  public static final String EXCEPTION_YOU_SHOULD_SPECIFY_EITHER_NODEURLS_HOST_RPCPORT_BUT_NOT_BOTH_77E7B084 = "应指定 nodeUrls 或 (host + rpcPort)，但不能同时指定";
+  public static final String LOG_CANNOT_PUT_VALUES_MEASUREMENT_ARG_TYPE_ARG_27AFC67B = "无法写入测点 {} 的值，类型={}";
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
+  public static final String LOG_FAILED_CHANGE_BACK_SQL_DIALECT_EXECUTING_SET_SQL_DIALECT_ARG_947F35E7 = "执行 set sql_dialect={} 时无法切回 sql_dialect";
+  public static final String LOG_FAILED_CHANGE_BACK_DATABASE_EXECUTING_USE_ARG_274541CA = "执行 use {} 时无法切回数据库";
+  public static final String LOG_SESSIONPOOL_HAS_WAIT_ARG_SECONDS_GET_NEW_CONNECTION_ARG_ARG_D053274A = "SessionPool 已等待 {} 秒以获取新连接：{}，参数 {}";
+  public static final String LOG_CURRENT_OCCUPIED_SIZE_ARG_QUEUE_SIZE_ARG_CONSIDERED_SIZE_ARG_DE97C14E = "当前已占用大小 {}，队列大小 {}，纳入计算的大小 {} ";
+  public static final String EXCEPTION_RETRY_EXECUTE_STATEMENT_ARG_FAILED_ARG_TIMES_ARG_216C6873 = "在 %s 上重试执行语句失败 %d 次：%s";
+  public static final String EXCEPTION_SESSIONPOOL_DOESN_T_SUPPORT_EXECUTING_ARG_DIRECTLY_B778F701 = "SessionPool 不支持直接执行 %s";
 
 }

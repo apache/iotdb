@@ -602,14 +602,13 @@ public final class DataNodeSchemaMessages {
   // 补充日志消息
   // ---------------------------------------------------------------------------
   public static final String SCHEMA_LOG_FLUSHING_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_IMMUTABLE_7B7CD373 =
-      "Flushing/Working MemTable - add 当前query context to immutable TVList's query list";
+      "Flushing/Working MemTable - 将当前查询上下文添加到 immutable TVList 的查询列表";
   public static final String SCHEMA_LOG_FLUSHING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_BEB0D766 =
-      "Flushing MemTable - add 当前query context to mutable TVList's query list";
+      "Flushing MemTable - 将当前查询上下文添加到 mutable TVList 的查询列表";
   public static final String SCHEMA_LOG_WORKING_MEMTABLE_ADD_CURRENT_QUERY_CONTEXT_TO_MUTABLE_TVLIST_8C937414 =
-      "Working MemTable - add 当前query context to mutable TVList's query list when it's sorted or "
-          + "no other query on it";
+      "Working MemTable - 当其已排序或没有其他查询时，将当前查询上下文添加到 mutable TVList 的查询列表";
   public static final String SCHEMA_LOG_WORKING_MEMTABLE_CLONE_MUTABLE_TVLIST_AND_REPLACE_OLD_TVLIST_FD1EAE22 =
-      "Working MemTable - clone mutable TVList and replace old TVList in working MemTable";
+      "Working MemTable - 克隆 mutable TVList 并替换 working MemTable 中的旧 TVList";
   public static final String PATH_DOES_NOT_START_WITH_FMT = "%s 不是以 %s 开头";
   public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
       "别名重复：%s，完整路径：%s，其他测点：%s";
@@ -638,7 +637,7 @@ public final class DataNodeSchemaMessages {
       "当前元数据容量已超过集群配额。请检查 ConfigNode 上的配置，或删除一些已有的 %s 以满足配额限制。";
   public static final String DATABASE_QUOTA_EXCEEDED_FMT =
       "当前数据库数量已超过集群配额。集群允许的最大数据库数量为 %d，请检查 ConfigNode 上的 "
-          + "database_limit_threshold 配置，或删除一些已有 database 以满足配额限制。";
+          + "database_limit_threshold 配置，或删除一些已有数据库以满足配额限制。";
   public static final String SERIES_OVERFLOW_FMT =
       "未使用设备模板的内存时间序列过多（当前内存：%s，序列数量：%s）。为优化内存，当设备具有相同时间序列时，更推荐使用设备模板。";
   public static final String ILLEGAL_PARAMETER_FAILED_CREATE_TIMESERIES_FMT =
@@ -652,7 +651,7 @@ public final class DataNodeSchemaMessages {
       "时间序列 [%s] 不存在或不是由设备模板表示";
   public static final String VIEW_NOT_EXIST_WRONG_MESSAGE = "视图 [%s] 不存在";
   public static final String PATH_LIST_ELLIPSIS_SEPARATOR = " ... ";
-  public static final String REGISTERED_TYPE_STRING = "registered type";
+  public static final String REGISTERED_TYPE_STRING = "注册类型";
   public static final String NULL_VALUE = "null";
   public static final String DATA_TYPE_MISMATCH_REGISTERED_TYPE_FMT =
       "%s.%s 的数据类型不一致，%s %s，插入类型 %s，时间戳 %s，值 %s";
@@ -660,7 +659,7 @@ public final class DataNodeSchemaMessages {
       "%s.%s 的数据类型和值不一致，插入类型 %s，时间戳 %s，值 %s";
   public static final String SCHEMA_DIR_CREATION_FAILED_FMT =
       "创建数据库 schema 文件夹 %s 失败。";
-  public static final String MNODE_NOT_PINNED = "MNode 尚未被 pinned。";
+  public static final String MNODE_NOT_PINNED = "MNode 尚未被固定。";
   public static final String MNODE_NOT_CACHED = "MNode 尚未被缓存或已被淘汰。";
   public static final String TEMPLATE_IS_IN_USE_ON_FMT = "模板正在 %s 上使用";
   public static final String CANNOT_CREATE_TIMESERIES_TEMPLATE_SET_FMT =

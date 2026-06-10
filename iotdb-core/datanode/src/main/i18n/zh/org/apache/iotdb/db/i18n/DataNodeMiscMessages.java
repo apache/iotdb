@@ -37,45 +37,45 @@ public final class DataNodeMiscMessages {
   public static final String REMOVE_PEER_FOR_REGION_SUCCEED =
       "removePeer %s for region %s 成功";
   public static final String DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED =
-      "deletePeer 从共识组 %s成功";
+      "从共识组 %s 删除 peer 成功";
   public static final String DELETE_REGION_ERROR =
       "deleteRegion %s 错误，%s";
   public static final String DELETE_REGION_SUCCEED =
       "deleteRegion %s 成功";
   public static final String START_TO_ADD_PEER_FOR_REGION =
-      "{}, 开始添加 addPeer {} 到 region {}";
+      "{}, 开始将 addPeer {} 添加到 region {}";
   public static final String EXECUTED_ADD_PEER_FOR_REGION_ERROR =
-      "{}, 执行 addPeer {} for region {} 出错";
+      "{}, 执行 addPeer {} 于 region {} 时出错";
   public static final String REGION_MIGRATE_UNEXPECTED_EXCEPTION =
       "发生意外异常";
   public static final String ADD_PEER_FOR_REGION_ERROR_FMT =
       "%s, 为 region 执行 AddPeer 出错，peerId：%s，regionId：%s";
   public static final String SUCCEED_TO_ADD_PEER_FOR_REGION =
-      "{}, 成功添加 addPeer {} 到 region {}";
+      "{}, 成功将 addPeer {} 添加到 region {}";
   public static final String START_TO_REMOVE_PEER_FOR_REGION =
-      "{}, 开始移除 removePeer {} from region {}";
+      "{}, 开始执行 removePeer {}，目标 region {}";
   public static final String EXECUTED_REMOVE_PEER_FOR_REGION_ERROR_RETRY_TIMES =
-      "{}, 执行 removePeer {} for region {} 出错，重试次数：{}";
+      "{}, 执行 removePeer {} 于 region {} 时出错，重试次数：{}";
   public static final String REMOVE_PEER_FOR_REGION_ERROR_AFTER_MAX_RETRY_TIMES_FMT =
       "%s, 为 region 执行 RemovePeer 达到最大重试次数后仍出错，peerId：%s，regionId：%s";
   public static final String SUCCEED_TO_REMOVE_PEER_FOR_REGION =
-      "{}, 成功移除 removePeer {} from region {}";
+      "{}, 成功移除 removePeer {}，region {}";
   public static final String START_TO_DELETE_PEER_FOR_REGION =
-      "{}, 开始删除 deletePeer {} for region {}";
+      "{}, 开始执行 deletePeer {}，region {}";
   public static final String DELETE_PEER_ERROR_WITH_ERROR_MESSAGE_FMT =
       "deletePeer 出错，regionId：%s，错误信息：%s";
   public static final String DELETE_PEER_ERROR_WITH_REGION_ID =
       "{}, deletePeer 出错，regionId：{}";
   public static final String DELETE_PEER_FOR_REGION_ERROR_EXCEPTION_FMT =
-      "deletePeer for region：%s 出错，异常：%s";
+      "deletePeer 于 region：%s 出错，异常：%s";
   public static final String SUCCEED_TO_DELETE_PEER_FROM_CONSENSUS_GROUP =
       "{}, 成功从共识组删除 deletePeer {}";
   public static final String START_TO_DELETE_REGION_FOR_DATANODE =
-      "{}, 开始删除 deleteRegion {} for datanode {}";
+      "{}, 开始删除 deleteRegion {}，DataNode {}";
   public static final String DELETE_REGION_ERROR_LOG =
       "{}, deleteRegion {} 出错";
   public static final String SUCCEED_TO_DELETE_REGION =
-      "{}, 成功 deleteRegion {}";
+      "{}, deleteRegion {} 成功";
   public static final String ERROR_PROCESSING_DATA_REGION =
       "处理数据 region 出错：{}";
   public static final String FAILED_TO_PROCESS_TSFILE =
@@ -1036,332 +1036,308 @@ public final class DataNodeMiscMessages {
   // 补充日志消息
   // ---------------------------------------------------------------------------
   public static final String MISC_LOG_DELAYANALYZER_CALCULATED_SAFE_WATERMARK_CURRENTTIME_P_DELAY_74E1214C =
-      "[DelayAnalyzer] Calculated safe watermark：{} (currentTime：{}, P{} delay：{}ms)";
+      "[DelayAnalyzer] 已计算安全水位线：{}（当前时间：{}，P{} 延迟：{}ms）";
   public static final String MISC_LOG_LOGIN_LOCK_MANAGER_INITIALIZED_WITH_IP_LEVEL_ATTEMPTS_USER_57AE7966 =
-      "Login lock manager initialized with：IP-level attempts={}, User-level attempts={}, Lock "
-          + "time={} minutes";
+      "登录锁管理器已初始化：IP 级尝试次数={}，用户级尝试次数={}，锁定时间={} 分钟";
   public static final String MISC_LOG_USER_ID_LOCKED_DUE_TO_FAILED_ATTEMPTS_743CFB3A =
-      "User ID '{}' locked 由于{} failed attempts";
+      "用户 ID '{}' 因连续失败 {} 次而被锁定";
   public static final String MISC_LOG_USER_LEVEL_ATTEMPTS_AUTO_ENABLED_WITH_DEFAULT_1000_BECAUSE_FAB86B7D =
-      "User-level attempts auto-enabled with default 1000 原因：IP-level 是enabled (set to {})";
+      "用户级尝试次数已自动启用并使用默认值 1000，因为 IP 级已启用（设置为 {}）";
   public static final String MISC_LOG_INVALID_LOCK_TIME_VALUE_RESET_TO_DEFAULT_10_MINUTES_8DCE21EF =
-      "无效的lock time value ({}), reset to default (10 minutes)";
+      "无效的锁定时间值（{}），重置为默认值（10 分钟）";
   public static final String MISC_LOG_SUCCESSFULLY_WAITED_FOR_PIPE_TO_FINISH_FBDF5157 =
-      "成功waited for pipe {} to finish.";
+      "已成功等待 Pipe {} 完成。";
   public static final String MISC_LOG_DATANODE_EXITS_JVM_MEMORY_USAGE_BE69D1F5 =
-      "DataNode exits. Jvm 内存 usage：{}";
+      "DataNode 退出。JVM 内存使用情况：{}";
   public static final String MISC_LOG_FAILED_TO_REPORT_DATANODE_S_SHUTDOWN_TO_CONFIGNODE_THE_CLUSTER_E6727497 =
-      "无法report DataNode's shutdown to ConfigNode. The cluster 将still take the 当前DataNode as "
-          + "Running for a few seconds.";
+      "无法向 ConfigNode 上报 DataNode 关闭状态。集群在接下来的几秒内仍会将当前 DataNode 视为 Running。";
   public static final String MISC_LOG_SOMETHING_WRONG_HAPPENED_WHILE_CALLING_CONSENSUS_LAYER_S_8B8FBB16 =
-      "Something wrong happened while calling consensus layer's triggerSnapshot API.";
+      "调用共识层的 triggerSnapshot API 时发生错误。";
   public static final String MISC_LOG_THE_ADDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_4D398F73 =
-      "{} The AddRegionPeer任务 {} has already been submitted and 将not be submitted again.";
+      "{} AddRegionPeerTask {} 已提交，不会重复提交。";
   public static final String MISC_LOG_THE_REMOVEREGIONPEER_HAS_ALREADY_BEEN_SUBMITTED_AND_WILL_6754D9FB =
-      "{} The RemoveRegionPeer {} has already been submitted and 将not be submitted again.";
+      "{} RemoveRegionPeer {} 已提交，不会重复提交。";
   public static final String MISC_LOG_THE_DELETEOLDREGIONPEERTASK_HAS_ALREADY_BEEN_SUBMITTED_AND_75815D37 =
-      "{} The DeleteOldRegionPeer任务 {} has already been submitted and 将not be submitted again.";
+      "{} DeleteOldRegionPeerTask {} 已提交，不会重复提交。";
   public static final String MISC_LOG_RESET_PEER_LIST_FAIL_THIS_DATANODE_NOT_CONTAINS_PEER_OF_6539945C =
-      "Reset peer list fail, th是DataNode not contains peer of consensus group {}. Maybe caused by "
-          + "创建local peer failure.";
+      "重置 peer 列表失败，该 DataNode 不包含共识组 {} 的 peer，可能是创建本地 peer 失败导致。";
   public static final String MISC_LOG_SUBMIT_ADDREGIONPEERTASK_ERROR_FOR_REGION_4E999BA9 =
-      "{}, Submit AddRegionPeer任务 error for Region：{}";
+      "{}, 提交 AddRegionPeerTask 失败，Region：{}";
   public static final String MISC_LOG_SUBMIT_REMOVEREGIONPEER_TASK_ERROR_FOR_REGION_200E7F68 =
-      "{}, Submit RemoveRegionPeer 任务 error for Region：{}";
+      "{}, 提交 RemoveRegionPeer 任务失败，Region：{}";
   public static final String MISC_LOG_SUBMIT_DELETEOLDREGIONPEERTASK_ERROR_FOR_REGION_460C308A =
-      "{}, Submit DeleteOldRegionPeer任务 error for Region：{}";
-  public static final String MISC_LOG_GET_TRIGGER_EXECUTOR_1727D243 = "get trigger executor：{}";
+      "{}, 提交 DeleteOldRegionPeerTask 失败，Region：{}";
+  public static final String MISC_LOG_GET_TRIGGER_EXECUTOR_1727D243 = "获取触发器执行器：{}";
   public static final String MISC_LOG_SUCCESSFULLY_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_C8E04BF8 =
-      "成功pull system configurations from ConfigNode-leader, which takes {} ms";
+      "成功从 ConfigNode-leader 拉取系统配置，耗时 {} ms";
   public static final String MISC_LOG_SUCCESSFULLY_REGISTER_TO_THE_CLUSTER_WHICH_TAKES_MS_ED479CA7 =
-      "成功注册to the cluster：{} , which takes {} ms.";
+      "成功注册到集群：{}，耗时 {} ms。";
   public static final String MISC_LOG_RESTART_REQUEST_TO_CLUSTER_IS_ACCEPTED_WHICH_TAKES_MS_E8305E02 =
-      "Restart 请求 to cluster：{} 是accepted, which takes {} ms.";
+      "向集群发送的重启请求已被接受：{}，耗时 {} ms。";
   public static final String MISC_LOG_SCHEMAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_3D1B8523 =
-      "SchemaRegion consensus start 成功, which takes {} ms.";
+      "SchemaRegion 共识启动成功，耗时 {} ms。";
   public static final String MISC_LOG_DATAREGION_CONSENSUS_START_SUCCESSFULLY_WHICH_TAKES_MS_2B2DB4CB =
-      "DataRegion consensus start 成功, which takes {} ms.";
+      "DataRegion 共识启动成功，耗时 {} ms。";
   public static final String MISC_LOG_IOTDB_DATANODE_IS_SETTING_UP_SOME_DATABASES_MAY_NOT_BE_READY_961523F0 =
-      "IoTDB DataNode 是setting up, some 数据库s may not be ready now, please wait several seconds。.";
+      "IoTDB DataNode 正在初始化，部分数据库可能尚未就绪，请等待几秒。";
   public static final String MISC_LOG_SUCCESSFULLY_REGISTERED_ALL_THE_TRIGGERS_WHICH_TAKES_MS_246178BB =
-      "成功 已注册 all the triggers, which takes {} ms.";
+      "成功注册所有 trigger，耗时 {} ms。";
   public static final String MISC_LOG_PREPARE_EXTERNAL_SERVICE_RESOURCES_SUCCESSFULLY_WHICH_TAKES_00E62CB0 =
-      "Prep是external-service resources 成功, which takes {} ms.";
+      "成功准备 external-service 资源，耗时 {} ms。";
   public static final String MISC_LOG_CANNOT_SEND_RESTART_REQUEST_TO_THE_CONFIGNODE_LEADER_BECAUSE_AB17D41A =
-      "无法send restart 请求 to the ConfigNode-leader, 原因： {}";
+      "无法向 ConfigNode-leader 发送重启请求，原因：{}";
   public static final String MISC_LOG_CANNOT_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_LEADER_FE630DAE =
-      "无法pull system configurations from ConfigNode-leader after {} retries.";
+      "重试 {} 次后仍无法从 ConfigNode-leader 拉取系统配置。";
   public static final String MISC_LOG_CANNOT_SEND_RESTART_DATANODE_REQUEST_TO_CONFIGNODE_LEADER_4F50C19F =
-      "无法send restart DataNode 请求 to ConfigNode-leader after {} retries.";
+      "重试 {} 次后仍无法向 ConfigNode-leader 发送重启 DataNode 请求。";
   public static final String MISC_LOG_TOTALLY_FIND_TSFILES_TO_BE_SETTLED_DB47A63C =
-      "Totally find {} ts文件s to be settled.";
+      "共找到 {} 个待 settle 的 TsFile。";
   public static final String MISC_LOG_SYSTEM_PROPERTIES_FILE_HAS_BEEN_MOVED_SUCCESSFULLY_4445A448 =
-      "system.properties 文件 已moved 成功：{} -> {}";
+      "system.properties 文件已成功移动：{} -> {}";
   public static final String MISC_LOG_SERIALIZE_MUTABLE_SYSTEM_PROPERTIES_SUCCESSFULLY_WHICH_TAKES_4656A206 =
-      "序列化mutable system properties 成功, which takes {} ms.";
+      "成功序列化 mutable system properties，耗时 {} ms。";
   public static final String MISC_LOG_SYSTEMPROPERTIES_NORMALIZE_FROM_TO_FOR_COMPATIBILITY_BE1C725F =
-      "[SystemProperties] Normalize {} from {} to {} for compatibility.";
+      "[SystemProperties] 为兼容性将 {} 从 {} 规范化为 {}。";
   public static final String MISC_LOG_DO_NOT_UPGRADE_IOTDB_FROM_V0_9_OR_LOWER_VERSION_TO_V1_0_9878EC88 =
-      "DO NOT UPGRADE IoTDB from v0.9 or lower version to v1.0! Please upgrade to v0.10 first";
+      "请勿将 IoTDB 从 v0.9 或更低版本直接升级到 v1.0！请先升级到 v0.10";
   public static final String MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE =
-      "无法find IOTDB_HOME or IOTDB_CONF environment variable when loading config 文件 {}, use default "
-          + "configuration";
+      "加载配置文件 {} 时找不到 IOTDB_HOME 或 IOTDB_CONF 环境变量，使用默认配置";
   public static final String MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103 =
-      "无法加载the configuration {} from any of the known sources.";
+      "无法从任何已知来源加载配置 {}。";
   public static final String MISC_LOG_THE_PARAMETER_DN_MAX_CONNECTION_FOR_INTERNAL_SERVICE_IS_D2F24BEB =
-      "The parameter dn_max_连接_for_internal_service 是out of date. Please rename it to "
-          + "dn_max_client_count_for_each_node_in_client_manager.";
+      "参数 dn_max_connection_for_internal_service 已过期。请将其重命名为 "
+          + "dn_max_client_count_for_each_node_in_client_manager。";
   public static final String MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B =
-      "partition_table_recover_worker_num should be greater than 0, but 当前value 是{}, ignore that "
-          + "and use the default value {}";
+      "partition_table_recover_worker_num 应大于 0，但当前值为 {}，忽略该值并使用默认值 {}";
   public static final String MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MEGABYTES_PER_SECOND_SHOULD_42BCDFBC =
-      "partition_table_recover_max_read_megabytes_per_second should be greater than 0, but 当前value "
-          + "是{}, ignore that and use the default value {}";
+      "partition_table_recover_max_read_megabytes_per_second 应大于 0，但当前值为 {}，忽略该值并使用默认值 {}";
   public static final String MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7 =
-      "The throttle threshold params：{} 是deprecated, please use {}";
+      "throttle threshold 参数 {} 已废弃，请使用 {}";
   public static final String MISC_LOG_FAILED_TO_PARSE_QUERY_SAMPLE_THROUGHPUT_BYTES_PER_SEC_TO_00144244 =
-      "无法parse query_sample_throughput_bytes_per_sec {} to integer";
+      "无法将 query_sample_throughput_bytes_per_sec {} 解析为整数";
   public static final String MISC_LOG_THE_PARAMETER_DN_TARGET_CONFIG_NODE_LIST_HAS_BEEN_ABANDONED_6C0DE50B =
-      "The parameter dn_target_config_node_list 已abandoned, only the first ConfigNode address 将be "
-          + "used to join in the cluster. Please use dn_seed_config_node instead.";
+      "参数 dn_target_config_node_list 已废弃，仅会使用第一个 ConfigNode 地址加入集群。请改用 "
+          + "dn_seed_config_node。";
   public static final String MISC_LOG_FAILED_TO_RELOAD_PROPERTIES_FROM_REJECT_DATANODE_STARTUP_74E66EEC =
-      "无法re加载properties from {}, reject DataNode startup.";
+      "无法从 {} 重新加载 properties，拒绝启动 DataNode。";
   public static final String MISC_LOG_CONFIGNODES_ARE_SET_IN_WRONG_FORMAT_PLEASE_SET_THEM_LIKE_18E97679 =
-      "ConfigNodes 是set in wrong format, please set them like 127.0.0.1:10710";
+      "ConfigNodes 格式错误，请按 127.0.0.1:10710 的格式设置";
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORWRITE_B90EC7D9 =
-      "initial allocate内存For写入= {}";
+      "初始 allocateMemoryForWrite = {}";
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORREAD_07FB30F0 =
-      "initial allocate内存For读取= {}";
+      "初始 allocateMemoryForRead = {}";
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORSCHEMA_965D4CE3 =
-      "initial allocate内存ForSchema = {}";
+      "初始 allocateMemoryForSchema = {}";
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORCONSENSUS_18B40138 =
-      "initial allocate内存ForConsensus = {}";
+      "初始 allocateMemoryForConsensus = {}";
   public static final String MISC_LOG_INITIAL_ALLOCATEMEMORYFORPIPE_616F9713 =
-      "initial allocate内存ForPipe = {}";
+      "初始 allocateMemoryForPipe = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORSCHEMAREGION_3BE141E8 =
-      "allocate内存ForSchemaRegion = {}";
+      "分配 allocateMemoryForSchemaRegion = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORSCHEMACACHE_61BFCE7D =
-      "allocate内存ForSchemaCache = {}";
+      "分配 allocateMemoryForSchemaCache = {}";
   public static final String MISC_LOG_ALLOCATEMEMORYFORPARTITIONCACHE_809AA695 =
-      "allocate内存ForPartitionCache = {}";
+      "分配 allocateMemoryForPartitionCache = {}";
   public static final String MISC_LOG_THE_PARAMETER_STORAGE_QUERY_SCHEMA_CONSENSUS_FREE_MEMORY_51C9A377 =
-      "The parameter storage_query_schema_consensus_free_内存_proportion 是deprecated since v1.2.3, "
-          + "please use datanode_内存_proportion instead.";
+      "参数 storage_query_schema_consensus_free_memory_proportion 自 v1.2.3 起已废弃，请改用 "
+          + "datanode_memory_proportion。";
   public static final String MISC_LOG_THE_SUM_OF_REJECT_PROPORTION_WAL_BUFFER_QUEUE_PROPORTION_185B1C49 =
-      "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion "
-          + "是too large, use default values 0.8, 0.1 and 0.05.";
+      "reject_proportion、wal_buffer_queue_proportion 和 device_path_cache_proportion 的总和过大，使用默认值 "
+          + "0.8、0.1 和 0.05。";
   public static final String MISC_LOG_THE_VALUE_OF_STORAGE_ENGINE_MEMORY_PROPORTION_IS_ILLEGAL_22CA9433 =
-      "The value of storage_engine_内存_proportion 是illegal, use default value 8:2。";
+      "storage_engine_memory_proportion 的值非法，使用默认值 8:2。";
   public static final String MISC_LOG_THE_VALUE_OF_WRITE_MEMORY_PROPORTION_IS_ILLEGAL_USE_DEFAULT_EE4FA112 =
-      "The value of write_内存_proportion 是illegal, use default value 19:1。";
+      "write_memory_proportion 的值非法，使用默认值 19:1。";
   public static final String MISC_LOG_SET_LOADTSFILESPILTPARTITIONMAXSIZE_FROM_TO_560BA8F7 =
-      "Set loadTs文件SpiltPartitionMaxSize from {} to {}";
+      "将 loadTsFileSpiltPartitionMaxSize 从 {} 设置为 {}";
   public static final String MISC_LOG_LOADTSFILESTATEMENTSPLITTHRESHOLD_CHANGED_FROM_TO_1CB90529 =
-      "loadTs文件StatementSplitThreshold changed from {} to {}";
+      "loadTsFileStatementSplitThreshold 已从 {} 改为 {}";
   public static final String MISC_LOG_LOADTSFILESUBSTATEMENTBATCHSIZE_CHANGED_FROM_TO_D4EF3D07 =
-      "loadTs文件SubStatementBatchSize changed from {} to {}";
+      "loadTsFileSubStatementBatchSize 已从 {} 改为 {}";
   public static final String MISC_LOG_CANNOT_FIND_GIVEN_DIRECTORY_STRATEGY_USING_THE_DEFAULT_VALUE_7997B145 =
-      "无法find given 目录 strategy {}, using the default value";
+      "找不到指定的目录策略 {}，使用默认值";
   public static final String MISC_LOG_CONFIG_PROPERTY_BOOLEAN_STRING_INFER_TYPE_CAN_ONLY_BE_BOOLEAN_2FA3AFC5 =
-      "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but 是{}";
+      "配置项 boolean_string_infer_type 只能是 BOOLEAN 或 TEXT，实际为 {}";
   public static final String MISC_LOG_CONFIG_PROPERTY_FLOATING_STRING_INFER_TYPE_CAN_ONLY_BE_FLOAT_8041EAC4 =
-      "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but 是{}";
+      "配置项 floating_string_infer_type 只能是 FLOAT、DOUBLE 或 TEXT，实际为 {}";
   public static final String MISC_LOG_CONFIG_PROPERTY_NAN_STRING_INFER_TYPE_CAN_ONLY_BE_FLOAT_61F60E0E =
-      "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but 是{}";
+      "配置项 nan_string_infer_type 只能是 FLOAT、DOUBLE 或 TEXT，实际为 {}";
   public static final String MISC_LOG_ILLEGAL_DEFAULTDATABASELEVEL_SHOULD_1_USE_DEFAULT_VALUE_97F43732 =
-      "非法的default数据库Level：{}, should >= 1, use default value 1";
+      "非法的 defaultDatabaseLevel：{}，应 >= 1，使用默认值 1";
   public static final String MISC_LOG_INVALID_LOADTSFILESTATEMENTSPLITTHRESHOLD_VALUE_USING_DEFAULT_45EA7FBF =
-      "无效的loadTs文件StatementSplitThreshold value：{}. Using default value：10";
+      "无效的 loadTsFileStatementSplitThreshold 值：{}。使用默认值：10";
   public static final String MISC_LOG_INVALID_LOADTSFILESUBSTATEMENTBATCHSIZE_VALUE_USING_DEFAULT_5C285109 =
-      "无效的loadTs文件SubStatementBatchSize value：{}. Using default value：10";
+      "无效的 loadTsFileSubStatementBatchSize 值：{}。使用默认值：10";
   public static final String MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_CONNECTION_B0FC4929 =
-      "无法update the value of metric 原因：of 连接 failure, 原因：";
+      "因连接失败无法更新 metric 值，原因：";
   public static final String MISC_LOG_FAILED_TO_UPDATE_THE_VALUE_OF_METRIC_BECAUSE_OF_INTERNAL_E5C64806 =
-      "无法update the value of metric 原因：of internal error, 原因：";
+      "因内部错误无法更新 metric 值，原因：";
   public static final String MISC_LOG_FAILED_TO_STOP_EXTERNAL_SERVICE_S_BECAUSE_S_IT_WILL_BE_DROP_B2909C1E =
-      "无法停止External Service %s 原因：%s. It 将be drop forcedly";
+      "无法停止 External Service %s，原因：%s。将强制丢弃该服务";
   public static final String MISC_LOG_CHANGEREGIONLEADER_START_CHANGE_THE_LEADER_OF_REGIONGROUP_248A99AD =
-      "[ChangeRegionLeader] 开始change the leader of RegionGroup：{} to DataNode：{}";
+      "[ChangeRegionLeader] 开始将 RegionGroup：{} 的 leader 切换到 DataNode：{}";
   public static final String MISC_LOG_SUCCESSFULLY_SUBMIT_ADDREGIONPEER_TASK_FOR_REGION_TARGET_64183781 =
-      "成功submit addRegionPeer 任务 for Region：{}, target DataNode：{}";
+      "成功提交 addRegionPeer 任务，Region：{}，目标 DataNode：{}";
   public static final String MISC_LOG_SUCCESSFULLY_SUBMIT_REMOVEREGIONPEER_TASK_FOR_REGION_DATANODE_9B74B948 =
-      "成功submit removeRegionPeer 任务 for Region：{}, DataNode to be 已移除：{}";
+      "成功提交 removeRegionPeer 任务，Region：{}，待移除 DataNode：{}";
   public static final String MISC_LOG_SUCCESSFULLY_SUBMIT_DELETEOLDREGIONPEER_TASK_FOR_REGION_3F3BB495 =
-      "成功submit deleteOldRegionPeer 任务 for Region：{}, DataNode to be 已移除：{}";
+      "成功提交 deleteOldRegionPeer 任务，Region：{}，待移除 DataNode：{}";
   public static final String MISC_LOG_START_TO_CREATENEWREGIONPEER_TO_REGION_6DCE04AD =
-      "{}, 开始createNewRegionPeer {} to Region {}";
+      "{}, 开始创建 createNewRegionPeer {}，目标 Region {}";
   public static final String MISC_LOG_SUCCEED_TO_CREATENEWREGIONPEER_FOR_REGION_FDF176E3 =
-      "{}, Succeed to createNewRegionPeer {} for Region {}";
+      "{}, createNewRegionPeer {} 创建成功，Region {}";
   public static final String MISC_LOG_EXECUTING_SYSTEM_EXIT_0_IN_STOPANDCLEARDATANODE_RPC_METHOD_647927C6 =
-      "Executing system.exit(0) in stopAndClearDataNode RPC method after 30 seconds";
+      "stopAndClearDataNode RPC 方法将在 30 秒后执行 system.exit(0)";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_PULLING_COMMIT_PROGRESS_48C12E4B =
-      "在以下过程发生错误：pulling commit progress";
+      "拉取提交进度时发生错误";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_RECEIVING_SUBSCRIPTION_PROGRESS_BROADCAST_94B2CF10 =
-      "在以下过程发生错误：receiving subscription progress broadcast";
+      "接收订阅进度广播时发生错误";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_PUSHING_SUBSCRIPTION_RUNTIME_STATE_D4E71CE3 =
-      "在以下过程发生错误：pushing subscription runtime state";
+      "推送订阅运行时状态时发生错误";
   public static final String MISC_LOG_FAILED_TO_PROCESS_CONSENSUS_SUBSCRIPTION_ROUTE_UPDATE_80D73E2B =
-      "无法process consensus subscription route update";
+      "处理共识订阅路由更新失败";
   public static final String MISC_LOG_THE_AVAILABLE_DISK_SPACE_IS_THE_TOTAL_DISK_SPACE_IS_AND_4506856F =
-      "The available disk space 是：{}, the total disk space 是：{}, and the remaining disk usage "
-          + "ratio：{} 是less than disk_space_warning_threshold：{}, set system to readonly!";
+      "可用磁盘空间：{}，总磁盘空间：{}，剩余磁盘使用率：{} 小于 disk_space_warning_threshold：{}，系统将设置为只读！";
   public static final String MISC_LOG_CHANGEREGIONLEADER_FAILED_TO_CHANGE_THE_LEADER_OF_REGIONGROUP_F1A1DC14 =
-      "[ChangeRegionLeader] 无法change the leader of RegionGroup：{}";
+      "[ChangeRegionLeader] 切换 RegionGroup：{} 的 leader 失败";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_CREATING_TRIGGER_INSTANCE_FOR_TRIGGER_5A8F8890 =
-      "在以下过程发生错误：creating trigger instance for trigger：{}. The cause 是{}.";
+      "创建 trigger：{} 的 trigger instance 时发生错误。原因：{}。";
   public static final String MISC_LOG_ERROR_OCCURRED_DURING_ACTIVE_TRIGGER_INSTANCE_FOR_TRIGGER_7731ECF2 =
-      "在以下过程发生错误：active trigger instance for trigger：{}. The cause 是{}.";
+      "激活 trigger：{} 的 trigger instance 时发生错误。原因：{}。";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_TRY_TO_INACTIVE_TRIGGER_INSTANCE_FOR_FA93D7E7 =
-      "在以下过程发生错误：try to inactive trigger instance for trigger：{}. The cause 是{}. ";
+      "停用 trigger：{} 的 trigger instance 时发生错误。原因：{}。 ";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_DROPPING_TRIGGER_INSTANCE_FOR_TRIGGER_23B94EBE =
-      "在以下过程发生错误：dropping trigger instance for trigger：{}. The cause 是{}.";
+      "删除 trigger：{} 的 trigger instance 时发生错误。原因：{}。";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_UPDATING_LOCATION_FOR_TRIGGER_THE_CAUSE_1C076D98 =
-      "在以下过程发生错误：updating Location for trigger：{}. The cause 是{}.";
+      "更新 trigger：{} 的 Location 时发生错误。原因：{}。";
   public static final String MISC_LOG_CREATENEWREGIONPEER_ERROR_PEERS_REGIONID_ERRORMESSAGE_2EDAE3C8 =
-      "{}, CreateNewRegionPeer error, peers：{}, RegionId：{}, errorMessage";
+      "{}, CreateNewRegionPeer 出错，peers：{}，RegionId：{}，错误信息";
   public static final String MISC_LOG_FAILED_TO_SERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_FOR_2EFDD270 =
-      "无法序列化数据库ScopedDataPartitionTable for 数据库：{}";
+      "无法序列化数据库 {} 的 DatabaseScopedDataPartitionTable";
   public static final String MISC_LOG_ERROR_OCCURRED_WHEN_TRYING_TO_FIRE_TRIGGER_ON_TENDPOINT_BFCBA56E =
-      "在以下过程发生错误：trying to fire trigger({}) on TEndPoint：{}, the cause is：{}";
+      "尝试触发 trigger({}) 到 TEndPoint：{} 时发生错误，原因：{}";
   public static final String MISC_LOG_FAILED_TO_UPDATE_LOCATION_OF_STATEFUL_TRIGGER_THROUGH_CONFIG_E6777439 =
-      "无法update location of stateful trigger({}) through config node. The cause 是{}.";
+      "无法通过 config node 更新 stateful trigger({}) 的 location。原因：{}。";
   public static final String MISC_LOG_TRIGGER_WAS_FIRED_WITH_WRONG_EVENT_43D89454 =
-      "Trigger {} was fired with wrong event {}";
-  public static final String MISC_LOG_DOES_NOT_EXIST_SKIP_IT_EFB94454 = "{} 不存在 ,skip it.";
+      "Trigger {} 触发了错误的事件 {}";
+  public static final String MISC_LOG_DOES_NOT_EXIST_SKIP_IT_EFB94454 = "{} 不存在，跳过。";
   public static final String MISC_LOG_ERROR_WHEN_PARSE_TAG_AND_ATTRIBUTES_FILE_OF_NODE_PATH_D1492217 =
-      "Error when parse tag and attributes 文件 of node path {}";
+      "解析节点路径 {} 的 tag 和 attributes 文件时发生错误";
   public static final String MISC_LOG_TOTALLY_FIND_TSFILES_TO_BE_SETTLED_INCLUDING_TSFILES_TO_522BCA28 =
-      "Totally find {} ts文件s to be settled, including {} ts文件s to be 已恢复.";
+      "共找到 {} 个待 settle 的 TsFile，其中 {} 个待恢复。";
   public static final String MISC_LOG_FINISH_SETTLING_SUCCESSFULLY_FOR_TSFILE_C8BF06D7 =
-      "Finish settling 成功 for ts文件 ：{}";
+      "TsFile {} settle 成功";
   public static final String MISC_LOG_MEET_ERROR_WHILE_SETTLING_THE_TSFILE_A3515E1A =
-      "Meet error while settling the ts文件 ：{}";
+      "settle TsFile {} 时遇到错误";
   public static final String MISC_LOG_FINISH_SETTLING_TSFILES_MEET_ERRORS_6B564B68 =
-      "Finish Settling, {} ts文件s meet errors.";
+      "settle 完成，{} 个 TsFile 遇到错误。";
   public static final String MISC_LOG_THE_TSFILE_SHOULD_BE_SEALED_WHEN_REWRITTING_8B631F6C =
-      "The ts文件 {} should be sealed when rewritting.";
+      "重写 TsFile {} 时，该文件应处于 sealed 状态。";
   public static final String MISC_LOG_MEET_ERROR_WHEN_READING_SETTLE_LOG_LOG_PATH_2B076234 =
-      "meet error when reading settle log, log path:{}";
+      "读取 settle log 时遇到错误，日志路径：{}";
 
   // ---------------------------------------------------------------------------
   // 补充异常消息
   // ---------------------------------------------------------------------------
   public static final String MISC_EXCEPTION_CANNOT_LOAD_FILE_S_BECAUSE_THE_FILE_HAS_CRASHED_6C180DF9 =
-      "无法加载文件 %s 原因：the 文件 has crashed.";
+      "无法加载文件 %s，因为该文件已损坏。";
   public static final String MISC_EXCEPTION_THE_VERSION_OF_THIS_TSFILE_IS_TOO_LOW_PLEASE_UPGRADE_IT_19CC276C =
-      "The version of this ts文件 is too low, please upgrade it to the version 4.";
+      "该 TsFile 版本过低，请升级到版本 4。";
   public static final String MISC_EXCEPTION_TSFILE_REWRITE_PROCESS_CANNOT_PROCEED_AT_POSITION_SBECAUSE_3763D32F =
-      "Ts文件 re写入process cannot proceed at position %s原因： %s";
+      "TsFile 重写流程无法在位置 %s 继续，原因：%s";
   public static final String MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4 =
-      "Data type %s is not supported.";
+      "不支持数据类型 %s。";
   public static final String MISC_EXCEPTION_WINDOW_SIZE_MUST_BE_BETWEEN_D_AND_D_GOT_D_3559BE09 =
-      "Window size must be between %d and %d, got %d";
+      "窗口大小必须在 %d 和 %d 之间，当前为 %d";
   public static final String MISC_EXCEPTION_CONFIDENCE_LEVEL_MUST_BE_BETWEEN_0_AND_1_GOT_F_2CDA358E =
-      "Confidence level must be between 0 and 1, got %f";
+      "置信度必须在 0 到 1 之间，当前为 %f";
   public static final String MISC_EXCEPTION_PERCENTILE_MUST_BE_BETWEEN_0_AND_1_GOT_F_DE6B1311 =
-      "Percentile must be between 0 and 1, got %f";
+      "百分位必须在 0 到 1 之间，当前为 %f";
   public static final String MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_A_SEQUENCE_95B4D431 =
-      "Irregular data dir structure.There should be a sequence and unsequence 目录 under the data 目录 "
-          + "%s";
+      "数据目录结构不规范。data 目录 %s 下应包含 sequence 和 unsequence 目录";
   public static final String MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATABASE_DIRECTORIES_10C36DC2 =
-      "Irregular data dir structure.There should be 数据库 directories under the sequence/unsequence "
-          + "目录 %s";
+      "数据目录结构不规范。sequence/unsequence 目录 %s 下应包含数据库目录";
   public static final String MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_DATAREGION_6BCDBFA1 =
-      "Irregular data dir structure.There should be dataRegion directories under the 数据库 目录 %s";
+      "数据目录结构不规范。数据库目录 %s 下应包含 dataRegion 目录";
   public static final String MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TIMEINTERVAL_8D074700 =
-      "Irregular data dir structure.There should be timeInterval directories under the 数据库 目录 %s";
+      "数据目录结构不规范。数据库目录 %s 下应包含 timeInterval 目录";
   public static final String MISC_EXCEPTION_IRREGULAR_DATA_DIR_STRUCTURE_THERE_SHOULD_BE_TSFILES_UNDER_6381FDA5 =
-      "Irregular data dir structure.There should be ts文件s under the timeInterval directories 目录 %s";
-  public static final String MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8 = "User %s 不存在";
+      "数据目录结构不规范。timeInterval 目录 %s 下应包含 TsFile";
+  public static final String MISC_EXCEPTION_USER_S_DOES_NOT_EXIST_0CE725D8 = "用户 %s 不存在";
   public static final String MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_AE9DBDC0 =
-      "data type is not consistent, input %s, registered %s";
+      "数据类型不一致，输入：%s，注册类型：%s";
   public static final String MISC_EXCEPTION_DATA_TYPE_IS_NOT_CONSISTENT_INPUT_S_REGISTERED_S_BECAUSE_50C4BF31 =
-      "data type is not consistent, input %s, registered %s 原因：%s";
+      "数据类型不一致，输入：%s，注册类型：%s，原因：%s";
   public static final String MISC_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC =
-      "data type %s is not supported when convert data at client";
+      "客户端转换数据时不支持数据类型 %s";
   public static final String MISC_EXCEPTION_DEVICEID_SHOULD_NOT_BE_EMPTY_IN_GETTTL_METHOD_IN_TIMEFILTERFORDEVICETTL_8A501A45 =
-      "deviceID should not be empty in getTTL method in TimeFilterForDeviceTTL";
+      "TimeFilterForDeviceTTL 的 getTTL 方法中 deviceID 不能为空";
   public static final String MISC_EXCEPTION_FAILED_TO_DECOMPRESS_COMPRESSEDBUFFER_56398D3E =
-      "无法decompress compressedBuffer";
+      "解压 compressedBuffer 失败";
   public static final String MISC_EXCEPTION_ENCODING_S_DOES_NOT_SUPPORT_S_58301155 =
-      "encoding %s does not support %s";
+      "encoding %s 不支持 %s";
   public static final String MISC_EXCEPTION_STORAGEENGINE_FAILED_TO_STOP_BECAUSE_OF_S_84D26574 =
-      "StorageEngine 无法停止原因：of %s.";
+      "StorageEngine 停止失败，原因：%s。";
   public static final String MISC_EXCEPTION_THE_FILE_LENGTH_S_IS_NOT_EQUAL_TO_THE_OFFSET_S_73905F07 =
-      "The 文件 length %s is not equal to the offset %s";
+      "文件长度 %s 不等于 offset %s";
   public static final String MISC_EXCEPTION_THE_REMOVE_DATANODE_SCRIPT_HAS_BEEN_DEPRECATED_PLEASE_CONNECT_F91DF360 =
-      "The remove-datanode script has been deprecated. Please connect to the CLI and use "
-          + "SQL：移除datanode [datanode_id].";
+      "remove-datanode 脚本已废弃。请连接 CLI 并使用 SQL：remove datanode [datanode_id]。";
   public static final String MISC_EXCEPTION_CANNOT_PULL_SYSTEM_CONFIGURATIONS_FROM_CONFIGNODE_LEADER_BAD295DC =
-      "无法pull system configurations from ConfigNode-leader. Please check whether the "
-          + "dn_seed_config_node in iotdb-system.properties is correct or alive.";
+      "无法从 ConfigNode-leader 拉取系统配置。请检查 iotdb-system.properties 中的 dn_seed_config_node 是否正确或存活。";
   public static final String MISC_EXCEPTION_CANNOT_REGISTER_INTO_THE_CLUSTER_PLEASE_CHECK_WHETHER_THE_D8B29F58 =
-      "无法register into the cluster. Please check whether the dn_seed_config_node in "
-          + "iotdb-system.properties is correct or alive.";
+      "无法注册到集群。请检查 iotdb-system.properties 中的 dn_seed_config_node 是否正确或存活。";
   public static final String MISC_EXCEPTION_CANNOT_SEND_RESTART_DATANODE_REQUEST_TO_CONFIGNODE_LEADER_368BE214 =
-      "无法send restart DataNode 请求 to ConfigNode-leader. Please check whether the "
-          + "dn_seed_config_node in iotdb-system.properties is correct or alive.";
+      "无法向 ConfigNode-leader 发送重启 DataNode 请求。请检查 iotdb-system.properties 中的 dn_seed_config_node 是否正确或存活。";
   public static final String MISC_EXCEPTION_FAIL_TO_GET_SG_OF_THIS_TSFILE_WHILE_PARSING_THE_FILE_PATH_9EADADE1 =
-      "无法get sg of this ts文件 while parsing the 文件 path.";
+      "解析文件路径时无法获取该 TsFile 的 sg。";
   public static final String MISC_EXCEPTION_CONFIGURING_THE_DATA_DIRECTORIES_AS_CROSS_DISK_DIRECTORIES_FC0A3875 =
-      "Configuring the data directories as cross-disk directories is not supported under "
-          + "RatisConsensus(it will be supported in a later version).";
+      "RatisConsensus 下不支持将 data directories 配置为跨磁盘目录（后续版本将支持）。";
   public static final String MISC_EXCEPTION_CONFIGURING_THE_WALMODE_AS_DISABLE_IS_NOT_SUPPORTED_UNDER_49298819 =
-      "Configuring the WALMode as disable is not supported under IoTConsensus and IoTConsensusV2 "
-          + "stream mode";
+      "IoTConsensus 和 IoTConsensusV2 stream mode 下不支持将 WALMode 配置为 disable";
   public static final String MISC_EXCEPTION_ENCRYPTTYPE_IS_NOT_UNENCRYPTED_BUT_USER_ENCRYPT_TOKEN_IS_F828C20B =
-      "encryptType is not UNENCRYPTED, but user_encrypt_token is not set. Please set it in the "
-          + "environment variable.";
+      "encryptType 不是 UNENCRYPTED，但未设置 user_encrypt_token。请在环境变量中设置。";
   public static final String MISC_EXCEPTION_USER_ENCRYPT_TOKEN_HINT_SHOULD_NOT_INCLUDE_USER_ENCRYPT_50531D40 =
-      "user_encrypt_token_hint should not include user_encrypt_token, please check it in your "
-          + "environment variable.";
+      "user_encrypt_token_hint 不应包含 user_encrypt_token，请检查环境变量。";
   public static final String MISC_EXCEPTION_USER_ENCRYPT_TOKEN_HINT_SHOULD_NOT_INCLUDE_THE_REVERSE_OF_39B2D35C =
-      "user_encrypt_token_hint should not include the reverse of user_encrypt_token, please check "
-          + "it in your environment variable.";
+      "user_encrypt_token_hint 不应包含 user_encrypt_token 的反转字符串，请检查环境变量。";
   public static final String MISC_EXCEPTION_RESTART_SYSTEM_AFTER_NOT_STORING_KEY_BUT_USER_ENCRYPT_TOKEN_61CCF9A2 =
-      "restart system after not storing key, but user_encrypt_token is not set. Please set it in "
-          + "the environment variable before restart. Here is your token hint info：%s";
+      "未存储密钥后重启系统，但未设置 user_encrypt_token。请在重启前通过环境变量设置。token hint 信息：%s";
   public static final String MISC_EXCEPTION_CHANGING_ENCRYPT_TYPE_OR_KEY_FOR_TSFILE_ENCRYPTION_AFTER_0668F74E =
-      "Changing encrypt type or key for ts文件 encryption after first start is not permitted. Here "
-          + "is your token hint info：%s";
+      "首次启动后不允许修改 TsFile 加密类型或密钥。token hint 信息：%s";
   public static final String MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D =
-      "无法re加载config 文件 %s 原因：%s";
+      "无法重新加载配置文件 %s，原因：%s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962 =
-      "Each subsection of configuration item udf_reader_transformer_collector_内存_proportion should "
-          + "be an integer, which is %s";
+      "配置项 udf_reader_transformer_collector_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_CHUNKMETA_CHUNK_TIMESERIESMETA_77A43CE2 =
-      "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_内存_proportion "
-          + "should be an integer, which is %s";
+      "配置项 chunkmeta_chunk_timeseriesmeta_free_memory_proportion 的每个子项都应为整数，当前为 %s";
   public static final String MISC_EXCEPTION_ILLEGAL_DEFAULTDATABASELEVEL_D_SHOULD_1_03088B38 =
-      "非法的default数据库Level：%d, should >= 1";
+      "非法的 defaultDatabaseLevel：%d，应 >= 1";
   public static final String MISC_EXCEPTION_LOADTSFILESPILTPARTITIONMAXSIZE_SHOULD_BE_GREATER_THAN_OR_95B4DB23 =
-      "loadTs文件SpiltPartitionMaxSize should be greater than or equal to 0";
+      "loadTsFileSpiltPartitionMaxSize 应大于或等于 0";
   public static final String MISC_EXCEPTION_REMOVING_IS_ONLY_ALLOWED_IN_AN_ENVIRONMENT_WHERE_THE_DATANODE_5A3E1FEA =
-      "Removing is only allowed in an environment where the datanode has been 成功 started. Please "
-          + "check whether it is removed on the confignode, or if you have deleted the system.properties "
-          + "文件 by mistake.";
+      "只有在 DataNode 已成功启动的环境中才允许移除。请检查它是否已在 ConfigNode 上移除，或是否误删了 system.properties 文件。";
   public static final String MISC_EXCEPTION_STATEMENTID_SDOESN_T_EXIST_IN_THIS_SESSION_S_BD5B4733 =
-      "StatementId：%sdoesn't exist in this session %s";
+      "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_INTERNALCLIENTSESSION_SHOULD_NEVER_CALL_PREPARE_STATEMENT_CCAB3CDC =
-      "InternalClientSession should never call PREPARE statement methods.";
+      "InternalClientSession 不应调用 PREPARE statement 方法。";
   public static final String MISC_EXCEPTION_STATEMENTID_S_DOESN_T_EXIST_IN_THIS_SESSION_S_4AA25E49 =
-      "StatementId：%s doesn't exist in this session %s";
+      "StatementId：%s 在会话 %s 中不存在";
   public static final String MISC_EXCEPTION_MQTT_CLIENT_SESSION_DOES_NOT_SUPPORT_PREPARE_STATEMENT_B42FBC65 =
-      "MQTT client session does not support PREPARE statement.";
+      "MQTT client session 不支持 PREPARE statement。";
   public static final String MISC_EXCEPTION_DATAREGIONLIST_SIZE_SHOULD_ONLY_BE_1_NOW_CURRENT_SIZE_IS_282E453C =
-      "dataRegionList.size() should only be 1 now,  当前size is %s";
+      "dataRegionList.size() 当前只能为 1，当前大小为 %s";
   public static final String MISC_EXCEPTION_PARAMETER_WINDOWSIZE_D_SHOULD_BE_POSITIVE_D95CBF33 =
-      "Parameter windowSize(%d) should be positive.";
+      "参数 windowSize(%d) 应为正数。";
   public static final String MISC_EXCEPTION_PARAMETER_SLIDINGSTEP_D_SHOULD_BE_POSITIVE_C0C25C2C =
-      "Parameter slidingStep(%d) should be positive.";
+      "参数 slidingStep(%d) 应为正数。";
   public static final String MISC_EXCEPTION_PARAMETER_TIMEINTERVAL_D_SHOULD_BE_POSITIVE_53A6CE3B =
-      "Parameter timeInterval(%d) should be positive.";
+      "参数 timeInterval(%d) 应为正数。";
   public static final String MISC_EXCEPTION_FAILED_TO_REFLECT_TRIGGER_INSTANCE_WITH_CLASSNAME_S_BECAUSE_C0CC44E2 =
-      "无法reflect trigger instance with className(%s), 原因：%s";
+      "无法反射 className(%s) 对应的 trigger instance，原因：%s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_862A4D86 =
-      "%s is not allowed, only support %s";
+      "%s 不允许，仅支持 %s";
   public static final String MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7 =
-      " %s is not allowed, only support %s";
+      " %s 不允许，仅支持 %s";
   public static final String PARAMETER_CANNOT_BE_MODIFIED_AFTER_FIRST_STARTUP_FMT =
       "%s 首次启动后不能修改";
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE =
@@ -1369,7 +1345,7 @@ public final class DataNodeMiscMessages {
   public static final String UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK =
       "DataNode 不支持调用此方法，请改用 submitLoadConfigurationTask";
   public static final String INVALID_REQUEST_FROM_CONFIG_NODE_FMT =
-      "来自 config node 的无效请求 %s。";
+      "来自 ConfigNode 的无效请求 %s。";
   public static final String INVALID_METHOD_NAME_FMT = "无效的方法名：'%s'";
   public static final String DATA_PARTITION_TABLE_GENERATION_IN_PROGRESS_FMT =
       "DataPartitionTable 生成中：%.1f%%";
@@ -1401,27 +1377,41 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String MESSAGE_DB_34B9E556 = " ON DB:";
-  public static final String MESSAGE_MESSAGE_CECB319D = " ON ";
-  public static final String MESSAGE_MESSAGE_57992626 = " on ";
-  public static final String MESSAGE_REGION_ARG_STATE_ARG_EXECUTED_SUCCEED_F78C5849 = "Region: %s, state: %s, executed 成功";
-  public static final String MESSAGE_FAILED_CREATE_EXTERNAL_SERVICE_ARG_IT_ALREADY_EXISTS_50AE69DF = "无法创建 External Service %s, it 已经exists!";
-  public static final String MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_29D6D3F2 = "无法开始 External Service %s,，原因：it 不是existed!";
-  public static final String MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_ITS_INSTANCE_CAN_NOT_F5A6C198 = "无法开始 External Service %s,，原因：its instance 不能be constructed 成功fully. 异常: %s";
-  public static final String MESSAGE_FAILED_STOP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_3CCCDA42 = "无法停止 External Service %s,，原因：it 不是existed!";
-  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_FDD11F17 = "无法drop External Service %s,，原因：it 不是existed!";
-  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_BUILT_59858F3F = "无法drop External Service %s,，原因：it is BUILT-IN!";
-  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_RUNNING_89B38F80 = "无法drop External Service %s,，原因：it is RUNNING!";
-  public static final String MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4 = "[ChangeRegionLeader] 成功fully change the leader of RegionGroup: ";
-  public static final String MESSAGE_MESSAGE_3501C7E6 = " to ";
-  public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "The \"executeFastLastData查询ForOnePrefix路径\" dos 不support wildcards.";
-  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 = "The 模板 is null when trying to activate 模板, may be the 模板 is being unset.";
+  public static final String MESSAGE_DB_34B9E556 = " 所属数据库：";
+  public static final String MESSAGE_MESSAGE_CECB319D = " 在 ";
+  public static final String MESSAGE_MESSAGE_57992626 = " 在 ";
+  public static final String MESSAGE_REGION_ARG_STATE_ARG_EXECUTED_SUCCEED_F78C5849 =
+      "Region：%s，状态：%s，执行成功";
+  public static final String MESSAGE_FAILED_CREATE_EXTERNAL_SERVICE_ARG_IT_ALREADY_EXISTS_50AE69DF =
+      "创建 External Service %s 失败，该服务已存在！";
+  public static final String MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_29D6D3F2 =
+      "启动 External Service %s 失败，原因：该服务不存在！";
+  public static final String MESSAGE_FAILED_START_EXTERNAL_SERVICE_ARG_BECAUSE_ITS_INSTANCE_CAN_NOT_F5A6C198 =
+      "启动 External Service %s 失败，原因：其实例无法成功构造。异常：%s";
+  public static final String MESSAGE_FAILED_STOP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_3CCCDA42 =
+      "停止 External Service %s 失败，原因：该服务不存在！";
+  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_NOT_EXISTED_FDD11F17 =
+      "删除 External Service %s 失败，原因：该服务不存在！";
+  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_BUILT_59858F3F =
+      "删除 External Service %s 失败，原因：该服务是内置服务！";
+  public static final String MESSAGE_FAILED_DROP_EXTERNAL_SERVICE_ARG_BECAUSE_IT_RUNNING_89B38F80 =
+      "删除 External Service %s 失败，原因：该服务正在运行！";
+  public static final String MESSAGE_CHANGEREGIONLEADER_SUCCESSFULLY_CHANGE_LEADER_REGIONGROUP_462797B4 =
+      "[ChangeRegionLeader] 成功切换 RegionGroup 的 leader：";
+  public static final String MESSAGE_MESSAGE_3501C7E6 = " 到 ";
+  public static final String MESSAGE_EXECUTEFASTLASTDATAQUERYFORONEPREFIXPATH_DOS_NOT_SUPPORT_WILDCARDS_8E8F44F5 = "\"executeFastLastDataQueryForOnePrefixPath\" 不支持通配符。";
+  public static final String MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779 =
+      "尝试激活模板时模板为空，可能正在取消设置该模板。";
   public static final String MESSAGE_DOT_9D9B854A = ".";
-  public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 = "错误 occurred while parsing SQL 到 physical plan: ";
-  public static final String MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195 = "错误 occurred in read process: ";
-  public static final String MESSAGE_THE_READ_STATEMENT_IS_NOT_ALLOWED_IN_BATCH_COLON_D6A3D5EB = "The read statement is not allowed in batch: ";
-  public static final String MESSAGE_LEFT_BRACKET_ARG_RIGHT_BRACKET_EXCEPTION_OCCURRED_COLON_ARG_FAILED_DOT_909D8FFA = "[%s] Exception occurred: %s 失败. ";
-  public static final String EXCEPTION_SUFFIX_IS_NULL_6CC6B965 = "Suffix 不能为空";
+  public static final String MESSAGE_ERROR_OCCURRED_WHILE_PARSING_SQL_TO_PHYSICAL_PLAN_COLON_5C9F2C59 =
+      "将 SQL 解析为物理计划时发生错误：";
+  public static final String MESSAGE_ERROR_OCCURRED_IN_READ_PROCESS_COLON_CD184195 =
+      "读取过程中发生错误：";
+  public static final String MESSAGE_THE_READ_STATEMENT_IS_NOT_ALLOWED_IN_BATCH_COLON_D6A3D5EB =
+      "批处理中不允许读取语句：";
+  public static final String MESSAGE_LEFT_BRACKET_ARG_RIGHT_BRACKET_EXCEPTION_OCCURRED_COLON_ARG_FAILED_DOT_909D8FFA =
+      "[%s] 发生异常：%s 失败。";
+  public static final String EXCEPTION_SUFFIX_IS_NULL_6CC6B965 = "后缀不能为空";
   public static final String EXCEPTION_RUNTIMESTATE_D4D018BA = "runtimeState";
   public static final String EXCEPTION_STATEMENTNAME_IS_NULL_C03BB8D4 = "statementName 不能为空";
   public static final String EXCEPTION_SQL_IS_NULL_BEDB2B7A = "sql 不能为空";

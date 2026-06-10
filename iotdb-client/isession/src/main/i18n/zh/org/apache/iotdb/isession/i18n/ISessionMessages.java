@@ -35,6 +35,6 @@ public final class ISessionMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "Data type %s 不是supported.";
+  public static final String EXCEPTION_DATA_TYPE_ARG_NOT_SUPPORTED_31213160 = "不支持数据类型 %s。";
 
 }

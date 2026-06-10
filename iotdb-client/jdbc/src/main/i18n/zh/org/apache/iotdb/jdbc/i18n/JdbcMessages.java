@@ -186,45 +186,45 @@ public final class JdbcMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "连接 错误, please check whether the network is available or the server";
-  public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " has 开始ed.";
+  public static final String EXCEPTION_CONNECTION_ERROR_PLEASE_CHECK_WHETHER_NETWORK_AVAILABLE_SERVER_CA72E0D6 = "连接错误，请检查网络是否可用或服务器是否正常";
+  public static final String EXCEPTION_HAS_STARTED_BD7BC366 = " 已启动。";
   public static final String EXCEPTION_ERROR_URL_FORMAT_URL_SHOULD_JDBC_IOTDB_ANYTHING_PORT_DATABASE_17D1DCFB =
-      "错误 url format, url 应be jdbc:iotdb://anything:port/[数据库] or"
-      + " jdbc:iotdb://anything:port[/数据库]?property1=value1&property2=value2, 当前url is ";
-  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_ARG_PLEASE_CHECK_SERVER_STATUS_34668040 = "无法reconnect to server when executing %s. please check server 状态";
-  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_BATCH_SQLS_PLEASE_CHECK_SERVER_STATUS_1E4C0C24 = "无法reconnect to server when executing batch sqls. please check server 状态";
-  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_QUERY_B6F770F5 = "无法reconnect to server when execute 查询 ";
-  public static final String EXCEPTION_PLEASE_CHECK_SERVER_STATUS_DA9E1E33 = ". please check server 状态";
-  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_UPDATE_7F009AA4 = "无法reconnect to server when execute update ";
-  public static final String EXCEPTION_CANNOT_GET_ID_STATEMENT_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_D4C1F67E = "无法get id for statement after reconnecting. please check server 状态";
-  public static final String EXCEPTION_CAN_T_INFER_SQL_TYPE_INSTANCE_ARG_USE_SETOBJECT_EXPLICIT_F457F33A = "Can't infer the SQL type for an instance of %s. Use setObject() with explicit type.";
-  public static final String EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0 = "参数 index out of range: ";
-  public static final String EXCEPTION_EXPECTED_1_3F4E8D6E = " (expected 1-";
-  public static final String LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25 = "set time 错误 when iotdb prepared statement :%s ";
-  public static final String EXCEPTION_CAN_T_INFER_SQL_TYPE_USE_INSTANCE_ARG_USE_SETOBJECT_A5B1C1BD = "Can''t infer the SQL type to use for an instance of %s. Use setObject() with";
-  public static final String EXCEPTION_EXPLICIT_TYPES_VALUE_SPECIFY_TYPE_USE_CD046EDA = " an explicit Types value to specify the type to use.";
-  public static final String EXCEPTION_NO_CONVERSION_3F7E3A35 = "No conversion from ";
-  public static final String EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6 = " to Types.BOOLEAN possible.";
-  public static final String EXCEPTION_CAN_T_SET_SCALE_5559DE62 = "Can't set scale of '";
-  public static final String EXCEPTION_DECIMAL_ARGUMENT_504BC102 = "' for DECIMAL argument '";
-  public static final String LOG_FAIL_GET_ALL_TIMESERIES_2A802516 = "无法get all timeseries ";
-  public static final String LOG_INFO_AFTER_RECONNECTING_7E70A784 = "info after reconnecting.";
-  public static final String LOG_PLEASE_CHECK_SERVER_STATUS_2049BB22 = " please check server 状态";
-  public static final String LOG_FAIL_RECONNECT_SERVER_AC4C86AB = "无法reconnect to server ";
-  public static final String LOG_GETTING_ALL_TIMESERIES_INFO_PLEASE_CHECK_SERVER_STATUS_009B5EFE = "when getting all timeseries info. please check server 状态";
-  public static final String EXCEPTION_FAILED_FETCH_ALL_METADATA_JSON_5FB95E70 = "无法fetch all metadata in json ";
-  public static final String EXCEPTION_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_DE1D65AC = "after reconnecting. Please check the server 状态.";
-  public static final String EXCEPTION_FAILED_RECONNECT_SERVER_632A4B76 = "无法reconnect to the server ";
-  public static final String EXCEPTION_FETCHING_ALL_METADATA_JSON_PLEASE_CHECK_SERVER_STATUS_1A0813B2 = "when fetching all metadata in json. Please check the server 状态.";
-  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_F0AA3D03 = "Protocol differ, Client version is {}, but Server version is {}";
-  public static final String LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C = "{}{}, please change it in time via 'ALTER USER' statement";
-  public static final String EXCEPTION_ERROR_OCCURS_CLOSING_SESSION_AT_SERVER_MAYBE_SERVER_DOWN_2BCE63C0 = "错误 occurs when closing 会话 at server. Maybe server is down.";
-  public static final String EXCEPTION_STATEMENTS_RESULT_SET_CONCURRENCY_ARG_NOT_SUPPORTED_C6043E9A = "Statements with result set concurrency %d 不是supported";
-  public static final String EXCEPTION_STATEMENTS_RESULTSET_TYPE_ARG_NOT_SUPPORTED_8BE22644 = "Statements with ResultSet type %d 不是supported";
-  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "Protocol 不supported, Client version is %s, but Server version is %s";
+      "URL 格式错误，URL 应为 jdbc:iotdb://anything:port/[database] 或"
+      + " jdbc:iotdb://anything:port[/database]?property1=value1&property2=value2，当前 URL 为 ";
+  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_ARG_PLEASE_CHECK_SERVER_STATUS_34668040 = "执行 %s 时无法重新连接到服务器。请检查服务器状态";
+  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTING_BATCH_SQLS_PLEASE_CHECK_SERVER_STATUS_1E4C0C24 = "执行批量 SQL 时无法重新连接到服务器。请检查服务器状态";
+  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_QUERY_B6F770F5 = "执行查询时无法重新连接到服务器 ";
+  public static final String EXCEPTION_PLEASE_CHECK_SERVER_STATUS_DA9E1E33 = "。请检查服务器状态";
+  public static final String EXCEPTION_FAIL_RECONNECT_SERVER_EXECUTE_UPDATE_7F009AA4 = "执行更新时无法重新连接到服务器 ";
+  public static final String EXCEPTION_CANNOT_GET_ID_STATEMENT_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_D4C1F67E = "重新连接后无法获取 statement 的 id。请检查服务器状态";
+  public static final String EXCEPTION_CAN_T_INFER_SQL_TYPE_INSTANCE_ARG_USE_SETOBJECT_EXPLICIT_F457F33A = "无法推断 %s 实例的 SQL 类型。请使用带显式类型的 setObject()。";
+  public static final String EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0 = "参数索引超出范围：";
+  public static final String EXCEPTION_EXPECTED_1_3F4E8D6E = "（期望 1-";
+  public static final String LOG_SET_TIME_ERROR_IOTDB_PREPARED_STATEMENT_ARG_AAAACB25 = "IoTDB prepared statement 设置时间出错：%s ";
+  public static final String EXCEPTION_CAN_T_INFER_SQL_TYPE_USE_INSTANCE_ARG_USE_SETOBJECT_A5B1C1BD = "无法推断 %s 实例要使用的 SQL 类型。请使用 setObject() 并";
+  public static final String EXCEPTION_EXPLICIT_TYPES_VALUE_SPECIFY_TYPE_USE_CD046EDA = "显式指定 Types 值来确定要使用的类型。";
+  public static final String EXCEPTION_NO_CONVERSION_3F7E3A35 = "不支持从 ";
+  public static final String EXCEPTION_TYPES_BOOLEAN_POSSIBLE_54D316E6 = " 转换为 Types.BOOLEAN。";
+  public static final String EXCEPTION_CAN_T_SET_SCALE_5559DE62 = "无法设置 '";
+  public static final String EXCEPTION_DECIMAL_ARGUMENT_504BC102 = "' 的精度，该值属于 DECIMAL 参数 '";
+  public static final String LOG_FAIL_GET_ALL_TIMESERIES_2A802516 = "无法获取所有时间序列 ";
+  public static final String LOG_INFO_AFTER_RECONNECTING_7E70A784 = "重新连接后的信息。";
+  public static final String LOG_PLEASE_CHECK_SERVER_STATUS_2049BB22 = " 请检查服务器状态";
+  public static final String LOG_FAIL_RECONNECT_SERVER_AC4C86AB = "无法重新连接到服务器 ";
+  public static final String LOG_GETTING_ALL_TIMESERIES_INFO_PLEASE_CHECK_SERVER_STATUS_009B5EFE = "获取所有时间序列信息时。请检查服务器状态";
+  public static final String EXCEPTION_FAILED_FETCH_ALL_METADATA_JSON_5FB95E70 = "无法获取 JSON 格式的所有元数据 ";
+  public static final String EXCEPTION_AFTER_RECONNECTING_PLEASE_CHECK_SERVER_STATUS_DE1D65AC = "重新连接后。请检查服务器状态。";
+  public static final String EXCEPTION_FAILED_RECONNECT_SERVER_632A4B76 = "无法重新连接到服务器 ";
+  public static final String EXCEPTION_FETCHING_ALL_METADATA_JSON_PLEASE_CHECK_SERVER_STATUS_1A0813B2 = "获取 JSON 格式的所有元数据时。请检查服务器状态。";
+  public static final String LOG_PROTOCOL_DIFFER_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_F0AA3D03 = "协议不同，客户端版本为 {}，服务器版本为 {}";
+  public static final String LOG_ARG_ARG_PLEASE_CHANGE_IT_TIME_VIA_ALTER_USER_STATEMENT_6B67087C = "{}{}，请及时通过 'ALTER USER' 语句修改";
+  public static final String EXCEPTION_ERROR_OCCURS_CLOSING_SESSION_AT_SERVER_MAYBE_SERVER_DOWN_2BCE63C0 = "在服务器端关闭会话时发生错误。服务器可能已宕机。";
+  public static final String EXCEPTION_STATEMENTS_RESULT_SET_CONCURRENCY_ARG_NOT_SUPPORTED_C6043E9A = "不支持结果集并发级别为 %d 的 Statement";
+  public static final String EXCEPTION_STATEMENTS_RESULTSET_TYPE_ARG_NOT_SUPPORTED_8BE22644 = "不支持 ResultSet 类型为 %d 的 Statement";
+  public static final String EXCEPTION_PROTOCOL_NOT_SUPPORTED_CLIENT_VERSION_ARG_BUT_SERVER_VERSION_ARG_53F892DC = "协议不支持，客户端版本为 %s，服务器版本为 %s";
   public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_YOU_MAY_TRY_CONNECT_OLD_8FC3703E =
-      "不能establish 连接 with %s : You may try to connect an old version IoTDB instance using a client"
-      + " with new version: %s. ";
-  public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "不能establish 连接 with %s : %s. ";
+      "无法与 %s 建立连接：可能正在使用新版本客户端连接旧版本 IoTDB 实例："
+      + "%s。";
+  public static final String EXCEPTION_CAN_NOT_ESTABLISH_CONNECTION_ARG_ARG_D7246055 = "无法与 %s 建立连接：%s。";
 
 }

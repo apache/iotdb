@@ -51,7 +51,7 @@ public final class PathMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String EXCEPTION_NODES_LENGTH_MEASUREMENTPATH_SHOULD_ALWAYS_GREATER_THAN_2_CURRENT_39B913AE = "节点s.length for Measurement路径 应always be greater than 2, 当前is: ";
-  public static final String EXCEPTION_WILDCARDS_NOT_ALLOWED_PREFIX_PATH_948C42D1 = "Wildcards 不是allowed in the prefix 路径: ";
+  public static final String EXCEPTION_NODES_LENGTH_MEASUREMENTPATH_SHOULD_ALWAYS_GREATER_THAN_2_CURRENT_39B913AE = "MeasurementPath 的 nodes.length 应始终大于 2，当前为：";
+  public static final String EXCEPTION_WILDCARDS_NOT_ALLOWED_PREFIX_PATH_948C42D1 = "前缀路径中不允许使用通配符：";
 
 }

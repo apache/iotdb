@@ -1089,173 +1089,155 @@ public final class ProcedureMessages {
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
   public static final String EXCEPTION_MS_95BA098D = " ms.";
-  public static final String LOG_ARG_JOIN_WAIT_GOT_INTERRUPTED_316B5E9F = "{} join wait got interrupted";
-  public static final String LOG_NO_COMPLETED_PROCEDURES_CLEANUP_50434D91 = "No completed procedures to cleanup.";
-  public static final String LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E = "错误 deleting completed procedures {}.";
-  public static final String LOG_EVICT_COMPLETED_ARG_A968A070 = "Evict completed {}";
-  public static final String LOG_EXECUTING_PROCEDURE_SHOULD_RUNNABLE_STATE_BUT_IT_S_NOT_PROCEDURE_7CF42CE8 = "The executing procedure 应in RUNNABLE state, but it's not. Procedure is {}";
-  public static final String LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B = "Finished subprocedure pid={}, resume processing ppid={}";
-  public static final String LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "Halt pid={}, activeCount={}";
-  public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "异常 happened when worker {} execute procedure {}";
-  public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 = "Worker stuck {}({}), run time {} ms";
-  public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D = "Procedure workers: {} is running, {} is running and stuck";
-  public static final String LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 = "ProcedureExecutor th读取Group {} contains running th读取s which are used by non-procedure module.";
-  public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 = "Add procedure {} as the {}th rollback step";
+  public static final String LOG_ARG_JOIN_WAIT_GOT_INTERRUPTED_316B5E9F = "{} 的 join 等待被中断";
+  public static final String LOG_NO_COMPLETED_PROCEDURES_CLEANUP_50434D91 = "没有已完成的 procedures 需要清理。";
+  public static final String LOG_ERROR_DELETING_COMPLETED_PROCEDURES_ARG_1A3A185E = "删除已完成的 procedures {} 时出错。";
+  public static final String LOG_EVICT_COMPLETED_ARG_A968A070 = "驱逐已完成的 {}";
+  public static final String LOG_EXECUTING_PROCEDURE_SHOULD_RUNNABLE_STATE_BUT_IT_S_NOT_PROCEDURE_7CF42CE8 = "执行中的 procedure 应处于 RUNNABLE 状态，但实际不是。Procedure 为 {}";
+  public static final String LOG_FINISHED_SUBPROCEDURE_PID_ARG_RESUME_PROCESSING_PPID_ARG_93ED990B = "subprocedure pid={} 已完成，恢复处理 ppid={}";
+  public static final String LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF = "暂停 pid={}, activeCount={}";
+  public static final String LOG_EXCEPTION_HAPPENED_WORKER_ARG_EXECUTE_PROCEDURE_ARG_6E3AD27D = "worker {} 执行 procedure {} 时发生异常";
+  public static final String LOG_WORKER_STUCK_ARG_ARG_RUN_TIME_ARG_MS_FB612354 = "Worker 卡住 {}({})，运行时间 {} ms";
+  public static final String LOG_PROCEDURE_WORKERS_ARG_RUNNING_ARG_RUNNING_STUCK_1565936D = "Procedure workers：{} 正在运行，{} 正在运行且卡住";
+  public static final String LOG_PROCEDUREEXECUTOR_THREADGROUP_ARG_CONTAINS_RUNNING_THREADS_WHICH_USED_NON_PROCEDURE_BD865211 = "ProcedureExecutor threadGroup {} 包含被非 procedure 模块使用的运行线程。";
+  public static final String LOG_ADD_PROCEDURE_ARG_AS_ARG_TH_ROLLBACK_STEP_C71B2184 = "将 procedure {} 添加为第 {} 个回滚步骤";
   public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_NOT_SET_NEXT_STATE_BUT_RETURN_HAS_7F93E63F =
-      "StateMachineProcedure pid={} 不set next state, but return HAS_MORE_STATE. It is likely that"
-      + " there is some problem with the code. Please check the code. This procedure is about to be"
-      + " terminated: {}";
-  public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_SET_NEXT_STATE_ARG_BUT_RETURN_NO_0CA2D56C = "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE";
-  public static final String LOG_DON_T_ADD_SUCCESSFUL_PROCEDURE_BACK_SCHEDULER_IT_WILL_IGNORED_E015472C = "Don't add a 成功ful procedure back to the scheduler, it will be ignored";
-  public static final String LOG_SCHEDULER_NOT_RUNNING_6969C9FF = "the scheduler 不是running";
-  public static final String LOG_SCHEDULER_WAITING_TIME_LEFT_ARG_NANOS_D7717019 = "the scheduler waiting time left {} nanos";
-  public static final String LOG_SLEEP_FAILED_CONFIGNODEPROCEDUREENV_BCD470AC = "Sleep 失败 in Config节点ProcedureEnv: ";
-  public static final String LOG_INVALIDATE_CACHE_FAILED_BECAUSE_DATANODE_ARG_UNKNOWN_4F2D374C = "Invalidate cache 失败,，原因：Data节点 {} is Unknown";
-  public static final String LOG_INVALIDATE_CACHE_FAILED_INVALIDATE_PARTITION_CACHE_STATUS_ARG_INVALIDATE_SCHEMAENGINE_BEB7A065 = "Invalidate cache 失败, invalidate partition cache 状态 is {}, invalidate 模式engine cache 状态 is {}";
-  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B = "移除 Config节点 失败，原因：update ConsensusGroup peer information 失败.";
-  public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 = "Can't 移除 data节点，原因：the limit of replication factor, ";
-  public static final String MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C = "availableData节点Size: %s, maxReplicaFactor: %s, max allowed 移除d Data 节点 size is: %s";
-  public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " 不是supported";
-  public static final String LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E = "开始 to add trigger [{}] in TriggerTable on Config 节点s, needToSaveJar[{}]";
-  public static final String LOG_START_CREATE_TRIGGERINSTANCE_ARG_DATA_NODES_917C3313 = "开始 to 创建 triggerInstance [{}] on Data 节点s";
-  public static final String LOG_START_ACTIVE_TRIGGER_ARG_DATA_NODES_A4AB8131 = "开始 to active trigger [{}] on Data 节点s";
-  public static final String LOG_START_ACTIVE_TRIGGER_ARG_CONFIG_NODES_153A5D40 = "开始 to active trigger [{}] on Config 节点s";
-  public static final String LOG_RETRIEVABLE_ERROR_TRYING_CREATE_TRIGGER_ARG_STATE_ARG_44976C4E = "Retrievable 错误 trying to 创建 trigger [{}], state [{}]";
-  public static final String LOG_START_CONFIG_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_536929E5 = "开始 to [CONFIG_NODE_INACTIVE] rollback of trigger [{}]";
-  public static final String LOG_START_DATA_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_38C93D64 = "开始 to [DATA_NODE_INACTIVE] rollback of trigger [{}]";
-  public static final String LOG_RETRIEVABLE_ERROR_TRYING_DROP_TRIGGER_ARG_STATE_ARG_2282AC35 = "Retrievable 错误 trying to drop trigger [{}], state [{}]";
-  public static final String LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC = "[删除数据库Procedure] Pre 删除 数据库: {}";
-  public static final String LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC = "[删除数据库Procedure] Invalidate cache of 数据库: {}";
-  public static final String LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC = "[删除数据库Procedure] 删除 数据库模式: {}";
-  public static final String LOG_DELETEDATABASEPROCEDURE_SUCCESSFULLY_DELETE_SCHEMAREGION_ARG_ARG_BA0535DA = "[删除数据库Procedure] 成功fully 删除 模式Region[{}] on {}";
-  public static final String LOG_DELETEDATABASEPROCEDURE_FAILED_DELETE_SCHEMAREGION_ARG_ARG_SUBMIT_ASYNC_DELETION_8C3E6DE3 = "[删除数据库Procedure] 无法删除 模式Region[{}] on {}. Submit to async deletion.";
-  public static final String LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A = "[删除数据库Procedure] The data partition policy table of 数据库: {} is cleared.";
-  public static final String LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202 = "[删除数据库Procedure] 数据库: {} is 删除d 成功fully";
-  public static final String LOG_DELETEDATABASEPROCEDURE_RETRIABLE_ERROR_TRYING_DELETE_DATABASE_ARG_STATE_ARG_8167D246 = "[删除数据库Procedure] Retriable 错误 trying to 删除 数据库 {}, state {}";
-  public static final String LOG_DELETEDATABASEPROCEDURE_ROLLBACK_PREDELETED_ARG_638F53DA = "[删除数据库Procedure] Rollback to pre删除d: {}";
+      "StateMachineProcedure pid={} 未设置下一状态，却返回 HAS_MORE_STATE。代码可能存在问题，请检查代码。该 procedure 即将被终止：{}";
+  public static final String LOG_STATEMACHINEPROCEDURE_PID_ARG_SET_NEXT_STATE_ARG_BUT_RETURN_NO_0CA2D56C = "StateMachineProcedure pid={} 设置下一状态为 {}，但返回 NO_MORE_STATE";
+  public static final String LOG_DON_T_ADD_SUCCESSFUL_PROCEDURE_BACK_SCHEDULER_IT_WILL_IGNORED_E015472C = "不要将已成功的 procedure 加回 scheduler，它将被忽略";
+  public static final String LOG_SCHEDULER_NOT_RUNNING_6969C9FF = "scheduler 未运行";
+  public static final String LOG_SCHEDULER_WAITING_TIME_LEFT_ARG_NANOS_D7717019 = "scheduler 剩余等待时间 {} nanos";
+  public static final String LOG_SLEEP_FAILED_CONFIGNODEPROCEDUREENV_BCD470AC = "ConfigNodeProcedureEnv 中 Sleep 失败：";
+  public static final String LOG_INVALIDATE_CACHE_FAILED_BECAUSE_DATANODE_ARG_UNKNOWN_4F2D374C = "缓存失效失败，原因：DataNode {} 状态未知";
+  public static final String LOG_INVALIDATE_CACHE_FAILED_INVALIDATE_PARTITION_CACHE_STATUS_ARG_INVALIDATE_SCHEMAENGINE_BEB7A065 = "缓存失效失败，分区缓存失效状态为 {}，schemaengine 缓存失效状态为 {}";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_UPDATE_CONSENSUSGROUP_PEER_INFORMATION_FAILED_FCE5302B = "移除 ConfigNode 失败，原因：更新 ConsensusGroup peer 信息失败。";
+  public static final String MESSAGE_CAN_T_REMOVE_DATANODE_LIMIT_REPLICATION_FACTOR_D960E3A6 = "无法移除 DataNode，原因：受副本因子限制，";
+  public static final String MESSAGE_AVAILABLEDATANODESIZE_ARG_MAXREPLICAFACTOR_ARG_MAX_ALLOWED_REMOVED_DATA_NODE_SIZE_FB8C382C = "availableDataNodeSize：%s，maxReplicaFactor：%s，允许移除的最大 DataNode 数量为：%s";
+  public static final String EXCEPTION_NOT_SUPPORTED_0A83F963 = " 不支持";
+  public static final String LOG_START_ADD_TRIGGER_ARG_TRIGGERTABLE_CONFIG_NODES_NEEDTOSAVEJAR_ARG_0C23D81E = "开始在 Config Nodes 的 TriggerTable 中添加 trigger [{}]，needToSaveJar[{}]";
+  public static final String LOG_START_CREATE_TRIGGERINSTANCE_ARG_DATA_NODES_917C3313 = "开始在 Data Nodes 上创建 triggerInstance [{}]";
+  public static final String LOG_START_ACTIVE_TRIGGER_ARG_DATA_NODES_A4AB8131 = "开始在 Data Nodes 上激活 trigger [{}]";
+  public static final String LOG_START_ACTIVE_TRIGGER_ARG_CONFIG_NODES_153A5D40 = "开始在 Config Nodes 上激活 trigger [{}]";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_CREATE_TRIGGER_ARG_STATE_ARG_44976C4E = "尝试创建 trigger [{}] 时发生可重试错误，状态 [{}]";
+  public static final String LOG_START_CONFIG_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_536929E5 = "开始 trigger [{}] 的 [CONFIG_NODE_INACTIVE] 回滚";
+  public static final String LOG_START_DATA_NODE_INACTIVE_ROLLBACK_TRIGGER_ARG_38C93D64 = "开始 trigger [{}] 的 [DATA_NODE_INACTIVE] 回滚";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_DROP_TRIGGER_ARG_STATE_ARG_2282AC35 = "尝试删除 trigger [{}] 时发生可重试错误，状态 [{}]";
+  public static final String LOG_DELETEDATABASEPROCEDURE_PRE_DELETE_DATABASE_ARG_6A1FEACC = "[DeleteDatabaseProcedure] 预删除数据库：{}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_INVALIDATE_CACHE_DATABASE_ARG_299FC9BC = "[DeleteDatabaseProcedure] 使数据库 {} 的缓存失效";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DELETE_DATABASESCHEMA_ARG_A49A47AC = "[DeleteDatabaseProcedure] 删除数据库 Schema：{}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_SUCCESSFULLY_DELETE_SCHEMAREGION_ARG_ARG_BA0535DA = "[DeleteDatabaseProcedure] 成功删除 SchemaRegion[{}]，位置 {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_FAILED_DELETE_SCHEMAREGION_ARG_ARG_SUBMIT_ASYNC_DELETION_8C3E6DE3 = "[DeleteDatabaseProcedure] 删除 SchemaRegion[{}] 失败，位置 {}。提交异步删除。";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DATA_PARTITION_POLICY_TABLE_DATABASE_ARG_CLEARED_7A32E28A = "[DeleteDatabaseProcedure] 数据库 {} 的数据分区策略表已清理。";
+  public static final String LOG_DELETEDATABASEPROCEDURE_DATABASE_ARG_DELETED_SUCCESSFULLY_3A4E9202 = "[DeleteDatabaseProcedure] 数据库 {} 已成功删除";
+  public static final String LOG_DELETEDATABASEPROCEDURE_RETRIABLE_ERROR_TRYING_DELETE_DATABASE_ARG_STATE_ARG_8167D246 = "[DeleteDatabaseProcedure] 尝试删除数据库 {} 时发生可重试错误，状态 {}";
+  public static final String LOG_DELETEDATABASEPROCEDURE_ROLLBACK_PREDELETED_ARG_638F53DA = "[DeleteDatabaseProcedure] 回滚到预删除状态：{}";
   public static final String EXCEPTION_FAILED_DAA6EA2F = " 失败 ";
-  public static final String EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154 = "无法check time series existence in all replicaset of 模式Region %s. Failures: %s";
-  public static final String LOG_FAILED_ROLLBACK_CONFIGNODE_TTL_STATE_9666EF54 = "无法rollback Config节点 ttl state.";
-  public static final String LOG_FAILED_ROLLBACK_DATANODE_TTL_CACHE_436C008A = "无法rollback Data节点 ttl cache.";
-  public static final String EXCEPTION_ROLLBACK_CONFIGNODE_TTL_FAILED_6D4FB59A = "Rollback Config节点 ttl 失败 for ";
-  public static final String EXCEPTION_ROLLBACK_DATANODE_TTL_CACHE_FAILED_AF9C7102 = "Rollback data节点 ttl cache 失败 for ";
-  public static final String LOG_PLEASE_VERIFY_WHETHER_LEADER_CHANGE_HAS_OCCURRED_DURING_STAGE_9FE68EE3 = "Please verify whether a leader change has occurred during this stage. ";
+  public static final String EXCEPTION_FAILED_CHECK_TIME_SERIES_EXISTENCE_ALL_REPLICASET_SCHEMAREGION_ARG_FAILURES_5F668154 = "检查 SchemaRegion %s 的所有 replicaset 中的时间序列是否存在失败。失败信息：%s";
+  public static final String LOG_FAILED_ROLLBACK_CONFIGNODE_TTL_STATE_9666EF54 = "无法回滚 ConfigNode ttl 状态。";
+  public static final String LOG_FAILED_ROLLBACK_DATANODE_TTL_CACHE_436C008A = "无法回滚 DataNode ttl 缓存。";
+  public static final String EXCEPTION_ROLLBACK_CONFIGNODE_TTL_FAILED_6D4FB59A = "回滚 ConfigNode ttl 失败，对象：";
+  public static final String EXCEPTION_ROLLBACK_DATANODE_TTL_CACHE_FAILED_AF9C7102 = "回滚 DataNode ttl 缓存失败，对象：";
+  public static final String LOG_PLEASE_VERIFY_WHETHER_LEADER_CHANGE_HAS_OCCURRED_DURING_STAGE_9FE68EE3 = "请确认该阶段是否发生 leader 变更。";
   public static final String LOG_IF_LOG_TRIGGERED_WITHOUT_LEADER_CHANGE_IT_INDICATES_POTENTIAL_BUG_32AE71FD =
-      "If this log is triggered without a leader change, it indicates a potential bug in the"
-      + " partition table.";
-  public static final String LOG_SKIP_RECOVERING_SCHEDULE_TASK_CQ_ARG_BECAUSE_ITS_METADATA_UNAVAILABLE_00286802 = "Skip recovering the schedule task of CQ {}，原因：its metadata is unavailable.";
-  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_3FBF9987 = "procedureId {} acquire lock.";
-  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_FAILED_WILL_WAIT_LOCK_AFTER_FINISHING_3B27278E = "procedureId {} acquire lock 失败, will wait for lock after finishing execution.";
-  public static final String LOG_PROCEDUREID_ARG_RELEASE_LOCK_FF860D6B = "procedureId {} release lock.";
-  public static final String LOG_RETRIEVABLE_ERROR_TRYING_ADD_CONFIG_NODE_ARG_STATE_ARG_D7285810 = "Retrievable 错误 trying to add config 节点 {}, state {}";
-  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_CONFIG_NODE_ARG_STATE_ARG_3754EBA1 = "Retrievable 错误 trying to 移除 config 节点 {}, state {}";
-  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_ACQUIRING_LOCK_SINCE_UPPER_LAYER_ENSURES_C7546FF8 = "procedureId {}-移除Data节点s skips acquiring lock, since upper layer ensures the serial execution.";
-  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_RELEASING_LOCK_SINCE_IT_HASN_T_AED8A3DA = "procedureId {}-移除Data节点s skips releasing lock, since it hasn't acquire any lock.";
-  public static final String LOG_ARG_CAN_NOT_REMOVE_DATANODE_ARG_495F9F85 = "{}, 不能移除 Data节点 {} ";
-  public static final String LOG_BECAUSE_NUMBER_DATANODES_LESS_EQUAL_THAN_REGION_REPLICA_NUMBER_DEC0CB38 = "because the number of Data节点s is less or equal than region replica number";
-  public static final String LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7 = "{}, Data节点 regions to be 移除d is {}";
-  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850 = "Retrievable 错误 trying to 移除 data 节点 {}, state {}";
+      "如果未发生 leader 变更却触发该日志，说明分区表可能存在潜在问题。";
+  public static final String LOG_SKIP_RECOVERING_SCHEDULE_TASK_CQ_ARG_BECAUSE_ITS_METADATA_UNAVAILABLE_00286802 = "跳过恢复 CQ {} 的调度任务，原因：其元数据不可用。";
+  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_3FBF9987 = "procedureId {} 获取锁。";
+  public static final String LOG_PROCEDUREID_ARG_ACQUIRE_LOCK_FAILED_WILL_WAIT_LOCK_AFTER_FINISHING_3B27278E = "procedureId {} 获取锁失败，将在执行完成后等待锁。";
+  public static final String LOG_PROCEDUREID_ARG_RELEASE_LOCK_FF860D6B = "procedureId {} 释放锁。";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_ADD_CONFIG_NODE_ARG_STATE_ARG_D7285810 = "尝试添加 ConfigNode {} 时发生可重试错误，状态 {}";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_CONFIG_NODE_ARG_STATE_ARG_3754EBA1 = "尝试移除 ConfigNode {} 时发生可重试错误，状态 {}";
+  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_ACQUIRING_LOCK_SINCE_UPPER_LAYER_ENSURES_C7546FF8 = "procedureId {}-RemoveDataNodes 跳过获取锁，因为上层保证串行执行。";
+  public static final String LOG_PROCEDUREID_ARG_REMOVEDATANODES_SKIPS_RELEASING_LOCK_SINCE_IT_HASN_T_AED8A3DA = "procedureId {}-RemoveDataNodes 跳过释放锁，因为它没有获取任何锁。";
+  public static final String LOG_ARG_CAN_NOT_REMOVE_DATANODE_ARG_495F9F85 = "{}, 不能移除 DataNode {} ";
+  public static final String LOG_BECAUSE_NUMBER_DATANODES_LESS_EQUAL_THAN_REGION_REPLICA_NUMBER_DEC0CB38 = "因为 DataNode 数量小于或等于 Region 副本数";
+  public static final String LOG_ARG_DATANODE_REGIONS_REMOVED_ARG_216A7DC7 = "{}，待移除的 DataNode Region 为 {}";
+  public static final String LOG_RETRIEVABLE_ERROR_TRYING_REMOVE_DATA_NODE_ARG_STATE_ARG_4EFEB850 = "尝试移除 DataNode {} 时发生可重试错误，状态 {}";
   public static final String LOG_SUBMIT_REGIONMIGRATEPROCEDURE_REGIONID_ARG_REMOVEDDATANODE_ARG_DESTDATANODE_ARG_COORDINATORFORADDPEER_ARG_ =
-      "Submit RegionMigrateProcedure for regionId {}: 移除dData节点={}, destData节点={},"
-      + " coordinatorForAddPeer={}, coordinatorFor移除Peer={}";
-  public static final String LOG_ARG_CANNOT_FIND_TARGET_DATANODE_MIGRATE_REGION_ARG_81A78E06 = "{}, 无法find target Data节点 to migrate the region: {}";
-  public static final String LOG_ARG_SOME_REGIONS_MIGRATED_FAILED_DATANODE_ARG_MIGRATEDFAILEDREGIONS_ARG_11644841 = "{}, Some regions are migrated 失败 in Data节点: {}, migrated失败Regions: {}.";
-  public static final String LOG_REGIONS_HAVE_BEEN_SUCCESSFULLY_MIGRATED_WILL_NOT_ROLL_BACK_YOU_AE904563 = "Regions that 已成功fully migrated will 不roll back, you can submit the 移除Data节点s task again later.";
-  public static final String LOG_ARG_DATANODES_ARG_ALL_REGIONS_MIGRATED_SUCCESSFULLY_START_STOP_THEM_32D56F28 = "{}, Data节点s: {} all regions migrated 成功fully, 开始 to 停止 them.";
-  public static final String LOG_ARG_START_ROLL_BACK_DATANODES_STATUS_ARG_05C67270 = "{}, 开始 to roll back the Data节点s 状态: {}";
-  public static final String LOG_ARG_ROLL_BACK_DATANODES_STATUS_SUCCESSFULLY_ARG_6773A2DF = "{}, Roll back the Data节点s 状态 成功fully: {}";
+      "提交 RegionMigrateProcedure，regionId {}: removedDataNode={}, destDataNode={},"
+      + " coordinatorForAddPeer={}, coordinatorForRemovePeer={}";
+  public static final String LOG_ARG_CANNOT_FIND_TARGET_DATANODE_MIGRATE_REGION_ARG_81A78E06 = "{}，找不到用于迁移 Region {} 的目标 DataNode";
+  public static final String LOG_ARG_SOME_REGIONS_MIGRATED_FAILED_DATANODE_ARG_MIGRATEDFAILEDREGIONS_ARG_11644841 = "{}，DataNode {} 中部分 Regions 迁移失败，migratedFailedRegions：{}。";
+  public static final String LOG_REGIONS_HAVE_BEEN_SUCCESSFULLY_MIGRATED_WILL_NOT_ROLL_BACK_YOU_AE904563 = "已成功迁移的 Regions 不会回滚，之后可以再次提交 RemoveDataNodes 任务。";
+  public static final String LOG_ARG_DATANODES_ARG_ALL_REGIONS_MIGRATED_SUCCESSFULLY_START_STOP_THEM_32D56F28 = "{}，DataNodes：{} 的所有 Regions 已成功迁移，开始停止它们。";
+  public static final String LOG_ARG_START_ROLL_BACK_DATANODES_STATUS_ARG_05C67270 = "{}，开始回滚 DataNodes 状态：{}";
+  public static final String LOG_ARG_ROLL_BACK_DATANODES_STATUS_SUCCESSFULLY_ARG_6773A2DF = "{}，成功回滚 DataNodes 状态：{}";
   public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_COLLECT_EARLIEST_TIMESLOTS_WAITING_7025EB23 =
-      "[DataPartitionIntegrity] No Data节点s 注册ed, no way to collect earliest timeslots, waiting for"
-      + " them to go up";
+      "[DataPartitionIntegrity] 没有已注册的 DataNode，无法收集最早的 timeslot，等待它们上线";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ALREADY_OUT_834B62B9 =
-      "[DataPartitionIntegrity] 无法collected earliest timeslots from the Data节点[id={}], 已经out of max"
-      + " retry time";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 收集最早 timeslot 失败，已超过最大重试时间";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_RESPONSE_STATUS_B0A31EC4 =
-      "[DataPartitionIntegrity] 无法collected earliest timeslots from the Data节点[id={}], response 状态"
-      + " is {}";
-  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_5CDF2BA6 = "Collected earliest timeslots from the Data节点[id={}]: {}";
-  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECT_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_A211840A = "[DataPartitionIntegrity] 无法collect earliest timeslots from the Data节点[id={}]: {}";
-  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_ARG_DATANODES_ARG_NUMBER_SUCCESSFUL_DATANODES_ARG_1CC129EF = "Collected earliest timeslots from {} Data节点s: {}, the number of 成功ful Data节点s is {}";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 收集最早 timeslot 失败，响应状态为 {}";
+  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_5CDF2BA6 = "已从 DataNode[id={}] 收集最早 timeslot：{}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_COLLECT_EARLIEST_TIMESLOTS_DATANODE_ID_ARG_ARG_A211840A = "[DataPartitionIntegrity] 从 DataNode[id={}] 收集最早 timeslot 失败：{}";
+  public static final String LOG_COLLECTED_EARLIEST_TIMESLOTS_ARG_DATANODES_ARG_NUMBER_SUCCESSFUL_DATANODES_ARG_1CC129EF = "从 {} 个 DataNode 收集最早 timeslot：{}，成功的 DataNode 数量为 {}";
   public static final String LOG_DATAPARTITIONINTEGRITY_NO_MISSING_DATA_PARTITIONS_DETECTED_NOTHING_NEEDS_REPAIRED_TERMINATING_72F2635F =
-      "[DataPartitionIntegrity] No missing data partitions detected, nothing needs to be repaired,"
-      + " terminating procedure";
+      "[DataPartitionIntegrity] 未检测到缺失的数据分区，无需修复，终止 procedure";
   public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_B5B90613 =
-      "[DataPartitionIntegrity] No data partition table related to 数据库 {} was found from the"
-      + " Config节点, and this issue needs to be repaired";
+      "[DataPartitionIntegrity] 未从 ConfigNode 找到与数据库 {} 相关的数据分区表，需要修复该问题";
   public static final String LOG_DATAPARTITIONINTEGRITY_DATABASE_ARG_HAS_LOST_TIMESLOT_ARG_ITS_DATA_TABLE_499AF395 =
-      "[DataPartitionIntegrity] 数据库 {} has lost timeslot {} in its data table partition, and this"
-      + " issue needs to be repaired";
-  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATABASES_HAVE_LOST_DATA_PARTITIONS_TERMINATING_PROCEDURE_3E718CC3 = "[DataPartitionIntegrity] No 数据库s have lost data partitions, terminating procedure";
+      "[DataPartitionIntegrity] 数据库 {} 在其数据表分区中丢失 timeslot {}，需要修复该问题";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATABASES_HAVE_LOST_DATA_PARTITIONS_TERMINATING_PROCEDURE_3E718CC3 = "[DataPartitionIntegrity] 没有数据库丢失数据分区，终止 procedure";
   public static final String LOG_DATAPARTITIONINTEGRITY_IDENTIFIED_ARG_DATABASES_HAVE_LOST_DATA_PARTITIONS_WILL_REQUEST_6DEA7502 =
-      "[DataPartitionIntegrity] Identified {} 数据库s have lost data partitions, will request"
-      + " DataPartitionTable generation from {} Data节点s";
-  public static final String LOG_REQUESTING_DATAPARTITIONTABLE_GENERATION_ARG_DATANODES_559F97E8 = "Requesting DataPartitionTable generation from {} Data节点s...";
+      "[DataPartitionIntegrity] 已识别出 {} 个数据库丢失数据分区，将请求 {} 个 DataNode 生成 DataPartitionTable";
+  public static final String LOG_REQUESTING_DATAPARTITIONTABLE_GENERATION_ARG_DATANODES_559F97E8 = "正在请求 {} 个 DataNode 生成 DataPartitionTable...";
   public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATANODES_REGISTERED_NO_WAY_REQUESTED_DATAPARTITIONTABLE_GENERATION_TERMINATING_ =
-      "[DataPartitionIntegrity] No Data节点s 注册ed, no way to requested DataPartitionTable generation,"
-      + " terminating procedure";
+      "[DataPartitionIntegrity] 没有已注册的 DataNode，无法请求生成 DataPartitionTable，终止 procedure";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ALREADY_OUT_6B0C9351 =
-      "[DataPartitionIntegrity] 无法request DataPartitionTable generation from the Data节点[id={}],"
-      + " 已经out of max retry time";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 请求生成 DataPartitionTable 失败，已超过最大重试时间";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_RESPONSE_STATUS_93012D =
-      "[DataPartitionIntegrity] 无法request DataPartitionTable generation from the Data节点[id={}],"
-      + " response 状态 is {}";
-  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ARG_818B47B8 = "[DataPartitionIntegrity] 无法request DataPartitionTable generation from Data节点[id={}]: {}";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 请求生成 DataPartitionTable 失败，响应状态为 {}";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_DATANODE_ID_ARG_ARG_818B47B8 = "[DataPartitionIntegrity] 从 DataNode[id={}] 请求生成 DataPartitionTable 失败：{}";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_2AB63F12 =
-      "[DataPartitionIntegrity] 无法request DataPartitionTable generation heart beat from the"
-      + " Data节点[id={}], 已经out of max retry time";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 请求 DataPartitionTable 生成心跳失败，已超过最大重试时间";
   public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_REQUEST_DATAPARTITIONTABLE_GENERATION_HEART_BEAT_DATANODE_ID_ARG_DC1702EF =
-      "[DataPartitionIntegrity] 无法request DataPartitionTable generation heart beat from the"
-      + " Data节点[id={}], state is {}, response 状态 is {}";
+      "[DataPartitionIntegrity] 从 DataNode[id={}] 请求 DataPartitionTable 生成心跳失败，状态为 {}，响应状态为 {}";
   public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_COMPLETED_DATAPARTITIONTABLE_GENERATION_TERMINATING_HEART_BEAT_59DAAD5 =
-      "[DataPartitionIntegrity] Data节点 {} completed DataPartitionTable generation, terminating heart"
-      + " beat";
-  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_STILL_GENERATING_DATAPARTITIONTABLE_63F84C78 = "[DataPartitionIntegrity] Data节点 {} still generating DataPartitionTable";
-  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_RETURNED_UNKNOWN_ERROR_CODE_ARG_2DA6A21E = "[DataPartitionIntegrity] Data节点 {} returned 未知的错误 code: {}";
+      "[DataPartitionIntegrity] DataNode {} 已完成 DataPartitionTable 生成，终止心跳";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_STILL_GENERATING_DATAPARTITIONTABLE_63F84C78 = "[DataPartitionIntegrity] DataNode {} 仍在生成 DataPartitionTable";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATANODE_ARG_RETURNED_UNKNOWN_ERROR_CODE_ARG_2DA6A21E = "[DataPartitionIntegrity] DataNode {} 返回未知错误码：{}";
   public static final String LOG_DATAPARTITIONINTEGRITY_ERROR_CHECKING_DATAPARTITIONTABLE_STATUS_DATANODE_ARG_ARG_TERMINATING_HEART_D6EDA91 =
-      "[DataPartitionIntegrity] 错误 checking DataPartitionTable 状态 from Data节点 {}: {}, terminating"
-      + " heart beat";
-  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATAPARTITIONTABLES_MERGE_DATAPARTITIONTABLES_EMPTY_920E3DE6 = "[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is 为空";
+      "[DataPartitionIntegrity] 从 DataNode {} 检查 DataPartitionTable 状态出错：{}，终止心跳";
+  public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATAPARTITIONTABLES_MERGE_DATAPARTITIONTABLES_EMPTY_920E3DE6 = "[DataPartitionIntegrity] 没有可合并的 DataPartitionTable，dataPartitionTables 为空";
   public static final String LOG_DATAPARTITIONINTEGRITY_NO_DATA_PARTITION_TABLE_RELATED_DATABASE_ARG_WAS_FOUND_D1698512 =
-      "[DataPartitionIntegrity] No data partition table related to 数据库 {} was found from the"
-      + " Config节点, use data partition table of Data节点 directly";
-  public static final String LOG_DATAPARTITIONINTEGRITY_DATAPARTITIONTABLE_SUCCESSFULLY_WRITTEN_CONSENSUS_LOG_2B1634A6 = "[DataPartitionIntegrity] DataPartitionTable 成功fully written to consensus log";
-  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FAILED_DATANODEID_ARG_967B51AA = "[DataPartitionIntegrity] {} 序列化 失败 for data节点Id: {}";
+      "[DataPartitionIntegrity] 未从 ConfigNode 找到与数据库 {} 相关的数据分区表，直接使用 DataNode 的数据分区表";
+  public static final String LOG_DATAPARTITIONINTEGRITY_DATAPARTITIONTABLE_SUCCESSFULLY_WRITTEN_CONSENSUS_LOG_2B1634A6 = "[DataPartitionIntegrity] DataPartitionTable 已成功写入共识日志";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FAILED_DATANODEID_ARG_967B51AA = "[DataPartitionIntegrity] {} 对 dataNodeId：{} 序列化失败";
   public static final String LOG_DATAPARTITIONINTEGRITY_ARG_SERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E44DCD8 = "[DataPartitionIntegrity] {} 序列化 finalDataPartitionTables 失败";
-  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FAILED_DATANODEID_ARG_22388A60 = "[DataPartitionIntegrity] {} de序列化 失败 for data节点Id: {}";
-  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E23E4BD = "[DataPartitionIntegrity] {} de序列化 finalDataPartitionTables 失败";
-  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_DESERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_3B6933B5 = "[DataPartitionIntegrity] 无法de序列化 数据库ScopedDataPartitionTable";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FAILED_DATANODEID_ARG_22388A60 = "[DataPartitionIntegrity] {} 对 dataNodeId：{} 反序列化失败";
+  public static final String LOG_DATAPARTITIONINTEGRITY_ARG_DESERIALIZE_FINALDATAPARTITIONTABLES_FAILED_7E23E4BD = "[DataPartitionIntegrity] {} 反序列化 finalDataPartitionTables 失败";
+  public static final String LOG_DATAPARTITIONINTEGRITY_FAILED_DESERIALIZE_DATABASESCOPEDDATAPARTITIONTABLE_3B6933B5 = "[DataPartitionIntegrity] 反序列化失败 DatabaseScopedDataPartitionTable";
   public static final String EXCEPTION_FAILED_C6FF154E = " 失败";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATE_97490577 = "订阅HandleLeaderChangeProcedure: executeFromValidate";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_D4E8BD37 = "订阅HandleLeaderChangeProcedure: executeFromOperateOnConfig节点s";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_8C6DEC4E = "订阅HandleLeaderChangeProcedure: 无法pull commit progress from Data节点 {}, 状态: {}";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_WRITE_API_EXECUTING_CONSENSUS_LAYER_56B3832A = "订阅HandleLeaderChangeProcedure: 失败 in the 写入 API executing the consensus layer due to: ";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONDATANODES_0D9F7C98 = "订阅HandleLeaderChangeProcedure: executeFromOperateOnData节点s";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_TOPIC_META_PUSH_DATANODE_ARG_STATUS_ARG_67FC003F = "订阅HandleLeaderChangeProcedure: ignored 失败 主题 meta push to Data节点 {}, 状态: {}";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_CONSUMER_GROUP_META_PUSH_DATANODE_ARG_STATUS_17C948 = "订阅HandleLeaderChangeProcedure: ignored 失败 消费者 group meta push to Data节点 {}, 状态: {}";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_SUBSCRIPTION_RUNTIME_PUSH_UNREADABLE_DATANODE_ARG_S = "订阅HandleLeaderChangeProcedure: ignored 失败 订阅 runtime push to un读取able Data节点 {}, 状态: {}";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATE_74B408B7 = "订阅HandleLeaderChangeProcedure: rollbackFromValidate";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_D4C70763 = "订阅HandleLeaderChangeProcedure: rollbackFromOperateOnConfig节点s";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0250F6E9 = "订阅HandleLeaderChangeProcedure: rollbackFromOperateOnData节点s";
-  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_F6935E59 = "订阅HandleLeaderChangeProcedure: 无法de序列化 region progress, key={}, summary={}";
-  public static final String EXCEPTION_FAILED_PUSH_SUBSCRIPTION_RUNTIME_STATE_READABLE_DATANODES_DURING_LEADER_CHANGE_F37E6F2C = "无法push 订阅 runtime state to 读取able Data节点s during leader change, details: %s";
-  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "无法序列化 region progress ";
-  public static final String EXCEPTION_NO_READABLE_DATANODE_AVAILABLE_ACCEPT_SUBSCRIPTION_METADATA_RUNTIME_UPDATES_DURING_22E61621 = "No 读取able Data节点 is available to accept 订阅 metadata/runtime updates during leader change";
-  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049 = "创建订阅Procedure: 主题 [{}] uses consensus 订阅 mode ";
-  public static final String LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026 = "(mode={}), skipping pipe creation";
-  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD = "创建订阅Procedure: consensus-based 主题s {} will be handled by Data节点 ";
-  public static final String LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31 = "via 消费者 group meta push (no pipe creation needed)";
-  public static final String LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C = "Drop订阅Procedure: 主题 [{}] uses consensus 订阅 mode ";
-  public static final String LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6 = "(mode={}), skipping pipe removal";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ACQUIRELOCK_SKIP_PROCEDURE_LAST_EXECUTION_TIME_ARG_CE3DD247 = "CommitProgressSyncProcedure: acquireLock, skip the procedure，原因：the last execution time {}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMVALIDATE_97490577 = "SubscriptionHandleLeaderChangeProcedure: executeFromValidate";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_D4E8BD37 = "SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnConfigNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_8C6DEC4E = "SubscriptionHandleLeaderChangeProcedure：拉取 DataNode {} 的提交进度失败，状态：{}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_WRITE_API_EXECUTING_CONSENSUS_LAYER_56B3832A = "SubscriptionHandleLeaderChangeProcedure：写入 API 执行共识层时失败，原因：";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_EXECUTEFROMOPERATEONDATANODES_0D9F7C98 = "SubscriptionHandleLeaderChangeProcedure: executeFromOperateOnDataNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_TOPIC_META_PUSH_DATANODE_ARG_STATUS_ARG_67FC003F = "SubscriptionHandleLeaderChangeProcedure：忽略向 DataNode {} 推送 topic 元数据失败，状态：{}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_CONSUMER_GROUP_META_PUSH_DATANODE_ARG_STATUS_17C948 = "SubscriptionHandleLeaderChangeProcedure：忽略向 DataNode {} 推送 consumer group 元数据失败，状态：{}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_IGNORED_FAILED_SUBSCRIPTION_RUNTIME_PUSH_UNREADABLE_DATANODE_ARG_S = "SubscriptionHandleLeaderChangeProcedure：忽略向不可读 DataNode {} 推送订阅运行时信息失败，状态：{}";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMVALIDATE_74B408B7 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromValidate";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_D4C70763 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnConfigNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0250F6E9 = "SubscriptionHandleLeaderChangeProcedure: rollbackFromOperateOnDataNodes";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_F6935E59 = "SubscriptionHandleLeaderChangeProcedure: 反序列化 Region 进度失败，key={}, summary={}";
+  public static final String EXCEPTION_FAILED_PUSH_SUBSCRIPTION_RUNTIME_STATE_READABLE_DATANODES_DURING_LEADER_CHANGE_F37E6F2C = "leader 变更期间向可读 DataNode 推送订阅运行时状态失败，详情：%s";
+  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "序列化 Region 进度失败 ";
+  public static final String EXCEPTION_NO_READABLE_DATANODE_AVAILABLE_ACCEPT_SUBSCRIPTION_METADATA_RUNTIME_UPDATES_DURING_22E61621 = "leader 变更期间没有可读 DataNode 可接受订阅元数据/运行时更新";
+  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_031CF049 = "CreateSubscriptionProcedure: topic [{}] 使用共识订阅模式 ";
+  public static final String LOG_MODE_ARG_SKIPPING_PIPE_CREATION_5F4D1026 = "(mode={})，跳过创建 pipe";
+  public static final String LOG_CREATESUBSCRIPTIONPROCEDURE_CONSENSUS_BASED_TOPICS_ARG_WILL_HANDLED_DATANODE_90A9C2FD = "CreateSubscriptionProcedure：基于共识的 topics {} 将由 DataNode 处理";
+  public static final String LOG_VIA_CONSUMER_GROUP_META_PUSH_NO_PIPE_CREATION_NEEDED_D56CFE31 = "通过 consumer group 元数据推送（无需创建 pipe）";
+  public static final String LOG_DROPSUBSCRIPTIONPROCEDURE_TOPIC_ARG_USES_CONSENSUS_SUBSCRIPTION_MODE_6962D13C = "DropSubscriptionProcedure: topic [{}] 使用共识订阅模式 ";
+  public static final String LOG_MODE_ARG_SKIPPING_PIPE_REMOVAL_133B0CD6 = "(mode={})，跳过移除 pipe";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ACQUIRELOCK_SKIP_PROCEDURE_LAST_EXECUTION_TIME_ARG_CE3DD247 = "CommitProgressSyncProcedure：acquireLock，因上次执行时间 {} 跳过该 procedure";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMVALIDATE_CF220E1F = "CommitProgressSyncProcedure: executeFromValidate";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA = "CommitProgressSyncProcedure: executeFromOperateOnConfig节点s";
-  public static final String LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29 = "无法pull commit progress from Data节点 {}, 状态: {}";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360 = "CommitProgressSyncProcedure: executeFromOperateOnData节点s (no-op)";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONCONFIGNODES_0DC818CA = "CommitProgressSyncProcedure: executeFromOperateOnConfigNodes";
+  public static final String LOG_FAILED_PULL_COMMIT_PROGRESS_DATANODE_ARG_STATUS_ARG_33037B29 = "拉取 DataNode {} 的提交进度失败，状态：{}";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES_NO_OP_34420360 = "CommitProgressSyncProcedure: executeFromOperateOnDataNodes（无操作）";
   public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMVALIDATE_2309D4D2 = "CommitProgressSyncProcedure: rollbackFromValidate";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_57CB907B = "CommitProgressSyncProcedure: rollbackFromOperateOnConfig节点s";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0D2CEB50 = "CommitProgressSyncProcedure: rollbackFromOperateOnData节点s";
-  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_0202F658 = "CommitProgressSyncProcedure: 无法de序列化 region progress, key={}, summary={}";
-  public static final String EXCEPTION_UNEXPECTED_PARENT_444B4289 = "Un期望 parent";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONCONFIGNODES_57CB907B = "CommitProgressSyncProcedure: rollbackFromOperateOnConfigNodes";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES_0D2CEB50 = "CommitProgressSyncProcedure: rollbackFromOperateOnDataNodes";
+  public static final String LOG_COMMITPROGRESSSYNCPROCEDURE_FAILED_DESERIALIZE_REGION_PROGRESS_KEY_ARG_SUMMARY_ARG_0202F658 = "CommitProgressSyncProcedure: 反序列化 Region 进度失败，key={}, summary={}";
+  public static final String EXCEPTION_UNEXPECTED_PARENT_444B4289 = "非预期父节点";
   public static final String LOG_ARG_8393DD4A = "{}";
 
 }

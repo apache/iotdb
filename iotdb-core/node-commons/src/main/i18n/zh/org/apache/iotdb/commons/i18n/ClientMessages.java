@@ -93,16 +93,16 @@ public final class ClientMessages {
   // ---------------------------------------------------------------------------
   // Additional auto-collected messages
   // ---------------------------------------------------------------------------
-  public static final String LOG_RETURN_CLIENT_ARG_POOL_FAILED_BECAUSE_NODE_NULL_81511014 = "Return client {} to pool 失败，原因：the 节点 is null. ";
-  public static final String LOG_MAY_CAUSE_RESOURCE_LEAK_PLEASE_CHECK_YOUR_CODE_DD730191 = "This may cause resource leak, please check your code.";
-  public static final String EXCEPTION_UNSUPPORTED_REQUEST_TYPE_2030CDC7 = "不支持的request type ";
-  public static final String EXCEPTION_PLEASE_SET_IT_ASYNCREQUESTMANAGER_INITACTIONMAPBUILDER_0F039A93 = ", please set it in AsyncRequestManager::initActionMapBuilder()";
-  public static final String EXCEPTION_ERROR_CALLING_METHOD_C04E5A63 = "错误 in calling method ";
+  public static final String LOG_RETURN_CLIENT_ARG_POOL_FAILED_BECAUSE_NODE_NULL_81511014 = "归还 client {} 到 pool 失败，原因：节点为空。";
+  public static final String LOG_MAY_CAUSE_RESOURCE_LEAK_PLEASE_CHECK_YOUR_CODE_DD730191 = "这可能导致资源泄漏，请检查代码。";
+  public static final String EXCEPTION_UNSUPPORTED_REQUEST_TYPE_2030CDC7 = "不支持的请求类型 ";
+  public static final String EXCEPTION_PLEASE_SET_IT_ASYNCREQUESTMANAGER_INITACTIONMAPBUILDER_0F039A93 = "，请在 AsyncRequestManager::initActionMapBuilder() 中设置";
+  public static final String EXCEPTION_ERROR_CALLING_METHOD_C04E5A63 = "调用方法时出错 ";
   public static final String EXCEPTION_BECAUSE_ACD0B1C8 = ",，原因： ";
-  public static final String LOG_PIPE_CONNECTION_TIMEOUT_ADJUSTED_ARG_MS_ARG_MINS_6D126A53 = "Pipe 连接 超时 is adjusted to {} ms ({} mins)";
-  public static final String LOG_BODY_SIZE_REQUEST_TOO_LARGE_REQUEST_WILL_SLICED_ORIGIN_REQ_35E73788 = "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. ";
-  public static final String LOG_REQUEST_BODY_SIZE_ARG_THRESHOLD_ARG_69B1BE00 = "Request body size: {}, threshold: {}";
-  public static final String LOG_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_RETRY_WHOLE_TRANSFER_E1EA2F41 = "无法transfer slice. Origin req: {}-{}. Retry the whole transfer.";
-  public static final String EXCEPTION_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_SLICE_INDEX_ARG_7219936C = "无法transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s";
+  public static final String LOG_PIPE_CONNECTION_TIMEOUT_ADJUSTED_ARG_MS_ARG_MINS_6D126A53 = "Pipe 连接超时已调整为 {} ms（{} mins）";
+  public static final String LOG_BODY_SIZE_REQUEST_TOO_LARGE_REQUEST_WILL_SLICED_ORIGIN_REQ_35E73788 = "请求 body 过大，请求将被切片。Origin req: {}-{}。";
+  public static final String LOG_REQUEST_BODY_SIZE_ARG_THRESHOLD_ARG_69B1BE00 = "请求 body 大小: {}，阈值: {}";
+  public static final String LOG_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_RETRY_WHOLE_TRANSFER_E1EA2F41 = "传输 slice 失败。Origin req：{}-{}。重试整个传输。";
+  public static final String EXCEPTION_FAILED_TRANSFER_SLICE_ORIGIN_REQ_ARG_ARG_SLICE_INDEX_ARG_7219936C = "无法传输 slice。Origin req: %s-%s，slice index: %d，slice count: %d。原因：%s";
 
 }
