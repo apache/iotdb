@@ -3972,6 +3972,28 @@ public class StatementAnalyzer {
         fillAnalysis =
             new Analysis.PreviousFillAnalysis(
                 node.getTimeBound().orElse(null), timeColumn, groupingKeys);
+      } else if (node.getFillMethod() == FillPolicy.NEXT) {
+        FieldReference timeColumn = null;
+        List<FieldReference> groupingKeys = null;
+        if (node.getTimeBound().isPresent() || node.getFillGroupingElements().isPresent()) {
+          timeColumn = getHelperColumn(node, scope, FillPolicy.NEXT);
+          ExpressionAnalyzer.analyzeExpression(
+              metadata,
+              queryContext,
+              sessionContext,
+              statementAnalyzerFactory,
+              accessControl,
+              scope,
+              analysis,
+              timeColumn,
+              WarningCollector.NOOP,
+              correlationSupport);
+
+          groupingKeys = analyzeFillGroup(node, scope, FillPolicy.NEXT);
+        }
+        fillAnalysis =
+            new Analysis.NextFillAnalysis(
+                node.getTimeBound().orElse(null), timeColumn, groupingKeys);
       } else if (node.getFillMethod() == FillPolicy.CONSTANT) {
         Literal literal = node.getFillValue().get();
         ExpressionAnalyzer.analyzeExpression(

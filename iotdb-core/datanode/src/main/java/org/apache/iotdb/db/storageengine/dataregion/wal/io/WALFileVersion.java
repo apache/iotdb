@@ -26,7 +26,8 @@ import java.nio.charset.StandardCharsets;
 
 public enum WALFileVersion {
   V1("WAL"),
-  V2("V2-WAL");
+  V2("V2-WAL"),
+  V3("V3-WAL");
 
   private final String versionString;
   private byte[] versionBytes;
@@ -56,7 +57,7 @@ public enum WALFileVersion {
     long originalPosition = channel.position();
     try {
       // head magic string starts to exist since V2
-      WALFileVersion[] versions = {V2};
+      WALFileVersion[] versions = {V3, V2};
       for (WALFileVersion version : versions) {
         channel.position(0);
         if (channel.size() < version.versionBytes.length) {
