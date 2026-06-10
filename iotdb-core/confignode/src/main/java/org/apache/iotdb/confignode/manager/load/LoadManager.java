@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
@@ -49,13 +50,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
  * cluster dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
 public class LoadManager {
+
+  private static final long FIRST_HEARTBEAT_READY_TOLERANCE_MS = TimeUnit.SECONDS.toMillis(30);
 
   protected final IManager configManager;
 
@@ -71,6 +77,11 @@ public class LoadManager {
   protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
+  private final AtomicBoolean loadServicesStarted = new AtomicBoolean(false);
+  private final AtomicLong loadReadyStartTimeMillis = new AtomicLong(0);
+  private final AtomicBoolean loadReady = new AtomicBoolean(false);
+  private volatile String loadReadyReason =
+      ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_NOT_STARTED_1C75DB82;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -140,7 +151,12 @@ public class LoadManager {
   }
 
   public void startLoadServices() {
+    loadReady.set(false);
+    loadReadyStartTimeMillis.set(System.currentTimeMillis());
+    loadReadyReason =
+        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
     loadCache.initHeartbeatCache(configManager);
+    loadServicesStarted.set(true);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
@@ -148,12 +164,66 @@ public class LoadManager {
   }
 
   public void stopLoadServices() {
+    loadServicesStarted.set(false);
+    loadReadyStartTimeMillis.set(0);
+    loadReady.set(false);
+    loadReadyReason =
+        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_STOPPED_5884BB0F;
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+  }
+
+  public boolean isLoadReady() {
+    return loadReady.get() || tryUpdateLoadReady();
+  }
+
+  public String getLoadReadyReason() {
+    return loadReadyReason;
+  }
+
+  private synchronized boolean tryUpdateLoadReady() {
+    if (loadReady.get()) {
+      return true;
+    }
+    if (!loadServicesStarted.get()) {
+      loadReadyReason =
+          ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_NOT_STARTED_1C75DB82;
+      return false;
+    }
+
+    loadCache.updateNodeStatistics(false);
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+
+    List<String> unreadyReasons = loadCache.getNodeHeartbeatUnreadyReasons();
+    if (unreadyReasons.isEmpty()) {
+      loadReadyReason =
+          ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_CC9C90E7;
+      loadReady.set(true);
+      return true;
+    }
+
+    long elapsedMillis = System.currentTimeMillis() - loadReadyStartTimeMillis.get();
+    if (elapsedMillis < FIRST_HEARTBEAT_READY_TOLERANCE_MS) {
+      loadReadyReason =
+          String.format(
+              ConfigNodeMessages
+                  .MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_FIRST_HEARTBEAT_FROM_REGISTERED_CONFIGNODES_DATANODES_ARG_2FD3F6FA,
+              unreadyReasons);
+      return false;
+    }
+
+    loadReadyReason =
+        String.format(
+            ConfigNodeMessages
+                .MESSAGE_CONFIGNODE_LEADER_LOAD_SERVICES_READY_AFTER_WAITING_ARG_MS_FOR_FIRST_HEARTBEAT_MISSING_HEARTBEATS_ARG_A3AEA8B4,
+            FIRST_HEARTBEAT_READY_TOLERANCE_MS,
+            unreadyReasons);
+    loadReady.set(true);
+    return true;
   }
 
   public void clearDataPartitionPolicyTable(String database) {
@@ -460,6 +530,15 @@ public class LoadManager {
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
+  }
+
+  @TestOnly
+  void markLoadServicesStartedForTest(long loadReadyStartTimeMillis) {
+    loadServicesStarted.set(true);
+    loadReady.set(false);
+    this.loadReadyStartTimeMillis.set(loadReadyStartTimeMillis);
+    loadReadyReason =
+        ConfigNodeMessages.MESSAGE_CONFIGNODE_LEADER_WAITING_FOR_CLUSTER_HEARTBEAT_SAMPLING_EDB0331F;
   }
 
   @TestOnly

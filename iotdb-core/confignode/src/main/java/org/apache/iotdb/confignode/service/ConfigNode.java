@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -86,7 +87,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private static final int STARTUP_RETRY_NUM = 10;
+  private static final int STARTUP_RETRY_NUM = 20;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
   private static final int SCHEDULE_WAITING_RETRY_NUM =
       (int) (COMMON_CONFIG.getCnConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
@@ -394,6 +395,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         LOGGER.info("ConfigNode need redirect to  {}, retry {} ...", seedConfigNode, retry);
       } else if (status.getCode() == TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode()) {
         LOGGER.warn("The result of register self ConfigNode is {}, retry {} ...", status, retry);
+      } else if (status.getCode()
+          == TSStatusCode.CONFIG_NODE_LEADER_WARMING_UP.getStatusCode()) {
+        LOGGER.info(
+            ConfigNodeMessages
+                .LOG_CONFIGNODE_LEADER_WARMING_UP_BEFORE_SERVING_REGISTERING_CONFIGNODE_STATUS_ARG_RETRY_ARG_3C924873,
+            status,
+            retry);
       } else {
         throw new StartupException(status.getMessage());
       }

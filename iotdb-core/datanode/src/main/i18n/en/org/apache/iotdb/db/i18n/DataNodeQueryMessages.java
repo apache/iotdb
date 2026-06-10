@@ -71,4 +71,10 @@ public final class DataNodeQueryMessages {
       "Delete After Loading {} error.";
   public static final String LOG_FAILED_TO_AUTHORIZE_CQ_ARG_FOR_USER_ARG_ARG_B436A81F =
       "Failed to authorize CQ {} for user {}: {}";
+  public static final String
+      LOG_CONFIGNODE_LEADER_ARG_WARMING_UP_BEFORE_SERVING_DATANODE_ARG_WILL_WAIT_AND_RETRY_REASON_ARG_3A2A4163 =
+          "ConfigNode leader {} is warming up before serving DataNode {}, will wait and retry. Reason: {}";
+  public static final String
+      LOG_UNEXPECTED_INTERRUPTION_WHILE_WAITING_TO_RETRY_CONFIGNODE_CONNECTION_D4F49D21 =
+          "Unexpected interruption while waiting to retry a ConfigNode connection.";
 }

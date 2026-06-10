@@ -50,7 +50,7 @@ public class AINodeHeartbeatHandler implements AsyncMethodCallback<TAIHeartbeatR
   public void onError(Exception e) {
     if (ThriftClient.isConnectionBroken(e)) {
       loadManager.forceUpdateNodeCache(
-          NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
+          NodeType.AINode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
     loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
