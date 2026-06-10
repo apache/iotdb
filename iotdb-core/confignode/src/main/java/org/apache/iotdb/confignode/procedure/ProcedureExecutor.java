@@ -56,6 +56,8 @@ import static org.apache.iotdb.confignode.procedure.Procedure.NO_PROC_ID;
 
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
+  private static final ThreadLocal<Boolean> PROCEDURE_EXECUTION_CONTEXT =
+      ThreadLocal.withInitial(() -> false);
 
   private final ConcurrentHashMap<Long, CompletedProcedureContainer<Env>> completed =
       new ConcurrentHashMap<>();
@@ -94,6 +96,10 @@ public class ProcedureExecutor<Env> {
   @TestOnly
   public ProcedureExecutor(final Env environment, final IProcedureStore<Env> store) {
     this(environment, store, new SimpleProcedureScheduler());
+  }
+
+  public static boolean isProcedureExecutionThread() {
+    return PROCEDURE_EXECUTION_CONTEXT.get();
   }
 
   public void init(int numThreads) {
@@ -786,7 +792,12 @@ public class ProcedureExecutor<Env> {
           this.activeProcedure.set(procedure);
           activeExecutorCount.incrementAndGet();
           startTime.set(System.currentTimeMillis());
-          executeProcedure(procedure);
+          PROCEDURE_EXECUTION_CONTEXT.set(true);
+          try {
+            executeProcedure(procedure);
+          } finally {
+            PROCEDURE_EXECUTION_CONTEXT.remove();
+          }
           activeExecutorCount.decrementAndGet();
           LOG.trace(
               ProcedureMessages.LOG_HALT_PID_ARG_ACTIVECOUNT_ARG_411F3EBF,

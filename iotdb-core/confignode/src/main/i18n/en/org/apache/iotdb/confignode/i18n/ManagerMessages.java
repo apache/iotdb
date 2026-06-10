@@ -575,7 +575,10 @@ public final class ManagerMessages {
   public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "ConfigNode local peer has already been created: {}";
   public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "ConfigNode peer {} has already been added: {}";
   public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "ConfigNode peer {} has already been removed: {}";
-  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "The current ConfigNode is leader but not ready yet, please try again later.";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "The current ConfigNode is leader but consensus is not ready yet.";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY = "The current ConfigNode is leader but leader services are not ready yet.";
+
   public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "The current ConfigNode is not leader, please redirect to a new ConfigNode.";
   public static final String LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80 = "Failed to sync commit progress. Result status: {}.";
   public static final String MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F = "Failed to alter database. The Database ";

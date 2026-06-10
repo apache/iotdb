@@ -567,11 +567,14 @@ public final class ManagerMessages {
   public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "无法take snapshot,，原因：snapshot 文件 [{}] is 已经exist.";
   public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "无法加载 snapshot,snapshot 文件 [{}] 不是exist.";
   public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "you maybe need to rename the simple dir to 0_0 manually.";
-  public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "Config节点 local peer has 已经been 创建d: {}";
-  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "Config节点 peer {} has 已经been added: {}";
-  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "Config节点 peer {} has 已经been 移除d: {}";
-  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "The 当前Config节点 is leader but 不读取y yet, please try again later.";
-  public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "The 当前Config节点 不是leader, please redirect to a new Config节点.";
+  public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "Config节点 local peer 已经创建: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "Config节点 peer {} 已经添加: {}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "Config节点 peer {} has 已经被移除: {}";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "当前 Config 节点是 leader，但共识层还没有准备好。";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY = "当前 Config 节点是 leader，但 leader 服务层还没有准备好。";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "当前Config节点 不是leader, please redirect to a new Config节点.";
   public static final String LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80 = "无法sync commit progress. Result 状态: {}.";
   public static final String MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F = "无法alter 数据库. The 数据库 ";
   public static final String MESSAGE_DOESN_T_EXIST_EED8C92E = " doesn't exist.";

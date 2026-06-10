@@ -1257,6 +1257,10 @@ public class ConfigManager implements IManager {
                   + ManagerMessages
                       .MESSAGE_PLEASE_MAKE_SURE_TARGET_CONFIGNODE_HAS_BEEN_STARTED_SUCCESSFULLY_C78201DC);
     }
+    // Procedure recovery replays metadata writes before external load warm-up is complete.
+    if (procedureManager.isProcedureExecutionThread()) {
+      return getConsensusManager().confirmLeaderForInternalProcedure();
+    }
     return getConsensusManager().confirmLeader();
   }
 
