@@ -77,7 +77,9 @@ public class SnapshotTaker {
         && Objects.requireNonNull(snapshotDir.listFiles()).length > 0) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
-          String.format("%s already exists and is not empty", snapshotDirPath));
+          String.format(
+              StorageEngineMessages.STORAGE_EXCEPTION_S_ALREADY_EXISTS_AND_IS_NOT_EMPTY_CF0BD6A4,
+              snapshotDirPath));
     }
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {

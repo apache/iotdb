@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.read.common.type.Type;
 
 import static java.util.Objects.requireNonNull;
@@ -34,9 +36,10 @@ public class PhysicalValuePointer implements PhysicalValueAccessor {
   public PhysicalValuePointer(
       int sourceChannel, Type type, LogicalIndexNavigation logicalIndexNavigation) {
     this.sourceChannel = sourceChannel;
-    this.type = requireNonNull(type, "type is null");
+    this.type = requireNonNull(type, CalcMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
     this.logicalIndexNavigation =
-        requireNonNull(logicalIndexNavigation, "logicalIndexNavigation is null");
+        requireNonNull(
+            logicalIndexNavigation, CalcMessages.EXCEPTION_LOGICALINDEXNAVIGATION_IS_NULL_3B31CD23);
   }
 
   public int getSourceChannel() {

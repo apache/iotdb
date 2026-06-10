@@ -414,8 +414,8 @@ public class ConfigurationFileUtils {
     }
     logger.warn(
         ConfigMessages.WAITING_TO_ACQUIRE_CONFIG_FILE_LOCK
-            + " There may have been an unexpected interruption in the last"
-            + " configuration file update. Ignore temporary file {}",
+            + ConfigMessages.LOG_THERE_MAY_HAVE_BEEN_UNEXPECTED_INTERRUPTION_LAST_E784B008
+            + ConfigMessages.LOG_CONFIGURATION_FILE_UPDATE_IGNORE_TEMPORARY_FILE_ARG_3DE7B218,
         totalWaitTime / 1000,
         file.getName());
   }

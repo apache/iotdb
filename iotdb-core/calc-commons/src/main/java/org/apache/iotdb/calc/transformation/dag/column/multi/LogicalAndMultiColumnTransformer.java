@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.multi;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -117,6 +118,7 @@ public class LogicalAndMultiColumnTransformer extends LogicalMultiColumnTransfor
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
     // do nothing
     throw new UnsupportedOperationException(
-        "LogicalAndMultiColumnTransformer do not support doTransform with selection");
+        CalcMessages
+            .EXCEPTION_LOGICALANDMULTICOLUMNTRANSFORMER_DO_NOT_SUPPORT_DOTRANSFORM_SELECTION_2507527D);
   }
 }

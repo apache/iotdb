@@ -280,12 +280,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
@@ -325,7 +325,8 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentFileStatistics() {
-    checkState(firstTimeSeriesMetadata != null, "no first file");
+    checkState(
+        firstTimeSeriesMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_FILE_F5F2E276);
 
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return false;
@@ -372,12 +373,12 @@ public class SeriesScanUtil implements Accountable {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IllegalStateException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_ALL_CACHED_PAGES_SHOULD_BE_CONSUMED_FIRST_UNSEQPAGEREADERS_55898EFB,
+              unSeqPageReaders.isEmpty(),
+              (firstPageReader != null),
+              mergeReader.hasNextTimeValuePair()));
     }
 
     if (firstChunkMetadata != null) {
@@ -503,7 +504,7 @@ public class SeriesScanUtil implements Accountable {
   }
 
   public boolean canUseCurrentChunkStatistics() {
-    checkState(firstChunkMetadata != null, "no first chunk");
+    checkState(firstChunkMetadata != null, DataNodeQueryMessages.EXCEPTION_NO_FIRST_CHUNK_7DCEB14C);
 
     if (currentChunkOverlapped() || firstChunkMetadata.isModified()) {
       return false;

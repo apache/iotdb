@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.process.rowpattern;
 
 import org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher.ArrayView;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.LogicalIndexPointer;
 
@@ -50,10 +51,14 @@ public class LogicalIndexNavigation {
 
   public LogicalIndexNavigation(
       Set<Integer> labels, boolean last, boolean running, int logicalOffset, int physicalOffset) {
-    this.labels = requireNonNull(labels, "labels is null");
+    this.labels = requireNonNull(labels, CalcMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
     this.last = last;
     this.running = running;
-    checkArgument(logicalOffset >= 0, "logical offset must be >= 0, actual: %s", logicalOffset);
+    checkArgument(
+        logicalOffset >= 0,
+        CalcMessages
+            .EXCEPTION_LOGICAL_OFFSET_MUST_BE_GREATER_THAN_EQUALS_0_COMMA_ACTUAL_COLON_ARG_539807BF,
+        logicalOffset);
     this.logicalOffset = logicalOffset;
     this.physicalOffset = physicalOffset;
   }
@@ -95,7 +100,7 @@ public class LogicalIndexNavigation {
       int currentRow, ArrayView matchedLabels, int searchStart, int searchEnd, int patternStart) {
     checkArgument(
         currentRow >= patternStart && currentRow < patternStart + matchedLabels.length(),
-        "current row is out of bounds of the match");
+        CalcMessages.EXCEPTION_CURRENT_ROW_IS_OUT_OF_BOUNDS_OF_THE_MATCH_D8D8B611);
 
     // used to handle `logical offset`
     int relativePosition;

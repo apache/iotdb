@@ -812,6 +812,8 @@ public final class DataNodePipeMessages {
   public static final String REDIRECT_FILE_POSITION_TO = "Redirect file position to {}.";
   public static final String REDIRECT_TO_POSITION_IN_TRANSFERRING_TSFILE =
       "Redirect to position {} in transferring tsFile {}.";
+  public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
+      "网络接收 TsFile %s 失败，状态：%s";
   public static final String SECURITY_DIR = "security dir: {}";
   public static final String SECURITY_PKI_DIR = "security pki dir: {}";
   public static final String SUCCESSFULLY_ADDED_ITEM = "成功 added item {}。";
@@ -847,8 +849,6 @@ public final class DataNodePipeMessages {
           + "Peeked event: {}, polled event: {}.";
   public static final String THE_FILE_IS_NOT_FOUND_MAY_ALREADY =
       "The file {} is not found, may already be deleted.";
-  public static final String NETWORK_FAILED_TO_RECEIVE_TSFILE_STATUS =
-      "网络接收 TsFile %s 失败，状态：%s";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT =
       "The pipe {} was dropped so the event ack {} will be ignored.";
   public static final String THE_PIPE_WAS_DROPPED_SO_THE_EVENT_1 =
@@ -1333,6 +1333,10 @@ public final class DataNodePipeMessages {
   // pipe – OpcUaServerBuilder
   // ---------------------------------------------------------------------------
   public static final String UNABLE_CREATE_SECURITY_DIR = "无法创建安全目录：";
+  public static final String OPC_UA_SECURITY_DIR =
+      "安全目录：{}";
+  public static final String OPC_UA_SECURITY_PKI_DIR =
+      "安全 PKI 目录：{}";
 
   // ---------------------------------------------------------------------------
   // pipe – PipeDataNodePluginAgent
@@ -1346,4 +1350,847 @@ public final class DataNodePipeMessages {
       "传输分片时 TPipeTransferResp 为空。";
 
   private DataNodePipeMessages() {}
+  // ---------------------------------------------------------------------------
+  // 补充日志消息
+  // ---------------------------------------------------------------------------
+  public static final String PIPE_LOG_SUBSCRIPTION_DETECT_DUPLICATED_PIPETSFILEINSERTIONEVENT_23A4740C =
+      "Subscription：检测到重复的 PipeTsFileInsertionEvent {}，直接提交";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_ECB64624 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 已完成，向客户端返回终止响应";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_8F561EB2 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 已完成，回复客户端心跳请求";
+  public static final String PIPE_LOG_SUBSCRIPTION_CREATE_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_E7F21F1E =
+      "Subscription：创建绑定到 topic [{}]、consumer group [{}] 的 prefetching queue";
+  public static final String PIPE_LOG_SUBSCRIPTION_DROP_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_21F313CB =
+      "Subscription：删除绑定到 topic [{}]、consumer group [{}] 的 prefetching queue";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_03B89C51 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 仍然存在，请在关闭前解绑";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_EA7D450B =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 已关闭";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_12E69B65 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTION_PREFETCHING_QUEUE_BOUND_TO_TOPIC_FOR_CONSUMER_C2735402 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 prefetching queue 已存在";
+  public static final String PIPE_LOG_SUBSCRIPTIONPREFETCHINGTABLETQUEUE_DETECTED_OUTDATED_POLL_C0001CCF =
+      "SubscriptionPrefetchingTabletQueue {} 检测到过期的 poll 请求，consumer {}，commit context {}，offset {}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_POLL_CALLED_CONSUMERID_TOPICNAMES_5F1F5175 =
+      "ConsensusSubscriptionBroker [{}]：调用 poll，consumerId={}，topicNames={}，queueCount={}，"
+          + "maxBytes={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_POLL_RESULT_CONSUMERID_EVENTSPOLLED_06412726 =
+      "ConsensusSubscriptionBroker [{}]：poll 结果，consumerId={}，eventsPolled={}，eventsNacked={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_REFRESHED_OWNERSHIP_FOR_TOPIC_EB11CF64 =
+      "ConsensusSubscriptionBroker [{}]：刷新 topic [{}] 的 ownership，consumers={}，regions={}，"
+          + "generation={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_STABLE_OWNERSHIP_POLL_ORDER_D40BB7D4 =
+      "ConsensusSubscriptionBroker [{}]：topic [{}] 的稳定 ownership poll 顺序，assignedQueueCount={}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_REGION_B40792D9 =
+      "Subscription：topic [{}]、Region [{}]、consumer group [{}] 的 consensus prefetching queue 已存在，跳过";
+  public static final String PIPE_LOG_SUBSCRIPTION_CREATE_CONSENSUS_PREFETCHING_QUEUE_BOUND_TO_0DBFC05E =
+      "Subscription：创建绑定到 topic [{}]、consumer group [{}] 的 consensus prefetching queue，"
+          + "consensusGroupId={}，fallbackCommittedRegionProgress={}，tailStartSearchIndex={}，"
+          + "initialRuntimeVersion={}，initialActive={}，totalRegionQueues={}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CLOSED_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_3A9DDEC5 =
+      "Subscription：由于 Region 移除，已关闭 topic [{}]、Region [{}]、consumer group [{}] 的 consensus "
+          + "prefetching queue";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSENSUS_PREFETCHING_QUEUE_S_BOUND_TO_TOPIC_AB10ED07 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 consensus prefetching queue 仍然存在，请在关闭前解绑";
+  public static final String PIPE_LOG_SUBSCRIPTION_DROP_ALL_CONSENSUS_PREFETCHING_QUEUE_S_BOUND_FCC1B2C4 =
+      "Subscription：删除全部 {} 个绑定到 topic [{}]、consumer group [{}] 的 consensus prefetching queue";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_NO_QUEUES_FOR_TOPIC_TO_COMMIT_7D8CC39D =
+      "ConsensusSubscriptionBroker [{}]：topic [{}] 没有可提交的 queue";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_COMMIT_CONTEXT_NOT_FOUND_IN_46DF62A6 =
+      "ConsensusSubscriptionBroker [{}]：未找到 commit context {}，已检查 {} 个 Region queue，topic [{}]";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_NO_QUEUES_FOR_TOPIC_TO_SEEK_6307A90D =
+      "ConsensusSubscriptionBroker [{}]：topic [{}] 没有可执行 seek 的 queue";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_UNSUPPORTED_SEEKTYPE_FOR_TOPIC_EDCA2CF2 =
+      "ConsensusSubscriptionBroker [{}]：不支持 seekType {}，topic [{}]";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_NO_QUEUES_FOR_TOPIC_TO_SEEK_9AC3890C =
+      "ConsensusSubscriptionBroker [{}]：topic [{}] 没有可执行 seek(topicProgress) 的 queue";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONBROKER_NO_QUEUES_FOR_TOPIC_TO_SEEKAFTER_C6D87BFD =
+      "ConsensusSubscriptionBroker [{}]：topic [{}] 没有可执行 seekAfter(topicProgress) 的 queue";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSENSUS_PREFETCHING_QUEUES_BOUND_TO_TOPIC_63B37089 =
+      "Subscription：绑定到 topic [{}]、consumer group [{}] 的 consensus prefetching queue 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTIONPREFETCHINGTSFILEQUEUE_DETECTED_OUTDATED_POLL_7E0CE108 =
+      "SubscriptionPrefetchingTsFileQueue {} 检测到过期的 poll 请求，consumer {}，commit context {}，writing "
+          + "offset {}";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_COMMIT_PIPETERMINATEEVENT_36529DC9 =
+      "Subscription：SubscriptionPrefetchingQueue {} 提交 PipeTerminateEvent {}";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_IGNORE_ENRICHEDEVENT_95C6241C =
+      "Subscription：SubscriptionPrefetchingQueue {} 在 prefetch 期间忽略 EnrichedEvent {}。";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_COMMITTED_8684FF17 =
+      "Subscription：SubscriptionPrefetchingQueue {} 从 prefetching queue poll 到已提交事件 {}（不变量被破坏），"
+          + "移除该事件";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_POLL_NON_POLLABLE_644D5D6B =
+      "Subscription：SubscriptionPrefetchingQueue {} 从 prefetching queue poll 到不可 poll 事件 {}（不变量被破坏），"
+          + "执行 nack 并移除该事件";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_INTERRUPTED_WHILE_F8923826 =
+      "Subscription：SubscriptionPrefetchingQueue {} 在 poll 事件期间被中断。";
+  public static final String PIPE_LOG_SUBSCRIPTION_INCONSISTENT_HEARTBEAT_EVENT_WHEN_PEEKING_BROKEN_BFE1DF6E =
+      "Subscription：{} peeking 时 heartbeat event 不一致（不变量被破坏），期望 {}，实际 {}，放回队列";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_ONLY_SUPPORT_PREFETCH_F3B33B30 =
+      "Subscription：SubscriptionPrefetchingQueue {} 仅支持 prefetch EnrichedEvent。忽略 {}。";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_PREFETCH_TSFILEINSERTIONEVENT_19444D2C =
+      "Subscription：SubscriptionPrefetchingQueue {} 在 ToTabletIterator 非 null 时 prefetch "
+          + "TsFileInsertionEvent（不变量被破坏）。忽略 {}。";
+  public static final String PIPE_LOG_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_WHEN_ON_RETRYABLE_4E10BE3B =
+      "为 {} 增加引用计数失败，发生在可重试 TabletInsertionEvent 上执行 {} 时";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_ON_RETRYABLE_TABLETINSERTIONEVENT_2350D9F7 =
+      "执行 {} 时在可重试 TabletInsertionEvent {} 上发生异常";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_0E4EF990 =
+      "Subscription：subscription commit context {} 不存在，可能已提交或发生了意外情况，prefetching queue：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_EVENT_IS_COMMITTED_SUBSCRIPTION_BEE17D7F =
+      "Subscription：subscription event {} 已提交，subscription commit context {}，prefetching queue：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_EVENT_IS_NOT_COMMITTABLE_SUBSCRIPTION_8D03A10C =
+      "Subscription：subscription event {} 不可提交，subscription commit context {}，prefetching queue：{}";
+  public static final String PIPE_LOG_INCONSISTENT_CONSUMER_GROUP_WHEN_ACKING_EVENT_CURRENT_INCOMING_AEE3E90F =
+      "acking event 时 consumer group 不一致，当前：{}，传入：{}，consumer id：{}，event commit context：{}，"
+          + "prefetching queue：{}，仍然提交。";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTION_COMMIT_CONTEXT_DOES_NOT_EXIST_DE907E05 =
+      "Subscription：subscription commit context [{}] 不存在，可能已提交或发生了意外情况，prefetching queue：{}";
+  public static final String PIPE_LOG_INCONSISTENT_CONSUMER_GROUP_WHEN_NACKING_EVENT_CURRENT_INCOMING_B0104C41 =
+      "nacking event 时 consumer group 不一致，当前：{}，传入：{}，consumer id：{}，event commit context：{}，"
+          + "prefetching queue：{}，仍然提交。";
+  public static final String PIPE_LOG_SUBSCRIPTION_SUBSCRIPTIONPREFETCHINGQUEUE_RECYCLE_EVENT_7B120BC3 =
+      "Subscription：SubscriptionPrefetchingQueue {} 回收处理中事件 {}，执行 nack 并重新放入 prefetching queue";
+  public static final String PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_7528DD6B =
+      "Subscription：检测到 poison message（nackCount={}），对事件 {} 在 prefetching queue {} 中强制执行 ack";
+  public static final String PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_D984349C =
+      "Subscription：检测到 poison message（nackCount={}），对 eagerly pollable event {} 在 prefetching "
+          + "queue {} 中强制执行 ack";
+  public static final String PIPE_LOG_SUBSCRIPTION_POISON_MESSAGE_DETECTED_NACKCOUNT_FORCE_ACKING_FEF0F0BF =
+      "Subscription：检测到 poison message（nackCount={}），对 pollable event {} 在 prefetching queue {} "
+          + "中强制执行 ack";
+  public static final String PIPE_LOG_SUBSCRIPTION_UNKNOWN_PIPESUBSCRIBEREQUESTVERSION_RESPONSE_56E5D93F =
+      "Subscription：未知的 PipeSubscribeRequestVersion，响应状态 = {}。";
+  public static final String PIPE_LOG_THE_SUBSCRIPTION_REQUEST_VERSION_IS_DIFFERENT_FROM_THE_CLIENT_324A125F =
+      "subscription 请求版本 {} 与客户端请求版本 {} 不同，receiver 将重置为客户端请求版本。";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSENSUS_IS_A_NO_OP_ON_THIS_DATANODE_BECAUSE_28F7E92B =
+      "Subscription：consensus {} 在该 DataNode 上为空操作，因为本地 queue 不存在，consumerGroup={}，topic={}";
+  public static final String PIPE_LOG_SUBSCRIPTIONBROKERAGENT_REFRESHING_CONSENSUS_QUEUE_ORDER_1886704D =
+      "SubscriptionBrokerAgent：将 topic [{}] 的 consensus queue order-mode 刷新为 [{}]";
+  public static final String PIPE_LOG_SUBSCRIPTION_UNBOUND_CONSENSUS_PREFETCHING_QUEUE_S_FOR_REMOVED_AC018742 =
+      "Subscription：已解绑 {} 个已移除 Region [{}] 的 consensus prefetching queue";
+  public static final String PIPE_LOG_SUBSCRIPTIONBROKERAGENT_SETACTIVEFORREGION_REGIONID_ACTIVE_4AC3A2CB =
+      "SubscriptionBrokerAgent：setActiveForRegion regionId={}，active={}";
+  public static final String PIPE_LOG_SUBSCRIPTIONBROKERAGENT_SETACTIVEWRITERSFORREGION_REGIONID_48B39B3E =
+      "SubscriptionBrokerAgent：setActiveWritersForRegion regionId={}，activeWriterNodeIds={}";
+  public static final String PIPE_LOG_SUBSCRIPTIONBROKERAGENT_APPLYRUNTIMESTATEFORREGION_REGIONID_6D8C37A1 =
+      "SubscriptionBrokerAgent：applyRuntimeStateForRegion regionId={}，runtimeState={}";
+  public static final String PIPE_LOG_SUBSCRIPTION_FAILED_TO_PARSE_CONSENSUS_REGION_ID_FOR_COMMITTED_9F1A50EB =
+      "Subscription：解析 committed progress 的 consensus Region id {} 失败，topic={}，consumerGroup={}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSENSUS_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_E46FCDD9 =
+      "Subscription：绑定到 consumer group [{}] 的 consensus broker 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTION_PIPE_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_E9B60B22 =
+      "Subscription：绑定到 consumer group [{}] 的 pipe broker 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXIST_74CAD5BE =
+      "Subscription：绑定到 consumer group [{}] 的 broker 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_GROUP_META_CHANGE_DETECTED_TOPICSUNSUBBYGROUP_F6DAF20A =
+      "Subscription：检测到 consumer group [{}] meta 变更，topicsUnsubByGroup={}，newlySubscribedTopics={}";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_CONSUMER_GROUP_META_10E7688C =
+      "处理 consumer group {} 的单个 consumer group meta 变更时发生异常";
+  public static final String PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_HAS_ALREADY_0F37997F =
+      "Subscription：绑定到 consumer group [{}] 的 broker 已存在，本地 agent {} 上 consumer group meta 的创建时间与 "
+          + "coordinator {} 的 meta 不一致，删除该 broker";
+  public static final String PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXISTED_9F09E4DE =
+      "Subscription：绑定到 consumer group [{}] 的 broker 不存在，但对应 consumer group meta 已存在于本地 agent，忽略该情况";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_HANDLING_SINGLE_TOPIC_META_CHANGES_43434FC4 =
+      "处理 topic {} 的单个 topic meta 变更时发生异常";
+  public static final String PIPE_LOG_PULLED_TOPIC_META_FROM_CONFIG_NODE_RECOVERING_5C4B1AEE =
+      "已从 ConfigNode 拉取 topic meta：{}，正在恢复……";
+  public static final String PIPE_LOG_INTERRUPTED_WHILE_SLEEPING_WILL_RETRY_TO_GET_TOPIC_META_976E4BE2 =
+      "休眠期间被中断，将重试从 ConfigNode 获取 topic meta。";
+  public static final String PIPE_LOG_PULLED_CONSUMER_GROUP_META_FROM_CONFIG_NODE_RECOVERING_A85B948F =
+      "已从 ConfigNode 拉取 consumer group meta：{}，正在恢复……";
+  public static final String PIPE_LOG_INTERRUPTED_WHILE_SLEEPING_WILL_RETRY_TO_GET_CONSUMER_GROUP_7E161F39 =
+      "休眠期间被中断，将重试从 ConfigNode 获取 consumer group meta。";
+  public static final String PIPE_LOG_FAILED_TO_GET_TOPIC_META_FROM_CONFIG_NODE_FOR_TIMES_WILL_E8D0B7F8 =
+      "从 ConfigNode 获取 topic meta 已失败 {} 次，最多将重试 {} 次。";
+  public static final String PIPE_LOG_FAILED_TO_GET_CONSUMER_GROUP_META_FROM_CONFIG_NODE_FOR_TIMES_3E4C727C =
+      "从 ConfigNode 获取 consumer group meta 已失败 {} 次，最多将重试 {} 次。";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_REFRESHED_OF_PROCESSOR_BUFFERED_COMMIT_8C7A352A =
+      "Subscription：consumer {} 已刷新 {} 个 processor-buffered commit context lease，共 {} 个";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_SUCCESSFULLY_WITH_REQUEST_6BC8BFED =
+      "Subscription：consumer {} poll {} 成功，请求：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_FULL_COMMIT_CONTEXTS_CFC18359 =
+      "Subscription：consumer {} commit（nack：{}）完整 commit context：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_FULL_REQUESTED_COMMIT_1E67E8A3 =
+      "Subscription：consumer {} commit（nack：{}）完整请求 commit context：{}，完整接受 commit context：{}，"
+          + "完整过期已取消订阅 commit context：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_REMOVE_CONSUMER_CONFIG_WHEN_HANDLING_EXIT_3827D0E8 =
+      "Subscription：处理退出时移除 consumer config {}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_IS_INACTIVE_FOR_MS_EXCEEDING_TIMEOUT_36E06B11 =
+      "Subscription：consumer {} 已非活跃 {} ms，超过超时阈值 {} ms，在服务端关闭该 consumer。";
+  public static final String PIPE_LOG_SUBSCRIPTION_THE_CONSUMER_HAS_ALREADY_EXISTED_WHEN_HANDSHAKING_3761AD81 =
+      "Subscription：握手时 consumer {} 已存在，跳过 consumer 创建。";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_HANDSHAKE_SUCCESSFULLY_DATA_NODE_ID_58DA6A5F =
+      "Subscription：consumer {} 握手成功，data node id：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_SUCCESSFULLY_AA5E0AA9 =
+      "Subscription：consumer {} 取消订阅 {} 成功";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_ACCEPTED_SUCCESSFULLY_58D1C111 =
+      "Subscription：consumer {} commit（nack：{}）accepted 成功，summary：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_SEEK_TOPIC_TO_TOPICPROGRESS_REGIONCOUNT_41702313 =
+      "Subscription：consumer {} 将 topic {} seek 到 topicProgress（regionCount={}）";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_SEEKAFTER_TOPIC_TO_TOPICPROGRESS_REGIONCOUNT_838584F8 =
+      "Subscription：consumer {} 将 topic {} seekAfter 到 topicProgress（regionCount={}）";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_SEEK_TOPIC_WITH_SEEKTYPE_799FF449 =
+      "Subscription：consumer {} 对 topic {} 使用 seekType={} 执行 seek";
+  public static final String PIPE_LOG_SUBSCRIPTION_UNSUBSCRIBE_ALL_SUBSCRIBED_TOPICS_BEFORE_CLOSE_BFB787AE =
+      "Subscription：取消订阅全部已订阅 topic {}，然后关闭 consumer {}";
+  public static final String PIPE_LOG_SUBSCRIPTION_THE_CONSUMER_DOES_NOT_EXISTED_WHEN_CLOSING_CCB63DCB =
+      "Subscription：关闭时 consumer {} 不存在，跳过删除 consumer。";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_UNSUBSCRIBE_COMPLETED_TOPICS_SUCCESSFULLY_44BAFF55 =
+      "Subscription：consumer {} 取消订阅 {}（已完成 topic）成功";
+  public static final String PIPE_LOG_SUBSCRIPTION_FAILED_TO_CLOSE_TIMED_OUT_CONSUMER_AFTER_MS_89CC11F1 =
+      "Subscription：consumer {} 非活跃 {} ms 后，关闭超时 consumer 失败";
+  public static final String PIPE_LOG_SUBSCRIPTION_DETECT_STALE_CONSUMER_CONFIG_WHEN_HANDSHAKING_B0196DB8 =
+      "Subscription：握手时检测到过期 consumer config，将清理过期 consumer config {}，并将 consumer config 设置为传入的 "
+          + "consumer config {}。";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_HEARTBEAT_B9EFB1CC =
+      "Subscription：处理心跳请求时缺少 consumer config：{}";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_FETCH_ENDPOINTS_FOR_CONSUMER_IN_325B571A =
+      "在 ConfigNode 中获取 consumer {} 的 endpoints 时发生异常";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_PIPESUBSCRIBESUBSCRIBEREQ_DF466A30 =
+      "Subscription：处理 PipeSubscribeSubscribeReq 时缺少 consumer config：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_PIPESUBSCRIBEUNSUBSCRIBEREQ_673CE701 =
+      "Subscription：处理 PipeSubscribeUnsubscribeReq 时缺少 consumer config：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_PIPESUBSCRIBEPOLLREQ_6BB9292B =
+      "Subscription：处理 PipeSubscribePollReq 时缺少 consumer config：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_NULL_RESPONSE_FOR_EVENT_OUTDATED_4CF7FAAA =
+      "Subscription：consumer {} 针对事件 {} poll 到 null 响应（outdated：{}），请求：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_FOR_EVENT_OUTDATED_FAILED_WITH_0BEFF244 =
+      "Subscription：consumer {} poll {} 失败，event={}（outdated：{}），请求：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_PIPESUBSCRIBECOMMITREQ_76B28EBB =
+      "Subscription：处理 PipeSubscribeCommitReq 时缺少 consumer config：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_COMMIT_NACK_PARTIALLY_ACCEPTED_REQUESTED_87D0C038 =
+      "Subscription：consumer {} commit（nack：{}）部分 accepted，请求 summary：{}，accepted summary：{}，"
+          + "过期已取消订阅 summary：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_PIPESUBSCRIBECLOSEREQ_717660F8 =
+      "Subscription：处理 PipeSubscribeCloseReq 时缺少 consumer config：{}";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_SEEKING_WITH_REQUEST_6B581543 =
+      "使用请求 {} 执行 seek 时发生异常";
+  public static final String PIPE_LOG_SUBSCRIPTION_MISSING_CONSUMER_CONFIG_WHEN_HANDLING_SUBSCRIPTION_B85D47A4 =
+      "Subscription：处理 subscription seek 请求时缺少 consumer config：{}";
+  public static final String PIPE_LOG_UNEXPECTED_STATUS_CODE_WHEN_CREATING_CONSUMER_IN_CONFIG_5D2E1B97 =
+      "收到非预期状态码 {}，在 ConfigNode 中创建 consumer {} 时";
+  public static final String PIPE_LOG_UNEXPECTED_STATUS_CODE_WHEN_CLOSING_CONSUMER_IN_CONFIG_NODE_0C2E0CE6 =
+      "收到非预期状态码 {}，在 ConfigNode 中关闭 consumer {} 时";
+  public static final String PIPE_LOG_UNEXPECTED_STATUS_CODE_WHEN_SUBSCRIBING_TOPICS_FOR_CONSUMER_8676DA8A =
+      "收到非预期状态码 {}，在 ConfigNode 中订阅 topic {} 给 consumer {} 时";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_SUBSCRIBING_TOPICS_FOR_CONSUMER_E5D72F10 =
+      "在 ConfigNode 中订阅 topic {} 给 consumer {} 时发生异常";
+  public static final String PIPE_LOG_UNEXPECTED_STATUS_CODE_WHEN_UNSUBSCRIBING_TOPICS_FOR_CONSUMER_EFC771F0 =
+      "收到非预期状态码 {}，在 ConfigNode 中为 topic {} 取消 consumer {} 的订阅时";
+  public static final String PIPE_LOG_EXCEPTION_OCCURRED_WHEN_UNSUBSCRIBING_TOPICS_FOR_CONSUMER_FE4B3CEE =
+      "在 ConfigNode 中为 topic {} 取消 consumer {} 的订阅时发生异常";
+  public static final String PIPE_LOG_SUBSCRIPTION_CONSUMER_POLL_EXCESSIVE_PAYLOAD_FOR_EVENT_OUTDATED_2BFF690B =
+      "Subscription：consumer {} poll 到过大的 payload {}，event={}（outdated：{}），请求：{}，参数配置或 payload "
+          + "控制可能出现意外情况……";
+  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_6614388C =
+      "解绑 subscription prefetching queue metrics 失败，prefetching queue map 非空";
+  public static final String PIPE_LOG_FAILED_TO_DEREGISTER_SUBSCRIPTION_PREFETCHING_QUEUE_METRICS_F08479A7 =
+      "注销 subscription prefetching queue metrics 失败，SubscriptionPrefetchingQueue({}) 不存在";
+  public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_SUBSCRIPTIONPREFETCHINGQUEUE_7DEF95B5 =
+      "标记传输事件速率失败，SubscriptionPrefetchingQueue({}) 不存在";
+  public static final String PIPE_LOG_FAILED_TO_UNBIND_FROM_CONSENSUS_SUBSCRIPTION_PREFETCHING_A8F920D9 =
+      "解绑 consensus subscription prefetching queue metrics 失败，queue map 非空";
+  public static final String PIPE_LOG_FAILED_TO_DEREGISTER_CONSENSUS_SUBSCRIPTION_PREFETCHING_8B180091 =
+      "注销 consensus subscription prefetching queue metrics 失败，ConsensusPrefetchingQueue({}) 不存在";
+  public static final String PIPE_LOG_FAILED_TO_MARK_TRANSFER_EVENT_RATE_CONSENSUSPREFETCHINGQUEUE_FE9B91C3 =
+      "标记传输事件速率失败，ConsensusPrefetchingQueue({}) 不存在";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_EMPTY_WHEN_FETCHING_NEXT_DFD60DF1 =
+      "获取下一响应时 SubscriptionEventTsFileResponse {} 为空（不变量被破坏）";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_NOT_EMPTY_WHEN_INITIALIZING_C9DE83C9 =
+      "初始化时 SubscriptionEventTsFileResponse {} 非空（不变量被破坏）";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTSFILERESPONSE_IS_EMPTY_WHEN_GENERATING_B8D03E93 =
+      "生成下一响应时 SubscriptionEventTsFileResponse {} 为空（不变量被破坏）";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_WAIT_FOR_RESOURCE_ENOUGH_9926289F =
+      "SubscriptionEventTabletResponse {} 等待足够资源以解析 tablets {} 秒。";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_EMPTY_WHEN_FETCHING_NEXT_4464E3F2 =
+      "获取下一响应时 SubscriptionEventTabletResponse {} 为空（不变量被破坏）";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTTABLETRESPONSE_IS_NOT_EMPTY_WHEN_INITIALIZING_88F075C9 =
+      "初始化时 SubscriptionEventTabletResponse {} 非空（不变量被破坏）";
+  public static final String PIPE_LOG_DETECT_LARGE_TABLETS_WITH_BYTE_S_CURRENT_TABLETS_SIZE_BYTE_4D472E38 =
+      "检测到大 tablets，大小 {} byte(s)，当前 tablets 大小 {} byte(s)";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_ALLOCATEDMEMORYBLOCK_HAS_SHRUNK_08F23ADE =
+      "SubscriptionEventBinaryCache.allocatedMemoryBlock 已从 {} 缩小到 {}。";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_ALLOCATEDMEMORYBLOCK_HAS_EXPANDED_52A971D9 =
+      "SubscriptionEventBinaryCache.allocatedMemoryBlock 已从 {} 扩大到 {}。";
+  public static final String PIPE_LOG_SUBSCRIPTIONEVENTBINARYCACHE_RAISED_AN_EXCEPTION_WHILE_SERIALIZING_F3B698CB =
+      "SubscriptionEventBinaryCache 序列化 CachedSubscriptionPollResponse 时抛出异常：{}";
+  public static final String PIPE_LOG_SUBSCRIPTION_SOMETHING_UNEXPECTED_HAPPENED_WHEN_SERIALIZING_5467B7B6 =
+      "Subscription：序列化 CachedSubscriptionPollResponse 时发生意外情况：{}";
+  public static final String PIPE_LOG_HAS_BEEN_ITERATED_TIMES_CURRENT_TSFILEINSERTIONEVENT_0939C298 =
+      "{} 已被迭代 {} 次，当前 TsFileInsertionEvent {}";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_ONLY_SUPPORT_CONVERT_PIPEINSERTNODETABLETINSERTIONEVENT_B888B8AA =
+      "SubscriptionPipeTabletEventBatch {} 仅支持将 PipeInsertNodeTabletInsertionEvent 或 "
+          + "PipeRawTabletInsertionEvent 转换为 tablet。忽略 {}。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_UNEXPECTED_TABLET_INSERTION_8FB1B507 =
+      "SubscriptionPipeTabletEventBatch：非预期 tablet insertion event {}，跳过该事件。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_FAILED_TO_INCREASE_THE_595722D8 =
+      "SubscriptionPipeTabletEventBatch：增加事件 {} 的引用计数失败，跳过该事件。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_OVERRIDE_NON_NULL_CURRENTTABLETINSERTIONEVENTSITERATOR_2633B158 =
+      "SubscriptionPipeTabletEventBatch {} 迭代时覆盖非 null 的 "
+          + "currentTabletInsertionEventsIterator（不变量被破坏）。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETABLETEVENTBATCH_IGNORE_ENRICHEDEVENT_WHEN_E6BAEACE =
+      "SubscriptionPipeTabletEventBatch {} 迭代时忽略 EnrichedEvent {}（不变量被破坏）。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPETSFILEEVENTBATCH_IGNORE_TSFILEINSERTIONEVENT_88189024 =
+      "SubscriptionPipeTsFileEventBatch {} 批处理时忽略 TsFileInsertionEvent {}。";
+  public static final String PIPE_LOG_SUBSCRIPTIONPIPEEVENTBATCH_IGNORE_ENRICHEDEVENT_WHEN_BATCHING_E69BE90D =
+      "SubscriptionPipeEventBatch {} 批处理时忽略 EnrichedEvent {}。";
+  public static final String PIPE_LOG_CONSENSUS_PREFETCH_EXECUTOR_IS_SHUTDOWN_SKIP_REGISTERING_83E36171 =
+      "Consensus prefetch executor 已关闭，跳过注册 {}";
+  public static final String PIPE_LOG_CONSENSUS_PREFETCH_SUBTASK_IS_ALREADY_REGISTERED_419FE7AD =
+      "Consensus prefetch subtask {} 已注册";
+  public static final String PIPE_LOG_CONSENSUS_PREFETCH_WORKER_LOOP_EXITS_ABNORMALLY_531EE564 =
+      "Consensus prefetch worker loop 异常退出";
+  public static final String PIPE_LOG_FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_SINK_IGNORE_CF2E3D90 =
+      "sink 初始化失败后关闭 sink 失败。忽略该异常。";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHSUBTASK_UNEXPECTED_ERROR_WHILE_DRIVING_D361F4C2 =
+      "ConsensusPrefetchSubtask {}：驱动 queue {} 时发生非预期错误";
+  public static final String PIPE_LOG_SUBSCRIPTIONSINKSUBTASK_FOR_CONSENSUS_TOPIC_FAILED_UNEXPECTEDLY_FC41B565 =
+      "consensus topic [{}] 的 SubscriptionSinkSubtask 意外失败，跳过自动重新提交";
+  public static final String PIPE_LOG_FAILED_TO_BROADCAST_SUBSCRIPTION_PROGRESS_TO_DATANODE_AT_7024F5B2 =
+      "向 DataNode {} 广播 subscription progress 失败，地址 {}：{}";
+  public static final String PIPE_LOG_FAILED_TO_BROADCAST_SUBSCRIPTION_PROGRESS_FOR_REGION_DE9074BD =
+      "广播 Region {} 的 subscription progress 失败：{}";
+  public static final String PIPE_LOG_RECEIVED_SUBSCRIPTION_PROGRESS_BROADCAST_CONSUMERGROUPID_CDAEF839 =
+      "收到 subscription progress 广播：consumerGroupId={}，topicName={}，regionId={}，physicalTime={}，"
+          + "localSeq={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IDEMPOTENT_RE_COMMIT_FOR_30464FC4 =
+      "ConsensusSubscriptionCommitState：幂等重新提交 ({},{},{})";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IDEMPOTENT_DIRECT_COMMIT_B093AC01 =
+      "ConsensusSubscriptionCommitState：幂等直接提交 ({},{},{})";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_RECOVERED_COMMITTEDREGIONPROGRESS_F6B92C6B =
+      "ConsensusSubscriptionCommitManager：已从 ConfigNode 恢复 committedRegionProgress={}，"
+          + "consumerGroupId={}，topicName={}，regionId={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_COMMIT_FOR_UNKNOWN_751BD2A9 =
+      "ConsensusSubscriptionCommitManager：无法提交未知状态，consumerGroupId={}，topicName={}，regionId={}，"
+          + "writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_DIRECT_COMMIT_D6AD7D96 =
+      "ConsensusSubscriptionCommitManager：无法直接提交未知状态，consumerGroupId={}，topicName={}，regionId={}，"
+          + "writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_CANNOT_RESET_UNKNOWN_C469052F =
+      "ConsensusSubscriptionCommitManager：无法重置未知状态，consumerGroupId={}，topicName={}，regionId={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_IGNORE_BROADCAST_WITHOUT_211DE477 =
+      "ConsensusSubscriptionCommitManager：忽略缺少 writer 标识的广播，consumerGroupId={}，topicName={}，"
+          + "regionId={}，writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_SKIP_MALFORMED_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_NAME_BB4D75F0 =
+      "跳过格式错误的 consensus subscription progress 文件名 {}";
+  public static final String PIPE_LOG_FAILED_TO_RECOVER_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_DF30716B =
+      "恢复 consensus subscription progress 失败，consumerGroupId={}，topicName={}";
+  public static final String PIPE_LOG_FAILED_TO_DELETE_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_51C57096 =
+      "删除 consensus subscription progress 文件 {} 失败";
+  public static final String PIPE_LOG_FAILED_TO_PERSIST_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_4EA71236 =
+      "持久化 consensus subscription progress 失败，consumerGroupId={}，topicName={}，regionId={}";
+  public static final String PIPE_LOG_FAILED_TO_REWRITE_CONSENSUS_SUBSCRIPTION_PROGRESS_FOR_CONSUMERGROUPID_8B230D50 =
+      "重写 consensus subscription progress 失败，consumerGroupId={}，topicName={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_FAILED_TO_QUERY_COMMIT_31E47F21 =
+      "ConsensusSubscriptionCommitManager：从 ConfigNode 查询提交进度失败，consumerGroupId={}，"
+          + "topicName={}，regionId={}，状态={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITMANAGER_FAILED_TO_QUERY_COMMIT_16CFDCD9 =
+      "ConsensusSubscriptionCommitManager：从 ConfigNode 查询提交进度失败，consumerGroupId={}，"
+          + "topicName={}，regionId={}，从 0 开始";
+  public static final String PIPE_LOG_FAILED_TO_SERIALIZE_COMMITTED_REGION_PROGRESS_0D8D2129 =
+      "序列化 committed region progress {} 失败";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_IGNORE_MAPPING_WITHOUT_3E66A74D =
+      "ConsensusSubscriptionCommitState：忽略缺少 writer 标识的 mapping，writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_DUPLICATE_OUTSTANDING_MAPPING_B5B34891 =
+      "ConsensusSubscriptionCommitState：slot={} 存在重复 outstanding mapping，前值={}，当前值={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_OUTSTANDING_SIZE_EXCEEDS_1463BF02 =
+      "ConsensusSubscriptionCommitState：outstanding size（{}）超过阈值（{}），consumers 可能未提交。"
+          + "committed=({},{}), writerNodeId={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_MISSING_WRITER_IDENTITY_01040357 =
+      "ConsensusSubscriptionCommitState：commit 缺少 writer 标识，writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_UNKNOWN_KEY_FOR_COMMIT_5F699CFD =
+      "ConsensusSubscriptionCommitState：commit 的 key ({},{},{}) 未知";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_MISSING_WRITER_IDENTITY_BB10A3B1 =
+      "ConsensusSubscriptionCommitState：direct commit 缺少 writer 标识，writerId={}，writerProgress={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONCOMMITSTATE_REJECT_DIRECT_COMMIT_WITHOUT_5B975E49 =
+      "ConsensusSubscriptionCommitState：拒绝 direct commit，({},{},{}) 缺少 outstanding mapping";
+  public static final String PIPE_LOG_ISCONSENSUSBASEDTOPIC_CHECK_FOR_TOPIC_MODE_RESULT_19EFA0F9 =
+      "isConsensusBasedTopic 检查 topic [{}]：模式={}，结果={}";
+  public static final String PIPE_LOG_SET_IOTCONSENSUS_ONNEWPEERCREATED_CALLBACK_FOR_CONSENSUS_0766CE68 =
+      "设置 IoTConsensus.onNewPeerCreated 回调，用于 consensus subscription 自动绑定";
+  public static final String PIPE_LOG_SET_IOTCONSENSUS_ONPEERREMOVED_CALLBACK_FOR_CONSENSUS_SUBSCRIPTION_21D4D6AC =
+      "设置 IoTConsensus.onPeerRemoved 回调，用于 consensus subscription 清理";
+  public static final String PIPE_LOG_NEW_DATAREGION_CREATED_CHECKING_CONSUMER_GROUP_S_FOR_AUTO_787C16E9 =
+      "新 DataRegion {} 已创建，正在检查 {} 个 consumer group 以执行自动绑定，currentSearchIndex={}";
+  public static final String PIPE_LOG_AUTO_BINDING_CONSENSUS_QUEUE_FOR_TOPIC_IN_GROUP_TO_NEW_REGION_86F21649 =
+      "为 topic [{}]、group [{}] 自动绑定 consensus queue 到新 Region {}（database={}，"
+          + "tailStartSearchIndex={}，hasLocalPersistedState={}，committedRegionProgress={}，"
+          + "initialRuntimeVersion={}，initialActive={}）";
+  public static final String PIPE_LOG_DATAREGION_BEING_REMOVED_UNBINDING_ALL_CONSENSUS_SUBSCRIPTION_848A29F0 =
+      "DataRegion {} 正在被移除，解绑全部 consensus subscription queue";
+  public static final String PIPE_LOG_SETTING_UP_CONSENSUS_SUBSCRIPTIONS_FOR_CONSUMER_GROUP_TOPICS_204374A2 =
+      "正在为 consumer group [{}] 设置 consensus subscription，topics={}，consensus group 总数={}";
+  public static final String PIPE_LOG_SETTING_UP_CONSENSUS_QUEUE_FOR_TOPIC_ISTABLETOPIC_ORDERMODE_4F1CDC66 =
+      "正在为 topic [{}] 设置 consensus queue：isTableTopic={}，orderMode={}，config={}";
+  public static final String PIPE_LOG_DISCOVERED_CONSENSUS_GROUP_S_FOR_TOPIC_IN_CONSUMER_GROUP_012EE420 =
+      "发现 {} 个 consensus group，topic [{}]，consumer group [{}]：{}";
+  public static final String PIPE_LOG_SKIPPING_REGION_DATABASE_FOR_TABLE_TOPIC_DATABASE_KEY_2DA27A84 =
+      "跳过 Region {}（database={}），table topic [{}]（DATABASE_KEY={}）";
+  public static final String PIPE_LOG_BINDING_CONSENSUS_PREFETCHING_QUEUE_FOR_TOPIC_IN_CONSUMER_45239EEA =
+      "将 topic [{}]、consumer group [{}] 的 consensus prefetching queue 绑定到 data region consensus "
+          + "group [{}]（database={}，tailStartSearchIndex={}，hasLocalPersistedState={}，"
+          + "committedRegionProgress={}，initialRuntimeVersion={}，initialActive={}）";
+  public static final String PIPE_LOG_TORE_DOWN_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_CONSUMER_GROUP_80B84227 =
+      "已拆除 topic [{}]、consumer group [{}] 的 consensus subscription";
+  public static final String PIPE_LOG_CHECKING_NEW_SUBSCRIPTIONS_IN_CONSUMER_GROUP_FOR_CONSENSUS_4A56D78A =
+      "正在检查 consumer group [{}] 中 consensus-based topic 的新 subscription：{}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_IGNORE_STALE_RUNTIME_STATE_6C36B250 =
+      "ConsensusSubscriptionSetupHandler：忽略 Region {} 的过期 runtime state，incomingRuntimeVersion={}，"
+          + "currentRuntimeVersion={}，runtimeState={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_APPLYING_RUNTIME_STATE_1FB8937E =
+      "ConsensusSubscriptionSetupHandler：应用 Region {} 的 runtime state，preferred writer {} -> {}，"
+          + "runtimeVersion {} -> {}，runtimeState={}";
+  public static final String PIPE_LOG_CONSENSUSSUBSCRIPTIONSETUPHANDLER_REGION_PREFERRED_WRITER_46C1A894 =
+      "ConsensusSubscriptionSetupHandler：Region {} 的 preferred writer 已变更 {} -> {}，runtimeVersion "
+          + "{} -> {}，runtimeState={}（route hint）";
+  public static final String PIPE_LOG_FAILED_TO_CHECK_IF_TOPIC_IS_CONSENSUS_BASED_DEFAULTING_TO_ECCE1509 =
+      "检查 topic [{}] 是否为 consensus-based 失败，默认设为 false";
+  public static final String PIPE_LOG_SKIPPING_SETUP_OF_CONSENSUS_BASED_SUBSCRIPTIONS_FOR_CONSUMER_A7B2C812 =
+      "跳过 consumer group [{}] 的 consensus-based subscription 设置，因为 mode=consensus 仅支持 "
+          + "data_region_consensus_protocol_class={}，但当前配置值为 {}（运行时 consensus 实现：{}）";
+  public static final String PIPE_LOG_TOPIC_CONFIG_NOT_FOUND_FOR_TOPIC_CANNOT_SET_UP_CONSENSUS_A93339CE =
+      "未找到 topic [{}] 的配置，无法设置 consensus queue";
+  public static final String PIPE_LOG_NO_LOCAL_IOTCONSENSUS_DATA_REGION_FOUND_FOR_TOPIC_IN_CONSUMER_6FD0600E =
+      "topic [{}] 在 consumer group [{}] 中没有本地 IoTConsensus data region。匹配的 data region 可用后将设置 "
+          + "consensus subscription。";
+  public static final String PIPE_LOG_FAILED_TO_TEAR_DOWN_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_F59E8B7C =
+      "拆除 topic [{}]、consumer group [{}] 的 consensus subscription 失败";
+  public static final String PIPE_LOG_FAILED_TO_AUTO_BIND_TOPIC_IN_GROUP_TO_NEW_REGION_5BFD0E7D =
+      "将 topic [{}]、group [{}] 自动绑定到新 Region {} 失败";
+  public static final String PIPE_LOG_FAILED_TO_UNBIND_CONSENSUS_SUBSCRIPTION_QUEUES_FOR_REMOVED_7086F70A =
+      "解绑已移除 Region {} 的 consensus subscription queue 失败";
+  public static final String PIPE_LOG_FAILED_TO_SET_UP_CONSENSUS_SUBSCRIPTION_FOR_TOPIC_IN_CONSUMER_1A30001B =
+      "为 topic [{}]、consumer group [{}] 设置 consensus subscription 失败";
+  public static final String PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_DESERIALIZED_MERGED_INSERTNODE_51FB8295 =
+      "ConsensusLogToTabletConverter：已反序列化合并的 InsertNode，searchIndex={}，type={}，deviceId={}，"
+          + "searchNodeCount={}";
+  public static final String PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_SEARCHINDEX_CONTAINS_NON_INSERTNODE_CFA9FA49 =
+      "ConsensusLogToTabletConverter：searchIndex={} 包含非 InsertNode PlanNode：{}";
+  public static final String PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_CONVERTING_INSERTNODE_TYPE_B80428A0 =
+      "ConsensusLogToTabletConverter：正在转换 InsertNode，type={}，deviceId={}";
+  public static final String PIPE_LOG_UNSUPPORTED_INSERTNODE_TYPE_FOR_SUBSCRIPTION_E488EF74 =
+      "不支持用于 subscription 的 InsertNode 类型：{}";
+  public static final String PIPE_LOG_CONSENSUSLOGTOTABLETCONVERTER_FAILED_TO_DESERIALIZE_ICONSENSUSREQUEST_EC1F6BAD =
+      "ConsensusLogToTabletConverter：反序列化 IConsensusRequest 失败（type={}），searchIndex={}：{}";
+  public static final String PIPE_LOG_INSERTNODE_TYPE_IS_NULL_SKIPPING_CONVERSION_A2F1ADF7 =
+      "InsertNode 类型为 null，跳过转换";
+  public static final String PIPE_LOG_UNSUPPORTED_DATA_TYPE_C8929F11 =
+      "不支持的数据类型：{}";
+  public static final String PIPE_LOG_UNSUPPORTED_DATA_TYPE_FOR_COPY_8AD25FE7 =
+      "copy 不支持的数据类型：{}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCHING_QUEUE_IS_EMPTY_FOR_22836B5E =
+      "ConsensusPrefetchingQueue {}：consumerId={} 的 prefetching queue 为空，pendingEntriesSize={}，"
+          + "nextExpected={}，isClosed={}，prefetchInitialized={}，subtaskScheduled={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLLING_QUEUE_SIZE_CONSUMERID_FCA0AAD3 =
+      "ConsensusPrefetchingQueue {}：正在 poll，queue size={}，consumerId={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_DRAINED_ENTRIES_FROM_PENDINGENTRIES_2D4E0BE7 =
+      "ConsensusPrefetchingQueue {}：从 pendingEntries drain 出 {} 个条目，first searchIndex={}，last "
+          + "searchIndex={}，nextExpected={}，prefetchingQueueSize={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_TIME_BASED_FLUSH_TABLETS_LINGERED_10A4EBA8 =
+      "ConsensusPrefetchingQueue {}：基于时间触发 flush，{} 个 tablet 滞留 {}ms（阈值={}ms）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_GAP_DETECTED_EXPECTED_GOT_FILLING_70DD08B3 =
+      "ConsensusPrefetchingQueue {}：检测到缺口，期望={}，实际={}。从 WAL 填充 {} 个条目。";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ACCUMULATE_COMPLETE_BATCHSIZE_FA3F3B41 =
+      "ConsensusPrefetchingQueue {}：累积完成，batchSize={}，processed={}，skipped={}，lingerTablets={}，"
+          + "nextExpected={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SUBSCRIPTION_WAL_READ_ENTRIES_14AA5096 =
+      "ConsensusPrefetchingQueue {}：subscription WAL 读取 {} 个条目，nextExpectedSearchIndex={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SUBSCRIPTION_WAL_EXHAUSTED_AT_E61AF763 =
+      "ConsensusPrefetchingQueue {}：subscription WAL 在 {} 耗尽，当前 WAL 为 {}。滚动 WAL 文件以暴露当前文件条目。";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SKIP_STALE_EVENT_WITH_SEARCHINDEX_07A09B36 =
+      "ConsensusPrefetchingQueue {}：跳过过期事件，searchIndex 范围 [{}, {}]，expectedSeekGeneration={}，"
+          + "currentSeekGeneration={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ENQUEUED_EVENT_WITH_TABLETS_SEARCHINDEX_140FDDCB =
+      "ConsensusPrefetchingQueue {}：已入队包含 {} 个 tablet 的事件，searchIndex 范围 [{}, {}]，"
+          + "prefetchQueueSize={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_WITHOUT_WRITER_PROGRESS_D84AA802 =
+      "ConsensusPrefetchingQueue {}：拒绝缺少 writer progress 的 {}，commitContext={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_REJECT_FOR_INACTIVE_QUEUE_COMMITCONTEXT_AE6D382C =
+      "ConsensusPrefetchingQueue {}：因 queue 非活跃而拒绝 {}，commitContext={}，runtimeVersion={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RECYCLED_TIMED_OUT_EVENT_BACK_5E58639C =
+      "ConsensusPrefetchingQueue {}：将超时事件 {} 回收到 prefetching queue";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_INJECTED_WATERMARK_WATERMARKTIMESTAMP_BF373164 =
+      "ConsensusPrefetchingQueue {}：已注入 WATERMARK，watermarkTimestamp={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_CREATED_DORMANT_CONSUMERGROUPID_863BC6D6 =
+      "ConsensusPrefetchingQueue 已创建（dormant）：consumerGroupId={}，topicName={}，orderMode={}，"
+          + "consensusGroupId={}，fallbackCommittedRegionProgress={}，fallbackTailSearchIndex={}，"
+          + "initialRuntimeVersion={}，initialActive={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_INITIALIZED_STARTSEARCHINDEX_69B53EE6 =
+      "ConsensusPrefetchingQueue {}：prefetch 已初始化，startSearchIndex={}，progressSource={}，"
+          + "recoveryWriterCount={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PERIODIC_STATS_LAG_PENDINGDELTA_D75375D0 =
+      "ConsensusPrefetchingQueue {}：周期统计，lag={}，pendingDelta={}，walDelta={}，pendingTotal={}，"
+          + "walTotal={}，pendingQueueSize={}，prefetchingQueueSize={}，inFlightEventsSize={}，"
+          + "realtimeWriterCount={}，walHasNext={}，isActive={}，subtaskScheduled={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_WAITING_MS_FOR_WAL_GAP_TO_BECOME_7D91C6C5 =
+      "ConsensusPrefetchingQueue {}：等待 {}ms，使 WAL 缺口 [{}, {}) 可见，currentNextExpected={}，"
+          + "currentWalIndex={}，seekGeneration={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKTOREGIONPROGRESS_WRITERCOUNT_3134A29B =
+      "ConsensusPrefetchingQueue {}：seekToRegionProgress writerCount={} -> {}，searchIndex={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_WRITERCOUNT_C6B26D20 =
+      "ConsensusPrefetchingQueue {}：seekAfterRegionProgress writerCount={} -> {}，searchIndex={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ABORTED_PENDING_SEEK_DURING_RUNTIME_F9928604 =
+      "ConsensusPrefetchingQueue {}：运行时停止期间中止待处理 seek({})，恢复 prefetchInitialized {} -> "
+          + "{}，seekGeneration {} -> {}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_SCHEDULE_SEEK_BECAUSE_9E407068 =
+      "ConsensusPrefetchingQueue {}：调度 seek({}) 失败，原因：{}，恢复 prefetchInitialized {} -> {}，"
+          + "seekGeneration {} -> {}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEK_APPLIED_TO_SEARCHINDEX_WRITERCOUNT_FA2C4327 =
+      "ConsensusPrefetchingQueue {}：seek({}) 已应用到 searchIndex={}，writerCount={}，seekGeneration={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FLUSHING_LINGERING_TABLETS_DURING_4C4AF235 =
+      "ConsensusPrefetchingQueue {}：关闭期间 flush {} 个滞留 tablet";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ISACTIVE_SET_TO_REGION_EC0AD7BA =
+      "ConsensusPrefetchingQueue {}：isActive 设置为 {}（region={}）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_RUNTIMEACTIVEWRITERNODEIDS_EFFECTIVEACTIVEWRITERNODEIDS_246519D2 =
+      "ConsensusPrefetchingQueue {}：runtimeActiveWriterNodeIds={}，"
+          + "effectiveActiveWriterNodeIds={}（region={}，orderMode={}，preferredWriterNodeId={}）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFERREDWRITERNODEID_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_B08E8180 =
+      "ConsensusPrefetchingQueue {}：preferredWriterNodeId 设置为 {}，"
+          + "effectiveActiveWriterNodeIds={}（region={}，orderMode={}）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ORDERMODE_SET_TO_EFFECTIVEACTIVEWRITERNODEIDS_CDD3C86E =
+      "ConsensusPrefetchingQueue {}：orderMode 设置为 {}，effectiveActiveWriterNodeIds={}（region={}，"
+          + "preferredWriterNodeId={}，runtimeActiveWriterNodeIds={}）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMEVERSION_36E05B80 =
+      "ConsensusPrefetchingQueue {}：已应用 runtimeVersion {}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_APPLIED_RUNTIMESTATE_PREFERREDWRITERNODEID_D845E9D6 =
+      "ConsensusPrefetchingQueue {}：已应用 runtimeState={}，preferredWriterNodeId={}";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_COMMITTED_EVENT_BROKEN_INVARIANT_E478FA3C =
+      "ConsensusPrefetchingQueue {} poll 到已提交事件 {}（不变量被破坏），移除该事件";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POLL_NON_POLLABLE_EVENT_BROKEN_E9551325 =
+      "ConsensusPrefetchingQueue {} poll 到不可 poll 事件 {}（不变量被破坏），执行 nack";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_INTERRUPTED_WHILE_POLLING_B7CFF5FD =
+      "ConsensusPrefetchingQueue {} 在 polling 期间被中断";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_READING_SUBSCRIPTION_WAL_A3888AC5 =
+      "ConsensusPrefetchingQueue {}：读取 subscription WAL 出错";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_CLOSING_SUBSCRIPTION_WAL_19711C01 =
+      "ConsensusPrefetchingQueue {}：关闭 subscription WAL iterator 出错";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_COMMIT_CONTEXT_DOES_NOT_EXIST_99B8A8F3 =
+      "ConsensusPrefetchingQueue {}：ack 的 commit context {} 不存在";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_EVENT_ALREADY_COMMITTED_AC34E829 =
+      "ConsensusPrefetchingQueue {}：事件 {} 已提交";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_ADVANCE_COMMIT_FRONTIER_56E606C0 =
+      "ConsensusPrefetchingQueue {}：推进 {} 的 commit frontier 失败";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_COMMIT_CONTEXT_DOES_NOT_EXIST_05F6C6E0 =
+      "ConsensusPrefetchingQueue {}：nack 的 commit context {} 不存在";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKTOREGIONPROGRESS_NOT_SUPPORTED_85477BAB =
+      "ConsensusPrefetchingQueue {}：不支持 seekToRegionProgress（没有 WAL 目录）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_SEEKAFTERREGIONPROGRESS_NOT_SUPPORTED_55F36BE8 =
+      "ConsensusPrefetchingQueue {}：不支持 seekAfterRegionProgress（没有 WAL 目录）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_READ_WAL_METADATA_FROM_A2ED50D1 =
+      "ConsensusPrefetchingQueue {}：计算 seekToEnd frontier 时，从 {} 读取 WAL metadata 失败";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_ERROR_DURING_DEREGISTER_34C332E7 =
+      "ConsensusPrefetchingQueue {}：注销期间出错";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_FAILED_TO_FLUSH_LINGERING_BATCH_F97D8AA7 =
+      "ConsensusPrefetchingQueue {}：关闭期间 flush 滞留 batch 失败，丢弃该 batch";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_PREFETCH_ROUND_FAILED_TYPE_MESSAGE_63BC909B =
+      "ConsensusPrefetchingQueue {}：prefetch 轮次失败（type={}，message={}）";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_NACKCOUNT_3A9255FB =
+      "ConsensusPrefetchingQueue {}：检测到 poison message（nackCount={}），为避免无限重复投递，对事件 {} 强制执行 ack";
+  public static final String PIPE_LOG_CONSENSUSPREFETCHINGQUEUE_POISON_MESSAGE_DETECTED_DURING_23159F02 =
+      "ConsensusPrefetchingQueue {}：recycle 期间检测到 poison message（nackCount={}），对事件 {} 强制执行 ack";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_NEAR_LIVE_WAL_FILE_RETRYING_5AEB94AC =
+      "ProgressWALIterator：打开 near-live WAL 文件 {} 失败，不加入黑名单并重试";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_ERROR_READING_WAL_2DB46D41 =
+      "ProgressWALIterator：读取 WAL 出错";
+  public static final String PIPE_LOG_PROGRESSWALITERATOR_FAILED_TO_OPEN_WAL_FILE_SKIPPING_29CA1092 =
+      "ProgressWALIterator：打开 WAL 文件 {} 失败，跳过该文件";
+  public static final String PIPE_LOG_PIPE_TERMINATE_EVENT_COMMITTED_FOR_HISTORICAL_TRANSFER_CREATIONTIME_9B807B28 =
+      "Pipe {}@{}：历史传输的终止事件已提交。creationTime：{}，shouldMark：{}。{}";
+  public static final String PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19 =
+      "Pipe {}@{}：历史 source 已提供全部事件，正在发出终止事件。{}";
+  public static final String PIPE_LOG_PIPE_REALTIME_SOURCE_ON_DATA_REGION_LISTENTOTSFILE_LISTENTOINSERTNODE_A02E1552 =
+      "Pipe {}@{} {}：DataRegion {} 上的实时 source（listenToTsFile={}，listenToInsertNode={}，"
+          + "registeredSourceCount={}，tsFileSourceCount={}，insertNodeSourceCount={}）。";
+  public static final String PIPE_LOG_INTERRUPTED_WHILE_WAITING_FOR_IN_FLIGHT_PUBLISHES_TO_FINISH_C8E3757B =
+      "关闭 DataRegion {} 上的 assigner 时，等待处理中 publish 完成期间被中断。";
+  public static final String PIPE_LOG_SCHEMAREGIONSTATEMACHINE_EXECUTE_READ_PLAN_FRAGMENTINSTANCE_F85A001F =
+      "SchemaRegionStateMachine[{}]：执行读 plan：FragmentInstance-{}";
+  public static final String PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_FD783B3C =
+      "当前节点 [nodeId：{}] 不再是 schema region leader [regionId：{}]，新 leader 为 [nodeId：{}]";
+  public static final String PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_12E06F99 =
+      "当前节点 [nodeId：{}] 不再是 schema region leader [regionId：{}]，开始清理相关服务。";
+  public static final String PIPE_LOG_CURRENT_NODE_NODEID_IS_NO_LONGER_THE_SCHEMA_REGION_LEADER_3092822E =
+      "当前节点 [nodeId：{}] 不再是 schema region leader [regionId：{}]，旧 leader 上的全部服务当前不可用。";
+  public static final String PIPE_LOG_CURRENT_NODE_NODEID_BECOMES_SCHEMA_REGION_LEADER_REGIONID_46C70A32 =
+      "当前节点 [nodeId：{}] 成为 schema region leader [regionId：{}]";
+  public static final String PIPE_LOG_CURRENT_NODE_NODEID_AS_SCHEMA_REGION_LEADER_REGIONID_IS_F00BFAC5 =
+      "当前节点 [nodeId：{}] 作为 schema region leader [regionId：{}] 已准备好工作";
+  public static final String PIPE_LOG_SCHEMA_REGION_LISTENING_QUEUE_LISTEN_TO_SNAPSHOT_FAILED_64845A44 =
+      "Schema Region Listening Queue 监听 snapshot 失败，历史数据可能无法传输。snapshotPaths:{}";
+  public static final String PIPE_LOG_WRITE_OPERATION_FAILED_BECAUSE_RETRYTIME_34EFBE99 =
+      "写入操作失败，原因：{}，重试次数：{}。";
+  public static final String PIPE_LOG_EXCEPTION_OCCURS_WHEN_TAKING_SNAPSHOT_FOR_IN_48CBDFCC =
+      "为 {}-{} 在 {} 中执行 snapshot 时发生异常";
+  public static final String PIPE_LOG_MEETS_ERROR_WHEN_GETTING_SNAPSHOT_FILES_FOR_9BFA76B9 =
+      "获取 {}-{} 的 snapshot 文件时出错";
+  public static final String PIPE_LOG_WRITE_OPERATION_STILL_FAILED_AFTER_RETRY_TIMES_BECAUSE_15EEA702 =
+      "写入操作在重试 {} 次后仍失败，原因：{}。";
+  public static final String PIPE_LOG_NOW_TRY_TO_DELETE_DIRECTLY_DATABASEPATH_DELETEPATH_A427CD01 =
+      "现在尝试直接删除，databasePath：{}，deletePath：{}";
+  public static final String PIPE_LOG_BATCH_FAILURE_IN_EXECUTING_A_INSERTTABLETNODE_DEVICE_STARTTIME_9A5A70F6 =
+      "批量执行 InsertTabletNode 失败。device：{}，startTime：{}，measurements：{}，失败状态：{}";
+  public static final String PIPE_LOG_INSERT_ROW_FAILED_DEVICE_TIME_MEASUREMENTS_FAILING_STATUS_63054E8B =
+      "插入行失败。device：{}，time：{}，measurements：{}，失败状态：{}";
+  public static final String PIPE_LOG_INSERT_TABLET_FAILED_DEVICE_STARTTIME_MEASUREMENTS_FAILING_B409B2C4 =
+      "插入 tablet 失败。device：{}，startTime：{}，measurements：{}，失败状态：{}";
+
+  // ---------------------------------------------------------------------------
+  // 补充异常消息
+  // ---------------------------------------------------------------------------
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_SUBSCRIPTION_REQUEST_VERSION_D_1E7C211A =
+      "不支持的 subscription 请求版本 %d";
+  public static final String PIPE_EXCEPTION_PAYLOAD_SIZE_S_BYTE_S_WILL_EXCEED_THE_THRESHOLD_S_BYTE_S_6043B3D8 =
+      "payload 大小 %s byte(s) 将超过阈值 %s byte(s)";
+  public static final String PIPE_EXCEPTION_INCONSISTENT_READ_LENGTH_BROKEN_INVARIANT_EXPECTED_S_ACTUAL_9203668A =
+      "读取长度不一致（不变量被破坏），期望：%s，实际：%s";
+  public static final String PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_8B31A3A5 =
+      "TimeoutException：等待 %s 秒";
+  public static final String PIPE_EXCEPTION_THE_SUBSCRIPTIONCONNECTORSUBTASKMANAGER_ONLY_SUPPORTS_SUBSCRIPTION_CEFFAAA9 =
+      "SubscriptionConnectorSubtaskManager 仅支持 subscription-sink。";
+  public static final String PIPE_EXCEPTION_FAILED_TO_CONSTRUCT_SUBSCRIPTION_SINK_BECAUSE_OF_S_OR_S_DBA27DC2 =
+      "构造 subscription sink 失败，原因：pipe connector 参数中不存在 %s 或 %s";
+  public static final String PIPE_EXCEPTION_FAILED_TO_GET_PENDINGQUEUE_NO_SUCH_SUBTASK_S_B445404A =
+      "获取 PendingQueue 失败。不存在该 subtask：%s";
+  public static final String PIPE_EXCEPTION_INVALID_BASE64_URL_COMPONENT_LENGTH_F1F1B6BA =
+      "无效的 base64 URL component 长度";
+  public static final String PIPE_EXCEPTION_INVALID_CONSENSUS_SUBSCRIPTION_PROGRESS_REGION_COUNT_S_7CE4FD8E =
+      "无效的 consensus subscription progress Region 数量 %s";
+  public static final String PIPE_EXCEPTION_INVALID_CONSENSUS_SUBSCRIPTION_PROGRESS_PAYLOAD_LENGTH_S_8C145986 =
+      "无效的 consensus subscription progress payload 长度 %s";
+  public static final String PIPE_EXCEPTION_MALFORMED_CONSENSUS_SUBSCRIPTION_PROGRESS_FILE_S_83042847 =
+      "格式错误的 consensus subscription progress 文件 %s";
+  public static final String PIPE_EXCEPTION_ILLEGAL_S_S_72D743AA =
+      "非法的 %s=%s";
+  public static final String PIPE_EXCEPTION_INTERRUPTED_WHILE_WAITING_FOR_SEEK_APPLICATION_7C7ECAF2 =
+      "等待 seek 应用时被中断";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_RECOVER_FROM_NON_EMPTY_C1B367EF =
+      "ConsensusPrefetchingQueue %s：无法在没有 WAL 访问权限的情况下，从非空 Region progress 恢复：%s";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_INITIALIZE_REPLAY_START_E02DE40E =
+      "ConsensusPrefetchingQueue %s：无法根据 region progress %s 初始化 replay 起点：%s";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_SEEKTOREGIONPROGRESS_2746E514 =
+      "ConsensusPrefetchingQueue %s：无法执行 seekToRegionProgress %s：%s";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_CANNOT_SEEKAFTERREGIONPROGRESS_48A500C3 =
+      "ConsensusPrefetchingQueue %s：无法执行 seekAfterRegionProgress %s：%s";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_WHILE_APPLYING_SEEK_2BB2B431 =
+      "ConsensusPrefetchingQueue %s 正在应用 seek 时关闭";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_RUNTIME_STOPPED_BEFORE_SEEK_7BCB4F4B =
+      "ConsensusPrefetchingQueue %s 运行时在应用 seek(%s) 前已停止";
+  public static final String PIPE_EXCEPTION_CONSENSUSPREFETCHINGQUEUE_S_IS_CLOSING_BEFORE_SEEK_APPLIES_F893BB02 =
+      "ConsensusPrefetchingQueue %s 在 seek 应用前正在关闭";
+  public static final String PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299 =
+      "用户 %s 对表 %s.%s 没有 SELECT 权限";
+  public static final String PIPE_EXCEPTION_EXPECTED_BINARY_BYTE_OR_STRING_BUT_WAS_S_7976B10F =
+      "期望 Binary、byte[] 或 String，实际为 %s。";
+  public static final String PIPE_EXCEPTION_TIMEOUTEXCEPTION_WAITED_S_SECONDS_FOR_MEMORY_TO_PARSE_TSFILE_0E4EF8FD =
+      "TimeoutException：等待 %s 秒以获取解析 TsFile 所需内存";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_FOR_COLUMN_S_9F870C01 =
+      "数据类型 %s 不支持用于列 %s";
+  public static final String PIPE_EXCEPTION_COLUMN_S_NOT_FOUND_0FA13581 =
+      "未找到列 %s";
+  public static final String PIPE_EXCEPTION_INSERTNODE_TYPE_S_IS_NOT_SUPPORTED_7DF82B58 =
+      "不支持 InsertNode 类型 %s。";
+  public static final String PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_5D5C02E4 =
+      "不支持数据类型 %s。";
+  public static final String PIPE_EXCEPTION_FORCEALLOCATEFORTABLET_FAILED_TO_ALLOCATE_BECAUSE_THERE_F878474D =
+      "forceAllocateForTablet：分配失败，原因：tablet 占用内存过多，总内存大小 %d bytes，tablet 已用内存大小 %d bytes，请求内存大小 %d "
+          + "bytes";
+  public static final String PIPE_EXCEPTION_FORCEALLOCATEFORTSFILE_FAILED_TO_ALLOCATE_BECAUSE_THERE_6D614467 =
+      "forceAllocateForTsFile：分配失败，原因：tsfile 占用内存过多，总内存大小 %d bytes，tsfile 已用内存大小 %d bytes，请求内存大小 %d "
+          + "bytes";
+  public static final String PIPE_EXCEPTION_FORCEALLOCATE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_44EF7AE7 =
+      "forceAllocate：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
+  public static final String PIPE_EXCEPTION_FORCERESIZE_FAILED_TO_ALLOCATE_MEMORY_AFTER_D_RETRIES_TOTAL_8C6948BC =
+      "forceResize：重试 %d 次后仍无法分配内存，总内存大小 %d bytes，已用内存大小 %d bytes，请求内存大小 %d bytes";
+  public static final String PIPE_EXCEPTION_FAILED_TO_GET_HARDLINK_OR_COPIED_FILE_IN_PIPE_DIR_FOR_FILE_F009D86E =
+      "获取 pipe 目录中文件 %s 的 hardlink 或复制文件失败；该文件不是 tsfile、mod 文件或 resource 文件";
+  public static final String PIPE_EXCEPTION_PIPEPLANTOSTATEMENTVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_452AAA60 =
+      "PipePlanToStatementVisitor 不支持访问通用 plan，PlanNode：%s";
+  public static final String PIPE_EXCEPTION_AIRGAP_PAYLOAD_LENGTH_D_EXCEEDS_MAXIMUM_ALLOWED_D_CLOSING_D1712B3D =
+      "AirGap payload 长度（%d）超过最大允许值（%d）。关闭来自 %s 的连接";
+  public static final String PIPE_EXCEPTION_DETECTED_SUSPICIOUS_NESTED_E_LANGUAGE_PREFIX_CLOSING_CONNECTION_69C76172 =
+      "检测到可疑的嵌套 E-Language 前缀。关闭来自 %s 的连接";
+  public static final String PIPE_EXCEPTION_AUTO_CREATE_DATABASE_FAILED_S_STATUS_CODE_S_D8EB60FA =
+      "自动创建数据库失败：%s，状态码：%s";
+  public static final String PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_DD67E854 =
+      "IoTConsensusV2-PipeName-%s：创建 receiver 文件目录 %s 失败。原因：父级系统目录因系统并发退出而被删除。";
+  public static final String PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_RECEIVER_FILE_5ADC430A =
+      "IoTConsensusV2-PipeName-%s：创建 receiver 文件目录 %s 失败。原因可能是权限不足、目录已存在等。";
+  public static final String PIPE_EXCEPTION_IOTCONSENSUSV2_PIPENAME_S_FAILED_TO_CREATE_TSFILEWRITER_85EC8DD2 =
+      "IoTConsensusV2-PipeName-%s：创建 tsFileWriter-%d receiver 文件目录失败";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_IOTCONSENSUSV2_REQUEST_VERSION_D_E1D94606 =
+      "不支持的 iotConsensusV2 请求版本 %d";
+  public static final String PIPE_EXCEPTION_CAN_NOT_EXECUTE_DELETE_STATEMENT_S_3563E8A3 =
+      "无法执行删除语句：%s";
+  public static final String PIPE_EXCEPTION_CAN_NOT_EXECUTE_LOAD_TSFILE_STATEMENT_S_8CC1A096 =
+      "无法执行加载 TsFile 语句：%s";
+  public static final String PIPE_EXCEPTION_FAILED_TO_GET_PIPE_TASK_PROGRESS_INDEX_WITH_PIPE_NAME_S_CFE9DE7C =
+      "获取 pipe 任务进度索引失败，pipe 名称：%s，共识组 ID：%s。";
+  public static final String PIPE_EXCEPTION_EXCEPTION_IN_PIPE_PROCESS_SUBTASK_S_LAST_EVENT_S_ROOT_CAUSE_95B49C24 =
+      "pipe 处理发生异常，subtask：%s，最后一个 event：%s，根因：%s";
+  public static final String PIPE_EXCEPTION_THE_VISIBILITY_OF_THE_PIPE_S_S_IS_NOT_COMPATIBLE_WITH_THE_30B8BF0A =
+      "pipe（%s，%s）的可见性与 source（%s，%s，%s）、processor（%s，%s，%s）和 connector（%s，%s，%s）的可见性不兼容。";
+  public static final String PIPE_EXCEPTION_DATA_TYPE_S_IS_NOT_SUPPORTED_WHEN_CONVERT_DATA_AT_CLIENT_405429CC =
+      "客户端转换数据时不支持数据类型 %s";
+  public static final String PIPE_EXCEPTION_HANDSHAKE_ERROR_WITH_RECEIVER_S_S_CODE_D_MESSAGE_S_4ED82649 =
+      "receiver %s:%s 握手错误，code：%d，message：%s。";
+  public static final String PIPE_EXCEPTION_THE_WEBSOCKET_SERVER_HAS_ALREADY_BEEN_CREATED_WITH_PORT_FFC420AE =
+      "WebSocket server 已使用端口 %d 创建。请将 cdc.port 选项设置为 %d。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_INSERTION_EVENT_S_703A2E9E =
+      "传输 tsFile insertion event 时发生网络错误：%s。";
+  public static final String PIPE_EXCEPTION_CANNOT_SEND_PIPE_DATA_TO_RECEIVER_S_S_BECAUSE_S_25143D54 =
+      "无法向 receiver %s:%s 发送 pipe data，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_EVENT_S_BECAUSE_S_60A63AD7 =
+      "传输 event %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_A6F87EF5 =
+      "传输 tablet insertion event %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_BDE61690 =
+      "传输 tsfile insertion event %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TSFILE_EVENT_S_BECAUSE_S_F36D2A6B =
+      "传输 tsfile event %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_FAILED_TO_TRANSFER_TABLET_INSERTION_EVENT_S_BECAUSE_S_9710318F =
+      "传输 tablet insertion event %s 失败，原因：%s。";
+  public static final String PIPE_EXCEPTION_FAILED_TO_TRANSFER_TSFILE_INSERTION_EVENT_S_BECAUSE_S_21AD3263 =
+      "传输 tsfile insertion event %s 失败，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_FILE_S_BECAUSE_S_3C673B7A =
+      "传输文件 %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_SKIPIF_AAF177AD =
+      "集合 %s 中的参数不允许出现在 'skipif' 中";
+  public static final String PIPE_EXCEPTION_FAILED_TO_CHECK_PASSWORD_FOR_PIPE_S_0B1A5C73 =
+      "检查 pipe %s 的密码失败。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_DELETION_S_BECAUSE_S_3B250B4B =
+      "传输 deletion %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_TABLET_BATCH_BECAUSE_S_6BEC52E7 =
+      "传输 tablet batch 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_INSERT_NODE_TABLET_INSERTION_D993C7AB =
+      "传输 insert node tablet insertion event 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_RAW_TABLET_INSERTION_EVENT_BECAUSE_D8ACEC3C =
+      "传输 raw tablet insertion event 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_FILE_S_BECAUSE_S_DC87F263 =
+      "seal 文件 %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_TRANSFER_SCHEMA_REGION_WRITE_PLAN_S_BECAUSE_AEB210C7 =
+      "传输 schema region write plan %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_NETWORK_ERROR_WHEN_SEAL_SNAPSHOT_FILE_S_S_AND_S_BECAUSE_5EF373E6 =
+      "seal snapshot 文件 %s、%s 和 %s 时发生网络错误，原因：%s。";
+  public static final String PIPE_EXCEPTION_FAILED_TO_TRANSFER_SLICE_ORIGIN_REQ_S_S_SLICE_INDEX_D_SLICE_44E1CF32 =
+      "传输 slice 失败。Origin req：%s-%s，slice index：%d，slice count：%d。原因：%s";
+  public static final String PIPE_EXCEPTION_THE_EXISTING_SERVER_WITH_TCP_PORT_S_AND_HTTPS_PORT_S_S_S_08C076F7 =
+      "现有 server 的 tcp port %s 和 https port %s 的 %s %s 与新的 %s %s 冲突，拒绝复用。";
+  public static final String PIPE_EXCEPTION_INVALID_KEYSTORE_THE_SERVERPRIVATEKEY_IS_S_F5F3C02F =
+      "无效的 keyStore，serverPrivateKey 为 %s";
+  public static final String PIPE_EXCEPTION_THE_FOLDER_NODE_FOR_S_DOES_NOT_EXIST_CC0776AE =
+      "路径 %s 的 folder node 不存在。";
+  public static final String PIPE_EXCEPTION_THE_NODE_S_DOES_NOT_EXIST_52F98935 =
+      "Node %s 不存在。";
+  public static final String PIPE_EXCEPTION_THE_EXISTING_SERVER_WITH_NODEURL_S_S_S_S_CONFLICTS_TO_THE_1C06A4F6 =
+      "现有 server 的 nodeUrl %s 的 %s %s 与新的 %s %s 冲突，拒绝复用。";
+  public static final String PIPE_EXCEPTION_UNKNOWN_INSERTBASESTATEMENT_S_CONSTRUCTED_FROM_PIPETRANSFERTABLETINSERTNODEREQ_FF5ED1D7 =
+      "由 PipeTransferTabletInsertNodeReq 构造出的 InsertBaseStatement %s 未知。";
+  public static final String PIPE_EXCEPTION_UNKNOWN_INSERTNODE_TYPE_S_WHEN_CONSTRUCTING_STATEMENT_FROM_4A055174 =
+      "根据 insert node 构造 statement 时遇到未知 InsertNode 类型 %s。";
+  public static final String PIPE_EXCEPTION_UNKNOWN_INSERTBASESTATEMENT_S_CONSTRUCTED_FROM_PIPETRANSFERTABLETBINARYREQV2_06D274D2 =
+      "由 PipeTransferTabletBinaryReqV2 构造出的 InsertBaseStatement %s 未知。";
+  public static final String PIPE_EXCEPTION_UNKNOWN_INSERTBASESTATEMENT_S_CONSTRUCTED_FROM_PIPETRANSFERTABLETINSERTNODEREQV2_16F399B6 =
+      "由 PipeTransferTabletInsertNodeReqV2 构造出的 InsertBaseStatement %s 未知。";
+  public static final String PIPE_EXCEPTION_FAILED_TO_CREATE_FILE_DIR_FOR_BATCH_S_8FCD9125 =
+      "为 batch %s 创建文件目录失败";
+  public static final String PIPE_EXCEPTION_FAILED_TO_CREATE_BATCH_FILE_DIR_BATCH_ID_S_EA8BE86C =
+      "创建 batch 文件目录失败。（Batch id = %s）";
+  public static final String PIPE_EXCEPTION_PIPETREESTATEMENTTOPLANVISITOR_DOES_NOT_SUPPORT_VISITING_3A4A6524 =
+      "PipeTreeStatementToPlanVisitor 不支持访问通用 statement，Statement：%s";
+  public static final String PIPE_EXCEPTION_PIPESTATEMENTTOPLANVISITOR_DOES_NOT_SUPPORT_VISITING_GENERAL_590C6BD7 =
+      "PipeStatementToPlanVisitor 不支持访问通用 statement，Statement：%s";
+  public static final String PIPE_EXCEPTION_THE_PATH_PATTERN_S_IS_NOT_VALID_FOR_THE_SOURCE_ONLY_PREFIX_139F93D6 =
+      "source 的 path pattern %s 无效。只允许 prefix 或 full path。";
+  public static final String PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1 =
+      "%s（%s）[%s] 应小于或等于 %s（%s）[%s]。";
+  public static final String PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_REALTIME_LOOSE_RANGE_BACD2475 =
+      "集合 %s 中的参数不允许出现在 'realtime.loose-range' 中";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_LOG_REALTIME_EXTRACTOR_S_961C5D2D =
+      "event type %s 不支持用于 log realtime extractor %s";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_9C4F4C82 =
+      "event type %s 不支持用于 hybrid realtime extractor %s";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_STATE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_43BD62C2 =
+      "state %s 不支持用于 hybrid realtime extractor %s";
+  public static final String PIPE_EXCEPTION_UNSUPPORTED_EVENT_TYPE_S_FOR_HYBRID_REALTIME_EXTRACTOR_S_474BAAC2 =
+      "event type %s 不支持由 hybrid realtime extractor %s 提供。";
+  public static final String PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_HISTORY_LOOSE_RANGE_0F685D5C =
+      "集合 %s 中的参数不允许出现在 'history.loose-range' 中";
+  public static final String PIPE_EXCEPTION_THE_AGGREGATOR_AND_OUTPUT_NAME_S_IS_INVALID_BC22CF92 =
+      "aggregator 和 output name %s 无效。";
+  public static final String PIPE_EXCEPTION_THE_NEEDED_INTERMEDIATE_VALUES_S_ARE_NOT_DEFINED_3FF0C52D =
+      "所需 intermediate values %s 未定义。";
+  public static final String PIPE_EXCEPTION_THE_PROCESSOR_S_IS_NOT_A_WINDOWING_PROCESSOR_EA5B59BA =
+      "processor %s 不是 windowing processor。";
+  public static final String PIPE_EXCEPTION_THE_AGGREGATE_PROCESSOR_DOES_NOT_SUPPORT_PROGRESSINDEXTYPE_35351D27 =
+      "aggregate processor 不支持 progressIndexType %s";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_IS_NOT_SUPPORTED_E1A6F05D =
+      "不支持类型 %s";
+  public static final String PIPE_EXCEPTION_THE_OUTPUT_TABLET_DOES_NOT_SUPPORT_COLUMN_TYPE_S_62F3845C =
+      "output tablet 不支持 column type %s";
+  public static final String PIPE_EXCEPTION_THE_NEW_DATABASE_NAME_S_IS_INVALID_IT_SHOULD_NOT_CONTAIN_C3AB555E =
+      "新数据库名 %s 无效：不能包含 '%s'，必须匹配 pattern %s，且长度不能超过 %d";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_BOOLEAN_F19CCF75 =
+      "类型 %s 无法转换为 boolean。";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_INT_659069CC =
+      "类型 %s 无法转换为 int。";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_LONG_2D206561 =
+      "类型 %s 无法转换为 long。";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_FLOAT_C15A8A95 =
+      "类型 %s 无法转换为 float。";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_DOUBLE_E577C0D7 =
+      "类型 %s 无法转换为 double。";
+  public static final String PIPE_EXCEPTION_THE_TYPE_S_CANNOT_BE_CASTED_TO_STRING_34983FBD =
+      "类型 %s 无法转换为 string。";
+  public static final String PIPE_EXCEPTION_UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT_S_800EE360 =
+      "无法在 %s 创建 iotConsensusV2 deletion dir";
+  public static final String PIPE_EXCEPTION_THE_TIMESERIES_S_USED_NEW_TYPE_S_IS_NOT_COMPATIBLE_WITH_455D4D4A =
+      "timeseries %s 使用的新类型 %s 与现有类型 %s 不兼容。";
+  public static final String PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_S_30FB3EE5 =
+      "同一请求中存在两种 PlanNode 类型：%s 和 %s";
+  public static final String PIPE_EXCEPTION_THERE_ARE_TWO_TYPES_OF_PLANNODE_IN_ONE_REQUEST_S_AND_SEARCHNODE_F8B4D860 =
+      "同一请求中存在两种 PlanNode 类型：%s 和 SearchNode";
+  public static final String COMPLETE_PAGE_BODY_EXPECTED_ACTUAL_FMT =
+      "page body 不完整。期望：%s。实际：%s";
+  public static final String UNCOMPRESS_PAGE_DATA_FAILED_FMT =
+      "解压失败！解压后大小：%s，压缩后大小：%s，page header：%s%s";
+  public static final String FAILED_TO_CLOSE_LISTENING_QUEUE_FOR_SCHEMAREGION_BECAUSE_FMT =
+      "关闭 SchemaRegion %s 的监听队列失败，原因：%s";
+  public static final String PIPE_SINK_HEARTBEAT_OR_TRANSFER_FAILED_FMT =
+      "PipeConnector：%s(id：%s) heartbeat 失败，或传输 generic event 时遇到错误。失败原因：%s";
+  public static final String FAILED_TO_ADD_ITEM_WITH_OPC_ERROR_CODE_FMT =
+      "添加 item %s 失败，opc 错误码：0x%s";
+  public static final String FAILED_TO_WRITE_WITH_VALUE_AND_OPC_ERROR_CODE_FMT =
+      "写入 %s 失败，值：%s，opc 错误码：0x%s";
+  public static final String NO_CERTIFICATE_FOUND =
+      "未找到证书";
+  public static final String CERTIFICATE_MISSING_APPLICATION_URI =
+      "证书缺少 application URI";
+  public static final String NULL_VALUE =
+      "null";
+  public static final String INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
+      "增加引用计数出错。Holder Message：%s";
+  public static final String DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT =
+      "减少引用计数出错。Holder Message：%s";
+  public static final String INCREASE_REFERENCE_COUNT_TSFILE_OR_MODFILE_ERROR_HOLDER_FMT =
+      "为 TsFile %s 或 modFile %s 增加引用计数出错。Holder Message：%s";
+  public static final String DECREASE_REFERENCE_COUNT_TSFILE_ERROR_HOLDER_FMT =
+      "为 TsFile %s 减少引用计数出错。Holder Message：%s";
+  public static final String INCREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT =
+      "为 mTree 快照 %s 或 tLog %s 增加引用计数出错。Holder Message：%s";
+  public static final String DECREASE_REFERENCE_COUNT_MTREE_OR_TLOG_ERROR_HOLDER_FMT =
+      "为 mTree 快照 %s 或 tLog %s 减少引用计数出错。Holder Message：%s";
+  public static final String CONSENSUS_PREFETCHING_QUEUE_CLOSING_BEFORE_SEEK_SCHEDULED_FMT =
+      "ConsensusPrefetchingQueue %s 正在关闭，无法调度 seek(%s)";
+  public static final String CONSENSUS_PREFETCHING_QUEUE_RUNTIME_UNAVAILABLE_FOR_SEEK_FMT =
+      "ConsensusPrefetchingQueue %s 无法调度 seek(%s)，因为 prefetch runtime 不可用";
+  public static final String ERROR_PROGID_INVALID_OR_UNREGISTERED_HRESULT_FMT =
+      "错误：ProgID 无效或未注册，(HRESULT=0x%s)";
+  public static final String ERROR_RUNNING_OPC_CLIENT_FMT =
+      "运行 opc client 出错：%s：%s";
+  public static final String ERROR_GETTING_OPC_CLIENT_FMT =
+      "获取 opc client 出错：%s：%s";
+
 }

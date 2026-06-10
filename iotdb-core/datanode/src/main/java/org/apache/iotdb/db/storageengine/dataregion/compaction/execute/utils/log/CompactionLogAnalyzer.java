@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -65,7 +67,9 @@ public class CompactionLogAnalyzer {
           taskStage = CompactionTaskStage.valueOf(currLine);
         } else {
           throw new IllegalArgumentException(
-              String.format("unknown compaction log line: %s", currLine));
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_UNKNOWN_COMPACTION_LOG_LINE_S_C0A9DC05,
+                  currLine));
         }
       }
     }

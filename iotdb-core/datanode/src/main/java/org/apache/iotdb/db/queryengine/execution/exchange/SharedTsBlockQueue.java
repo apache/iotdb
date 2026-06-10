@@ -109,13 +109,22 @@ public class SharedTsBlockQueue {
       ExecutorService executorService,
       boolean isHighestPriority) {
     this.localFragmentInstanceId =
-        Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
+        Validate.notNull(
+            fragmentInstanceId,
+            DataNodeQueryMessages.EXCEPTION_FRAGMENT_INSTANCE_ID_CANNOT_BE_NULL_4BE84F40);
     this.fullFragmentInstanceId =
         FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
-    this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
+    this.localPlanNodeId =
+        Validate.notNull(
+            planNodeId, DataNodeQueryMessages.EXCEPTION_PLANNODE_ID_CANNOT_BE_NULL_F91303CD);
     this.localMemoryManager =
-        Validate.notNull(localMemoryManager, "local memory manager cannot be null");
-    this.executorService = Validate.notNull(executorService, "ExecutorService can not be null.");
+        Validate.notNull(
+            localMemoryManager,
+            DataNodeQueryMessages.EXCEPTION_LOCAL_MEMORY_MANAGER_CANNOT_BE_NULL_54701481);
+    this.executorService =
+        Validate.notNull(
+            executorService,
+            DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B);
     this.isHighestPriority = isHighestPriority;
   }
 
@@ -248,9 +257,10 @@ public class SharedTsBlockQueue {
       return immediateVoidFuture();
     }
 
-    Validate.notNull(tsBlock, "TsBlock cannot be null");
+    Validate.notNull(tsBlock, DataNodeQueryMessages.EXCEPTION_TSBLOCK_CANNOT_BE_NULL_E7EA3BDA);
     Validate.isTrue(
-        blockedOnMemory == null || blockedOnMemory.isDone(), "SharedTsBlockQueue is full");
+        blockedOnMemory == null || blockedOnMemory.isDone(),
+        DataNodeQueryMessages.EXCEPTION_SHAREDTSBLOCKQUEUE_IS_FULL_87493E26);
     if (!alreadyRegistered) {
       localMemoryManager
           .getQueryPool()

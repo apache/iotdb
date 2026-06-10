@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.exceptions;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
@@ -31,7 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class ReplicaSetUnreachableException extends IoTDBRuntimeException {
   public ReplicaSetUnreachableException(TRegionReplicaSet replicaSet) {
     super(
-        "All replica cannot be reached:" + replicaSet.toString(),
+        String.format(DataNodeQueryMessages.ALL_REPLICA_CANNOT_BE_REACHED_FMT, replicaSet),
         TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode());
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -68,7 +69,8 @@ public class LikeColumnTransformer extends UnaryColumnTransformer {
   protected void checkType() {
     if (!isCharType(childColumnTransformer.getType())) {
       throw new UnsupportedOperationException(
-          "Unsupported Type: " + childColumnTransformer.getType().getTypeEnum());
+          CalcMessages.EXCEPTION_UNSUPPORTED_TYPE_FF7F518D
+              + childColumnTransformer.getType().getTypeEnum());
     }
   }
 }

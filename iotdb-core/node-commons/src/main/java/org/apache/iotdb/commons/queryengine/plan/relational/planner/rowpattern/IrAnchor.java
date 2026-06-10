@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -38,7 +40,7 @@ public class IrAnchor extends IrRowPattern {
   private final Type type;
 
   public IrAnchor(Type type) {
-    this.type = requireNonNull(type, "type is null");
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
   }
 
   public Type getType() {

@@ -78,7 +78,8 @@ public class CompositeReporter {
     for (Reporter originReporter : reporters) {
       if (originReporter.getReporterType() == reporter.getReporterType()) {
         LOGGER.warn(
-            "Failed to load {} reporter because already existed", reporter.getReporterType());
+            MetricsMessages.LOG_FAILED_LOAD_ARG_REPORTER_BECAUSE_ALREADY_EXISTED_4BAF2E58,
+            reporter.getReporterType());
         return;
       }
     }

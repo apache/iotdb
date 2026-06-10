@@ -35,7 +35,7 @@ public final class RpcMessages {
 
   // TElasticFramedTransport - SSL
   public static final String NON_SSL_TO_SSL_PORT =
-      "可能正在发送非 SSL 请求%s到启用了 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
+      "可能正在发送非 SSL 请求%s 到启用了 SSL 的 Thrift-RPC 端口，请确认使用了正确的配置";
 
   // ConfigurableTByteBuffer
   public static final String UNEXPECTED_END_OF_INPUT = "输入缓冲区意外结束";
@@ -66,5 +66,17 @@ public final class RpcMessages {
   // SynchronizedHandler
   public static final String ERROR_IN_CALLING_METHOD = "调用方法时出错：";
 
+  // Shared fragments
+  public static final String EMPTY_MESSAGE = "";
+  public static final String REMOTE_ADDRESS_PREFIX = " 来自 ";
+
   private RpcMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_SIZE_COLUMNINDEX2TSBLOCKCOLUMNINDEXLIST_ARG_DOESN_T_EQUAL_SIZE_COLUMNNAMELIST_ARG_F1209A2B = "columnIndex2TsBlockColumnIndexList 的大小 %s 不等于 columnNameList 的大小 %s。";
+  public static final String EXCEPTION_CANNOT_FETCH_RESULT_SERVER_BECAUSE_NETWORK_CONNECTION_ARG_24BE1326 = "由于网络连接问题，无法从服务器获取结果：{} ";
+  public static final String EXCEPTION_ARG_ARG_046AFB8B = "%d: %s";
+  public static final String EXCEPTION_LATER_REQUEST_SAME_GROUP_WILL_REDIRECTED_0A61CB0B = "同一组中的后续请求将被重定向到 ";
+
 }

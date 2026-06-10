@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedNam
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Cardinality;
@@ -101,7 +102,8 @@ public class TransformCorrelatedScalarSubquery implements Rule<CorrelatedJoinNod
   private final Metadata metadata;
 
   public TransformCorrelatedScalarSubquery(Metadata metadata) {
-    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.metadata =
+        requireNonNull(metadata, DataNodeQueryMessages.EXCEPTION_METADATA_IS_NULL_6F8F9BA0);
   }
 
   @Override
@@ -114,7 +116,7 @@ public class TransformCorrelatedScalarSubquery implements Rule<CorrelatedJoinNod
     // lateral references are only allowed for INNER or LEFT correlated join
     checkArgument(
         correlatedJoinNode.getJoinType() == INNER || correlatedJoinNode.getJoinType() == LEFT,
-        "unexpected correlated join type: %s",
+        DataNodeQueryMessages.EXCEPTION_UNEXPECTED_CORRELATED_JOIN_TYPE_COLON_ARG_27E8EC42,
         correlatedJoinNode.getJoinType());
     PlanNode subquery = context.getLookup().resolve(correlatedJoinNode.getSubquery());
 

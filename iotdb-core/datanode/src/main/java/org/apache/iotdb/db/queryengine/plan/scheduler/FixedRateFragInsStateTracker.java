@@ -159,7 +159,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
             FragmentInstanceInfo instanceInfo = new FragmentInstanceInfo(NO_SUCH_INSTANCE);
             instanceInfo.setMessage(
                 String.format(
-                    "Failed to fetch state, has retried %s times",
+                    DataNodeQueryMessages.MESSAGE_FAILED_FETCH_STATE_HAS_RETRIED_ARG_TIMES_E7572C66,
                     InstanceStateMetrics.MAX_STATE_FETCH_RETRY_COUNT));
             updateQueryState(instance.getId(), instanceInfo);
           } else {
@@ -178,8 +178,10 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       stateMachine.transitionToFailed(
           new IoTDBException(
               String.format(
-                  "FragmentInstance[%s] is failed. %s, may be caused by DN restarting.",
-                  instanceId, instanceInfo.getMessage()),
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_FRAGMENTINSTANCE_S_IS_FAILED_S_MAY_BE_CAUSED_BY_DN_RESTARTING_45D7D52A,
+                  instanceId,
+                  instanceInfo.getMessage()),
               TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode(),
               true));
     } else if (instanceInfo.getState().isFailed()) {
@@ -193,7 +195,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         stateMachine.transitionToFailed(
             new RuntimeException(
                 String.format(
-                    "FragmentInstance[%s] is failed. %s", instanceId, instanceInfo.getMessage())));
+                    DataNodeQueryMessages.QUERY_EXCEPTION_FRAGMENTINSTANCE_S_IS_FAILED_S_566B0005,
+                    instanceId,
+                    instanceInfo.getMessage())));
       } else {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }

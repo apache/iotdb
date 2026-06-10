@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 
@@ -57,7 +58,9 @@ public class SymbolAllocator {
   }
 
   public Symbol newSymbol(Symbol symbolHint, String suffix) {
-    checkArgument(symbolMap.containsKey(symbolHint), "symbolHint not in symbols map");
+    checkArgument(
+        symbolMap.containsKey(symbolHint),
+        DataNodeQueryMessages.EXCEPTION_SYMBOLHINT_NOT_IN_SYMBOLS_MAP_B0D67E43);
     return newSymbol(symbolHint.getName(), symbolMap.get(symbolHint), suffix);
   }
 
@@ -66,8 +69,8 @@ public class SymbolAllocator {
   }
 
   public Symbol newSymbol(String symbolHint, Type symbolType, String suffix) {
-    requireNonNull(symbolHint, "symbolHint is null");
-    requireNonNull(symbolType, "type is null");
+    requireNonNull(symbolHint, DataNodeQueryMessages.EXCEPTION_SYMBOLHINT_IS_NULL_CE874C40);
+    requireNonNull(symbolType, DataNodeQueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
 
     if (suffix != null) {
       symbolHint = symbolHint + SEPARATOR + suffix;

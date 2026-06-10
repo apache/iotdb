@@ -520,4 +520,122 @@ public final class ManagerMessages {
   public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "移除 ConfigNode 失败，转移 ConfigNode leader 失败。";
 
   private ManagerMessages() {}
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID_ARG_6DBD6075 = "SubscriptionHandleLeaderChangeProcedure 已提交，procedureId：{}。";
+  public static final String LOG_SUBSCRIPTIONHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_SUBMIT_58FAB03F = "SubscriptionHandleLeaderChangeProcedure 提交失败。";
+  public static final String EXCEPTION_INVALID_2928F475 = " 无效";
+  public static final String MESSAGE_FAIL_CREATE_TRIGGER_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_11869523 =
+      "创建 trigger[%s] 失败，Jar 包过大，可以在 ConfigNode 上调大属性 'config_node_ratis_log_appender_buffer_size_max' 的值";
+  public static final String MESSAGE_FAIL_CREATE_PIPE_PLUGIN_ARG_SIZE_JAR_TOO_LARGE_YOU_D194A893 =
+      "创建 pipe plugin[%s] 失败，Jar 包过大，可以在 ConfigNode 上调大属性 'config_node_ratis_log_appender_buffer_size_max' 的值";
+  public static final String MESSAGE_FAIL_CREATE_UDF_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_2F119802 =
+      "创建 UDF[%s] 失败，Jar 包过大，可以在 ConfigNode 上调大属性 'config_node_ratis_log_appender_buffer_size_max' 的值";
+  public static final String EXCEPTION_FAILED_SERIALIZE_REGION_PROGRESS_1769D6F1 = "序列化 Region 进度失败 ";
+  public static final String MESSAGE_CONSENSUSMANAGER_TARGET_CONFIGNODE_NOT_INITIALIZED_4D386066 = "目标 ConfigNode 的 ConsensusManager 未初始化，";
+  public static final String MESSAGE_PLEASE_MAKE_SURE_TARGET_CONFIGNODE_HAS_BEEN_STARTED_SUCCESSFULLY_C78201DC = "请确保目标 ConfigNode 已成功启动。";
+  public static final String MESSAGE_CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS_D0F437AF = "config_node_consensus_protocol_class";
+  public static final String MESSAGE_DATA_REGION_CONSENSUS_PROTOCOL_CLASS_AB025B20 = "data_region_consensus_protocol_class";
+  public static final String MESSAGE_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS_480645EF = "schema_region_consensus_protocol_class";
+  public static final String MESSAGE_SERIES_SLOT_NUM_115D9BE0 = "series_slot_num";
+  public static final String MESSAGE_SERIES_PARTITION_EXECUTOR_CLASS_AD1B5C24 = "series_partition_executor_class";
+  public static final String MESSAGE_TIME_PARTITION_INTERVAL_CE476507 = "time_partition_interval";
+  public static final String MESSAGE_SCHEMA_REPLICATION_FACTOR_11DB65B5 = "schema_replication_factor";
+  public static final String MESSAGE_DATA_REPLICATION_FACTOR_22465D3B = "data_replication_factor";
+  public static final String MESSAGE_SCHEMA_REGION_PER_DATA_NODE_555F29BC = "schema_region_per_data_node";
+  public static final String MESSAGE_DATA_REGION_PER_DATA_NODE_C183AAD5 = "data_region_per_data_node";
+  public static final String MESSAGE_READ_CONSISTENCY_LEVEL_B12D8D95 = "read_consistency_level";
+  public static final String MESSAGE_DISK_SPACE_WARNING_THRESHOLD_19635ACA = "disk_space_warning_threshold";
+  public static final String MESSAGE_TIMESTAMP_PRECISION_9591C9C9 = "timestamp_precision";
+  public static final String MESSAGE_SCHEMA_ENGINE_MODE_E37ED98C = "schema_engine_mode";
+  public static final String MESSAGE_TAG_ATTRIBUTE_TOTAL_SIZE_AF658CFE = "tag_attribute_total_size";
+  public static final String MESSAGE_DATABASE_LIMIT_THRESHOLD_45C23274 = "database_limit_threshold";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_SPACE_QUOTA_DATABASE_ARG_F6ED7586 = "设置数据库 %s 的空间配额时发生意外错误 ";
+  public static final String LOG_UNEXPECTED_ERROR_HAPPENED_SETTING_THROTTLE_QUOTA_USER_ARG_C111BE81 = "设置用户 %s 的限流配额时发生意外错误 ";
+  public static final String LOG_SCHEMA_TEMPLATE_NEED_TWO_FILES_1E57542A = "schema_template 需要两个文件";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_USE_ROLE_FILE_TYPE_ARG_1B548759 = "反序列化 use&role 文件时发生 IOException，类型：{}";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_ROLELIST_1354F29E = "反序列化 roleList 时发生 IOException";
+  public static final String LOG_GOT_EXCEPTION_DESERIALIZING_TTL_FILE_F806EB40 = "反序列化 ttl 文件时发生异常";
+  public static final String LOG_UNRECOGNIZED_NODE_TYPE_CANNOT_DESERIALIZE_MTREE_GIVEN_BUFFER_5CF3121B = "无法识别节点类型，无法从给定缓冲区反序列化 MTree";
+  public static final String LOG_GOT_IOEXCEPTION_CONSTRUCT_DATABASE_TREE_49436621 = "构建数据库树时发生 IOException";
+  public static final String LOG_GOT_IOEXCEPTION_DESERIALIZE_TEMPLATE_INFO_49EE617E = "反序列化模板信息时发生 IOException";
+  public static final String MESSAGE_MEASUREMENTS_NOT_FOUND_ARG_CANNOT_AUTO_DETECT_980D7D44 = "未找到 %s 的测点，无法自动检测";
+  public static final String LOG_FAILED_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_ARG_ALREADY_EXIST_EB2A6093 = "获取快照失败，原因：快照文件 [{}] 已存在。";
+  public static final String LOG_FAILED_LOAD_SNAPSHOT_SNAPSHOT_FILE_ARG_NOT_EXIST_8828CFBA = "无法加载快照，快照文件 [{}] 不存在。";
+  public static final String LOG_YOU_MAYBE_NEED_RENAME_SIMPLE_DIR_0_0_MANUALLY_2A12C5C9 = "可能需要手动将 simple 目录重命名为 0_0。";
+  public static final String LOG_CONFIGNODE_LOCAL_PEER_HAS_ALREADY_BEEN_CREATED_ARG_FA75E88F = "ConfigNode 本地 peer 已创建：{}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_ADDED_ARG_A8F958B0 = "ConfigNode peer {} 已添加：{}";
+  public static final String LOG_CONFIGNODE_PEER_ARG_HAS_ALREADY_BEEN_REMOVED_ARG_FACD71EE = "ConfigNode peer {} 已移除：{}";
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_BUT_NOT_READY_YET_PLEASE_TRY_AGAIN_F0B10645 = "当前 Config 节点是 leader，但共识层还没有准备好。";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_LEADER_SERVICE_NOT_READY = "当前 Config 节点是 leader，但 leader 服务层还没有准备好。";
+
+  public static final String MESSAGE_CURRENT_CONFIGNODE_NOT_LEADER_PLEASE_REDIRECT_NEW_CONFIGNODE_F9AF262D = "当前 ConfigNode 不是 leader，请重定向到新的 ConfigNode。";
+  public static final String LOG_FAILED_SYNC_COMMIT_PROGRESS_RESULT_STATUS_ARG_A9E46E80 = "同步提交进度失败。结果状态：{}。";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATABASE_2734674F = "修改数据库失败。数据库 ";
+  public static final String MESSAGE_DOESN_T_EXIST_EED8C92E = " 不存在。";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_SCHEMAREGIONGROUPNUM_COULD_ONLY_INCREASED_B98229D3 = "修改数据库失败。SchemaRegionGroupNum 只能增加。";
+  public static final String MESSAGE_CURRENT_SCHEMAREGIONGROUPNUM_ARG_ALTER_SCHEMAREGIONGROUPNUM_ARG_F7495BC2 = "当前 schemaRegionGroupNum：%d，待修改的 schemaRegionGroupNum：%d";
+  public static final String MESSAGE_FAILED_ALTER_DATABASE_DATAREGIONGROUPNUM_COULD_ONLY_INCREASED_84283EB5 = "修改数据库失败。DataRegionGroupNum 只能增加。";
+  public static final String MESSAGE_CURRENT_DATAREGIONGROUPNUM_ARG_ALTER_DATAREGIONGROUPNUM_ARG_61C6E978 = "当前 DataRegionGroupNum：%d，待修改的 DataRegionGroupNum：%d";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREPLICATIONFACTOR_SHOULD_POSITIVE_8847F33C = "创建数据库失败。schemaReplicationFactor 应为正数。";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_DATAREPLICATIONFACTOR_SHOULD_POSITIVE_C2565B7E = "创建数据库失败。dataReplicationFactor 应为正数。";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONORIGIN_SHOULD_NON_NEGATIVE_BD0595C9 = "创建数据库失败。timePartitionOrigin 应为非负数。";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_TIMEPARTITIONINTERVAL_SHOULD_POSITIVE_BB1B473F = "创建数据库失败。timePartitionInterval 应为正数。";
+  public static final String MESSAGE_FAILED_CREATE_DATABASE_SCHEMAREGIONGROUPNUM_SHOULD_POSITIVE_8396A2AB = "创建数据库失败。schemaRegionGroupNum 应为正数。";
+  public static final String MESSAGE_ACCEPT_NODE_REGISTRATION_4133276A = "接受节点注册。";
+  public static final String MESSAGE_ACCEPT_NODE_RESTART_1BC1A8DD = "接受节点重启。";
+  public static final String MESSAGE_REJECT_ARG_START_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_B9E197DB = "拒绝启动 %s。原因：当前 %s 的 ClusterName 与目标集群不一致。";
+  public static final String MESSAGE_CLUSTERNAME_CURRENT_NODE_ARG_CLUSTERNAME_TARGET_CLUSTER_ARG_5C34BE8D = "当前节点的 ClusterName：%s，目标集群的 ClusterName：%s。";
+  public static final String MESSAGE_1_CHANGE_SEED_CONFIG_NODE_PARAMETER_ARG_JOIN_CORRECT_CLUSTER_5E9D753C = "\\t1. 修改 %s 中的 seed_config_node 参数以加入正确的集群。";
+  public static final String MESSAGE_2_CHANGE_CLUSTER_NAME_PARAMETER_ARG_MATCH_TARGET_CLUSTER_0A0DB235 = "\\n\\t2. 修改 %s 中的 cluster_name 参数以匹配目标集群";
+  public static final String MESSAGE_REJECT_ARG_REGISTRATION_BECAUSE_FOLLOWING_IP_PORT_ARG_CURRENT_ARG_CB78CC3B =
+      "拒绝注册 %s。原因：以下 ip:port：%s（属于当前 %s）与集群中其他已注册节点冲突。";
+  public static final String MESSAGE_1_USE_SQL_SHOW_CLUSTER_DETAILS_FIND_OUT_CONFLICT_NODES_A1195AEA = "\\t1. 使用 SQL：\\\"show cluster details\\\" 找出冲突节点。移除它们后重试启动。";
+  public static final String MESSAGE_2_CHANGE_CONFLICT_IP_PORT_CONFIGURATIONS_ARG_FILE_RETRY_START_CF3F08F6 = "\\n\\t2. 修改 %s 文件中的冲突 ip:port 配置，然后重试启动。";
+  public static final String MESSAGE_CLUSTER_ID_HAS_NOT_GENERATED_PLEASE_TRY_AGAIN_LATER_58A1C3F2 = "cluster id 尚未生成，请稍后重试";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERNAME_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_2075F29D = "拒绝重启 %s。原因：当前 %s 的 ClusterName 与目标集群不一致。";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_NODEID_CURRENT_ARG_ARG_AC13EDD5 = "拒绝重启 %s。原因：当前 %s 的 nodeId 为 %d。";
+  public static final String MESSAGE_1_DELETE_DATA_DIR_RETRY_86A23473 = "\\t1. 删除 \\\"data\\\" 目录后重试。";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_THERE_NO_CORRESPONDING_ARG_WHOSE_NODEID_455578E9 = "拒绝重启 %s。原因：集群中没有对应的 %s（nodeId=%d）。";
+  public static final String MESSAGE_1_MAYBE_YOU_VE_ALREADY_REMOVED_CURRENT_ARG_WHOSE_NODEID_92165504 =
+      "\\t1. 可能你已经移除了当前 %s（nodeId=%d）。请删除无用的 'data' 目录并重试启动。";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_CLUSTERID_CURRENT_ARG_TARGET_CLUSTER_INCONSISTENT_0398A6CE = "拒绝重启 %s。原因：当前 %s 的 clusterId 与目标集群不一致。";
+  public static final String MESSAGE_CLUSTERID_CURRENT_NODE_ARG_CLUSTERID_TARGET_CLUSTER_ARG_23C42434 = "当前节点的 ClusterId：%s，目标集群的 ClusterId：%s。";
+  public static final String MESSAGE_1_PLEASE_CHECK_IF_NODE_CONFIGURATION_PATH_CORRECT_7FB5D559 = "\\t1. 请检查节点配置或路径是否正确。";
+  public static final String MESSAGE_REJECT_ARG_RESTART_BECAUSE_INTERNAL_TENDPOINTS_ARG_CAN_T_MODIFIED_A58B99F0 = "拒绝重启 %s。原因：此 %s 的 internal TEndPoints 不能被修改。";
+  public static final String MESSAGE_1_PLEASE_KEEP_INTERNAL_TENDPOINTS_NODE_SAME_AS_BEFORE_2FDB2034 = "\\t1. 请保持此节点的 internal TEndPoints 与之前一致。";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_ONLY_ONE_CONFIGNODE_CURRENT_CLUSTER_D1273758 = "移除 ConfigNode 失败，原因：当前集群中只有一个 ConfigNode。";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_THERE_NO_OTHER_CONFIGNODE_RUNNING_STATUS_C9C43315 = "移除 ConfigNode 失败，原因：当前集群中没有其他处于 Running 状态的 ConfigNode。";
+  public static final String MESSAGE_REMOVE_CONFIGNODE_FAILED_BECAUSE_CONFIGNODEGROUP_LEADER_ELECTION_PLEASE_RETRY_3EE602F6 = "移除 ConfigNode 失败，原因：ConfigNodeGroup 正在进行 leader 选举，请重试。";
+  public static final String MESSAGE_TRANSFER_CONFIGNODE_LEADER_FAILED_BECAUSE_CAN_NOT_FIND_ANY_RUNNING_1FE4F96D = "转移 ConfigNode leader 失败，原因：找不到任何正在运行的 ConfigNode。";
+  public static final String MESSAGE_CONFIGNODE_REMOVED_LEADER_ALREADY_TRANSFER_LEADER_FA6D1603 = "待移除的 ConfigNode 是 leader，已将 Leader 转移到 ";
+  public static final String MESSAGE_TARGET_DATANODE_NOT_EXISTED_PLEASE_ENSURE_YOUR_INPUT_QUERYID_CORRECT_AB84CCDF = "目标 DataNode 不存在，请确保输入的 <queryId> 正确";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_D8AE1679 = "创建 SchemaPartition 失败，原因：数据库 %s 不存在";
+  public static final String MESSAGE_CREATE_SCHEMAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_2617832C = "创建 SchemaPartition 失败，原因：数据库 %s 不存在";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_NOT_EXISTS_F223D5C2 = "创建 DataPartition 失败，原因：数据库 %s 不存在";
+  public static final String MESSAGE_CREATE_DATAPARTITION_FAILED_BECAUSE_DATABASE_ARG_DOES_NOT_EXIST_D7A8C1FC = "创建 DataPartition 失败，原因：数据库 %s 不存在";
+  public static final String LOG_REGIONGROUP_ARG_SERIESPARTITIONSLOT_COUNT_ARG_30F57B14 = "到 RegionGroup {}，SeriesPartitionSlot 数量：{}";
+  public static final String LOG_REGIONGROUPID_ARG_SERIESPARTITIONSLOT_COUNT_ARG_5DAE4B6A = "RegionGroupId：{}，SeriesPartitionSlot 数量：{}";
+  public static final String LOG_INCREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_962E8672 = "增加快照 %s 的引用计数失败。Holder 消息：%s";
+  public static final String LOG_DECREASE_REFERENCE_COUNT_SNAPSHOT_ARG_ERROR_HOLDER_MESSAGE_ARG_8C7FF9CE = "减少快照 %s 的引用计数失败。Holder 消息：%s";
+  public static final String MESSAGE_RECEIVER_CONFIGNODE_HAS_SET_UP_NEW_RECEIVER_SENDER_MUST_RE_77B80C51 =
+      "接收端 ConfigNode 已建立新的 receiver，发送端必须重新发送 handshake 请求。";
+  public static final String LOG_IGNORE_EXCEPTION_2AC431FA = "忽略此异常。";
+  public static final String LOG_REPORTING_PIPE_META_ARG_REMAININGEVENTCOUNT_ARG_ESTIMATEDREMAININGTIME_ARG_E2727CB4 = "上报 pipe meta：{}，remainingEventCount：{}，estimatedRemainingTime：{}";
+  public static final String LOG_PIPEMETAFROMAGENT_NULL_PIPEMETAFROMCOORDINATOR_ARG_36C513AE = "pipeMetaFromAgent 为空，pipeMetaFromCoordinator：{}";
+  public static final String LOG_DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_DATANODE_ARG_PIPE_ARG_REMAININGEVENTCOUNT_7E6C52E9 =
+      "检测到 DataNode {} 上 pipe {} 的历史 pipe 完成报告。remainingEventCount："
+      + "{}，remainingTime：{}，completedDataNodes：{}";
+  public static final String LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255 =
+      "所有 DataNode 均报告历史 pipe {} 已完成。globalRemainingEventCount：{}，"
+      + "globalRemainingTime：{}，staticMeta：{}";
+  public static final String LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F = "已更新 (pipe 名称：{}，共识组 id：{}) 的进度索引 ... ";
+  public static final String LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5 = "coordinator 上的进度索引：{}，agent 上的进度索引：{}，更新后的 progressIndex：{}";
+  public static final String LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7 = "检测到 PipeRuntimeConnectorCriticalException %s ";
+  public static final String LOG_AGENT_STOP_PIPE_ARG_42212C21 = "来自 agent，停止 pipe %s。";
+  public static final String LOG_CREATEREGIONGROUPS_REGIONGROUP_ARG_BELONGED_DATABASE_ARG_DATANODES_ARG_5270AB6B = "[CreateRegionGroups] RegionGroup：{}，所属数据库：{}，DataNodes：{}";
+  public static final String EXCEPTION_DATANODEID_SHOULD_NOT_BE_MINUS_1_HERE_5CB27796 = "dataNodeId 不应为 -1";
+
 }

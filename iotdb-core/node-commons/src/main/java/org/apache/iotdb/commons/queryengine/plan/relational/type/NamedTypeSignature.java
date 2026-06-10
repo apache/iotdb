@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.type;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
@@ -33,8 +35,9 @@ public final class NamedTypeSignature {
   private final TypeSignature typeSignature;
 
   public NamedTypeSignature(Optional<RowFieldName> fieldName, TypeSignature typeSignature) {
-    this.fieldName = requireNonNull(fieldName, "fieldName is null");
-    this.typeSignature = requireNonNull(typeSignature, "typeSignature is null");
+    this.fieldName = requireNonNull(fieldName, QueryMessages.EXCEPTION_FIELDNAME_IS_NULL_DEB1CA0C);
+    this.typeSignature =
+        requireNonNull(typeSignature, QueryMessages.EXCEPTION_TYPESIGNATURE_IS_NULL_E8B47305);
   }
 
   public Optional<RowFieldName> getFieldName() {

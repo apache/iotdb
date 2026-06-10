@@ -295,7 +295,8 @@ public class StatementGenerator {
       if (!insertRecordReq.isSetColumnCategoryies()
           || insertRecordReq.getColumnCategoryiesSize() != insertRecordReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
@@ -375,7 +376,8 @@ public class StatementGenerator {
       if (!insertTabletReq.isSetColumnCategories()
           || insertTabletReq.getColumnCategoriesSize() != insertTabletReq.getMeasurementsSize()) {
         throw new IllegalArgumentException(
-            "Missing or invalid column categories for table " + "insertion");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_MISSING_OR_INVALID_COLUMN_CATEGORIES_FOR_TABLE_INSERTION_5DF990B9);
       }
       TsTableColumnCategory[] columnCategories =
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
@@ -696,7 +698,8 @@ public class StatementGenerator {
 
       if (measurementName == null) {
         throw new MetadataException(
-            "The name of a measurement in schema template shall not be null.");
+            DataNodeQueryMessages
+                .QUERY_EXCEPTION_THE_NAME_OF_A_MEASUREMENT_IN_SCHEMA_TEMPLATE_SHALL_NOT_BE_937264BD);
       }
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {

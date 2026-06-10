@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.read.v4.ITsFileReader;
@@ -43,7 +44,8 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
     if (databaseName != null) {
       throw new SubscriptionIncompatibleHandlerException(
           String.format(
-              "%s does not support openTreeReader() for table model tsfile.",
+              SubscriptionMessages
+                  .EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTREEREADER_TABLE_MODEL_TSFILE_68621ECF,
               getClass().getSimpleName()));
     }
     return new TsFileTreeReaderBuilder().file(getFile()).build();
@@ -54,7 +56,8 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
     if (databaseName == null) {
       throw new SubscriptionIncompatibleHandlerException(
           String.format(
-              "%s does not support openTableReader() for tree model tsfile.",
+              SubscriptionMessages
+                  .EXCEPTION_ARG_DOES_NOT_SUPPORT_OPENTABLEREADER_TREE_MODEL_TSFILE_CEC27860,
               getClass().getSimpleName()));
     }
     return new TsFileReaderBuilder().file(getFile()).build();

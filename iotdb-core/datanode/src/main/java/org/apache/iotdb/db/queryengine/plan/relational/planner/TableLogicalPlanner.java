@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -149,9 +150,14 @@ public class TableLogicalPlanner {
       List<PlanOptimizer> planOptimizers) {
     this.queryContext = queryContext;
     this.metadata = metadata;
-    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
-    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.sessionInfo =
+        requireNonNull(sessionInfo, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+    this.symbolAllocator =
+        requireNonNull(
+            symbolAllocator, DataNodeQueryMessages.EXCEPTION_SYMBOLALLOCATOR_IS_NULL_E2BE1908);
+    this.warningCollector =
+        requireNonNull(
+            warningCollector, DataNodeQueryMessages.EXCEPTION_WARNINGCOLLECTOR_IS_NULL_7A524A68);
     this.planOptimizers = planOptimizers;
     this.predicateWithUncorrelatedScalarSubqueryReconstructor =
         new PredicateWithUncorrelatedScalarSubqueryReconstructor();
@@ -265,7 +271,9 @@ public class TableLogicalPlanner {
       return genInsertPlan(analysis, (Insert) statement);
     }
     throw new IllegalStateException(
-        "Unsupported statement type: " + statement.getClass().getSimpleName());
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_STATEMENT_TYPE_S_FBCA7305,
+            statement.getClass().getSimpleName()));
   }
 
   private RelationPlan genInsertPlan(final Analysis analysis, final Insert node) {
@@ -596,9 +604,9 @@ public class TableLogicalPlanner {
 
       if (analysis.getSchemaPartitionInfo().getSchemaPartitionMap().size() > 1) {
         throw new SemanticException(
-            "Tree device view with multiple databases("
+            DataNodeQueryMessages.TREE_DEVICE_VIEW_WITH_MULTIPLE_DATABASES
                 + analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet()
-                + ") is unsupported yet.");
+                + DataNodeQueryMessages.IS_UNSUPPORTED_YET);
       }
     } else {
       analysis.setSchemaPartitionInfo(

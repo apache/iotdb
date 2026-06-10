@@ -1109,8 +1109,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           && statusCode != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw new PipeException(
             String.format(
-                "Auto create database failed: %s, status code: %s",
-                database, result.getStatusCode()));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_AUTO_CREATE_DATABASE_FAILED_S_STATUS_CODE_S_D8EB60FA,
+                database,
+                result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
       if (e instanceof InterruptedException) {

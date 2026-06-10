@@ -364,7 +364,8 @@ public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, Trigge
           // We need to update local TriggerTable with the new TDataNodeLocation of the stateful
           // trigger.
           LOGGER.warn(
-              "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
+              DataNodeMiscMessages
+                  .MISC_LOG_ERROR_OCCURRED_WHEN_TRYING_TO_FIRE_TRIGGER_ON_TENDPOINT_BFCBA56E,
               triggerName,
               tDataNodeLocation.getInternalEndPoint(),
               e);
@@ -375,7 +376,8 @@ public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, Trigge
           Thread.currentThread().interrupt();
         } catch (Exception e) {
           LOGGER.warn(
-              "Error occurred when trying to fire trigger({}) on TEndPoint: {}, the cause is: {}",
+              DataNodeMiscMessages
+                  .MISC_LOG_ERROR_OCCURRED_WHEN_TRYING_TO_FIRE_TRIGGER_ON_TENDPOINT_BFCBA56E,
               triggerName,
               tDataNodeLocation.getInternalEndPoint(),
               e);
@@ -433,7 +435,8 @@ public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, Trigge
       return false;
     } catch (ClientManagerException | TException | IOException e) {
       LOGGER.error(
-          "Failed to update location of stateful trigger({}) through config node. The cause is {}.",
+          DataNodeMiscMessages
+              .MISC_LOG_FAILED_TO_UPDATE_LOCATION_OF_STATEFUL_TRIGGER_THROUGH_CONFIG_E6777439,
           triggerName,
           e);
       return false;

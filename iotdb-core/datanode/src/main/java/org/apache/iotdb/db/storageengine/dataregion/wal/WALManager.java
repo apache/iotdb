@@ -172,7 +172,8 @@ public class WALManager implements IService {
     logger.info(StorageEngineMessages.STOP_WAL_DELETE_THREAD_AND_RESTART);
     registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
     logger.info(
-        "Reboot wal delete thread successfully, current period is {} ms",
+        StorageEngineMessages
+            .STORAGE_LOG_REBOOT_WAL_DELETE_THREAD_SUCCESSFULLY_CURRENT_PERIOD_IS_44B69C7A,
         config.getDeleteWalFilesPeriodInMs());
   }
 
@@ -185,7 +186,8 @@ public class WALManager implements IService {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
-            "WAL disk usage {} is larger than the wal_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            StorageEngineMessages
+                .STORAGE_LOG_WAL_DISK_USAGE_IS_LARGER_THAN_THE_WAL_THROTTLE_THRESHOLD_2396FFCC,
             getTotalDiskUsage(),
             getThrottleThreshold());
       }

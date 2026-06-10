@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 
 import java.util.Optional;
@@ -31,9 +32,12 @@ public class ArgumentAnalysis {
 
   public ArgumentAnalysis(
       Argument argument, Optional<TableArgumentAnalysis> tableArgumentAnalysis) {
-    this.argument = requireNonNull(argument, "argument is null");
+    this.argument =
+        requireNonNull(argument, DataNodeQueryMessages.EXCEPTION_ARGUMENT_IS_NULL_0CBBD22B);
     this.tableArgumentAnalysis =
-        requireNonNull(tableArgumentAnalysis, "tableArgumentAnalysis is null");
+        requireNonNull(
+            tableArgumentAnalysis,
+            DataNodeQueryMessages.EXCEPTION_TABLEARGUMENTANALYSIS_IS_NULL_CF9F0E25);
   }
 
   public Argument getArgument() {

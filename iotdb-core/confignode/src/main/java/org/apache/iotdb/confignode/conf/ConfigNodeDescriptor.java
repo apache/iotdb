@@ -349,7 +349,8 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getTopologyProbingBaseIntervalInMs())));
     if (topologyProbingBaseIntervalInMs <= 0) {
       throw new IOException(
-          "topology_probing_base_interval_in_ms must be positive, but got: "
+          ConfigNodeMessages
+                  .EXCEPTION_TOPOLOGY_PROBING_BASE_INTERVAL_MS_MUST_POSITIVE_BUT_GOT_18C9B7A2
               + topologyProbingBaseIntervalInMs);
     }
     conf.setTopologyProbingBaseIntervalInMs(topologyProbingBaseIntervalInMs);
@@ -361,7 +362,7 @@ public class ConfigNodeDescriptor {
                 String.valueOf(conf.getTopologyProbingTimeoutRatio())));
     if (topologyProbingTimeoutRatio <= 0 || topologyProbingTimeoutRatio >= 1.0) {
       throw new IOException(
-          "topology_probing_timeout_ratio must be in (0, 1), but got: "
+          ConfigNodeMessages.EXCEPTION_TOPOLOGY_PROBING_TIMEOUT_RATIO_MUST_0_1_BUT_GOT_FBD0E28B
               + topologyProbingTimeoutRatio);
     }
     conf.setTopologyProbingTimeoutRatio(topologyProbingTimeoutRatio);

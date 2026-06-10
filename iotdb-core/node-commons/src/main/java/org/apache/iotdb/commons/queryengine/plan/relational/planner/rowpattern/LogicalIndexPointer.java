@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -58,10 +60,14 @@ public class LogicalIndexPointer {
 
   public LogicalIndexPointer(
       Set<IrLabel> labels, boolean last, boolean running, int logicalOffset, int physicalOffset) {
-    this.labels = requireNonNull(labels, "labels is null");
+    this.labels = requireNonNull(labels, QueryMessages.EXCEPTION_LABELS_IS_NULL_F4FBBECE);
     this.last = last;
     this.running = running;
-    checkArgument(logicalOffset >= 0, "logical offset must be >= 0, actual: %s", logicalOffset);
+    checkArgument(
+        logicalOffset >= 0,
+        QueryMessages
+            .EXCEPTION_LOGICAL_OFFSET_MUST_BE_GREATER_THAN_EQUALS_0_COMMA_ACTUAL_COLON_ARG_539807BF,
+        logicalOffset);
     this.logicalOffset = logicalOffset;
     this.physicalOffset = physicalOffset;
   }

@@ -165,7 +165,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
-        "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+        StorageEngineMessages
+            .STORAGE_LOG_INNERSPACECOMPACTIONTASK_START_TO_RENAME_MODS_FILE_7C036CBD,
         storageGroupName,
         dataRegionId);
 
@@ -235,10 +236,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (memoryCost > SystemInfo.getInstance().getMemorySizeForCompaction()) {
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
       LOGGER.warn(
-          "[RepairUnsortedFileCompactionTask]"
-              + " Can not repair unsorted file {} "
-              + "because the required memory to repair"
-              + " is greater than the total compaction memory budget",
+          StorageEngineMessages
+              .STORAGE_LOG_REPAIRUNSORTEDFILECOMPACTIONTASK_CAN_NOT_REPAIR_UNSORTED_48124B0C,
           sourceFile.getTsFile().getAbsolutePath());
     }
     return memoryCost;

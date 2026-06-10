@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching.pattern;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc.plan.relational.utils.matching.Match;
@@ -33,7 +34,7 @@ public class CapturePattern<T> extends Pattern<T> {
 
   public CapturePattern(Capture<T> capture, Pattern<T> previous) {
     super(previous);
-    this.capture = requireNonNull(capture, "capture is null");
+    this.capture = requireNonNull(capture, CalcMessages.EXCEPTION_CAPTURE_IS_NULL_C54AA710);
   }
 
   public Capture<T> capture() {

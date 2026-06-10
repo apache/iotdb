@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 
@@ -53,9 +54,9 @@ public class RelationPlan {
       Scope scope,
       List<Symbol> fieldMappings,
       Optional<TranslationMap> outerContext) {
-    requireNonNull(root, "root is null");
-    requireNonNull(fieldMappings, "fieldMappings is null");
-    requireNonNull(scope, "scope is null");
+    requireNonNull(root, DataNodeQueryMessages.EXCEPTION_ROOT_IS_NULL_ECC8987D);
+    requireNonNull(fieldMappings, DataNodeQueryMessages.EXCEPTION_FIELDMAPPINGS_IS_NULL_C3681969);
+    requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
 
     int allFieldCount = scope.getLocalScopeFieldCount();
     //    checkArgument(
@@ -73,7 +74,8 @@ public class RelationPlan {
   public Symbol getSymbol(int fieldIndex) {
     checkArgument(
         fieldIndex >= 0 && fieldIndex < fieldMappings.size(),
-        "No field->symbol mapping for field %s",
+        DataNodeQueryMessages
+            .EXCEPTION_NO_FIELD_MINUS_GREATER_THAN_SYMBOL_MAPPING_FOR_FIELD_ARG_698FDF06,
         fieldIndex);
     return fieldMappings.get(fieldIndex);
   }

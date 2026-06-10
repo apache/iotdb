@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
@@ -241,7 +242,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
     throw new UnsupportedOperationException(
-        "TimeWindowStateProgressIndex does not support topological sorting");
+        CommonMessages
+            .EXCEPTION_TIMEWINDOWSTATEPROGRESSINDEX_DOES_NOT_SUPPORT_TOPOLOGICAL_SORTING_897C8976);
   }
 
   public static TimeWindowStateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
@@ -283,8 +285,11 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       if (readLen != length) {
         throw new IOException(
             String.format(
-                "The intended read length is %s but %s is actually read when deserializing TimeProgressIndex, ProgressIndex: %s",
-                length, readLen, timeWindowStateProgressIndex));
+                CommonMessages
+                    .EXCEPTION_INTENDED_READ_LENGTH_ARG_BUT_ARG_ACTUALLY_READ_DESERIALIZING_TIMEPROGRESSINDEX_63CD54E4,
+                length,
+                readLen,
+                timeWindowStateProgressIndex));
       }
       final ByteBuffer dstBuffer = ByteBuffer.wrap(body);
       timeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(

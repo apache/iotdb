@@ -20,13 +20,15 @@
 package org.apache.iotdb.commons.exception.table;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class TableNotExistsException extends MetadataException {
 
   public TableNotExistsException(final String database, final String tableName) {
     super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
+        String.format(
+            CommonMessages.EXCEPTION_TABLE_ARG_ARG_DOES_NOT_EXIST_796E503B, database, tableName),
         TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
   }
 }

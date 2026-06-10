@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.process;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -65,11 +66,13 @@ public abstract class AbstractLinearFillOperator implements ProcessOperator {
 
   protected AbstractLinearFillOperator(
       CommonOperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
-    this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
+    this.operatorContext =
+        requireNonNull(operatorContext, CalcMessages.EXCEPTION_OPERATORCONTEXT_IS_NULL_D15B1EDB);
     checkArgument(
-        fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
+        fillArray != null && fillArray.length > 0,
+        CalcMessages.EXCEPTION_FILLARRAY_SHOULD_NOT_BE_NULL_OR_EMPTY_118FB134);
     this.fillArray = fillArray;
-    this.child = requireNonNull(child, "child operator is null");
+    this.child = requireNonNull(child, CalcMessages.EXCEPTION_CHILD_OPERATOR_IS_NULL_8860113C);
     this.outputColumnCount = fillArray.length;
     this.cachedTsBlock = new ArrayList<>();
     this.cachedRowIndex = new ArrayList<>();

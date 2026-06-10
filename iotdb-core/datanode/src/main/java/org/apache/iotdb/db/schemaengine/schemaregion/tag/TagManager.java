@@ -369,7 +369,10 @@ public class TagManager {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG, "Delete" + TAG_FORMAT, node.getFullPath()),
+                    String.format(
+                        DEBUG_MSG,
+                        DataNodeSchemaMessages.TAG_ACTION_DELETE + TAG_FORMAT,
+                        node.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     node.getOffset()));
@@ -381,7 +384,10 @@ public class TagManager {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION, node.getFullPath()),
+                    String.format(
+                        DEBUG_MSG_1,
+                        DataNodeSchemaMessages.TAG_ACTION_DELETE + PREVIOUS_CONDITION,
+                        node.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     node.getOffset(),
@@ -422,7 +428,10 @@ public class TagManager {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   String.format(
-                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
+                      String.format(
+                          DEBUG_MSG,
+                          DataNodeSchemaMessages.TAG_ACTION_UPSERT + TAG_FORMAT,
+                          leafMNode.getFullPath()),
                       key,
                       beforeValue,
                       leafMNode.getOffset()));
@@ -435,7 +444,9 @@ public class TagManager {
               logger.debug(
                   String.format(
                       String.format(
-                          DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                          DEBUG_MSG_1,
+                          DataNodeSchemaMessages.TAG_ACTION_UPSERT + PREVIOUS_CONDITION,
+                          leafMNode.getFullPath()),
                       key,
                       beforeValue,
                       leafMNode.getOffset(),
@@ -556,7 +567,10 @@ public class TagManager {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
-                    String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
+                    String.format(
+                        DEBUG_MSG,
+                        DataNodeSchemaMessages.TAG_ACTION_DROP + TAG_FORMAT,
+                        leafMNode.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     leafMNode.getOffset()));
@@ -569,7 +583,9 @@ public class TagManager {
             logger.debug(
                 String.format(
                     String.format(
-                        DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                        DEBUG_MSG_1,
+                        DataNodeSchemaMessages.TAG_ACTION_DROP + PREVIOUS_CONDITION,
+                        leafMNode.getFullPath()),
                     entry.getKey(),
                     entry.getValue(),
                     leafMNode.getOffset(),
@@ -627,7 +643,10 @@ public class TagManager {
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG,
+                      DataNodeSchemaMessages.TAG_ACTION_SET + TAG_FORMAT,
+                      leafMNode.getFullPath()),
                   entry.getKey(),
                   beforeValue,
                   leafMNode.getOffset()));
@@ -639,7 +658,10 @@ public class TagManager {
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG_1,
+                      DataNodeSchemaMessages.TAG_ACTION_SET + PREVIOUS_CONDITION,
+                      leafMNode.getFullPath()),
                   key,
                   beforeValue,
                   leafMNode.getOffset(),
@@ -685,7 +707,10 @@ public class TagManager {
         if (logger.isDebugEnabled()) {
           logger.debug(
               String.format(
-                  String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
+                  String.format(
+                      DEBUG_MSG,
+                      DataNodeSchemaMessages.TAG_ACTION_RENAME + TAG_FORMAT,
+                      leafMNode.getFullPath()),
                   oldKey,
                   value,
                   leafMNode.getOffset()));
@@ -698,7 +723,9 @@ public class TagManager {
           logger.debug(
               String.format(
                   String.format(
-                      DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                      DEBUG_MSG_1,
+                      DataNodeSchemaMessages.TAG_ACTION_RENAME + PREVIOUS_CONDITION,
+                      leafMNode.getFullPath()),
                   oldKey,
                   value,
                   leafMNode.getOffset(),

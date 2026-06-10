@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -99,22 +101,26 @@ public class CommitProgressKeeper {
     for (int i = 0; i < regionSize; i++) {
       final byte[] keyLenBytes = new byte[4];
       if (fileInputStream.read(keyLenBytes) != 4) {
-        throw new IOException("Unexpected EOF reading region progress key length");
+        throw new IOException(
+            PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_LENGTH_EBC10484);
       }
       final int keyLen = ByteBuffer.wrap(keyLenBytes).getInt();
       final byte[] keyBytes = new byte[keyLen];
       if (fileInputStream.read(keyBytes) != keyLen) {
-        throw new IOException("Unexpected EOF reading region progress key");
+        throw new IOException(
+            PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_KEY_C1532EAE);
       }
       final String key = new String(keyBytes, StandardCharsets.UTF_8);
       final byte[] valueLenBytes = new byte[4];
       if (fileInputStream.read(valueLenBytes) != 4) {
-        throw new IOException("Unexpected EOF reading region progress value length");
+        throw new IOException(
+            PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_LENGTH_D95F9CE0);
       }
       final int valueLen = ByteBuffer.wrap(valueLenBytes).getInt();
       final byte[] valueBytes = new byte[valueLen];
       if (fileInputStream.read(valueBytes) != valueLen) {
-        throw new IOException("Unexpected EOF reading region progress value");
+        throw new IOException(
+            PipeMessages.EXCEPTION_UNEXPECTED_EOF_READING_REGION_PROGRESS_VALUE_A459C521);
       }
       regionProgressMap.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
     }

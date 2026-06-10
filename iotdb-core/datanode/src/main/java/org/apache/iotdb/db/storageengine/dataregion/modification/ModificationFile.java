@@ -277,7 +277,8 @@ public class ModificationFile implements AutoCloseable {
       long skipped = inputStream.skip(offset);
       if (skipped != offset) {
         LOGGER.warn(
-            "Fail to read Mod file {}, expecting offset {}, actually skipped {}",
+            StorageEngineMessages
+                .STORAGE_LOG_FAIL_TO_READ_MOD_FILE_EXPECTING_OFFSET_ACTUALLY_SKIPPED_8B96B670,
             file,
             offset,
             skipped);
@@ -423,7 +424,8 @@ public class ModificationFile implements AutoCloseable {
         LOGGER.info(StorageEngineMessages.SETTLE_SUCCESSFUL, file);
         if (getFileLength() > COMPACT_THRESHOLD) {
           LOGGER.warn(
-              "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
+              StorageEngineMessages
+                  .STORAGE_LOG_AFTER_THE_MOD_FILE_IS_SETTLED_THE_FILE_SIZE_IS_STILL_GREATER_FA454979,
               originFileSize,
               getFileLength());
         }

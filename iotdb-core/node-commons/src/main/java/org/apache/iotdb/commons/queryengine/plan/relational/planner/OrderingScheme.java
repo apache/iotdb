@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -43,12 +45,12 @@ public class OrderingScheme {
   private final Map<Symbol, SortOrder> orderings;
 
   public OrderingScheme(List<Symbol> orderBy, Map<Symbol, SortOrder> orderings) {
-    requireNonNull(orderBy, "orderBy is null");
-    requireNonNull(orderings, "orderings is null");
-    checkArgument(!orderBy.isEmpty(), "orderBy is empty");
+    requireNonNull(orderBy, QueryMessages.EXCEPTION_ORDERBY_IS_NULL_AA2494DE);
+    requireNonNull(orderings, QueryMessages.EXCEPTION_ORDERINGS_IS_NULL_59B1C097);
+    checkArgument(!orderBy.isEmpty(), QueryMessages.EXCEPTION_ORDERBY_IS_EMPTY_963405E0);
     checkArgument(
         orderings.keySet().equals(ImmutableSet.copyOf(orderBy)),
-        "orderBy keys and orderings don't match");
+        QueryMessages.EXCEPTION_ORDERBY_KEYS_AND_ORDERINGS_DON_QUOTE_T_MATCH_E0334493);
     this.orderBy = ImmutableList.copyOf(orderBy);
     this.orderings = ImmutableMap.copyOf(orderings);
   }
@@ -66,7 +68,10 @@ public class OrderingScheme {
   }
 
   public SortOrder getOrdering(Symbol symbol) {
-    checkArgument(orderings.containsKey(symbol), "No ordering for symbol: %s", symbol);
+    checkArgument(
+        orderings.containsKey(symbol),
+        QueryMessages.EXCEPTION_NO_ORDERING_FOR_SYMBOL_COLON_ARG_F54E70FC,
+        symbol);
     return orderings.get(symbol);
   }
 

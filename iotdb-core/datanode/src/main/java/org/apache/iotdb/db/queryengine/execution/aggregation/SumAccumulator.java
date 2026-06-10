@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -66,14 +67,19 @@ public class SumAccumulator implements Accumulator {
       case STRING:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages
+                    .QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_AGGREGATION_AVG_S_D1DAD6A6,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | partialSumValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Sum should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_SUM_SHOULD_BE_1_40E85216);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -83,7 +89,8 @@ public class SumAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "input of Sum should be 1");
+    checkArgument(
+        input.length == 1, DataNodeQueryMessages.EXCEPTION_INPUT_OF_SUM_SHOULD_BE_1_D5C11EC8);
     if (input[0].isNull(0)) {
       return;
     }
@@ -117,7 +124,9 @@ public class SumAccumulator implements Accumulator {
   // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Sum should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_SUM_SHOULD_BE_1_40E85216);
     if (!initResult) {
       columnBuilders[0].appendNull();
     } else {

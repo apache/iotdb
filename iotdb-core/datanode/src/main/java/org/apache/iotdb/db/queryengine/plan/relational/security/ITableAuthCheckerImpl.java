@@ -167,7 +167,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 .setResult(false),
             () -> databaseName);
         throw new AccessDeniedException(
-            String.format("The database '%s' is read-only.", TABLE_MODEL_AUDIT_DATABASE));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_THE_DATABASE_S_IS_READ_ONLY_CB6732CE,
+                TABLE_MODEL_AUDIT_DATABASE));
       }
     }
   }
@@ -202,7 +204,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                   false));
       throw new AccessDeniedException(
           String.format(
-              "The database '%s' can only be queried by AUDIT admin.", TABLE_MODEL_AUDIT_DATABASE));
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_THE_DATABASE_S_CAN_ONLY_BE_QUERIED_BY_AUDIT_ADMIN_4A510F66,
+              TABLE_MODEL_AUDIT_DATABASE));
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity

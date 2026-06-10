@@ -199,7 +199,8 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             });
         if (messages.isEmpty()) {
           LOGGER.info(
-              "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
+              SubscriptionMessages
+                  .LOG_SUBSCRIPTIONPUSHCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_741801C2,
               this,
               CollectionUtils.getLimitedString(subscribedTopics.keySet(), 32),
               autoPollTimeoutMs);
@@ -224,7 +225,10 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
             }
           } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
+                SubscriptionMessages
+                    .LOG_CONSUMER_LISTENER_RAISED_EXCEPTION_CONSUMING_MESSAGE_ARG_867EE46D,
+                message,
+                e);
             messagesToNack.add(message);
           }
         }

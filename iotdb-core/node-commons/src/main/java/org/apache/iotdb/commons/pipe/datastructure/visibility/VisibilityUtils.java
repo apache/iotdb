@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -127,7 +128,7 @@ public class VisibilityUtils {
 
     // UNREACHABLE CODE
     LOGGER.error(
-        "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}",
+        PipeMessages.LOG_BROKEN_INVARIANT_DETECT_INVISIBLE_EXTRACTOR_PARAMETERS_ARG_ADAD3038,
         extractorParameters.getAttribute());
     return Visibility.NONE;
   }

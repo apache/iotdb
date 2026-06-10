@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.ISubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -259,7 +260,8 @@ public class SubscriptionBrokerAgent {
               consumerGroupId, topicName, ConsensusGroupId.Factory.createFromString(regionId));
     } catch (final IllegalArgumentException e) {
       LOGGER.warn(
-          "Subscription: failed to parse consensus region id {} for committed progress, topic={}, consumerGroup={}",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_FAILED_TO_PARSE_CONSENSUS_REGION_ID_FOR_COMMITTED_9F1A50EB,
           regionId,
           topicName,
           consumerGroupId,
@@ -356,8 +358,8 @@ public class SubscriptionBrokerAgent {
     }
 
     LOGGER.info(
-        "Subscription: consensus {} is a no-op on this DataNode because no local queue exists, "
-            + "consumerGroup={}, topic={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTION_CONSENSUS_IS_A_NO_OP_ON_THIS_DATANODE_BECAUSE_28F7E92B,
         operation,
         consumerGroupId,
         topicName);
@@ -641,7 +643,8 @@ public class SubscriptionBrokerAgent {
 
   public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
     LOGGER.info(
-        "SubscriptionBrokerAgent: refreshing consensus queue order-mode for topic [{}] to [{}]",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_REFRESHING_CONSENSUS_QUEUE_ORDER_1886704D,
         topicName,
         orderMode);
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
@@ -654,7 +657,8 @@ public class SubscriptionBrokerAgent {
     final ConsensusSubscriptionBroker broker = getConsensusBroker(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
-          "Subscription: consensus broker bound to consumer group [{}] does not exist",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_CONSENSUS_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_E46FCDD9,
           consumerGroupId);
       return;
     }
@@ -670,7 +674,8 @@ public class SubscriptionBrokerAgent {
     if (totalClosed > 0) {
       prefetchingQueueCount.invalidate();
       LOGGER.info(
-          "Subscription: unbound {} consensus prefetching queue(s) for removed region [{}]",
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_UNBOUND_CONSENSUS_PREFETCHING_QUEUE_S_FOR_REMOVED_AC018742,
           totalClosed,
           regionId);
     }
@@ -683,7 +688,10 @@ public class SubscriptionBrokerAgent {
    */
   public void setActiveForRegion(final ConsensusGroupId regionId, final boolean active) {
     LOGGER.info(
-        "SubscriptionBrokerAgent: setActiveForRegion regionId={}, active={}", regionId, active);
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_SETACTIVEFORREGION_REGIONID_ACTIVE_4AC3A2CB,
+        regionId,
+        active);
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
       broker.setActiveForRegion(regionId, active);
     }
@@ -692,7 +700,8 @@ public class SubscriptionBrokerAgent {
   public void setActiveWritersForRegion(
       final ConsensusGroupId regionId, final Set<Integer> activeWriterNodeIds) {
     LOGGER.info(
-        "SubscriptionBrokerAgent: setActiveWritersForRegion regionId={}, activeWriterNodeIds={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_SETACTIVEWRITERSFORREGION_REGIONID_48B39B3E,
         regionId,
         activeWriterNodeIds);
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
@@ -703,7 +712,8 @@ public class SubscriptionBrokerAgent {
   public void applyRuntimeStateForRegion(
       final ConsensusGroupId regionId, final ConsensusRegionRuntimeState runtimeState) {
     LOGGER.info(
-        "SubscriptionBrokerAgent: applyRuntimeStateForRegion regionId={}, runtimeState={}",
+        DataNodePipeMessages
+            .PIPE_LOG_SUBSCRIPTIONBROKERAGENT_APPLYRUNTIMESTATEFORREGION_REGIONID_6D8C37A1,
         regionId,
         runtimeState);
     for (final ConsensusSubscriptionBroker broker : getBrokers(ConsensusSubscriptionBroker.class)) {
@@ -721,7 +731,9 @@ public class SubscriptionBrokerAgent {
     final SubscriptionBroker pipeBroker = getPipeBroker(consumerGroupId);
     if (Objects.isNull(pipeBroker)) {
       LOGGER.warn(
-          "Subscription: pipe broker bound to consumer group [{}] does not exist", consumerGroupId);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_PIPE_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_E9B60B22,
+          consumerGroupId);
       return;
     }
     pipeBroker.updateCompletedTopicNames(topicName);
@@ -731,7 +743,9 @@ public class SubscriptionBrokerAgent {
     final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXIST_74CAD5BE,
+          consumerGroupId);
       return;
     }
     broker.unbind(topicName);
@@ -742,7 +756,9 @@ public class SubscriptionBrokerAgent {
     final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXIST_74CAD5BE,
+          consumerGroupId);
       return;
     }
     broker.removeQueue(topicName);
@@ -757,7 +773,8 @@ public class SubscriptionBrokerAgent {
           .ifPresent(
               l ->
                   l.warn(
-                      "Subscription: broker bound to consumer group [{}] does not exist",
+                      DataNodePipeMessages
+                          .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXIST_74CAD5BE,
                       consumerGroupId));
       return false;
     }
@@ -768,7 +785,9 @@ public class SubscriptionBrokerAgent {
     final ISubscriptionBroker broker = getBrokerForTopic(consumerGroupId, topicName);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+          DataNodePipeMessages
+              .PIPE_LOG_SUBSCRIPTION_BROKER_BOUND_TO_CONSUMER_GROUP_DOES_NOT_EXIST_74CAD5BE,
+          consumerGroupId);
       return 0;
     }
     return broker.getEventCount(topicName);

@@ -937,14 +937,17 @@ public class RegionWriteExecutor {
         MeasurementPath measurementPath = schemaRegion.fetchMeasurementPath(node.getPath());
         if (node.isAlterView() && !measurementPath.getMeasurementSchema().isLogicalView()) {
           throw new MetadataException(
-              String.format("%s is not view.", measurementPath.getFullPath()));
+              String.format(
+                  DataNodeQueryMessages.QUERY_EXCEPTION_S_IS_NOT_VIEW_B5840A3C,
+                  measurementPath.getFullPath()));
         }
         if (node.getDataType() != null
             && !MetadataUtils.canAlter(
                 measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
           throw new MetadataException(
               String.format(
-                  "The timeseries %s used new type %s is not compatible with the existing one %s.",
+                  DataNodeQueryMessages
+                      .QUERY_EXCEPTION_THE_TIMESERIES_S_USED_NEW_TYPE_S_IS_NOT_COMPATIBLE_WITH_455D4D4A,
                   measurementPath.getFullPath(),
                   node.getDataType(),
                   measurementPath.getMeasurementSchema().getType()));

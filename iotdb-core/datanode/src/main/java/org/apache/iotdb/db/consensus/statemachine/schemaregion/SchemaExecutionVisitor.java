@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -441,7 +443,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
               measurementPath.getMeasurementSchema().getType(), node.getDataType())) {
             throw new MetadataException(
                 String.format(
-                    "The timeseries %s used new type %s is not compatible with the existing one %s.",
+                    DataNodePipeMessages
+                        .PIPE_EXCEPTION_THE_TIMESERIES_S_USED_NEW_TYPE_S_IS_NOT_COMPATIBLE_WITH_455D4D4A,
                     node.getPath().getFullPath(),
                     node.getDataType(),
                     node.getPath().getMeasurementSchema().getType()));
@@ -468,7 +471,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       if (Objects.isNull(template)) {
         return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
             .setMessage(
-                "The template is null when trying to activate template, may be the template is being unset.");
+                DataNodeMiscMessages
+                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
       }
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -490,7 +494,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       if (Objects.isNull(template)) {
         return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
             .setMessage(
-                "The template is null when trying to activate template, may be the template is being unset.");
+                DataNodeMiscMessages
+                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
       }
       try {
         schemaRegion.activateSchemaTemplate(
@@ -525,7 +530,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       if (Objects.isNull(template)) {
         return new TSStatus(TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
             .setMessage(
-                "The template is null when trying to activate template, may be the template is being unset.");
+                DataNodeMiscMessages
+                    .MESSAGE_TEMPLATE_NULL_TRYING_ACTIVATE_TEMPLATE_MAY_TEMPLATE_BEING_UNSET_1CE92779);
       }
       try {
         schemaRegion.activateSchemaTemplate(
@@ -535,7 +541,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       } catch (final TemplateIsInUseException e) {
         logger.info(
             String.format(
-                "Device Template has already been activated on path %s, there's no need to activate again.",
+                DataNodeSchemaMessages.DEVICE_TEMPLATE_ALREADY_ACTIVATED_ON_PATH_FMT,
                 entry.getKey()));
       } catch (final MetadataException e) {
         logMetaDataException(e);

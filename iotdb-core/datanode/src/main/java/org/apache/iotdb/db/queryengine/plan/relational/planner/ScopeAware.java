@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
@@ -59,11 +60,12 @@ public class ScopeAware<T extends Node> {
   private final int hash;
 
   private ScopeAware(Analysis analysis, Scope scope, T node) {
-    requireNonNull(scope, "scope is null");
+    requireNonNull(scope, DataNodeQueryMessages.EXCEPTION_SCOPE_IS_NULL_4F364BA2);
 
     this.queryScope = scope.getQueryBoundaryScope();
-    this.analysis = requireNonNull(analysis, "analysis is null");
-    this.node = requireNonNull(node, "node is null");
+    this.analysis =
+        requireNonNull(analysis, DataNodeQueryMessages.EXCEPTION_ANALYSIS_IS_NULL_66666A58);
+    this.node = requireNonNull(node, DataNodeQueryMessages.EXCEPTION_NODE_IS_NULL_C1479F4A);
     this.hash = treeHash(node, this::scopeAwareHash);
   }
 
@@ -92,7 +94,8 @@ public class ScopeAware<T extends Node> {
 
     ScopeAware<T> other = (ScopeAware<T>) o;
     checkArgument(
-        this.queryScope == other.queryScope, "Expressions must be in the same local scope");
+        this.queryScope == other.queryScope,
+        DataNodeQueryMessages.EXCEPTION_EXPRESSIONS_MUST_BE_IN_THE_SAME_LOCAL_SCOPE_CCAD793E);
 
     return treeEqual(node, other.node, this::scopeAwareComparison);
   }

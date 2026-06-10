@@ -150,7 +150,8 @@ public class IoTDBDescriptor {
         loadProperties(trimProperties);
       } catch (Exception e) {
         LOGGER.error(
-            "Failed to reload properties from {}, reject DataNode startup.",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_RELOAD_PROPERTIES_FROM_REJECT_DATANODE_STARTUP_74E66EEC,
             loader.getClass().getName(),
             e);
         System.exit(-1);
@@ -193,8 +194,8 @@ public class IoTDBDescriptor {
         return uri;
       }
       LOGGER.warn(
-          "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-              + "config file {}, use default configuration",
+          DataNodeMiscMessages
+              .MISC_LOG_CANNOT_FIND_IOTDB_HOME_OR_IOTDB_CONF_ENVIRONMENT_VARIABLE_BE01B2FE,
           configFileName);
       // update all data seriesPath
       conf.updatePath();
@@ -252,7 +253,8 @@ public class IoTDBDescriptor {
       }
     } else {
       LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
+          DataNodeMiscMessages
+              .MISC_LOG_COULDN_T_LOAD_THE_CONFIGURATION_FROM_ANY_OF_THE_KNOWN_SOURCES_EE3ED103,
           CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
@@ -284,7 +286,8 @@ public class IoTDBDescriptor {
       conf.setMaxClientNumForEachNode(
           Integer.parseInt(properties.getProperty("dn_max_connection_for_internal_service")));
       LOGGER.warn(
-          "The parameter dn_max_connection_for_internal_service is out of date. Please rename it to dn_max_client_count_for_each_node_in_client_manager.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_MAX_CONNECTION_FOR_INTERNAL_SERVICE_IS_D2F24BEB);
     }
     conf.setMaxClientNumForEachNode(
         Integer.parseInt(
@@ -1148,8 +1151,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
     if (partitionTableRecoverWorkerNum <= 0) {
       LOGGER.warn(
-          "partition_table_recover_worker_num should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages
+              .MISC_LOG_PARTITION_TABLE_RECOVER_WORKER_NUM_SHOULD_BE_GREATER_THAN_74A2512B,
           partitionTableRecoverWorkerNum,
           conf.getPartitionTableRecoverWorkerNum());
       partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
@@ -1162,8 +1165,8 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
     if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
       LOGGER.warn(
-          "partition_table_recover_max_read_megabytes_per_second should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
+          DataNodeMiscMessages
+              .MISC_LOG_PARTITION_TABLE_RECOVER_MAX_READ_MEGABYTES_PER_SECOND_SHOULD_42BCDFBC,
           partitionTableRecoverMaxReadMBsPerSecond,
           conf.getPartitionTableRecoverMaxReadMBsPerSecond());
       partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
@@ -1784,7 +1787,8 @@ public class IoTDBDescriptor {
     String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
     if (old_throttleThreshold != null) {
       LOGGER.warn(
-          "The throttle threshold params: {} is deprecated, please use {}",
+          DataNodeMiscMessages
+              .MISC_LOG_THE_THROTTLE_THRESHOLD_PARAMS_IS_DEPRECATED_PLEASE_USE_AA0E8EC7,
           DEFAULT_WAL_THRESHOLD_NAME[0],
           DEFAULT_WAL_THRESHOLD_NAME[1]);
       return old_throttleThreshold;
@@ -2341,7 +2345,8 @@ public class IoTDBDescriptor {
         commonDescriptor.getConfig().setQuerySamplingRateLimit(rateLimit);
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to parse query_sample_throughput_bytes_per_sec {} to integer",
+            DataNodeMiscMessages
+                .MISC_LOG_FAILED_TO_PARSE_QUERY_SAMPLE_THROUGHPUT_BYTES_PER_SEC_TO_00144244,
             querySamplingRateLimitNumber);
       }
     }
@@ -2382,7 +2387,10 @@ public class IoTDBDescriptor {
     } catch (Exception e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_RELOAD_CONFIG_FILE, url, e);
       throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+          String.format(
+              DataNodeMiscMessages.MISC_EXCEPTION_FAIL_TO_RELOAD_CONFIG_FILE_S_BECAUSE_S_93CCAB8D,
+              url,
+              e.getMessage()));
     } finally {
       ConfigurationFileUtils.releaseDefault();
     }
@@ -2713,9 +2721,10 @@ public class IoTDBDescriptor {
           maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
     } catch (Exception e) {
       throw new RuntimeException(
-          "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
-              + " should be an integer, which is "
-              + readerTransformerCollectorMemoryProportion,
+          String.format(
+              DataNodeMiscMessages
+                  .MISC_EXCEPTION_EACH_SUBSECTION_OF_CONFIGURATION_ITEM_UDF_READER_TRANSFORMER_97CA8962,
+              readerTransformerCollectorMemoryProportion),
           e);
     }
   }
@@ -2819,9 +2828,8 @@ public class IoTDBDescriptor {
     if (configNodeUrls == null) {
       configNodeUrls = properties.getProperty(IoTDBConstant.DN_TARGET_CONFIG_NODE_LIST);
       LOGGER.warn(
-          "The parameter dn_target_config_node_list has been abandoned, "
-              + "only the first ConfigNode address will be used to join in the cluster. "
-              + "Please use dn_seed_config_node instead.");
+          DataNodeMiscMessages
+              .MISC_LOG_THE_PARAMETER_DN_TARGET_CONFIG_NODE_LIST_HAS_BEEN_ABANDONED_6C0DE50B);
     }
     if (configNodeUrls != null) {
       try {
@@ -2829,7 +2837,9 @@ public class IoTDBDescriptor {
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
         LOGGER.error(
-            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
+            DataNodeMiscMessages
+                .MISC_LOG_CONFIGNODES_ARE_SET_IN_WRONG_FORMAT_PLEASE_SET_THEM_LIKE_18E97679,
+            e);
       }
     }
 

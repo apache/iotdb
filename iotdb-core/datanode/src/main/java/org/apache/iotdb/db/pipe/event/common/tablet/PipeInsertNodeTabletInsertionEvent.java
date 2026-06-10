@@ -193,7 +193,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Increase reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.INCREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     }
   }
@@ -210,7 +212,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
-          String.format("Decrease reference count error. Holder Message: %s", holderMessage), e);
+          String.format(
+              DataNodePipeMessages.DECREASE_REFERENCE_COUNT_ERROR_HOLDER_FMT, holderMessage),
+          e);
       return false;
     } finally {
       if (Objects.nonNull(pipeName)) {
@@ -316,8 +320,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       } else {
         throw new AccessDeniedException(
             String.format(
-                "No privilege for SELECT for user %s at table %s.%s",
-                userName, tableModelDatabaseName, tableName));
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_NO_PRIVILEGE_FOR_SELECT_FOR_USER_S_AT_TABLE_S_S_84B0C299,
+                userName,
+                tableModelDatabaseName,
+                tableName));
       }
     }
   }

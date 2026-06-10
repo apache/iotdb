@@ -276,7 +276,7 @@ public class PipeReceiverStatusHandler {
     }
 
     LOGGER.warn(
-        "User conflict exception: discarded data info because {}. data: {}. receiver message: {}. status: {}",
+        PipeMessages.LOG_USER_CONFLICT_EXCEPTION_DISCARDED_DATA_INFO_BECAUSE_ARG_DATA_ARG_CCE510A5,
         reason,
         summarizeRecordMessage(recordMessage),
         status.getMessage(),

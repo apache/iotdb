@@ -104,7 +104,10 @@ public class TsFileSketchTool {
       if (reader.selfCheck(new Schema(), allChunkGroupMetadata, false)
           != TsFileCheckStatus.COMPLETE_FILE) {
         throw new IOException(
-            String.format("Cannot load file %s because the file has crashed.", filename));
+            String.format(
+                DataNodeMiscMessages
+                    .MISC_EXCEPTION_CANNOT_LOAD_FILE_S_BECAUSE_THE_FILE_HAS_CRASHED_6C180DF9,
+                filename));
       }
     } catch (IOException e) {
       LOGGER.warn(DataNodeMiscMessages.FAIL_INIT_SKETCH_TOOL, filename, e);

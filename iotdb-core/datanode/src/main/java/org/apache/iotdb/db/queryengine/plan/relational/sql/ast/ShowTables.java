@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -48,14 +49,14 @@ public class ShowTables extends Statement {
   private final boolean isDetails;
 
   public ShowTables(final NodeLocation location, final boolean isDetails) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.dbName = null;
     this.isDetails = isDetails;
   }
 
   public ShowTables(final NodeLocation location, final Identifier dbName, final boolean isDetails) {
-    super(requireNonNull(location, "location is null"));
-    this.dbName = requireNonNull(dbName, "dbName is null");
+    super(requireNonNull(location, DataNodeQueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.dbName = requireNonNull(dbName, DataNodeQueryMessages.EXCEPTION_DBNAME_IS_NULL_4521C4EE);
     this.isDetails = isDetails;
   }
 

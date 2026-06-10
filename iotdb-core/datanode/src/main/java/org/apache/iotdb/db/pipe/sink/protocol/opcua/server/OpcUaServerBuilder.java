@@ -143,9 +143,9 @@ public class OpcUaServerBuilder implements Closeable {
     final File pkiDir = securityDir.resolve("pki").toFile();
 
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security dir: {}", securityDir.toAbsolutePath());
+        .info(DataNodePipeMessages.OPC_UA_SECURITY_DIR, securityDir.toAbsolutePath());
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
-        .info("Security pki dir: {}", pkiDir.getAbsolutePath());
+        .info(DataNodePipeMessages.OPC_UA_SECURITY_PKI_DIR, pkiDir.getAbsolutePath());
 
     final OpcUaKeyStoreLoader loader =
         new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
@@ -187,7 +187,8 @@ public class OpcUaServerBuilder implements Closeable {
             .orElseThrow(
                 () ->
                     new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError, "No certificate found"));
+                        StatusCodes.Bad_ConfigurationError,
+                        DataNodePipeMessages.NO_CERTIFICATE_FOUND));
 
     final String applicationUri =
         CertificateUtil.getSanUri(certificate)
@@ -195,7 +196,7 @@ public class OpcUaServerBuilder implements Closeable {
                 () ->
                     new UaRuntimeException(
                         StatusCodes.Bad_ConfigurationError,
-                        "Certificate is missing the application URI"));
+                        DataNodePipeMessages.CERTIFICATE_MISSING_APPLICATION_URI));
 
     final Set<EndpointConfiguration> endpointConfigurations =
         createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
@@ -346,8 +347,14 @@ public class OpcUaServerBuilder implements Closeable {
       }
       throw new PipeException(
           String.format(
-              "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
-              tcpBindPort, httpsBindPort, attrName, thisAttr, attrName, thatAttr));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_EXISTING_SERVER_WITH_TCP_PORT_S_AND_HTTPS_PORT_S_S_S_08C076F7,
+              tcpBindPort,
+              httpsBindPort,
+              attrName,
+              thisAttr,
+              attrName,
+              thatAttr));
     }
   }
 

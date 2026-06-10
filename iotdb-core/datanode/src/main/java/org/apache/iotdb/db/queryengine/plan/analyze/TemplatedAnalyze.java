@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -294,19 +295,21 @@ public class TemplatedAnalyze {
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
-                  "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+                  DataNodeQueryMessages.S_IN_ORDER_BY_CLAUSE_DOESN_T_EXIST,
+                  expressionForItem.getExpressionString()));
         }
         if (expressions.size() > 1) {
           throw new SemanticException(
               String.format(
-                  "%s in order by clause shouldn't refer to more than one timeseries.",
+                  DataNodeQueryMessages
+                      .S_IN_ORDER_BY_CLAUSE_SHOULDN_T_REFER_TO_MORE_THAN_ONE_TIMESERIES,
                   expressionForItem.getExpressionString()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpressionType(analysis, expressionForItem);
         if (!dataType.isComparable()) {
           throw new SemanticException(
-              String.format("The data type of %s is not comparable", dataType));
+              String.format(DataNodeQueryMessages.THE_DATA_TYPE_OF_S_IS_NOT_COMPARABLE, dataType));
         }
 
         Expression deviceViewExpression = getMeasurementExpression(expressionForItem, analysis);

@@ -92,11 +92,7 @@ public class JVMCommonUtils {
       long totalSpace = dirFile.getTotalSpace();
       double ratio = 1.0 * freeSpace / totalSpace;
       if (ratio <= diskSpaceWarningThreshold) {
-        LOGGER.warn(
-            "{} is above the warning threshold, free space {}, total space {}",
-            dir,
-            freeSpace,
-            totalSpace);
+        LOGGER.warn(UtilMessages.DISK_ABOVE_WARNING_THRESHOLD, dir, freeSpace, totalSpace);
       }
       return ratio;
     } catch (Exception e) {

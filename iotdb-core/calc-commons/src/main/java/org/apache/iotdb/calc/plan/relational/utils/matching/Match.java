@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.calc.plan.relational.utils.matching;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -31,7 +33,7 @@ public final class Match {
   private final Captures captures;
 
   private Match(Captures captures) {
-    this.captures = requireNonNull(captures, "captures is null");
+    this.captures = requireNonNull(captures, CalcMessages.EXCEPTION_CAPTURES_IS_NULL_75EACA5A);
   }
 
   public <T> T capture(Capture<T> capture) {

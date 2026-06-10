@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -690,7 +691,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
           break;
         default:
           throw new IllegalArgumentException(
-              "Unsupported data type: " + pageLoader.getDataType().toString());
+              String.format(
+                  StorageEngineMessages.STORAGE_EXCEPTION_UNSUPPORTED_DATA_TYPE_S_D16A1E9A,
+                  pageLoader.getDataType().toString()));
       }
       // Due to the fact that the page writer in memory includes some other objects
       // and has a special calculation method, the estimated size will actually be

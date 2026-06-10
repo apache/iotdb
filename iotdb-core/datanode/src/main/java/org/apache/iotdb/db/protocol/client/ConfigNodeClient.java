@@ -227,7 +227,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private static final long REGISTER_LEADER_WARMING_UP_RETRY_TIMEOUT_MS = 60_000L;
 
   private static final String UNSUPPORTED_INVOCATION =
-      "This method is not supported for invocation by DataNode";
+      DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE;
 
   private final ThriftClientProperty property;
 
@@ -397,8 +397,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         if (!isFirstInitiated) {
           logger.info(
-              "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-                  + "leader or not ready yet, will try again later",
+              DataNodeMiscMessages.FAILED_CONNECT_CONFIG_NODE_NOT_LEADER,
               configNode,
               config.getAddressAndPort());
         }
@@ -881,7 +880,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus loadConfiguration() throws TException {
     throw new UnsupportedOperationException(
-        UNSUPPORTED_INVOCATION + ", please call submitLoadConfigurationTask instead");
+        DataNodeMiscMessages.UNSUPPORTED_INVOCATION_BY_DATANODE_USE_SUBMIT_LOAD_CONFIGURATION_TASK);
   }
 
   @Override

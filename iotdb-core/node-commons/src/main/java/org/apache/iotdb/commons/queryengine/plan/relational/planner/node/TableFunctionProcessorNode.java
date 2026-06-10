@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -78,12 +79,13 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       TableFunctionHandle tableFunctionHandle,
       boolean requireRecordSnapshot) {
     super(id, source.orElse(null));
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.passThroughSpecification = passThroughSpecification;
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
-        requireNonNull(dataOrganizationSpecification, "specification is null");
+        requireNonNull(
+            dataOrganizationSpecification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
     this.rowSemantic = rowSemantic;
     this.tableFunctionHandle = tableFunctionHandle;
     this.requireRecordSnapshot = requireRecordSnapshot;
@@ -100,12 +102,13 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       TableFunctionHandle tableFunctionHandle,
       boolean requireRecordSnapshot) {
     super(id);
-    this.name = requireNonNull(name, "name is null");
+    this.name = requireNonNull(name, QueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.passThroughSpecification = passThroughSpecification;
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
-        requireNonNull(dataOrganizationSpecification, "specification is null");
+        requireNonNull(
+            dataOrganizationSpecification, QueryMessages.EXCEPTION_SPECIFICATION_IS_NULL_BB4AA029);
     this.rowSemantic = rowSemantic;
     this.tableFunctionHandle = tableFunctionHandle;
     this.requireRecordSnapshot = requireRecordSnapshot;

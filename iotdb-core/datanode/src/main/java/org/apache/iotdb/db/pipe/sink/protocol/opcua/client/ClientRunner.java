@@ -117,18 +117,18 @@ public class ClientRunner {
         configurableUaClient.run(client);
       } catch (final Exception e) {
         throw new PipeException(
-            DataNodePipeMessages.ERROR_RUNNING_OPC_CLIENT
-                + e.getClass().getSimpleName()
-                + ": "
-                + e.getMessage(),
+            String.format(
+                DataNodePipeMessages.ERROR_RUNNING_OPC_CLIENT_FMT,
+                e.getClass().getSimpleName(),
+                e.getMessage()),
             e);
       }
     } catch (final Exception e) {
       throw new PipeException(
-          DataNodePipeMessages.ERROR_GETTING_OPC_CLIENT
-              + e.getClass().getSimpleName()
-              + ": "
-              + e.getMessage(),
+          String.format(
+              DataNodePipeMessages.ERROR_GETTING_OPC_CLIENT_FMT,
+              e.getClass().getSimpleName(),
+              e.getMessage()),
           e);
     }
   }
@@ -161,8 +161,13 @@ public class ClientRunner {
       }
       throw new PipeException(
           String.format(
-              "The existing server with nodeUrl %s's %s %s conflicts to the new %s %s, reject reusing.",
-              configurableUaClient.getNodeUrl(), attrName, thisAttr, attrName, thatAttr));
+              DataNodePipeMessages
+                  .PIPE_EXCEPTION_THE_EXISTING_SERVER_WITH_NODEURL_S_S_S_S_CONFLICTS_TO_THE_1C06A4F6,
+              configurableUaClient.getNodeUrl(),
+              attrName,
+              thisAttr,
+              attrName,
+              thatAttr));
     }
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -48,8 +49,8 @@ public class PlanBuilder {
   private final PlanNode root;
 
   public PlanBuilder(TranslationMap translations, PlanNode root) {
-    requireNonNull(translations, "translations is null");
-    requireNonNull(root, "root is null");
+    requireNonNull(translations, DataNodeQueryMessages.EXCEPTION_TRANSLATIONS_IS_NULL_37D62ADC);
+    requireNonNull(root, DataNodeQueryMessages.EXCEPTION_ROOT_IS_NULL_ECC8987D);
 
     this.translations = translations;
     this.root = root;
@@ -108,7 +109,8 @@ public class PlanBuilder {
   public Expression rewrite(Expression root) {
     verify(
         translations.getAnalysis().isAnalyzed(root),
-        "Expression is not analyzed (%s): %s",
+        DataNodeQueryMessages
+            .EXCEPTION_EXPRESSION_IS_NOT_ANALYZED_LEFT_PAREN_ARG_RIGHT_PAREN_COLON_ARG_DAE760B6,
         root.getClass().getName(),
         root);
     return translations.rewrite(root);

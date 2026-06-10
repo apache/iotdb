@@ -113,7 +113,7 @@ public class ObjectTypeUtils {
       return ObjectTypeUtils.generateObjectBinary(pair.getLeft(), newObjectPath);
     } catch (NumberFormatException e) {
       throw new IoTDBRuntimeException(
-          "wrong object file path: " + pair.getRight(),
+          CalcMessages.EXCEPTION_WRONG_OBJECT_FILE_PATH_D317B1AB + pair.getRight(),
           TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
     }
   }
@@ -125,15 +125,19 @@ public class ObjectTypeUtils {
     if (offset >= fileSize) {
       throw new SemanticException(
           String.format(
-              "offset %d is greater than or equal to object size %d, file path is %s",
-              offset, fileSize, filePath));
+              CalcMessages
+                  .EXCEPTION_OFFSET_ARG_GREATER_THAN_EQUAL_OBJECT_SIZE_ARG_FILE_PATH_31936A19,
+              offset,
+              fileSize,
+              filePath));
     }
     long actualReadSize = Math.min(length < 0 ? fileSize : length, fileSize - offset);
     if (actualReadSize > Integer.MAX_VALUE) {
       throw new SemanticException(
           String.format(
-              "Read object size %s is too large (size > 2G), file path is %s",
-              actualReadSize, filePath));
+              CalcMessages.EXCEPTION_READ_OBJECT_SIZE_ARG_TOO_LARGE_SIZE_2G_FILE_PATH_7D4A4D10,
+              actualReadSize,
+              filePath));
     }
     return (int) actualReadSize;
   }

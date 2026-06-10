@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.exception;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 public class WALNodeClosedException extends WALException {
   public WALNodeClosedException(String nodeIdentifier) {
-    super(String.format("wal node-%s has been closed", nodeIdentifier));
+    super(String.format(StorageEngineMessages.WAL_NODE_CLOSED_FMT, nodeIdentifier));
   }
 }

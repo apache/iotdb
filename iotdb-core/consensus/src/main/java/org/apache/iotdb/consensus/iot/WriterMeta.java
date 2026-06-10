@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.iot;
 
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -63,7 +65,9 @@ final class WriterMeta {
       if (version != FORMAT_VERSION) {
         throw new IOException(
             String.format(
-                "Unsupported writer meta version %d in %s", version, path.toAbsolutePath()));
+                IoTConsensusMessages.EXCEPTION_UNSUPPORTED_WRITER_META_VERSION_ARG_ARG_7D14E679,
+                version,
+                path.toAbsolutePath()));
       }
       return Optional.of(new WriterMeta(dataInputStream.readLong(), dataInputStream.readLong()));
     }

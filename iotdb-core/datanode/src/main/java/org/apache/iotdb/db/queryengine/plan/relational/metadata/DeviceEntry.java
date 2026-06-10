@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
@@ -148,7 +149,9 @@ public abstract class DeviceEntry implements Accountable {
         return new NonAlignedDeviceEntry(deviceID, attributeColumnValues);
       default:
         throw new UnsupportedOperationException(
-            "Unknown AlignedDeviceEntry Type: " + DeviceEntryType.values()[ordinal]);
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNKNOWN_ALIGNEDDEVICEENTRY_TYPE_S_370A0039,
+                DeviceEntryType.values()[ordinal]));
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import org.apache.tsfile.utils.Pair;
@@ -131,7 +132,8 @@ public class GroupByLevelHelper {
     if (columnToAliasMap.get(groupedExpressionString) == null) {
       if (aliasToColumnMap.get(alias) != null) {
         throw new SemanticException(
-            String.format("alias '%s' can only be matched with one result column", alias));
+            String.format(
+                DataNodeQueryMessages.ALIAS_S_CAN_ONLY_BE_MATCHED_WITH_ONE_RESULT_COLUMN, alias));
       } else {
         columnToAliasMap.put(groupedExpressionString, alias);
         aliasToColumnMap.put(alias, groupedExpressionString);
@@ -140,8 +142,10 @@ public class GroupByLevelHelper {
     } else if (!columnToAliasMap.get(groupedExpressionString).equals(alias)) {
       throw new SemanticException(
           String.format(
-              "Result column %s with more than one alias[%s, %s]",
-              groupedExpressionString, columnToAliasMap.get(groupedExpressionString), alias));
+              DataNodeQueryMessages.RESULT_COLUMN_S_WITH_MORE_THAN_ONE_ALIAS_S_S,
+              groupedExpressionString,
+              columnToAliasMap.get(groupedExpressionString),
+              alias));
     }
   }
 
@@ -218,7 +222,11 @@ public class GroupByLevelHelper {
 
     public PartialPath get(PartialPath rawPath) {
       PartialPath groupedPath = map.get(new Pair<>(rawPath, rawPath.getMeasurementAlias()));
-      checkState(groupedPath != null, "path '%s' is not analyzed in GroupByLevelHelper.", rawPath);
+      checkState(
+          groupedPath != null,
+          DataNodeQueryMessages
+              .EXCEPTION_PATH_QUOTE_ARG_QUOTE_IS_NOT_ANALYZED_IN_GROUPBYLEVELHELPER_DOT_BCEE9D39,
+          rawPath);
       return groupedPath;
     }
   }

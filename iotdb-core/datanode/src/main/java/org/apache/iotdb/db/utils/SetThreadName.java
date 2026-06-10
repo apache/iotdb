@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+
 import java.io.Closeable;
 
 import static java.util.Objects.requireNonNull;
@@ -26,7 +28,7 @@ public class SetThreadName implements Closeable {
   private final String originalThreadName;
 
   public SetThreadName(String suffix) {
-    requireNonNull(suffix, "Suffix is null");
+    requireNonNull(suffix, DataNodeMiscMessages.EXCEPTION_SUFFIX_IS_NULL_6CC6B965);
     originalThreadName = Thread.currentThread().getName();
     int index = originalThreadName.indexOf("$");
     if (index < 0) {

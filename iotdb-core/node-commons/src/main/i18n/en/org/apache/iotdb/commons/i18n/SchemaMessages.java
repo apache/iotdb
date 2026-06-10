@@ -76,4 +76,19 @@ public final class SchemaMessages {
 
   public static final String S_IS_NULL =
       "%s is null";
+  // ---------------------------------------------------------------------------
+  // Additional auto-collected messages
+  // ---------------------------------------------------------------------------
+  public static final String EXCEPTION_DATABASE_MUST_SPECIFIED_SESSION_DATABASE_NOT_SET_CBF6F21F = "Database must be specified when session database is not set";
+  public static final String MESSAGE_NOT_TTL_RULE_669A7BA4 = "Not TTL rule";
+  public static final String MESSAGE_SET_4BE61E08 = " set for ";
+  public static final String EXCEPTION_FAILED_GET_ORIGINAL_DATABASE_BECAUSE_ARG_NULL_TABLE_ARG_5AE54514 = "Failed to get the original database, because the %s is null for table %s";
+  public static final String EXCEPTION_FAILED_PARSE_TREE_VIEW_STRING_ARG_CONVERT_IDEVICEID_6E735586 = "Failed to parse the tree view string %s when convert to IDeviceID";
+  public static final String EXCEPTION_SESSION_IS_NULL_6CF0F47D = "session is null";
+  public static final String EXCEPTION_NAME_IS_NULL_C8B35959 = "name is null";
+  public static final String EXCEPTION_ARG_IS_NOT_LOWERCASE_COLON_ARG_D78298F6 = "%s is not lowercase: %s";
+  public static final String EMPTY_MESSAGE = "";
+  public static final String EXCEPTION_OPERATOR_IS_NULL_F5BB9F59 = "operator is null";
+  public static final String EXCEPTION_VALUE_IS_NULL_192F6BFF = "value is null";
+
 }

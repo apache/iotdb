@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableExpress
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
@@ -57,7 +58,8 @@ public class CheckSchemaPredicateVisitor
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
-            "And expression encountered during tag-determined checking, will be classified into fuzzy expression. Sql: {}",
+            DataNodeQueryMessages
+                .AND_EXPRESSION_ENCOUNTERED_DURING_TAG_DETERMINED_CHECKING_WILL_BE_CLASSIFIED_INTO_FUZZY,
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
@@ -75,7 +77,8 @@ public class CheckSchemaPredicateVisitor
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
-            "Logical expression type encountered in not expression child during tag-determined checking, will be classified into fuzzy expression. Sql: {}",
+            DataNodeQueryMessages
+                .LOGICAL_EXPRESSION_TYPE_ENCOUNTERED_IN_NOT_EXPRESSION_CHILD_DURING_TAG_DETERMINED,
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
@@ -108,7 +111,8 @@ public class CheckSchemaPredicateVisitor
     if (schema.getColumnCategory() == TsTableColumnCategory.TIME
         || schema.getColumnCategory() == TsTableColumnCategory.FIELD) {
       throw new SemanticException(
-          "The TIME/FIELD columns are currently not allowed in devices related operations");
+          DataNodeQueryMessages
+              .THE_TIME_FIELD_COLUMNS_ARE_CURRENTLY_NOT_ALLOWED_IN_DEVICES_RELATED_OPERATIONS);
     }
     return schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }

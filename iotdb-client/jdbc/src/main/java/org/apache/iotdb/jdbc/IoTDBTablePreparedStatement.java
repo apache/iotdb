@@ -484,7 +484,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     } else {
       throw new SQLException(
           String.format(
-              "Can't infer the SQL type for an instance of %s. Use setObject() with explicit type.",
+              JdbcMessages
+                  .EXCEPTION_CAN_T_INFER_SQL_TYPE_INSTANCE_ARG_USE_SETOBJECT_EXPLICIT_F457F33A,
               x.getClass().getName()));
     }
   }
@@ -506,7 +507,11 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     }
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
-          "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
+          JdbcMessages.EXCEPTION_PARAMETER_INDEX_OUT_RANGE_3DD066E0
+              + index
+              + JdbcMessages.EXCEPTION_EXPECTED_1_3F4E8D6E
+              + parameterCount
+              + JdbcMessages.RIGHT_PARENTHESIS);
     }
   }
 

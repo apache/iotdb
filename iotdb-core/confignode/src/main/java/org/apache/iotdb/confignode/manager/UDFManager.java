@@ -114,7 +114,7 @@ public class UDFManager {
         return new TSStatus(TSStatusCode.CREATE_UDF_ERROR.getStatusCode())
             .setMessage(
                 String.format(
-                    "Fail to create UDF[%s], the size of Jar is too large, you can increase the value of property 'config_node_ratis_log_appender_buffer_size_max' on ConfigNode",
+                    ManagerMessages.MESSAGE_FAIL_CREATE_UDF_ARG_SIZE_JAR_TOO_LARGE_YOU_CAN_2F119802,
                     udfName));
       }
       TSStatus preCreateStatus = configManager.getConsensusManager().write(createFunctionPlan);

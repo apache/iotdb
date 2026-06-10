@@ -144,7 +144,7 @@ public class PipeHeartbeatParser {
       if (pipeMetaFromAgent == null) {
         LOGGER.info(
             ManagerMessages.PIPERUNTIMECOORDINATOR_MEETS_ERROR_IN_UPDATING_PIPEMETAKEEPER
-                + "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}",
+                + ManagerMessages.LOG_PIPEMETAFROMAGENT_NULL_PIPEMETAFROMCOORDINATOR_ARG_36C513AE,
             pipeMetaFromCoordinator);
         continue;
       }
@@ -158,7 +158,8 @@ public class PipeHeartbeatParser {
 
         temporaryMeta.markDataNodeCompleted(nodeId);
         LOGGER.info(
-            "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}",
+            ManagerMessages
+                .LOG_DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_DATANODE_ARG_PIPE_ARG_REMAININGEVENTCOUNT_7E6C52E9,
             nodeId,
             staticMeta.getPipeName(),
             pipeHeartbeat.getRemainingEventCount(staticMeta),
@@ -170,7 +171,8 @@ public class PipeHeartbeatParser {
         uncompletedDataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
         if (uncompletedDataNodeIds.isEmpty()) {
           LOGGER.info(
-              "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}",
+              ManagerMessages
+                  .LOG_ALL_DATANODES_REPORTED_HISTORICAL_PIPE_ARG_COMPLETED_GLOBALREMAININGEVENTCOUNT_ARG_GLOBALREMAININGTIME_255,
               staticMeta.getPipeName(),
               temporaryMeta.getGlobalRemainingEvents(),
               temporaryMeta.getGlobalRemainingTime(),
@@ -232,8 +234,10 @@ public class PipeHeartbeatParser {
               .ifPresent(
                   l ->
                       l.info(
-                          "Updated progress index for (pipe name: {}, consensus group id: {}) ... "
-                              + "Progress index on coordinator: {}, progress index from agent: {}, updated progressIndex: {}",
+                          ManagerMessages
+                                  .LOG_UPDATED_PROGRESS_INDEX_PIPE_NAME_ARG_CONSENSUS_GROUP_ID_ARG_DF112F4F
+                              + ManagerMessages
+                                  .LOG_PROGRESS_INDEX_COORDINATOR_ARG_PROGRESS_INDEX_AGENT_ARG_UPDATED_PROGRESSINDEX_1A22ABC5,
                           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
                           runtimeMetaFromCoordinator.getKey(),
                           runtimeMetaFromCoordinator.getValue().getProgressIndex(),
@@ -298,9 +302,11 @@ public class PipeHeartbeatParser {
 
                             LOGGER.warn(
                                 String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s "
-                                        + "from agent, stop pipe %s.",
-                                    exception, pipeName));
+                                    ManagerMessages
+                                            .LOG_DETECT_PIPERUNTIMECONNECTORCRITICALEXCEPTION_ARG_7D198DD7
+                                        + ManagerMessages.LOG_AGENT_STOP_PIPE_ARG_42212C21,
+                                    exception,
+                                    pipeName));
                           });
             }
           }

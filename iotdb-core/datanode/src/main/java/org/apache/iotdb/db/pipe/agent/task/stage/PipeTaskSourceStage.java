@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -69,9 +70,7 @@ public class PipeTaskSourceStage extends PipeTaskStage {
       try {
         pipeExtractor.close();
       } catch (Exception closeException) {
-        LOGGER.warn(
-            "Failed to close source after failed to initialize source. " + "Ignore this exception.",
-            closeException);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_SOURCE_AFTER_FAILED_TO, closeException);
       }
       throw new PipeException(e.getMessage(), e);
     }

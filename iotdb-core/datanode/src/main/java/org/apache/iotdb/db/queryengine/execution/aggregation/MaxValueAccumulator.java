@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -70,14 +71,18 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 
   // partialResult should be like: | partialMaxValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        partialResult.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -105,7 +110,9 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 
@@ -138,7 +145,9 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 
@@ -173,14 +182,18 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 
   // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(
+        columnBuilders.length == 1,
+        DataNodeQueryMessages.EXCEPTION_PARTIALRESULT_OF_MAXVALUE_SHOULD_BE_1_659B6D42);
     if (!initResult) {
       columnBuilders[0].appendNull();
       return;
@@ -209,7 +222,9 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 
@@ -243,7 +258,9 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format(
+                DataNodeQueryMessages.QUERY_EXCEPTION_UNSUPPORTED_DATA_TYPE_IN_MAXVALUE_S_521AC345,
+                seriesDataType));
     }
   }
 

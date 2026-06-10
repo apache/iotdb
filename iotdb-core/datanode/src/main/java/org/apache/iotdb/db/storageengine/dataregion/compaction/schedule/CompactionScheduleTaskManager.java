@@ -182,7 +182,9 @@ public class CompactionScheduleTaskManager implements IService {
         }
       } catch (InterruptedException e) {
         logger.warn(
-            "compaction schedule task thread pool can not be closed in {} ms", milliseconds);
+            StorageEngineMessages
+                .STORAGE_LOG_COMPACTION_SCHEDULE_TASK_THREAD_POOL_CAN_NOT_BE_CLOSED_IN_27D38188,
+            milliseconds);
         Thread.currentThread().interrupt();
       }
     } finally {

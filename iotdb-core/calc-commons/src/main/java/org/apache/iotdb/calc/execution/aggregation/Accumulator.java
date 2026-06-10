@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -43,7 +45,7 @@ public interface Accumulator {
    */
   default void removeIntermediate(Column[] partialResult) {
     throw new UnsupportedOperationException(
-        "This type of accumulator does not support remove input!");
+        CalcMessages.EXCEPTION_TYPE_ACCUMULATOR_DOES_NOT_SUPPORT_REMOVE_INPUT_905AFAA1);
   }
 
   /**

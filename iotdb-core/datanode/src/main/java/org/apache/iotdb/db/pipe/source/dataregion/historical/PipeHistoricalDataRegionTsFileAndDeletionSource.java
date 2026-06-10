@@ -213,7 +213,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (!sloppyOptionSet.isEmpty()) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "Parameters in set %s are not allowed in 'history.loose-range'",
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_PARAMETERS_IN_SET_S_ARE_NOT_ALLOWED_IN_HISTORY_LOOSE_RANGE_0F685D5C,
                   sloppyOptionSet));
         }
       }
@@ -240,7 +241,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                  DataNodePipeMessages
+                      .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                   SOURCE_START_TIME_KEY,
                   EXTRACTOR_START_TIME_KEY,
                   historicalDataExtractionStartTime,
@@ -289,7 +291,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
+                DataNodePipeMessages
+                    .PIPE_EXCEPTION_S_S_S_SHOULD_BE_LESS_THAN_OR_EQUAL_TO_S_S_S_0B9726E1,
                 EXTRACTOR_HISTORY_START_TIME_KEY,
                 SOURCE_HISTORY_START_TIME_KEY,
                 historicalDataExtractionStartTime,
@@ -567,8 +570,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       final int originalSequenceTsFileCount = tsFileManager.size(true);
       final int originalUnSequenceTsFileCount = tsFileManager.size(false);
       LOGGER.info(
-          "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
-              + "original unSequence file count {}, start progress index {}",
+          DataNodePipeMessages.PIPE_START_TO_EXTRACT_HISTORICAL_TSFILE_ORIGINAL,
           pipeName,
           dataRegionId,
           originalSequenceTsFileCount,
@@ -662,8 +664,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       extractedHistoricalTsFileCount = filteredTsFileResources2TableNames.size();
 
       LOGGER.info(
-          "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
-              + "extracted unsequence file count {}/{}, extracted file count {}/{}, took {} ms",
+          DataNodePipeMessages.PIPE_FINISH_TO_EXTRACT_HISTORICAL_TSFILE_EXTRACTED,
           pipeName,
           dataRegionId,
           sequenceTsFileResources2TableNames.size(),
@@ -857,7 +858,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         PipeTerminateEvent.snapshotHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
     if (Objects.nonNull(historicalTransferSummary)) {
       LOGGER.info(
-          "Pipe {}@{}: historical source has supplied all events, emitting terminate event. {}",
+          DataNodePipeMessages
+              .PIPE_LOG_PIPE_HISTORICAL_SOURCE_HAS_SUPPLIED_ALL_EVENTS_EMITTING_8B58DE19,
           pipeName,
           dataRegionId,
           historicalTransferSummary.toReportMessage());

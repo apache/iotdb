@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -60,12 +61,15 @@ public class CreateTable extends Statement {
       final @Nullable String comment,
       final List<Property> properties) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
+    this.name = requireNonNull(name, DataNodeQueryMessages.EXCEPTION_NAME_IS_NULL_C8B35959);
+    this.elements =
+        ImmutableList.copyOf(
+            requireNonNull(elements, DataNodeQueryMessages.EXCEPTION_ELEMENTS_IS_NULL_3451C1DA));
     this.ifNotExists = ifNotExists;
     this.charsetName = charsetName;
     this.comment = comment;
-    this.properties = requireNonNull(properties, "properties is null");
+    this.properties =
+        requireNonNull(properties, DataNodeQueryMessages.EXCEPTION_PROPERTIES_IS_NULL_57B88B49);
   }
 
   public QualifiedName getName() {

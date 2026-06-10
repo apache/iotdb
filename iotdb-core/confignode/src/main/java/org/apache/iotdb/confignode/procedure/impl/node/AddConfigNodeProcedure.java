@@ -94,7 +94,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         setFailure(new ProcedureException(ProcedureMessages.ADD_CONFIGNODE_FAILED + state));
       } else {
         LOG.error(
-            "Retrievable error trying to add config node {}, state {}",
+            ProcedureMessages.LOG_RETRIEVABLE_ERROR_TRYING_ADD_CONFIG_NODE_ARG_STATE_ARG_D7285810,
             tConfigNodeLocation,
             state,
             e);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -77,18 +78,18 @@ public class IntersectNode extends SetOperationNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "IntersectNode should never be serialized in current version");
+        QueryMessages.EXCEPTION_INTERSECTNODE_SHOULD_NEVER_SERIALIZED_CURRENT_VERSION_68D2C0D3);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException(
-        "IntersectNode should never be serialized in current version");
+        QueryMessages.EXCEPTION_INTERSECTNODE_SHOULD_NEVER_SERIALIZED_CURRENT_VERSION_68D2C0D3);
   }
 
   public static IntersectNode deserialize(ByteBuffer byteBuffer) {
     throw new UnsupportedOperationException(
-        "IntersectNode should never be deserialized in current version");
+        QueryMessages.EXCEPTION_INTERSECTNODE_SHOULD_NEVER_DESERIALIZED_CURRENT_VERSION_A3614371);
   }
 
   @Override

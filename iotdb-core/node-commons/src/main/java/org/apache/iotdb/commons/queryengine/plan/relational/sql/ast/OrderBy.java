@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -42,15 +44,17 @@ public class OrderBy extends Node {
 
   public OrderBy(List<SortItem> sortItems) {
     super(null);
-    requireNonNull(sortItems, "sortItems is null");
-    checkArgument(!sortItems.isEmpty(), "sortItems should not be empty");
+    requireNonNull(sortItems, QueryMessages.EXCEPTION_SORTITEMS_IS_NULL_DD277CDD);
+    checkArgument(
+        !sortItems.isEmpty(), QueryMessages.EXCEPTION_SORTITEMS_SHOULD_NOT_BE_EMPTY_78C26791);
     this.sortItems = ImmutableList.copyOf(sortItems);
   }
 
   public OrderBy(NodeLocation location, List<SortItem> sortItems) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(sortItems, "sortItems is null");
-    checkArgument(!sortItems.isEmpty(), "sortItems should not be empty");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(sortItems, QueryMessages.EXCEPTION_SORTITEMS_IS_NULL_DD277CDD);
+    checkArgument(
+        !sortItems.isEmpty(), QueryMessages.EXCEPTION_SORTITEMS_SHOULD_NOT_BE_EMPTY_78C26791);
     this.sortItems = ImmutableList.copyOf(sortItems);
   }
 

@@ -158,7 +158,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           try {
             commitSync(drainedMessages);
           } catch (final SubscriptionException e) {
-            LOGGER.warn("Failed to commit drained processor messages on close", e);
+            LOGGER.warn(
+                SubscriptionMessages.LOG_FAILED_COMMIT_DRAINED_PROCESSOR_MESSAGES_CLOSE_4264DB35,
+                e);
           }
         }
       } else {
@@ -176,7 +178,10 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
         try {
           commitSync(drainedMessages);
         } catch (final SubscriptionException e) {
-          LOGGER.warn("Failed to commit pending drained processor messages on close", e);
+          LOGGER.warn(
+              SubscriptionMessages
+                  .LOG_FAILED_COMMIT_PENDING_DRAINED_PROCESSOR_MESSAGES_CLOSE_644B5DDD,
+              e);
         }
       }
     }
@@ -224,7 +229,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           .forEach(
               topicName ->
                   LOGGER.warn(
-                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      SubscriptionMessages
+                          .LOG_SUBSCRIPTIONPULLCONSUMER_ARG_DOES_NOT_SUBSCRIBE_TOPIC_ARG_F40BE4D1,
                       this,
                       topicName));
     } else {
@@ -238,7 +244,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
     if (messages.isEmpty() && processors.isEmpty()) {
       LOGGER.info(
-          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
+          SubscriptionMessages
+              .LOG_SUBSCRIPTIONPULLCONSUMER_ARG_POLL_EMPTY_MESSAGE_TOPICS_ARG_AFTER_ARG_MILLISECOND_78F4D4A6,
           this,
           CollectionUtils.getLimitedString(parsedTopicNames, 32),
           timeoutMs);
@@ -414,8 +421,11 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       if (!processor.supportsTopicScopedReset()) {
         throw new SubscriptionParameterNotValidException(
             String.format(
-                "SubscriptionPullConsumer %s cannot seek topic %s while subscribed to multiple topics because processor %s does not support topic-scoped reset",
-                this, topicName, processor.getClass().getName()));
+                SubscriptionMessages
+                    .EXCEPTION_SUBSCRIPTIONPULLCONSUMER_ARG_CANNOT_SEEK_TOPIC_ARG_SUBSCRIBED_MULTIPLE_TOPICS_BECAUSE_B99BCABC,
+                this,
+                topicName,
+                processor.getClass().getName()));
       }
     }
   }

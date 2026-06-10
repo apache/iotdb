@@ -87,7 +87,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of UDAF should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_UDAF_SHOULD_BE_BINARYCOLUMN_6F28900F);
     State otherState = aggregateFunction.createState();
     for (int i = 0; i < argument.getPositionCount(); i++) {
       otherState.reset();
@@ -101,7 +102,8 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of UDAF should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_UDAF_SHOULD_BE_BINARYCOLUMN_6F28900F);
     byte[] bytes = state.serialize();
     columnBuilder.writeBinary(new Binary(bytes));
   }

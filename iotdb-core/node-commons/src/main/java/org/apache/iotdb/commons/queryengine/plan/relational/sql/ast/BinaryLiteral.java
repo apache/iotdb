@@ -49,7 +49,7 @@ public class BinaryLiteral extends Literal {
 
   public BinaryLiteral(String value) {
     super(null);
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
       throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY);
@@ -62,13 +62,13 @@ public class BinaryLiteral extends Literal {
 
   public BinaryLiteral(byte[] value) {
     super(null);
-    requireNonNull(value, "value is null");
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     this.value = value;
   }
 
   public BinaryLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(value, "value is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    requireNonNull(value, QueryMessages.EXCEPTION_VALUE_IS_NULL_192F6BFF);
     String hexString = WHITESPACE_MATCHER.removeFrom(value).toUpperCase(ENGLISH);
     if (!HEX_DIGIT_MATCHER.matchesAllOf(hexString)) {
       throw new ParsingException(QueryMessages.BINARY_LITERAL_HEX_ONLY, location);

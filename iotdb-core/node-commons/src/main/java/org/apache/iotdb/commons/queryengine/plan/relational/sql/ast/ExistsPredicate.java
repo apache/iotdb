@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -37,12 +39,12 @@ public class ExistsPredicate extends Expression {
 
   public ExistsPredicate(Expression subquery) {
     super(null);
-    this.subquery = requireNonNull(subquery, "subquery is null");
+    this.subquery = requireNonNull(subquery, QueryMessages.EXCEPTION_SUBQUERY_IS_NULL_F0E1842F);
   }
 
   public ExistsPredicate(@Nonnull NodeLocation location, Expression subquery) {
-    super(requireNonNull(location, "location is null"));
-    this.subquery = requireNonNull(subquery, "subquery is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.subquery = requireNonNull(subquery, QueryMessages.EXCEPTION_SUBQUERY_IS_NULL_F0E1842F);
   }
 
   public Expression getSubquery() {

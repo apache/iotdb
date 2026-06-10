@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,26 +42,26 @@ public class DereferenceExpression extends Expression {
 
   public DereferenceExpression(Expression base, Identifier field) {
     super(null);
-    this.base = requireNonNull(base, "base is null");
-    this.field = requireNonNull(field, "field is null");
+    this.base = requireNonNull(base, QueryMessages.EXCEPTION_BASE_IS_NULL_AC445AD0);
+    this.field = requireNonNull(field, QueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
   }
 
   public DereferenceExpression(NodeLocation location, Expression base, Identifier field) {
-    super(requireNonNull(location, "location is null"));
-    this.base = requireNonNull(base, "base is null");
-    this.field = requireNonNull(field, "field is null");
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
+    this.base = requireNonNull(base, QueryMessages.EXCEPTION_BASE_IS_NULL_AC445AD0);
+    this.field = requireNonNull(field, QueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
   }
 
   public DereferenceExpression(Identifier field) {
     super(null);
     this.base = null;
-    this.field = requireNonNull(field, "field is null");
+    this.field = requireNonNull(field, QueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
   }
 
   public DereferenceExpression(NodeLocation location, Identifier field) {
-    super(requireNonNull(location, "location is null"));
+    super(requireNonNull(location, QueryMessages.EXCEPTION_LOCATION_IS_NULL_F134D388));
     this.base = null;
-    this.field = requireNonNull(field, "field is null");
+    this.field = requireNonNull(field, QueryMessages.EXCEPTION_FIELD_IS_NULL_80E8CE23);
   }
 
   @Override

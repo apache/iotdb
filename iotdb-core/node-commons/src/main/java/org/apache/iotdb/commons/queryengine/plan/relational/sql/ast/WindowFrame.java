@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -49,9 +51,9 @@ public class WindowFrame extends Node {
 
   public WindowFrame(NodeLocation location, Type type, FrameBound start, Optional<FrameBound> end) {
     super(requireNonNull(location));
-    this.type = requireNonNull(type, "type is null");
-    this.start = requireNonNull(start, "start is null");
-    this.end = requireNonNull(end, "end is null");
+    this.type = requireNonNull(type, QueryMessages.EXCEPTION_TYPE_IS_NULL_16A3D3EB);
+    this.start = requireNonNull(start, QueryMessages.EXCEPTION_START_IS_NULL_5A075F04);
+    this.end = requireNonNull(end, QueryMessages.EXCEPTION_END_IS_NULL_C6C46BAA);
   }
 
   public Type getType() {

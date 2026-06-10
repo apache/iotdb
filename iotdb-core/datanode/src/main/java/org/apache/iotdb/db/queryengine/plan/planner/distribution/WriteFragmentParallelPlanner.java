@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -68,7 +69,10 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
     PlanNode node = fragment.getPlanNodeTree();
     if (!(node instanceof WritePlanNode)) {
       throw new IllegalArgumentException(
-          "PlanNode should be IWritePlanNode in WRITE operation:" + node.getClass());
+          String.format(
+              DataNodeQueryMessages
+                  .QUERY_EXCEPTION_PLANNODE_SHOULD_BE_IWRITEPLANNODE_IN_WRITE_OPERATION_S_36501D8A,
+              node.getClass()));
     }
     List<WritePlanNode> splits = nodeSplitter.apply(((WritePlanNode) node), analysis);
     List<FragmentInstance> ret = new ArrayList<>();

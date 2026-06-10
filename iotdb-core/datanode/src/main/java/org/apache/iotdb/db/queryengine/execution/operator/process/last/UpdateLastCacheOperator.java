@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
@@ -94,7 +95,9 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
-    checkArgument(res.getPositionCount() == 1, "last query result should only have one record");
+    checkArgument(
+        res.getPositionCount() == 1,
+        DataNodeQueryMessages.EXCEPTION_LAST_QUERY_RESULT_SHOULD_ONLY_HAVE_ONE_RECORD_EDFEE635);
 
     // last value is null
     if (res.getColumn(0).isNull(0)) {

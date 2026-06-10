@@ -73,11 +73,13 @@ public interface ICompactionSelector {
         }
       default:
         throw new RuntimeException(
-            "Corresponding memory estimator for "
-                + compactionPerformer
-                + " performer of "
-                + (isInnerSpace ? "inner" : "cross")
-                + " space compaction is not existed.");
+            String.format(
+                StorageEngineMessages
+                    .STORAGE_EXCEPTION_CORRESPONDING_MEMORY_ESTIMATOR_FOR_S_PERFORMER_OF_S_SPACE_D543D3EF,
+                compactionPerformer,
+                (isInnerSpace
+                    ? StorageEngineMessages.COMPACTION_INNER_SPACE
+                    : StorageEngineMessages.COMPACTION_CROSS_SPACE)));
     }
   }
 }

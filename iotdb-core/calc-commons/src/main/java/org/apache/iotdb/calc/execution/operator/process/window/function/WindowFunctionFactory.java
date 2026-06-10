@@ -30,6 +30,7 @@ import org.apache.iotdb.calc.execution.operator.process.window.function.value.La
 import org.apache.iotdb.calc.execution.operator.process.window.function.value.LastValueFunction;
 import org.apache.iotdb.calc.execution.operator.process.window.function.value.LeadFunction;
 import org.apache.iotdb.calc.execution.operator.process.window.function.value.NthValueFunction;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import java.util.List;
 
@@ -61,7 +62,7 @@ public class WindowFunctionFactory {
         return new NTileFunction(argumentChannels.get(0));
       default:
         throw new UnsupportedOperationException(
-            "Unsupported built-in window function name: " + functionName);
+            CalcMessages.EXCEPTION_UNSUPPORTED_BUILT_WINDOW_FUNCTION_NAME_F994ED27 + functionName);
     }
   }
 }

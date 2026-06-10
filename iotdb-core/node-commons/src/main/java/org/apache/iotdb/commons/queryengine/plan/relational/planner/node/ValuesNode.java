@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
@@ -73,39 +74,45 @@ public class ValuesNode extends SourceNode {
       PlanNodeId id, List<Symbol> outputSymbols, int rowCount, Optional<List<Expression>> rows) {
     super(id);
     this.outputSymbols =
-        ImmutableList.copyOf(requireNonNull(outputSymbols, "outputSymbols is null"));
+        ImmutableList.copyOf(
+            requireNonNull(outputSymbols, QueryMessages.EXCEPTION_OUTPUTSYMBOLS_IS_NULL_D7024804));
     this.rowCount = rowCount;
 
-    requireNonNull(rows, "rows is null");
+    requireNonNull(rows, QueryMessages.EXCEPTION_ROWS_IS_NULL_B8BF74DE);
     if (rows.isPresent()) {
       checkArgument(
           rowCount == rows.get().size(),
-          "declared and actual row counts don't match: %s vs %s",
+          QueryMessages
+              .EXCEPTION_DECLARED_AND_ACTUAL_ROW_COUNTS_DON_QUOTE_T_MATCH_COLON_ARG_VS_ARG_EC8361A5,
           rowCount,
           rows.get().size());
 
       // check row size consistency (only for rows specified as Row)
       List<Integer> rowSizes =
           rows.get().stream()
-              .map(row -> requireNonNull(row, "row is null"))
+              .map(row -> requireNonNull(row, QueryMessages.EXCEPTION_ROW_IS_NULL_36A3CCAA))
               .filter(expression -> expression instanceof Row)
               .map(expression -> ((Row) expression).getItems().size())
               .distinct()
               .collect(toImmutableList());
-      checkState(rowSizes.size() <= 1, "mismatched rows. All rows must be the same size");
+      checkState(
+          rowSizes.size() <= 1,
+          QueryMessages.EXCEPTION_MISMATCHED_ROWS_DOT_ALL_ROWS_MUST_BE_THE_SAME_SIZE_E98CF3BE);
 
       // check if row size matches the number of output symbols (only for rows specified as Row)
       if (rowSizes.size() == 1) {
         checkState(
             getOnlyElement(rowSizes).equals(outputSymbols.size()),
-            "row size doesn't match the number of output symbols: %s vs %s",
+            QueryMessages
+                .EXCEPTION_ROW_SIZE_DOESN_QUOTE_T_MATCH_THE_NUMBER_OF_OUTPUT_SYMBOLS_COLON_ARG_VS_ARG_5FBDF729,
             getOnlyElement(rowSizes),
             outputSymbols.size());
       }
     } else {
       checkArgument(
           outputSymbols.isEmpty(),
-          "missing rows specification for Values with non-empty output symbols");
+          QueryMessages
+              .EXCEPTION_MISSING_ROWS_SPECIFICATION_FOR_VALUES_WITH_NON_MINUS_EMPTY_OUTPUT_SYMBOLS_9BA9C169);
     }
 
     if (outputSymbols.isEmpty()) {
@@ -220,7 +227,7 @@ public class ValuesNode extends SourceNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    checkArgument(newChildren.isEmpty(), "newChildren is not empty");
+    checkArgument(newChildren.isEmpty(), QueryMessages.EXCEPTION_NEWCHILDREN_IS_NOT_EMPTY_170FCE18);
     return this;
   }
 

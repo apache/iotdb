@@ -116,12 +116,13 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     this.aggregations = transformCountStar(aggregations, assignments);
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
-    requireNonNull(groupingSets, "groupingSets is null");
+    requireNonNull(groupingSets, DataNodeQueryMessages.EXCEPTION_GROUPINGSETS_IS_NULL_8EE6D9BF);
     groupIdSymbol.ifPresent(
         symbol ->
             checkArgument(
                 groupingSets.getGroupingKeys().contains(symbol),
-                "Grouping columns does not contain groupId column"));
+                DataNodeQueryMessages
+                    .EXCEPTION_GROUPING_COLUMNS_DOES_NOT_CONTAIN_GROUPID_COLUMN_83976C83));
     this.groupingSets = groupingSets;
 
     this.groupIdSymbol = requireNonNull(groupIdSymbol);
@@ -132,7 +133,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
             .noneMatch(Optional::isPresent);
     checkArgument(
         noOrderBy || step == AggregationNode.Step.SINGLE,
-        "ORDER BY does not support distributed aggregation");
+        DataNodeQueryMessages.EXCEPTION_ORDER_BY_DOES_NOT_SUPPORT_DISTRIBUTED_AGGREGATION_05109B26);
 
     this.step = step;
 
@@ -140,13 +141,17 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     for (int i = 0; i < groupingKeys.size(); i++) {
       if (groupingKeys.get(i).getName().startsWith(DATE_BIN_PREFIX)) {
         checkArgument(
-            i == groupingKeys.size() - 1, "date_bin function must be the last GroupingKey");
+            i == groupingKeys.size() - 1,
+            DataNodeQueryMessages
+                .EXCEPTION_DATE_BIN_FUNCTION_MUST_BE_THE_LAST_GROUPINGKEY_EE955FF5);
       }
     }
-    requireNonNull(preGroupedSymbols, "preGroupedSymbols is null");
+    requireNonNull(
+        preGroupedSymbols, DataNodeQueryMessages.EXCEPTION_PREGROUPEDSYMBOLS_IS_NULL_DC24FF7B);
     checkArgument(
         preGroupedSymbols.isEmpty() || groupingKeys.containsAll(preGroupedSymbols),
-        "Pre-grouped symbols must be a subset of the grouping keys");
+        DataNodeQueryMessages
+            .EXCEPTION_PRE_MINUS_GROUPED_SYMBOLS_MUST_BE_A_SUBSET_OF_THE_GROUPING_KEYS_AFC6C33D);
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
     this.setOutputSymbols(constructOutputSymbols(groupingSets, aggregations));

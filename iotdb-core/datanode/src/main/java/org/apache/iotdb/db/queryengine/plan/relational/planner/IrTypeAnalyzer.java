@@ -105,7 +105,9 @@ public class IrTypeAnalyzer {
   private final PlannerContext plannerContext;
 
   public IrTypeAnalyzer(PlannerContext plannerContext) {
-    this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
+    this.plannerContext =
+        requireNonNull(
+            plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
   }
 
   public Map<NodeRef<Expression>, Type> getTypes(
@@ -138,9 +140,13 @@ public class IrTypeAnalyzer {
     private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
 
     public Visitor(PlannerContext plannerContext, SessionInfo session, TypeProvider symbolTypes) {
-      this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
-      this.session = requireNonNull(session, "session is null");
-      this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
+      this.plannerContext =
+          requireNonNull(
+              plannerContext, DataNodeQueryMessages.EXCEPTION_PLANNERCONTEXT_IS_NULL_B7C7DE50);
+      this.session =
+          requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
+      this.symbolTypes =
+          requireNonNull(symbolTypes, DataNodeQueryMessages.EXCEPTION_SYMBOLTYPES_IS_NULL_DD16EA83);
     }
 
     public Map<NodeRef<Expression>, Type> getTypes() {
@@ -148,8 +154,9 @@ public class IrTypeAnalyzer {
     }
 
     private Type setExpressionType(Expression expression, Type type) {
-      requireNonNull(expression, "expression cannot be null");
-      requireNonNull(type, "type cannot be null");
+      requireNonNull(
+          expression, DataNodeQueryMessages.EXCEPTION_EXPRESSION_CANNOT_BE_NULL_EFF1A99C);
+      requireNonNull(type, DataNodeQueryMessages.EXCEPTION_TYPE_CANNOT_BE_NULL_97A0A8D3);
 
       expressionTypes.put(NodeRef.of(expression), type);
       return type;
@@ -174,7 +181,10 @@ public class IrTypeAnalyzer {
       if (type == null) {
         type = symbolTypes.getTableModelType(symbol);
       }
-      checkArgument(type != null, "No type for: %s", node.getName());
+      checkArgument(
+          type != null,
+          DataNodeQueryMessages.EXCEPTION_NO_TYPE_FOR_COLON_ARG_9E34AD76,
+          node.getName());
       return setExpressionType(node, type);
     }
 
@@ -227,13 +237,19 @@ public class IrTypeAnalyzer {
     @Override
     public Type visitIfExpression(IfExpression node, Context context) {
       Type conditionType = process(node.getCondition(), context);
-      checkArgument(conditionType.equals(BOOLEAN), "Condition must be boolean: %s", conditionType);
+      checkArgument(
+          conditionType.equals(BOOLEAN),
+          DataNodeQueryMessages.EXCEPTION_CONDITION_MUST_BE_BOOLEAN_COLON_ARG_806C2960,
+          conditionType);
 
       Type trueType = process(node.getTrueValue(), context);
       if (node.getFalseValue().isPresent()) {
         Type falseType = process(node.getFalseValue().get(), context);
         checkArgument(
-            trueType.equals(falseType), "Types must be equal: %s vs %s", trueType, falseType);
+            trueType.equals(falseType),
+            DataNodeQueryMessages.EXCEPTION_TYPES_MUST_BE_EQUAL_COLON_ARG_VS_ARG_098424AD,
+            trueType,
+            falseType);
       }
 
       return setExpressionType(node, trueType);
@@ -280,8 +296,10 @@ public class IrTypeAnalyzer {
                     if (!clauseOperandType.equals(operandType)) {
                       throw new SemanticException(
                           String.format(
-                              "WHEN clause operand type must match CASE operand type: %s vs %s",
-                              clauseOperandType, operandType));
+                              DataNodeQueryMessages
+                                  .WHEN_CLAUSE_OPERAND_TYPE_MUST_MATCH_CASE_OPERAND_TYPE_S_VS_S,
+                              clauseOperandType,
+                              operandType));
                     }
                     return setExpressionType(clause, process(clause.getResult(), context));
                   })
@@ -289,7 +307,7 @@ public class IrTypeAnalyzer {
 
       if (resultTypes.size() != 1) {
         throw new SemanticException(
-            String.format("All result types must be the same: %s", resultTypes));
+            String.format(DataNodeQueryMessages.ALL_RESULT_TYPES_MUST_BE_THE_SAME_S, resultTypes));
       }
 
       Type resultType = resultTypes.iterator().next();
@@ -300,8 +318,10 @@ public class IrTypeAnalyzer {
                 if (!defaultType.equals(resultType)) {
                   throw new SemanticException(
                       String.format(
-                          "Default result type must be the same as WHEN result types: %s vs %s",
-                          defaultType, resultType));
+                          DataNodeQueryMessages
+                              .DEFAULT_RESULT_TYPE_MUST_BE_THE_SAME_AS_WHEN_RESULT_TYPES_S_VS_S,
+                          defaultType,
+                          resultType));
                 }
               });
 
@@ -317,7 +337,7 @@ public class IrTypeAnalyzer {
 
       if (types.size() != 1) {
         throw new SemanticException(
-            String.format("All operands must have the same type: %s", types));
+            String.format(DataNodeQueryMessages.ALL_OPERANDS_MUST_HAVE_THE_SAME_TYPE_S, types));
       }
       return setExpressionType(node, types.iterator().next());
     }
@@ -494,13 +514,17 @@ public class IrTypeAnalyzer {
     @Override
     public Type visitExpression(Expression node, Context context) {
       throw new UnsupportedOperationException(
-          "Not a valid IR expression: " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_NOT_A_VALID_IR_EXPRESSION_S_03C41ADD,
+              node.getClass().getName()));
     }
 
     @Override
     public Type visitNode(Node node, Context context) {
       throw new UnsupportedOperationException(
-          "Not a valid IR expression: " + node.getClass().getName());
+          String.format(
+              DataNodeQueryMessages.QUERY_EXCEPTION_NOT_A_VALID_IR_EXPRESSION_S_03C41ADD,
+              node.getClass().getName()));
     }
 
     // Only allow INT32 -> INT64 coercion to suppress some related bugs for now
@@ -542,7 +566,10 @@ public class IrTypeAnalyzer {
         }
         if (!TypeCoercionUtils.canCoerceTo(type, superType)) {
           throw new SemanticException(
-              DataNodeQueryMessages.CANNOT_COERCE_TYPE + type + " to " + superType);
+              DataNodeQueryMessages.CANNOT_COERCE_TYPE
+                  + type
+                  + DataNodeQueryMessages.TO
+                  + superType);
         }
         addOrReplaceExpressionType(nodeRefs, superType);
       }

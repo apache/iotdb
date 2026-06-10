@@ -55,7 +55,8 @@ public class IdentifierUtils {
         || PathVisitor.isRealNumber(src)) {
       throw new SubscriptionIdentifierSemanticException(
           String.format(
-              "%s is illegal, identifier not enclosed with backticks can only consist of digits, characters and underscore.",
+              SubscriptionMessages
+                  .EXCEPTION_ARG_ILLEGAL_IDENTIFIER_NOT_ENCLOSED_BACKTICKS_CAN_ONLY_CONSIST_DIGITS_55D6A31F,
               src));
     }
   }

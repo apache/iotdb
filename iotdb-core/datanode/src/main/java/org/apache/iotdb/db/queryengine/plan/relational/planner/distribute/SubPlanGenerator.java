@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -53,7 +54,8 @@ public class SubPlanGenerator {
       ExchangeNode exchangeNode = (ExchangeNode) root;
       Validate.isTrue(
           exchangeNode.getChild() instanceof MultiChildrenSinkNode,
-          "child of ExchangeNode must be MultiChildrenSinkNode");
+          DataNodeQueryMessages
+              .EXCEPTION_CHILD_OF_EXCHANGENODE_MUST_BE_MULTICHILDRENSINKNODE_1BF715FD);
       MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) (exchangeNode.getChild());
 
       // We cut off the subtree to make the ExchangeNode as the leaf node of current PlanFragment

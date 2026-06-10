@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
@@ -228,8 +229,9 @@ public class DataPartition extends Partition {
       if (targetRegionList == null || targetRegionList.isEmpty()) {
         throw new RuntimeException(
             String.format(
-                "targetRegionList is empty. device: %s, timeSlot: %s",
-                deviceID, timePartitionSlot));
+                CommonMessages.EXCEPTION_TARGETREGIONLIST_EMPTY_DEVICE_ARG_TIMESLOT_ARG_E7E5818C,
+                deviceID,
+                timePartitionSlot));
       } else {
         dataRegionReplicaSets.add(targetRegionList.get(targetRegionList.size() - 1));
       }
@@ -250,9 +252,10 @@ public class DataPartition extends Partition {
         databasePartitionMap = dataPartitionMap.get(databaseName);
     if (databasePartitionMap == null) {
       throw new RuntimeException(
-          "Database "
+          CommonMessages.EXCEPTION_DATABASE_18F8303F
               + databaseName
-              + " not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+              + CommonMessages
+                  .EXCEPTION_NOT_EXISTS_FAILED_CREATE_AUTOMATICALLY_BECAUSE_ENABLE_AUTO_CREATE_SCHEMA_80DE1A4B);
     }
     final List<TRegionReplicaSet> regions =
         databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);
@@ -300,7 +303,8 @@ public class DataPartition extends Partition {
   // TODO(beyyes) if join queries more than one table, may trigger the unmodication error in
   // Collections.singletonMap
   public void upsertDataPartition(DataPartition targetDataPartition) {
-    requireNonNull(this.dataPartitionMap, "dataPartitionMap is null");
+    requireNonNull(
+        this.dataPartitionMap, CommonMessages.EXCEPTION_DATAPARTITIONMAP_IS_NULL_B764418A);
 
     for (Map.Entry<
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -56,7 +57,8 @@ public class QueryIdGenerator {
   private int counter;
 
   public QueryIdGenerator(int dataNode) {
-    checkArgument(dataNode != -1, "DataNodeId should be init first!");
+    checkArgument(
+        dataNode != -1, DataNodeQueryMessages.EXCEPTION_DATANODEID_SHOULD_BE_INIT_FIRST_13B19A85);
     this.dataNodeId = String.valueOf(dataNode);
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.multi;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -78,7 +79,7 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
         return new BinaryGreatestColumnTransformer(type, columnTransformers);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported data type: %s", typeEnum));
+            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E, typeEnum));
     }
   }
 
@@ -103,7 +104,7 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
         return new BinaryLeastColumnTransformer(type, columnTransformers);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported data type: %s", typeEnum));
+            String.format(CalcMessages.EXCEPTION_UNSUPPORTED_DATA_TYPE_ARG_B411C29E, typeEnum));
     }
   }
 

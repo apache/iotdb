@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.g
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.MapBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.tsfile.block.column.Column;
@@ -110,7 +111,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
         argument instanceof BinaryColumn
             || (argument instanceof RunLengthEncodedColumn
                 && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
-        "intermediate input and output of MODE should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_MODE_SHOULD_BE_BINARYCOLUMN_0D03B323);
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
@@ -126,7 +128,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of MODE should be BinaryColumn");
+        CalcMessages
+            .EXCEPTION_INTERMEDIATE_INPUT_AND_OUTPUT_OF_MODE_SHOULD_BE_BINARYCOLUMN_0D03B323);
 
     columnBuilder.writeBinary(new Binary(serializeCountMap(groupId)));
   }
@@ -593,7 +596,8 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
     if (size > MAP_SIZE_THRESHOLD) {
       throw new RuntimeException(
           String.format(
-              "distinct values has exceeded the threshold %s when calculate MODE in one group",
+              CalcMessages
+                  .EXCEPTION_DISTINCT_VALUES_HAS_EXCEEDED_THRESHOLD_ARG_CALCULATE_MODE_ONE_GROUP_A3F5A1D3,
               MAP_SIZE_THRESHOLD));
     }
   }

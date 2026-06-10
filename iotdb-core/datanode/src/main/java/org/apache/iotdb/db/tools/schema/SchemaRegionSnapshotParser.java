@@ -135,21 +135,24 @@ public class SchemaRegionSnapshotParser {
     if (!mtreefile.getName().equals(SchemaConstant.MTREE_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              "%s is not allowed, only support %s",
-              mtreefile.getName(), SchemaConstant.MTREE_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_862A4D86,
+              mtreefile.getName(),
+              SchemaConstant.MTREE_SNAPSHOT));
     }
     if (tagfile != null && !tagfile.getName().equals(SchemaConstant.TAG_LOG_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              " %s is not allowed, only support %s",
-              tagfile.getName(), SchemaConstant.TAG_LOG_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7,
+              tagfile.getName(),
+              SchemaConstant.TAG_LOG_SNAPSHOT));
     }
     if (attributeFile != null
         && !attributeFile.getName().equals(SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)) {
       throw new IllegalArgumentException(
           String.format(
-              " %s is not allowed, only support %s",
-              attributeFile.getName(), SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT));
+              DataNodeMiscMessages.MISC_EXCEPTION_S_IS_NOT_ALLOWED_ONLY_SUPPORT_S_1B06E0B7,
+              attributeFile.getName(),
+              SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT));
     }
     return new SRStatementGenerator(mtreefile, tagfile, attributeFile, databasePath);
   }

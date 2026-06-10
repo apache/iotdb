@@ -107,7 +107,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       } catch (Exception closeException) {
         LOGGER.warn(
             ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR
-                + "Ignore this exception.",
+                + ManagerMessages.LOG_IGNORE_EXCEPTION_2AC431FA,
             closeException);
       }
       throw e;

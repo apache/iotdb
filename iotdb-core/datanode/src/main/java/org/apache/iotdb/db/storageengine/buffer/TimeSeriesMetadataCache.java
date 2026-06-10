@@ -91,7 +91,8 @@ public class TimeSeriesMetadataCache {
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeSeriesMetadataCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+          StorageEngineMessages.STORAGE_LOG_TIMESERIESMETADATACACHE_SIZE_E31733D3,
+          CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
@@ -227,7 +228,7 @@ public class TimeSeriesMetadataCache {
       } else {
         if (debug) {
           DEBUG_LOGGER.info(
-              "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.",
+              StorageEngineMessages.STORAGE_LOG_GET_TIMESERIES_METADATA_IN_FILE_FROM_CACHE_36652729,
               key.device,
               key.measurement,
               filePath,

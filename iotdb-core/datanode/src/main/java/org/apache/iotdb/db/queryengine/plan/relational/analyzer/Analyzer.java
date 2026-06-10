@@ -62,13 +62,18 @@ public class Analyzer {
       final StatementRewrite statementRewrite,
       final WarningCollector warningCollector) {
     this.context = context;
-    this.session = requireNonNull(session, "session is null");
+    this.session =
+        requireNonNull(session, DataNodeQueryMessages.EXCEPTION_SESSION_IS_NULL_6CF0F47D);
     this.statementAnalyzerFactory =
-        requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
+        requireNonNull(
+            statementAnalyzerFactory,
+            DataNodeQueryMessages.EXCEPTION_STATEMENTANALYZERFACTORY_IS_NULL_D309BAB5);
     this.parameters = parameters;
     this.parameterLookup = parameterLookup;
     this.statementRewrite = statementRewrite;
-    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.warningCollector =
+        requireNonNull(
+            warningCollector, DataNodeQueryMessages.EXCEPTION_WARNINGCOLLECTOR_IS_NULL_7A524A68);
   }
 
   public Analysis analyze(Statement statement) {

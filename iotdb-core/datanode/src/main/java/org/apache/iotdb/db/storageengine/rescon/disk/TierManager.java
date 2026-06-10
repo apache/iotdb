@@ -109,7 +109,9 @@ public class TierManager {
       }
     } catch (Exception e) {
       logger.error(
-          "Can't find strategy {} for mult-directories.", config.getMultiDirStrategyClassName(), e);
+          StorageEngineMessages.STORAGE_LOG_CAN_T_FIND_STRATEGY_FOR_MULT_DIRECTORIES_A06406EC,
+          config.getMultiDirStrategyClassName(),
+          e);
     }
 
     config.updatePath();
@@ -239,7 +241,9 @@ public class TierManager {
         logger.info(StorageEngineMessages.FOLDER_NOT_EXIST_CREATE_IT, file.getPath());
       } else {
         logger.info(
-            "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
+            StorageEngineMessages.STORAGE_LOG_CREATE_FOLDER_FAILED_IS_THE_FOLDER_EXISTED_18E29D51,
+            file.getPath(),
+            file.exists());
       }
     }
   }
