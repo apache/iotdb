@@ -278,8 +278,7 @@ public class SeriesPartitionTable {
       long timePartitionInterval,
       long TTL,
       TTimePartitionSlot currentTimeSlot) {
-    long partitionEndTime =
-        saturatingAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
+    long partitionEndTime = saturatingAdd(timePartitionSlot.getStartTime(), timePartitionInterval);
     long expireTime = saturatingAdd(partitionEndTime, TTL);
     return expireTime <= currentTimeSlot.getStartTime();
   }

@@ -125,8 +125,7 @@ public class SeriesPartitionTableTest {
     table.putDataPartition(normalSlot, consensusGroupId);
     Assert.assertTrue(
         table
-            .autoCleanPartitionTable(
-                Long.MAX_VALUE - 1, new TTimePartitionSlot(Long.MAX_VALUE - 1))
+            .autoCleanPartitionTable(Long.MAX_VALUE - 1, new TTimePartitionSlot(Long.MAX_VALUE - 1))
             .isEmpty());
     Assert.assertTrue(table.getSeriesPartitionMap().containsKey(normalSlot));
   }
