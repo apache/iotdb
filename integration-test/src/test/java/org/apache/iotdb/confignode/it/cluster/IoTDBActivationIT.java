@@ -34,14 +34,18 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.LicenseInfoResp;
 
 import com.google.common.collect.ImmutableMap;
+import com.timecho.iotdb.commons.commission.Bandit;
 import com.timecho.iotdb.commons.commission.Lottery;
+import com.timecho.iotdb.commons.commission.complete.HmacProtocol;
 import com.timecho.iotdb.commons.commission.obligation.ObligationStatus;
+import com.timecho.iotdb.commons.external.codec.binary.Base32;
 import com.timecho.iotdb.manager.regulate.RegulateManager;
 import com.timecho.iotdb.session.Session;
 import org.apache.thrift.TException;
@@ -62,6 +66,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -871,11 +876,95 @@ public class IoTDBActivationIT {
     }
   }
 
-  private void showSystemInfoTest(Statement statement) throws Exception {
+  @Test
+  public void cliActivateSingleV02LicenseFor3C3DTest() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String systemInfos = showSystemInfoTest(statement);
+      String sql = "activate '" + buildV02ActivationCode(systemInfos, 3) + "'";
+      try (Statement writeStatement = createStatementOnWriteConnection(connection);
+          ResultSet ignored = writeStatement.executeQuery(sql)) {
+        // The result set is checked after node activation statuses converge.
+      }
+      try (SyncConfigNodeIServiceClient leaderClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        testAllNodesActivatedWithRetry(leaderClient, 6);
+      }
+      ImmutableMap<String, Pair<String, String>> expectation =
+          ImmutableMap.of(
+              "Status",
+              new Pair<>(SKIP, "-"),
+              "ExpiredTime",
+              new Pair<>("-", SKIP),
+              "DataNodeLimit",
+              new Pair<>("3", "3"),
+              "AiNodeLimit",
+              new Pair<>("0", "0"),
+              "CpuLimit",
+              new Pair<>(SKIP, "Unlimited"),
+              "DeviceLimit",
+              new Pair<>("0", "Unlimited"),
+              "TimeSeriesLimit",
+              new Pair<>("0", "Unlimited"));
+      try (Statement writeStatement = createStatementOnWriteConnection(connection);
+          ResultSet resultSet = writeStatement.executeQuery("show activation")) {
+        checkShowActivationResult(resultSet, expectation);
+      }
+    }
+  }
+
+  private Statement createStatementOnWriteConnection(Connection connection) throws SQLException {
+    if (connection instanceof ClusterTestConnection) {
+      return ((ClusterTestConnection) connection)
+          .writeConnection
+          .getUnderlyingConnection()
+          .createStatement();
+    }
+    return connection.createStatement();
+  }
+
+  private String showSystemInfoTest(Statement statement) throws Exception {
     ResultSet resultSet = statement.executeQuery("show system info");
     resultSet.next();
     String systemInfos = resultSet.getString("SystemInfo");
     Assert.assertEquals(3, systemInfos.split(",").length);
+    return systemInfos;
+  }
+
+  private String buildV02ActivationCode(String systemInfos, int dataNodeLimit) throws Exception {
+    byte identifier = (byte) ((1 << 0) | (1 << 3));
+    ByteBuffer dataBuffer = ByteBuffer.allocate(7);
+    dataBuffer.put(identifier);
+    dataBuffer.putInt(20300101);
+    dataBuffer.put((byte) dataNodeLimit);
+    dataBuffer.put((byte) 0);
+    byte[] data = dataBuffer.array();
+    byte[] tag = HmacProtocol.calculateTag(data, systemInfos);
+    ByteBuffer payloadBuffer = ByteBuffer.allocate(data.length + tag.length);
+    payloadBuffer.put(data);
+    payloadBuffer.put(tag);
+    String encodedPayload = new Base32().encodeAsString(payloadBuffer.array());
+    assertV02ActivationCode(encodedPayload, systemInfos, dataNodeLimit);
+    return "02-" + encodedPayload;
+  }
+
+  private void assertV02ActivationCode(String encodedPayload, String systemInfos, int dataNodeLimit)
+      throws Exception {
+    Properties decodedProperties = new Properties();
+    decodedProperties.load(
+        new StringReader(
+            Bandit.publicDecryptV02(encodedPayload, Collections.singletonList(systemInfos))));
+    Assert.assertNotNull(decodedProperties.getProperty(LICENSE_EXPIRE_TIMESTAMP_NAME));
+    Assert.assertEquals(
+        String.valueOf(dataNodeLimit),
+        decodedProperties.getProperty(Lottery.DATANODE_NUM_LIMIT_NAME));
+    Assert.assertEquals("0", decodedProperties.getProperty(Lottery.AINODE_NUM_LIMIT_NAME));
+    Assert.assertEquals(systemInfos, decodedProperties.getProperty(Lottery.SYSTEM_INFO_HASH));
+    Lottery lottery = new Lottery(() -> {});
+    Assert.assertTrue(lottery.loadFromProperties(decodedProperties, false));
+    Assert.assertEquals(dataNodeLimit, lottery.getDataNodeNumLimit());
+    Assert.assertEquals(Integer.MAX_VALUE, lottery.getDataNodeCpuCoreNumLimit());
   }
 
   private void showActivationTest(Statement statement) throws Exception {
@@ -1160,6 +1249,45 @@ public class IoTDBActivationIT {
       SyncConfigNodeIServiceClient leaderClient, List<ObligationStatus> expectation)
       throws Exception {
     testStatusWithRetry(leaderClient, expectation, 60000);
+  }
+
+  private void testAllNodesActivatedWithRetry(
+      SyncConfigNodeIServiceClient client, int expectedNodeCount) throws Exception {
+    long startTime = System.currentTimeMillis();
+    while (true) {
+      TGetAllActivationStatusResp resp = null;
+      try {
+        resp = client.getAllActivationStatus();
+      } catch (TException ignored) {
+
+      }
+      if (resp != null
+          && TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.status.getCode()
+          && resp.getActivationStatusMap().size() == expectedNodeCount
+          && resp.getActivationStatusMap().values().stream()
+              .map(ObligationStatus::valueOf)
+              .allMatch(ObligationStatus::isActivated)) {
+        logger.info("check pass");
+        return;
+      }
+      if (System.currentTimeMillis() - startTime > 60000) {
+        StringBuilder errBuilder = new StringBuilder();
+        errBuilder
+            .append("Test fail because all nodes are not activated after 60 seconds retry.\n")
+            .append("Expected node count is ")
+            .append(expectedNodeCount)
+            .append("\n");
+        if (resp != null) {
+          errBuilder.append("Actual state is ").append(mapToString(resp.getActivationStatusMap()));
+        } else {
+          errBuilder.append("Actual state is unknown, because last resp is null");
+        }
+        String errMsg = errBuilder.toString();
+        logger.error(errMsg);
+        throw new Exception(errMsg);
+      }
+      saferSleep(1000);
+    }
   }
 
   private void testStatusFalse(

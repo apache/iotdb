@@ -60,7 +60,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -176,6 +175,9 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
 
   private void cliActivateCheckNumberCorrect(
       List<String> licenseList, List<TConfigNodeLocation> locations) throws LicenseException {
+    if (useOneLicenseForAllConfigNodes(licenseList)) {
+      return;
+    }
     if (licenseList.size() != locations.size()) {
       throw new LicenseException(
           String.format(
@@ -190,17 +192,18 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
       throws LicenseException, TException, ClientManagerException {
     TShowActivationResp resp = new TShowActivationResp();
-    Iterator<String> licenseIterator = licenseList.iterator();
     List<Integer> failedList = new ArrayList<>();
-    for (TConfigNodeLocation location : locations) {
+    for (int i = 0; i < locations.size(); i++) {
+      TConfigNodeLocation location = locations.get(i);
+      String license = getLicenseForConfigNode(licenseList, i);
       TSStatus checkSystemInfoResult;
       if (location.getConfigNodeId()
           == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
-        checkSystemInfoResult = checkSystemInfo(licenseIterator.next());
+        checkSystemInfoResult = checkSystemInfo(license);
       } else {
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(location.getInternalEndPoint())) {
-          checkSystemInfoResult = client.checkSystemInfo(licenseIterator.next());
+          checkSystemInfoResult = client.checkSystemInfo(license);
         }
       }
       if (checkSystemInfoResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -221,20 +224,19 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       List<TConfigNodeLocation> locations,
       IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
       throws LicenseException, TException, ClientManagerException {
-    Iterator<String> licenseIterator = licenseList.iterator();
     List<Integer> failedList = new ArrayList<>();
-    for (TConfigNodeLocation location : locations) {
+    for (int i = 0; i < locations.size(); i++) {
+      TConfigNodeLocation location = locations.get(i);
+      String license = getLicenseForConfigNode(licenseList, i);
       TSStatus setLicenseResult;
       if (location.getConfigNodeId()
           == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
         setLicenseResult =
-            regulateManager.setLicenseFile(
-                RegulateManager.LICENSE_FILE_NAME, licenseIterator.next());
+            regulateManager.setLicenseFile(RegulateManager.LICENSE_FILE_NAME, license);
       } else {
         try (SyncConfigNodeIServiceClient client =
             clientManager.borrowClient(location.getInternalEndPoint())) {
-          setLicenseResult =
-              client.setLicenseFile(RegulateManager.LICENSE_FILE_NAME, licenseIterator.next());
+          setLicenseResult = client.setLicenseFile(RegulateManager.LICENSE_FILE_NAME, license);
         }
       }
       if (setLicenseResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -249,6 +251,20 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       LOGGER.warn(failMessage);
       throw new LicenseException(failMessage);
     }
+  }
+
+  static String getLicenseForConfigNode(List<String> licenseList, int configNodeIndex) {
+    return useOneLicenseForAllConfigNodes(licenseList)
+        ? licenseList.get(0)
+        : licenseList.get(configNodeIndex);
+  }
+
+  static boolean useOneLicenseForAllConfigNodes(List<String> licenseList) {
+    if (licenseList.size() != 1) {
+      return false;
+    }
+    String licenseVersion = RegulateManager.checkLicenseVersion(licenseList.get(0));
+    return "02".equals(licenseVersion) || "03".equals(licenseVersion);
   }
 
   public TShowActivationResp showActivation() {

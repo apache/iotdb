@@ -42,7 +42,12 @@ public class RegulateManagerWithoutEncryptionAndMachineBinding extends RegulateM
   }
 
   @Override
-  protected Properties loadLicenseFromEveryVersion(String licenseContent) throws IOException {
+  protected Properties loadLicenseFromEveryVersion(String licenseContent)
+      throws LicenseException, IOException {
+    String licenseVersion = RegulateManager.checkLicenseVersion(licenseContent);
+    if ("02".equals(licenseVersion) || "03".equals(licenseVersion)) {
+      return super.loadLicenseFromEveryVersion(licenseContent);
+    }
     Properties licenseProperties = new Properties();
     licenseProperties.load(new StringReader(licenseContent));
     return licenseProperties;

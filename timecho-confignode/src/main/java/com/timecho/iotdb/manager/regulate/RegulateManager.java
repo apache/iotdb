@@ -503,11 +503,29 @@ public class RegulateManager {
     return licenseProperties;
   }
 
-  private static String checkLicenseVersion(String encryptedLicenseContent) {
+  public static String checkLicenseVersion(String encryptedLicenseContent) {
+    if (encryptedLicenseContent.length() <= VERSION_LENGTH) {
+      return "00";
+    }
     if (encryptedLicenseContent.charAt(2) != '-') {
       return "00";
     }
     return encryptedLicenseContent.substring(0, 2);
+  }
+
+  private static boolean isLocalConfigNode(TConfigNodeLocation location) {
+    final int localConfigNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+    if (location.getConfigNodeId() == localConfigNodeId) {
+      return true;
+    }
+
+    final String localInternalAddress =
+        ConfigNodeDescriptor.getInstance().getConf().getInternalAddress();
+    final int localInternalPort = ConfigNodeDescriptor.getInstance().getConf().getInternalPort();
+    final TEndPoint internalEndPoint = location.getInternalEndPoint();
+    return internalEndPoint != null
+        && internalEndPoint.getIp().equals(localInternalAddress)
+        && internalEndPoint.getPort() == localInternalPort;
   }
 
   @TestOnly
@@ -731,6 +749,7 @@ public class RegulateManager {
     if (systemInfoList.isEmpty()) {
       Map<Integer, TConfigNodeLocation> configNodeLocationMap =
           locations.stream()
+              .filter(location -> !isLocalConfigNode(location))
               .collect(
                   Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
 
@@ -739,16 +758,23 @@ public class RegulateManager {
               CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
 
       for (TConfigNodeLocation location : locations) {
-        configNodeAsyncRequestContext.putRequest(
-            location.getConfigNodeId(), location.getConfigNodeId());
+        if (!isLocalConfigNode(location)) {
+          configNodeAsyncRequestContext.putRequest(
+              location.getConfigNodeId(), location.getConfigNodeId());
+        }
       }
 
-      CnToCnInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+      if (!configNodeLocationMap.isEmpty()) {
+        CnToCnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+      }
 
       Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
       for (TConfigNodeLocation location : locations) {
-        String systemInfoResp = systemInfoRespMap.get(location.getConfigNodeId());
+        String systemInfoResp =
+            isLocalConfigNode(location)
+                ? generateSystemInfoContentWithVersion()
+                : systemInfoRespMap.get(location.getConfigNodeId());
         if (systemInfoResp != null) {
           systemInfoList.add(systemInfoResp);
         }
@@ -952,14 +978,22 @@ public class RegulateManager {
   public static boolean verifyAllSystemInfoOfV02(Properties licenseProperties) throws Exception {
     String actualSystemInfo = generateSystemInfoContentOfV02();
     String licenseSystemInfo = licenseProperties.getProperty(Lottery.SYSTEM_INFO_HASH);
-    licenseSystemInfo = systemInfoContentRemoveVersion(licenseSystemInfo);
     if (Boolean.parseBoolean(
         licenseProperties.getProperty(Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, null))) {
       // remove hardware hash code
       actualSystemInfo = actualSystemInfo.substring(9);
-      licenseSystemInfo = licenseSystemInfo.substring(9);
     }
-    return actualSystemInfo.equals(licenseSystemInfo);
+    for (String singleLicenseSystemInfo : licenseSystemInfo.split(",")) {
+      singleLicenseSystemInfo = systemInfoContentRemoveVersion(singleLicenseSystemInfo);
+      if (Boolean.parseBoolean(
+          licenseProperties.getProperty(Lottery.SKIP_HARDWARE_SYSTEM_INFO_CHECK_NAME, null))) {
+        singleLicenseSystemInfo = singleLicenseSystemInfo.substring(9);
+      }
+      if (actualSystemInfo.equals(singleLicenseSystemInfo)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static boolean verifyAllSystemInfoOfV01(Properties licenseProperties) throws Exception {
