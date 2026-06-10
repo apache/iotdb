@@ -177,6 +177,7 @@ set(IOTDB_PUBLIC_HEADERS
         Endpoint.h
         SessionBuilder.h
         AbstractSessionBuilder.h
+        SessionPool.h
         SessionC.h
         SessionDataSet.h
         Column.h

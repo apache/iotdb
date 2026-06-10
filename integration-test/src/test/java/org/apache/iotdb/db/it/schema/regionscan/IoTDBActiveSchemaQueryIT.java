@@ -27,6 +27,7 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.Parameterized;
@@ -229,6 +230,52 @@ public class IoTDBActiveSchemaQueryIT extends AbstractSchemaIT {
             "count timeseries root.sg.** where time>0",
             new HashSet<>(Collections.singletonList("2,")));
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Ignore
+  public void testCountTimeSeriesWithTimeConditionIncludesView() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.view_count");
+      statement.execute(
+          "CREATE TIMESERIES root.view_count.src.s1 WITH DATATYPE = INT32, ENCODING = PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.view_count.src.s2 WITH DATATYPE = INT32, ENCODING = PLAIN");
+      statement.execute("CREATE VIEW root.view_count.dst.v1 AS SELECT s1 FROM root.view_count.src");
+
+      checkResultSet(
+          statement,
+          "count timeseries root.view_count.**",
+          new HashSet<>(Collections.singletonList("3,")));
+
+      statement.execute("insert into root.view_count.src(timestamp,s1) values(1,1)");
+
+      checkResultSet(
+          statement,
+          "count timeseries root.view_count.** where time>0",
+          new HashSet<>(Collections.singletonList("2,")));
+      checkResultSet(
+          statement,
+          "show timeseries root.view_count.** where time>0",
+          new HashSet<>(
+              Arrays.asList(
+                  "root.view_count.src.s1,null,root.view_count,INT32,PLAIN,LZ4,null,null,null,null,BASE,",
+                  "root.view_count.dst.v1,null,root.view_count,INT32,null,null,null,null,null,null,VIEW,")));
+      checkResultSet(
+          statement,
+          "count timeseries root.view_count.dst.** where time>0",
+          new HashSet<>(Collections.singletonList("1,")));
+      checkResultSet(
+          statement,
+          "show timeseries root.view_count.dst.** where time>0",
+          new HashSet<>(
+              Collections.singletonList(
+                  "root.view_count.dst.v1,null,root.view_count,INT32,null,null,null,null,null,null,VIEW,")));
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

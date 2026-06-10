@@ -237,7 +237,7 @@ const char *MyStringBuffer::getOrderedByte(size_t len) {
 
 void MyStringBuffer::putOrderedByte(char *buf, int len) {
   if (isBigEndian) {
-    str.assign(buf, len);
+    str.append(buf, len);
   } else {
     for (int i = len - 1; i > -1; i--) {
       str += buf[i];

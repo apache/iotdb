@@ -24,6 +24,7 @@
 #include "Date.h"
 #include "SessionDataSet.h"
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <future>
@@ -246,19 +247,19 @@ public:
   void addValue(size_t schemaId, size_t rowIndex, const T &value) {
     if (schemaId >= schemas.size()) {
       char tmpStr[100];
-      sprintf(tmpStr,
-              "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, "
-              "schemas.size()=%ld.",
-              schemaId, schemas.size());
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addValue(), schemaId >= schemas.size(). schemaId=%ld, "
+               "schemas.size()=%ld.",
+               (long)schemaId, (long)schemas.size());
       throw std::out_of_range(tmpStr);
     }
 
     if (rowIndex >= rowSize) {
       char tmpStr[100];
-      sprintf(tmpStr,
-              "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, "
-              "rowSize.size()=%ld.",
-              rowIndex, rowSize);
+      snprintf(tmpStr, sizeof(tmpStr),
+               "Tablet::addValue(), rowIndex >= rowSize. rowIndex=%ld, "
+               "rowSize.size()=%ld.",
+               (long)rowIndex, (long)rowSize);
       throw std::out_of_range(tmpStr);
     }
 

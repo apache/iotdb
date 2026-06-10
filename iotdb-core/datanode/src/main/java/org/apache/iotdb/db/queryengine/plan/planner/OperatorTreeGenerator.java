@@ -993,7 +993,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase()));
   }
 
   @Override
@@ -1015,7 +1016,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isIncludeSystemDatabase()));
   }
 
   @Override
@@ -3781,9 +3783,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Map<String, TimeseriesContext> timeseriesSchemaInfoMap = new HashMap<>();
     for (Map.Entry<PartialPath, List<TimeseriesContext>> entry : entryMap.getValue().entrySet()) {
       PartialPath path = entry.getKey();
-      context.addPath(path);
       if (path instanceof MeasurementPath) {
-        timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
+        String measurement = path.getMeasurement();
+        TimeseriesContext timeseriesContext = entry.getValue().get(0);
+        TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+        if (existingContext == null) {
+          timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+          context.addPath(path);
+        } else {
+          timeseriesSchemaInfoMap.put(
+              measurement, existingContext.mergeActiveCount(timeseriesContext));
+        }
       } else if (path instanceof AlignedPath) {
         AlignedPath alignedPath = (AlignedPath) path;
         List<String> measurementList = alignedPath.getMeasurementList();
@@ -3791,8 +3801,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           throw new IllegalArgumentException(
               "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
         }
-        for (int i = 0; i < measurementList.size(); i++) {
-          timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
+        int size = measurementList.size();
+        List<IMeasurementSchema> schemaList = new ArrayList<>(size);
+        List<String> newMeasurementList = new ArrayList<>(size);
+        List<IMeasurementSchema> alignedSchemaList = alignedPath.getSchemaList();
+        for (int i = 0; i < size; i++) {
+          String measurement = measurementList.get(i);
+          TimeseriesContext timeseriesContext = entry.getValue().get(i);
+          TimeseriesContext existingContext = timeseriesSchemaInfoMap.get(measurement);
+          if (existingContext == null) {
+            timeseriesSchemaInfoMap.put(measurement, timeseriesContext);
+            newMeasurementList.add(measurement);
+            schemaList.add(alignedSchemaList.get(i));
+          } else {
+            timeseriesSchemaInfoMap.put(
+                measurement, existingContext.mergeActiveCount(timeseriesContext));
+          }
+        }
+        if (!newMeasurementList.isEmpty()) {
+          context.addPath(new AlignedPath(path.getNodes(), newMeasurementList, schemaList));
         }
       }
     }

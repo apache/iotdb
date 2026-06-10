@@ -255,7 +255,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, socket, tsFile, null, tsFile.getName());
+      doTransfer(pipe2WeightMap, socket, tsFile, null, null, tsFile.getName());
       try {
         RetryUtils.retryOnException(
             () -> {
@@ -379,6 +379,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver
             ? pipeTsFileInsertionEvent.getModFile()
             : null,
+        pipeTsFileInsertionEvent.getDatabaseName(),
         pipeTsFileInsertionEvent.toString());
   }
 
@@ -387,6 +388,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       final AirGapSocket socket,
       final File tsFile,
       final File modFile,
+      final String dataBaseName,
       final String receiverStatusContext)
       throws PipeException, IOException {
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
@@ -397,7 +399,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       if (!sendWeighted(
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()),
+              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length(), dataBaseName),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -411,7 +413,10 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       transferFilePieces(pipe2WeightMap, tsFile, socket, false);
       if (!sendWeighted(
           socket,
-          PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()),
+          dataBaseName == null
+              ? PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length())
+              : PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
+                  tsFile.getName(), tsFile.length(), dataBaseName),
           pipe2WeightMap)) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

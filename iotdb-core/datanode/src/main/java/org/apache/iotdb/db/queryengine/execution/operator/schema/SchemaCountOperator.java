@@ -93,6 +93,10 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
    */
   private ListenableFuture<?> tryGetNext() {
     ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.shouldSkipSchemaRegion(schemaRegion)) {
+      next = constructTsBlock(0);
+      return NOT_BLOCKED;
+    }
     if (schemaSource.hasSchemaStatistic(schemaRegion)) {
       next = constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
       return NOT_BLOCKED;

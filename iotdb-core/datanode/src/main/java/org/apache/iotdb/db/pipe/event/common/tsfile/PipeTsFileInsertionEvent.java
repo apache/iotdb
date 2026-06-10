@@ -265,6 +265,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return tsFile;
   }
 
+  public String getDatabaseName() {
+    return Objects.isNull(resource) ? null : resource.getDatabaseName();
+  }
+
   public File getModFile() {
     return modFile;
   }

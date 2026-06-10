@@ -634,4 +634,12 @@ public class IoTDBRpcDataSet {
       throw new StatementExecutionException("No record remains");
     }
   }
+
+  public int getValueColumnStartIndex() {
+    return ignoreTimeStamp ? 0 : 1;
+  }
+
+  public int getColumnSize() {
+    return columnNameList.size();
+  }
 }

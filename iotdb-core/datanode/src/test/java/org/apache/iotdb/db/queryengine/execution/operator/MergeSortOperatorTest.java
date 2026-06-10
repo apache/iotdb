@@ -88,6 +88,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.OperatorTestUtils.nextNonNullOrEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1765,7 +1766,7 @@ public class MergeSortOperatorTest {
 
     int index = 0;
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
-      TsBlock result = mergeSortOperator.next();
+      TsBlock result = nextNonNullOrEmpty(mergeSortOperator);
       for (int i = 0; i < result.getPositionCount(); i++) {
         long time = result.getTimeByIndex(i);
         assertEquals(time, ans[index++]);

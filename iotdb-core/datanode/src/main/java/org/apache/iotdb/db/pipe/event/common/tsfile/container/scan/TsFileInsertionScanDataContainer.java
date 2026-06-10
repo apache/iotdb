@@ -307,7 +307,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
         data.next();
         while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage()) {
-          data = chunkReader.nextPageData();
+          data = nextPageData();
         }
 
         if (tablet != null && tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -343,14 +343,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       }
 
       do {
-        resizePageDataMemoryForCurrentPageIfNeeded();
-        data = chunkReader.nextPageData();
-        long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data);
-        if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
-          PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForBatchData, size);
-        }
+        data = nextPageData();
       } while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage());
     } while (!data.hasCurrent());
+  }
+
+  private BatchData nextPageData() throws IOException {
+    resizePageDataMemoryForCurrentPageIfNeeded();
+    final BatchData nextData = chunkReader.nextPageData();
+    resizePageDataMemoryIfNeeded(PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(nextData));
+    return nextData;
   }
 
   private void resizePageDataMemoryForCurrentPageIfNeeded() {
@@ -523,10 +525,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               timeChunkList.add(timeChunk);
               isMultiPageList.add(isMultiPage);
               timeChunkPageMemorySizeList.add(
-                  isMultiPage
-                      ? 0
-                      : SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
-                          timeChunk));
+                  SinglePageWholeChunkReader.calculateMaxPageEstimatedMemoryUsageInBytes(
+                      timeChunk));
               break;
             }
 
@@ -572,10 +572,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             Chunk chunk =
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+            final List<Long> pageEstimatedMemoryUsageInBytesList =
+                SinglePageWholeChunkReader
+                    .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(chunk);
 
             chunkReader =
                 currentIsMultiPage
-                    ? new ChunkReader(chunk, filter)
+                    ? new MemoryControlledChunkReader(
+                        new ChunkReader(chunk, filter), pageEstimatedMemoryUsageInBytesList)
                     : new SinglePageWholeChunkReader(chunk);
             currentIsAligned = false;
             final String measurementID =
@@ -649,8 +653,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               chunk =
                   new Chunk(
                       chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
-              currentValueChunkPageMemorySize =
-                  calculatePageMemorySizeIfSinglePageValueChunk(chunk);
+              currentValueChunkPageMemorySize = calculateMaxPageMemorySize(chunk);
               boolean needReturn = false;
               final long timeChunkSize =
                   lastIndex >= 0
@@ -687,8 +690,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               chunk = firstChunk4NextSequentialValueChunks;
               chunkHeader = chunk.getHeader();
               firstChunk4NextSequentialValueChunks = null;
-              currentValueChunkPageMemorySize =
-                  calculatePageMemorySizeIfSinglePageValueChunk(chunk);
+              currentValueChunkPageMemorySize = calculateMaxPageMemorySize(chunk);
               resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
               resizePageDataMemoryBlockIfFirstValueChunkExceedsLimit(
                   valueChunkList, currentValueChunkPageMemorySize);
@@ -759,9 +761,22 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
                 timeChunk, valueChunkList));
       }
+      final List<Long> pageEstimatedMemoryUsageInBytesList =
+          currentIsMultiPage
+              ? AlignedSinglePageWholeChunkReader
+                  .calculatePageEstimatedMemoryUsageInBytesWithBatchDataList(
+                      timeChunk, valueChunkList)
+              : Collections.emptyList();
+      final long maxPageEstimatedMemoryUsageInBytes =
+          pageEstimatedMemoryUsageInBytesList.isEmpty()
+              ? 0
+              : pageEstimatedMemoryUsageInBytesList.get(0);
+      resizePageDataMemoryIfNeeded(maxPageEstimatedMemoryUsageInBytes);
       chunkReader =
           currentIsMultiPage
-              ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
+              ? new MemoryControlledChunkReader(
+                  new AlignedChunkReader(timeChunk, valueChunkList, filter),
+                  pageEstimatedMemoryUsageInBytesList)
               : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
       currentIsAligned = true;
       lastMarker = marker;
@@ -802,10 +817,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     }
   }
 
-  private long calculatePageMemorySizeIfSinglePageValueChunk(final Chunk chunk) throws IOException {
-    return isSinglePageValueChunk(chunk.getHeader())
-        ? SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(chunk)
-        : 0;
+  private long calculateMaxPageMemorySize(final Chunk chunk) throws IOException {
+    return SinglePageWholeChunkReader.calculateMaxPageEstimatedMemoryUsageInBytes(chunk);
   }
 
   private boolean isSinglePageValueChunk(final ChunkHeader chunkHeader) {

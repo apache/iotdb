@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -51,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Objects;
@@ -249,10 +251,12 @@ public class IoTDBLegacyPipeReceiverAgent {
    * @param tsFilePipeData pipeData
    * @param fileDir path of file data dir
    */
-  private void handleTsFilePipeData(TsFilePipeData tsFilePipeData, String fileDir) {
-    String tsFileName = tsFilePipeData.getTsFileName();
-    File dir = new File(fileDir);
-    File[] targetFiles =
+  private void handleTsFilePipeData(final TsFilePipeData tsFilePipeData, final String fileDir)
+      throws IOException {
+    final String tsFileName = tsFilePipeData.getTsFileName();
+    final File tsFile = resolveFileInFileDataDir(fileDir, tsFileName);
+    final File dir = tsFile.getParentFile();
+    final File[] targetFiles =
         dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
     if (targetFiles != null) {
       for (File targetFile : targetFiles) {
@@ -289,13 +293,21 @@ public class IoTDBLegacyPipeReceiverAgent {
     LOGGER.debug(
         "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());
 
-    String fileDir = getFileDataDir(identityInfo);
-    String fileName = metaInfo.fileName;
-    long startIndex = metaInfo.startIndex;
-    File file = new File(fileDir, fileName + PATCH_SUFFIX);
+    final String fileDir = getFileDataDir(identityInfo);
+    final String fileName = metaInfo.fileName;
+    final long startIndex = metaInfo.startIndex;
+    final File file;
+    final File fileWithoutPatch;
+    try {
+      fileWithoutPatch = resolveFileInFileDataDir(fileDir, fileName);
+      file = resolveFileInFileDataDir(fileDir, fileName + PATCH_SUFFIX);
+    } catch (final IOException e) {
+      LOGGER.warn(e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+    }
 
     // step2. check startIndex
-    IndexCheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+    final IndexCheckResult result = checkStartIndexValid(fileWithoutPatch, startIndex);
     if (!result.isResult()) {
       return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
     }
@@ -307,9 +319,9 @@ public class IoTDBLegacyPipeReceiverAgent {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       randomAccessFile.write(byteArray);
-      recordStartIndex(new File(fileDir, fileName), startIndex + length);
+      recordStartIndex(fileWithoutPatch, startIndex + length);
       LOGGER.debug("Sync {} start at {} to {} is done.", fileName, startIndex, startIndex + length);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.error(e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
     }
@@ -317,7 +329,21 @@ public class IoTDBLegacyPipeReceiverAgent {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  private IndexCheckResult checkStartIndexValid(File file, long startIndex) {
+  private static File resolveFileInFileDataDir(final String fileDir, final String fileName)
+      throws IOException {
+    if (StringUtils.isEmpty(fileName)) {
+      throw new IOException("Illegal fileName: " + fileName);
+    }
+
+    final String illegalError = FileUtils.getIllegalError4Directory(fileName);
+    if (Objects.nonNull(illegalError)) {
+      throw new IOException("Illegal fileName: " + fileName + ", " + illegalError);
+    }
+
+    return PipeReceiverFilePathUtils.resolveFilePath(Paths.get(fileDir), fileName).toFile();
+  }
+
+  private IndexCheckResult checkStartIndexValid(final File file, final long startIndex) {
     // get local index from memory map
     long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
     // get local index from file
