@@ -251,18 +251,9 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       // all data of current device has been consumed
       updateResultTsBlock();
       timeIterator.resetCurTimeRange();
-      nextDevice();
-
-      if (currentDeviceIndex < deviceCount) {
-        // construct AlignedSeriesScanUtil for next device
-        constructAlignedSeriesScanUtil();
-        queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      }
+      moveToNextDevice();
 
       if (currentDeviceIndex >= deviceCount) {
-        // all devices have been consumed
-        timeIterator.setFinished();
         return Optional.of(true);
       } else {
         return Optional.of(false);
@@ -715,22 +706,25 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     if (allAggregatorsHasFinalResult
         && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
             || tableAggregators.isEmpty())) {
-      nextDevice();
-      inputTsBlock = null;
-
-      if (currentDeviceIndex < deviceCount) {
-        // construct AlignedSeriesScanUtil for next device
-        constructAlignedSeriesScanUtil();
-        queryDataSource.reset();
-        this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      }
-
-      if (currentDeviceIndex >= deviceCount) {
-        // all devices have been consumed
-        timeIterator.setFinished();
-      }
-
+      moveToNextDevice();
       allAggregatorsHasFinalResult = false;
+    }
+  }
+
+  protected void moveToNextDevice() throws Exception {
+    nextDevice();
+    inputTsBlock = null;
+
+    if (currentDeviceIndex < deviceCount) {
+      // construct AlignedSeriesScanUtil for next device
+      constructAlignedSeriesScanUtil();
+      queryDataSource.reset();
+      this.seriesScanUtil.initQueryDataSource(queryDataSource);
+    }
+
+    if (currentDeviceIndex >= deviceCount) {
+      // all devices have been consumed
+      timeIterator.setFinished();
     }
   }
 

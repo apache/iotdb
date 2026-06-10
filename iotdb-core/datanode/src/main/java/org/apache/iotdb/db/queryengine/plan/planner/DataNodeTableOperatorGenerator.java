@@ -1128,6 +1128,13 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitExternalTsFileScan(
       ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty()) {
+      OperatorContext operatorContext =
+          addOperatorContext(
+              context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
@@ -1137,11 +1144,7 @@ public class DataNodeTableOperatorGenerator
             Long.MAX_VALUE);
 
     AbstractTableScanOperator externalTsFileTableScanOperator =
-        new ExternalTsFileTableScanOperator(
-            parameter,
-            node.getQualifiedObjectName().getObjectName(),
-            node.getExternalTsFileQueryResource(),
-            node.getDeviceTaskPartitionIndex());
+        new ExternalTsFileTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
 
@@ -1149,7 +1152,9 @@ public class DataNodeTableOperatorGenerator
     dataDriverContext.addSourceOperator(externalTsFileTableScanOperator);
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
     dataDriverContext.setInputDriver(true);
-    context.getInstanceContext().addExternalTsFilePaths(node.getTsFilePaths());
+    context
+        .getInstanceContext()
+        .addExternalTsFileQueryResource(node.getExternalTsFileQueryResource());
 
     return externalTsFileTableScanOperator;
   }
@@ -1640,11 +1645,7 @@ public class DataNodeTableOperatorGenerator
         constructAbstractAggTableScanOperatorParameter(node, context);
 
     ExternalTsFileAggTableScanOperator aggTableScanOperator =
-        new ExternalTsFileAggTableScanOperator(
-            parameter,
-            node.getQualifiedObjectName().getObjectName(),
-            node.getExternalTsFileQueryResource(),
-            node.getDeviceTaskPartitionIndex());
+        new ExternalTsFileAggTableScanOperator(parameter, node.getDeviceTaskPartitionIndex());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     addSource(
@@ -1658,7 +1659,9 @@ public class DataNodeTableOperatorGenerator
 
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.EXTERNAL_TSFILE_SCAN);
-    context.getInstanceContext().addExternalTsFilePaths(node.getTsFilePaths());
+    context
+        .getInstanceContext()
+        .addExternalTsFileQueryResource(node.getExternalTsFileQueryResource());
 
     return aggTableScanOperator;
   }

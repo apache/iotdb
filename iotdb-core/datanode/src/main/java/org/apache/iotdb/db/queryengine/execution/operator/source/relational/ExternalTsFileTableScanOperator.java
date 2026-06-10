@@ -19,63 +19,41 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryDataSource;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.DeviceOffset;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.MultiWayMergeReader;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource.DeviceTaskRunReader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 public class ExternalTsFileTableScanOperator extends TableScanOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExternalTsFileTableScanOperator.class);
-  private static final long ABSTRACT_DEVICE_TABLE_SCAN_OPERATOR_INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AbstractDeviceTableScanOperator.class);
 
-  private final String tableName;
-  private final ExternalTsFileQueryResource externalTsFileQueryResource;
   private final int deviceTaskPartitionIndex;
-  private MultiWayMergeReader deviceTaskReader;
-  private int loadedDeviceOffsetIndex = -1;
-  private List<DeviceOffset> currentDeviceOffsets = Collections.emptyList();
+  private DeviceTaskRunReader deviceTaskReader;
 
   public ExternalTsFileTableScanOperator(
-      AbstractTableScanOperatorParameter parameter,
-      String tableName,
-      ExternalTsFileQueryResource externalTsFileQueryResource,
-      int deviceTaskPartitionIndex) {
+      AbstractTableScanOperatorParameter parameter, int deviceTaskPartitionIndex) {
     super(parameter);
-    this.tableName = tableName;
-    this.externalTsFileQueryResource = externalTsFileQueryResource;
     this.deviceTaskPartitionIndex = deviceTaskPartitionIndex;
   }
 
   @Override
-  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    int segmentOffset =
-        deviceEntry.getDeviceID().segmentNum() > 0
-                && tableName.equalsIgnoreCase((String) deviceEntry.getNthSegment(0))
-            ? 1
-            : 0;
-    Object segment = deviceEntry.getNthSegment(idColumnIndex + segmentOffset);
-    return segment == null ? null : (String) segment;
-  }
-
-  @Override
   protected void constructAlignedSeriesScanUtil() {
-    if (!hasCurrentDeviceEntry()) {
+    if (currentDeviceIndex >= deviceCount) {
       return;
     }
 
-    DeviceEntry deviceEntry = getCurrentDeviceEntry();
+    DeviceEntry deviceEntry = deviceEntries.get(currentDeviceIndex);
     if (deviceEntry == null) {
       throw new IllegalStateException("Current device entry in TableScanOperator is empty");
     }
@@ -97,33 +75,58 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
     return ExternalTsFileSeriesScanUtil.loadTimeSeriesMetadata(
         resource,
         alignedPath,
-        getCurrentDeviceEntry().getDeviceID(),
-        getCurrentDeviceOffsets(),
-        externalTsFileQueryResource.getTsFilePaths(),
+        deviceEntries.get(currentDeviceIndex).getDeviceID(),
+        deviceTaskReader.getCurrentDeviceOffsetMap().get(resource),
         ((OperatorContext) operatorContext).getInstanceContext(),
         seriesScanOptions.getGlobalTimeFilter());
   }
 
-  private List<DeviceOffset> getCurrentDeviceOffsets() throws IOException {
-    if (loadedDeviceOffsetIndex == currentDeviceIndex) {
-      return currentDeviceOffsets;
-    }
+  @Override
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    ExternalTsFileQueryResource externalTsFileQueryResource =
+        ((ExternalTsFileQueryDataSource) dataSource).getExternalTsFileQueryResource();
     if (deviceTaskReader == null) {
       deviceTaskReader =
-          externalTsFileQueryResource.getMultiWayMergeReader(deviceTaskPartitionIndex);
+          externalTsFileQueryResource.getDeviceTaskRunReader(deviceTaskPartitionIndex);
     }
-    DeviceEntry currentDeviceEntry = getCurrentDeviceEntry();
-    while (deviceTaskReader.hasNextDevice()) {
-      DeviceEntry deviceEntry = deviceTaskReader.nextDevice();
-      if (deviceEntry.getDeviceID().equals(currentDeviceEntry.getDeviceID())) {
-        currentDeviceOffsets = deviceTaskReader.getCurrentDeviceOffsets();
-        loadedDeviceOffsetIndex = currentDeviceIndex;
-        return currentDeviceOffsets;
+    IQueryDataSource currentDataSource =
+        currentDeviceIndex < deviceCount ? updateCurrentDeviceQueryDataSource() : dataSource;
+    super.initQueryDataSource(currentDataSource);
+  }
+
+  @Override
+  protected void moveToNextDevice() {
+    currentDeviceIndex++;
+    if (currentDeviceIndex < deviceCount) {
+      constructAlignedSeriesScanUtil();
+      seriesScanUtil.initQueryDataSource(updateCurrentDeviceQueryDataSource());
+      this.operatorContext.recordSpecifiedInfo(
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+    }
+  }
+
+  private ExternalTsFileQueryDataSource updateCurrentDeviceQueryDataSource() {
+    try {
+      if (!deviceTaskReader.nextDevice()) {
+        throw new IllegalStateException(
+            "Unexpected end of external TsFile device task reader at device index "
+                + currentDeviceIndex);
       }
+      DeviceEntry expectedDeviceEntry = deviceEntries.get(currentDeviceIndex);
+      DeviceEntry currentDeviceEntry = deviceTaskReader.getCurrentDevice();
+      if (!expectedDeviceEntry.getDeviceID().equals(currentDeviceEntry.getDeviceID())) {
+        throw new IllegalStateException(
+            String.format(
+                "External TsFile device task reader is not aligned with device entries at index %d:"
+                    + " expected %s but got %s",
+                currentDeviceIndex,
+                expectedDeviceEntry.getDeviceID(),
+                currentDeviceEntry.getDeviceID()));
+      }
+      return deviceTaskReader.getCurrentDeviceQueryDataSource();
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to update external TsFile device resources", e);
     }
-    currentDeviceOffsets = Collections.emptyList();
-    loadedDeviceOffsetIndex = currentDeviceIndex;
-    return currentDeviceOffsets;
   }
 
   @Override
@@ -137,9 +140,6 @@ public class ExternalTsFileTableScanOperator extends TableScanOperator {
 
   @Override
   public long ramBytesUsed() {
-    return super.ramBytesUsed()
-        + INSTANCE_SIZE
-        - ABSTRACT_DEVICE_TABLE_SCAN_OPERATOR_INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfCollection(currentDeviceOffsets);
+    return super.ramBytesUsed() + INSTANCE_SIZE - AbstractTableScanOperator.INSTANCE_SIZE;
   }
 }

@@ -26,6 +26,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Exte
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.LazyTsFileDeviceIterator;
@@ -38,7 +41,7 @@ import java.io.BufferedOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,19 +67,20 @@ import static java.util.Objects.requireNonNull;
 public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public static final String EXTERNAL_TSFILE_TMP_DIR = "external-tsfile";
-  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
+  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 1;
+  //  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
   private static final long DEVICE_OFFSET_INSTANCE_SIZE_IN_BYTES = 32L;
 
   private final QueryId queryId;
   private final Path queryTempRoot;
   private final String tableName;
   private final List<String> tsFilePaths;
+  private final List<TsFileResource> tsFileResources;
   private final LongConsumer ioSizeRecorder;
   private final List<DeviceEntry> deviceEntries = new ArrayList<>();
   private List<DeviceTaskPartition> deviceTaskPartitions = Collections.emptyList();
   private Comparator<DeviceEntry> deviceEntryComparator;
 
-  private boolean readersRetained;
   private boolean closed;
 
   public ExternalTsFileQueryResource(
@@ -95,16 +99,19 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     this.tableName = tableName;
     this.tsFilePaths =
         Collections.unmodifiableList(new ArrayList<>(requireNonNull(tsFilePaths, "tsFilePaths")));
+    this.tsFileResources = createTsFileResources(this.tsFilePaths);
     this.ioSizeRecorder = requireNonNull(ioSizeRecorder, "ioSizeRecorder is null");
+    for (String tsFilePath : tsFilePaths) {
+      FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
+    }
   }
 
-  public synchronized void collectDeviceEntries(
+  public void collectDeviceEntries(
       SchemaFilter schemaFilter, Comparator<DeviceEntry> comparator, int partitionCount) {
     checkNotClosed();
-    retainFileReaderReferences();
     ExternalTsFileDeviceFilterVisitor deviceFilterVisitor = new ExternalTsFileDeviceFilterVisitor();
     try (DeviceCollector deviceCollector = new DeviceCollector()) {
-      List<DeviceTaskPartition> partitions = createDeviceTaskPartitions(partitionCount);
+      createDeviceTaskPartitions(partitionCount);
       while (deviceCollector.hasNextDevice()) {
         IDeviceID deviceID = deviceCollector.nextDevice();
         if (schemaFilter != null
@@ -118,22 +125,23 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
             new DeviceTask(
                 deviceEntryIndex, new ArrayList<>(deviceCollector.getCurrentDeviceOffsets()));
         DeviceTaskPartition partition =
-            partitions.get(Math.floorMod(deviceID.hashCode(), partitions.size()));
+            deviceTaskPartitions.get(
+                Math.floorMod(deviceID.hashCode(), deviceTaskPartitions.size()));
         partition.add(deviceTask);
         if (partition.getEstimatedSizeInBytes() >= DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES) {
           partition.flush(comparator);
         }
       }
       deviceEntryComparator = comparator;
-      collectDeviceTaskPartitions(partitions, comparator);
+      collectDeviceTaskPartitions(comparator);
     }
   }
 
-  public synchronized MultiWayMergeReader getMultiWayMergeReader(int partitionIndex) {
+  public DeviceTaskRunReader getDeviceTaskRunReader(int partitionIndex) {
     checkNotClosed();
     DeviceTaskPartition partition = getDeviceTaskPartition(partitionIndex);
     try {
-      return new DeviceTaskRunReader(partition.getRunFiles(), deviceEntries, deviceEntryComparator);
+      return new DeviceTaskRunReader(partition);
     } catch (IOException e) {
       throw new RuntimeException("Failed to create external TsFile device task run reader", e);
     }
@@ -141,6 +149,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public List<String> getTsFilePaths() {
     return tsFilePaths;
+  }
+
+  public List<TsFileResource> getTsFileResources() {
+    return tsFileResources;
   }
 
   public List<DeviceEntry> getDeviceEntries() {
@@ -162,7 +174,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() {
+  public void close() {
     if (closed) {
       return;
     }
@@ -175,24 +187,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
   }
 
-  private void retainFileReaderReferences() {
-    if (readersRetained) {
-      return;
-    }
-    for (String tsFilePath : tsFilePaths) {
-      FileReaderManager.getInstance().increaseExternalFileReaderReference(tsFilePath);
-    }
-    readersRetained = true;
-  }
-
   private void releaseFileReaderReferences() {
-    if (!readersRetained) {
-      return;
-    }
     for (String tsFilePath : tsFilePaths) {
       FileReaderManager.getInstance().decreaseExternalFileReaderReference(tsFilePath);
     }
-    readersRetained = false;
   }
 
   private void checkNotClosed() {
@@ -201,15 +199,28 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
   }
 
-  public interface MultiWayMergeReader extends AutoCloseable {
-    boolean hasNextDevice() throws IOException;
-
-    DeviceEntry nextDevice() throws IOException;
-
-    List<DeviceOffset> getCurrentDeviceOffsets();
-
-    @Override
-    void close() throws IOException;
+  private static List<TsFileResource> createTsFileResources(List<String> tsFilePaths) {
+    List<TsFileResource> tsFileResources = new ArrayList<>(tsFilePaths.size());
+    for (String tsFilePath : tsFilePaths) {
+      TsFileResource resource =
+          new TsFileResource(new File(tsFilePath), TsFileResourceStatus.NORMAL);
+      if (resource.resourceFileExists()) {
+        try {
+          resource.deserialize();
+        } catch (IOException e) {
+          throw new RuntimeException(
+              "Failed to deserialize external TsFile resource: "
+                  + tsFilePath
+                  + ", "
+                  + e.getMessage(),
+              e);
+        }
+      } else {
+        resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
+      }
+      tsFileResources.add(resource);
+    }
+    return Collections.unmodifiableList(tsFileResources);
   }
 
   public class DeviceTaskPartition {
@@ -283,6 +294,16 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       return !deviceEntryIndexes.isEmpty();
     }
 
+    private void finish(Comparator<DeviceEntry> comparator) {
+      if (pendingDeviceTasks.isEmpty()) {
+        return;
+      }
+      sortPendingDeviceTasks(comparator);
+      for (DeviceTask deviceTask : pendingDeviceTasks) {
+        deviceEntryIndexes.add(deviceTask.deviceEntryIndex);
+      }
+    }
+
     private void sortDeviceEntries(Comparator<DeviceEntry> comparator) {
       if (comparator != null) {
         deviceEntryIndexes.sort(
@@ -300,36 +321,34 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private List<Path> getRunFiles() {
       return runFiles;
     }
+
+    private List<DeviceTask> getPendingDeviceTasks() {
+      return pendingDeviceTasks;
+    }
   }
 
-  private List<DeviceTaskPartition> createDeviceTaskPartitions(int partitionCount) {
+  private void createDeviceTaskPartitions(int partitionCount) {
     if (partitionCount <= 0) {
       throw new IllegalArgumentException(
           "External TsFile device task partition count must be positive");
     }
-    List<DeviceTaskPartition> partitions = new ArrayList<>(partitionCount);
+    deviceTaskPartitions = new ArrayList<>(partitionCount);
     for (int i = 0; i < partitionCount; i++) {
-      partitions.add(new DeviceTaskPartition(i));
+      deviceTaskPartitions.add(new DeviceTaskPartition(i));
     }
-    return partitions;
   }
 
-  private void collectDeviceTaskPartitions(
-      List<DeviceTaskPartition> partitions, Comparator<DeviceEntry> comparator) {
-    if (partitions.isEmpty()) {
-      deviceTaskPartitions = Collections.emptyList();
-      return;
-    }
-    List<DeviceTaskPartition> nonEmptyPartitions = new ArrayList<>(partitions.size());
-    for (DeviceTaskPartition partition : partitions) {
-      partition.flush(comparator);
+  private void collectDeviceTaskPartitions(Comparator<DeviceEntry> comparator) {
+    Iterator<DeviceTaskPartition> iterator = deviceTaskPartitions.iterator();
+    while (iterator.hasNext()) {
+      DeviceTaskPartition partition = iterator.next();
+      partition.finish(comparator);
       if (!partition.hasDeviceTasks()) {
+        iterator.remove();
         continue;
       }
       partition.sortDeviceEntries(comparator);
-      nonEmptyPartitions.add(partition);
     }
-    deviceTaskPartitions = nonEmptyPartitions;
   }
 
   private Path writeDeviceTaskRun(Path runRoot, int runIndex, List<DeviceTask> deviceTasks)
@@ -356,58 +375,74 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     return size;
   }
 
-  private static class DeviceTaskRunReader implements MultiWayMergeReader {
+  public class DeviceTaskRunReader implements AutoCloseable {
 
-    private final List<DeviceEntry> deviceEntries;
     private final PriorityQueue<DeviceTaskRunCursor> runCursors;
-    private DeviceTask nextDeviceTask;
-    private List<DeviceOffset> currentDeviceOffsets = Collections.emptyList();
+    private DeviceEntry currentDevice;
+    private ExternalTsFileQueryDataSource currentDeviceQueryDataSource;
+    private Map<TsFileResource, DeviceOffset> currentDeviceOffsetMap;
 
-    private DeviceTaskRunReader(
-        List<Path> runFiles, List<DeviceEntry> deviceEntries, Comparator<DeviceEntry> comparator)
-        throws IOException {
-      this.deviceEntries = deviceEntries;
+    private DeviceTaskRunReader(DeviceTaskPartition partition) throws IOException {
       Comparator<DeviceTaskRunCursor> cursorComparator =
           (left, right) ->
-              comparator == null
+              deviceEntryComparator == null
                   ? left.getCurrentDeviceEntry()
                       .getDeviceID()
                       .compareTo(right.getCurrentDeviceEntry().getDeviceID())
-                  : comparator.compare(left.getCurrentDeviceEntry(), right.getCurrentDeviceEntry());
+                  : deviceEntryComparator.compare(
+                      left.getCurrentDeviceEntry(), right.getCurrentDeviceEntry());
       this.runCursors = new PriorityQueue<>(cursorComparator);
-      for (Path runFile : runFiles) {
-        DeviceTaskRunCursor cursor = new DeviceTaskRunCursor(runFile, deviceEntries);
+      for (Path runFile : partition.getRunFiles()) {
+        DeviceTaskRunCursor cursor = new DiskDeviceTaskRunCursor(runFile, deviceEntries);
         if (cursor.hasCurrentDeviceTask()) {
           runCursors.add(cursor);
         } else {
           cursor.close();
         }
       }
-    }
-
-    @Override
-    public boolean hasNextDevice() throws IOException {
-      if (nextDeviceTask != null) {
-        return true;
+      DeviceTaskRunCursor memoryCursor =
+          new MemoryDeviceTaskRunCursor(partition.getPendingDeviceTasks(), deviceEntries);
+      if (memoryCursor.hasCurrentDeviceTask()) {
+        runCursors.add(memoryCursor);
       }
-      nextDeviceTask = readNextDeviceTask();
-      return nextDeviceTask != null;
     }
 
-    @Override
-    public DeviceEntry nextDevice() throws IOException {
-      if (!hasNextDevice()) {
-        throw new EOFException("No more external TsFile device task");
+    public boolean nextDevice() throws IOException {
+      if (runCursors.isEmpty()) {
+        return false;
       }
-      DeviceTask deviceTask = nextDeviceTask;
-      nextDeviceTask = null;
-      currentDeviceOffsets = deviceTask.deviceOffsets;
-      return deviceEntries.get(deviceTask.deviceEntryIndex);
+      DeviceTaskRunCursor cursor = runCursors.poll();
+      DeviceTask result = cursor.getCurrentDeviceTask();
+      cursor.advance();
+      if (cursor.hasCurrentDeviceTask()) {
+        runCursors.add(cursor);
+      } else {
+        cursor.close();
+      }
+
+      currentDevice = deviceEntries.get(result.deviceEntryIndex);
+      List<TsFileResource> unseqResources = new ArrayList<>(result.deviceOffsets.size());
+      currentDeviceOffsetMap = new HashMap<>(result.deviceOffsets.size());
+      for (DeviceOffset deviceOffset : result.deviceOffsets) {
+        TsFileResource tsFileResource = tsFileResources.get(deviceOffset.getFileIndex());
+        unseqResources.add(tsFileResource);
+        currentDeviceOffsetMap.put(tsFileResource, deviceOffset);
+      }
+      currentDeviceQueryDataSource =
+          new ExternalTsFileQueryDataSource(ExternalTsFileQueryResource.this, unseqResources);
+      return true;
     }
 
-    @Override
-    public List<DeviceOffset> getCurrentDeviceOffsets() {
-      return currentDeviceOffsets;
+    public DeviceEntry getCurrentDevice() {
+      return currentDevice;
+    }
+
+    public ExternalTsFileQueryDataSource getCurrentDeviceQueryDataSource() {
+      return currentDeviceQueryDataSource;
+    }
+
+    public Map<TsFileResource, DeviceOffset> getCurrentDeviceOffsetMap() {
+      return currentDeviceOffsetMap;
     }
 
     @Override
@@ -428,31 +463,28 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         throw exception;
       }
     }
-
-    private DeviceTask readNextDeviceTask() throws IOException {
-      if (runCursors.isEmpty()) {
-        return null;
-      }
-      DeviceTaskRunCursor cursor = runCursors.poll();
-      DeviceTask result = cursor.getCurrentDeviceTask();
-      cursor.advance();
-      if (cursor.hasCurrentDeviceTask()) {
-        runCursors.add(cursor);
-      } else {
-        cursor.close();
-      }
-      return result;
-    }
   }
 
-  private static class DeviceTaskRunCursor implements Closeable {
+  private interface DeviceTaskRunCursor extends Closeable {
+
+    boolean hasCurrentDeviceTask();
+
+    DeviceTask getCurrentDeviceTask();
+
+    DeviceEntry getCurrentDeviceEntry();
+
+    void advance() throws IOException;
+  }
+
+  private static class DiskDeviceTaskRunCursor implements DeviceTaskRunCursor {
 
     private final List<DeviceEntry> deviceEntries;
     private final DataInputStream inputStream;
     private int remainingDeviceTasks;
     private DeviceTask currentDeviceTask;
 
-    private DeviceTaskRunCursor(Path runFile, List<DeviceEntry> deviceEntries) throws IOException {
+    private DiskDeviceTaskRunCursor(Path runFile, List<DeviceEntry> deviceEntries)
+        throws IOException {
       this.deviceEntries = deviceEntries;
       this.inputStream =
           new DataInputStream(new BufferedInputStream(Files.newInputStream(runFile)));
@@ -460,7 +492,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       advance();
     }
 
-    private void advance() throws IOException {
+    @Override
+    public void advance() throws IOException {
       if (remainingDeviceTasks <= 0) {
         currentDeviceTask = null;
         return;
@@ -469,21 +502,68 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       currentDeviceTask = DeviceTask.deserialize(inputStream);
     }
 
-    private boolean hasCurrentDeviceTask() {
+    @Override
+    public boolean hasCurrentDeviceTask() {
       return currentDeviceTask != null;
     }
 
-    private DeviceTask getCurrentDeviceTask() {
+    @Override
+    public DeviceTask getCurrentDeviceTask() {
       return currentDeviceTask;
     }
 
-    private DeviceEntry getCurrentDeviceEntry() {
+    @Override
+    public DeviceEntry getCurrentDeviceEntry() {
       return deviceEntries.get(currentDeviceTask.deviceEntryIndex);
     }
 
     @Override
     public void close() throws IOException {
       inputStream.close();
+    }
+  }
+
+  private static class MemoryDeviceTaskRunCursor implements DeviceTaskRunCursor {
+
+    private final List<DeviceTask> deviceTasks;
+    private final List<DeviceEntry> deviceEntries;
+    private int nextIndex;
+    private DeviceTask currentDeviceTask;
+
+    private MemoryDeviceTaskRunCursor(
+        List<DeviceTask> deviceTasks, List<DeviceEntry> deviceEntries) {
+      this.deviceTasks = deviceTasks;
+      this.deviceEntries = deviceEntries;
+      advance();
+    }
+
+    @Override
+    public void advance() {
+      if (nextIndex >= deviceTasks.size()) {
+        currentDeviceTask = null;
+        return;
+      }
+      currentDeviceTask = deviceTasks.get(nextIndex++);
+    }
+
+    @Override
+    public boolean hasCurrentDeviceTask() {
+      return currentDeviceTask != null;
+    }
+
+    @Override
+    public DeviceTask getCurrentDeviceTask() {
+      return currentDeviceTask;
+    }
+
+    @Override
+    public DeviceEntry getCurrentDeviceEntry() {
+      return deviceEntries.get(currentDeviceTask.deviceEntryIndex);
+    }
+
+    @Override
+    public void close() {
+      currentDeviceTask = null;
     }
   }
 

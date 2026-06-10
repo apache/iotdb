@@ -86,20 +86,15 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
       TsFileResource resource,
       AlignedFullPath alignedPath,
       IDeviceID currentDeviceID,
-      List<DeviceOffset> currentDeviceOffsets,
-      List<String> tsFilePaths,
+      DeviceOffset currentDeviceOffset,
       FragmentInstanceContext context,
       Filter globalTimeFilter)
       throws IOException {
-    if (currentDeviceOffsets == null || !currentDeviceID.equals(alignedPath.getDeviceId())) {
+    if (currentDeviceOffset == null || !currentDeviceID.equals(alignedPath.getDeviceId())) {
       return null;
     }
 
-    long[] deviceMeasurementNodeOffset =
-        getDeviceMeasurementNodeOffset(currentDeviceOffsets, tsFilePaths, resource.getTsFilePath());
-    if (deviceMeasurementNodeOffset == null) {
-      return null;
-    }
+    long[] deviceMeasurementNodeOffset = currentDeviceOffset.getMeasurementNodeOffset();
     // TODO: Use deviceMeasurementNodeOffset after FileLoaderUtils supports offset-based metadata
     // loading in this branch.
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
@@ -109,16 +104,6 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
         globalTimeFilter,
         resource.isSeq(),
         context.isIgnoreAllNullRows());
-  }
-
-  private static long[] getDeviceMeasurementNodeOffset(
-      List<DeviceOffset> currentDeviceOffsets, List<String> tsFilePaths, String tsFilePath) {
-    for (DeviceOffset offset : currentDeviceOffsets) {
-      if (tsFilePath.equals(tsFilePaths.get(offset.getFileIndex()))) {
-        return offset.getMeasurementNodeOffset();
-      }
-    }
-    return null;
   }
 
   @FunctionalInterface

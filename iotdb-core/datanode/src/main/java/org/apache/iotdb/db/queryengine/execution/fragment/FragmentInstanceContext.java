@@ -46,6 +46,8 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryDataSource;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile.ExternalTsFileQueryResource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -56,8 +58,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
@@ -71,8 +71,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -121,8 +119,7 @@ public class FragmentInstanceContext extends QueryContext {
   // Used for region scan, relating methods are to be added.
   private Map<IDeviceID, DeviceContext> devicePathsToContext;
 
-  private List<String> externalTsFilePaths;
-  private List<TsFileResource> externalTsFileResources;
+  private ExternalTsFileQueryResource externalTsFileQueryResource;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
   protected IQueryDataSource sharedQueryDataSource;
@@ -624,12 +621,26 @@ public class FragmentInstanceContext extends QueryContext {
     this.devicePathsToContext = devicePathsToContext;
   }
 
-  public void addExternalTsFilePaths(List<String> externalTsFilePaths) {
-    if (this.externalTsFilePaths == null) {
-      this.externalTsFilePaths = new ArrayList<>(externalTsFilePaths);
-      return;
+  public void addExternalTsFileQueryResource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    this.externalTsFileQueryResource = externalTsFileQueryResource;
+  }
+
+  public boolean initExternalTsFileQueryDataSource(
+      ExternalTsFileQueryResource externalTsFileQueryResource) {
+    long startTime = System.nanoTime();
+    try {
+      if (externalTsFileQueryResource == null) {
+        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
+        return true;
+      }
+
+      this.sharedQueryDataSource = new ExternalTsFileQueryDataSource(externalTsFileQueryResource);
+      closedUnseqFileNum = externalTsFileQueryResource.getTsFileResources().size();
+      return true;
+    } finally {
+      addInitQueryDataSourceCost(System.nanoTime() - startTime);
     }
-    this.externalTsFilePaths.addAll(externalTsFilePaths);
   }
 
   public MemoryReservationManager getMemoryReservationContext() {
@@ -799,44 +810,6 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public boolean initExternalTsFileQueryDataSource(List<String> externalTsFilePaths)
-      throws QueryProcessException {
-    long startTime = System.nanoTime();
-    try {
-      if (externalTsFilePaths == null || externalTsFilePaths.isEmpty()) {
-        this.sharedQueryDataSource = EMPTY_QUERY_DATA_SOURCE;
-        return true;
-      }
-
-      externalTsFileResources = new ArrayList<>(externalTsFilePaths.size());
-      for (String externalTsFilePath : externalTsFilePaths) {
-        TsFileResource resource =
-            new TsFileResource(new File(externalTsFilePath), TsFileResourceStatus.NORMAL);
-        if (resource.resourceFileExists()) {
-          try {
-            resource.deserialize();
-          } catch (IOException e) {
-            throw new QueryProcessException(
-                "Failed to deserialize external TsFile resource: "
-                    + externalTsFilePath
-                    + ", "
-                    + e.getMessage());
-          }
-        } else {
-          resource.setTimeIndex(new FileTimeIndex(Long.MIN_VALUE, Long.MAX_VALUE));
-        }
-        externalTsFileResources.add(resource);
-      }
-
-      this.sharedQueryDataSource =
-          new QueryDataSource(Collections.emptyList(), externalTsFileResources);
-      closedUnseqFileNum = externalTsFileResources.size();
-      return true;
-    } finally {
-      addInitQueryDataSourceCost(System.nanoTime() - startTime);
-    }
-  }
-
   public synchronized IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
       switch (queryDataSourceType) {
@@ -863,8 +836,8 @@ public class FragmentInstanceContext extends QueryContext {
           }
           break;
         case EXTERNAL_TSFILE_SCAN:
-          if (initExternalTsFileQueryDataSource(externalTsFilePaths)) {
-            externalTsFilePaths = null;
+          if (initExternalTsFileQueryDataSource(externalTsFileQueryResource)) {
+            externalTsFileQueryResource = null;
           } else {
             return getUnfinishedQueryDataSource();
           }
@@ -1081,9 +1054,7 @@ public class FragmentInstanceContext extends QueryContext {
       unClosedFilePaths = null;
     }
 
-    if (externalTsFileResources != null) {
-      externalTsFileResources = null;
-    }
+    externalTsFileQueryResource = null;
 
     // release TVList/AlignedTVList owned by current query
     releaseTVListOwnedByQuery();

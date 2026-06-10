@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -50,14 +51,19 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator.appendDataIntoBuilder;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 
 public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperator {
   protected static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AbstractTableScanOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
 
   private final List<ColumnSchema> columnSchemas;
 
   private final int[] columnsIndexArray;
+
+  protected final List<DeviceEntry> deviceEntries;
+
+  protected final int deviceCount;
 
   protected final Ordering scanOrder;
   protected final SeriesScanOptions seriesScanOptions;
@@ -78,11 +84,16 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private QueryDataSource queryDataSource;
 
+  protected int currentDeviceIndex;
+
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
     this.columnSchemas = parameter.columnSchemas;
     this.columnsIndexArray = parameter.columnsIndexArray;
+    this.deviceEntries = parameter.deviceEntries;
+    this.deviceCount = parameter.deviceEntries.size();
+    this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(this.deviceCount));
     this.scanOrder = parameter.scanOrder;
     this.seriesScanOptions = parameter.seriesScanOptions;
     this.measurementColumnNames = parameter.measurementColumnNames;
@@ -92,12 +103,17 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
         parameter.measurementSchemas.stream()
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
+    this.currentDeviceIndex = 0;
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+
     // allSensors include time and all field columns
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
             allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
+    constructAlignedSeriesScanUtil();
   }
 
   @Override
@@ -181,7 +197,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   private void constructResultTsBlock() {
-    DeviceEntry currentDeviceEntry = getCurrentDeviceEntry();
+    DeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
     this.resultTsBlock =
         MeasurementToTableViewAdaptorUtils.toTableBlock(
             measurementDataBlock,
@@ -201,7 +217,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   @Override
   public boolean isFinished() throws Exception {
     return (retainedTsBlock == null)
-        && (!hasCurrentDeviceEntry() || seriesScanOptions.limitConsumedUp());
+        && (currentDeviceIndex >= deviceCount || seriesScanOptions.limitConsumedUp());
   }
 
   @Override
@@ -233,37 +249,32 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.measurementDataBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
-  private void moveToNextDevice() {
-    if (advanceDeviceEntry()) {
+  protected void moveToNextDevice() {
+    currentDeviceIndex++;
+    if (currentDeviceIndex < deviceCount) {
       // construct AlignedSeriesScanUtil for next device
       constructAlignedSeriesScanUtil();
 
       // reset QueryDataSource
       queryDataSource.reset();
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
-      recordCurrentDeviceIndex();
+      this.operatorContext.recordSpecifiedInfo(
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 
-  protected abstract boolean hasCurrentDeviceEntry();
-
-  protected abstract DeviceEntry getCurrentDeviceEntry();
-
-  protected abstract boolean advanceDeviceEntry();
-
-  protected abstract void recordCurrentDeviceIndex();
-
   protected void constructAlignedSeriesScanUtil() {
-    if (!hasCurrentDeviceEntry()) {
+    if (this.deviceEntries.isEmpty() || currentDeviceIndex >= deviceCount) {
       // no need to construct SeriesScanUtil, hasNext will return false
       return;
     }
 
-    if (getCurrentDeviceEntry() == null) {
-      throw new IllegalStateException("Current device entry in TableScanOperator is empty");
+    if (this.deviceEntries.get(this.currentDeviceIndex) == null) {
+      throw new IllegalStateException(
+          "Device entries of index " + this.currentDeviceIndex + " in TableScanOperator is empty");
     }
 
-    DeviceEntry deviceEntry = getCurrentDeviceEntry();
+    DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
     AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
     this.seriesScanUtil =
@@ -291,7 +302,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
-        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 
   public static class AbstractTableScanOperatorParameter {

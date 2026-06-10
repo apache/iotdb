@@ -799,13 +799,23 @@ public class TableDistributedPlanGenerator
     if (partitions.isEmpty()) {
       return Collections.singletonList(node);
     }
+    boolean needFinalAggregation =
+        node.getStep() == SINGLE && node.getGroupingKeys().isEmpty() && partitions.size() > 1;
+    AggregationNode finalAggregation = null;
+    AggregationTableScanNode partialTemplateNode = node;
+    if (needFinalAggregation) {
+      Pair<AggregationNode, AggregationTableScanNode> splitResult =
+          split(node, symbolAllocator, queryId);
+      finalAggregation = splitResult.left;
+      partialTemplateNode = splitResult.right;
+    }
     List<PlanNode> result = new ArrayList<>(partitions.size());
     for (DeviceTaskPartition partition : partitions) {
       ExternalTsFileAggregationScanNode splitNode =
           new ExternalTsFileAggregationScanNode(
               queryId.genPlanNodeId(),
               node.getQualifiedObjectName(),
-              node.getOutputSymbols(),
+              partialTemplateNode.getOutputSymbols(),
               node.getAssignments(),
               node.getTagAndAttributeIndexMap(),
               node.getScanOrder(),
@@ -816,11 +826,11 @@ public class TableDistributedPlanGenerator
               node.isPushLimitToEachDevice(),
               node.containsNonAlignedDevice(),
               node.getProjection(),
-              node.getAggregations(),
-              node.getGroupingSets(),
-              node.getPreGroupedSymbols(),
-              node.getStep(),
-              node.getGroupIdSymbol(),
+              partialTemplateNode.getAggregations(),
+              partialTemplateNode.getGroupingSets(),
+              partialTemplateNode.getPreGroupedSymbols(),
+              partialTemplateNode.getStep(),
+              partialTemplateNode.getGroupIdSymbol(),
               node.getExternalTsFileQueryResource(),
               partition.getDeviceEntryIndexes(),
               partition.getPartitionIndex(),
@@ -830,6 +840,11 @@ public class TableDistributedPlanGenerator
     }
     sortPropertyContext.ifPresent(
         propertyContext -> applySortProperty(node, result, propertyContext, false));
+    if (needFinalAggregation) {
+      OrderingScheme childOrdering = nodeOrderingMap.get(result.get(0).getPlanNodeId());
+      finalAggregation.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, result));
+      return Collections.singletonList(finalAggregation);
+    }
     return result;
   }
 
