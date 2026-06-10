@@ -416,7 +416,7 @@ public final class DataNodeSchemaMessages {
   public static final String TIMESERIES_TYPE_NOT_COMPATIBLE =
       "时间序列 %s 使用的新类型 %s 与已有类型 %s 不兼容";
   public static final String ALIAS_DUPLICATED =
-      "别名与其他测量的名称或别名重复，别名：";
+      "别名与其他测点的名称或别名重复，别名：";
   public static final String LOGICAL_VIEW_NODE_TYPE_ERROR =
       "newMNode 的类型不是 LogicalViewMNode！实际类型为 ";
   public static final String TEMPLATE_SHOULD_MOUNTED_ON_ANCESTOR =
@@ -611,7 +611,7 @@ public final class DataNodeSchemaMessages {
       "Working MemTable - 克隆 mutable TVList 并替换 working MemTable 中的旧 TVList";
   public static final String PATH_DOES_NOT_START_WITH_FMT = "%s 不是以 %s 开头";
   public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
-      "别名重复：%s，完整路径：%s，其他测点：%s";
+      "别名与其他测点的名称或别名重复，别名：%s，完整路径：%s，其他测点：%s";
   public static final String TAG_ACTION_DELETE = "删除";
   public static final String TAG_ACTION_UPSERT = "更新插入";
   public static final String TAG_ACTION_DROP = "移除";

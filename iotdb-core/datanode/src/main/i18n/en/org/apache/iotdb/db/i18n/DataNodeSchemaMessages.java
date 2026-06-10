@@ -621,7 +621,7 @@ public final class DataNodeSchemaMessages {
       "Working MemTable - clone mutable TVList and replace old TVList in working MemTable";
   public static final String PATH_DOES_NOT_START_WITH_FMT = "%s doesn't start with %s";
   public static final String ALIAS_DUPLICATED_FULLPATH_OTHER_MEASUREMENT_FMT =
-      "Alias duplicated: %s, fullPath: %s, otherMeasurement: %s";
+      "The alias is duplicated with the name or alias of other measurement, alias: %s, fullPath: %s, otherMeasurement: %s";
   public static final String TAG_ACTION_DELETE = "Delete";
   public static final String TAG_ACTION_UPSERT = "Upsert";
   public static final String TAG_ACTION_DROP = "Drop";
