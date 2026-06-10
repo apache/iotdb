@@ -126,7 +126,7 @@ jobs:
           echo "run_windows=${run_windows}" >> "$GITHUB_OUTPUT"
 
           # Compact JSON (no leading whitespace); required for GITHUB_OUTPUT + fromJSON().
-          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"boost-msvc-14.3","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"boost-msvc-14.2","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"","boost_choco_version":"","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
+          WINDOWS_MATRIX='[{"name":"windows-vs2026","runs-on":"windows-2025-vs2026","boost_choco":"","boost_choco_version":"","cmake_generator":"Visual Studio 18 2026","package_classifier":"windows-x86_64-msvc14.4","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2022","runs-on":"windows-2022","boost_choco":"","boost_choco_version":"","cmake_generator":"","package_classifier":"windows-x86_64-msvc14.3","vs_choco":"","vs_choco_params":""},{"name":"windows-vs2019","runs-on":"windows-2022","boost_choco":"","boost_choco_version":"","cmake_generator":"Visual Studio 16 2019","package_classifier":"windows-x86_64-msvc14.2","vs_choco":"visualstudio2019buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"},{"name":"windows-vs2017","runs-on":"windows-2022","boost_choco":"","boost_choco_version":"","cmake_generator":"Visual Studio 15 2017","package_classifier":"windows-x86_64-msvc14.1","vs_choco":"visualstudio2017buildtools","vs_choco_params":"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"}]'
 
           write_windows_matrix_output() {
             local matrix_json="$1"
@@ -386,10 +386,6 @@ jobs:
             }
             echo "BOOST_INCLUDEDIR=$($boostDir.FullName)" >> $env:GITHUB_ENV
           }
-          choco install openssl -y --no-progress
-          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
-          echo "$sslPath\bin" >> $env:GITHUB_PATH
-          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:

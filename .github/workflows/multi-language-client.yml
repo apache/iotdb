@@ -91,13 +91,6 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install winflexbison3 -y
-          choco install boost-msvc-14.3 -y
-          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
-          echo $boost_path >> $env:GITHUB_PATH
-          choco install openssl -y
-          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
-          echo "$sslPath\bin" >> $env:GITHUB_PATH
-          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
           choco install llvm --version=17.0.6 --force -y
           clang-format --version
       - name: Cache Maven packages

@@ -71,7 +71,9 @@ endif()
 
 set(IOTDB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party"
     CACHE PATH "Local tarball cache for third-party dependencies (lives under client-cpp/)")
-if(APPLE)
+if(WIN32)
+    set(_iotdb_default_boost_version "1.74.0")
+elseif(APPLE)
     set(_iotdb_default_boost_version "1.84.0")
 else()
     set(_iotdb_default_boost_version "1.60.0")
