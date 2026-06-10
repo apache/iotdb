@@ -35,14 +35,17 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
   private static final Logger logger =
       LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+  private static final long FAIL_TO_CREATE_WAL_NODE_DISKS_FULL_LOG_INTERVAL_MS = 3600 * 1000L;
 
   // manage wal folders
   protected FolderManager folderManager;
+  private final AtomicLong lastFailToCreateWalNodeDisksFullLogTime = new AtomicLong(0L);
 
   protected AbstractNodeAllocationStrategy() {
     try {
@@ -52,9 +55,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     } catch (DiskSpaceInsufficientException e) {
       // folderManager remains null when disk space is insufficient during initialization
       // It will be lazily initialized later when disk space becomes available
-      logger.error(
-          "Fail to create wal node allocation strategy because all disks of wal folders are full.",
-          e);
+      logFailToCreateWalNodeDisksFullIfNecessary(e);
     }
   }
 
@@ -68,10 +69,13 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
             new FolderManager(
                 Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
       }
-      return folderManager.getNextWithRetry(
-          folder -> new WALNode(identifier, folder + File.separator + identifier));
+      WALNode walNode =
+          folderManager.getNextWithRetry(
+              folder -> new WALNode(identifier, folder + File.separator + identifier));
+      resetFailToCreateWalNodeDisksFullLogTime();
+      return walNode;
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL, e);
+      logFailToCreateWalNodeDisksFullIfNecessary(e);
       return WALFakeNode.getFailureInstance(e);
     } catch (Exception e) {
       logger.warn(StorageEngineMessages.FAILED_TO_CREATE_WAL_NODE_AFTER_RETRIES + identifier, e);
@@ -84,10 +88,26 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
   protected IWALNode createWALNode(
       String identifier, String folder, long startFileVersion, long startSearchIndex) {
     try {
-      return new WALNode(identifier, folder, startFileVersion, startSearchIndex);
+      WALNode walNode = new WALNode(identifier, folder, startFileVersion, startSearchIndex);
+      resetFailToCreateWalNodeDisksFullLogTime();
+      return walNode;
     } catch (IOException e) {
       logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE, e);
       return WALFakeNode.getFailureInstance(e);
     }
+  }
+
+  private void logFailToCreateWalNodeDisksFullIfNecessary(DiskSpaceInsufficientException e) {
+    long now = System.currentTimeMillis();
+    long lastLogTime = lastFailToCreateWalNodeDisksFullLogTime.get();
+    if ((lastLogTime == 0
+            || now - lastLogTime >= FAIL_TO_CREATE_WAL_NODE_DISKS_FULL_LOG_INTERVAL_MS)
+        && lastFailToCreateWalNodeDisksFullLogTime.compareAndSet(lastLogTime, now)) {
+      logger.error(StorageEngineMessages.FAIL_TO_CREATE_WAL_NODE_DISKS_FULL, e);
+    }
+  }
+
+  void resetFailToCreateWalNodeDisksFullLogTime() {
+    lastFailToCreateWalNodeDisksFullLogTime.set(0L);
   }
 }
