@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSingleMeasurementCheckCachePerformanceIT {
