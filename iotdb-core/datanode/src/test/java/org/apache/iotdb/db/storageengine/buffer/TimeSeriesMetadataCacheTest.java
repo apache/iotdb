@@ -93,7 +93,7 @@ public class TimeSeriesMetadataCacheTest {
 
       // read 100*200 series each 10 times in the file
       long start = System.currentTimeMillis();
-      QueryContext queryContext = new QueryContext();
+      QueryContext queryContext = new QueryContext(false, false);
       // put k in outer loop
       int devicePerThread = deviceCnt / concurrency;
       for (int c = 0; c < concurrency; c++) {
@@ -140,7 +140,7 @@ public class TimeSeriesMetadataCacheTest {
       TimeSeriesMetadataCache.getInstance().clear();
 
       start = System.currentTimeMillis();
-      queryContext = new QueryContext();
+      queryContext = new QueryContext(false, false);
       // put k in inner loop
       for (int c = 0; c < concurrency; c++) {
         final int finalC = c;
@@ -257,10 +257,10 @@ public class TimeSeriesMetadataCacheTest {
                   Mockito.any(LongConsumer.class)))
           .thenThrow(new IOException("missing device"));
 
-      assertNull(cache.get(filePath, key, allSensors, true, false, new QueryContext()));
+      assertNull(cache.get(filePath, key, allSensors, true, false, new QueryContext(false, false)));
       assertThrows(
           IOException.class,
-          () -> cache.get(filePath, key, allSensors, false, false, new QueryContext()));
+          () -> cache.get(filePath, key, allSensors, false, false, new QueryContext(false, false)));
       Mockito.verify(reader)
           .readTimeseriesMetadata(
               Mockito.eq(deviceID),
