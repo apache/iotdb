@@ -28,8 +28,8 @@ import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
-
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -397,9 +397,7 @@ public class SnapshotLoader {
       return;
     }
 
-    String resourceFileName =
-        file.getAbsolutePath()
-            + TsFileResource.RESOURCE_SUFFIX;
+    String resourceFileName = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
     if (!new File(resourceFileName).exists()) {
       LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
     }
