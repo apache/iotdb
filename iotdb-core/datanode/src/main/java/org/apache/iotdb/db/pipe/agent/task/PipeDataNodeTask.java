@@ -68,9 +68,9 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void drop() {
     final long startTime = System.currentTimeMillis();
-    sourceStage.drop();
-    processorStage.drop();
     sinkStage.drop();
+    processorStage.drop();
+    sourceStage.drop();
     LOGGER.info(
         DataNodePipeMessages.DROP_PIPE_DN_TASK_SUCCESSFULLY_WITHIN_MS,
         this,
