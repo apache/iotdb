@@ -392,7 +392,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void checkTsFileResourceExists(File file) throws IOException {
+  private void checkTsFileResourceExists(File file) {
     if (!file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
       return;
     }
