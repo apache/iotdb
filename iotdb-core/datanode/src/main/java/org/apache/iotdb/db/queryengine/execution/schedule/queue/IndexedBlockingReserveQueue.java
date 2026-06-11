@@ -82,6 +82,10 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     return decreaseReservedSizeIfNecessary(element);
   }
 
+  public final synchronized int getReservedSize() {
+    return reservedSize;
+  }
+
   @Override
   public synchronized void clear() {
     super.clear();

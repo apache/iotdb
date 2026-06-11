@@ -42,7 +42,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -225,17 +224,17 @@ public class DefaultDriverSchedulerTest {
 
       DriverTask polledTask = manager.getReadyQueue().poll();
       Assert.assertSame(testTask, polledTask);
-      Assert.assertEquals(1, getReadyQueueReservedSize());
+      Assert.assertEquals(1, manager.getReadyQueueReservedTaskCount());
 
       manager.abortFragmentInstance(instanceId);
 
       Assert.assertEquals(DriverTaskStatus.ABORTED, testTask.getStatus());
       Assert.assertEquals(0, manager.getReadyQueue().size());
-      Assert.assertEquals(0, getReadyQueueReservedSize());
+      Assert.assertEquals(0, manager.getReadyQueueReservedTaskCount());
       Assert.assertFalse(defaultScheduler.readyToRunning(polledTask));
-      Assert.assertEquals(0, getReadyQueueReservedSize());
+      Assert.assertEquals(0, manager.getReadyQueueReservedTaskCount());
     } finally {
-      resetReadyQueueReservedSize();
+      clear();
     }
   }
 
@@ -535,33 +534,6 @@ public class DefaultDriverSchedulerTest {
     manager.getQueryMap().clear();
     manager.getBlockedTasks().clear();
     manager.getReadyQueue().clear();
-    resetReadyQueueReservedSize();
     manager.getTimeoutQueue().clear();
-  }
-
-  private int getReadyQueueReservedSize() throws IllegalAccessException {
-    return getReadyQueueReservedSizeField().getInt(manager.getReadyQueue());
-  }
-
-  private void resetReadyQueueReservedSize() {
-    try {
-      getReadyQueueReservedSizeField().setInt(manager.getReadyQueue(), 0);
-    } catch (IllegalAccessException e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  private Field getReadyQueueReservedSizeField() {
-    Class<?> queueClass = manager.getReadyQueue().getClass();
-    while (queueClass != null) {
-      try {
-        Field reservedSizeField = queueClass.getDeclaredField("reservedSize");
-        reservedSizeField.setAccessible(true);
-        return reservedSizeField;
-      } catch (NoSuchFieldException e) {
-        queueClass = queueClass.getSuperclass();
-      }
-    }
-    throw new AssertionError("Cannot find reservedSize field in readyQueue hierarchy");
   }
 }
