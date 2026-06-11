@@ -704,6 +704,12 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
   }
 
+  public void interruptActiveSupply() {
+    if (Objects.nonNull(historicalSource)) {
+      historicalSource.interruptActiveSupply();
+    }
+  }
+
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getHistoricalTsFileInsertionEventCount() {

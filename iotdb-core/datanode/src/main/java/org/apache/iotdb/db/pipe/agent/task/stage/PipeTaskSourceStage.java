@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -107,5 +108,11 @@ public class PipeTaskSourceStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return pipeExtractor::supply;
+  }
+
+  public void interruptActiveSupply() {
+    if (pipeExtractor instanceof IoTDBDataRegionSource) {
+      ((IoTDBDataRegionSource) pipeExtractor).interruptActiveSupply();
+    }
   }
 }

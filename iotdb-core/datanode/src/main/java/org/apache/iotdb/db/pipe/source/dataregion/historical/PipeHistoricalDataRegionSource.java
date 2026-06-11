@@ -26,4 +26,6 @@ public interface PipeHistoricalDataRegionSource extends PipeExtractor {
   boolean hasConsumedAll();
 
   int getPendingQueueSize();
+
+  default void interruptActiveSupply() {}
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.task;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+import org.apache.iotdb.db.pipe.agent.task.stage.PipeTaskSourceStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,8 +69,12 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void drop() {
     final long startTime = System.currentTimeMillis();
-    // Drop downstream stages first so outbound transfer stops before source cleanup.
     sinkStage.drop();
+    // Interrupt the in-flight supply before dropping processor, so a long historical extraction
+    // does not keep processor stuck in supply().
+    if (sourceStage instanceof PipeTaskSourceStage) {
+      ((PipeTaskSourceStage) sourceStage).interruptActiveSupply();
+    }
     processorStage.drop();
     sourceStage.drop();
     LOGGER.info(

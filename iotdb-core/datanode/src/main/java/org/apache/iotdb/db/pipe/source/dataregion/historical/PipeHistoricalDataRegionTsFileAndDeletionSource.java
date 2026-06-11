@@ -164,7 +164,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private volatile boolean hasBeenStarted = false;
 
-  private volatile boolean isCloseRequested = false;
   private final AtomicReference<Thread> activeSupplyThread = new AtomicReference<>();
 
   private Queue<PersistentResource> pendingQueue;
@@ -482,15 +481,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 
-  private boolean shouldAbortSupply() {
-    return isCloseRequested || Thread.currentThread().isInterrupted();
-  }
-
   @Override
   public synchronized void start() {
-    if (shouldAbortSupply()) {
-      return;
-    }
     if (!shouldExtractInsertion && !shouldExtractDeletion) {
       hasBeenStarted = true;
       return;
@@ -525,7 +517,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
             .ifPresent(manager -> extractDeletions(manager, originalResourceList));
       }
-      if (shouldAbortSupply()) {
+      if (Thread.currentThread().isInterrupted()) {
         return;
       }
 
@@ -659,7 +651,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           .keySet()
           .removeIf(
               resource -> {
-                if (shouldAbortSupply()) {
+                if (Thread.currentThread().isInterrupted()) {
                   return true;
                 }
                 // Pin the resource, in case the file is removed by compaction or anything.
@@ -840,15 +832,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   public synchronized Event supply() {
     activeSupplyThread.set(Thread.currentThread());
     try {
-      if (shouldAbortSupply()) {
-        return null;
-      }
-
       if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
         start();
-        if (shouldAbortSupply()) {
-          return null;
-        }
       }
 
       if (Objects.isNull(pendingQueue)) {
@@ -857,7 +842,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
       final PersistentResource resource = pendingQueue.peek();
       if (resource == null) {
-        return discardEventIfCloseRequested(supplyTerminateEvent());
+        return supplyTerminateEvent();
       }
 
       if (resource instanceof TsFileResource) {
@@ -865,35 +850,20 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
           clearReplicateIndexForResource(tsFileResource);
           pendingQueue.poll();
-          return discardEventIfCloseRequested(
-              supplyProgressReportEvent(tsFileResource.getMaxProgressIndex()));
+          return supplyProgressReportEvent(tsFileResource.getMaxProgressIndex());
         }
 
         final Event event = supplyTsFileEvent(tsFileResource);
         pendingQueue.poll();
-        return discardEventIfCloseRequested(event);
+        return event;
       }
 
       final Event event = supplyDeletionEvent((DeletionResource) resource);
       pendingQueue.poll();
-      return discardEventIfCloseRequested(event);
+      return event;
     } finally {
       activeSupplyThread.compareAndSet(Thread.currentThread(), null);
-      if (isCloseRequested && Thread.currentThread().isInterrupted()) {
-        Thread.interrupted();
-      }
     }
-  }
-
-  private Event discardEventIfCloseRequested(final Event event) {
-    if (!shouldAbortSupply()) {
-      return event;
-    }
-    if (event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event)
-          .clearReferenceCount(PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
-    }
-    return null;
   }
 
   private Event supplyTerminateEvent() {
@@ -1127,12 +1097,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   @Override
-  public boolean hasConsumedAll() {
+  public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return isCloseRequested
-        || hasBeenStarted
-            && (Objects.isNull(pendingQueue) || pendingQueue.isEmpty() && isTerminateSignalSent);
+    return hasBeenStarted
+        && (Objects.isNull(pendingQueue) || pendingQueue.isEmpty() && isTerminateSignalSent);
   }
 
   @Override
@@ -1141,40 +1110,38 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   @Override
-  public void close() {
-    isCloseRequested = true;
+  public void interruptActiveSupply() {
     final Thread supplyThread = activeSupplyThread.get();
     if (supplyThread != null) {
       supplyThread.interrupt();
     }
+  }
 
-    synchronized (this) {
-      if (!isTerminateSignalSent) {
-        PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
-      }
-
-      filteredTsFileResources2TableNames
-          .keySet()
-          .forEach(
-              resource -> {
-                try {
-                  PipeDataNodeResourceManager.tsfile()
-                      .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
-                } catch (final IOException e) {
-                  LOGGER.warn(
-                      DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
-                      pipeName,
-                      dataRegionId,
-                      resource.getTsFilePath());
-                }
-              });
-      filteredTsFileResources2TableNames.clear();
-
-      if (Objects.nonNull(pendingQueue)) {
-        pendingQueue.clear();
-        pendingQueue = null;
-      }
-      pendingResource2ReplicateIndexForIoTV2.clear();
+  @Override
+  public synchronized void close() {
+    if (!isTerminateSignalSent) {
+      PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
     }
+    if (Objects.nonNull(pendingQueue)) {
+      pendingQueue.forEach(
+          resource -> {
+            if (resource instanceof TsFileResource) {
+              try {
+                PipeDataNodeResourceManager.tsfile()
+                    .unpinTsFileResource(
+                        (TsFileResource) resource, shouldTransferModFile, pipeName);
+              } catch (final IOException e) {
+                LOGGER.warn(
+                    DataNodePipeMessages.PIPE_FAILED_TO_UNPIN_TSFILERESOURCE_AFTER_DROPPING,
+                    pipeName,
+                    dataRegionId,
+                    ((TsFileResource) resource).getTsFilePath());
+              }
+            }
+          });
+      pendingQueue.clear();
+      pendingQueue = null;
+    }
+    pendingResource2ReplicateIndexForIoTV2.clear();
   }
 }
