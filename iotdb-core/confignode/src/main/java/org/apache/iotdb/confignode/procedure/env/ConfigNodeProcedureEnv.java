@@ -991,8 +991,11 @@ public class ConfigNodeProcedureEnv {
               dataNodeId, new TPushSubscriptionRuntimeReq().setRuntimeStates(runtimeStates));
         });
 
-    sendRequiredRuntimeMetaRequest(readableDataNodeClientHandler);
-    sendBestEffortRuntimeMetaRequest(unreadableDataNodeClientHandler);
+    final long readableTimeoutInMs = sendRequiredRuntimeMetaRequest(readableDataNodeClientHandler);
+    fillMissingSubscriptionRuntimeResponses(readableDataNodeClientHandler, readableTimeoutInMs);
+    final long unreadableTimeoutInMs =
+        sendBestEffortRuntimeMetaRequest(unreadableDataNodeClientHandler);
+    fillMissingSubscriptionRuntimeResponses(unreadableDataNodeClientHandler, unreadableTimeoutInMs);
 
     final Map<Integer, TSStatus> responseMap =
         new HashMap<>(readableDataNodeClientHandler.getResponseMap());
@@ -1013,9 +1016,11 @@ public class ConfigNodeProcedureEnv {
     return timeoutInMs;
   }
 
-  private static void sendRequiredRuntimeMetaRequest(
+  private static long sendRequiredRuntimeMetaRequest(
       final DataNodeAsyncRequestContext<?, ?> clientHandler) {
-    sendRuntimeMetaRequest(clientHandler, false);
+    final long timeoutInMs = getRuntimeMetaPushTimeoutInMs();
+    sendRuntimeMetaRequest(clientHandler, false, timeoutInMs);
+    return timeoutInMs;
   }
 
   private static void sendRequiredMetadataRequest(
@@ -1110,6 +1115,23 @@ public class ConfigNodeProcedureEnv {
                                 dataNodeId,
                                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
                                 timeoutInMs))));
+  }
+
+  private static void fillMissingSubscriptionRuntimeResponses(
+      final DataNodeAsyncRequestContext<?, TSStatus> clientHandler, final long timeoutInMs) {
+    clientHandler
+        .getRequestIndices()
+        .forEach(
+            dataNodeId ->
+                clientHandler
+                    .getResponseMap()
+                    .putIfAbsent(
+                        dataNodeId,
+                        createMetadataTimeoutStatus(
+                            clientHandler.getRequestType(),
+                            dataNodeId,
+                            TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                            timeoutInMs)));
   }
 
   private static TSStatus createMetadataTimeoutStatus(
