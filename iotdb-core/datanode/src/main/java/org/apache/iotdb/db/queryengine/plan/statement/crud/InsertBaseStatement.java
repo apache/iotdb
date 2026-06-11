@@ -149,6 +149,13 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   /** Flag indicating whether the lower-case transformation has already been applied. */
   private boolean toLowerCaseApplied = false;
 
+  /**
+   * Allow load-tsfile tablet conversion to insert data into invalid physical paths.
+   *
+   * <p>This is only used when the source TsFile explicitly marks its paths as physical paths.
+   */
+  protected boolean allowInsertIntoInvalidSeries = false;
+
   // endregion
 
   public PartialPath getDevicePath() {
@@ -189,6 +196,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   public void setAligned(boolean aligned) {
     isAligned = aligned;
+  }
+
+  public boolean isAllowInsertIntoInvalidSeries() {
+    return allowInsertIntoInvalidSeries;
+  }
+
+  public void setAllowInsertIntoInvalidSeries(final boolean allowInsertIntoInvalidSeries) {
+    this.allowInsertIntoInvalidSeries = allowInsertIntoInvalidSeries;
   }
 
   public TSDataType[] getDataTypes() {

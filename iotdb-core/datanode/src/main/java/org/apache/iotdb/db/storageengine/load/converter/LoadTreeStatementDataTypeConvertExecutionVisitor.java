@@ -114,7 +114,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
 
             final TSStatus result =
                 executeInsertMultiTabletsWithRetry(
-                    tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+                    tabletRawReqs,
+                    loadTsFileStatement.isConvertOnTypeMismatch(),
+                    loadTsFileStatement.isTsFilePhysicalPath());
 
             for (final long memoryCost : tabletRawReqSizes) {
               block.reduceMemoryUsage(memoryCost);
@@ -143,7 +145,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         try {
           final TSStatus result =
               executeInsertMultiTabletsWithRetry(
-                  tabletRawReqs, loadTsFileStatement.isConvertOnTypeMismatch());
+                  tabletRawReqs,
+                  loadTsFileStatement.isConvertOnTypeMismatch(),
+                  loadTsFileStatement.isTsFilePhysicalPath());
 
           for (final long memoryCost : tabletRawReqSizes) {
             block.reduceMemoryUsage(memoryCost);
@@ -191,14 +195,16 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs, final boolean isConvertedOnTypeMismatch) {
+      final List<PipeTransferTabletRawReq> tabletRawReqs,
+      final boolean isConvertedOnTypeMismatch,
+      final boolean isTsFilePhysicalPath) {
     final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
     batchStatement.setInsertTabletStatementList(
         tabletRawReqs.stream()
             .map(
                 req ->
                     new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertedOnTypeMismatch))
+                        req.constructStatement(), isConvertedOnTypeMismatch, isTsFilePhysicalPath))
             .collect(Collectors.toList()));
 
     TSStatus result;

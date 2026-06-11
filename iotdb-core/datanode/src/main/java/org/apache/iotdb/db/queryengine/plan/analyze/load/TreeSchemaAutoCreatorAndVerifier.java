@@ -30,12 +30,14 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.utils.MeasurementPropsUtils;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidTimeSeriesException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
@@ -109,7 +111,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void autoCreateAndVerify(
       TsFileSequenceReader reader,
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws IOException, AuthException, LoadAnalyzeException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -198,14 +200,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
     schemaCache.clearDeviceIsAlignedCacheIfNecessary();
   }
 
-  public void flush() throws AuthException, LoadAnalyzeTypeMismatchException {
+  public void flush() throws AuthException, LoadAnalyzeException {
     doAutoCreateAndVerify();
 
     schemaCache.clearTimeSeries();
   }
 
   private void doAutoCreateAndVerify()
-      throws SemanticException, AuthException, LoadAnalyzeTypeMismatchException {
+      throws SemanticException, AuthException, LoadAnalyzeException {
     if (schemaCache.getDevice2TimeSeries().isEmpty()) {
       return;
     }
@@ -228,12 +230,12 @@ public class TreeSchemaAutoCreatorAndVerifier {
       }
     } catch (AuthException e) {
       throw e;
-    } catch (LoadAnalyzeTypeMismatchException e) {
-      if (loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
-        // throw exception to convert data type in the upper layer (LoadTsFileAnalyzer)
-        throw e;
-      } else {
+    } catch (LoadAnalyzeException e) {
+      if (e instanceof LoadAnalyzeTypeMismatchException
+          && !loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
         handleException(e, loadTsFileAnalyzer.getStatementString());
+      } else {
+        throw e;
       }
     } catch (Exception e) {
       if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
@@ -480,6 +482,22 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   "Measurement %s does not exist in IoTDB and can not be created. "
                       + "Please check weather auto-create-schema is enabled.",
                   device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
+        }
+
+        if (MeasurementPropsUtils.isInvalid(iotdbSchema.getProps())
+            && !loadTsFileAnalyzer.isTsFilePhysicalPath()) {
+          throw new LoadAnalyzeInvalidTimeSeriesException(
+              String.format(
+                  "Measurement %s%s%s is an invalid timeseries in IoTDB and cannot accept load data.",
+                  device, TsFileConstant.PATH_SEPARATOR, tsFileSchema.getMeasurementName()));
+        }
+
+        if (MeasurementPropsUtils.isRenamed(iotdbSchema.getProps())) {
+          throw new LoadAnalyzeException(
+              String.format(
+                  "Measurement %s%s%s is a renamed timeseries in IoTDB. "
+                      + "Load TsFile will fall back to tablet conversion for alias series support.",
+                  device, TsFileConstant.PATH_SEPARATOR, tsFileSchema.getMeasurementName()));
         }
 
         // check datatype

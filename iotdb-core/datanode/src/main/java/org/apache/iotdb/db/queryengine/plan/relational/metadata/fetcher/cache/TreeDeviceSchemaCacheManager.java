@@ -326,7 +326,7 @@ public class TreeDeviceSchemaCacheManager {
                   null,
                   originalSeriesMeasurementPath.getTagMap(),
                   null),
-              originalSeriesMeasurementPath.isUnderAlignedEntity());
+              treeSchema.isAligned());
         }
       }
     }

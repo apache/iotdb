@@ -60,6 +60,7 @@ public class LoadTsFile extends Statement {
   private boolean autoCreateDatabase;
   private boolean verify;
   private boolean isAsyncLoad = false;
+  private boolean tsFileIsPhysicalPath = false;
 
   private boolean isGeneratedByPipe = false;
 
@@ -175,6 +176,15 @@ public class LoadTsFile extends Statement {
     return isAsyncLoad;
   }
 
+  public boolean isTsFilePhysicalPath() {
+    return tsFileIsPhysicalPath;
+  }
+
+  public LoadTsFile setTsFileIsPhysicalPath(final boolean tsFileIsPhysicalPath) {
+    this.tsFileIsPhysicalPath = tsFileIsPhysicalPath;
+    return this;
+  }
+
   public void markIsGeneratedByPipe() {
     isGeneratedByPipe = true;
   }
@@ -259,6 +269,8 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.tsFileIsPhysicalPath =
+        LoadTsFileConfigurator.parseOrGetDefaultTsFileIsPhysicalPath(loadAttributes);
     this.isGeneratedByPipe = LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes);
     this.objectFileSearchRoot = LoadTsFileConfigurator.parseObjectFileSearchRoot(loadAttributes);
   }
@@ -362,6 +374,7 @@ public class LoadTsFile extends Statement {
       subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
       subStatement.autoCreateDatabase = this.autoCreateDatabase;
       subStatement.isAsyncLoad = this.isAsyncLoad;
+      subStatement.tsFileIsPhysicalPath = this.tsFileIsPhysicalPath;
       subStatement.isGeneratedByPipe = this.isGeneratedByPipe;
       subStatement.objectFileSearchRoot = this.objectFileSearchRoot;
 

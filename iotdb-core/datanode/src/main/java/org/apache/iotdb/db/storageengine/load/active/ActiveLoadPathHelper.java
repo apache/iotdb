@@ -52,6 +52,7 @@ public final class ActiveLoadPathHelper {
               LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY,
               LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY,
               LoadTsFileConfigurator.VERIFY_KEY,
+              LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY,
               LoadTsFileConfigurator.DATABASE_KEY,
               LoadTsFileConfigurator.PIPE_GENERATED_KEY));
 
@@ -65,7 +66,8 @@ public final class ActiveLoadPathHelper {
       final Boolean convertOnTypeMismatch,
       final Boolean verify,
       final Long tabletConversionThresholdBytes,
-      final Boolean pipeGenerated) {
+      final Boolean pipeGenerated,
+      final Boolean tsFileIsPhysicalPath) {
     final Map<String, String> attributes = new LinkedHashMap<>();
     if (Objects.nonNull(databaseName) && !databaseName.isEmpty()) {
       attributes.put(LoadTsFileConfigurator.DATABASE_NAME_KEY, databaseName);
@@ -89,6 +91,10 @@ public final class ActiveLoadPathHelper {
 
     if (Objects.nonNull(verify)) {
       attributes.put(LoadTsFileConfigurator.VERIFY_KEY, Boolean.toString(verify));
+    }
+
+    if (Objects.nonNull(tsFileIsPhysicalPath) && tsFileIsPhysicalPath) {
+      attributes.put(LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY, Boolean.TRUE.toString());
     }
 
     if (Objects.nonNull(pipeGenerated) && pipeGenerated) {
@@ -196,6 +202,11 @@ public final class ActiveLoadPathHelper {
       statement.setVerifySchema(defaultVerify);
     }
 
+    if (attributes.containsKey(LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY)) {
+      statement.setTsFileIsPhysicalPath(
+          Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY)));
+    }
+
     if (attributes.containsKey(LoadTsFileConfigurator.PIPE_GENERATED_KEY)
         && Boolean.parseBoolean(attributes.get(LoadTsFileConfigurator.PIPE_GENERATED_KEY))) {
       statement.markIsGeneratedByPipe();
@@ -254,6 +265,9 @@ public final class ActiveLoadPathHelper {
         break;
       case LoadTsFileConfigurator.VERIFY_KEY:
         LoadTsFileConfigurator.validateVerifyParam(value);
+        break;
+      case LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY:
+        LoadTsFileConfigurator.validateTsFileIsPhysicalPathParam(value);
         break;
       default:
         LoadTsFileConfigurator.validateParameters(key, value);

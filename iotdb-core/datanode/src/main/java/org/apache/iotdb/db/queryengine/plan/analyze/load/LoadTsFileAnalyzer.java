@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeInvalidTimeSeriesException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
@@ -118,6 +119,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
+  private final boolean isTsFilePhysicalPath;
   private final long tabletConversionThresholdBytes;
 
   // Schema creators for tree and table
@@ -145,6 +147,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
+    this.isTsFilePhysicalPath = loadTsFileStatement.isTsFilePhysicalPath();
     this.tabletConversionThresholdBytes = loadTsFileStatement.getTabletConversionThresholdBytes();
   }
 
@@ -169,6 +172,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
+    this.isTsFilePhysicalPath = loadTsFileTableStatement.isTsFilePhysicalPath();
     this.tabletConversionThresholdBytes =
         loadTsFileTableStatement.getTabletConversionThresholdBytes();
   }
@@ -191,6 +195,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected boolean isConvertOnTypeMismatch() {
     return isConvertOnTypeMismatch;
+  }
+
+  protected boolean isTsFilePhysicalPath() {
+    return isTsFilePhysicalPath;
   }
 
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
@@ -292,7 +300,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               isConvertOnTypeMismatch,
               isVerifySchema,
               tabletConversionThresholdBytes,
-              isGeneratedByPipe);
+              isGeneratedByPipe,
+              isTsFilePhysicalPath);
 
       if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
         analysis.setFinishQueryAfterAnalyze(true);
@@ -448,16 +457,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
           new LoadTsFileDataTypeConverter(context, isGeneratedByPipe);
 
+      final boolean isTableModel = Boolean.TRUE.equals(isTableModelTsFile.get(i));
       final TSStatus status =
-          isTableModelTsFile.get(i)
+          isTableModel
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(createTableModelConversionStatement(tsFiles.get(i)))
                   .orElse(null)
               : loadTsFileDataTypeConverter
-                  .convertForTreeModel(
-                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
-                          .setDeleteAfterLoad(isDeleteAfterLoad)
-                          .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                  .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
                   .orElse(null);
 
       if (status == null || !loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -790,16 +797,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     for (int i = 0; i < tsFiles.size(); i++) {
       final long startTime = System.nanoTime();
       try {
+        final boolean isTableModel = Boolean.TRUE.equals(isTableModelTsFile.get(i));
         final TSStatus status =
-            isTableModelTsFile.get(i)
+            isTableModel
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(createTableModelConversionStatement(tsFiles.get(i)))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
-                    .convertForTreeModel(
-                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
-                            .setDeleteAfterLoad(isDeleteAfterLoad)
-                            .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
+                    .convertForTreeModel(createTreeConversionStatement(tsFiles.get(i)))
                     .orElse(null);
 
         if (status == null) {
@@ -837,7 +842,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
+    return ((e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch)
+        || e instanceof LoadAnalyzeInvalidTimeSeriesException;
+  }
+
+  private LoadTsFileStatement createTreeConversionStatement(final File tsFile)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getPath())
+            .setDeleteAfterLoad(isDeleteAfterLoad)
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+    statement.setTsFileIsPhysicalPath(isTsFilePhysicalPath);
+    return statement;
   }
 
   private LoadTsFile createTableModelConversionStatement(final File tsFile)
@@ -851,7 +867,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                     : Collections.emptyMap())
             .setDatabase(databaseForTableData)
             .setDeleteAfterLoad(isDeleteAfterLoad)
-            .setConvertOnTypeMismatch(isConvertOnTypeMismatch);
+            .setConvertOnTypeMismatch(isConvertOnTypeMismatch)
+            .setTsFileIsPhysicalPath(isTsFilePhysicalPath);
 
     if (isGeneratedByPipe) {
       statement.markIsGeneratedByPipe();

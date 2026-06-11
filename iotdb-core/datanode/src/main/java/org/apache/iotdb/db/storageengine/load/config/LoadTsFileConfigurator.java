@@ -62,6 +62,9 @@ public class LoadTsFileConfigurator {
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
         break;
+      case TSFILE_IS_PHYSICAL_PATH_KEY:
+        validateTsFileIsPhysicalPathParam(value);
+        break;
       case OBJECT_FILE_PATHS_KEY:
         validateObjectFilePathsParam(value);
         break;
@@ -222,6 +225,26 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+  }
+
+  public static final String TSFILE_IS_PHYSICAL_PATH_KEY = "tsfile-is-physical-path";
+  private static final boolean TSFILE_IS_PHYSICAL_PATH_DEFAULT_VALUE = false;
+
+  public static void validateTsFileIsPhysicalPathParam(final String tsFileIsPhysicalPath) {
+    if (!"true".equalsIgnoreCase(tsFileIsPhysicalPath)
+        && !"false".equalsIgnoreCase(tsFileIsPhysicalPath)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              TSFILE_IS_PHYSICAL_PATH_KEY, tsFileIsPhysicalPath));
+    }
+  }
+
+  public static boolean parseOrGetDefaultTsFileIsPhysicalPath(
+      final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            TSFILE_IS_PHYSICAL_PATH_KEY, String.valueOf(TSFILE_IS_PHYSICAL_PATH_DEFAULT_VALUE)));
   }
 
   public static final String OBJECT_FILE_PATHS_KEY = "object-file-path";

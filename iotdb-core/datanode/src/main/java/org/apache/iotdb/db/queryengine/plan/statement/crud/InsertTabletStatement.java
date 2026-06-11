@@ -372,7 +372,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setTimes(this.times);
       statement.setDevicePath(entry.getKey());
       statement.setRowCount(this.rowCount);
-      statement.setAligned(this.isAligned);
+      boolean deviceAligned = this.isAligned;
       Object[] copiedColumns = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       BitMap[] copiedBitMaps = new BitMap[pairList.size()];
@@ -389,9 +389,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           copiedBitMaps[i] = this.nullBitMaps[realIndex];
         }
         if (this.measurementIsAligned != null) {
-          statement.setAligned(this.measurementIsAligned[realIndex]);
+          deviceAligned |= this.measurementIsAligned[realIndex];
         }
       }
+      statement.setAligned(deviceAligned);
       statement.setColumns(copiedColumns);
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
@@ -506,7 +507,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           Map<String, String> props = schema.getProps();
           if (props != null) {
             // Check if this is an invalid series - throw exception if so
-            if (MeasurementPropsUtils.isInvalid(props)) {
+            if (MeasurementPropsUtils.isInvalid(props) && !allowInsertIntoInvalidSeries) {
               PartialPath fullPath = devicePath.concatAsMeasurementPath(measurements[index]);
               throw new SemanticException(
                   String.format(
@@ -590,6 +591,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       Arrays.fill(this.measurementIsAligned, this.isAligned);
     }
     this.measurementIsAligned[index] = isAligned;
+    if (isAligned) {
+      this.isAligned = true;
+    }
     try {
       selfCheckDataTypes(index);
     } catch (DataTypeMismatchException | PathNotExistException e) {

@@ -38,8 +38,18 @@ public class LoadConvertedInsertTabletStatement extends PipeConvertedInsertTable
   public LoadConvertedInsertTabletStatement(
       final InsertTabletStatement insertTabletStatement,
       final boolean shouldConvertOnTypeMismatch) {
+    this(insertTabletStatement, shouldConvertOnTypeMismatch, false);
+  }
+
+  public LoadConvertedInsertTabletStatement(
+      final InsertTabletStatement insertTabletStatement,
+      final boolean shouldConvertOnTypeMismatch,
+      final boolean isTsFilePhysicalPath) {
     super(insertTabletStatement);
     this.shouldConvertOnTypeMismatch = shouldConvertOnTypeMismatch;
+    if (isTsFilePhysicalPath) {
+      setAllowInsertIntoInvalidSeries(true);
+    }
   }
 
   @Override

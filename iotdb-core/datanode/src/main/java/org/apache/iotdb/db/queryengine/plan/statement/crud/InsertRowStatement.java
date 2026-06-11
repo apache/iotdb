@@ -367,7 +367,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       statement.setTime(this.time);
       statement.setNeedInferType(this.isNeedInferType);
       statement.setDevicePath(entry.getKey());
-      statement.setAligned(this.isAligned);
+      boolean deviceAligned = this.isAligned;
       Object[] copiedValues = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
@@ -380,9 +380,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.measurementIsAligned != null) {
-          statement.setAligned(this.measurementIsAligned[realIndex]);
+          deviceAligned |= this.measurementIsAligned[realIndex];
         }
       }
+      statement.setAligned(deviceAligned);
       statement.setValues(copiedValues);
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
@@ -475,7 +476,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           Map<String, String> props = schema.getProps();
           if (props != null) {
             // Check if this is an invalid series - throw exception if so
-            if (MeasurementPropsUtils.isInvalid(props)) {
+            if (MeasurementPropsUtils.isInvalid(props) && !allowInsertIntoInvalidSeries) {
               PartialPath fullPath = devicePath.concatAsMeasurementPath(measurements[index]);
               throw new SemanticException(
                   String.format(
@@ -564,6 +565,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       Arrays.fill(this.measurementIsAligned, this.isAligned);
     }
     this.measurementIsAligned[index] = isAligned;
+    if (isAligned) {
+      this.isAligned = true;
+    }
     if (!isNeedInferType) {
       try {
         selfCheckDataTypes(index);

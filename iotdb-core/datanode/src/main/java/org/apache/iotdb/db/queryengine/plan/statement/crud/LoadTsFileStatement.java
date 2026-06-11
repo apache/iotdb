@@ -57,6 +57,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TSFILE_IS_PHYSICAL_PATH_KEY;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -70,6 +71,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
   private boolean isAsyncLoad = false;
+  private boolean tsFileIsPhysicalPath = false;
 
   private List<File> tsFiles;
   private List<Boolean> isTableModel;
@@ -359,6 +361,14 @@ public class LoadTsFileStatement extends Statement {
     return isAsyncLoad;
   }
 
+  public void setTsFileIsPhysicalPath(final boolean tsFileIsPhysicalPath) {
+    this.tsFileIsPhysicalPath = tsFileIsPhysicalPath;
+  }
+
+  public boolean isTsFilePhysicalPath() {
+    return tsFileIsPhysicalPath;
+  }
+
   private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
@@ -369,6 +379,8 @@ public class LoadTsFileStatement extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.tsFileIsPhysicalPath =
+        LoadTsFileConfigurator.parseOrGetDefaultTsFileIsPhysicalPath(loadAttributes);
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
@@ -484,6 +496,7 @@ public class LoadTsFileStatement extends Statement {
       statement.autoCreateDatabase = this.autoCreateDatabase;
       statement.isAsyncLoad = this.isAsyncLoad;
       statement.isGeneratedByPipe = this.isGeneratedByPipe;
+      statement.tsFileIsPhysicalPath = this.tsFileIsPhysicalPath;
       statement.objectFileSearchRoot = this.objectFileSearchRoot;
 
       statement.tsFiles = new ArrayList<>(batchFiles);
@@ -525,6 +538,7 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
+    loadAttributes.put(TSFILE_IS_PHYSICAL_PATH_KEY, String.valueOf(tsFileIsPhysicalPath));
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }
@@ -565,6 +579,8 @@ public class LoadTsFileStatement extends Statement {
         + tabletConversionThresholdBytes
         + ", async-load="
         + isAsyncLoad
+        + ", tsfile-is-physical-path="
+        + tsFileIsPhysicalPath
         + ", tsFiles size="
         + tsFiles.size()
         + '}';

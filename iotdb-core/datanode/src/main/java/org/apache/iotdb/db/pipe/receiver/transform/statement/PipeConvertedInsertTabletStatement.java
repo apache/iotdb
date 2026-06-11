@@ -51,6 +51,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
     writeToTable = insertTabletStatement.isWriteToTable();
     databaseName = insertTabletStatement.getDatabaseName().orElse(null);
+    allowInsertIntoInvalidSeries = insertTabletStatement.isAllowInsertIntoInvalidSeries();
     // InsertTabletStatement
     times = insertTabletStatement.getTimes();
     nullBitMaps = insertTabletStatement.getBitMaps();
