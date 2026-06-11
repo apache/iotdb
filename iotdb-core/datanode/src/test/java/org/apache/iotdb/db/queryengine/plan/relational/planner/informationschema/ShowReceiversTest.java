@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschema;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
@@ -27,6 +30,7 @@ import org.junit.Test;
 
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CONNECTION_COUNT_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_HANDSHAKE_TIME_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LAST_TRANSFER_TIME_TABLE_MODEL;
@@ -40,6 +44,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_PORTS_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.infoSchemaTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 
@@ -81,5 +86,19 @@ public class ShowReceiversTest {
         output(
             infoSchemaTableScan(
                 "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS)));
+  }
+
+  @Test
+  public void testSelectReceiversWithProtocolFilter() {
+    final LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan("select * from information_schema.receivers where protocol='thrift'");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            filter(
+                new ComparisonExpression(
+                    EQUAL, new SymbolReference(PROTOCOL_TABLE_MODEL), new StringLiteral("thrift")),
+                infoSchemaTableScan(
+                    "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS))));
   }
 }

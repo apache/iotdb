@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -29,6 +31,7 @@ import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ShowReceiversOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -54,11 +57,13 @@ public class InformationSchemaReceiversSupplierTest {
   @Before
   public void setUp() {
     registry.clear();
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
   }
 
   @After
   public void tearDown() {
     registry.clear();
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
   }
 
   @Test
@@ -166,6 +171,76 @@ public class InformationSchemaReceiversSupplierTest {
     assertEquals(2, tsBlock.getPositionCount());
     assertEquals("user1", getText(tsBlock, 8, 0));
     assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(supplier.hasNext());
+  }
+
+  @Test
+  public void testReceiversSupplierSystemUserSeesAllReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final User systemUser = new User("system_user", "password");
+    systemUser.grantSysPrivilege(PrivilegeType.SYSTEM, false);
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(systemUser.getName(), systemUser);
+
+    final InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier supplier =
+        InformationSchemaContentSupplierFactory.getSupplier(
+            null, dataTypes(), new UserEntity(2L, "system_user", "127.0.0.1"), receiversScanNode());
+
+    assertTrue(supplier.hasNext());
+    final TsBlock tsBlock = supplier.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("user1", getText(tsBlock, 8, 0));
+    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(supplier.hasNext());
+  }
+
+  @Test
+  public void testReceiversSupplierMatchesShowReceiversOutput() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.markTransfer("data-1", 200);
+
+    final ShowReceiversOperator showReceiversOperator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"), rootUser());
+    assertTrue(showReceiversOperator.hasNext());
+    final TsBlock showReceiversTsBlock = showReceiversOperator.next();
+    final InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier supplier =
+        InformationSchemaContentSupplierFactory.getSupplier(
+            null, dataTypes(), rootUser(), receiversScanNode());
+    assertTrue(supplier.hasNext());
+    final TsBlock informationSchemaTsBlock = supplier.next();
+
+    assertEquals(
+        showReceiversTsBlock.getPositionCount(), informationSchemaTsBlock.getPositionCount());
+    assertEquals(1, informationSchemaTsBlock.getPositionCount());
+    for (int columnIndex : new int[] {0, 2, 3, 4, 7, 8, 9}) {
+      assertEquals(
+          getText(showReceiversTsBlock, columnIndex),
+          getText(informationSchemaTsBlock, columnIndex));
+    }
+    assertEquals(
+        showReceiversTsBlock.getColumn(1).getInt(0),
+        informationSchemaTsBlock.getColumn(1).getInt(0));
+    assertEquals(
+        showReceiversTsBlock.getColumn(5).getInt(0),
+        informationSchemaTsBlock.getColumn(5).getInt(0));
+    assertEquals(
+        showReceiversTsBlock.getColumn(6).getInt(0),
+        informationSchemaTsBlock.getColumn(6).getInt(0));
     assertFalse(supplier.hasNext());
   }
 

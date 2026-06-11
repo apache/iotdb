@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
@@ -55,11 +57,13 @@ public class ShowReceiversOperatorTest {
   @Before
   public void setUp() {
     registry.clear();
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
   }
 
   @After
   public void tearDown() {
     registry.clear();
+    AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
   }
 
   @Test
@@ -174,6 +178,30 @@ public class ShowReceiversOperatorTest {
             new PlanNodeId("show-receivers"),
             new UserEntity(
                 AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "127.0.0.1"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("user1", getText(tsBlock, 8, 0));
+    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
+  public void testSystemUserSeesAllReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final User systemUser = new User("system_user", "password");
+    systemUser.grantSysPrivilege(PrivilegeType.SYSTEM, false);
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(systemUser.getName(), systemUser);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(
+            null, new PlanNodeId("show-receivers"), new UserEntity(2L, "system_user", "127.0.0.1"));
 
     assertTrue(operator.hasNext());
     final TsBlock tsBlock = operator.next();

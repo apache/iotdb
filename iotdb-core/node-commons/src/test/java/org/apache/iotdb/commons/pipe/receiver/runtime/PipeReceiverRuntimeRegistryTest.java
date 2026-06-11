@@ -389,6 +389,66 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testMultipleConnectionsAndDuplicatePipeAggregationDoesNotInflatePipeCount() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession("data-2", 1, "10.0.0.1", 9002, "root", "cluster-a", "pipe-a", 1, 200);
+    registerDataSession("data-3", 1, "10.0.0.1", -1, "root", "cluster-a", "pipe-b", 2, 150);
+
+    registry.markTransfer("data-1", 300);
+    registry.markTransfer("data-2", 250);
+    registry.markTransfer("data-1", 50);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
+    assertEquals(3, snapshot.getConnectionCount());
+    assertEquals("Unknown,9001,9002", snapshot.getSenderPorts());
+    assertEquals(2, snapshot.getPipeCount());
+    assertTrue(snapshot.getPipeIds().contains("pipe-a@"));
+    assertTrue(snapshot.getPipeIds().contains("pipe-b@"));
+    assertEquals(200, snapshot.getLastHandshakeTime());
+    assertEquals(300, snapshot.getLastTransferTime());
+  }
+
+  @Test
+  public void testBlankAndMalformedRuntimeFieldsFallbackToUnknown() {
+    registry.registerOrUpdateSession(
+        "   ",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    assertTrue(registry.snapshot().isEmpty());
+
+    registry.registerOrUpdateSession(
+        "data-blank", " ", -1, "\t", "", -1, "\n", " ", "pipe-legacy", Long.MIN_VALUE, 0);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getReceiverNodeType());
+    assertEquals(-1, snapshot.getReceiverNodeId());
+    assertFalse(snapshot.isReceiverNodeIdKnown());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getProtocol());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getSenderAddress());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getSenderPorts());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getUserName());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshot.getSenderClusterId());
+    assertEquals(1, snapshot.getPipeCount());
+    assertEquals("pipe-legacy@Unknown", snapshot.getPipeIds());
+    assertEquals(0, snapshot.getLastHandshakeTime());
+    assertEquals(0, snapshot.getLastTransferTime());
+  }
+
+  @Test
   public void testRegisterOrUpdateSessionClearsPipeId() {
     registry.registerOrUpdateSession(
         "config-1",
