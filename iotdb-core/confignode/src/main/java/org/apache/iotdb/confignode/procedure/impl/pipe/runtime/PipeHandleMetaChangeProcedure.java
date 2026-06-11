@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.i18n.ProcedureMessages;
@@ -80,7 +81,8 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMVALIDATETASK);
+    PipeLogger.log(
+        LOGGER::info, ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMVALIDATETASK);
 
     // Do nothing
     return true;
@@ -88,14 +90,17 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
 
     // Do nothing
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
+    PipeLogger.log(
+        LOGGER::info,
         ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMWRITECONFIGNODECONSENSUS);
 
     if (!needWriteConsensusOnConfigNodes) {
@@ -114,7 +119,10 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
               .getConsensusManager()
               .write(new PipeHandleMetaChangePlan(pipeMetaList));
     } catch (ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -125,7 +133,8 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
+    PipeLogger.log(
+        LOGGER::info, ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_EXECUTEFROMHANDLEONDATANODES);
 
     if (!needPushPipeMetaToDataNodes) {
       return;
@@ -136,21 +145,25 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMVALIDATETASK);
+    PipeLogger.log(
+        LOGGER::info, ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMVALIDATETASK);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info(
+    PipeLogger.log(
+        LOGGER::info,
         ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMWRITECONFIGNODECONSENSUS);
 
     // Do nothing
@@ -158,7 +171,9 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info(ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
+    PipeLogger.log(
+        LOGGER::info,
+        ProcedureMessages.PIPEHANDLEMETACHANGEPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Do nothing
   }

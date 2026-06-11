@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnviro
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionSinkMetrics;
@@ -105,10 +106,10 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       try {
         source.close();
       } catch (Exception closeException) {
-        LOGGER.warn(
-            ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR
-                + "Ignore this exception.",
-            closeException);
+        PipeLogger.log(
+            LOGGER::warn,
+            closeException,
+            ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR);
       }
       throw e;
     }
@@ -154,9 +155,11 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       try {
         outputPipeSink.close();
       } catch (final Exception closeException) {
-        LOGGER.warn(
+        PipeLogger.log(
+            LOGGER::warn,
+            closeException,
             ManagerMessages.FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE,
-            closeException);
+            closeException.getMessage());
       }
       throw e;
     }
@@ -208,19 +211,19 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     try {
       source.close();
     } catch (final Exception e) {
-      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEEXTRACTOR, e);
+      PipeLogger.log(LOGGER::info, e, ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEEXTRACTOR);
     }
 
     try {
       processor.close();
     } catch (final Exception e) {
-      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEPROCESSOR, e);
+      PipeLogger.log(LOGGER::info, e, ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPEPROCESSOR);
     }
 
     try {
       outputPipeSink.close();
     } catch (final Exception e) {
-      LOGGER.info(ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPECONNECTOR, e);
+      PipeLogger.log(LOGGER::info, e, ManagerMessages.ERROR_OCCURRED_DURING_CLOSING_PIPECONNECTOR);
     } finally {
       // Should be after connector.close()
       super.close();
