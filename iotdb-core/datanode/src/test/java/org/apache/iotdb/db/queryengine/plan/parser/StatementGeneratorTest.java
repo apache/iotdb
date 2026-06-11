@@ -188,8 +188,13 @@ public class StatementGeneratorTest {
         StatementGenerator.createStatement("show receivers", ZonedDateTime.now().getOffset());
     Assert.assertTrue(showReceivers instanceof ShowReceiversStatement);
     Assert.assertEquals(
-        new SortItem("ReceiverNodeType", Ordering.ASC),
-        ((ShowReceiversStatement) showReceivers).getSortItemList().get(0));
+        Arrays.asList(
+            new SortItem("ReceiverNodeType", Ordering.ASC),
+            new SortItem("ReceiverNodeId", Ordering.ASC),
+            new SortItem("Protocol", Ordering.ASC),
+            new SortItem("SenderAddress", Ordering.ASC),
+            new SortItem("UserName", Ordering.ASC)),
+        ((ShowReceiversStatement) showReceivers).getSortItemList());
   }
 
   @Test

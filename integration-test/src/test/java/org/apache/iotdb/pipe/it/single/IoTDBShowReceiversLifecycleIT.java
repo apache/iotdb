@@ -83,6 +83,24 @@ public class IoTDBShowReceiversLifecycleIT {
         "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
   }
 
+  @Test
+  public void testShowReceiversPipeIdsDisappearAfterStopPipe() {
+    final String database = "root.show_receivers_lifecycle_stop";
+    final String pipeName = "show_receivers_lifecycle_stop_pipe";
+
+    createWriteBackPipe(database, pipeName);
+
+    assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
+    assertShowReceivers(
+        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
+
+    TestUtils.executeNonQueries(env, Collections.singletonList("stop pipe " + pipeName), null);
+
+    assertShowReceiversDoesNotContainPipe("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
+    assertShowReceiversDoesNotContainPipe(
+        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
+  }
+
   private void createWriteBackPipe(final String database, final String pipeName) {
     TestUtils.executeNonQueries(
         env,
