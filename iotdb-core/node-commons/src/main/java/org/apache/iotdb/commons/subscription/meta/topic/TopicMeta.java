@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -160,24 +161,24 @@ public class TopicMeta {
   public void transferOwner(
       final String ownerId, final long ownerEpoch, final Long ownerLeaseDurationMs) {
     if (Objects.isNull(ownerId) || ownerId.isEmpty()) {
-      throw new IllegalArgumentException("Subscription topic owner id should not be empty");
+      throw new IllegalArgumentException(SubscriptionMessages.OWNER_ID_SHOULD_NOT_BE_EMPTY);
     }
     if (ownerEpoch < 0) {
-      throw new IllegalArgumentException("Subscription topic owner epoch should not be negative");
+      throw new IllegalArgumentException(SubscriptionMessages.OWNER_EPOCH_SHOULD_NOT_BE_NEGATIVE);
     }
     if (isOwnerFencingEnabled() && ownerEpoch <= this.ownerEpoch) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner epoch should increase monotonically, current epoch is %s,"
-                  + " incoming epoch is %s",
-              this.ownerEpoch, ownerEpoch));
+              SubscriptionMessages.OWNER_EPOCH_SHOULD_INCREASE_MONOTONICALLY,
+              this.ownerEpoch,
+              ownerEpoch));
     }
     if (Objects.nonNull(ownerLeaseDurationMs) && ownerLeaseDurationMs <= 0) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner lease duration should be positive, topic: %s,"
-                  + " owner-lease-duration-ms: %s",
-              topicName, ownerLeaseDurationMs));
+              SubscriptionMessages.OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE,
+              topicName,
+              ownerLeaseDurationMs));
     }
 
     this.ownerId = ownerId;
@@ -358,8 +359,7 @@ public class TopicMeta {
         && updatedTopicMeta.getOwnerEpoch() <= currentTopicMeta.getMaxOwnerEpoch()) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner epoch should never be reused, topic: %s, max granted"
-                  + " owner-epoch: %s, incoming owner-id: %s, incoming owner-epoch: %s",
+              SubscriptionMessages.OWNER_EPOCH_SHOULD_NEVER_BE_REUSED,
               currentTopicMeta.getTopicName(),
               currentTopicMeta.getMaxOwnerEpoch(),
               updatedTopicMeta.getOwnerId(),
@@ -373,8 +373,7 @@ public class TopicMeta {
     if (!updatedTopicMeta.isOwnerFencingEnabled()) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner should not be cleared by stale topic meta, topic: %s,"
-                  + " current owner-id: %s, current owner-epoch: %s",
+              SubscriptionMessages.OWNER_SHOULD_NOT_BE_CLEARED_BY_STALE_META,
               currentTopicMeta.getTopicName(),
               currentTopicMeta.getOwnerId(),
               currentTopicMeta.getOwnerEpoch()));
@@ -388,9 +387,7 @@ public class TopicMeta {
     if (epochRollback || sameEpochOwnerChanged) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner epoch should not roll back, topic: %s, current owner-id:"
-                  + " %s, current owner-epoch: %s, incoming owner-id: %s, incoming owner-epoch:"
-                  + " %s",
+              SubscriptionMessages.OWNER_EPOCH_SHOULD_NOT_ROLL_BACK,
               currentTopicMeta.getTopicName(),
               currentTopicMeta.getOwnerId(),
               currentTopicMeta.getOwnerEpoch(),
@@ -417,7 +414,7 @@ public class TopicMeta {
     if (Objects.isNull(configuredOwnerEpoch)) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner epoch should be set when %s is set",
+              SubscriptionMessages.OWNER_EPOCH_SHOULD_BE_SET_WHEN_OWNER_ID_SET,
               TopicConstant.OWNER_ID_KEY));
     }
     final Long ownerLeaseDurationMs =
@@ -425,7 +422,7 @@ public class TopicMeta {
     if (Objects.nonNull(ownerLeaseDurationMs) && ownerLeaseDurationMs <= 0) {
       throw new IllegalArgumentException(
           String.format(
-              "Subscription topic owner lease duration should be positive when %s is set",
+              SubscriptionMessages.OWNER_LEASE_DURATION_SHOULD_BE_POSITIVE_WHEN_SET,
               TopicConstant.OWNER_LEASE_DURATION_MS_KEY));
     }
     transferOwner(configuredOwnerId, configuredOwnerEpoch, ownerLeaseDurationMs);

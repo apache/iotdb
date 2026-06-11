@@ -175,7 +175,7 @@ public class SubscriptionCoordinator {
     final TSStatus status = configManager.getProcedureManager().alterTopic(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Failed to alter topic {} with attributes {}, result status is {}.",
+          ManagerMessages.FAILED_TO_ALTER_TOPIC_WITH_ATTRIBUTES_RESULT_STATUS,
           req.getTopicName(),
           req.getTopicAttributes(),
           status);
