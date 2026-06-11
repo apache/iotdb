@@ -53,10 +53,14 @@ public class TestLockRegime extends TestProcedureBase {
     SimpleProcedureScheduler scheduler = new SimpleProcedureScheduler();
     scheduler.start();
 
+    NoopProcedure lockOwner = new NoopProcedure();
+    lockOwner.setProcId(0);
+    Assert.assertTrue(lockQueue.tryLock(lockOwner));
+
     NoopProcedure procedure = new NoopProcedure();
     procedure.setProcId(1);
-    lockQueue.waitProcedure(procedure);
-    lockQueue.waitProcedure(procedure);
+    lockQueue.waitProcedure(procedure, scheduler);
+    lockQueue.waitProcedure(procedure, scheduler);
 
     Assert.assertEquals(1, lockQueue.wakeWaitingProcedures(scheduler));
     Assert.assertEquals(1, scheduler.size());

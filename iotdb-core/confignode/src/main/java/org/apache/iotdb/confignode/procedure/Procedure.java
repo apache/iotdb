@@ -238,6 +238,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
+   * Called after an execution attempt returns {@link ProcedureLockState#LOCK_EVENT_WAIT}. Override
+   * it to put the procedure into the corresponding lock wait queue.
+   *
+   * @param env env
+   */
+  protected void waitForLock(Env env) {
+    // no op
+  }
+
+  /**
    * Used to keep procedure lock even when the procedure is yielded or suspended.
    *
    * @param env env

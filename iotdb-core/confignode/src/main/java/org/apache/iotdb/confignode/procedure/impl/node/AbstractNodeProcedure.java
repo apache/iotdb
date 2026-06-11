@@ -50,8 +50,19 @@ public abstract class AbstractNodeProcedure<TState>
       LOG.info(
           "procedureId {} acquire lock failed, will wait for lock after finishing execution.",
           getProcId());
-      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
       return ProcedureLockState.LOCK_EVENT_WAIT;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void waitForLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      configNodeProcedureEnv
+          .getNodeLock()
+          .waitProcedure(this, configNodeProcedureEnv.getScheduler());
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
     }
