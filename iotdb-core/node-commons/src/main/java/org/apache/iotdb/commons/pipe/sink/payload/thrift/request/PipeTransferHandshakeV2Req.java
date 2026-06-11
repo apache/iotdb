@@ -64,16 +64,18 @@ public abstract class PipeTransferHandshakeV2Req extends TPipeTransferReq {
   protected final PipeTransferHandshakeV2Req translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
     Map<String, String> params = new HashMap<>();
-    final int size = ReadWriteIOUtils.readInt(transferReq.body);
+    final ByteBuffer bodyBuffer = transferReq.body.duplicate();
+    final int size = ReadWriteIOUtils.readInt(bodyBuffer);
     for (int i = 0; i < size; ++i) {
-      final String key = ReadWriteIOUtils.readString(transferReq.body);
-      final String value = ReadWriteIOUtils.readString(transferReq.body);
+      final String key = ReadWriteIOUtils.readString(bodyBuffer);
+      final String value = ReadWriteIOUtils.readString(bodyBuffer);
       params.put(key, value);
     }
     this.params = params;
 
     version = transferReq.version;
     type = transferReq.type;
+    body = transferReq.body;
 
     return this;
   }

@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -70,8 +72,10 @@ import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PipeDataNodeThriftRequestTest {
@@ -137,13 +141,36 @@ public class PipeDataNodeThriftRequestTest {
   public void testPipeTransferDataNodeHandshakeReq() throws IOException {
     final PipeTransferDataNodeHandshakeV1Req req =
         PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(TIME_PRECISION);
+    final int originalBodyPosition = req.body.position();
     final PipeTransferDataNodeHandshakeV1Req deserializeReq =
         PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(originalBodyPosition, req.body.position());
 
     Assert.assertEquals(req.getTimestampPrecision(), deserializeReq.getTimestampPrecision());
+  }
+
+  @Test
+  public void testPipeTransferDataNodeHandshakeV2Req() throws IOException {
+    final Map<String, String> params = new HashMap<>();
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION, TIME_PRECISION);
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, "cluster-a");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, "root");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_NAME, "pipe-a");
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PIPE_CREATION_TIME, "1");
+
+    final PipeTransferDataNodeHandshakeV2Req req =
+        PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params);
+    final int originalBodyPosition = req.body.position();
+    final PipeTransferDataNodeHandshakeV2Req deserializeReq =
+        PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals(originalBodyPosition, req.body.position());
+    Assert.assertEquals(params, deserializeReq.getParams());
   }
 
   @Test
