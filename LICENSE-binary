@@ -221,13 +221,22 @@ com.google.guava.guava:32.1.2-jre
 com.fasterxml.jackson.core:jackson-annotations:2.16.2
 com.fasterxml.jackson.core:jackson-core:2.16.2
 com.fasterxml.jackson.core:jackson-databind:2.16.2
-jakarta.inject:jakarta.inject:2.6.1
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base:2.18.6
+com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider:2.18.6
+com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations:2.18.6
+io.swagger.core.v3:swagger-annotations-jakarta:2.2.50
+io.swagger.core.v3:swagger-core-jakarta:2.2.50
+io.swagger.core.v3:swagger-integration-jakarta:2.2.50
+io.swagger.core.v3:swagger-jaxrs2-jakarta:2.2.50
+io.swagger.core.v3:swagger-models-jakarta:2.2.50
+jakarta.inject:jakarta.inject-api:2.0.1
 at.yawk.lz4:lz4-java:1.10.0
 com.github.ben-manes.caffeine:caffeine:2.9.3
 org.eclipse.jetty:jetty-http:12.0.36
 org.eclipse.jetty:jetty-io:12.0.36
 org.eclipse.jetty:jetty-security:12.0.36
 org.eclipse.jetty:jetty-server:12.0.36
+org.eclipse.jetty:jetty-session:12.0.36
 org.eclipse.jetty.ee10:jetty-ee10-servlet:12.0.36
 org.eclipse.jetty:jetty-util:12.0.36
 com.google.code.findbugs:jsr305:3.0.2
@@ -271,6 +280,7 @@ MIT License
 ------------
 org.slf4j:slf4j-api:2.0.9
 com.bugsnag:bugsnag:3.7.2
+io.github.classgraph:classgraph:4.8.184
 
 
 EPL 1.0
@@ -284,6 +294,11 @@ ch.qos.logback:logback-classic:1.5.34
 ch.qos.logback:logback-core:1.5.34
 jakarta.annotation:jakarta.annotation-api:3.0.0
 jakarta.servlet:jakarta.servlet-api:6.0.0
+
+EDL 1.0
+------------
+jakarta.activation:jakarta.activation-api:2.1.0
+jakarta.xml.bind:jakarta.xml.bind-api:3.0.1
 
 
 CDDL 1.1

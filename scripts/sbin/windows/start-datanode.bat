@@ -49,8 +49,12 @@ for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
 set JAVA_VERSION=%MAJOR_VERSION%
 
 	@REM IoTDB requires JDK 17 or later.
+	IF "%JAVA_VERSION%" == "" (
+		echo Failed to determine Java version. IoTDB only supports jdk ^>= 17, please check your java installation.
+		goto finally
+	)
 	IF %JAVA_VERSION% LSS 17 (
-		echo IoTDB only supports jdk >= 17, please check your java version.
+		echo IoTDB only supports jdk ^>= 17, please check your java version.
 		goto finally
 	)
 

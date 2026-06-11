@@ -58,14 +58,14 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
+    String requestPath = containerRequestContext.getUriInfo().getPath();
 
-    if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || "ping".equals(containerRequestContext.getUriInfo().getPath())
-        || (config.isEnableSwagger()
-            && "swagger.json".equals(containerRequestContext.getUriInfo().getPath()))) {
+    if ("OPTIONS".equals(containerRequestContext.getMethod()) || "ping".equals(requestPath)) {
       return;
-    } else if (!config.isEnableSwagger()
-        && "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {
+    } else if (isOpenApiPath(requestPath)) {
+      if (config.isEnableSwagger()) {
+        return;
+      }
       Response resp =
           Response.status(Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity("").build();
       containerRequestContext.abortWith(resp);
@@ -193,5 +193,11 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
         && SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()) != null) {
       SESSION_MANAGER.removeCurrSession();
     }
+  }
+
+  private boolean isOpenApiPath(String requestPath) {
+    return "openapi".equals(requestPath)
+        || "openapi.json".equals(requestPath)
+        || "openapi.yaml".equals(requestPath);
   }
 }

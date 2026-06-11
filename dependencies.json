@@ -83,7 +83,6 @@
         "jakarta.validation:jakarta.validation-api",
         "jakarta.ws.rs:jakarta.ws.rs-api",
         "jakarta.xml.bind:jakarta.xml.bind-api",
-        "jakarta.xml.bind:jakarta.xml.bind-api",
         "net.java.dev.jna:jna",
         "net.java.dev.jna:jna-platform",
         "org.antlr:antlr4-runtime",
