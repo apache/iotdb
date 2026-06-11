@@ -156,4 +156,14 @@ public final class CalcMessages {
       "Column '%s' in writable view '%s.%s' cannot be resolved because source column '%s' does not exist in source table '%s.%s'.";
 
   public static final String FAILED_TO_DELETE_TEMP_DIR = "Failed to delete temp dir {}.";
+
+  // --- Execution ---
+
+  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
+      "Error setting future state for {}";
+  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
+      "Error notifying state change listener for {}";
+  public static final String SERVER_IS_SHUTTING_DOWN =
+      "Server is shutting down";
+
 }

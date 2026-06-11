@@ -148,4 +148,13 @@ public final class CalcMessages {
       "列 '%s' 在可写视图 '%s.%s' 中无法解析，因为源列 '%s' 不存在于源表 '%s.%s' 中。";
 
   public static final String FAILED_TO_DELETE_TEMP_DIR = "删除临时目录 {} 失败。";
+
+  // --- Execution ---
+
+  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
+      "为 {} 设置 future 状态时出错";
+  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
+      "通知 {} 的状态变更监听器时出错";
+  public static final String SERVER_IS_SHUTTING_DOWN =
+      "服务器正在关闭";
 }

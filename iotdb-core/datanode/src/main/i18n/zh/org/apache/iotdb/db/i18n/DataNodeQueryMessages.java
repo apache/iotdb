@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "该节点不是 SchemaMeasurementNode 实例。";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "为 {} 设置 future 状态时出错";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "通知 {} 的状态变更监听器时出错";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "服务器正在关闭";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
