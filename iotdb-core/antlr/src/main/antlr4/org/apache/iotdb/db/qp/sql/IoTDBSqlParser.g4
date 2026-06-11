@@ -878,7 +878,16 @@ dropCalcPoint
 
 showCalcPoint
     : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
       rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
     ;
 
 viewColumnDefinition

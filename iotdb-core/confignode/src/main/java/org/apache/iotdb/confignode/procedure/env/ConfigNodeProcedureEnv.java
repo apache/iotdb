@@ -511,12 +511,15 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
+  public TSStatus persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
     try {
-      getConsensusManager().write(createRegionGroupsPlan);
+      return getConsensusManager().write(createRegionGroupsPlan);
     } catch (ConsensusException e) {
       LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
+          .setMessage(
+              "Failed to persist RegionGroup allocation in the consensus layer: " + e.getMessage());
     }
   }
 

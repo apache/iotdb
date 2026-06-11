@@ -223,7 +223,7 @@ CMake 的包装；没有 Maven 时也可以直接使用 CMake。
 | 只构建库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests package` |
 | 构建 Debug 库（Linux/macOS） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug package` |
 | 只构建库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dboost.include.dir=C:\boost_1_88_0" package` |
-| 构建 Debug 库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests -Dcmake.build.type=Debug "-Dboost.include.dir=C:\boost_1_88_0" package` |
+| 构建 Debug 库（Windows / MSVC） | `mvn -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests "-Dcmake.build.type=Debug" "-Dboost.include.dir=C:\boost_1_88_0" package` |
 | 直接使用 CMake | `cmake -S iotdb-client/client-cpp -B build && cmake --build build --target install` |
 
 Maven 构建会把 SDK 安装到 `target/install/`，并生成

@@ -124,6 +124,12 @@ public interface CommonConfig {
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
+  CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
   CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);

@@ -32,7 +32,7 @@ public class PipeLogger {
 
   public static void log(
       final Consumer<String> loggerFunction, final String rawMessage, final Object... formatter) {
-    logger.log(loggerFunction, rawMessage, formatter);
+    logger.log(loggerFunction, "%s", formatMessage(rawMessage, formatter));
   }
 
   public static void log(
@@ -42,7 +42,7 @@ public class PipeLogger {
       final Object... formatter) {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     throwable.printStackTrace(new PrintStream(out));
-    logger.log(loggerFunction, rawMessage + "\n" + out, formatter);
+    logger.log(loggerFunction, "%s", formatMessage(rawMessage, formatter) + "\n" + out);
   }
 
   public static void setLogger(final PipePeriodicalLogger logger) {
@@ -54,6 +54,9 @@ public class PipeLogger {
   }
 
   static String formatMessage(final String rawMessage, final Object... formatter) {
+    if (formatter == null || formatter.length == 0) {
+      return rawMessage;
+    }
     if (rawMessage.contains("{}")) {
       return MessageFormatter.arrayFormat(rawMessage, formatter).getMessage();
     }

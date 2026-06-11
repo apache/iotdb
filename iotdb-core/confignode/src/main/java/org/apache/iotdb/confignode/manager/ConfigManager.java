@@ -1256,6 +1256,10 @@ public class ConfigManager implements IManager {
               "ConsensusManager of target-ConfigNode is not initialized, "
                   + "please make sure the target-ConfigNode has been started successfully.");
     }
+    // Procedure recovery replays metadata writes before external load warm-up is complete.
+    if (procedureManager.isProcedureExecutionThread()) {
+      return getConsensusManager().confirmLeaderForInternalProcedure();
+    }
     return getConsensusManager().confirmLeader();
   }
 

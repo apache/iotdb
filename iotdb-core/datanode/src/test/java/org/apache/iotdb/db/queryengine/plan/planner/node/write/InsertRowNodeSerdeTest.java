@@ -176,6 +176,133 @@ public class InsertRowNodeSerdeTest {
     Assert.assertEquals(insertRowNode.serializedSize(), byteBuffer.position());
   }
 
+  @Test
+  public void testSerializeSkipsRetainedMeasurementWithMissingValue() throws IllegalPathException {
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode missing value"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.INT32, TSDataType.INT32},
+            1L,
+            new Object[] {1, 2},
+            false);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    insertRowNode.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserialize(byteBuffer);
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testSerializeKeepsNullRowValueWithoutType() throws IllegalPathException {
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode null value"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32, null},
+            1L,
+            new Object[] {1, null},
+            false);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    insertRowNode.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserialize(byteBuffer);
+    Assert.assertArrayEquals(new String[] {"s1", "s2"}, tmpNode.getMeasurements());
+    Assert.assertArrayEquals(new TSDataType[] {TSDataType.INT32, null}, tmpNode.getDataTypes());
+    Assert.assertArrayEquals(new Object[] {1, null}, tmpNode.getValues());
+  }
+
+  @Test
+  public void testDeserializeFromWALSkipsRetainedMeasurementWithNullSchema()
+      throws IllegalPathException, IOException {
+    InsertRowNode insertRowNode = getInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.getMeasurementSchemas()[1] = null;
+
+    byte[] bytes = new byte[insertRowNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testDeserializeFromWALSkipsRetainedMeasurementWithMissingValue()
+      throws IllegalPathException, IOException {
+    InsertRowNode insertRowNode = getInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.setValues(new Object[] {5.0, 6.0f});
+
+    byte[] bytes = new byte[insertRowNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "\u6e7f\u5ea6"}, tmpNode.getMeasurements());
+  }
+
+  @Test
+  public void testRelationalDeserializeFromWALSkipsRetainedMeasurementWithNullCategory()
+      throws IOException {
+    RelationalInsertRowNode insertRowNode = getRelationalInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.getColumnCategories()[1] = null;
+
+    byte[] bytes = new byte[insertRowNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(
+        PlanNodeType.RELATIONAL_INSERT_ROW.getNodeType(), dataInputStream.readShort());
+
+    RelationalInsertRowNode tmpNode = RelationalInsertRowNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(new String[] {"id", "value"}, tmpNode.getMeasurements());
+    Assert.assertArrayEquals(
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD},
+        tmpNode.getColumnCategories());
+  }
+
+  @Test
+  public void testDeserializeFromWALWithMarkedFailedMeasurementOnly()
+      throws IllegalPathException, IOException {
+    InsertRowNode insertRowNode = getInsertRowNodeWithMeasurementSchemas();
+    insertRowNode.markFailedMeasurement(1);
+
+    byte[] bytes = new byte[insertRowNode.serializedSize()];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
+    Assert.assertArrayEquals(
+        new String[] {"\u6e29\u5ea6", "s3", "s4", "s5"}, tmpNode.getMeasurements());
+  }
+
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
