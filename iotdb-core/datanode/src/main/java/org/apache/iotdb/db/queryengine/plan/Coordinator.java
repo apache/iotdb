@@ -30,19 +30,29 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -56,7 +66,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -69,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
@@ -86,18 +96,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -137,15 +145,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -201,6 +206,8 @@ public class Coordinator {
   private static final Logger SAMPLED_QUERIES_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -211,10 +218,10 @@ public class Coordinator {
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory(
+                      CONFIG.getSelectorNumOfClientManager()));
 
   private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   private final ExecutorService dispatchExecutor;
 
@@ -250,7 +257,7 @@ public class Coordinator {
         1_000L,
         1_000L,
         TimeUnit.MILLISECONDS);
-    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+    LOGGER.info(DataNodeQueryMessages.EXPIRED_QUERIES_INFO_CLEAR_THREAD_IS_SUCCESSFULLY_STARTED);
   }
 
   static {
@@ -271,7 +278,6 @@ public class Coordinator {
     this.queryExecutionMap = new ConcurrentHashMap<>();
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
-    this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
     int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
     this.dispatchExecutor =
@@ -297,13 +303,14 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       boolean userQuery,
+      boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
-        LOGGER.debug("[QueryStart] sql: {}", sql);
+        LOGGER.debug(DataNodeQueryMessages.QUERY_START_SQL, sql);
       }
       queryContext =
           new MPPQueryContext(
@@ -314,6 +321,7 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
+      queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -345,7 +353,15 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
+        statement,
+        queryId,
+        session,
+        sql,
+        partitionFetcher,
+        schemaFetcher,
+        Long.MAX_VALUE,
+        false,
+        statement.isDebug());
   }
 
   public ExecutionResult executeForTreeModel(
@@ -356,12 +372,14 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -393,7 +411,6 @@ public class Coordinator {
         new TreeModelPlanner(
             statement,
             executor,
-            writeOperationExecutor,
             scheduledExecutor,
             partitionFetcher,
             schemaFetcher,
@@ -415,7 +432,7 @@ public class Coordinator {
    * along with CTE query dataset.
    */
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       long queryId,
@@ -425,16 +442,20 @@ public class Coordinator {
       Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug,
+      boolean isVerbose) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
+          queryContext.setVerbose(isVerbose);
           return createQueryExecutionForTableModel(
               statement,
               sqlParser,
@@ -447,7 +468,7 @@ public class Coordinator {
   }
 
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       long queryId,
@@ -455,12 +476,14 @@ public class Coordinator {
       String sql,
       Metadata metadata,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -472,6 +495,8 @@ public class Coordinator {
                 startTime)));
   }
 
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
   public ExecutionResult executeForTableModel(
       Statement statement,
       SqlParser sqlParser,
@@ -486,6 +511,7 @@ public class Coordinator {
         session,
         sql,
         false,
+        false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -495,6 +521,54 @@ public class Coordinator {
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
                 startTime)));
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo sessionInfo,
+      String s,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTreeModel(
+        statement,
+        queryId,
+        sessionInfo,
+        s,
+        partitionFetcher,
+        schemaFetcher,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession currSession,
+      Long queryId,
+      SessionInfo sessionInfo,
+      String sql,
+      Metadata metadata,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        currSession,
+        queryId,
+        sessionInfo,
+        sql,
+        metadata,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
@@ -527,7 +601,7 @@ public class Coordinator {
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       final SqlParser sqlParser,
       final IClientSession clientSession,
       final MPPQueryContext queryContext,
@@ -537,6 +611,7 @@ public class Coordinator {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
+        || statement instanceof CountDB
         || statement instanceof ShowDB
         || statement instanceof CreateDB
         || statement instanceof AlterDB
@@ -614,42 +689,64 @@ public class Coordinator {
               queryContext));
     }
     // Initialize variables for TableModelPlanner
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statementToUse = statement;
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statementToUse =
+        statement;
     List<Expression> parameters = Collections.emptyList();
     Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
 
-    if (statement instanceof Execute) {
-      Execute executeStatement = (Execute) statement;
+    // Unwrap Explain/ExplainAnalyze to check for inner Execute/ExecuteImmediate
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement innerStatement =
+        statement;
+    if (statement instanceof Explain) {
+      innerStatement = ((Explain) statement).getStatement();
+    } else if (statement instanceof ExplainAnalyze) {
+      innerStatement = ((ExplainAnalyze) statement).getStatement();
+    }
+
+    if (innerStatement instanceof Execute) {
+      Execute executeStatement = (Execute) innerStatement;
       String statementName = executeStatement.getStatementName().getValue();
 
-      // Get prepared statement from session (contains cached AST)
       PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
       if (preparedInfo == null) {
         throw new SemanticException(
             String.format("Prepared statement '%s' does not exist", statementName));
       }
 
-      // Use cached AST
-      statementToUse = preparedInfo.getSql();
-
-      // Bind parameters: create parameterLookup map
-      // Note: bindParameters() internally validates parameter count
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+          preparedInfo.getSql();
       parameterLookup =
-          ParameterExtractor.bindParameters(statementToUse, executeStatement.getParameters());
+          ParameterExtractor.bindParameters(resolvedSql, executeStatement.getParameters());
       parameters = new ArrayList<>(executeStatement.getParameters());
 
-    } else if (statement instanceof ExecuteImmediate) {
-      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
+      if (statement instanceof Explain) {
+        statementToUse = new Explain(resolvedSql);
+      } else if (statement instanceof ExplainAnalyze) {
+        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+      } else {
+        statementToUse = resolvedSql;
+      }
 
-      // EXECUTE IMMEDIATE needs to parse SQL first
+    } else if (innerStatement instanceof ExecuteImmediate) {
+      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) innerStatement;
+
       String sql = executeImmediateStatement.getSqlString();
       List<Literal> literalParameters = executeImmediateStatement.getParameters();
 
-      statementToUse = sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+      org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+          sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
       if (!literalParameters.isEmpty()) {
-        parameterLookup = ParameterExtractor.bindParameters(statementToUse, literalParameters);
+        parameterLookup = ParameterExtractor.bindParameters(resolvedSql, literalParameters);
         parameters = new ArrayList<>(literalParameters);
+      }
+
+      if (statement instanceof Explain) {
+        statementToUse = new Explain(resolvedSql);
+      } else if (statement instanceof ExplainAnalyze) {
+        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+      } else {
+        statementToUse = resolvedSql;
       }
     }
 
@@ -695,12 +792,6 @@ public class Coordinator {
         coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL.getName());
   }
 
-  private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
-    return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
-  }
-
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
@@ -711,37 +802,56 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
+  public void cleanupQueryExecution(Long queryId, Supplier<String> contentSupplier, Throwable t) {
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
+    if (queryExecution != null) {
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
+    }
+  }
+
   public void cleanupQueryExecution(
       Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
     if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.debug("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup(t);
-        boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
-        Supplier<String> contentOfQuerySupplier =
-            new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
-        if (isUserQuery) {
-          recordCurrentQueries(
-              queryExecution.getQueryId(),
-              queryExecution.getStartExecutionTime(),
-              System.currentTimeMillis(),
-              queryExecution.getTotalExecutionTime(),
-              contentOfQuerySupplier,
-              queryExecution.getUser(),
-              queryExecution.getClientHostname());
-        }
-        queryExecutionMap.remove(queryId);
-        if (isUserQuery) {
-          recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
-        }
+      Supplier<String> contentSupplier =
+          new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
+    }
+  }
+
+  private void cleanupQueryExecutionInternal(
+      Long queryId,
+      IQueryExecution queryExecution,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t) {
+    try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+      LOGGER.debug(DataNodeQueryMessages.CLEAN_UP_QUERY);
+      queryExecution.stopAndCleanup(t);
+      boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
+      if (isUserQuery) {
+        recordCurrentQueries(
+            queryExecution.getQueryId(),
+            queryExecution.getStartExecutionTime(),
+            System.currentTimeMillis(),
+            queryExecution.getTotalExecutionTime(),
+            contentOfQuerySupplier,
+            queryExecution.getUser(),
+            queryExecution.getClientHostname());
+      }
+      queryExecutionMap.remove(queryId);
+      if (isUserQuery) {
+        recordQueries(
+            queryExecution::getTotalExecutionTime,
+            contentOfQuerySupplier,
+            t,
+            queryExecution.isDebug());
       }
     }
   }
 
   private static class ContentOfQuerySupplier implements Supplier<String> {
 
-    private final org.apache.thrift.TBase<?, ?> nativeApiRequest;
+    private final TBase<?, ?> nativeApiRequest;
     private final IQueryExecution queryExecution;
 
     private ContentOfQuerySupplier(TBase<?, ?> nativeApiRequest, IQueryExecution queryExecution) {
@@ -756,12 +866,21 @@ public class Coordinator {
   }
 
   public static void recordQueries(
-      LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
+      LongSupplier executionTime,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t,
+      boolean debug) {
 
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+      SLOW_SQL_LOGGER.info(
+          DataNodeQueryMessages.COST_MS, costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // always print the query when debug is true
+    if (debug) {
+      DEBUG_LOGGER.info(contentOfQuerySupplier.get());
     }
 
     // only sample successful query
@@ -778,8 +897,34 @@ public class Coordinator {
     }
   }
 
+  /**
+   * We need to reclaim resources from queries that have exceeded their timeout by more than one
+   * minute. This indicates that the associated clients have failed to perform proper resource
+   * cleanup.
+   */
+  public void cleanUpStaleQueries() {
+    long currentTime = System.currentTimeMillis();
+    queryExecutionMap.forEach(
+        (queryId, queryExecution) -> {
+          if (queryExecution.isActive()) {
+            return;
+          }
+          long timeout = queryExecution.getTimeout();
+          long queryStartTime = queryExecution.getStartExecutionTime();
+          long executeTime = currentTime - queryStartTime;
+          if (timeout > 0 && executeTime - 60_000L > timeout) {
+            LOGGER.warn(
+                DataNodeQueryMessages.CLEANING_UP_STALE_QUERY, queryId, executeTime, timeout);
+            cleanupQueryExecution(
+                queryId,
+                (org.apache.thrift.TBase<?, ?>) null,
+                new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
+          }
+        });
+  }
+
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, null, null);
+    cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -1064,7 +1209,9 @@ public class Coordinator {
 
     @Override
     public long ramBytesUsed() {
+      // The result of this method is fixed
       return INSTANCE_SIZE
+          + sizeOfCharArray(queryId.length())
           + sizeOfCharArray(statement.length())
           + sizeOfCharArray(user.length())
           + sizeOfCharArray(clientHost.length());

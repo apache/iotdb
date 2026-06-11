@@ -44,7 +44,7 @@ import java.util.Map;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
-  private final ClusterSchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
+  protected final ClusterSchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
   @Override
   public ClusterSchemaTree fetchSchema(
@@ -106,7 +106,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
    *
    * @return the root node of the generated schemaTree
    */
-  private SchemaNode generateSchemaTree() {
+  protected SchemaNode generateSchemaTree() {
     SchemaNode root = new SchemaInternalNode("root");
 
     SchemaNode sg = new SchemaInternalNode("sg");

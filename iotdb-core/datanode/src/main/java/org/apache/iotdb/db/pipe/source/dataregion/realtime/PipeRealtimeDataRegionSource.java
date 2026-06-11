@@ -30,23 +30,29 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -91,7 +97,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeName;
   protected long creationTime;
-  protected String dataRegionId;
+  protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean shouldExtractInsertion;
@@ -132,6 +138,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeID;
   private String taskID;
+  private String tsFileDedupScopeID;
   protected long userId;
   protected String userName;
   protected String cliHostname;
@@ -205,8 +212,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskSourceRuntimeEnvironment environment =
-        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
@@ -214,8 +220,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     pipeName = environment.getPipeName();
-    dataRegionId = String.valueOf(environment.getRegionId());
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    dataRegionId = environment.getRegionId();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+    }
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
@@ -224,6 +232,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     creationTime = environment.getCreationTime();
     pipeID = pipeName + "_" + creationTime;
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
+    tsFileDedupScopeID = taskID + "_" + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
@@ -302,7 +311,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          DataNodePipeMessages.PIPE_REALTIME_DATA_REGION_SOURCE_IS_INITIALIZED,
           pipeName,
           dataRegionId,
           parameters);
@@ -317,9 +326,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(dataRegionId)) {
+    if (dataRegionId >= 0) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .clearProgressIndex(dataRegionId, tsFileDedupScopeID);
     }
 
     synchronized (isClosed) {
@@ -421,50 +432,33 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       return;
     }
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      LOGGER.error(
-          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
-              + "has reached capacity, discard heartbeat event {}",
-          this,
-          event);
-
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect
-      // the correction of pipe progress.
-
-      // Ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
   protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
-    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
-      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+    // Remove any heartbeat events in front of this event to avoid OOM
+    // Since the batch and retry queue no longer need the heartbeat event to trigger
+    // And the progress report event can trigger the processor calculation because it's not reported
+    // yet
+    while (true) {
+      final PipeRealtimeEvent lastEvent = ((PipeRealtimeEvent) pendingQueue.peekLast());
+      if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
+        break;
+      }
+      pendingQueue.pollLast();
+    }
+    final Event last = pendingQueue.peekLast();
+    if (last instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) last).getEvent() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent =
+          (ProgressReportEvent) ((PipeRealtimeEvent) last).getEvent();
       oldEvent.bindProgressIndex(
           oldEvent
               .getProgressIndex()
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
       return;
     }
-    extractDirectly(event);
-  }
-
-  protected void extractDirectly(final PipeRealtimeEvent event) {
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
-              this.getClass().getSimpleName(), this, event);
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
   protected void maySkipIndex4Event(final PipeRealtimeEvent event) {
@@ -474,15 +468,43 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     }
   }
 
+  protected Event assignReplicateIndexIfNeeded(
+      final PipeRealtimeEvent realtimeEvent, final Event suppliedEvent) {
+    if (!(suppliedEvent instanceof EnrichedEvent) || !shouldAssignReplicateIndex(suppliedEvent)) {
+      return suppliedEvent;
+    }
+
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) suppliedEvent;
+    if (enrichedEvent.getReplicateIndexForIoTV2() != EnrichedEvent.NO_COMMIT_ID) {
+      return suppliedEvent;
+    }
+
+    enrichedEvent.setReplicateIndexForIoTV2(assignReplicateIndexForRealtimeEvent());
+    LOGGER.debug(
+        DataNodePipeMessages.SET_FOR_REALTIME_EVENT,
+        pipeName,
+        enrichedEvent.getReplicateIndexForIoTV2(),
+        realtimeEvent.coreReportMessage());
+    return suppliedEvent;
+  }
+
+  protected boolean shouldAssignReplicateIndex(final Event suppliedEvent) {
+    return !(suppliedEvent instanceof ProgressReportEvent)
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate((EnrichedEvent) suppliedEvent);
+  }
+
+  protected long assignReplicateIndexForRealtimeEvent() {
+    return ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName);
+  }
+
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionSource.class.getName())) {
       return event.getEvent();
     } else {
       // This would not happen, but just in case.
       LOGGER.error(
-          "Heartbeat Event {} can not be supplied because "
-              + "the reference count can not be increased",
-          event.getEvent());
+          DataNodePipeMessages.HEARTBEAT_EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE, event.getEvent());
 
       // Do not report exception since the PipeHeartbeatEvent doesn't affect
       // the correction of pipe progress.
@@ -500,9 +522,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
           String.format(
-              "Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
+              DataNodePipeMessages.EVENT_CAN_NOT_BE_SUPPLIED_BECAUSE_DATA_IS_LOST,
               event.getEvent());
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
@@ -555,7 +575,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return skipIfNoPrivileges;
   }
 
-  public final String getDataRegionId() {
+  public final int getDataRegionId() {
     return dataRegionId;
   }
 
@@ -569,7 +589,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
-        "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
+        DataNodePipeMessages
+            .PIPEREALTIMEDATAREGIONEXTRACTOR_OBSERVED_DATA_REGION_TIME_PARTITION_GROWT,
         taskID,
         dataRegionId,
         timePartitionIdBound);
@@ -598,13 +619,13 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     if (PipeTsFileEpochProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
             dataRegionId,
-            pipeName,
+            tsFileDedupScopeID,
             event.getTsFileEpoch().getFilePath(),
             getProgressIndex4RealtimeEvent(event))) {
       event.skipReportOnCommit();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Pipe {} on data region {} skip commit of event {} because it was flushed prematurely.",
+            DataNodePipeMessages.PIPE_ON_DATA_REGION_SKIP_COMMIT_OF,
             pipeName,
             dataRegionId,
             event.coreReportMessage());
@@ -668,6 +689,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public final String getTsFileDedupScopeID() {
+    return tsFileDedupScopeID;
   }
 
   public void increaseExtractEpochSize() {

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.service.AbstractPeriodicalServiceWithAdvance;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -36,13 +37,13 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
@@ -102,9 +103,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     // UpdateClearContainer and version / TEndPoint are not calculated
     final AtomicInteger limit =
         new AtomicInteger(
-            CommonDescriptor.getInstance()
-                .getConfig()
-                .getPipeConnectorRequestSliceThresholdBytes());
+            CommonDescriptor.getInstance().getConfig().getPipeSinkRequestSliceThresholdBytes());
 
     final AtomicBoolean hasRemaining = new AtomicBoolean(false);
     final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap =
@@ -150,7 +149,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
               // May fail due to region shutdown, migration or other reasons
               // Just ignore
               skipNextSleep = false;
-              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
+              LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_WRITE_ATTR_COMMIT, schemaRegionId);
             }
           });
     }
@@ -165,7 +164,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showClusterResp = client.showCluster();
     } catch (final ClientManagerException | TException e) {
-      LOGGER.warn("Failed to fetch dataNodeLocations, will retry.");
+      LOGGER.warn(DataNodeSchemaMessages.FAILED_TO_FETCH_DATANODE_LOCATIONS);
       return Collections.emptyMap();
     }
     dataNodeId2FailureDurationAndTimesMap.clear();

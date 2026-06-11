@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -100,11 +101,14 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     try {
       switch (state) {
         case CHECK_TABLE_EXISTENCE:
-          LOGGER.info("Check the existence of table {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.CHECK_THE_EXISTENCE_OF_TABLE, database, tableName);
           checkTableExistence(env);
           break;
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schemaEngine black list of devices in {}.{}", database, tableName);
+          LOGGER.info(
+              ProcedureMessages.CONSTRUCT_SCHEMAENGINE_BLACK_LIST_OF_DEVICES_IN,
+              database,
+              tableName);
           constructBlackList(env);
           if (deletedDevicesNum > 0) {
             setNextState(CLEAN_DATANODE_SCHEMA_CACHE);
@@ -113,25 +117,28 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
-          LOGGER.info("Invalidate cache of devices in {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.INVALIDATE_CACHE_OF_DEVICES_IN, database, tableName);
           invalidateCache(env);
           break;
         case DELETE_DATA:
-          LOGGER.info("Delete data of devices in {}.{}", database, tableName);
+          LOGGER.info(ProcedureMessages.DELETE_DATA_OF_DEVICES_IN, database, tableName);
           deleteData(env);
           break;
         case DELETE_DEVICE_SCHEMA:
-          LOGGER.info("Delete devices in {}.{} in schemaEngine", database, tableName);
+          LOGGER.info(ProcedureMessages.DELETE_DEVICES_IN_IN_SCHEMAENGINE, database, tableName);
           deleteDeviceSchema(env);
           collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized state " + state));
+          setFailure(new ProcedureException(ProcedureMessages.UNRECOGNIZED_STATE + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
-      LOGGER.info("DeleteDevices-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info(
+          ProcedureMessages.DELETEDEVICES_COSTS_MS,
+          state,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -144,7 +151,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format("Table '%s.%s' not exists.", database, tableName),
+                    String.format(ProcedureMessages.TABLE_NOT_EXISTS, database, tableName),
                     TABLE_NOT_EXISTS.getStatusCode())));
       } else {
         setNextState(CONSTRUCT_BLACK_LIST);
@@ -192,7 +199,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
                     new ProcedureException(
                         new MetadataException(
                             String.format(
-                                "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failures: %s",
+                                ProcedureMessages
+                                    .FOR_FAILED_WHEN_CONSTRUCT_BLACK_LIST_FOR_TABLE_BECAUSE_FAILED,
                                 this.getClass().getSimpleName(),
                                 database,
                                 tableName,
@@ -204,7 +212,6 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             };
     deleteDevicesExecutor.execute();
 
-    setNextState(CONSTRUCT_BLACK_LIST);
     deletedDevicesNum =
         !isFailed()
             ? deleteDevicesExecutor.getSuccessResult().stream()
@@ -228,11 +235,12 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       // All dataNodes must clear the related schemaEngine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "Failed to invalidate schemaEngine cache of devices in table {}.{}",
+            ProcedureMessages.FAILED_TO_INVALIDATE_SCHEMAENGINE_CACHE_OF_DEVICES_IN_TABLE,
             database,
             tableName);
         setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaEngine cache failed")));
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.INVALIDATE_SCHEMAENGINE_CACHE_FAILED)));
         return;
       }
     }

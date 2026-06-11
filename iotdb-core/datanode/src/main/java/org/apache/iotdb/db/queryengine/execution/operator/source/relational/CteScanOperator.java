@@ -21,13 +21,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.utils.cte.CteDataReader;
-import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.db.utils.cte.MemoryReader;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -76,7 +77,7 @@ public class CteScanOperator implements SourceOperator {
     try {
       dataReader.close();
     } catch (Exception e) {
-      LOGGER.error("Fail to close CteDataReader", e);
+      LOGGER.error(DataNodeQueryMessages.FAIL_TO_CLOSE_CTEDATAREADER, e);
     }
   }
 

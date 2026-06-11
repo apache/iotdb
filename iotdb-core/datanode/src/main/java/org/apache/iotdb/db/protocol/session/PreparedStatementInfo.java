@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.protocol.session;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 
 import java.util.Objects;
 

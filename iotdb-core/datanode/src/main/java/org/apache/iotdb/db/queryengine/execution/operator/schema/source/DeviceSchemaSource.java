@@ -89,7 +89,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   @Override
   public List<ColumnHeader> getInfoQueryColumnHeaders() {
     return hasSgCol
-        ? ColumnHeaderConstant.showDevicesWithSgColumnHeaders
+        ? ColumnHeaderConstant.showDevicesWithDbColumnHeaders
         : ColumnHeaderConstant.showDevicesColumnHeaders;
   }
 

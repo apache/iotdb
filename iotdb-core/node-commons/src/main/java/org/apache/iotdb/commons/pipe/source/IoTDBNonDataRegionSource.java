@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -118,7 +119,7 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
         triggerSnapshot();
         nextIndex = findSnapshot(false);
         if (nextIndex == Long.MIN_VALUE) {
-          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+          throw new PipeException(PipeMessages.CANNOT_GET_NEWEST_SNAPSHOT);
         }
       }
     } else {
@@ -291,6 +292,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public long getUnTransferredEventCount() {
+    if (Objects.isNull(pipeTaskMeta)) {
+      return 0L;
+    }
     return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
         ? getListeningQueue().getTailIndex()
             - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()

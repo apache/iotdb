@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion.recover;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 
@@ -40,13 +41,13 @@ public class DeletionReader implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionReader.class);
   private static final int MAGIC_STRING_BYTES_SIZE =
       DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8).length;
-  private final String regionId;
+  private final int regionId;
   private final Consumer<DeletionResource> removeHook;
   private final File logFile;
   private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
 
-  public DeletionReader(File logFile, String regionId, Consumer<DeletionResource> removeHook)
+  public DeletionReader(File logFile, int regionId, Consumer<DeletionResource> removeHook)
       throws IOException {
     this.logFile = logFile;
     this.regionId = regionId;
@@ -63,7 +64,7 @@ public class DeletionReader implements Closeable {
       magicStringBuffer.flip();
       String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
+        LOGGER.debug(DataNodePipeMessages.READ_DELETION_FILE_MAGIC_VERSION, logFile, magicVersion);
       }
 
       // Read deletions
@@ -79,16 +80,13 @@ public class DeletionReader implements Closeable {
             DeletionResource.deserialize(byteBuffer, regionId, removeHook);
         deletions.add(deletionResource);
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+          LOGGER.debug(DataNodePipeMessages.READ_DELETION_FROM_FILE, deletionResource, logFile);
         }
       }
       return deletions;
     } catch (IOException e) {
       // if file is corrupted, throw an exception and skip subsequence DAL.
-      LOGGER.warn(
-          "Failed to read deletion file {}, may because this file corrupted when writing it.",
-          logFile,
-          e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_READ_DELETION_FILE_MAY_BECAUSE, logFile, e);
       throw e;
     }
   }

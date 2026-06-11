@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -38,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -90,17 +91,20 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL/IS NOT NULL");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL_IS_NOT);
   }
 
   @Override
   public Filter visitLikeExpression(LikeExpression likeExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE/NOT LIKE");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE_NOT_LIKE);
   }
 
   @Override
   public Filter visitRegularExpression(RegularExpression regularExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP/NOT REGEXP");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_REGEXP_NOT_REGEXP);
   }
 
   @Override

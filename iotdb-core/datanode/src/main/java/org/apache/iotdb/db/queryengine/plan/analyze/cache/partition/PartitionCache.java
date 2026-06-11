@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -300,6 +302,8 @@ public class PartitionCache {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else if (PathUtils.isStartWith(deviceID, SchemaConstant.AUDIT_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.AUDIT_DATABASE);
+          } else if (PathUtils.isStartWith(deviceID, Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+            databaseNamesNeedCreated.add(Audit.TABLE_MODEL_AUDIT_DATABASE);
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(
@@ -481,7 +485,7 @@ public class PartitionCache {
             // try to auto create database of failed device
             createDatabaseAndUpdateCache(result, deviceIDs, userName);
             if (!result.isSuccess()) {
-              throw new StatementAnalyzeException("Failed to get database Map");
+              throw new StatementAnalyzeException(DataNodeQueryMessages.FAILED_TO_GET_DATABASE_MAP);
             }
           } else {
             // check if it is to auto create the system or audit database
@@ -728,7 +732,7 @@ public class PartitionCache {
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
@@ -776,7 +780,7 @@ public class PartitionCache {
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
@@ -946,7 +950,7 @@ public class PartitionCache {
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       }
       cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
@@ -1057,14 +1061,14 @@ public class PartitionCache {
 
   public void invalidAllCache() {
     if (logger.isDebugEnabled()) {
-      logger.debug("[Partition Cache] invalid");
+      logger.debug(DataNodeQueryMessages.PARTITION_CACHE_INVALID);
     }
     removeFromDatabaseCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
     invalidReplicaSetCache();
     if (logger.isDebugEnabled()) {
-      logger.debug("[Partition Cache] is invalid:{}", this);
+      logger.debug(DataNodeQueryMessages.PARTITION_CACHE_IS_INVALID, this);
     }
   }
 

@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
@@ -69,7 +70,8 @@ public class DiffFunctionTransformer extends UnaryTransformer {
       case TIMESTAMP:
       case BOOLEAN:
       default:
-        throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
+        throw new QueryProcessException(
+            DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + layerReaderDataType);
     }
   }
 

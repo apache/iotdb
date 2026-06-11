@@ -46,7 +46,7 @@ def _estimate_shared_pool_size_by_total_mem(
     new_model_info: Optional[ModelInfo] = None,
 ) -> Dict[str, int]:
     """
-    Estimate pool counts for (existing_model_ids + new_model_id) by equally
+    Estimate pool counts for (existing_model_infos + new_model_info) by equally
     splitting the device's TOTAL memory among models.
 
     Returns:
@@ -60,7 +60,7 @@ def _estimate_shared_pool_size_by_total_mem(
         )
         raise ModelNotExistException(new_model_info.model_id)
 
-    # Extract unique model IDs
+    # Extract unique model infos
     all_models = existing_model_infos + (
         [new_model_info] if new_model_info is not None else []
     )

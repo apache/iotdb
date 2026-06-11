@@ -21,9 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 
@@ -43,9 +49,11 @@ public class WALInfoEntry extends WALEntry {
 
   // extra info for InsertTablet type value
   private TabletInfo tabletInfo;
+  private final Long encodedSearchIndex;
 
   public WALInfoEntry(long memTableId, WALEntryValue value, boolean wait) {
     super(memTableId, value, wait);
+    encodedSearchIndex = freezeEncodedSearchIndex(value);
   }
 
   public WALInfoEntry(long memTableId, WALEntryValue value) {
@@ -64,6 +72,7 @@ public class WALInfoEntry extends WALEntry {
 
   WALInfoEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     super(type, memTableId, value, false);
+    encodedSearchIndex = freezeEncodedSearchIndex(value);
     if (value instanceof InsertTabletNode) {
       tabletInfo =
           new TabletInfo(
@@ -73,7 +82,14 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public int serializedSize() {
-    return FIXED_SERIALIZED_SIZE + (value == null ? 0 : value.serializedSize());
+    if (value == null) {
+      return FIXED_SERIALIZED_SIZE;
+    }
+    if (value instanceof InsertTabletNode && tabletInfo != null) {
+      return FIXED_SERIALIZED_SIZE
+          + ((InsertTabletNode) value).serializedSize(tabletInfo.tabletRangeList);
+    }
+    return FIXED_SERIALIZED_SIZE + value.serializedSize();
   }
 
   @Override
@@ -82,22 +98,43 @@ public class WALInfoEntry extends WALEntry {
     buffer.putLong(memTableId);
     switch (type) {
       case INSERT_TABLET_NODE:
-        ((InsertTabletNode) value).serializeToWAL(buffer, tabletInfo.tabletRangeList);
+        ((InsertTabletNode) value)
+            .serializeToWAL(buffer, tabletInfo.tabletRangeList, encodedSearchIndex);
         break;
       case INSERT_ROW_NODE:
+        ((InsertRowNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
       case INSERT_ROWS_NODE:
+        ((InsertRowsNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
       case DELETE_DATA_NODE:
+        ((DeleteDataNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
       case RELATIONAL_DELETE_DATA_NODE:
+        ((RelationalDeleteDataNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
+      case OBJECT_FILE_NODE:
+        ((ObjectNode) value).serializeToWAL(buffer, encodedSearchIndex);
+        break;
       case MEMORY_TABLE_SNAPSHOT:
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
-      case OBJECT_FILE_NODE:
         value.serializeToWAL(buffer);
         break;
       case MEMORY_TABLE_CHECKPOINT:
-        throw new RuntimeException("Cannot serialize checkpoint to wal files.");
+        throw new RuntimeException(StorageEngineMessages.CANNOT_SERIALIZE_CHECKPOINT_TO_WAL);
       default:
-        throw new RuntimeException("Unsupported wal entry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_WAL_ENTRY_TYPE + type);
     }
+  }
+
+  public long getSearchIndex() {
+    return encodedSearchIndex == null
+        ? SearchNode.NO_CONSENSUS_INDEX
+        : SearchNode.extractSearchIndex(encodedSearchIndex);
+  }
+
+  private static Long freezeEncodedSearchIndex(WALEntryValue value) {
+    return value instanceof SearchNode ? ((SearchNode) value).getEncodedSearchIndex() : null;
   }
 
   private static class TabletInfo {
@@ -105,7 +142,10 @@ public class WALInfoEntry extends WALEntry {
     private final List<int[]> tabletRangeList;
 
     public TabletInfo(List<int[]> tabletRangeList) {
-      this.tabletRangeList = new ArrayList<>(tabletRangeList);
+      this.tabletRangeList = new ArrayList<>(tabletRangeList.size());
+      for (int[] range : tabletRangeList) {
+        this.tabletRangeList.add(Arrays.copyOf(range, range.length));
+      }
     }
 
     public int getRangeRowCount() {
@@ -171,13 +211,13 @@ public class WALInfoEntry extends WALEntry {
       case OBJECT_FILE_NODE:
         return ((ObjectNode) value).serializedSize();
       default:
-        throw new RuntimeException("Unsupported wal entry type " + type);
+        throw new RuntimeException(StorageEngineMessages.UNSUPPORTED_WAL_ENTRY_TYPE + type);
     }
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), tabletInfo);
+    return Objects.hash(super.hashCode(), tabletInfo, encodedSearchIndex);
   }
 
   @Override
@@ -186,6 +226,7 @@ public class WALInfoEntry extends WALEntry {
       return false;
     }
     WALInfoEntry other = (WALInfoEntry) obj;
-    return Objects.equals(this.tabletInfo, other.tabletInfo);
+    return Objects.equals(this.tabletInfo, other.tabletInfo)
+        && Objects.equals(this.encodedSearchIndex, other.encodedSearchIndex);
   }
 }

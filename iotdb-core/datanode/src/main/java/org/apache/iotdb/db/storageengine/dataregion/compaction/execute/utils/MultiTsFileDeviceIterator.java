@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -47,21 +49,23 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
@@ -245,12 +249,22 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return currentDevice;
   }
 
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
   public long getTTLForCurrentDevice() {
     return ttlForCurrentDevice;
   }
 
   public long getTimeLowerBoundForCurrentDevice() {
     return timeLowerBoundForCurrentDevice;
+  }
+
+  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
+    return ignoreAllNullRows
+        ? getAllSchemasOfCurrentDeviceForTree()
+        : getAllSchemasOfCurrentDeviceForTable();
   }
 
   /**
@@ -260,12 +274,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @throws IOException if io errors occurred
    */
-  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
-    Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDeviceForTree() throws IOException {
+    Map<String, MeasurementSchema> schemaMap = new HashMap<>();
+    Set<String> seriesNeedToUpdateDataType = new HashSet<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
@@ -274,17 +289,79 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       reader.getDeviceTimeseriesMetadata(
           timeseriesMetadataList,
-          deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+          iterator.getFirstMeasurementNodeOfCurrentDevice(),
+          seriesNeedToUpdateDataType,
+          true,
+          null);
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+        MeasurementSchema measurementSchema = schemaMap.get(timeseriesMetadata.getMeasurementId());
+        if (measurementSchema == null) {
+          if (!timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+            schemaMap.put(
+                timeseriesMetadata.getMeasurementId(),
+                reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+          }
+          continue;
+        }
+        if (measurementSchema.getType() != timeseriesMetadata.getTsDataType()) {
+          seriesNeedToUpdateDataType.add(timeseriesMetadata.getMeasurementId());
+        }
+      }
+    }
+    List<IMeasurementSchema> latestMeasurementSchemas =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+            currentDevice.left, new ArrayList<>(seriesNeedToUpdateDataType));
+    for (IMeasurementSchema latestMeasurementSchema : latestMeasurementSchemas) {
+      if (latestMeasurementSchema != null) {
+        schemaMap.put(
+            latestMeasurementSchema.getMeasurementName(),
+            (MeasurementSchema) latestMeasurementSchema);
+      }
+    }
+    return schemaMap;
+  }
+
+  private Map<String, MeasurementSchema> getAllSchemasOfCurrentDeviceForTable() throws IOException {
+    Map<String, MeasurementSchema> schemaMap = new HashMap<>();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(databaseName, currentDevice.left.getTableName(), false);
+    // get schemas from the newest file to the oldest file
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
+      TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
+      if (deviceIterator == null || !deviceIterator.current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+      reader.getDeviceTimeseriesMetadata(
+          timeseriesMetadataList,
+          deviceIterator.getFirstMeasurementNodeOfCurrentDevice(),
           schemaMap.keySet(),
           true,
           null);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-        if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
-            && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
-          schemaMap.put(
-              timeseriesMetadata.getMeasurementId(),
-              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+        MeasurementSchema measurementSchema = schemaMap.get(timeseriesMetadata.getMeasurementId());
+        if (measurementSchema != null) {
+          continue;
         }
+        if (tsTable != null) {
+          TsTableColumnSchema columnSchema =
+              tsTable.getColumnSchema(timeseriesMetadata.getMeasurementId());
+          if (columnSchema != null) {
+            measurementSchema = (MeasurementSchema) columnSchema.getMeasurementSchema();
+          }
+        }
+        if (measurementSchema == null && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
+          measurementSchema =
+              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList());
+        }
+        if (measurementSchema == null) {
+          continue;
+        }
+        schemaMap.put(timeseriesMetadata.getMeasurementId(), measurementSchema);
       }
     }
     return schemaMap;
@@ -294,112 +371,60 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * Get all measurements and their timeseries metadata offset in each source file. It is used for
    * new fast compaction to compact nonAligned timeseries.
    *
-   * @return measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+   * @return measurement -> CompactionSeriesContext
    * @throws IOException if io errors occurred
    */
-  public Map<String, Map<TsFileResource, Pair<Long, Long>>>
-      getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
-    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        new HashMap<>();
-    Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
-    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
-        // if this tsfile has no more device or next device is not equals to the current device,
-        // which means this tsfile does not contain the current device, then skip it.
-        continue;
-      }
-      TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
-          ((CompactionTsFileReader) reader)
-              .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
-                  Collections.emptySet(),
-                  false)
-              .entrySet()) {
-        String measurementId = entrySet.getKey();
-        // skip the TimeseriesMetadata whose data type is not consistent
-        TSDataType dataTypeOfCurrentTimeseriesMetadata = entrySet.getValue().left.getTsDataType();
-        TSDataType correctDataTypeOfCurrentMeasurement =
-            measurementDataTypeMap.putIfAbsent(measurementId, dataTypeOfCurrentTimeseriesMetadata);
-        if (correctDataTypeOfCurrentMeasurement != null
-            && !MetadataUtils.canAlter(
-                dataTypeOfCurrentTimeseriesMetadata, correctDataTypeOfCurrentMeasurement)) {
-          continue;
-        }
-        timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new HashMap<>());
-        timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
-      }
-    }
-    return timeseriesMetadataOffsetMap;
-  }
-
-  /**
-   * Get all measurement data types of the current device from source files. Traverse all the files
-   * from the newest to the oldest in turn and start traversing the index tree from the
-   * firstMeasurementNode node to get all the measurement types under the current device.
-   *
-   * @return measurement -> data type
-   * @throws IOException if io errors occurred
-   */
-  public Map<String, TSDataType> getDataTypeOfCurrentDevice() throws IOException {
-    Map<String, TSDataType> measurementNameDataTypeMap = new HashMap<>();
-    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
-        // if this tsfile has no more device or next device is not equals to the current device,
-        // which means this tsfile does not contain the current device, then skip it.
-        continue;
-      }
-      TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
-          ((CompactionTsFileReader) reader)
-              .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
-                  Collections.emptySet(),
-                  false)
-              .entrySet()) {
-        String measurementId = entrySet.getKey();
-        TSDataType dataType = entrySet.getValue().left.getTsDataType();
-        measurementNameDataTypeMap.putIfAbsent(measurementId, dataType);
-      }
-    }
-    return measurementNameDataTypeMap;
-  }
-
   public Map<String, CompactionSeriesContext> getCompactionSeriesContextOfCurrentDevice()
       throws IOException {
     Map<String, CompactionSeriesContext> compactionSeriesContextMap = new HashMap<>();
+    List<String> seriesNeedToUpdateDataType = new ArrayList<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
           ((CompactionTsFileReader) reader)
               .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
-                  Collections.emptySet(),
-                  false)
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(), Collections.emptySet(), false)
               .entrySet()) {
-        String measurementId = entrySet.getKey();
-        TimeseriesMetadata timeseriesMetadata = entrySet.getValue().left;
-        Pair<Long, Long> offset = entrySet.getValue().right;
-        TSDataType dataType = entrySet.getValue().left.getTsDataType();
-        if (compactionSeriesContextMap.get(measurementId) != null
-            && compactionSeriesContextMap.get(measurementId).getFinalType() != null
-            && !MetadataUtils.canAlter(
-                dataType, compactionSeriesContextMap.get(measurementId).getFinalType())) {
-          continue;
+        String measurementId = entry.getKey();
+        TimeseriesMetadata timeseriesMetadata = entry.getValue().left;
+        Pair<Long, Long> offset = entry.getValue().right;
+        TSDataType dataTypeOfCurrentFile = timeseriesMetadata.getTsDataType();
+
+        CompactionSeriesContext compactionSeriesContext =
+            compactionSeriesContextMap.get(measurementId);
+        if (compactionSeriesContext != null
+            && !compactionSeriesContext.isNeedUpdateDataType()
+            && compactionSeriesContext.getFinalType() != dataTypeOfCurrentFile) {
+          compactionSeriesContext.setNeedUpdateDataType(true);
+          seriesNeedToUpdateDataType.add(measurementId);
         }
-        compactionSeriesContextMap.putIfAbsent(measurementId, new CompactionSeriesContext());
-        compactionSeriesContextMap.get(measurementId).put(resource, entrySet.getValue().right);
-        compactionSeriesContextMap.get(measurementId).setFinalTypeIfAbsent(dataType);
+
+        compactionSeriesContext =
+            compactionSeriesContextMap.computeIfAbsent(
+                measurementId, k -> new CompactionSeriesContext());
+        compactionSeriesContext.put(resource, offset);
+        compactionSeriesContext.setFinalTypeIfAbsent(dataTypeOfCurrentFile);
       }
     }
+
+    List<IMeasurementSchema> measurementSchema =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+            currentDevice.left, seriesNeedToUpdateDataType);
+    for (IMeasurementSchema iMeasurementSchema : measurementSchema) {
+      if (iMeasurementSchema == null) {
+        continue;
+      }
+      compactionSeriesContextMap
+          .get(iMeasurementSchema.getMeasurementName())
+          .setFinalType(iMeasurementSchema.getType());
+    }
+
     return compactionSeriesContextMap;
   }
 
@@ -412,14 +437,81 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *     endOffset>
    * @throws IOException if io errors occurred
    */
-  @SuppressWarnings({"checkstyle:AtclauseOrderCheck", "squid:S3824"})
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
+    return ignoreAllNullRows
+        ? getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTree()
+        : getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTable();
+  }
+
+  @SuppressWarnings({"checkstyle:AtclauseOrderCheck", "squid:S3824"})
+  public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+      getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTree() throws IOException {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
         timeseriesMetadataOffsetMap = new LinkedHashMap<>();
+    Set<MeasurementSchema> seriesNeedToUpdateDataType = new LinkedHashSet<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+
+      CompactionTsFileReader reader = (CompactionTsFileReader) readerMap.get(resource);
+
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
+          reader
+              .getTimeseriesMetadataAndOffsetByDevice(
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(),
+                  timeseriesMetadataOffsetMap.keySet(),
+                  true)
+              .entrySet()) {
+        String measurementId = entry.getKey();
+        Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>> existedPair =
+            timeseriesMetadataOffsetMap.get(measurementId);
+        if (existedPair == null) {
+          MeasurementSchema schema =
+              reader.getMeasurementSchema(entry.getValue().left.getChunkMetadataList());
+          existedPair = new Pair<>(schema, new HashMap<>());
+          timeseriesMetadataOffsetMap.put(measurementId, existedPair);
+        } else if (!seriesNeedToUpdateDataType.contains(existedPair.getLeft())
+            && existedPair.left.getType() != entry.getValue().getLeft().getTsDataType()) {
+          seriesNeedToUpdateDataType.add(existedPair.getLeft());
+        }
+        existedPair.right.put(resource, entry.getValue().right);
+      }
+    }
+    List<IMeasurementSchema> correctMeasurementSchemas =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+            currentDevice.left,
+            seriesNeedToUpdateDataType.stream()
+                .map(IMeasurementSchema::getMeasurementName)
+                .collect(Collectors.toList()));
+    int i = 0;
+    for (MeasurementSchema measurementSchema : seriesNeedToUpdateDataType) {
+      IMeasurementSchema correctSchema = correctMeasurementSchemas.get(i);
+      i++;
+      if (correctSchema == null) {
+        continue;
+      }
+      measurementSchema.setDataType(correctSchema.getType());
+      measurementSchema.setEncoding(correctSchema.getEncodingType());
+      measurementSchema.setCompressionType(correctSchema.getCompressor());
+    }
+    return timeseriesMetadataOffsetMap;
+  }
+
+  public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+      getTimeseriesSchemaAndMetadataOffsetOfCurrentDeviceForTable() throws IOException {
+    Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
+        timeseriesMetadataOffsetMap = new LinkedHashMap<>();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(databaseName, currentDevice.left.getTableName(), false);
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
@@ -428,23 +520,36 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
 
-      TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
+      CompactionTsFileReader reader = (CompactionTsFileReader) readerMap.get(resource);
+
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
           reader
-              .getTimeseriesMetadataOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+              .getTimeseriesMetadataAndOffsetByDevice(
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(),
                   timeseriesMetadataOffsetMap.keySet(),
                   true)
               .entrySet()) {
-        String measurementId = entrySet.getKey();
-        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
-          MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
-          timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
+        String measurementId = entry.getKey();
+        Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>> existedPair =
+            timeseriesMetadataOffsetMap.get(measurementId);
+        if (existedPair == null) {
+          MeasurementSchema schema = null;
+          if (tsTable != null) {
+            TsTableColumnSchema columnSchema = tsTable.getColumnSchema(measurementId);
+            if (columnSchema != null) {
+              schema = (MeasurementSchema) columnSchema.getMeasurementSchema();
+            }
+          }
+          if (schema == null) {
+            schema = reader.getMeasurementSchema(entry.getValue().left.getChunkMetadataList());
+          }
+          if (schema == null) {
+            continue;
+          }
+          existedPair = new Pair<>(schema, new HashMap<>());
+          timeseriesMetadataOffsetMap.put(measurementId, existedPair);
         }
-        timeseriesMetadataOffsetMap
-            .get(measurementId)
-            .right
-            .put(resource, entrySet.getValue().right);
+        existedPair.right.put(resource, entry.getValue().right);
       }
     }
     return timeseriesMetadataOffsetMap;

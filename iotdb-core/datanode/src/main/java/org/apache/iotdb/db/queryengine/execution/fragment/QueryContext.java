@@ -63,7 +63,8 @@ public class QueryContext {
 
   protected long queryId;
 
-  private boolean debug;
+  private final boolean debug;
+  private boolean verbose;
 
   private long startTime;
   private long timeout;
@@ -79,10 +80,13 @@ public class QueryContext {
 
   protected Set<String> tables;
 
-  public QueryContext() {}
+  public QueryContext(boolean debug, boolean verbose) {
+    this.debug = debug;
+    this.verbose = verbose;
+  }
 
-  public QueryContext(long queryId) {
-    this(queryId, false, System.currentTimeMillis(), 0);
+  public QueryContext(long queryId, boolean debug) {
+    this(queryId, debug, System.currentTimeMillis(), 0);
   }
 
   /** Every time we generate the queryContext, register it to queryTimeManager. */
@@ -123,18 +127,24 @@ public class QueryContext {
       TsFileResource resource) {
     PatternTreeMap<ModEntry, ModsSerializer> modifications =
         PatternTreeMapFactory.getModsPatternTreeMap();
-    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
-    while (modEntryIterator.hasNext()) {
-      ModEntry modification = modEntryIterator.next();
-      if (tables != null && modification instanceof TableDeletionEntry) {
-        String tableName = ((TableDeletionEntry) modification).getTableName();
-        if (!tables.contains(tableName)) {
+    try (TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator()) {
+      while (modEntryIterator.hasNext()) {
+        ModEntry modification = modEntryIterator.next();
+        if (shouldSkipModification(modification)) {
           continue;
         }
+        modifications.append(modification.keyOfPatternTree(), modification);
       }
-      modifications.append(modification.keyOfPatternTree(), modification);
     }
     return modifications;
+  }
+
+  protected boolean shouldSkipModification(ModEntry modification) {
+    if (tables != null && modification instanceof TableDeletionEntry) {
+      String tableName = ((TableDeletionEntry) modification).getTableName();
+      return !tables.contains(tableName);
+    }
+    return false;
   }
 
   public List<ModEntry> getPathModifications(
@@ -217,6 +227,10 @@ public class QueryContext {
     return debug;
   }
 
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   public long getStartTime() {
     return startTime;
   }
@@ -259,7 +273,12 @@ public class QueryContext {
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
-  public void addTVListToSet(Map<TVList, Integer> tvListMap) {
-    tvListSet.addAll(tvListMap.keySet());
+  public void addTVListToSet(Set<TVList> set) {
+    tvListSet.addAll(set);
+  }
+
+  public void addRowLevelFilteredCount(long count) {
+    throw new UnsupportedOperationException(
+        "the QueryContext does not support row level filtering");
   }
 }

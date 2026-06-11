@@ -20,16 +20,19 @@ package org.apache.iotdb.db.storageengine.rescon.disk;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
+import org.apache.iotdb.commons.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import com.google.common.io.BaseEncoding;
+import org.apache.ratis.util.MemoizedCheckedSupplier;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -80,6 +83,13 @@ public class TierManager {
 
   private List<String> objectDirs;
 
+  private List<String> copyToTargetDirs;
+
+  //  private FolderManager copyToFolderManager;
+
+  private MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>
+      copyToFolderManager;
+
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 
@@ -111,7 +121,7 @@ public class TierManager {
             try {
               tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
             } catch (IOException e) {
-              logger.error("Fail to get canonical path of data dir {}", tierDirs[i][j], e);
+              logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, tierDirs[i][j], e);
             }
             break;
           case OBJECT_STORAGE:
@@ -136,7 +146,7 @@ public class TierManager {
       try {
         seqTiers.add(new FolderManager(seqDirs, directoryStrategyType));
       } catch (DiskSpaceInsufficientException e) {
-        logger.error("All disks of tier {} are full.", tierLevel, e);
+        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
       }
       for (String dir : seqDirs) {
         seqDir2TierLevel.put(dir, tierLevel);
@@ -155,10 +165,25 @@ public class TierManager {
       try {
         unSeqTiers.add(new FolderManager(unSeqDirs, directoryStrategyType));
       } catch (DiskSpaceInsufficientException e) {
-        logger.error("All disks of tier {} are full.", tierLevel, e);
+        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
       }
       for (String dir : unSeqDirs) {
         unSeqDir2TierLevel.put(dir, tierLevel);
+      }
+
+      if (tierLevel == 0) {
+        copyToTargetDirs =
+            Arrays.stream(tierDirs[tierLevel])
+                .filter(Objects::nonNull)
+                .map(
+                    v ->
+                        FSFactoryProducer.getFSFactory()
+                            .getFile(v, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME)
+                            .getPath())
+                .collect(Collectors.toList());
+        copyToFolderManager =
+            MemoizedCheckedSupplier.valueOf(
+                () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
       }
 
       objectDirs =
@@ -174,7 +199,7 @@ public class TierManager {
       try {
         objectTiers.add(new FolderManager(objectDirs, directoryStrategyType));
       } catch (DiskSpaceInsufficientException e) {
-        logger.error("All disks of tier {} are full.", tierLevel, e);
+        logger.error(StorageEngineMessages.ALL_DISKS_OF_TIER_FULL, tierLevel, e);
       }
       // try to remove empty objectDirs
       for (String dir : objectDirs) {
@@ -201,7 +226,7 @@ public class TierManager {
 
     initFolders();
     long endTime = System.currentTimeMillis();
-    logger.info("The folders is reset successfully, which takes {} ms.", (endTime - startTime));
+    logger.info(StorageEngineMessages.FOLDERS_RESET_SUCCESSFULLY, (endTime - startTime));
   }
 
   private void mkDataDirs(List<String> folders) {
@@ -211,7 +236,7 @@ public class TierManager {
         continue;
       }
       if (file.mkdirs()) {
-        logger.info("folder {} doesn't exist, create it", file.getPath());
+        logger.info(StorageEngineMessages.FOLDER_NOT_EXIST_CREATE_IT, file.getPath());
       } else {
         logger.info(
             "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
@@ -224,6 +249,10 @@ public class TierManager {
     return sequence
         ? seqTiers.get(tierLevel).getNextFolder()
         : unSeqTiers.get(tierLevel).getNextFolder();
+  }
+
+  public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
+    return copyToFolderManager.get().getNextFolder();
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {
@@ -334,7 +363,7 @@ public class TierManager {
     try {
       filePath = file.getCanonicalFile().toPath();
     } catch (IOException e) {
-      logger.error("Fail to get canonical path of data dir {}", file, e);
+      logger.error(StorageEngineMessages.FAIL_TO_GET_CANONICAL_PATH, file, e);
       filePath = file.toPath();
     }
 
@@ -385,7 +414,7 @@ public class TierManager {
                 break;
             }
           } catch (IOException e) {
-            logger.error("Failed to statistic the size of {}, because", fileStore, e);
+            logger.error(StorageEngineMessages.FAILED_TO_STATISTIC_SIZE, fileStore, e);
           }
         }
       }

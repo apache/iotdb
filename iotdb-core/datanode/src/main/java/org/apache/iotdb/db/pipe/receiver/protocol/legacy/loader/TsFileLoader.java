@@ -22,11 +22,12 @@ package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
@@ -55,7 +56,7 @@ public class TsFileLoader implements ILoader {
   @Override
   public void load() {
     try {
-      LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
+      LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
@@ -79,10 +80,11 @@ public class TsFileLoader implements ILoader {
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  statement.isDebug());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
-        LOGGER.error("Load TsFile result status : {}.", result.status);
+        LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_ERROR_STATEMENT, tsFile.getPath(), statement);
+        LOGGER.error(DataNodePipeMessages.LOAD_TSFILE_RESULT_STATUS, result.status);
         throw new LoadFileException(
             String.format("Can not execute load TsFile statement: %s", statement));
       }

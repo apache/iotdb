@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 
 import com.google.common.collect.Sets;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
@@ -30,6 +31,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Key;
@@ -58,13 +61,13 @@ class OpcUaKeyStoreLoader {
 
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
-    LOGGER.info("Loading KeyStore at {}", serverKeyStore);
+    LOGGER.info(DataNodePipeMessages.LOADING_KEYSTORE_AT, serverKeyStore);
 
     if (serverKeyStore.exists()) {
-      try {
-        keyStore.load(Files.newInputStream(serverKeyStore.toPath()), password);
+      try (InputStream is = Files.newInputStream(serverKeyStore.toPath())) {
+        keyStore.load(is, password);
       } catch (final IOException e) {
-        LOGGER.warn("Load keyStore failed, the existing keyStore may be stale, re-constructing...");
+        LOGGER.warn(DataNodePipeMessages.LOAD_KEYSTORE_FAILED_THE_EXISTING_KEYSTORE_MAY);
         FileUtils.deleteFileOrDirectory(serverKeyStore);
       }
     }
@@ -105,7 +108,9 @@ class OpcUaKeyStoreLoader {
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
-      keyStore.store(Files.newOutputStream(serverKeyStore.toPath()), password);
+      try (final OutputStream os = Files.newOutputStream(serverKeyStore.toPath())) {
+        keyStore.store(os, password);
+      }
     }
 
     final Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);
@@ -114,6 +119,10 @@ class OpcUaKeyStoreLoader {
 
       final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
+    } else {
+      throw new Exception(
+          "Invalid keyStore, the serverPrivateKey is "
+              + (serverPrivateKey != null ? serverPrivateKey.getClass().getSimpleName() : "null"));
     }
 
     return this;

@@ -188,6 +188,15 @@ public class IoTDBFlushQueryIT {
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }
+      try {
+        statement.execute(
+            "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2 on local");
+      } catch (SQLException sqe) {
+        String expectedMsg =
+            "500: Database root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2 does not exist on local";
+        sqe.printStackTrace();
+        assertTrue(sqe.getMessage().contains(expectedMsg));
+      }
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -240,6 +249,29 @@ public class IoTDBFlushQueryIT {
         count = iterator.getLong(1);
       }
       Assert.assertEquals(20 + 10001 + 350001, count);
+    }
+  }
+
+  @Test
+  public void testStreamingQueryMemTableDescWithTimeFilter()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String device = "root.stream3.d1";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.open();
+      generateTimeRangeWithTimestamp(session, device, 1, 2);
+      session.executeNonQueryStatement("flush");
+      generateTimeRangeWithTimestamp(session, device, 100000, 200000);
+      generateTimeRangeWithTimestamp(session, device, 400000, 500000);
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "select s1 from root.stream3.d1 where time >= 350000 order by time desc limit 1");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      long value = 0;
+      while (iterator.next()) {
+        value = iterator.getLong(1);
+      }
+      Assert.assertEquals(500000L, value);
     }
   }
 

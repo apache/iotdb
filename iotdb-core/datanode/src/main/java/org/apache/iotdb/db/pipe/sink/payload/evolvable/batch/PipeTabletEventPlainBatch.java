@@ -47,16 +47,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Objects;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
-  private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
-  private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
-  private final List<String> binaryDataBases = new ArrayList<>();
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
@@ -90,11 +87,9 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   public synchronized void onSuccess() {
     super.onSuccess();
 
-    binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
-    binaryDataBases.clear();
     insertNodeDataBases.clear();
     tabletDataBases.clear();
     tableModelTabletMap.clear();
@@ -110,14 +105,18 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           insertTablets.getValue().entrySet()) {
         // needCopyFlag and tablet
         final List<Pair<Boolean, Tablet>> batchTablets = new ArrayList<>();
+        final int totalRowSize = tabletEntry.getValue().getLeft();
         for (final Tablet tablet : tabletEntry.getValue().getRight()) {
           boolean success = false;
           for (final Pair<Boolean, Tablet> tabletPair : batchTablets) {
+            if (!canAppendTablet(tabletPair.getRight(), tablet)) {
+              continue;
+            }
             if (tabletPair.getLeft()) {
               tabletPair.setRight(copyTablet(tabletPair.getRight()));
               tabletPair.setLeft(Boolean.FALSE);
             }
-            if (tabletPair.getRight().append(tablet, tabletEntry.getValue().getLeft())) {
+            if (tabletPair.getRight().append(tablet, totalRowSize)) {
               success = true;
               break;
             }
@@ -142,12 +141,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     tableModelTabletMap.clear();
 
     return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
-        binaryBuffers,
-        insertNodeBuffers,
-        tabletBuffers,
-        binaryDataBases,
-        insertNodeDataBases,
-        tabletDataBases);
+        insertNodeBuffers, tabletBuffers, insertNodeDataBases, tabletDataBases);
   }
 
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
@@ -169,13 +163,14 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         buffer = insertNode.serializeToByteBuffer();
         insertNodeBuffers.add(buffer);
         if (pipeInsertNodeTabletInsertionEvent.isTableModelEvent()) {
-          estimateSize =
-              RamUsageEstimator.sizeOf(
-                  pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
-          insertNodeDataBases.add(pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName());
+          final String databaseName =
+              pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName();
+          estimateSize = RamUsageEstimator.sizeOf(databaseName);
+          insertNodeDataBases.add(databaseName);
         } else {
-          estimateSize = 4;
-          insertNodeDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+          final String databaseName = pipeInsertNodeTabletInsertionEvent.getTreeModelDatabaseName();
+          estimateSize = RamUsageEstimator.sizeOf(databaseName);
+          insertNodeDataBases.add(databaseName);
         }
         estimateSize += buffer.limit();
       } else {
@@ -201,9 +196,10 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
           ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
           buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
         }
-        estimateSize = 4 + buffer.limit();
+        final String databaseName = pipeRawTabletInsertionEvent.getTreeModelDatabaseName();
+        estimateSize = RamUsageEstimator.sizeOf(databaseName) + buffer.limit();
         tabletBuffers.add(buffer);
-        tabletDataBases.add(TREE_MODEL_DATABASE_PLACEHOLDER);
+        tabletDataBases.add(databaseName);
       }
     }
 
@@ -211,19 +207,19 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   private long constructTabletBatch(final Tablet tablet, final String databaseName) {
-    final AtomicLong size = new AtomicLong(0);
     final Pair<Integer, List<Tablet>> currentBatch =
         tableModelTabletMap
-            .computeIfAbsent(
-                databaseName,
-                k -> {
-                  size.addAndGet(RamUsageEstimator.sizeOf(databaseName));
-                  return new HashMap<>();
-                })
+            .computeIfAbsent(databaseName, k -> new HashMap<>())
             .computeIfAbsent(tablet.getTableName(), k -> new Pair<>(0, new ArrayList<>()));
     currentBatch.setLeft(currentBatch.getLeft() + tablet.getRowSize());
     currentBatch.getRight().add(tablet);
     return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + 4;
+  }
+
+  private static boolean canAppendTablet(final Tablet target, final Tablet source) {
+    return Objects.equals(target.getDeviceId(), source.getDeviceId())
+        && Objects.equals(target.getSchemas(), source.getSchemas())
+        && Objects.equals(target.getColumnTypes(), source.getColumnTypes());
   }
 
   public static Tablet copyTablet(final Tablet tablet) {

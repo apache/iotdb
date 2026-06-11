@@ -22,13 +22,13 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -84,7 +85,7 @@ public class EnvironmentUtils {
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
-  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   public static FragmentInstanceContext TEST_QUERY_FI_CONTEXT =
       FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID);
 
@@ -94,6 +95,17 @@ public class EnvironmentUtils {
 
   public static boolean examinePorts =
       Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
+
+  // Per-fork port namespace. Each surefire fork shifts every test-bound port
+  // (and the corresponding examinePorts() check) by FORK_PORT_OFFSET so that
+  // parallel forks live in disjoint port spaces. This keeps the leak-detection
+  // power of examinePorts() (a fork still sees its own un-closed ports) while
+  // removing the cross-fork false positive (one fork's bound port no longer
+  // looks like another fork's leak). surefire.forkNumber starts at 1; defaults
+  // to 1 outside surefire (IDE). Modulo 30 caps the offset so the highest
+  // checked port (31999 + 30*1000 = 61999) stays within range.
+  public static final int FORK_PORT_OFFSET =
+      ((Integer.parseInt(System.getProperty("surefire.forkNumber", "1")) - 1) % 30 + 1) * 1000;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
@@ -173,11 +185,19 @@ public class EnvironmentUtils {
   }
 
   private static boolean examinePorts() {
-    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
+    // All checks use this fork's port namespace (base + FORK_PORT_OFFSET) so
+    // that we only ever see ports bound by THIS JVM — sibling forks live in
+    // disjoint namespaces.
+    int rpcPort = 6667 + FORK_PORT_OFFSET;
+    int syncPort = 5555 + FORK_PORT_OFFSET;
+    int jmxPort = 31999 + FORK_PORT_OFFSET;
+    int metricPort = 9091 + FORK_PORT_OFFSET;
+
+    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", rpcPort, 100);
     if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
-        logger.error("stop daemon failed. 6667 can be connected now.");
+        logger.error("stop daemon failed. {} can be connected now.", rpcPort);
         transport.close();
         return false;
       } catch (TTransportException e) {
@@ -185,11 +205,11 @@ public class EnvironmentUtils {
       }
     }
     // try sync service
-    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
+    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", syncPort, 100);
     if (transport != null && !transport.isOpen()) {
       try {
         transport.open();
-        logger.error("stop Sync daemon failed. 5555 can be connected now.");
+        logger.error("stop Sync daemon failed. {} can be connected now.", syncPort);
         transport.close();
         return false;
       } catch (TTransportException e) {
@@ -198,9 +218,10 @@ public class EnvironmentUtils {
     }
     // try jmx connection
     try {
-      JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:" + jmxPort + "/jmxrmi");
       JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
-      logger.error("stop JMX failed. 31999 can be connected now.");
+      logger.error("stop JMX failed. {} can be connected now.", jmxPort);
       jmxConnector.close();
       return false;
     } catch (IOException e) {
@@ -208,8 +229,8 @@ public class EnvironmentUtils {
     }
     // try MetricService
     try (Socket socket = new Socket()) {
-      socket.connect(new InetSocketAddress("127.0.0.1", 9091), 100);
-      logger.error("stop MetricService failed. 9091 can be connected now.");
+      socket.connect(new InetSocketAddress("127.0.0.1", metricPort), 100);
+      logger.error("stop MetricService failed. {} can be connected now.", metricPort);
       return false;
     } catch (Exception e) {
       // do nothing
@@ -228,6 +249,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     FileTimeIndexCacheRecorder.getInstance().close();
+    TableDiskUsageIndex.getInstance().close();
     // delete system info
     cleanDir(config.getSystemDir());
     // delete query
@@ -278,7 +300,7 @@ public class EnvironmentUtils {
     }
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   }
 
   private static void createAllDir() {

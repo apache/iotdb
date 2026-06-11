@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
+import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
@@ -53,7 +55,7 @@ public class UDAFInformationInferrer {
           reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
               .getOutputDataType());
     } catch (Exception e) {
-      LOGGER.warn("Error occurred during inferring UDF data type", e);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_DURING_INFERRING_UDF_DATA_TYPE, e);
       throw new SemanticException(
           String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
               + e);

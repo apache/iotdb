@@ -169,17 +169,18 @@ public class TreeDeviceSchemaCacheManager {
   public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final String[] measurements = schemaComputation.getMeasurements();
+    if (measurements == null) {
+      return indexOfMissingMeasurements;
+    }
 
     final IDeviceSchema schema =
         tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
-      return IntStream.range(0, schemaComputation.getMeasurements().length)
-          .boxed()
-          .collect(Collectors.toList());
+      return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());
     }
     final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
 
-    for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
+    for (int i = 0; i < measurements.length; i++) {
       final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
       if (value == null) {
         indexOfMissingMeasurements.add(i);
@@ -355,7 +356,8 @@ public class TreeDeviceSchemaCacheManager {
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[], boolean,
    * IMeasurementSchema[])}. The input {@link TimeValuePair} shall never be or contain {@code null},
    * if the measurement is with all {@code null}s, its {@link TimeValuePair} shall be {@link
-   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not supposed to update time column.
+   * TableDeviceLastCache#PLACEHOLDER_EMPTY_COLUMN}. This method is not supposed to update time
+   * column.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}

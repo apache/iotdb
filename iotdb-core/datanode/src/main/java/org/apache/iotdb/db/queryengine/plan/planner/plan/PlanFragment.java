@@ -22,14 +22,15 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.DataNodePlanNodeDeserializer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
@@ -198,7 +199,7 @@ public class PlanFragment {
       // so there is no need to serialize all the SeriesScanNode repeated
       if (typeProvider.getTemplatedInfo() != null) {
         typeProvider.serialize(stream);
-        planNodeTree.serializeUseTemplate(stream, typeProvider);
+        planNodeTree.serializeUseTemplate(stream);
         return;
       }
 
@@ -224,7 +225,8 @@ public class PlanFragment {
   public static PlanNode deserializeHelper(ByteBuffer byteBuffer, TypeProvider typeProvider) {
     PlanNode root;
     if (typeProvider != null && typeProvider.getTemplatedInfo() != null) {
-      root = PlanNodeType.deserializeWithTemplate(byteBuffer, typeProvider);
+      root =
+          DataNodePlanNodeDeserializer.INSTANCE.deserializeWithTemplate(byteBuffer, typeProvider);
       if (root instanceof AlignedSeriesScanNode
           || root instanceof AlignedSeriesAggregationScanNode) {
         return root;

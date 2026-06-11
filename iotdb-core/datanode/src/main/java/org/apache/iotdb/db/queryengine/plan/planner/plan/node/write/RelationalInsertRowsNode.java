@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
@@ -61,12 +63,14 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       deviceIDs = new IDeviceID[getInsertRowNodeList().size()];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
-      deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < tagColumnIndices.size(); i++) {
-        final Integer columnIndex = tagColumnIndices.get(i);
-        deviceIdSegments[i + 1] =
-            ((Object[]) getInsertRowNodeList().get(i).getValues()[columnIndex])[rowIdx].toString();
+      final InsertRowNode insertRowNode = getInsertRowNodeList().get(rowIdx);
+      final List<Integer> currentTagColumnIndices = getTagColumnIndices(insertRowNode);
+      String[] deviceIdSegments = new String[currentTagColumnIndices.size() + 1];
+      final String tableName = insertRowNode.getTableName();
+      deviceIdSegments[0] = tableName != null ? tableName : this.getTableName();
+      for (int i = 0; i < currentTagColumnIndices.size(); i++) {
+        final Object idSegment = getValue(insertRowNode, currentTagColumnIndices.get(i));
+        deviceIdSegments[i + 1] = idSegment != null ? idSegment.toString() : null;
       }
       deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -74,9 +78,39 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     return deviceIDs[rowIdx];
   }
 
+  private List<Integer> getTagColumnIndices(final InsertRowNode insertRowNode) {
+    final TsTableColumnCategory[] columnCategories = insertRowNode.getColumnCategories();
+    final List<Integer> currentTagColumnIndices = new ArrayList<>();
+    for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG
+          && isTagColumnPresent(insertRowNode, i)) {
+        currentTagColumnIndices.add(i);
+      }
+    }
+    return currentTagColumnIndices;
+  }
+
+  private boolean isTagColumnPresent(final InsertRowNode insertRowNode, final int columnIndex) {
+    final String[] measurements = insertRowNode.getMeasurements();
+    final Object[] values = insertRowNode.getValues();
+    return measurements != null
+        && columnIndex >= 0
+        && columnIndex < measurements.length
+        && measurements[columnIndex] != null
+        && values != null
+        && columnIndex < values.length;
+  }
+
+  private Object getValue(final InsertRowNode insertRowNode, final int columnIndex) {
+    final Object[] values = insertRowNode.getValues();
+    return values != null && columnIndex >= 0 && columnIndex < values.length
+        ? values[columnIndex]
+        : null;
+  }
+
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRelationalInsertRows(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRelationalInsertRows(this, context);
   }
 
   public static RelationalInsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -123,7 +157,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(stream);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -143,7 +177,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       RelationalInsertRowNode insertRowNode = RelationalInsertRowNode.subDeserializeFromWAL(buffer);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
-    insertRowsNode.setSearchIndex(searchIndex);
+    insertRowsNode.setSearchIndexFromWAL(searchIndex);
     return insertRowsNode;
   }
 
@@ -184,6 +218,9 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       } else {
         tmpNode = new RelationalInsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.setPhysicalTime(getPhysicalTime());
+        tmpNode.setNodeId(getNodeId());
+        tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }

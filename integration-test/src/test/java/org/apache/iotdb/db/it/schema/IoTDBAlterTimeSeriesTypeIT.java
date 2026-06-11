@@ -26,8 +26,8 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -87,7 +87,7 @@ import static org.junit.Assert.fail;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlterTimeSeriesTypeIT {
 
   private static final Logger log = LoggerFactory.getLogger(IoTDBAlterTimeSeriesTypeIT.class);
@@ -98,6 +98,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setPipeMemoryManagementEnabled(false);
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -878,11 +879,7 @@ public class IoTDBAlterTimeSeriesTypeIT {
           session.executeQueryStatement("select count(s1) from " + database + ".load_and_alter");
       RowRecord rec;
       rec = dataSet.next();
-      // Due to the operation of load tsfile execute directly, don't access memtable or generate
-      // InsertNode object, so don't need to check the data type.
-      // When query this measurement point, will only find the data of TSDataType.INT32. So this is
-      // reason what cause we can't find the data of TSDataType.DOUBLE. So result is 9, is not 15.
-      //      assertEquals(15, rec.getFields().get(0).getLongV());
+      // Before alter, DOUBLE TsFiles loaded directly are invisible under the existing INT32 schema.
       assertEquals(9, rec.getFields().get(0).getLongV());
       assertFalse(dataSet.hasNext());
     }

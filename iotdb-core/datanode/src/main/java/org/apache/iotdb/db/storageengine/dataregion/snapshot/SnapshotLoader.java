@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.disk.FolderManager;
+import org.apache.iotdb.commons.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.commons.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
-import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
-import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -72,7 +73,7 @@ public class SnapshotLoader {
           StorageEngine.getInstance().getFileFlushPolicy(),
           storageGroupName);
     } catch (Exception e) {
-      LOGGER.error("Exception occurs while load snapshot from {}", snapshotPath, e);
+      LOGGER.error(StorageEngineMessages.EXCEPTION_LOAD_SNAPSHOT, snapshotPath, e);
       return null;
     }
   }
@@ -84,7 +85,7 @@ public class SnapshotLoader {
       File[] files =
           sourceDataDir.listFiles((dir, name) -> name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME));
       if (files != null && files.length == 1) {
-        LOGGER.info("Reading snapshot log file {}", files[0]);
+        LOGGER.info(StorageEngineMessages.READING_SNAPSHOT_LOG_FILE, files[0]);
         return files[0];
       }
     }
@@ -98,10 +99,7 @@ public class SnapshotLoader {
    */
   public DataRegion loadSnapshotForStateMachine() {
     LOGGER.info(
-        "Loading snapshot for {}-{}, source directory is {}",
-        storageGroupName,
-        dataRegionId,
-        snapshotPath);
+        StorageEngineMessages.LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, snapshotPath);
 
     File snapshotLogFile = getSnapshotLogFile();
 
@@ -116,19 +114,19 @@ public class SnapshotLoader {
     try {
       try {
         deleteAllFilesInDataDirs();
-        LOGGER.info("Remove all data files in original data dir");
+        LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
       } catch (IOException e) {
-        LOGGER.error("Failed to remove origin data files", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_REMOVE_ORIGIN_DATA_FILES, e);
         return null;
       }
-      LOGGER.info("Moving snapshot file to data dirs");
+      LOGGER.info(StorageEngineMessages.MOVING_SNAPSHOT_FILE_TO_DATA_DIRS);
       File snapshotDir = new File(snapshotPath);
       createLinksFromSnapshotDirToDataDirWithoutLog(snapshotDir);
       loadCompressionRatio(snapshotDir);
       return loadSnapshot();
     } catch (IOException | DiskSpaceInsufficientException e) {
       LOGGER.error(
-          "Exception occurs when loading snapshot for {}-{}", storageGroupName, dataRegionId, e);
+          StorageEngineMessages.EXCEPTION_LOADING_SNAPSHOT_FOR, storageGroupName, dataRegionId, e);
       return null;
     }
   }
@@ -137,7 +135,7 @@ public class SnapshotLoader {
     File[] compressionFiles =
         snapshotDir.listFiles(f -> f.getName().startsWith(CompressionRatio.FILE_PREFIX));
     if (compressionFiles == null || compressionFiles.length == 0) {
-      LOGGER.info("No compression ratio file in dir {}", snapshotPath);
+      LOGGER.info(StorageEngineMessages.NO_COMPRESSION_RATIO_FILE_IN_DIR, snapshotPath);
       return;
     }
     File ratioFile = compressionFiles[0];
@@ -155,10 +153,10 @@ public class SnapshotLoader {
       } catch (NumberFormatException ignore) {
         // ignore illegal compression file name
       } catch (IOException e) {
-        LOGGER.warn("Cannot load compression ratio from {}", ratioFile, e);
+        LOGGER.warn(StorageEngineMessages.CANNOT_LOAD_COMPRESSION_RATIO, ratioFile, e);
       }
     }
-    LOGGER.info("Loaded compression ratio from {}", ratioFile);
+    LOGGER.info(StorageEngineMessages.LOADED_COMPRESSION_RATIO, ratioFile);
   }
 
   private DataRegion loadSnapshotWithLog(File logFile) {
@@ -167,25 +165,25 @@ public class SnapshotLoader {
       logAnalyzer = new SnapshotLogAnalyzer(logFile);
       snapshotComplete = logAnalyzer.isSnapshotComplete();
     } catch (Exception e) {
-      LOGGER.error("Exception occurs when reading snapshot file", e);
+      LOGGER.error(StorageEngineMessages.EXCEPTION_READING_SNAPSHOT_FILE, e);
       return null;
     }
 
     if (!snapshotComplete) {
       // Do not load this snapshot because it's not complete.
-      LOGGER.error("This snapshot is not complete, cannot load it");
+      LOGGER.error(StorageEngineMessages.SNAPSHOT_NOT_COMPLETE_CANNOT_LOAD);
       return null;
     }
 
     try {
       try {
         deleteAllFilesInDataDirs();
-        LOGGER.info("Remove all data files in original data dir");
+        LOGGER.info(StorageEngineMessages.REMOVE_ALL_DATA_FILES_IN_ORIGINAL_DIR);
         createLinksFromSnapshotDirToDataDirWithLog();
         loadCompressionRatio(new File(snapshotPath));
         return loadSnapshot();
       } catch (IOException e) {
-        LOGGER.error("Failed to remove origin data files", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_REMOVE_ORIGIN_DATA_FILES, e);
         return null;
       }
     } finally {
@@ -239,7 +237,7 @@ public class SnapshotLoader {
       }
     } catch (IOException e) {
       LOGGER.error(
-          "Exception occurs when deleting time partition directory for {}-{}",
+          StorageEngineMessages.EXCEPTION_DELETING_TIME_PARTITION_DIR,
           storageGroupName,
           dataRegionId,
           e);
@@ -249,6 +247,11 @@ public class SnapshotLoader {
 
   private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
       throws IOException, DiskSpaceInsufficientException {
+    if (!sourceDir.exists()) {
+      throw new IOException(
+          String.format(
+              StorageEngineMessages.CANNOT_FIND_SNAPSHOT_DIRECTORY, sourceDir.getAbsolutePath()));
+    }
     File seqFileDir =
         new File(
             sourceDir,
@@ -266,10 +269,8 @@ public class SnapshotLoader {
                 + File.separator
                 + dataRegionId);
     if (!seqFileDir.exists() && !unseqFileDir.exists()) {
-      throw new IOException(
-          String.format(
-              "Cannot find %s or %s",
-              seqFileDir.getAbsolutePath(), unseqFileDir.getAbsolutePath()));
+      LOGGER.warn(StorageEngineMessages.NO_SEQ_OR_UNSEQ_FILES_IN_SNAPSHOT, sourceDir);
+      return;
     }
     FolderManager folderManager =
         new FolderManager(
@@ -314,62 +315,80 @@ public class SnapshotLoader {
     }
   }
 
+  private File createLinksFromSnapshotToSourceDir(
+      String targetSuffix,
+      File file,
+      Map<String, String> fileTarget,
+      String fileKey,
+      String finalDir)
+      throws IOException {
+    File targetFile =
+        new File(finalDir + File.separator + targetSuffix + File.separator + file.getName());
+
+    try {
+      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+        throw new IOException(
+            String.format(
+                StorageEngineMessages.FAILED_TO_CREATE_DIR,
+                targetFile.getParentFile().getAbsolutePath()));
+      }
+
+      try {
+        Files.createLink(targetFile.toPath(), file.toPath());
+        LOGGER.debug(StorageEngineMessages.CREATED_HARD_LINK, file, targetFile);
+        fileTarget.put(fileKey, finalDir);
+        return targetFile;
+      } catch (IOException e) {
+        LOGGER.info(StorageEngineMessages.CANNOT_CREATE_LINK_FALLBACK_COPY, file, targetFile);
+      }
+
+      Files.copy(file.toPath(), targetFile.toPath());
+      fileTarget.put(fileKey, finalDir);
+      return targetFile;
+    } catch (Exception e) {
+      LOGGER.warn(
+          StorageEngineMessages.FAILED_TO_PROCESS_SNAPSHOT_FILE,
+          file.getName(),
+          finalDir,
+          e.getMessage(),
+          e);
+      throw e;
+    }
+  }
+
   private void createLinksFromSnapshotToSourceDir(
-      String targetSuffix, File[] files, FolderManager folderManager)
-      throws DiskSpaceInsufficientException, IOException {
+      String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
     Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
       String fileKey = file.getName().split("\\.")[0];
       String dataDir = fileTarget.get(fileKey);
 
+      if (dataDir != null) {
+        createLinksFromSnapshotToSourceDir(targetSuffix, file, fileTarget, fileKey, dataDir);
+        continue;
+      }
+
       try {
-        folderManager.getNextWithRetry(
-            currentDataDir -> {
-              String effectiveDir = (dataDir != null) ? dataDir : currentDataDir;
-              File targetFile =
-                  new File(
-                      effectiveDir
-                          + File.separator
-                          + targetSuffix
-                          + File.separator
-                          + file.getName());
+        String firstFolderOfSameDisk =
+            IoTDBDescriptor.getInstance().getConfig().isKeepSameDiskWhenLoadingSnapshot()
+                ? folderManager.getFirstFolderOfSameDisk(file.getAbsolutePath())
+                : null;
 
-              try {
-                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-                  throw new IOException(
-                      String.format(
-                          "Cannot create directory %s",
-                          targetFile.getParentFile().getAbsolutePath()));
-                }
-
-                try {
-                  Files.createLink(targetFile.toPath(), file.toPath());
-                  LOGGER.debug("Created hard link from {} to {}", file, targetFile);
-                  fileTarget.put(fileKey, effectiveDir);
-                  return targetFile;
-                } catch (IOException e) {
-                  LOGGER.info(
-                      "Cannot create link from {} to {}, fallback to copy", file, targetFile);
-                }
-
-                Files.copy(file.toPath(), targetFile.toPath());
-                fileTarget.put(fileKey, effectiveDir);
-                return targetFile;
-              } catch (Exception e) {
-                LOGGER.warn(
-                    "Failed to process file {} in dir {}: {}",
-                    file.getName(),
-                    effectiveDir,
-                    e.getMessage(),
-                    e);
-                throw e;
-              }
-            });
+        if (firstFolderOfSameDisk != null) {
+          createLinksFromSnapshotToSourceDir(
+              targetSuffix, file, fileTarget, fileKey, firstFolderOfSameDisk);
+        } else {
+          folderManager.getNextWithRetry(
+              currentDataDir ->
+                  createLinksFromSnapshotToSourceDir(
+                      targetSuffix, file, fileTarget, fileKey, currentDataDir));
+        }
       } catch (Exception e) {
         throw new IOException(
             String.format(
-                "Failed to process file after retries. Source: %s, Target suffix: %s",
-                file.getAbsolutePath(), targetSuffix),
+                StorageEngineMessages.FAILED_TO_PROCESS_SNAPSHOT_FILE_AFTER_RETRIES,
+                file.getAbsolutePath(),
+                targetSuffix),
             e);
       }
     }
@@ -396,8 +415,7 @@ public class SnapshotLoader {
     }
     if (fileCnt != loggedFileNum) {
       throw new IOException(
-          String.format(
-              "The file num in log is %d, while file num in disk is %d", loggedFileNum, fileCnt));
+          String.format(StorageEngineMessages.SNAPSHOT_FILE_NUM_MISMATCH, loggedFileNum, fileCnt));
     }
   }
 
@@ -479,13 +497,14 @@ public class SnapshotLoader {
       String infoStr = getFileInfoString(file);
       if (!fileInfoSet.contains(infoStr)) {
         throw new IOException(
-            String.format("File %s is not in the log file list", file.getAbsolutePath()));
+            String.format(StorageEngineMessages.SNAPSHOT_FILE_NOT_IN_LOG, file.getAbsolutePath()));
       }
       File targetFile = new File(targetDir, file.getName());
       if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
         throw new IOException(
             String.format(
-                "Cannot create directory %s", targetFile.getParentFile().getAbsolutePath()));
+                StorageEngineMessages.FAILED_TO_CREATE_DIR,
+                targetFile.getParentFile().getAbsolutePath()));
       }
       Files.createLink(targetFile.toPath(), file.toPath());
     }

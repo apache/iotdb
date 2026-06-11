@@ -97,13 +97,14 @@ public class WindowFunctionOptimizationTest {
         "SELECT sum(s1) OVER (PARTITION BY tag1, s1), min(s1) OVER (PARTITION BY tag1) FROM table1";
     LogicalQueryPlan logicalQueryPlan2 = planTester.createPlan(sql2);
 
-    // Two window function has swapped, but the query plan remains the same
+    // The initial sort by (tag1, s1) satisfies both windows. The second window can therefore
+    // reuse the grouping over tag1 without an extra sort.
     /*
      *   └──OutputNode
      *        └──ProjectNode
-     *             └──WindowNode(PARTITION BY tag1, s1)
-     *                 └──SortNode
-     *                     └──WindowNode(PARTITION BY tag1)
+     *             └──WindowNode(PARTITION BY tag1)
+     *                 └──GroupNode(PARTITION BY tag1)
+     *                     └──WindowNode(PARTITION BY tag1, s1)
      *                         └──SortNode
      *                              └──TableScanNode
      */
@@ -112,9 +113,13 @@ public class WindowFunctionOptimizationTest {
         output(
             project(
                 window(
-                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of("tag1"),
                     ImmutableList.of(),
-                    sort(window(sort(tableScan)))))));
+                    group(
+                        window(
+                            ImmutableList.of("tag1", "s1"),
+                            ImmutableList.of(),
+                            sort(tableScan)))))));
   }
 
   @Test

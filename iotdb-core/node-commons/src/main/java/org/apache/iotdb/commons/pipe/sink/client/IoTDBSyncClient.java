@@ -22,9 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
-import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,14 +37,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class IoTDBSyncClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncClient.class);
-
-  private static final AtomicInteger SLICE_ORDER_ID_GENERATOR = new AtomicInteger(0);
 
   private final String ipAddress;
   private final int port;
@@ -100,9 +94,8 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) throws TException {
-    final int bodySizeLimit = PipeConfig.getInstance().getPipeConnectorRequestSliceThresholdBytes();
-    if (req.getVersion() != IoTDBSinkRequestVersion.VERSION_1.getVersion()
-        || req.body.limit() < bodySizeLimit) {
+    final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
+    if (!PipeTransferSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
       return super.pipeTransfer(req);
     }
 
@@ -115,23 +108,13 @@ public class IoTDBSyncClient extends IClientRPCService.Client
         bodySizeLimit);
 
     try {
-      final int sliceOrderId = SLICE_ORDER_ID_GENERATOR.getAndIncrement();
-      // Slice the buffer to avoid the buffer being too large
-      final int sliceCount =
-          req.body.limit() / bodySizeLimit + (req.body.limit() % bodySizeLimit == 0 ? 0 : 1);
+      final int sliceOrderId = PipeTransferSliceReqBuilder.nextSliceOrderId();
+      final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit);
       for (int i = 0; i < sliceCount; ++i) {
-        final int startIndexInBody = i * bodySizeLimit;
-        final int endIndexInBody = Math.min((i + 1) * bodySizeLimit, req.body.limit());
         final TPipeTransferResp sliceResp =
             super.pipeTransfer(
-                PipeTransferSliceReq.toTPipeTransferReq(
-                    sliceOrderId,
-                    req.getType(),
-                    i,
-                    sliceCount,
-                    req.body.duplicate(),
-                    startIndexInBody,
-                    endIndexInBody));
+                PipeTransferSliceReqBuilder.buildSliceReq(
+                    req, sliceOrderId, i, sliceCount, bodySizeLimit));
 
         if (i == sliceCount - 1) {
           return sliceResp;

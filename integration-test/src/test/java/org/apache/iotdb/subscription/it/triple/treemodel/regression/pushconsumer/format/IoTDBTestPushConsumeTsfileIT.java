@@ -26,17 +26,16 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -137,10 +136,11 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionTreeRegres
                 message -> {
                   onReceiveCount.incrementAndGet();
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
                     Path path = new Path(device, "s_0", true);
-                    QueryDataSet dataset =
-                        reader.query(QueryExpression.create(Collections.singletonList(path), null));
+                    SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                        SubscriptionTreeReaderTestUtils.query(
+                            reader, Collections.singletonList(path));
                     while (dataset.hasNext()) {
                       rowCount.addAndGet(1);
                       RowRecord next = dataset.next();

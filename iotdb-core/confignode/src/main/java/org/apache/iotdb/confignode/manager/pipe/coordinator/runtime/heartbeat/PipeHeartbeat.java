@@ -55,7 +55,7 @@ public class PipeHeartbeat {
       // the final results and namely these dataNodes are omitted in calculation.
       remainingEventCountMap.put(
           pipeMeta.getStaticMeta(),
-          Objects.nonNull(pipeCompletedListFromAgent)
+          Objects.nonNull(pipeRemainingEventCountListFromAgent)
               ? pipeRemainingEventCountListFromAgent.get(i)
               : 0L);
       remainingTimeMap.put(

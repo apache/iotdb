@@ -127,7 +127,9 @@ class InferenceRequestPool(mp.Process):
             for i in range(batch_inputs.size(0)):
                 batch_input_list.append({"targets": batch_inputs[i]})
             batch_inputs = self._inference_pipeline.preprocess(
-                batch_input_list, output_length=requests[0].output_length
+                batch_input_list,
+                output_length=requests[0].output_length,
+                auto_adapt=True,
             )
             if isinstance(self._inference_pipeline, ForecastPipeline):
                 batch_output = self._inference_pipeline.forecast(

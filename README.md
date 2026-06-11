@@ -30,9 +30,9 @@
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
-[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 # Overview
 
@@ -100,6 +100,29 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+
+> ⚠️ **Important: System Resource Limits**
+>
+> IoTDB requires sufficient system resource limits to start correctly.
+> If these limits are not configured, IoTDB may fail to start or emit warnings such as
+> `"too many open files"` or `"connection reset"` in the logs.
+>
+> **Linux / macOS**
+> ```bash
+> ulimit -n 65535
+> sudo sysctl -w net.core.somaxconn=65535
+> ```
+>
+> **Docker Users**
+> When running IoTDB in Docker, these limits must be applied on the **host machine**
+> or explicitly passed to the container:
+> ```bash
+> docker run --ulimit nofile=65535:65535 ...
+> ```
+>
+> **Windows Users**
+> These commands are not applicable on Windows.
+> Please follow the Windows installation steps below and ensure sufficient system resources.
 ### Linux
 
 (This guide is based on an installation of Ubuntu 22.04.)
@@ -290,6 +313,16 @@ Under the iotdb/iotdb-client path:
 ```
 
 After being built, the IoTDB cli is located at the folder "cli/target".
+
+### Build with Chinese Log & Error Messages
+
+IoTDB supports compile-time internationalization (i18n) for log and error messages. By default, messages are in English. To build with Chinese messages, activate the `with-zh-locale` Maven profile:
+
+```
+> mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+```
+
+This works by swapping the source directory `src/main/i18n/en` (default) with `src/main/i18n/zh`, where each module keeps locale-specific Java constant classes containing translated message strings.
 
 ### Build Others
 
@@ -517,6 +550,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

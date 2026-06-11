@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -251,7 +252,7 @@ public class TriggerManagementService {
             TriggerExecutableManager.getInstance().readTextFromFileUnderTemporaryRoot(md5FilePath);
         hasComputed = true;
       } catch (IOException e) {
-        LOGGER.warn("Error occurred when trying to read md5 of {}", md5FilePath);
+        LOGGER.warn(DataNodeMiscMessages.ERROR_READING_MD5, md5FilePath);
       }
     }
     if (!hasComputed) {

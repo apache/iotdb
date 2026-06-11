@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +47,6 @@ public enum ThreadName {
   MPP_COORDINATOR_EXECUTOR_POOL("MPP-Coordinator-Executor"),
   DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
-  MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
   // -------------------------- Compaction --------------------------
   COMPACTION_WORKER("Compaction-Worker"),
@@ -97,19 +98,20 @@ public enum ThreadName {
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+  CONFIG_NODE_LEADER_SERVICES_TRANSITION("ConfigNode-Leader-Services-Transition"),
   // -------------------------- ConfigNode-Procedure ------------------------
   // TODO: Use Thread Pool to manage the procedure thread @Potato
   CONFIG_NODE_PROCEDURE_WORKER("ProcedureWorkerGroup"),
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
-  // -------------------------- PipeConsensus --------------------------
-  PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
-  PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
-  ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
-  PIPE_CONSENSUS_DELETION_SERIALIZE("DAL-Serialize"),
-  PIPE_CONSENSUS_TSFILE_WRITER_CHECKER("PipeConsensus-TsFileWriter-Checker"),
-  PIPE_CONSENSUS_BACKGROUND_TASK_EXECUTOR("PipeConsensusBackgroundTaskExecutor"),
+  // -------------------------- IoTConsensusV2 --------------------------
+  IOT_CONSENSUS_V2_RPC_SERVICE("IoTConsensusV2RPC-Service"),
+  IOT_CONSENSUS_V2_RPC_PROCESSOR("IoTConsensusV2RPC-Processor"),
+  ASYNC_DATANODE_IOT_CONSENSUS_V2_CLIENT_POOL("AsyncDataNodeIoTConsensusV2ServiceClientPool"),
+  IOT_CONSENSUS_V2_DELETION_SERIALIZE("DAL-Serialize"),
+  IOT_CONSENSUS_V2_TSFILE_WRITER_CHECKER("IoTConsensusV2-TsFileWriter-Checker"),
+  IOT_CONSENSUS_V2_BACKGROUND_TASK_EXECUTOR("IoTConsensusV2BackgroundTaskExecutor"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -136,10 +138,10 @@ public enum ThreadName {
   GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
   GROUP_MANAGEMENT("groupManagement"),
   // -------------------------- Compute --------------------------
-  PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
+  PIPE_SOURCE_DISRUPTOR("Pipe-Source-Disruptor"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
-  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
-  PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
+  PIPE_SINK_EXECUTOR_POOL("Pipe-Sink-Executor-Pool"),
+  IOT_CONSENSUS_V2_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_TSFILE_ASYNC_SEND_POOL("Pipe-TsFile-Async-Send-Pool"),
@@ -149,13 +151,16 @@ public enum ThreadName {
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
   PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER(
       "Pipe-Runtime-Periodical-Phantom-Reference-Cleaner"),
-  PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
+  PIPE_ASYNC_SINK_CLIENT_POOL("Pipe-Async-Sink-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
   PIPE_PARALLEL_EXECUTION_POOL("Pipe-Parallel-Execution-Pool"),
   PIPE_TERMINATE_EXECUTION_POOL("Pipe-Terminate-Execution-Pool"),
   LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL("Subscription-Consensus-Prefetch-Executor-Pool"),
+  SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER("Subscription-Consensus-Prefetch-Scheduler"),
+  SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER("Subscription-Consensus-Progress-Broadcaster"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -196,12 +201,16 @@ public enum ThreadName {
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
   DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
+  DATANODE_TOPOLOGY_PROBING("DataNode-Topology-Probing"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
   BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
+  FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
+  DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
   // the unknown thread name is used for metrics
   UNKNOWN("UNKNOWN");
@@ -228,7 +237,6 @@ public enum ThreadName {
               MPP_COORDINATOR_EXECUTOR_POOL,
               DATANODE_INTERNAL_RPC_SERVICE,
               DATANODE_INTERNAL_RPC_PROCESSOR,
-              MPP_COORDINATOR_WRITE_EXECUTOR,
               ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
   private static final Set<ThreadName> compactionThreadNames =
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
@@ -269,14 +277,14 @@ public enum ThreadName {
               LOG_DISPATCHER,
               IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
 
-  private static final Set<ThreadName> pipeConsensusThreadNames =
+  private static final Set<ThreadName> iotConsensusV2ThreadNames =
       new HashSet<>(
           Arrays.asList(
-              PIPE_CONSENSUS_RPC_SERVICE,
-              PIPE_CONSENSUS_RPC_PROCESSOR,
-              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL,
-              PIPE_CONSENSUS_DELETION_SERIALIZE,
-              PIPE_CONSENSUS_TSFILE_WRITER_CHECKER));
+              IOT_CONSENSUS_V2_RPC_SERVICE,
+              IOT_CONSENSUS_V2_RPC_PROCESSOR,
+              ASYNC_DATANODE_IOT_CONSENSUS_V2_CLIENT_POOL,
+              IOT_CONSENSUS_V2_DELETION_SERIALIZE,
+              IOT_CONSENSUS_V2_TSFILE_WRITER_CHECKER));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -299,10 +307,10 @@ public enum ThreadName {
   private static final Set<ThreadName> computeThreadNames =
       new HashSet<>(
           Arrays.asList(
-              PIPE_EXTRACTOR_DISRUPTOR,
+              PIPE_SOURCE_DISRUPTOR,
               PIPE_PROCESSOR_EXECUTOR_POOL,
-              PIPE_CONNECTOR_EXECUTOR_POOL,
-              PIPE_CONSENSUS_EXECUTOR_POOL,
+              PIPE_SINK_EXECUTOR_POOL,
+              IOT_CONSENSUS_V2_EXECUTOR_POOL,
               PIPE_CONFIGNODE_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
@@ -310,11 +318,14 @@ public enum ThreadName {
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
               PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
               PIPE_RUNTIME_PERIODICAL_PHANTOM_REFERENCE_CLEANER,
-              PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
+              PIPE_ASYNC_SINK_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
               PIPE_AIR_GAP_RECEIVER,
               PIPE_PARALLEL_EXECUTION_POOL,
               SUBSCRIPTION_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_EXECUTOR_POOL,
+              SUBSCRIPTION_CONSENSUS_PREFETCH_SCHEDULER,
+              SUBSCRIPTION_CONSENSUS_PROGRESS_BROADCASTER,
               SUBSCRIPTION_RUNTIME_META_SYNCER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -364,7 +375,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
 
   private static final Set<ThreadName> configNodeRecoverThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER, CONFIG_NODE_LEADER_SERVICES_TRANSITION));
 
   private static final Set<ThreadName> configNodeProcedureThreadNames =
       new HashSet<>(
@@ -408,7 +419,7 @@ public enum ThreadName {
         schemaEngineThreadNames,
         clientServiceThreadNames,
         iotConsensusThreadNames,
-        pipeConsensusThreadNames,
+        iotConsensusV2ThreadNames,
         ratisThreadNames,
         computeThreadNames,
         jvmThreadNames,
@@ -499,7 +510,7 @@ public enum ThreadName {
         }
       }
     }
-    LOGGER.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug(CommonMessages.UNKNOWN_THREAD_NAME, givenThreadName);
     return ThreadName.UNKNOWN;
   }
 }

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.calc.utils.datastructure.MergeSortHeap;
+import org.apache.iotdb.calc.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -82,7 +85,7 @@ public class MergeSortHeapTest {
     inputBuilder2.declarePosition();
 
     Comparator<SortKey> comparator =
-        MergeSortComparator.getComparator(
+        MergeSortComparatorUtils.getComparator(
             Arrays.asList(
                 new SortItem(OrderByKey.TIME, Ordering.ASC),
                 new SortItem(OrderByKey.DEVICE, Ordering.ASC)),

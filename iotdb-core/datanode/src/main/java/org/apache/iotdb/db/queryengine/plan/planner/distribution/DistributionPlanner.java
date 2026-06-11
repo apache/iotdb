@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -34,15 +37,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 
@@ -80,7 +83,7 @@ public class DistributionPlanner {
     List<PlanNode> planNodeList =
         rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
     if (planNodeList.size() != 1) {
-      throw new IllegalStateException("root node must return only one");
+      throw new IllegalStateException(DataNodeQueryMessages.ROOT_NODE_MUST_RETURN_ONLY_ONE);
     } else {
       return planNodeList.get(0);
     }
@@ -111,9 +114,7 @@ public class DistributionPlanner {
       return;
     }
 
-    final boolean needShuffleSinkNode =
-        analysis.getTreeStatement() instanceof QueryStatement
-            && needShuffleSinkNode((QueryStatement) analysis.getTreeStatement(), context);
+    final boolean needShuffleSinkNode = needShuffleSinkNode(analysis.getTreeStatement(), context);
 
     adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
   }
@@ -145,13 +146,23 @@ public class DistributionPlanner {
         ExchangeNode exchangeNode = (ExchangeNode) child;
         TRegionReplicaSet regionOfChild =
             context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion();
-        MultiChildrenSinkNode newChild =
-            memo.computeIfAbsent(
-                regionOfChild,
-                tRegionReplicaSet ->
-                    needShuffleSinkNode
-                        ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
-                        : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId()));
+        MultiChildrenSinkNode newChild;
+        if (exchangeNode.isForcedExchange()) {
+          // Keep forced exchange branch isolated: do not merge into shared sink memo.
+          newChild =
+              needShuffleSinkNode
+                  ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                  : new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
+        } else {
+          newChild =
+              memo.computeIfAbsent(
+                  regionOfChild,
+                  tRegionReplicaSet ->
+                      needShuffleSinkNode
+                          ? new ShuffleSinkNode(context.queryContext.getQueryId().genPlanNodeId())
+                          : new IdentitySinkNode(
+                              context.queryContext.getQueryId().genPlanNodeId()));
+        }
         newChild.addChild(exchangeNode.getChild());
         newChild.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
@@ -162,8 +173,18 @@ public class DistributionPlanner {
   }
 
   /** Return true if we need to use ShuffleSinkNode instead of IdentitySinkNode. */
-  private boolean needShuffleSinkNode(
-      QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
+  private boolean needShuffleSinkNode(Statement statement, NodeGroupContext nodeGroupContext) {
+
+    QueryStatement queryStatement = null;
+    if (statement instanceof QueryStatement) {
+      queryStatement = (QueryStatement) statement;
+    } else if (statement instanceof ExplainAnalyzeStatement) {
+      queryStatement = ((ExplainAnalyzeStatement) statement).getQueryStatement();
+    }
+    if (queryStatement == null) {
+      return false;
+    }
+
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
 
     if (nodeGroupContext.isAlignByDevice() && orderByComponent != null) {

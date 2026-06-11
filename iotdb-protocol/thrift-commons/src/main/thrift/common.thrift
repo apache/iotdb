@@ -34,6 +34,7 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
   5: optional bool needRetry
+  6: optional binary responseData
 }
 
 enum TConsensusGroupType {
@@ -309,6 +310,13 @@ enum TAggregationType {
   APPROX_COUNT_DISTINCT,
   APPROX_MOST_FREQUENT,
   APPROX_PERCENTILE,
+  CORR,
+  COVAR_POP,
+  COVAR_SAMP,
+  REGR_SLOPE,
+  REGR_INTERCEPT,
+  SKEWNESS,
+  KURTOSIS
 }
 
 struct TShowConfigurationTemplateResp {

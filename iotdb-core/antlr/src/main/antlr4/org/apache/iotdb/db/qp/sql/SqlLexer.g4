@@ -137,6 +137,10 @@ CACHE
     : C A C H E
     ;
 
+CALCULATION
+    : C A L C U L A T I O N
+    ;
+
 CALL
     : C A L L
     ;
@@ -312,6 +316,10 @@ DISABLE
 
 DISCARD
     : D I S C A R D
+    ;
+
+DISK_USAGE
+    : D I S K '_' U S A G E
     ;
 
 DROP
@@ -659,6 +667,14 @@ PIPEPLUGINS
     : P I P E P L U G I N S
     ;
 
+POINT
+    : P O I N T
+    ;
+
+POINTS
+    : P O I N T S
+    ;
+
 POLICY
     : P O L I C Y
     ;
@@ -821,6 +837,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -1185,6 +1205,10 @@ SECURITY
 
 AUDIT
     : A U D I T
+    ;
+
+AUTH
+    : A U T H
     ;
 
 REPAIR

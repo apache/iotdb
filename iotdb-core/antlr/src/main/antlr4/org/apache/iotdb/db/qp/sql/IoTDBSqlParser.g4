@@ -76,6 +76,8 @@ ddlStatement
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     // Table View
     | createTableView
+    // for calculation point
+    | createCalcPoint | alterCalcPoint | dropCalcPoint | showCalcPoint
     ;
 
 dmlStatement
@@ -91,9 +93,10 @@ dclStatement
 utilityStatement
     : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | showQueries | showDiskUsage | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
+    | repairDataPartitionTable
     ;
 
 /**
@@ -200,7 +203,12 @@ showDevices
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? orderByTimeseriesClause? rowPaginationClause?
+    ;
+
+// order by timeseries for SHOW TIMESERIES
+orderByTimeseriesClause
+    : ORDER BY TIMESERIES (ASC | DESC)?
     ;
 
 // ---- Show Child Paths
@@ -849,6 +857,39 @@ createTableView
         AS prefixPath
     ;
 
+createCalcPoint
+    : CREATE CALCULATION POINT fullPath
+        AS expression
+        STRING_LITERAL
+        comment?
+    ;
+
+alterCalcPoint
+    : ALTER CALCULATION POINT fullPath
+       (AS expression)?
+       (STRING_LITERAL)?
+       comment?
+       (DROP COMMENT)?
+    ;
+
+dropCalcPoint
+    : DROP CALCULATION POINTS prefixPath
+    ;
+
+showCalcPoint
+    : SHOW CALCULATION POINTS prefixPath
+      calcPointWhereClause?
+      rowPaginationClause?
+    ;
+
+calcPointWhereClause
+    : WHERE calcPointContainsExpression
+    ;
+
+calcPointContainsExpression
+    : filterKey=identifier operator_contains value=STRING_LITERAL
+    ;
+
 viewColumnDefinition
     : identifier columnCategory=(TAG | TIME | FIELD) comment?
     | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
@@ -998,6 +1039,10 @@ sortKey
     | DATANODEID
     | ELAPSEDTIME
     | STATEMENT
+    | DATABASE
+    | REGIONID
+    | TIMEPARTITION
+    | SIZEINBYTES
     ;
 
 // ---- Fill Clause
@@ -1202,7 +1247,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR (SCHEMA | QUERY | ALL)? CACHE (ON (LOCAL | CLUSTER))?
+    : CLEAR (SCHEMA | QUERY | AUTH | ALL)? CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Set Configuration
@@ -1227,6 +1272,11 @@ startRepairData
 // Stop Repair Data
 stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
     ;
 
 // Explain
@@ -1263,6 +1313,13 @@ showQueryResource
 // Show Queries / Show Query Processlist
 showQueries
     : SHOW (QUERIES | QUERY PROCESSLIST)
+    whereClause?
+    orderByClause?
+    rowPaginationClause?
+    ;
+
+showDiskUsage
+    : SHOW DISK_USAGE FROM prefixPath
     whereClause?
     orderByClause?
     rowPaginationClause?
@@ -1461,6 +1518,7 @@ expression
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
+
 
 caseWhenThenExpression
     : CASE caseExpression=expression? whenThenExpression+ (ELSE elseExpression=expression)? END

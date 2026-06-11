@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -355,13 +356,18 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
+  public void unpinTsFileResource(
+      final TsFileResource resource,
+      final boolean shouldTransferModFile,
+      final @Nullable String pipeName)
       throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
-    decreaseFileReference(pinnedFile, pipeName);
+    decreaseFileReference(
+        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
 
-    if (resource.sharedModFileExists()) {
-      decreaseFileReference(resource.getSharedModFile().getFile(), pipeName);
+    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+      decreaseFileReference(
+          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+          pipeName);
     }
   }
 
@@ -381,7 +387,7 @@ public class PipeTsFileResourceManager {
               try {
                 return resource.getFileSize();
               } catch (Exception e) {
-                LOGGER.warn("failed to get file size of linked TsFile {}: ", resource, e);
+                LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_FILE_SIZE_OF_LINKED, resource, e);
                 return 0;
               }
             })

@@ -38,6 +38,7 @@
         <module>rest-java-example</module>
         <module>schema</module>
         <module>session</module>
+        <module>subscription</module>
         <module>trigger</module>
         <module>udf</module>
     </modules>
@@ -79,12 +80,4 @@
             </plugins>
         </pluginManagement>
     </build>
-    <profiles>
-        <profile>
-            <id>with-cpp</id>
-            <modules>
-                <module>client-cpp-example</module>
-            </modules>
-        </profile>
-    </profiles>
 </project>

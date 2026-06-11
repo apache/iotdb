@@ -32,6 +32,7 @@
         <confignode.it.skip>${confignode.test.skip}</confignode.it.skip>
         <confignode.test.skip>false</confignode.test.skip>
         <confignode.ut.skip>${confignode.test.skip}</confignode.ut.skip>
+        <i18n.locale>en</i18n.locale>
     </properties>
     <dependencies>
         <dependency>
@@ -46,12 +47,22 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-subscription</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-consensus</artifactId>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>calc-commons</artifactId>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -226,6 +237,24 @@
                     </filesets>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-i18n-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -253,6 +282,12 @@
             </activation>
             <properties>
                 <confignode.ut.skip>true</confignode.ut.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>with-zh-locale</id>
+            <properties>
+                <i18n.locale>zh</i18n.locale>
             </properties>
         </profile>
     </profiles>

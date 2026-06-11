@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TreeDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedAboveDatabaseMNode;
@@ -73,6 +74,6 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   @Override
   public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementSchema measurementSchema) {
-    throw new UnsupportedOperationException("View is not supported.");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.VIEW_NOT_SUPPORTED);
   }
 }

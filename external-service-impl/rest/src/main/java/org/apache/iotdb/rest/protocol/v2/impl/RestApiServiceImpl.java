@@ -19,13 +19,13 @@ package org.apache.iotdb.rest.protocol.v2.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -34,12 +34,14 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -111,7 +113,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeFastLastQueryStatement(
       PrefixPathList prefixPathList, SecurityContext securityContext) {
     Long queryId = null;
-    Statement statement = null;
+    QueryStatement statement = null;
     boolean finish = false;
     long startTime = System.nanoTime();
     Throwable t = null;
@@ -123,7 +125,17 @@ public class RestApiServiceImpl extends RestApiService {
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
           new HashMap<>();
-      int sensorNum = 0;
+
+      // Check permission, the cost is rather low because the req only contains one prefix path
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      final TSLastDataQueryReq tsLastDataQueryReq =
+          FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
+      statement = StatementGenerator.createStatement(tsLastDataQueryReq);
+
+      final Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      if (response != null) {
+        return response;
+      }
 
       final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -131,21 +143,14 @@ public class RestApiServiceImpl extends RestApiService {
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+        region.fillLastQueryMap(prefixPath, resultMap, statement.getAuthorityScope());
       }
+
       // Check cache first
       if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-        TSLastDataQueryReq tsLastDataQueryReq =
-            FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
-        statement = StatementGenerator.createStatement(tsLastDataQueryReq);
-
         if (ExecuteStatementHandler.validateStatement(statement)) {
           return FastLastHandler.buildErrorResponse(TSStatusCode.EXECUTE_STATEMENT_ERROR);
         }
-
-        Optional.ofNullable(authorizationHandler.checkAuthority(securityContext, statement))
-            .ifPresent(Response.class::cast);
 
         queryId = SESSION_MANAGER.requestQueryId();
         SessionInfo sessionInfo = SESSION_MANAGER.getSessionInfo(clientSession);
@@ -192,6 +197,10 @@ public class RestApiServiceImpl extends RestApiService {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
+            if (tvPair == TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
+                || tvPair.getValue() == null) {
+              continue;
+            }
             valueList.add(tvPair.getValue().getStringValue());
             dataTypeList.add(tvPair.getValue().getDataType().name());
             targetDataSet.addTimestampsItem(tvPair.getTimestamp());
@@ -239,7 +248,7 @@ public class RestApiServiceImpl extends RestApiService {
             contentOfQuerySupplier,
             clientSession.getUsername(),
             clientSession.getClientAddress());
-        recordQueries(() -> costTime, contentOfQuerySupplier, t);
+        recordQueries(() -> costTime, contentOfQuerySupplier, t, false);
       }
     }
   }
@@ -270,7 +279,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -310,9 +321,10 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (statement != null)
+      if (statement != null) {
         CommonUtils.addStatementExecutionLatency(
             OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
+      }
       if (queryId != null) {
         if (finish) {
           long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -332,7 +344,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
 
       if (statement == null) {
         return Response.ok()

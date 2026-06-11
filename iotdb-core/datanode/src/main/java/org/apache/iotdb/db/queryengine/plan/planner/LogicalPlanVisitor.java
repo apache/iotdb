@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -27,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -54,6 +55,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -87,7 +90,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -95,6 +100,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -557,34 +563,52 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
+    // Ensure TypeProvider has schema query column types for later SortNode
+    ColumnHeaderConstant.showTimeSeriesColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
+    Ordering timeseriesOrdering = showTimeSeriesStatement.getTimeseriesOrdering();
+    boolean orderByTimeseries = timeseriesOrdering != null;
+    boolean orderByTimeseriesDesc = timeseriesOrdering == Ordering.DESC;
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
-          planBuilder
-              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
-              .planLimit(limit)
-              .planOffset(offset);
+          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
+      if (orderByTimeseries) {
+        SortItem sortItem = new SortItem(ColumnHeaderConstant.TIMESERIES, timeseriesOrdering);
+        planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
+      }
+      planBuilder = planBuilder.planOffset(offset).planLimit(limit);
       return planBuilder.getRoot();
     }
 
     // If there is only one region, we can push down the offset and limit operation to
     // source operator.
-    boolean canPushDownOffsetLimit =
+    boolean singleSchemaRegion =
         analysis.getSchemaPartitionInfo() != null
-            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
-            && !showTimeSeriesStatement.isOrderByHeat();
+            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+    boolean isMemorySchemaEngine =
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSchemaEngineMode()
+            .equals(SchemaEngineMode.Memory.toString());
+    boolean canPushDownOffsetLimit = false;
 
-    if (showTimeSeriesStatement.isOrderByHeat()) {
+    if (showTimeSeriesStatement.isOrderByHeat()
+        || (!isMemorySchemaEngine && orderByTimeseriesDesc)) {
       limit = 0;
       offset = 0;
-    } else if (!canPushDownOffsetLimit) {
-      limit =
-          showTimeSeriesStatement.getLimit() != 0
-              ? showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset()
-              : 0;
+    } else if (!singleSchemaRegion) {
+      limit = showTimeSeriesStatement.getLimitWithOffset();
       offset = 0;
+    } else {
+      canPushDownOffsetLimit = true;
     }
+
     planBuilder =
         planBuilder
             .planTimeSeriesSchemaSource(
@@ -595,8 +619,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.isOrderByHeat(),
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo(),
-                showTimeSeriesStatement.getAuthorityScope())
+                showTimeSeriesStatement.getAuthorityScope(),
+                timeseriesOrdering)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
+
+    // order by timeseries name in multi-region or PBTree-Desc case: still need global SortNode
+    if (orderByTimeseries
+        && (!singleSchemaRegion || (!isMemorySchemaEngine && orderByTimeseriesDesc))) {
+      SortItem sortItem = new SortItem(ColumnHeaderConstant.TIMESERIES, timeseriesOrdering);
+      planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
+    }
 
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
@@ -626,8 +658,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder
               .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+              .planOffset(showDevicesStatement.getOffset())
+              .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
@@ -640,10 +672,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showDevicesStatement.getLimit();
     long offset = showDevicesStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit =
-          showDevicesStatement.getLimit() != 0
-              ? showDevicesStatement.getLimit() + showDevicesStatement.getOffset()
-              : 0;
+      limit = showDevicesStatement.getLimitWithOffset();
       offset = 0;
     }
 
@@ -704,7 +733,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countTimeSeriesStatement.isPrefixPath(),
             countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countTimeSeriesStatement.getAuthorityScope())
+            countTimeSeriesStatement.getAuthorityScope(),
+            countTimeSeriesStatement.isCanSeeSystemDB(),
+            countTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }
@@ -720,7 +751,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getLevel(),
             countLevelTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo(),
-            countLevelTimeSeriesStatement.getAuthorityScope())
+            countLevelTimeSeriesStatement.getAuthorityScope(),
+            countLevelTimeSeriesStatement.isCanSeeSystemDB(),
+            countLevelTimeSeriesStatement.isCanSeeAuditDB())
         .planCountMerge()
         .getRoot();
   }
@@ -763,6 +796,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType());
+      if (insertRowStatement.getFailedMeasurementInfoMap() != null) {
+        for (Integer index : insertRowStatement.getFailedMeasurementInfoMap().keySet()) {
+          insertRowNode.markFailedMeasurement(index);
+        }
+      }
       insertRowNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
@@ -844,12 +882,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitSeriesSchemaFetch(
       SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    List<String> storageGroupList =
+    List<String> databaseList =
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
-        .planSchemaFetchMerge(storageGroupList)
+        .planSchemaFetchMerge(databaseList)
         .planSeriesSchemaFetchSource(
-            storageGroupList,
+            databaseList,
             seriesSchemaFetchStatement.getPatternTree(),
             seriesSchemaFetchStatement.getTemplateMap(),
             seriesSchemaFetchStatement.isWithTags(),
@@ -980,6 +1018,18 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
+  public PlanNode visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+    planBuilder =
+        planBuilder
+            .planShowDiskUsage(analysis, showDiskUsageStatement.getPathPattern())
+            .planOffset(showDiskUsageStatement.getOffset())
+            .planLimit(showDiskUsageStatement.getLimit());
+    return planBuilder.getRoot();
+  }
+
+  @Override
   public PlanNode visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
     List<ViewExpression> viewExpressionList = new ArrayList<>();
@@ -1015,10 +1065,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showLogicalViewStatement.getLimit();
     long offset = showLogicalViewStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit =
-          showLogicalViewStatement.getLimit() != 0
-              ? showLogicalViewStatement.getLimit() + showLogicalViewStatement.getOffset()
-              : 0;
+      limit = showLogicalViewStatement.getLimitWithOffset();
       offset = 0;
     }
     planBuilder =

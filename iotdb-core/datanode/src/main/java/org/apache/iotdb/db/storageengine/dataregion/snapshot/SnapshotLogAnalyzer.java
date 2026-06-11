@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +48,7 @@ public class SnapshotLogAnalyzer {
     try {
       reader.close();
     } catch (IOException e) {
-      LOGGER.error("Exception occurs when closing log analyzer", e);
+      LOGGER.error(StorageEngineMessages.EXCEPTION_CLOSING_LOG_ANALYZER, e);
     }
   }
 

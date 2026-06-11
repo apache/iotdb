@@ -39,6 +39,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.ext.Provider;
 
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.UUID;
@@ -47,7 +48,6 @@ import java.util.UUID;
 @Provider
 public class AuthorizationFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
-  private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -85,15 +85,16 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       containerRequestContext.abortWith(resp);
       return;
     }
-    User user = userCache.getUser(authorizationHeader);
+    User user = checkLogin(containerRequestContext, authorizationHeader);
     if (user == null) {
-      user = checkLogin(containerRequestContext, authorizationHeader);
-      if (user == null) {
-        return;
-      } else {
-        userCache.setUser(authorizationHeader, user);
-      }
+      return;
     }
+
+    ZoneId zoneId = resolveTimeZone(containerRequestContext);
+    if (zoneId == null) {
+      return;
+    }
+
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
       RestClientSession restClientSession = new RestClientSession(sessionid);
@@ -103,7 +104,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
           SESSION_MANAGER.getCurrSession(),
           user.getUserId(),
           user.getUsername(),
-          ZoneId.systemDefault(),
+          zoneId,
           IoTDBConstant.ClientVersion.V_1_0);
     }
     BasicSecurityContext basicSecurityContext =
@@ -151,6 +152,37 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       return null;
     }
     return user;
+  }
+
+  /**
+   * Resolves the Time-Zone header from the request.
+   *
+   * @param requestContext the incoming HTTP request
+   * @return the resolved ZoneId, or {@code null} if the header is invalid (the request is aborted)
+   */
+  private ZoneId resolveTimeZone(ContainerRequestContext requestContext) {
+    String timeZoneHeader = requestContext.getHeaderString("Time-Zone");
+    if (timeZoneHeader == null) {
+      return ZoneId.systemDefault();
+    }
+    timeZoneHeader = timeZoneHeader.trim();
+    if (timeZoneHeader.isEmpty()) {
+      return ZoneId.systemDefault();
+    }
+    try {
+      return ZoneId.of(timeZoneHeader);
+    } catch (DateTimeException e) {
+      Response resp =
+          Response.status(Status.BAD_REQUEST)
+              .type(MediaType.APPLICATION_JSON)
+              .entity(
+                  new ExecutionStatus()
+                      .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+                      .message("Invalid time zone: " + timeZoneHeader))
+              .build();
+      requestContext.abortWith(resp);
+      return null;
+    }
   }
 
   @Override

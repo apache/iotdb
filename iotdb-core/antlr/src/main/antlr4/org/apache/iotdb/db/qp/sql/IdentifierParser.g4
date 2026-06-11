@@ -55,6 +55,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALCULATION
     | CALL
     | CASE
     | CAST
@@ -99,6 +100,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE
@@ -179,6 +181,8 @@ keyWords
     | PIPESINKTYPE
     | PIPEPLUGIN
     | PIPEPLUGINS
+    | POINT
+    | POINTS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
@@ -223,6 +227,7 @@ keyWords
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE
@@ -289,6 +294,7 @@ keyWords
     | WRITABLE
     | WRITE
     | AUDIT
+    | AUTH
     | OPTION
     | INF
     | CURRENT_TIMESTAMP

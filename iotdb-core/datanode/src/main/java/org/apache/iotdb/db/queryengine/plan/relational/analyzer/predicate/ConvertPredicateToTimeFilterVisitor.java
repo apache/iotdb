@@ -19,23 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -64,7 +65,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
   }
 
   @Override
-  protected Filter visitInPredicate(InPredicate node, Void context) {
+  public Filter visitInPredicate(InPredicate node, Void context) {
     Expression valueList = node.getValueList();
     checkArgument(valueList instanceof InListExpression);
     List<Expression> values = ((InListExpression) valueList).getValues();
@@ -82,22 +83,24 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
   }
 
   @Override
-  protected Filter visitIsNullPredicate(IsNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL");
+  public Filter visitIsNullPredicate(IsNullPredicate node, Void context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NULL);
   }
 
   @Override
-  protected Filter visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NOT NULL");
+  public Filter visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_IS_NOT_NULL);
   }
 
   @Override
-  protected Filter visitLikePredicate(LikePredicate node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE");
+  public Filter visitLikePredicate(LikePredicate node, Void context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_SUPPORT_LIKE);
   }
 
   @Override
-  protected Filter visitLogicalExpression(LogicalExpression node, Void context) {
+  public Filter visitLogicalExpression(LogicalExpression node, Void context) {
     List<Filter> filterList =
         node.getTerms().stream()
             .map(n -> n.accept(this, context))
@@ -109,17 +112,18 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       case AND:
         return FilterFactory.and(filterList);
       default:
-        throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
     }
   }
 
   @Override
-  protected Filter visitNotExpression(NotExpression node, Void context) {
+  public Filter visitNotExpression(NotExpression node, Void context) {
     return FilterFactory.not(node.getValue().accept(this, context));
   }
 
   @Override
-  protected Filter visitComparisonExpression(ComparisonExpression node, Void context) {
+  public Filter visitComparisonExpression(ComparisonExpression node, Void context) {
     long value;
     if (node.getRight() instanceof SymbolReference) {
       value = getLongValue(node.getLeft());
@@ -137,7 +141,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.gtEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof SymbolReference) {
       value = getLongValue(node.getRight());
@@ -155,7 +160,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.ltEq(value);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getRight() instanceof Extract) {
       Extract extract = (Extract) node.getRight();
@@ -176,7 +182,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeGtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else if (node.getLeft() instanceof Extract) {
       Extract extract = (Extract) node.getLeft();
@@ -197,7 +204,8 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
         case LESS_THAN_OR_EQUAL:
           return TimeFilterApi.extractTimeLtEq(value, field, zoneId, currPrecision);
         default:
-          throw new IllegalArgumentException("Unsupported operator: " + node.getOperator());
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.UNSUPPORTED_OPERATOR + node.getOperator());
       }
     } else {
       throw new IllegalStateException(
@@ -206,27 +214,27 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
   }
 
   @Override
-  protected Filter visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+  public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
-  protected Filter visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not CASE WHEN");
+  public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_CASE_WHEN);
   }
 
   @Override
-  protected Filter visitIfExpression(IfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not IF");
+  public Filter visitIfExpression(IfExpression node, Void context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_IF);
   }
 
   @Override
-  protected Filter visitNullIfExpression(NullIfExpression node, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not NULLIF");
+  public Filter visitNullIfExpression(NullIfExpression node, Void context) {
+    throw new UnsupportedOperationException(DataNodeQueryMessages.TIMESTAMP_DOES_NOT_NULLIF);
   }
 
   @Override
-  protected Filter visitBetweenPredicate(BetweenPredicate node, Void context) {
+  public Filter visitBetweenPredicate(BetweenPredicate node, Void context) {
     Expression firstExpression = node.getValue();
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();

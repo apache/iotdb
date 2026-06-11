@@ -62,7 +62,6 @@ class ModelManager:
                 get_status(TSStatusCode.CREATE_MODEL_ERROR, str(e))
             )
         except Exception as e:
-            # Catch-all for other exceptions (mainly from transformers implementation)
             return TRegisterModelResp(
                 get_status(TSStatusCode.CREATE_MODEL_ERROR, str(e))
             )

@@ -33,15 +33,15 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
@@ -1054,30 +1054,33 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         continue;
                       }
                       switch (SubscriptionMessageType.valueOf(messageType)) {
-                        case SESSION_DATA_SETS_HANDLER:
+                        case RECORD_HANDLER:
                           {
-                            for (final SubscriptionSessionDataSet dataSet :
-                                message.getSessionDataSetsHandler()) {
-                              final List<String> columnNameList = dataSet.getColumnNames();
-                              while (dataSet.hasNext()) {
-                                final RowRecord record = dataSet.next();
+                            for (final ResultSet dataSet : message.getResultSets()) {
+                              final List<String> columnNameList =
+                                  ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                      .getColumnNames();
+                              while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                  .hasNext()) {
+                                final RowRecord record =
+                                    ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                        .nextRecord();
                                 insertRowRecordEnrichedByConsumerGroupId(
                                     columnNameList, record.getTimestamp(), consumerGroupId);
                               }
                             }
                             break;
                           }
-                        case TS_FILE_HANDLER:
+                        case TS_FILE:
                           {
-                            try (final TsFileReader tsFileReader =
-                                message.getTsFileHandler().openReader()) {
-                              final QueryDataSet dataSet =
-                                  tsFileReader.query(
-                                      QueryExpression.create(
-                                          Arrays.asList(
-                                              new Path("root.topic1", "s", true),
-                                              new Path("root.topic2", "s", true)),
-                                          null));
+                            try (final ITsFileTreeReader tsFileReader =
+                                message.getTsFile().openTreeReader()) {
+                              final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                                  SubscriptionTreeReaderTestUtils.query(
+                                      tsFileReader,
+                                      Arrays.asList(
+                                          new Path("root.topic1", "s", true),
+                                          new Path("root.topic2", "s", true)));
                               while (dataSet.hasNext()) {
                                 final RowRecord record = dataSet.next();
                                 for (final Path path : dataSet.getPaths()) {

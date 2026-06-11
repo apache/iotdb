@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -88,7 +90,8 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
       // Skip by setting the pipeTaskInfo to null
       pipeTaskInfo = null;
       LOGGER.debug(
-          "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
+          ProcedureMessages
+              .PIPEMETASYNCPROCEDURE_ACQUIRELOCK_SKIP_THE_PROCEDURE_DUE_TO_THE_LAST_EXECUTION,
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -103,7 +106,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: executeFromValidateTask");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMVALIDATETASK);
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -111,7 +114,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMCALCULATEINFOFORTASK);
 
     // Re-balance the external source tasks here in case of any changes in the dataRegion
     pipeTaskInfo
@@ -170,7 +173,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMWRITECONFIGNODECONSENSUS);
 
     final List<PipeMeta> pipeMetaList = new ArrayList<>();
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
@@ -184,7 +187,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
               .getConsensusManager()
               .write(new PipeHandleMetaChangePlan(pipeMetaList));
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -196,41 +199,41 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.debug("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
       throw new PipeException(
           String.format(
-              "Failed to push pipe meta to dataNodes, details: %s",
+              ProcedureMessages.FAILED_TO_PUSH_PIPE_META_TO_DATANODES_DETAILS,
               parsePushPipeMetaExceptionForPipe(null, respMap)));
     }
   }
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromValidateTask");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_ROLLBACKFROMVALIDATETASK);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_ROLLBACKFROMCALCULATEINFOFORTASK);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_ROLLBACKFROMWRITECONFIGNODECONSENSUS);
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_ROLLBACKFROMOPERATEONDATANODES);
 
     // Do nothing
   }

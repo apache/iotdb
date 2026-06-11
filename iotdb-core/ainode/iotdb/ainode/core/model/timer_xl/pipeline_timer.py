@@ -30,7 +30,7 @@ class TimerPipeline(ForecastPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **infer_kwargs) -> torch.Tensor:
+    def _preprocess(self, inputs, **infer_kwargs) -> torch.Tensor:
         """
         Preprocess the input data by converting it to a 2D tensor (Timer-XL only supports 2D inputs).
 
@@ -48,7 +48,6 @@ class TimerPipeline(ForecastPipeline):
                                              (i.e., when inputs.shape[1] != 1).
         """
         model_id = self.model_info.model_id
-        inputs = super().preprocess(inputs, **infer_kwargs)
         # Here, we assume element in list has same history_length,
         # otherwise, the model cannot proceed
         if inputs[0].get("past_covariates", None) or inputs[0].get(
@@ -86,7 +85,7 @@ class TimerPipeline(ForecastPipeline):
         outputs = self.model.generate(inputs, max_new_tokens=output_length, revin=revin)
         return outputs
 
-    def postprocess(self, outputs: torch.Tensor, **infer_kwargs) -> list[torch.Tensor]:
+    def _postprocess(self, outputs: torch.Tensor, **infer_kwargs) -> list[torch.Tensor]:
         """
         Postprocess the model's output by expanding its dimensions to match the expected shape.
 
@@ -98,5 +97,4 @@ class TimerPipeline(ForecastPipeline):
             list of torch.Tensor: A list of 2D tensors with shape [target_count(1), output_length].
         """
         outputs = [outputs[i].unsqueeze(0) for i in range(outputs.size(0))]
-        outputs = super().postprocess(outputs, **infer_kwargs)
         return outputs

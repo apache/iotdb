@@ -213,6 +213,7 @@ public class IoTDBSystemPermissionIT {
     grantUserSystemPrivileges("test6", PrivilegeType.SYSTEM);
     executeNonQuery("flush", "test6", "test123123456");
     executeNonQuery("clear cache", "test6", "test123123456");
+    executeNonQuery("clear auth cache", "test6", "test123123456");
     executeNonQuery("set system to readonly", "test6", "test123123456");
     executeNonQuery("set system to running", "test6", "test123123456");
     executeNonQuery(

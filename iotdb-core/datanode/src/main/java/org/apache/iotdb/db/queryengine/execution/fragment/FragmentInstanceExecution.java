@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
@@ -222,7 +223,6 @@ public class FragmentInstanceExecution {
         } else {
           String planNodeId = operatorContext.getPlanNodeId().toString();
           operatorStatistics.setCount(1);
-          operatorStatistics.getSpecifiedInfo().clear();
           leadOverloadOperators.put(operatorType, planNodeId);
           operatorStatisticsMap.put(planNodeId, operatorStatistics);
         }
@@ -250,8 +250,19 @@ public class FragmentInstanceExecution {
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setOutputRows(operatorContext.getOutputRows());
-    operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
+    operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(operatorContext.getSpecifiedInfo()));
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
+  }
+
+  private Map<String, String> convertSpecifiedInfo(Map<String, Object> specifiedInfo) {
+    Map<String, String> result = new HashMap<>(specifiedInfo.size());
+    specifiedInfo.forEach(
+        (key, value) -> {
+          if (value != null) {
+            result.put(key, value.toString());
+          }
+        });
+    return result;
   }
 
   // Directly build statistics from FragmentInstanceExecution, which is still running.
@@ -304,7 +315,7 @@ public class FragmentInstanceExecution {
             }
 
             if (LOGGER.isDebugEnabled()) {
-              LOGGER.debug("Enter the stateChangeListener");
+              LOGGER.debug(DataNodeQueryMessages.ENTER_STATE_CHANGE_LISTENER);
             }
 
             statisticsLock.writeLock().lock();
@@ -321,9 +332,7 @@ public class FragmentInstanceExecution {
             try {
               clearShuffleSinkHandle(newState);
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to release sink, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_SINK, t);
             }
 
             // close the driver after sink is aborted or closed because in driver.close() it
@@ -341,9 +350,7 @@ public class FragmentInstanceExecution {
               // delete tmp file if exists
               deleteTmpFile();
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_DELETING_TMP_FILES, t);
             }
 
             try {
@@ -352,17 +359,13 @@ public class FragmentInstanceExecution {
                   instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
             } catch (Throwable t) {
               LOGGER.error(
-                  "Errors occurred while attempting to deRegister FI from Memory Pool, potentially leading to resource leakage, status is {}.",
-                  newState,
-                  t);
+                  DataNodeQueryMessages.ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL, newState, t);
             }
 
             try {
               context.releaseMemoryReservationManager();
             } catch (Throwable t) {
-              LOGGER.error(
-                  "Errors occurred while attempting to release memory, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_MEMORY, t);
             }
 
             if (newState.isFailed()) {
@@ -370,9 +373,7 @@ public class FragmentInstanceExecution {
             }
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
-              LOGGER.error(
-                  "Errors occurred while attempting to finish the FI process, potentially leading to resource leakage.",
-                  t);
+              LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, t);
             }
           }
         });

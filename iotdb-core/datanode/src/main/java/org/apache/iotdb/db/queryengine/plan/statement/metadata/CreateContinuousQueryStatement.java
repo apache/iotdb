@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -155,7 +156,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override
@@ -178,10 +179,10 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
               IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()));
     }
     if (startTimeOffset <= 0) {
-      throw new SemanticException("CQ: The start time offset should be greater than 0.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_START_TIME_OFFSET_SHOULD_BE_GREATER);
     }
     if (endTimeOffset < 0) {
-      throw new SemanticException("CQ: The end time offset should be greater than or equal to 0.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_END_TIME_OFFSET_SHOULD_BE_GREATER);
     }
     if (startTimeOffset <= endTimeOffset) {
       throw new SemanticException(
@@ -193,7 +194,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     }
 
     if (!queryBodyStatement.isSelectInto()) {
-      throw new SemanticException("CQ: The query body misses an INTO clause.");
+      throw new SemanticException(DataNodeQueryMessages.CQ_THE_QUERY_BODY_MISSES_AN_INTO_CLAUSE);
     }
     GroupByTimeComponent groupByTimeComponent = queryBodyStatement.getGroupByTimeComponent();
     if (groupByTimeComponent != null
@@ -204,7 +205,8 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     if (queryBodyStatement.getWhereCondition() != null
         && PredicateUtils.checkIfTimeFilterExist(
             queryBodyStatement.getWhereCondition().getPredicate())) {
-      throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
+      throw new SemanticException(
+          DataNodeQueryMessages.CQ_SPECIFYING_TIME_FILTERS_IN_THE_QUERY_BODY);
     }
   }
 }

@@ -71,6 +71,7 @@ public enum ConfigPhysicalPlanType {
   CountTimeSlotList((short) 310),
   AddRegionLocation((short) 311),
   RemoveRegionLocation((short) 312),
+  GetRegionGroupsByTime((short) 313),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
@@ -135,7 +136,6 @@ public enum ConfigPhysicalPlanType {
   CreateUserWithRawPassword((short) 638),
   UpdateUserMaxSession((short) 639),
   UpdateUserMinSession((short) 640),
-  AccountUnlock((short) 641),
 
   /** Table Author */
   RCreateUser((short) 641),
@@ -231,6 +231,7 @@ public enum ConfigPhysicalPlanType {
   PreDeleteView((short) 876),
   RenameViewColumn((short) 877),
   AlterColumnDataType((short) 878),
+  PreAlterColumnDataType((short) 879),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -294,6 +295,7 @@ public enum ConfigPhysicalPlanType {
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
   OperateMultiplePipesV2((short) 1505),
+  SetPipeStatusWithStoppedByRuntimeExceptionV2((short) 1506),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -324,6 +326,8 @@ public enum ConfigPhysicalPlanType {
 
   ShowSubscription((short) 2000),
 
+  CommitProgressHandleMetaChange((short) 2001),
+
   // Authority version after and equal 2.0
   DropUserV2((short) 2100),
   UpdateUserV2((short) 2101),
@@ -331,6 +335,7 @@ public enum ConfigPhysicalPlanType {
   RDropUserV2((short) 2103),
   RenameUser((short) 2104),
   RRenameUser((short) 2105),
+  AccountUnlock((short) 2106),
 
   EnableSeparationOfAdminPowers((short) 2200),
 

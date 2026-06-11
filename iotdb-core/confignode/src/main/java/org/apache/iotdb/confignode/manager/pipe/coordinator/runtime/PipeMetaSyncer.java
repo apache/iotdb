@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
@@ -55,6 +56,9 @@ public class PipeMetaSyncer {
   private Future<?> metaSyncFuture;
 
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
+  private final AtomicInteger consensusPipeCheckRoundCounter = new AtomicInteger(0);
+
+  private static final int CONSENSUS_PIPE_CHECK_INTERVAL_ROUND = 5;
 
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
@@ -78,7 +82,7 @@ public class PipeMetaSyncer {
               INITIAL_SYNC_DELAY_MINUTES,
               SYNC_INTERVAL_MINUTES,
               TimeUnit.MINUTES);
-      LOGGER.info("PipeMetaSyncer is started successfully.");
+      LOGGER.info(ManagerMessages.PIPEMETASYNCER_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -92,7 +96,7 @@ public class PipeMetaSyncer {
 
     if (configManager.getPipeManager().getPipeTaskCoordinator().isLocked()) {
       LOGGER.warn(
-          "PipeTaskCoordinatorLock is held by another thread, skip this round of sync to avoid procedure and rpc accumulation as much as possible");
+          ManagerMessages.PIPETASKCOORDINATORLOCK_IS_HELD_BY_ANOTHER_THREAD_SKIP_THIS_ROUND_OF_2);
       return;
     }
 
@@ -105,9 +109,14 @@ public class PipeMetaSyncer {
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
       somePipesNeedRestarting = autoRestartWithLock();
       if (somePipesNeedRestarting) {
-        LOGGER.info("Some pipes need restarting, will restart them after this sync");
+        LOGGER.info(ManagerMessages.SOME_PIPES_NEED_RESTARTING_WILL_RESTART_THEM_AFTER_THIS_SYNC);
       }
       pipeAutoRestartRoundCounter.set(0);
+    }
+
+    if (consensusPipeCheckRoundCounter.incrementAndGet() >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
+      consensusPipeCheckRoundCounter.set(0);
+      checkAndRepairConsensusPipes();
     }
 
     final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
@@ -122,17 +131,18 @@ public class PipeMetaSyncer {
           successfulSync = true;
         } else {
           LOGGER.warn(
-              "Failed to handle pipe meta change. Result status: {}.", handleMetaChangeStatus);
+              ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGE_RESULT_STATUS,
+              handleMetaChangeStatus);
         }
       }
 
       if (successfulSync) {
         LOGGER.info(
-            "After this successful sync, if PipeTaskInfo is empty during this sync and has not been modified afterwards, all subsequent syncs will be skipped");
+            ManagerMessages.AFTER_THIS_SUCCESSFUL_SYNC_IF_PIPETASKINFO_IS_EMPTY_DURING_THIS);
         isLastPipeSyncSuccessful = true;
       }
     } else {
-      LOGGER.warn("Failed to sync pipe meta. Result status: {}.", metaSyncStatus);
+      LOGGER.warn(ManagerMessages.FAILED_TO_SYNC_PIPE_META_RESULT_STATUS, metaSyncStatus);
     }
   }
 
@@ -140,7 +150,7 @@ public class PipeMetaSyncer {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
-      LOGGER.info("PipeMetaSyncer is stopped successfully.");
+      LOGGER.info(ManagerMessages.PIPEMETASYNCER_IS_STOPPED_SUCCESSFULLY);
     }
   }
 
@@ -148,7 +158,7 @@ public class PipeMetaSyncer {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn("Failed to acquire pipe lock for auto restart pipe task.");
+      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_AUTO_RESTART_PIPE_TASK);
       return false;
     }
     try {
@@ -158,11 +168,23 @@ public class PipeMetaSyncer {
     }
   }
 
+  private void checkAndRepairConsensusPipes() {
+    try {
+      configManager
+          .getProcedureManager()
+          .getEnv()
+          .getRegionMaintainHandler()
+          .checkAndRepairConsensusPipes();
+    } catch (Exception e) {
+      LOGGER.warn(ManagerMessages.FAILED_TO_CHECK_AND_REPAIR_CONSENSUS_PIPES, e);
+    }
+  }
+
   private boolean handleSuccessfulRestartWithLock() {
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().tryLock();
     if (pipeTaskInfo == null) {
-      LOGGER.warn("Failed to acquire pipe lock for handling successful restart.");
+      LOGGER.warn(ManagerMessages.FAILED_TO_ACQUIRE_PIPE_LOCK_FOR_HANDLING_SUCCESSFUL_RESTART);
       return false;
     }
     try {

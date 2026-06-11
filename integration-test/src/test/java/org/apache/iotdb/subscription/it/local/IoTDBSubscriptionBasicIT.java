@@ -36,13 +36,13 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -134,9 +134,9 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   }
                   for (final SubscriptionMessage message : messages) {
                     int rowCountInOneMessage = 0;
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
                         rowCountInOneMessage++;
@@ -270,8 +270,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 message -> {
                   onReceiveCount.getAndIncrement();
                   message
-                      .getSessionDataSetsHandler()
-                      .tabletIterator()
+                      .getRecordTabletIterator()
                       .forEachRemaining(tablet -> rowCount.addAndGet(tablet.getRowSize()));
                   return ConsumeResult.SUCCESS;
                 })
@@ -390,10 +389,13 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        timestampSum.getAndAdd(dataSet.next().getTimestamp());
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        timestampSum.getAndAdd(
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp());
                         rowCount.addAndGet(1);
                       }
                     }
@@ -470,12 +472,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .consumeListener(
                 message -> {
                   onReceiveCount.getAndIncrement();
-                  try (final TsFileReader tsFileReader = message.getTsFileHandler().openReader()) {
-                    final QueryDataSet dataSet =
-                        tsFileReader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(new Path("root.db.d1", "s1", true)),
-                                null));
+                  try (final ITsFileTreeReader tsFileReader =
+                      message.getTsFile().openTreeReader()) {
+                    final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                        SubscriptionTreeReaderTestUtils.query(
+                            tsFileReader,
+                            Collections.singletonList(new Path("root.db.d1", "s1", true)));
                     while (dataSet.hasNext()) {
                       dataSet.next();
                       rowCount.addAndGet(1);
@@ -544,11 +546,15 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
-                    while (dataSet.hasNext()) {
-                      dataSet.next();
-                      rowCount.addAndGet(1);
+                  for (final ResultSet dataSet : message.getResultSets()) {
+                    try {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    } catch (final IOException e) {
+                      throw new RuntimeException(e);
                     }
                   }
                   return ConsumeResult.SUCCESS;
@@ -609,11 +615,15 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
-                    while (dataSet.hasNext()) {
-                      dataSet.next();
-                      rowCount.addAndGet(1);
+                  for (final ResultSet dataSet : message.getResultSets()) {
+                    try {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    } catch (final IOException e) {
+                      throw new RuntimeException(e);
                     }
                   }
                   return ConsumeResult.SUCCESS;

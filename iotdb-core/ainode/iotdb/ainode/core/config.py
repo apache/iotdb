@@ -23,7 +23,6 @@ from iotdb.ainode.core.constant import (
     AINODE_CLUSTER_INGRESS_ADDRESS,
     AINODE_CLUSTER_INGRESS_PASSWORD,
     AINODE_CLUSTER_INGRESS_PORT,
-    AINODE_CLUSTER_INGRESS_TIME_ZONE,
     AINODE_CLUSTER_INGRESS_USERNAME,
     AINODE_CLUSTER_NAME,
     AINODE_CONF_DIRECTORY_NAME,
@@ -69,7 +68,6 @@ class AINodeConfig(object):
         self._ain_cluster_ingress_port = AINODE_CLUSTER_INGRESS_PORT
         self._ain_cluster_ingress_username = AINODE_CLUSTER_INGRESS_USERNAME
         self._ain_cluster_ingress_password = AINODE_CLUSTER_INGRESS_PASSWORD
-        self._ain_cluster_ingress_time_zone = AINODE_CLUSTER_INGRESS_TIME_ZONE
 
         # Inference configuration
         self._ain_inference_batch_interval_in_ms: int = (
@@ -287,14 +285,6 @@ class AINodeConfig(object):
     ) -> None:
         self._ain_cluster_ingress_password = ain_cluster_ingress_password
 
-    def get_ain_cluster_ingress_time_zone(self) -> str:
-        return self._ain_cluster_ingress_time_zone
-
-    def set_ain_cluster_ingress_time_zone(
-        self, ain_cluster_ingress_time_zone: str
-    ) -> None:
-        self._ain_cluster_ingress_time_zone = ain_cluster_ingress_time_zone
-
 
 @singleton
 class AINodeDescriptor(object):
@@ -430,11 +420,6 @@ class AINodeDescriptor(object):
             if "ain_cluster_ingress_password" in config_keys:
                 self._config.set_ain_cluster_ingress_password(
                     file_configs["ain_cluster_ingress_password"]
-                )
-
-            if "ain_cluster_ingress_time_zone" in config_keys:
-                self._config.set_ain_cluster_ingress_time_zone(
-                    file_configs["ain_cluster_ingress_time_zone"]
                 )
 
         except BadNodeUrlException:

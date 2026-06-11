@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.builder.EvaluationDAGBuilder;
@@ -54,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -225,6 +227,7 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
 
+    long start = System.nanoTime();
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
       if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -236,9 +239,10 @@ public class TransformOperator implements ProcessOperator {
       final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
       final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
       final int columnCount = columnBuilders.length;
-
-      int rowCount = 0;
-      while (!timeHeap.isEmpty()) {
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      while (!timeHeap.isEmpty()
+          && !tsBlockBuilder.isFull()
+          && System.nanoTime() - start < maxRuntime) {
         final long currentTime = timeHeap.pollFirst();
 
         // time
@@ -253,25 +257,26 @@ public class TransformOperator implements ProcessOperator {
             }
             timeHeap.add(currentTime);
 
-            tsBlockBuilder.declarePositions(rowCount);
             return tsBlockBuilder.build();
           }
         }
 
         prepareEachColumn(columnCount);
 
-        ++rowCount;
+        tsBlockBuilder.declarePosition();
 
         yieldableState = iterateAllColumnsToNextValid();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-          tsBlockBuilder.declarePositions(rowCount);
           return tsBlockBuilder.build();
         }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
-      tsBlockBuilder.declarePositions(rowCount);
+      if (tsBlockBuilder.isEmpty()) {
+        return null;
+      }
+
       return tsBlockBuilder.build();
     } catch (Exception e) {
       throw new RuntimeException(e);

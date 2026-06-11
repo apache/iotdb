@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -44,11 +45,11 @@ public class RetryUtils {
 
   public static boolean needRetryWithIncreasingInterval(Exception e) {
     return e instanceof ConnectException
-        || e instanceof PipeConsensusRetryWithIncreasingIntervalException;
+        || e instanceof IoTConsensusV2RetryWithIncreasingIntervalException;
   }
 
   public static boolean notNeedRetryForConsensus(int statusCode) {
-    return statusCode == TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST.getStatusCode();
+    return statusCode == TSStatusCode.IOT_CONSENSUS_V2_DEPRECATED_REQUEST.getStatusCode();
   }
 
   public static final int MAX_RETRIES = 5;
@@ -93,23 +94,16 @@ public class RetryUtils {
       try {
         operation.run();
         if (attempt > 1) {
-          LOGGER.info("Operation '{}' succeeded after {} attempts", operationName, attempt);
+          LOGGER.info(UtilMessages.OPERATION_SUCCEEDED_AFTER_RETRIES, operationName, attempt);
         }
         return;
       } catch (Exception e) {
         LOGGER.warn(
-            "Operation '{}' failed (attempt {}). Retrying in {}ms...",
-            operationName,
-            attempt,
-            currentBackoff,
-            e);
+            UtilMessages.OPERATION_FAILED_RETRYING, operationName, attempt, currentBackoff, e);
         try {
           Thread.sleep(currentBackoff);
         } catch (InterruptedException ie) {
-          LOGGER.warn(
-              "Retry wait for operation '{}' was interrupted, stopping retries.",
-              operationName,
-              ie);
+          LOGGER.warn(UtilMessages.RETRY_WAIT_INTERRUPTED, operationName, ie);
           Thread.currentThread().interrupt();
           return;
         }

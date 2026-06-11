@@ -1059,6 +1059,59 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testLoadWithSameMeasurementNameDifferentDevice() throws Exception {
+    final String device = "root.sg.test_0.device_1";
+    MeasurementSchema measurement =
+        new MeasurementSchema("temperature", TSDataType.DOUBLE, TSEncoding.GORILLA);
+
+    final long writtenPoint1;
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "same-measurement-1.tsfile"))) {
+      generator.registerTimeseries(device, Collections.singletonList(measurement));
+      generator.generateData(device, 1000, PARTITION_INTERVAL, false);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+
+    measurement = new MeasurementSchema("temperature", TSDataType.DOUBLE, TSEncoding.PLAIN);
+    final long writtenPoint2;
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "same-measurement-2.tsfile"))) {
+      generator.registerTimeseries(device, Collections.singletonList(measurement));
+      generator.generateData(device, 2000, PARTITION_INTERVAL / 10000, false);
+      writtenPoint2 = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (final ResultSet resultSet = statement.executeQuery("select count(**) from root.sg.**")) {
+        if (resultSet.next()) {
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.device_1.temperature)");
+          Assert.assertEquals(writtenPoint1 + writtenPoint2, sg1Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg.**")) {
+        int count = 0;
+        Set<String> expectedPaths = new HashSet<>();
+        expectedPaths.add(device + "." + measurement.getMeasurementName());
+        while (resultSet.next()) {
+          String path = resultSet.getString(ColumnHeaderConstant.TIMESERIES);
+          Assert.assertTrue("Unexpected timeseries path: " + path, expectedPaths.contains(path));
+          expectedPaths.remove(path);
+          count++;
+        }
+        Assert.assertEquals(1, count);
+        Assert.assertTrue("Not all expected timeseries found", expectedPaths.isEmpty());
+      }
+    }
+  }
+
+  @Test
   @Ignore("Load with conversion is currently banned")
   public void testLoadWithConvertOnTypeMismatchForTreeModel() throws Exception {
 

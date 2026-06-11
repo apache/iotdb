@@ -40,6 +40,7 @@ import static org.apache.iotdb.SessionExample.printDataSet;
 public class TableModelSessionPoolExample {
 
   private static final String LOCAL_URL = "127.0.0.1:6667";
+  private static final String SHOW_TABLES = "SHOW TABLES";
 
   public static void main(String[] args) {
 
@@ -78,7 +79,7 @@ public class TableModelSessionPoolExample {
               + "speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 
@@ -157,7 +158,7 @@ public class TableModelSessionPoolExample {
     try (ITableSession session = tableSessionPool.getSession()) {
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 
@@ -166,7 +167,7 @@ public class TableModelSessionPoolExample {
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 
@@ -179,7 +180,7 @@ public class TableModelSessionPoolExample {
     try (ITableSession session = tableSessionPool.getSession()) {
 
       // show tables from default database test1
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 

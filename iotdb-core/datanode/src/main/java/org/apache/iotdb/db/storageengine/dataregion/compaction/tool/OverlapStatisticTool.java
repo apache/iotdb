@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.commons.cli.CommandLine;
@@ -90,7 +91,7 @@ public class OverlapStatisticTool {
     String[] dataDirsParam = commandLine.getOptionValues(DATA_DIRS_ARG);
 
     if (dataDirsParam == null || dataDirsParam.length == 0) {
-      throw new RuntimeException("data_dirs must not be empty");
+      throw new RuntimeException(StorageEngineMessages.DATA_DIRS_MUST_NOT_BE_EMPTY);
     }
     dataDirs = Arrays.asList(dataDirsParam);
   }

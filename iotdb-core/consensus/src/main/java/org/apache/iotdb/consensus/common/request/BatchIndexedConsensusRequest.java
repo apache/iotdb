@@ -23,7 +23,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-public class BatchIndexedConsensusRequest implements IConsensusRequest {
+public class BatchIndexedConsensusRequest
+    implements org.apache.iotdb.commons.request.IConsensusRequest {
 
   private boolean isStartSyncIndexInitialized;
   private long startSyncIndex;

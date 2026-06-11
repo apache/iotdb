@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -65,7 +66,7 @@ public class TriggerInformationUpdater {
               UPDATE_INTERVAL,
               UPDATE_INTERVAL,
               TimeUnit.MILLISECONDS);
-      LOGGER.info("Stateful-Trigger-Information-Updater is successfully started.");
+      LOGGER.info(DataNodeMiscMessages.TRIGGER_INFO_UPDATER_STARTED);
     }
   }
 
@@ -73,7 +74,7 @@ public class TriggerInformationUpdater {
     if (updateFuture != null) {
       updateFuture.cancel(false);
       updateFuture = null;
-      LOGGER.info("Stateful-Trigger-Information-Updater is successfully stopped.");
+      LOGGER.info(DataNodeMiscMessages.TRIGGER_INFO_UPDATER_STOPPED);
     }
   }
 
@@ -97,7 +98,7 @@ public class TriggerInformationUpdater {
                 triggerInformation.getTriggerName(), triggerInformation.getDataNodeLocation());
       }
     } catch (Exception e) {
-      LOGGER.warn("Meet error when updating trigger information:", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_UPDATING_TRIGGER_INFO, e);
     }
   }
 }

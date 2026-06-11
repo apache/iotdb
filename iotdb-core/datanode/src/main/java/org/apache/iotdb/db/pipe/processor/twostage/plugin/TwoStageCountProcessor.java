@@ -23,11 +23,13 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -115,7 +117,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     try {
       PathUtils.isLegalPath(Objects.requireNonNull(rawOutputSeries));
     } catch (Exception e) {
-      throw new PipeParameterNotValidException("Illegal output series path: " + rawOutputSeries);
+      throw new PipeParameterNotValidException(
+          DataNodePipeMessages.ILLEGAL_OUTPUT_SERIES_PATH + rawOutputSeries);
     }
   }
 
@@ -144,7 +147,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
     }
 
-    outputSeries = new PartialPath(parameters.getString(_PROCESSOR_OUTPUT_SERIES_KEY));
+    outputSeries = parseOutputSeries(parameters);
 
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
@@ -176,13 +179,19 @@ public class TwoStageCountProcessor implements PipeProcessor {
     twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
   }
 
+  static PartialPath parseOutputSeries(final PipeParameters parameters)
+      throws IllegalPathException {
+    return new PartialPath(
+        parameters.getStringByKeys(PROCESSOR_OUTPUT_SERIES_KEY, _PROCESSOR_OUTPUT_SERIES_KEY));
+  }
+
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "Ignored TabletInsertionEvent is not an instance of PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent: {}",
+          DataNodePipeMessages.IGNORED_TABLETINSERTIONEVENT_IS_NOT_AN_INSTANCE_OF,
           tabletInsertionEvent);
       return;
     }
@@ -205,7 +214,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "Ignored TsFileInsertionEvent is not an instance of PipeTsFileInsertionEvent: {}",
+          DataNodePipeMessages.IGNORED_TSFILEINSERTIONEVENT_IS_NOT_AN_INSTANCE_OF,
           tsFileInsertionEvent);
       return;
     }
@@ -214,7 +223,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     event.skipReportOnCommit();
 
     if (!event.waitForTsFileClose()) {
-      LOGGER.warn("Ignored TsFileInsertionEvent is empty: {}", event);
+      LOGGER.warn(DataNodePipeMessages.IGNORED_TSFILEINSERTIONEVENT_IS_EMPTY, event);
       return;
     }
 
@@ -257,7 +266,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       if (timestampCountPair.right < lastCollectedTimestampCountPair.right) {
         timestampCountPair.right = lastCollectedTimestampCountPair.right;
         LOGGER.warn(
-            "Global count is less than the last collected count: timestamp={}, count={}",
+            DataNodePipeMessages.GLOBAL_COUNT_IS_LESS_THAN_THE_LAST,
             timestampCountPair.left,
             timestampCountPair.right);
       }
@@ -303,7 +312,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
         if (fetchCombineResultResponse.getStatus().getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new PipeException(
-              "Failed to fetch combine result: "
+              DataNodePipeMessages.FAILED_TO_FETCH_COMBINE_RESULT
                   + fetchCombineResultResponse.getStatus().getMessage());
         }
 
@@ -315,7 +324,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
           switch (resultType) {
             case OUTDATED:
               LOGGER.warn(
-                  "Two stage combine (region id = {}, combine id = {}) outdated: timestamp={}, count={}, progressIndex={}",
+                  DataNodePipeMessages.TWO_STAGE_COMBINE_REGION_ID_COMBINE_ID_1,
                   regionId,
                   combineId,
                   pair.left[0],
@@ -324,7 +333,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
               continue;
             case INCOMPLETE:
               LOGGER.info(
-                  "Two stage combine (region id = {}, combine id = {}) incomplete: timestamp={}, count={}, progressIndex={}",
+                  DataNodePipeMessages.TWO_STAGE_COMBINE_REGION_ID_COMBINE_ID,
                   regionId,
                   combineId,
                   pair.left[0],
@@ -338,7 +347,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
               pipeTaskMeta.updateProgressIndex(
                   new StateProgressIndex(pair.left[0], state, pair.right));
               LOGGER.info(
-                  "Two stage combine (region id = {}, combine id = {}) success: timestamp={}, count={}, progressIndex={}, committed progressIndex={}",
+                  DataNodePipeMessages.TWO_STAGE_COMBINE_REGION_ID_COMBINE_ID_2,
                   regionId,
                   combineId,
                   pair.left[0],
@@ -347,13 +356,14 @@ public class TwoStageCountProcessor implements PipeProcessor {
                   pipeTaskMeta.getProgressIndex());
               continue;
             default:
-              throw new PipeException("Unknown combine result type: " + resultType);
+              throw new PipeException(
+                  DataNodePipeMessages.UNKNOWN_COMBINE_RESULT_TYPE + resultType);
           }
         }
       } catch (Exception e) {
         localCommitQueue.add(pair);
         LOGGER.warn(
-            "Failure occurred when trying to commit progress index. timestamp={}, count={}, progressIndex={}",
+            DataNodePipeMessages.FAILURE_OCCURRED_WHEN_TRYING_TO_COMMIT_PROGRESS,
             pair.left[0],
             pair.left[1],
             pair.right,
@@ -386,14 +396,15 @@ public class TwoStageCountProcessor implements PipeProcessor {
                   Long.toString(watermark),
                   new CountState(count)));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException("Failed to combine count: " + resp.getStatus().getMessage());
+        throw new PipeException(
+            DataNodePipeMessages.FAILED_TO_COMBINE_COUNT + resp.getStatus().getMessage());
       }
       localCommitQueue.add(pair);
       return true;
     } catch (Exception e) {
       localRequestQueue.add(pair);
       LOGGER.warn(
-          "Failed to trigger combine. watermark={}, count={}, progressIndex={}",
+          DataNodePipeMessages.FAILED_TO_TRIGGER_COMBINE_WATERMARK_COUNT_PROGRESSINDEX,
           watermark,
           count,
           progressIndex,

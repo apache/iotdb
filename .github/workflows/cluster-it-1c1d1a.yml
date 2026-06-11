@@ -9,6 +9,10 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'site/**'
+      - 'iotdb-client/client-cpp/**'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/workflows/multi-language-client.yml'
   pull_request:
     branches:
       - master
@@ -18,6 +22,10 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'site/**'
+      - 'iotdb-client/client-cpp/**'
+      - '.github/workflows/client-cpp-package.yml'
+      - '.github/scripts/package-client-cpp-*.sh'
+      - '.github/workflows/multi-language-client.yml'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -40,7 +48,7 @@ jobs:
     runs-on: [self-hosted, gpu]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: IT Test
         shell: bash
         run: |
@@ -53,7 +61,7 @@ jobs:
           -PAIClusterIT
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cluster-log-ainode-${{ matrix.os }}
           path: integration-test/target/*-logs

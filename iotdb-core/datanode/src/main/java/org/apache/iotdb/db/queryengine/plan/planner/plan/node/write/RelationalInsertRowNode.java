@@ -21,10 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
@@ -42,6 +43,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RelationalInsertRowNode extends InsertRowNode {
 
@@ -90,12 +93,16 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
-      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
+      final List<Integer> presentTagColumnIndices = getPresentTagColumnIndices();
+      String[] deviceIdSegments = new String[presentTagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < tagColumnIndices.size(); i++) {
-        final Integer columnIndex = tagColumnIndices.get(i);
-        deviceIdSegments[i + 1] =
-            getValues()[columnIndex] != null ? getValues()[columnIndex].toString() : null;
+      for (int i = 0; i < presentTagColumnIndices.size(); i++) {
+        final Integer columnIndex = presentTagColumnIndices.get(i);
+        final Object value =
+            getValues() != null && columnIndex < getValues().length
+                ? getValues()[columnIndex]
+                : null;
+        deviceIdSegments[i + 1] = value != null ? value.toString() : null;
       }
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
@@ -103,9 +110,25 @@ public class RelationalInsertRowNode extends InsertRowNode {
     return deviceID;
   }
 
+  private List<Integer> getPresentTagColumnIndices() {
+    final List<Integer> presentTagColumnIndices = new ArrayList<>();
+    final Object[] values = getValues();
+    for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+      if (columnCategories[i] == TsTableColumnCategory.TAG
+          && measurements != null
+          && i < measurements.length
+          && measurements[i] != null
+          && values != null
+          && i < values.length) {
+        presentTagColumnIndices.add(i);
+      }
+    }
+    return presentTagColumnIndices;
+  }
+
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitRelationalInsertRow(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitRelationalInsertRow(this, context);
   }
 
   public static RelationalInsertRowNode deserialize(ByteBuffer byteBuffer) {
@@ -127,14 +150,14 @@ public class RelationalInsertRowNode extends InsertRowNode {
       throws IOException {
     long searchIndex = stream.readLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(stream);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
   public static RelationalInsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     RelationalInsertRowNode insertNode = subDeserializeFromWAL(buffer);
-    insertNode.setSearchIndex(searchIndex);
+    insertNode.setSearchIndexFromWAL(searchIndex);
     return insertNode;
   }
 
@@ -178,10 +201,27 @@ public class RelationalInsertRowNode extends InsertRowNode {
   }
 
   @Override
+  protected boolean shouldSerializeMeasurement(final int index) {
+    return super.shouldSerializeMeasurement(index) && hasColumnCategory(index);
+  }
+
+  @Override
+  protected boolean shouldSerializeMeasurementToWAL(final int index) {
+    return super.shouldSerializeMeasurementToWAL(index) && hasColumnCategory(index);
+  }
+
+  private boolean hasColumnCategory(final int index) {
+    return columnCategories != null
+        && index >= 0
+        && index < columnCategories.length
+        && columnCategories[index] != null;
+  }
+
+  @Override
   void subSerialize(ByteBuffer buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(buffer);
       }
     }
@@ -190,8 +230,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   void subSerialize(DataOutputStream stream) throws IOException {
     super.subSerialize(stream);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurement(i)) {
         columnCategories[i].serialize(stream);
       }
     }
@@ -200,8 +240,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
   @Override
   protected void subSerialize(IWALByteBufferView buffer) {
     super.subSerialize(buffer);
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (shouldSerializeMeasurementToWAL(i)) {
         buffer.put(columnCategories[i].getCategory());
       }
     }
@@ -218,7 +258,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   protected int subSerializeSize() {
-    return super.subSerializeSize() + columnCategories.length * Byte.BYTES;
+    return super.subSerializeSize() + getValidMeasurementNumberForWAL() * Byte.BYTES;
   }
 
   @Override

@@ -196,9 +196,16 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
-    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy) {
+    cnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
+    dnConfig.setRegionGroupAllocatePolicy(regionGroupAllocatePolicy);
     return this;
   }
 
@@ -379,6 +386,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold) {
     cnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
     dnConfig.setDataRatisTriggerSnapshotThreshold(threshold);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setConfigNodeRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setSchemaRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    cnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
+    dnConfig.setDataRegionRatisReconfigurationMaxRetryAttempts(maxRetryAttempts);
     return this;
   }
 
@@ -697,6 +725,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
     dnConfig.setMaxRowsInCteBuffer(maxRows);
     cnConfig.setMaxRowsInCteBuffer(maxRows);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    dnConfig.setEnableTopologyProbing(enableTopologyProbing);
+    cnConfig.setEnableTopologyProbing(enableTopologyProbing);
     return this;
   }
 }

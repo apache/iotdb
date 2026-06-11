@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -54,7 +55,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
     try {
       patternPartialPath = new PartialPath(getPattern());
     } catch (final IllegalPathException e) {
-      throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
+      throw new PipeException(PipeMessages.ILLEGAL_IOTDB_PIPE_PATTERN + getPattern(), e);
     }
   }
 
@@ -139,7 +140,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   public boolean coversDevice(final IDeviceID device) {
     try {
       return patternPartialPath.include(
-          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -160,6 +161,16 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
       return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    try {
+      return patternPartialPath.overlapWith(
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }

@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
@@ -108,9 +109,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
-    PipeAgentLauncher.launchPipeTaskAgent();
-
     pipePeriodicalJobExecutor.start();
+    pipePeriodicalJobExecutor.runDirectly(PipeAgentLauncher::launchPipeTaskAgent);
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
       pipePeriodicalPhantomReferenceCleaner.start();
@@ -175,9 +175,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
     simpleProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
-  ////////////////////// PipeConsensus ProgressIndex Assigner //////////////////////
+  ////////////////////// IoTConsensusV2 ProgressIndex Assigner //////////////////////
 
-  public ProgressIndex assignProgressIndexForPipeConsensus() {
+  public ProgressIndex assignProgressIndexForIoTConsensusV2() {
     return new RecoverProgressIndex(
         DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex());
   }
@@ -214,13 +214,13 @@ public class PipeDataNodeRuntimeAgent implements IService {
     if (event.getPipeTaskMeta() != null) {
       report(event.getPipeTaskMeta(), pipeRuntimeException);
     } else {
-      LOGGER.warn("Attempt to report pipe exception to a null PipeTaskMeta.", pipeRuntimeException);
+      LOGGER.warn(DataNodePipeMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A, pipeRuntimeException);
     }
   }
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
-        "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
+        DataNodePipeMessages.REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE,
         pipeTaskMeta,
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);

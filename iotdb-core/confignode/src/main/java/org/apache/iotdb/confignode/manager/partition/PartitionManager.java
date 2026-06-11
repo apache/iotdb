@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -60,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetTimeSlotListResp;
@@ -69,6 +71,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -81,7 +84,9 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
@@ -103,6 +108,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +157,9 @@ public class PartitionManager {
 
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
+
+  private final AtomicBoolean dataPartitionTableIntegrityCheckProcedureRunning =
+      new AtomicBoolean(false);
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -299,7 +308,7 @@ public class PartitionManager {
           return resp;
         }
 
-        LOGGER.error("Create SchemaPartition failed because: ", e);
+        LOGGER.error(ManagerMessages.CREATE_SCHEMAPARTITION_FAILED_BECAUSE, e);
         resp.setStatus(
             new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
                 .setMessage(e.getMessage()));
@@ -444,7 +453,7 @@ public class PartitionManager {
           return resp;
         }
 
-        LOGGER.error("Create DataPartition failed because: ", e);
+        LOGGER.error(ManagerMessages.CREATE_DATAPARTITION_FAILED_BECAUSE, e);
         if (e instanceof DatabaseNotExistsException) {
           resp.setStatus(
               new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
@@ -511,6 +520,29 @@ public class PartitionManager {
     return resp;
   }
 
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    if (configManager
+            .getProcedureManager()
+            .isExistUnfinishedProcedure(DataPartitionTableIntegrityCheckProcedure.class)
+        || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+    }
+
+    synchronized (this) {
+      DataPartitionTableIntegrityCheckProcedure procedure =
+          new DataPartitionTableIntegrityCheckProcedure();
+      getProcedureManager().getExecutor().submitProcedure(procedure);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public void markDataPartitionTableIntegrityCheckProcedureFinished() {
+    dataPartitionTableIntegrityCheckProcedureRunning.set(false);
+  }
+
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
     TSStatus status = getConsensusManager().confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -522,7 +554,8 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write partition allocation result failed because: {}", e.getMessage());
+      LOGGER.error(
+          ManagerMessages.WRITE_PARTITION_ALLOCATION_RESULT_FAILED_BECAUSE, e.getMessage());
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -570,11 +603,11 @@ public class PartitionManager {
         }
       }
     } catch (NotEnoughDataNodeException e) {
-      LOGGER.error("Extend region group failed", e);
+      LOGGER.error(ManagerMessages.EXTEND_REGION_GROUP_FAILED, e);
       result.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Extend region group failed", e);
+      LOGGER.error(ManagerMessages.EXTEND_REGION_GROUP_FAILED, e);
       result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
       result.setMessage(e.getMessage());
     }
@@ -681,7 +714,7 @@ public class PartitionManager {
     if (!allotmentMap.isEmpty()) {
       final CreateRegionGroupsPlan createRegionGroupsPlan =
           getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
-      LOGGER.info("[CreateRegionGroups] Starting to create the following RegionGroups:");
+      LOGGER.info(ManagerMessages.CREATEREGIONGROUPS_STARTING_TO_CREATE_THE_FOLLOWING_REGIONGROUPS);
       createRegionGroupsPlan.planLog(LOGGER);
       return getProcedureManager().createRegionGroups(consensusGroupType, createRegionGroupsPlan);
     } else {
@@ -961,6 +994,23 @@ public class PartitionManager {
     }
 
     if (result.isEmpty()) {
+      // Diagnostic for the intermittent "no available RegionGroup" CI failures: dump every
+      // RegionGroup visible in PartitionInfo for this Database together with its LoadCache status.
+      // This pinpoints whether PartitionInfo simply has no RegionGroup yet (newly created
+      // RegionGroup not exposed) or it has some but all of them are currently Disabled.
+      // Only logged on the failure path right before throwing, so it never floods the log.
+      final Map<TConsensusGroupId, RegionGroupStatus> visibleRegionGroupStatusMap =
+          new LinkedHashMap<>();
+      regionGroupSlotsCounter.forEach(
+          slotsCounter ->
+              visibleRegionGroupStatusMap.put(
+                  slotsCounter.getRight(),
+                  getLoadManager().getRegionGroupStatus(slotsCounter.getRight())));
+      LOGGER.warn(
+          "No available {} RegionGroup for Database: {}. RegionGroups visible in PartitionInfo and their LoadCache status: {}",
+          type,
+          database,
+          visibleRegionGroupStatusMap);
       throw new NoAvailableRegionGroupException(type, Collections.singletonList(database));
     }
 
@@ -1180,6 +1230,19 @@ public class PartitionManager {
     }
   }
 
+  public GetRegionGroupsByTimeResp getRegionGroupsByTime(final TGetRegionGroupsByTimeReq req) {
+    final GetRegionGroupsByTimePlan plan =
+        new GetRegionGroupsByTimePlan(req.getDatabase(), req.getStartTime(), req.getEndTime());
+    try {
+      return (GetRegionGroupsByTimeResp) getConsensusManager().read(plan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new GetRegionGroupsByTimeResp(res, Collections.emptySet());
+    }
+  }
+
   public GetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
     long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
     long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
@@ -1336,7 +1399,7 @@ public class PartitionManager {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
                             LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
+                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
                                 schemaRegionCreateTask.getRegionReplicaSet().getRegionId(),
                                 schemaRegionCreateTask.getTargetDataNode());
                             createSchemaRegionHandler.putRequest(
@@ -1372,7 +1435,7 @@ public class PartitionManager {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
                             LOGGER.info(
-                                "Start to create Region: {} on DataNode: {}",
+                                ManagerMessages.START_TO_CREATE_REGION_ON_DATANODE,
                                 dataRegionCreateTask.getRegionReplicaSet().getRegionId(),
                                 dataRegionCreateTask.getTargetDataNode());
                             createDataRegionHandler.putRequest(
@@ -1408,7 +1471,7 @@ public class PartitionManager {
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
                         LOGGER.info(
-                            "Start to delete Region: {} on DataNode: {}",
+                            ManagerMessages.START_TO_DELETE_REGION_ON_DATANODE,
                             regionDeleteTask.getRegionId(),
                             regionDeleteTask.getTargetDataNode());
                         deleteRegionHandler.putRequest(
@@ -1425,7 +1488,8 @@ public class PartitionManager {
                           .sendAsyncRequestWithRetry(deleteRegionHandler);
 
                       LOGGER.info(
-                          "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));
+                          ManagerMessages.DELETING_REGIONS_COSTS_MS,
+                          (System.currentTimeMillis() - startTime));
 
                       for (Map.Entry<Integer, TSStatus> entry :
                           deleteRegionHandler.getResponseMap().entrySet()) {
@@ -1487,7 +1551,7 @@ public class PartitionManager {
                 0,
                 REGION_MAINTAINER_WORK_INTERVAL,
                 TimeUnit.SECONDS);
-        LOGGER.info("RegionCleaner is started successfully.");
+        LOGGER.info(ManagerMessages.REGIONCLEANER_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -1498,7 +1562,7 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionMaintainerFuture.cancel(false);
         currentRegionMaintainerFuture = null;
-        LOGGER.info("RegionCleaner is stopped successfully.");
+        LOGGER.info(ManagerMessages.REGIONCLEANER_IS_STOPPED_SUCCESSFULLY);
       }
     }
   }

@@ -26,15 +26,16 @@ import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.external.commons.collections4.CollectionUtils;
@@ -85,7 +86,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
     if (regionReplicaSet == null || regionReplicaSet.getRegionId() == null) {
       TDataNodeLocation dataNodeLocation = fragment.getTargetLocation();
       if (dataNodeLocation != null) {
-        // now only the case ShowQueries will enter here
+        // now only the case ShowQueries and ShowDiskUsage will enter here
         fragmentInstance.setExecutorAndHost(new QueryExecutor(dataNodeLocation));
       } else {
         // no data region && no dataNodeLocation, we need to execute this FI on local
@@ -131,13 +132,14 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
           errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      LOGGER.info("available replicas: {}", availableDataNodes);
+      LOGGER.info(DataNodeQueryMessages.AVAILABLE_REPLICAS, availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
-      targetIndex = (int) (queryContext.getSession().getSessionId() % availableDataNodes.size());
+      targetIndex =
+          (int) Math.floorMod(queryContext.getSession().getSessionId(), availableDataNodes.size());
     }
     return availableDataNodes.get(targetIndex);
   }

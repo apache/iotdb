@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -93,11 +94,10 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         final long t2 = System.nanoTime();
         alignedChunkMetadataList.removeIf(
             alignedChunkMetaData ->
-                (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
-                    || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-
+                ChunkMetadataLoaderUtils.shouldSkipAndRecord(
+                    alignedChunkMetaData, globalTimeFilter, context));
         if (context.isDebug()) {
-          DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+          DEBUG_LOGGER.info(StorageEngineMessages.AFTER_FILTER_CHUNK_METADATA_LIST);
           alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
         }
 
@@ -123,7 +123,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
           ignoreAllNullRows);
 
       if (context.isDebug()) {
-        DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
+        DEBUG_LOGGER.info(StorageEngineMessages.AFTER_MODIFICATION_CHUNK_METADATA_LIST);
         alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(

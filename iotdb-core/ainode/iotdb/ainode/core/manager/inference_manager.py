@@ -175,7 +175,49 @@ class InferenceManager:
             with self._result_wrapper_lock:
                 del self._result_wrapper_map[req_id]
 
-    def _run(
+    def _do_inference_and_construct_resp(
+        self,
+        model_id: str,
+        model_inputs,
+        inference_attrs: dict,
+    ) -> list[bytes]:
+
+        if self._pool_controller.has_running_pools(model_id):
+            # Only forecast task can use pool
+            output_length = int(inference_attrs.get("output_length", 96))
+            infer_req = InferenceRequest(
+                req_id=generate_req_id(),
+                model_id=model_id,
+                inputs=torch.stack([data["targets"] for data in model_inputs], dim=0),
+                output_length=output_length,
+            )
+            outputs = self._process_request(infer_req)
+        else:
+            model_info = self._model_manager.get_model_info(model_id)
+            inference_pipeline = load_pipeline(
+                model_info, device=self._backend.torch_device("cpu")
+            )
+            inputs = inference_pipeline.preprocess(model_inputs, **inference_attrs)
+            if isinstance(inference_pipeline, ForecastPipeline):
+                outputs = inference_pipeline.forecast(inputs, **inference_attrs)
+            elif isinstance(inference_pipeline, ClassificationPipeline):
+                outputs = inference_pipeline.classify(inputs, **inference_attrs)
+            elif isinstance(inference_pipeline, ChatPipeline):
+                outputs = inference_pipeline.chat(inputs, **inference_attrs)
+            else:
+                outputs = None
+                logger.error("[Inference] Unsupported pipeline type.")
+            outputs = inference_pipeline.postprocess(outputs, **inference_attrs)
+
+        # DataNode currently exposes inference outputs as DOUBLE, so serialize the
+        # physical TsBlock column as double even when model tensors are float32.
+        resp_list = []
+        for output in outputs:
+            resp = convert_tensor_to_tsblock(output.to(dtype=torch.float64))
+            resp_list.append(resp)
+        return resp_list
+
+    def _run_forecast(
         self,
         req,
         data_getter,
@@ -189,14 +231,7 @@ class InferenceManager:
             inputs = convert_tsblock_to_tensor(raw)
 
             inference_attrs = extract_attrs(req)
-            output_length = int(inference_attrs.pop("output_length", 96))
-
-            # model_inputs_list: Each element is a dict, which contains the following keys:
-            #   `targets`: The input tensor for the target variable(s), whose shape is [target_count, input_length].
-            model_inputs_list: list[
-                dict[str, torch.Tensor | dict[str, torch.Tensor]]
-            ] = [{"targets": inputs[0]}]
-
+            output_length = int(inference_attrs.get("output_length", 96))
             if (
                 output_length
                 > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
@@ -210,46 +245,17 @@ class InferenceManager:
                     .get_ain_inference_max_output_length(),
                 )
 
-            if self._pool_controller.has_running_pools(model_id):
-                infer_req = InferenceRequest(
-                    req_id=generate_req_id(),
-                    model_id=model_id,
-                    inputs=torch.stack(
-                        [data["targets"] for data in model_inputs_list], dim=0
-                    ),
-                    output_length=output_length,
-                )
-                outputs = self._process_request(infer_req)
-            else:
-                model_info = self._model_manager.get_model_info(model_id)
-                inference_pipeline = load_pipeline(
-                    model_info, device=self._backend.torch_device("cpu")
-                )
-                inputs = inference_pipeline.preprocess(
-                    model_inputs_list, output_length=output_length
-                )
-                if isinstance(inference_pipeline, ForecastPipeline):
-                    outputs = inference_pipeline.forecast(
-                        inputs, output_length=output_length, **inference_attrs
-                    )
-                elif isinstance(inference_pipeline, ClassificationPipeline):
-                    outputs = inference_pipeline.classify(inputs)
-                elif isinstance(inference_pipeline, ChatPipeline):
-                    outputs = inference_pipeline.chat(inputs)
-                else:
-                    outputs = None
-                    logger.error("[Inference] Unsupported pipeline type.")
-                outputs = inference_pipeline.postprocess(outputs)
+            model_inputs: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]] = [
+                {"targets": inputs[0]}
+            ]
 
-            # convert tensor into tsblock for the output in each batch
-            output_list = []
-            for batch_idx, output in enumerate(outputs):
-                output = convert_tensor_to_tsblock(output)
-                output_list.append(output)
+            resp_list = self._do_inference_and_construct_resp(
+                model_id, model_inputs, inference_attrs
+            )
 
             return resp_cls(
                 get_status(TSStatusCode.SUCCESS_STATUS),
-                [output_list[0]] if single_batch else output_list,
+                [resp_list[0]] if single_batch else resp_list,
             )
 
         except Exception as e:
@@ -259,7 +265,7 @@ class InferenceManager:
             return resp_cls(status, empty)
 
     def forecast(self, req: TForecastReq):
-        return self._run(
+        return self._run_forecast(
             req,
             data_getter=lambda r: r.inputData,
             extract_attrs=lambda r: {
@@ -271,7 +277,7 @@ class InferenceManager:
         )
 
     def inference(self, req: TInferenceReq):
-        return self._run(
+        return self._run_forecast(
             req,
             data_getter=lambda r: r.dataset,
             extract_attrs=lambda r: {
@@ -292,3 +298,4 @@ class InferenceManager:
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()
+        logger.info("The Inference Manager has been stopped.")

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.commons.i18n.PathMessages;
+
 import org.apache.tsfile.read.common.Path;
 
 import java.nio.ByteBuffer;
@@ -37,7 +39,7 @@ public class PathDeserializeUtil {
       case 3:
         return Path.deserialize(buffer);
       default:
-        throw new IllegalArgumentException("Invalid path type: " + pathType);
+        throw new IllegalArgumentException(PathMessages.INVALID_PATH_TYPE + pathType);
     }
   }
 }

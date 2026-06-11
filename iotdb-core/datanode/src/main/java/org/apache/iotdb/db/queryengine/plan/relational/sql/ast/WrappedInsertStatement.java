@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -87,10 +87,11 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   protected TableSchema toTableSchema(InsertBaseStatement insertBaseStatement) {
     String tableName = insertBaseStatement.getDevicePath().getFullPath();
+    final String[] measurements = insertBaseStatement.getMeasurements();
     List<ColumnSchema> columnSchemas =
-        new ArrayList<>(insertBaseStatement.getMeasurements().length);
-    for (int i = 0; i < insertBaseStatement.getMeasurements().length; i++) {
-      if (insertBaseStatement.getMeasurements()[i] != null) {
+        new ArrayList<>(measurements == null ? 0 : measurements.length);
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (insertBaseStatement.isColumnPresent(i)) {
         TSDataType dataType = insertBaseStatement.getDataType(i);
         if (dataType == null) {
           dataType =
@@ -99,7 +100,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         }
         columnSchemas.add(
             new ColumnSchema(
-                insertBaseStatement.getMeasurements()[i],
+                measurements[i],
                 dataType != null ? TypeFactory.getType(dataType) : null,
                 false,
                 insertBaseStatement.getColumnCategory(i)));
@@ -113,12 +114,20 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   protected InsertNodeMeasurementInfo toInsertNodeMeasurementInfo(
       InsertBaseStatement insertBaseStatement) {
     String tableName = insertBaseStatement.getDevicePath().getFullPath().toLowerCase();
+    final String[] measurements = insertBaseStatement.getMeasurements();
+    final String[] validMeasurements =
+        measurements == null ? null : new String[measurements.length];
+    for (int i = 0; measurements != null && i < measurements.length; i++) {
+      if (insertBaseStatement.isColumnPresent(i)) {
+        validMeasurements[i] = measurements[i];
+      }
+    }
 
     // Use lazy initialization with measurements and dataTypes
     return new InsertNodeMeasurementInfo(
         tableName,
         insertBaseStatement.getColumnCategories(),
-        insertBaseStatement.getMeasurements(),
+        validMeasurements,
         insertBaseStatement.getDataTypes(),
         index ->
             TypeInferenceUtils.getPredictedDataType(
@@ -241,6 +250,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       final LinkedHashMap<String, Integer> tagColumnIndexMap,
       final LinkedHashMap<String, Integer> existingTagColumnIndexMap) {
     if (baseStatement == null || existingTagColumnIndexMap.isEmpty()) {
+      return;
+    }
+    if (baseStatement.getMeasurements() == null) {
       return;
     }
 

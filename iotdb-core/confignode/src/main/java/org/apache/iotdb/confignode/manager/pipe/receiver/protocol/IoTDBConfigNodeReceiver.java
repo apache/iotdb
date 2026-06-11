@@ -89,6 +89,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
@@ -237,7 +238,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
       LOGGER.warn(
-          "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.",
+          ManagerMessages.RECEIVER_ID_UNSUPPORTED_PIPEREQUESTTYPE_ON_CONFIGNODE_RESPONSE_STATUS,
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
@@ -245,7 +246,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       final String error =
           "Exception encountered while handling pipe transfer request. Root cause: "
               + e.getMessage();
-      LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
+      LOGGER.warn(ManagerMessages.RECEIVER_ID, receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -273,7 +274,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       result = checkPermission(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Receiver id = {}: Permission check failed while executing plan {}: {}",
+            ManagerMessages.RECEIVER_ID_PERMISSION_CHECK_FAILED_WHILE_EXECUTING_PLAN,
             receiverId.get(),
             plan,
             result);
@@ -282,7 +283,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
-            "Receiver id = {}: Failure status encountered while executing plan {}: {}",
+            ManagerMessages.RECEIVER_ID_FAILURE_STATUS_ENCOUNTERED_WHILE_EXECUTING_PLAN,
             receiverId.get(),
             plan,
             result);
@@ -290,7 +291,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       }
     } catch (final Exception e) {
       LOGGER.warn(
-          "Receiver id = {}: Exception encountered while executing plan {}: ",
+          ManagerMessages.RECEIVER_ID_EXCEPTION_ENCOUNTERED_WHILE_EXECUTING_PLAN,
           receiverId.get(),
           plan,
           e);
@@ -1225,7 +1226,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus login() {
-    return configManager.login(username, password).getStatus();
+    return configManager.login(username, password, false).getStatus();
   }
 
   @Override
@@ -1252,7 +1253,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV1(
       final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
     throw new UnsupportedOperationException(
-        "IoTDBConfigNodeReceiver does not support load file V1.");
+        ManagerMessages.IOTDBCONFIGNODERECEIVER_DOES_NOT_SUPPORT_LOAD_FILE_V1);
   }
 
   @Override
@@ -1269,7 +1270,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             parameters.getOrDefault("authUserName", ""));
     if (Objects.isNull(generator)) {
       throw new IOException(
-          String.format("The config region snapshots %s cannot be parsed.", fileAbsolutePaths));
+          String.format(
+              ManagerMessages.THE_CONFIG_REGION_SNAPSHOTS_CANNOT_BE_PARSED, fileAbsolutePaths));
     }
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(

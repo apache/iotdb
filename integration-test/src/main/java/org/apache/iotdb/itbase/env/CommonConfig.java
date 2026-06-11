@@ -70,7 +70,9 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
-  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
+  CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
+
+  CommonConfig setRegionGroupAllocatePolicy(String regionGroupAllocatePolicy);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
@@ -121,6 +123,12 @@ public interface CommonConfig {
   CommonConfig setDegreeOfParallelism(int degreeOfParallelism);
 
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
+
+  CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
+
+  CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
@@ -215,4 +223,6 @@ public interface CommonConfig {
   CommonConfig setCteBufferSize(long cteBufferSize);
 
   CommonConfig setMaxRowsInCteBuffer(int maxRows);
+
+  CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing);
 }

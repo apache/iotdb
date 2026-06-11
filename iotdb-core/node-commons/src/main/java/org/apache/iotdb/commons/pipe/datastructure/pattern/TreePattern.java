@@ -20,7 +20,9 @@
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -97,12 +99,21 @@ public abstract class TreePattern {
   /**
    * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
    */
   public abstract boolean mayOverlapWithDevice(final IDeviceID device);
+
+  /**
+   * Check if a device has some measurements matched by the pattern.
+   *
+   * <p>NOTE: this is a precise check and will not have false positives. It means that, you can
+   * always find a measurement(existing or non-existing) to match the pattern with the device.
+   * However, it may not be precise now if there are any exclusions (e.g. Inclusion: root.**.d*.*s,
+   * exclusion: root.**.device.*s, device: root.a.b.device). It may be supported by incoming
+   * versions.
+   */
+  public abstract boolean overlapWithDevice(final IDeviceID device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
@@ -156,23 +167,31 @@ public abstract class TreePattern {
     final boolean hasPatternInclusionKey =
         sourceParameters.hasAnyAttributes(
             EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY);
+    final boolean hasPatternExclusionKey =
+        sourceParameters.hasAnyAttributes(
+            EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY);
     final boolean hasLegacyPathKey =
         sourceParameters.hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
     final boolean hasLegacyPatternKey =
         sourceParameters.hasAnyAttributes(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+    final boolean usePatternSyntax =
+        hasPatternInclusionKey
+            || (hasPatternExclusionKey && !hasLegacyPathKey && !hasLegacyPatternKey);
 
     if (hasPatternInclusionKey && (hasLegacyPathKey || hasLegacyPatternKey)) {
       final String msg =
           String.format(
-              "Pipe: %s cannot be used together with %s or %s.",
-              SOURCE_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_KEY, SOURCE_PATH_KEY);
+              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATTERN_OR_PATH,
+              SOURCE_PATTERN_INCLUSION_KEY,
+              SOURCE_PATTERN_KEY,
+              SOURCE_PATH_KEY);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
 
     // 1. Parse INCLUSION patterns into a list
     List<TreePattern> inclusionPatterns =
-        hasPatternInclusionKey
+        usePatternSyntax
             ? parseIoTDBPatternList(
                 sourceParameters.getStringByKeys(
                     EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY),
@@ -198,19 +217,20 @@ public abstract class TreePattern {
     }
 
     // 2. Parse EXCLUSION patterns into a list
-    if (hasPatternInclusionKey
+    if (usePatternSyntax
         && sourceParameters.hasAnyAttributes(
             EXTRACTOR_PATH_EXCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY)) {
       final String msg =
           String.format(
-              "Pipe: %s cannot be used together with %s.",
-              SOURCE_PATTERN_INCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY);
+              PipeMessages.PATTERN_INCLUSION_CANNOT_BE_USED_WITH_PATH_EXCLUSION,
+              SOURCE_PATTERN_INCLUSION_KEY,
+              SOURCE_PATH_EXCLUSION_KEY);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
 
     List<TreePattern> exclusionPatterns =
-        hasPatternInclusionKey
+        usePatternSyntax
             ? parseIoTDBPatternList(
                 sourceParameters.getStringByKeys(
                     EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY),
@@ -240,9 +260,7 @@ public abstract class TreePattern {
     if (inclusionPatterns.isEmpty()) {
       final String msg =
           String.format(
-              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
-                  + "This pipe pattern will match nothing. "
-                  + "Inclusion: %s, Exclusion: %s",
+              PipeMessages.EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN,
               sourceParameters.getStringByKeys(
                   EXTRACTOR_PATTERN_INCLUSION_KEY,
                   SOURCE_PATTERN_INCLUSION_KEY,
@@ -383,7 +401,8 @@ public abstract class TreePattern {
 
     if (path != null && pattern != null) {
       final String msg =
-          String.format("Pipe: %s and %s cannot be used together.", pathKeyName, patternKeyName);
+          String.format(
+              PipeMessages.PATH_AND_PATTERN_CANNOT_BE_USED_TOGETHER, pathKeyName, patternKeyName);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -423,7 +442,7 @@ public abstract class TreePattern {
 
     if (!allowMultiple && patterns.size() > 1) {
       final String msg =
-          String.format("Pipe: The parameter %s only supports a single pattern now.", parameterKey);
+          String.format(PipeMessages.PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN, parameterKey);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -461,10 +480,17 @@ public abstract class TreePattern {
     final List<TreePattern> sortedPatterns = new ArrayList<>(patterns);
     sortedPatterns.sort(
         (o1, o2) -> {
+          final List<PartialPath> p1List = o1.getBaseInclusionPaths();
+          final List<PartialPath> p2List = o2.getBaseInclusionPaths();
+
+          if (p1List.isEmpty()) {
+            return p2List.isEmpty() ? 1 : -1;
+          }
+
           // We can only approximate comparison here since TreePattern represents multiple paths.
           // We use the first inclusion path as a representative.
-          final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
-          final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
+          final PartialPath p1 = p1List.get(0);
+          final PartialPath p2 = p2List.get(0);
 
           // 1. Length: Shorter is generally broader (e.g., root.** vs root.sg.d1)
           final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
@@ -669,7 +695,7 @@ public abstract class TreePattern {
 
     if (!allowMultiple && patterns.size() > 1) {
       final String msg =
-          String.format("Pipe: The parameter %s only supports a single pattern now.", parameterKey);
+          String.format(PipeMessages.PARAMETER_ONLY_SUPPORTS_SINGLE_PATTERN, parameterKey);
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
@@ -831,7 +857,7 @@ public abstract class TreePattern {
     } catch (final Exception e) {
       // This check is best-effort. Do not fail construction.
       LOGGER.warn(
-          "Pipe: Failed to perform pattern coverage check for inclusion [{}] and exclusion [{}].",
+          PipeMessages.FAILED_TO_PERFORM_PATTERN_COVERAGE_CHECK,
           inclusion.getPattern(),
           exclusion.getPattern(),
           e);
@@ -843,18 +869,15 @@ public abstract class TreePattern {
       // All inclusion paths are covered by the exclusion
       final String msg =
           String.format(
-              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
-                  + "This pipe pattern will match nothing. "
-                  + "Inclusion: [%s], Exclusion: [%s]",
-              inclusion.getPattern(), exclusion.getPattern());
+              PipeMessages.EXCLUSION_PATTERN_FULLY_COVERS_INCLUSION_PATTERN,
+              inclusion.getPattern(),
+              exclusion.getPattern());
       LOGGER.warn(msg);
       throw new PipeException(msg);
     } else if (coveredCount > 0) {
       // Some inclusion paths are covered
       LOGGER.warn(
-          "Pipe: The provided exclusion pattern covers {} out of {} inclusion paths. "
-              + "These paths will be excluded. "
-              + "Inclusion: [{}], Exclusion: [{}]",
+          PipeMessages.EXCLUSION_PATTERN_COVERS_PART_OF_INCLUSION_PATHS,
           coveredCount,
           inclusionPaths.size(),
           inclusion.getPattern(),
@@ -867,6 +890,7 @@ public abstract class TreePattern {
   /** A specialized Trie to efficiently check path coverage. */
   private static class PatternTrie {
     private final TrieNode root = new TrieNode();
+    private final List<PartialPath> complexPatterns = new ArrayList<>();
 
     private static class TrieNode {
       // Children nodes mapped by specific path segments (excluding *)
@@ -886,6 +910,12 @@ public abstract class TreePattern {
       final String[] nodes = path.getNodes();
 
       for (final String segment : nodes) {
+        if (PathPatternUtil.hasWildcard(segment)
+            && !IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(segment)
+            && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(segment)) {
+          complexPatterns.add(path);
+          return;
+        }
         // If we are at a node that is already a MultiLevelWildcard (**),
         // everything below is already covered. We can stop adding.
         if (node.isMultiLevelWildcard) {
@@ -918,7 +948,15 @@ public abstract class TreePattern {
 
     /** Checks if the given path is covered by any existing pattern in the Trie. */
     public boolean isCovered(final PartialPath path) {
-      return checkCoverage(root, path.getNodes(), 0);
+      if (checkCoverage(root, path.getNodes(), 0)) {
+        return true;
+      }
+      for (final PartialPath complexPattern : complexPatterns) {
+        if (complexPattern.include(path)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private boolean checkCoverage(final TrieNode node, final String[] pathNodes, final int index) {
@@ -951,7 +989,15 @@ public abstract class TreePattern {
 
     /** Checks if the given path overlaps with any pattern in the Trie. */
     public boolean overlaps(final PartialPath path) {
-      return checkOverlap(root, path.getNodes(), 0);
+      if (checkOverlap(root, path.getNodes(), 0)) {
+        return true;
+      }
+      for (final PartialPath complexPattern : complexPatterns) {
+        if (complexPattern.overlapWith(path)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private boolean checkOverlap(final TrieNode node, final String[] pathNodes, final int index) {

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.sync;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 @Deprecated
 public enum PipeStatus {
 
@@ -55,7 +57,7 @@ public enum PipeStatus {
       case 5:
         return PipeStatus.PARTIAL_STOP;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 }

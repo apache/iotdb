@@ -104,6 +104,12 @@ struct TRatisConfig {
   34: required i64 dataRegionPeriodicSnapshotInterval
 
   35: required i32 ratisTransferLeaderTimeoutMs;
+
+  // Bound the retry attempts of a Ratis configuration change (add/remove peer) so a killed ADDING
+  // peer cannot block the reconfiguration forever. Optional for rolling-upgrade compatibility: an
+  // old ConfigNode will not set them and the DataNode falls back to its local default.
+  36: optional i32 schemaReconfigurationMaxRetryAttempts
+  37: optional i32 dataReconfigurationMaxRetryAttempts
 }
 
 struct TCQConfig {
@@ -313,6 +319,17 @@ struct TCountTimeSlotListResp {
     2: optional i64 count
 }
 
+struct TGetRegionGroupsByTimeReq {
+    1: required string database
+    2: required i64 startTime
+    3: required i64 endTime
+}
+
+struct TGetRegionGroupsByTimeResp {
+    1: required common.TSStatus status
+    2: optional set<common.TRegionReplicaSet> regionReplicaSets
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
     2: required common.TConsensusGroupType type
@@ -445,6 +462,7 @@ struct TAuthizedPatternTreeResp {
 struct TLoginReq {
   1: required string userrname
   2: required string password
+  3: optional bool useEncryptedPassword
 }
 
 // reqtype : tree, relational, system
@@ -1060,6 +1078,18 @@ struct TGetAllSubscriptionInfoResp {
     2: required list<binary> allSubscriptionInfo
 }
 
+struct TGetCommitProgressReq {
+    1: required string consumerGroupId
+    2: required string topicName
+    3: required i32 regionId
+    4: required i32 dataNodeId
+}
+
+struct TGetCommitProgressResp {
+    1: required common.TSStatus status
+    2: optional binary committedRegionProgress
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -1485,6 +1515,8 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
+
+  common.TSStatus dataPartitionTableIntegrityCheck()
 
   // ======================================================
   // Authorize
@@ -1955,6 +1987,9 @@ service IConfigNodeRPCService {
   /** Get all subscription information. It is used for DataNode registration and restart */
   TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
 
+  /** Get committed search index from ConfigNode for recovery */
+  TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req)
+
   // ======================================================
   // TestTools
   // ======================================================
@@ -1969,6 +2004,9 @@ service IConfigNodeRPCService {
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
+  /** Get a database's DataRegion groups that overlap a time range */
+  TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req)
 
   // ====================================================
   // CQ
@@ -2054,4 +2092,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

@@ -89,7 +89,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
 
-      TestUtils.executeNonQuery(env, "insert into root.db.d1(time, s1) values (1, 1)", null);
+      TestUtils.executeNonQuery(env, "insert into root.db.d1(time, `1`) values (1, 1)", null);
 
       final Map<String, String> sinkAttributes = new HashMap<>();
 
@@ -127,7 +127,9 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           }
         }
         value =
-            opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/s1")).get();
+            opcUaClient
+                .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/d1/`1`"))
+                .get();
         Assert.assertEquals(new Variant(1.0), value.getValue());
         Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
         opcUaClient.disconnect().get();
@@ -138,12 +140,12 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       TestUtils.executeNonQueries(
           env,
           Arrays.asList(
-              "create aligned timeSeries root.db.opc(value double, quality boolean, other int32)",
-              "create aligned timeSeries root.db.opc1(value double, quality boolean, other int32)",
-              "create aligned timeSeries root.db.opc2(value double, quality boolean, other int32)",
-              "insert into root.db.opc(time, value, quality, other) values (0, 0, true, 1)",
-              "insert into root.db.opc1(time, value, quality, other) values (0, 0, true, 1)",
-              "insert into root.db.opc2(time, value, quality, other) values (0, 0, true, 1)"),
+              "create aligned timeSeries root.db.`123`(value double, quality boolean, other int32)",
+              "create aligned timeSeries root.db.`1231`(value double, quality boolean, other int32)",
+              "create aligned timeSeries root.db.`1232`(value double, quality boolean, other int32)",
+              "insert into root.db.`123`(time, value, quality, other) values (0, 0, true, 1)",
+              "insert into root.db.`1231`(time, value, quality, other) values (0, 0, true, 1)",
+              "insert into root.db.`1232`(time, value, quality, other) values (0, 0, true, 1)"),
           null);
 
       while (true) {
@@ -183,23 +185,17 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       TestUtils.executeNonQueries(
           env,
           Arrays.asList(
-              "insert into root.db.opc(time, value, quality, other) values (1, 1, false, 1)",
-              "insert into root.db.opc1(time, value, quality, other) values (1, 1, false, 1)",
-              "insert into root.db.opc2(time, value, quality, other) values (1, 1, false, 1)"),
+              "insert into root.db.`123`(time, value, quality, other) values (1, 1, false, 1)",
+              "insert into root.db.`1231`(time, value, quality, other) values (1, 1, false, 1)",
+              "insert into root.db.`1232`(time, value, quality, other) values (1, 1, false, 1)"),
           null);
 
       long startTime = System.currentTimeMillis();
       while (true) {
         try {
           value =
-              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
-          Assert.assertEquals(new Variant(1.0), value.getValue());
-          Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
-          Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
-
-          value =
               opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc1"))
+                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
                   .get();
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
@@ -207,7 +203,15 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
 
           value =
               opcUaClient
-                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc2"))
+                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1231`"))
+                  .get();
+          Assert.assertEquals(new Variant(1.0), value.getValue());
+          Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
+          Assert.assertEquals(new DateTime(timestampToUtc(1)), value.getSourceTime());
+
+          value =
+              opcUaClient
+                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`1232`"))
                   .get();
           Assert.assertEquals(new Variant(1.0), value.getValue());
           Assert.assertEquals(StatusCode.BAD, value.getStatusCode());
@@ -221,14 +225,16 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       }
 
       TestUtils.executeNonQuery(
-          env, "insert into root.db.opc(time, quality) values (2, true)", null);
-      TestUtils.executeNonQuery(env, "insert into root.db.opc(time, value) values (2, 2)", null);
+          env, "insert into root.db.`123`(time, quality) values (2, true)", null);
+      TestUtils.executeNonQuery(env, "insert into root.db.`123`(time, value) values (2, 2)", null);
 
       startTime = System.currentTimeMillis();
       while (true) {
         try {
           value =
-              opcUaClient.readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/opc")).get();
+              opcUaClient
+                  .readValue(0, TimestampsToReturn.Both, new NodeId(2, "root/db/`123`"))
+                  .get();
           Assert.assertEquals(new DateTime(timestampToUtc(2)), value.getSourceTime());
           Assert.assertEquals(new Variant(2.0), value.getValue());
           Assert.assertEquals(StatusCode.UNCERTAIN, value.getStatusCode());

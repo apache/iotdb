@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /** The summary of one {@link AbstractCompactionTask} execution. */
 public class CompactionTaskSummary {
@@ -37,6 +42,7 @@ public class CompactionTaskSummary {
   protected long rewritePointNum = 0;
   protected long temporalFileSize = 0;
   protected int temporalFileNum = 0;
+  protected Map<TsFileID, Map<String, Long>> targetFileTableSizeMap = new HashMap<>();
 
   public void start() {
     this.status = Status.STARTED;
@@ -187,6 +193,15 @@ public class CompactionTaskSummary {
 
   public int getTemporalFileNum() {
     return temporalFileNum;
+  }
+
+  public void recordTargetTsFileTableSizeMap(
+      TsFileResource resource, Map<String, Long> tableSizeMap) {
+    this.targetFileTableSizeMap.put(resource.getTsFileID(), tableSizeMap);
+  }
+
+  public Map<String, Long> getTableSizeMapOfTargetResource(TsFileID targetTsFileId) {
+    return targetFileTableSizeMap.get(targetTsFileId);
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -45,8 +46,6 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
@@ -290,7 +289,8 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
-      throw new IllegalStateException("all cached chunks should be consumed first");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST);
     }
 
     if (firstTimeSeriesMetadata != null) {
@@ -417,6 +417,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstChunkMetadata)) {
+
+      // record the chunk level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfChunkLevel(firstChunkMetadata.getStatistics().getCount());
       skipCurrentChunk();
       return;
     }
@@ -453,15 +458,6 @@ public class SeriesScanUtil implements Accountable {
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
-        if (isAligned) {
-          SchemaUtils.changeAlignedMetadataModified(
-              (AbstractAlignedChunkMetadata) firstChunkMetadata,
-              firstChunkMetadata.getDataType(),
-              getTsDataTypeList());
-        } else {
-          SchemaUtils.changeMetadataModified(
-              firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
-        }
         if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
           firstChunkMetadata = cachedChunkMetadata.poll();
           break;
@@ -489,45 +485,13 @@ public class SeriesScanUtil implements Accountable {
 
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {
       firstChunkMetadata = cachedChunkMetadata.poll();
-      if (isAligned) {
-        SchemaUtils.changeAlignedMetadataModified(
-            (AbstractAlignedChunkMetadata) firstChunkMetadata,
-            firstChunkMetadata.getDataType(),
-            getTsDataTypeList());
-      } else {
-        SchemaUtils.changeMetadataModified(
-            firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
-      }
     }
   }
 
   protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
-    chunkMetadataList.forEach(
-        chunkMetadata -> {
-          if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
-            AbstractAlignedChunkMetadata alignedChunkMetadata =
-                (AbstractAlignedChunkMetadata) chunkMetadata;
-            for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-              if ((alignedChunkMetadata.getValueChunkMetadataList().get(i) != null)
-                  && !SchemaUtils.isUsingSameStatistics(
-                      alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
-                      getTsDataTypeList().get(i))
-                  && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(i))) {
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
-              }
-            }
-            chunkMetadata = alignedChunkMetadata;
-          } else if (chunkMetadata instanceof ChunkMetadata) {
-            if (!SchemaUtils.isUsingSameStatistics(
-                    chunkMetadata.getDataType(), getTsDataTypeList().get(0))
-                && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(0))) {
-              chunkMetadata.setModified(true);
-            }
-          }
-          chunkMetadata.setSeq(timeSeriesMetadata.isSeq());
-        });
+    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
@@ -704,7 +668,7 @@ public class SeriesScanUtil implements Accountable {
     }
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), isAligned, getTsDataTypeList());
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -748,7 +712,9 @@ public class SeriesScanUtil implements Accountable {
 
     if (LOGGER.isDebugEnabled()) {
       for (IPageReader pageReader : pageReaderList) {
-        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+        LOGGER.debug(
+            DataNodeQueryMessages.SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED,
+            pageReader.isModified());
       }
     }
   }
@@ -767,28 +733,50 @@ public class SeriesScanUtil implements Accountable {
     MemPointIterator memPointIterator =
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
-    for (Statistics<? extends Serializable> statistics : statisticsList) {
-      long orderTime = orderUtils.getOrderTime(statistics);
-      boolean canSkip =
-          (orderUtils.getAscending() && orderTime > satisfiedTimeRange.getMax())
-              || (!orderUtils.getAscending() && orderTime < satisfiedTimeRange.getMin());
-      if (canSkip) {
-        break;
+    if (orderUtils.getAscending()) {
+      for (Statistics<? extends Serializable> statistics : statisticsList) {
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime > satisfiedTimeRange.getMax()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
-      IVersionPageReader versionPageReader =
-          new LazyMemVersionPageReader(
-              context,
-              timestampInFileName,
-              chunkMetaData.getVersion(),
-              chunkMetaData.getOffsetOfChunkHeader(),
-              isAligned,
-              statistics,
-              memPointIterator,
-              chunkMetaData.isSeq());
-      if (chunkMetaData.isSeq()) {
-        seqPageReaders.add(versionPageReader);
-      } else {
-        unSeqPageReaders.add(versionPageReader);
+    } else {
+      for (int i = statisticsList.size() - 1; i >= 0; i--) {
+        Statistics<? extends Serializable> statistics = statisticsList.get(i);
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime < satisfiedTimeRange.getMin()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
     }
   }
@@ -811,7 +799,8 @@ public class SeriesScanUtil implements Accountable {
               && mergeReaderTime <= firstPageReader.getStatistics().getEndTime())
           || (!orderUtils.getAscending()
               && mergeReaderTime >= firstPageReader.getStatistics().getStartTime())) {
-        throw new IllegalStateException("overlapped data should be consumed first");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST);
       }
     }
 
@@ -853,13 +842,30 @@ public class SeriesScanUtil implements Accountable {
     firstPageReader = null;
   }
 
+  /**
+   * Logic of Filter Application and Predicate Splitting:
+   *
+   * <p>1. Predicate Splitting (determined during query planning): - AND connection (e.g., `where s1
+   * > 300 and time < 100`): The predicate is split. `time < 100` goes to `globalTimeFilter`, and
+   * `s1 > 300` goes to `pushDownFilter`. - OR connection (e.g., `where s1 > 300 or time < 100`):
+   * The entire predicate is assigned to `pushDownFilter`. `globalTimeFilter` remains empty (accepts
+   * all).
+   *
+   * <p>2. Filter Application in nextPage(): - Case 1: hasCachedNextOverlappedPage (Overlapped data
+   * processed by MergeReader) The `cachedTsBlock` comes from `mergeReader`. The source PageReaders
+   * of the mergeReader have already applied `globalTimeFilter` during their initialization/loading
+   * phase. Therefore, `filterAndPaginateCachedBlock(cachedTsBlock)` ONLY applies `pushDownFilter`
+   * (and pagination).
+   *
+   * <p>- Case 2: Non-overlapped data (firstPageReader) The `firstPageReader` also has
+   * `globalTimeFilter` applied internally. We explicitly call
+   * `firstPageReader.addPushDownFilter(...)` to ensure the value filter is applied.
+   */
   public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      TsBlock res =
-          applyPushDownFilterAndLimitOffset(
-              cachedTsBlock, scanOptions.getPushDownFilter(), paginationController);
+      TsBlock res = filterAndPaginateCachedBlock(cachedTsBlock);
       cachedTsBlock = null;
 
       // cached tsblock has handled by pagination controller & push down filter, return directly
@@ -905,6 +911,25 @@ public class SeriesScanUtil implements Accountable {
 
       return getTransferedDataTypeTsBlock(tsBlock);
     }
+  }
+
+  private TsBlock filterAndPaginateCachedBlock(TsBlock tsBlock) {
+    if (scanOptions.getPushDownFilter() == null) {
+      return paginationController.applyTsBlock(tsBlock);
+    }
+    if (this.context.isVerbose()) {
+      return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+          tsBlock,
+          new TsBlockBuilder(getTsDataTypeList()),
+          scanOptions.getPushDownFilter(),
+          paginationController,
+          this.context.getQueryStatistics()::addFilteredRowsOfRowLevel);
+    }
+    return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+        tsBlock,
+        new TsBlockBuilder(getTsDataTypeList()),
+        scanOptions.getPushDownFilter(),
+        paginationController);
   }
 
   private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
@@ -1370,15 +1395,7 @@ public class SeriesScanUtil implements Accountable {
     return tsBlock;
   }
 
-  private TsBlock applyPushDownFilterAndLimitOffset(
-      TsBlock tsBlock, Filter pushDownFilter, PaginationController paginationController) {
-    if (pushDownFilter == null) {
-      return paginationController.applyTsBlock(tsBlock);
-    }
-    return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-        tsBlock, new TsBlockBuilder(getTsDataTypeList()), pushDownFilter, paginationController);
-  }
-
+  /** filter data in whole page level, and apply the offset at the same time */
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
       return;
@@ -1389,6 +1406,10 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(pageReader)) {
+      // record the page level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfPageLevel(pageReader.getStatistics().getCount());
       skipCurrentPage();
       return;
     }
@@ -1776,7 +1797,7 @@ public class SeriesScanUtil implements Accountable {
       hasCachedNextOverlappedPage = false;
       return getTransferedDataTypeTsBlock(cachedTsBlock);
     }
-    throw new IOException("No more batch data");
+    throw new IOException(DataNodeQueryMessages.NO_MORE_BATCH_DATA);
   }
 
   /**
@@ -1860,7 +1881,8 @@ public class SeriesScanUtil implements Accountable {
     if (firstTimeSeriesMetadata == null) {
       return;
     }
-
+    // if the time range is overLapped, current file cannot be considered as truth, so all filters
+    // are invalid
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return;
     }
@@ -1868,6 +1890,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstTimeSeriesMetadata)) {
+
+      // record the timeSeries level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfTimeSeriesLevel(firstTimeSeriesMetadata.getStatistics().getCount());
       skipCurrentFile();
       return;
     }
@@ -2030,12 +2057,19 @@ public class SeriesScanUtil implements Accountable {
     public TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
-        TsBlock tsBlock = data.getAllSatisfiedData();
+
+        TsBlock tsBlock =
+            this.context.isVerbose()
+                ? data.getAllSatisfiedData(
+                    this.context.getQueryStatistics()::addFilteredRowsOfRowLevel)
+                : data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
         }
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
+          LOGGER.debug(
+              DataNodeQueryMessages.GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK,
+              CommonUtils.toString(tsBlock));
         }
         return tsBlock;
       } finally {
@@ -2186,7 +2220,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public TsBlock getAllSatisfiedPageData(boolean ascending) {
-      throw new UnsupportedOperationException("getAllSatisfiedPageData() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETALLSATISFIEDPAGEDATA_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override
@@ -2196,7 +2231,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public IPageReader getPageReader() {
-      throw new UnsupportedOperationException("getPageReader() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETPAGEREADER_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override

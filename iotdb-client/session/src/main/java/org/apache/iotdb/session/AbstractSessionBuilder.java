@@ -37,10 +37,12 @@ public abstract class AbstractSessionBuilder {
   public int rpcPort = SessionConfig.DEFAULT_PORT;
   public String username = SessionConfig.DEFAULT_USER;
   public String pw = SessionConfig.DEFAULT_PASSWORD;
+  protected boolean useEncryptedPassword = false;
   public int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
   public ZoneId zoneId = null;
   public int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
   public int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+  public int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
   // if set to true, it means that we may redirect the write request to its corresponding leader

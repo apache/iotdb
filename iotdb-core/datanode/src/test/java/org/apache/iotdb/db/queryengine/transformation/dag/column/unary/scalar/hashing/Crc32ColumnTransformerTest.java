@@ -21,8 +21,8 @@
 // Note: The actual package may vary, adjust if CRC32Transformer is in a different location.
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.hashing;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CRC32Transformer;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CRC32Transformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;

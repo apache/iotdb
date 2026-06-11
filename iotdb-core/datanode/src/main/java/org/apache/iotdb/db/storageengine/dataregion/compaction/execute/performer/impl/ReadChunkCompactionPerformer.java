@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
@@ -48,10 +49,12 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -147,7 +150,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
         if (aligned) {
           compactAlignedSeries(
-              device, targetResources.get(currentTargetFileIndex), currentWriter, deviceIterator);
+              deviceIterator.getDatabaseName(),
+              device,
+              targetResources.get(currentTargetFileIndex),
+              currentWriter,
+              deviceIterator);
         } else {
           compactNotAlignedSeries(
               device, targetResources.get(currentTargetFileIndex), currentWriter, deviceIterator);
@@ -210,6 +217,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter);
+    summary.recordTargetTsFileTableSizeMap(
+        targetResources.get(currentTargetFileIndex), currentWriter.getTableSizeMap());
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
@@ -224,6 +233,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void compactAlignedSeries(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       CompactionTsFileWriter writer,
@@ -239,6 +249,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
         new BatchedReadChunkAlignedSeriesCompactionExecutor(
+            database,
             device,
             targetResource,
             readerAndChunkMetadataList,
@@ -293,7 +304,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           seriesIterator.getMetadataListForCurrentSeries();
       // remove the chunk metadata whose data type not match the data type of last chunk
       readerAndChunkMetadataList =
-          filterDataTypeNotMatchedChunkMetadata(readerAndChunkMetadataList);
+          filterDataTypeNotMatchedChunkMetadata(device, measurement, readerAndChunkMetadataList);
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
               device, measurement, readerAndChunkMetadataList, writer, targetResource, summary);
@@ -304,42 +315,66 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
       filterDataTypeNotMatchedChunkMetadata(
+          IDeviceID deviceID,
+          String measurement,
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList) {
     if (readerAndChunkMetadataList.isEmpty()) {
       return readerAndChunkMetadataList;
     }
-    LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> result = new LinkedList<>();
     // find correct data type
     TSDataType correctDataType = null;
-    for (int i = readerAndChunkMetadataList.size() - 1; i >= 0 && correctDataType == null; i--) {
-      List<ChunkMetadata> chunkMetadataList = readerAndChunkMetadataList.get(i).getRight();
-      if (chunkMetadataList == null || chunkMetadataList.isEmpty()) {
+    boolean hasDifferentDataTypes = false;
+    Iterator<Pair<TsFileSequenceReader, List<ChunkMetadata>>> descIterator =
+        readerAndChunkMetadataList.descendingIterator();
+    while (descIterator.hasNext()) {
+      Pair<TsFileSequenceReader, List<ChunkMetadata>> pair = descIterator.next();
+      List<ChunkMetadata> chunkMetadataList = pair.right;
+      TSDataType dataTypeInCurrentFile = null;
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        if (chunkMetadata != null) {
+          dataTypeInCurrentFile = chunkMetadata.getDataType();
+          break;
+        }
+      }
+      if (dataTypeInCurrentFile == null) {
         continue;
       }
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        if (chunkMetadata == null) {
-          continue;
-        }
-        correctDataType = chunkMetadata.getDataType();
+      if (correctDataType == null) {
+        correctDataType = dataTypeInCurrentFile;
+      } else if (correctDataType != dataTypeInCurrentFile) {
+        hasDifferentDataTypes = true;
         break;
       }
     }
-    if (correctDataType == null) {
+    if (!hasDifferentDataTypes) {
       return readerAndChunkMetadataList;
     }
+
+    IMeasurementSchema schema =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+                deviceID, Collections.singletonList(measurement))
+            .get(0);
+    if (schema != null) {
+      correctDataType = schema.getType();
+    }
+
+    LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> result = new LinkedList<>();
     // check data type consistent and skip compact files with wrong data type
     for (Pair<TsFileSequenceReader, List<ChunkMetadata>> tsFileSequenceReaderListPair :
         readerAndChunkMetadataList) {
       boolean dataTypeConsistent = true;
       for (ChunkMetadata chunkMetadata : tsFileSequenceReaderListPair.getRight()) {
-        if (chunkMetadata != null
-            && !MetadataUtils.canAlter(chunkMetadata.getDataType(), correctDataType)) {
+        if (chunkMetadata == null) {
+          continue;
+        }
+        if (chunkMetadata.getDataType() == correctDataType) {
+          break;
+        }
+        if (!MetadataUtils.canAlter(chunkMetadata.getDataType(), correctDataType)) {
           dataTypeConsistent = false;
           break;
         }
-        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
-          chunkMetadata.setNewType(correctDataType);
-        }
+        chunkMetadata.setNewType(correctDataType);
       }
       if (!dataTypeConsistent) {
         continue;

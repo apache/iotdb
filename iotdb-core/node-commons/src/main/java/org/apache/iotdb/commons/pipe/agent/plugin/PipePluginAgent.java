@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
@@ -87,28 +88,31 @@ public abstract class PipePluginAgent {
       final Map<String, String> processorAttributes,
       final Map<String, String> sinkAttributes)
       throws Exception {
-    validateSource(sourceAttributes);
+    validateSource(pipeName, sourceAttributes);
     validateProcessor(processorAttributes);
     validateSink(pipeName, sinkAttributes);
   }
 
-  protected PipeExtractor validateSource(final Map<String, String> sourceAttributes)
-      throws Exception {
+  protected PipeExtractor validateSource(
+      final String pipeName, final Map<String, String> sourceAttributes) throws Exception {
     final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
-    final PipeExtractor temporaryExtractor = reflectSource(sourceParameters);
+    final PipeExtractor temporarySource = reflectSource(sourceParameters);
     try {
-      temporaryExtractor.validate(new PipeParameterValidator(sourceParameters));
+      temporarySource.validate(new PipeParameterValidator(sourceParameters));
+      temporarySource.customize(
+          sourceParameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
     } finally {
       try {
-        temporaryExtractor.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary source: {}", e.getMessage(), e);
+        temporarySource.close();
+      } catch (final Exception e) {
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_SOURCE, e.getMessage(), e);
       }
     }
-    return temporaryExtractor;
+    return temporarySource;
   }
 
-  protected PipeProcessor validateProcessor(Map<String, String> processorAttributes)
+  protected PipeProcessor validateProcessor(final Map<String, String> processorAttributes)
       throws Exception {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
@@ -117,15 +121,15 @@ public abstract class PipePluginAgent {
     } finally {
       try {
         temporaryProcessor.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary processor: {}", e.getMessage(), e);
+      } catch (final Exception e) {
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_PROCESSOR, e.getMessage(), e);
       }
     }
     return temporaryProcessor;
   }
 
-  protected PipeConnector validateSink(String pipeName, Map<String, String> sinkAttributes)
-      throws Exception {
+  protected PipeConnector validateSink(
+      final String pipeName, final Map<String, String> sinkAttributes) throws Exception {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
     final PipeConnector temporarySink = reflectSink(sinkParameters);
     try {
@@ -137,8 +141,8 @@ public abstract class PipePluginAgent {
     } finally {
       try {
         temporarySink.close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
+      } catch (final Exception e) {
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_TEMPORARY_CONNECTOR, e.getMessage(), e);
       }
     }
     return temporarySink;
@@ -154,7 +158,7 @@ public abstract class PipePluginAgent {
    * @throws PipeException if any exception occurs
    */
   public final List<String> getSubProcessorNamesWithSpecifiedParent(
-      Class<? extends PipeProcessor> parentClass) throws PipeException {
+      final Class<? extends PipeProcessor> parentClass) throws PipeException {
     return StreamSupport.stream(pipePluginMetaKeeper.getAllPipePluginMeta().spliterator(), false)
         .map(pipePluginMeta -> pipePluginMeta.getPluginName().toLowerCase())
         .filter(
@@ -162,7 +166,7 @@ public abstract class PipePluginAgent {
               try (PipeProcessor processor =
                   (PipeProcessor) pipeProcessorConstructor.reflectPluginByKey(pluginName)) {
                 return processor.getClass().getSuperclass() == parentClass;
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 return false;
               }
             })
@@ -203,10 +207,7 @@ public abstract class PipePluginAgent {
       try {
         processor.close();
       } catch (Exception closeException) {
-        LOGGER.warn(
-            "Failed to close processor after failed to initialize processor. "
-                + "Ignore this exception.",
-            closeException);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_PROCESSOR_AFTER_INIT, closeException);
       }
       throw new PipeException(e.getMessage(), e);
     }

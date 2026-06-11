@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -289,7 +290,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public void bindProgressIndex(final ProgressIndex progressIndex) {
-    throw new UnsupportedOperationException("This event does not support binding progressIndex.");
+    throw new UnsupportedOperationException(PipeMessages.EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX);
   }
 
   public abstract ProgressIndex getProgressIndex();
@@ -494,10 +495,10 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * Used for iotConsensusV2. In IoTConsensusV2, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
    */
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     if (this == o) {
       return true;
     }

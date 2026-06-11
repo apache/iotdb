@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -86,6 +87,7 @@ public class OpcUaServerBuilder implements Closeable {
   private boolean enableAnonymousAccess;
   private Set<SecurityPolicy> securityPolicies;
   private DefaultTrustListManager trustListManager;
+  private long debounceTimeMs;
 
   public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
@@ -117,15 +119,25 @@ public class OpcUaServerBuilder implements Closeable {
     return this;
   }
 
+  // Must be a modifiable set.
   public OpcUaServerBuilder setSecurityPolicies(final Set<SecurityPolicy> securityPolicies) {
     this.securityPolicies = securityPolicies;
     return this;
   }
 
+  public OpcUaServerBuilder setDebounceTimeMs(long debounceTimeMs) {
+    this.debounceTimeMs = debounceTimeMs;
+    return this;
+  }
+
+  public long getDebounceTimeMs() {
+    return debounceTimeMs;
+  }
+
   public OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
-      throw new PipeException("Unable to create security dir: " + securityDir);
+      throw new PipeException(DataNodePipeMessages.UNABLE_CREATE_SECURITY_DIR + securityDir);
     }
 
     final File pkiDir = securityDir.resolve("pki").toFile();
@@ -146,7 +158,7 @@ public class OpcUaServerBuilder implements Closeable {
     trustListManager = new DefaultTrustListManager(pkiDir);
 
     LOGGER.info(
-        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+        DataNodePipeMessages.CERTIFICATE_DIRECTORY_IS_PLEASE_MOVE_CERTIFICATES_FROM,
         pkiDir.getAbsolutePath());
 
     final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
@@ -313,7 +325,8 @@ public class OpcUaServerBuilder implements Closeable {
       final String password,
       final Path securityDir,
       final boolean enableAnonymousAccess,
-      final Set<SecurityPolicy> securityPolicies) {
+      final Set<SecurityPolicy> securityPolicies,
+      final long debounceTimeMs) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(
@@ -322,6 +335,7 @@ public class OpcUaServerBuilder implements Closeable {
         FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
     checkEquals("securityPolicies", this.securityPolicies, securityPolicies);
+    checkEquals("debounceTimeMs", this.debounceTimeMs, debounceTimeMs);
   }
 
   private void checkEquals(final String attrName, Object thisAttr, Object thatAttr) {
@@ -343,7 +357,7 @@ public class OpcUaServerBuilder implements Closeable {
       try {
         trustListManager.close();
       } catch (final IOException e) {
-        LOGGER.warn("Failed to close trustListManager, because {}.", e.getMessage());
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLOSE_TRUSTLISTMANAGER_BECAUSE, e.getMessage());
       }
     }
   }

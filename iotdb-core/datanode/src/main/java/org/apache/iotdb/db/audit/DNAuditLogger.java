@@ -32,7 +32,6 @@ import javax.validation.constraints.NotNull;
 import java.util.function.Supplier;
 
 public class DNAuditLogger extends AbstractAuditLogger {
-  public static final String PREFIX_PASSWORD_HISTORY = "root.__audit.password_history";
 
   private Coordinator coordinator;
 

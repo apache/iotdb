@@ -17,11 +17,32 @@
 #
 from enum import Enum
 
-# Model file constants
-MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
-MODEL_CONFIG_FILE_IN_JSON = "config.json"
-MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
-MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
+# ==================== File Name Constants ====================
+#
+# All file names used for model persistence are defined here.
+# Never hard-code these strings elsewhere – always import from
+# this module.
+
+# -- Config files --
+CONFIG_JSON = "config.json"
+CONFIG_YAML = "config.yaml"
+
+# -- Full model weights --
+MODEL_SAFETENSORS = "model.safetensors"
+MODEL_PT = "model.pt"
+MODEL_BIN = "pytorch_model.bin"  # legacy HuggingFace format
+
+# -- Ordered tuples for detection / searching --
+MODEL_WEIGHT_FILES = (MODEL_SAFETENSORS, MODEL_PT, MODEL_BIN)
+
+# -- Backward-compatible aliases (deprecated, will be removed) --
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = MODEL_SAFETENSORS
+MODEL_CONFIG_FILE_IN_JSON = CONFIG_JSON
+MODEL_WEIGHTS_FILE_IN_PT = MODEL_PT
+MODEL_CONFIG_FILE_IN_YAML = CONFIG_YAML
+
+
+# ==================== Enumerations ====================
 
 
 class ModelCategory(Enum):

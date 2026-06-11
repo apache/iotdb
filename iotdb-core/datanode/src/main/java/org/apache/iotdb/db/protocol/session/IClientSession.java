@@ -20,19 +20,19 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import javax.annotation.Nullable;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -175,6 +175,9 @@ public abstract class IClientSession {
   }
 
   public void setSqlDialectAndClean(SqlDialect sqlDialect) {
+    if (this.sqlDialect == sqlDialect) {
+      return;
+    }
     this.sqlDialect = sqlDialect;
     // clean database to avoid misuse of it between different SqlDialect
     this.databaseName = null;
@@ -185,8 +188,15 @@ public abstract class IClientSession {
     return databaseName;
   }
 
+  @TableModel
   public void setDatabaseName(@Nullable String databaseName) {
     this.databaseName = databaseName;
+    if (Objects.nonNull(databaseName) && !PathUtils.isTableModelDatabase(databaseName)) {
+      throw new SemanticException(
+          "The database name "
+              + databaseName
+              + " is a tree model database, which is not allowed to set in the client session.");
+    }
   }
 
   /**
@@ -226,40 +236,5 @@ public abstract class IClientSession {
 
   public void setLastActiveTime(long lastActiveTime) {
     this.lastActiveTime = lastActiveTime;
-  }
-
-  public enum SqlDialect {
-    TREE((byte) 0),
-    TABLE((byte) 1);
-
-    private final byte dialect;
-
-    SqlDialect(byte dialect) {
-      this.dialect = dialect;
-    }
-
-    public byte getDialect() {
-      return dialect;
-    }
-
-    public void serialize(final DataOutputStream stream) throws IOException {
-      ReadWriteIOUtils.write(dialect, stream);
-    }
-
-    public void serialize(final ByteBuffer buffer) {
-      ReadWriteIOUtils.write(dialect, buffer);
-    }
-
-    public static SqlDialect deserializeFrom(final ByteBuffer buffer) {
-      byte b = ReadWriteIOUtils.readByte(buffer);
-      switch (b) {
-        case 0:
-          return TREE;
-        case 1:
-          return TABLE;
-        default:
-          throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", b));
-      }
-    }
   }
 }

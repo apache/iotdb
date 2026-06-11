@@ -567,7 +567,8 @@ public class SchemaFileTest {
     // to test whether estimation of segment size works on edge cases
     /**
      * related methods shall be merged further: {@linkplain SchemaFile#reEstimateSegSize}
-     * ,{@linkplain PageManager#reEstimateSegSize}
+     * ,{@linkplain
+     * org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr.PageManager#reEstimateSegSize}
      */
     ICachedMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
     ICachedMNode d1 = fillChildren(sgNode, 300, "d", this::supplyEntity);

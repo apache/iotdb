@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
@@ -69,6 +70,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_BAD_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_GOOD_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_UA_DEFAULT_QUALITY_KEY;
@@ -109,6 +112,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_DEFAULT_QUALITY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_ENABLE_ANONYMOUS_ACCESS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_OPC_UA_HISTORIZING_KEY;
@@ -240,8 +244,7 @@ public class OpcUaSink implements PipeConnector {
     databaseName = Objects.nonNull(region) ? region.getDatabaseName() : "root.__temp_db";
 
     if (withQuality && PathUtils.isTableModelDatabase(databaseName)) {
-      throw new PipeException(
-          "When the OPC UA sink sets 'with-quality' to true, the table model data is not supported.");
+      throw new PipeException(DataNodePipeMessages.WHEN_THE_OPC_UA_SINK_SETS_WITH);
     }
 
     nodeUrl = parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
@@ -249,8 +252,7 @@ public class OpcUaSink implements PipeConnector {
       customizeServer(parameters);
     } else {
       if (PathUtils.isTableModelDatabase(databaseName)) {
-        throw new PipeException(
-            "When the OPC UA sink points to an outer server, the table model data is not supported.");
+        throw new PipeException(DataNodePipeMessages.WHEN_THE_OPC_UA_SINK_POINTS_TO);
       }
       customizeClient(parameters);
     }
@@ -306,8 +308,12 @@ public class OpcUaSink implements PipeConnector {
             .map(this::getSecurityPolicy)
             .collect(Collectors.toSet());
     if (securityPolicies.isEmpty()) {
-      throw new PipeException("The security policy cannot be empty.");
+      throw new PipeException(DataNodePipeMessages.THE_SECURITY_POLICY_CANNOT_BE_EMPTY);
     }
+    final long debounceTimeMs =
+        parameters.getLongOrDefault(
+            Arrays.asList(CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_KEY, SINK_OPC_UA_DEBOUNCE_TIME_MS_KEY),
+            CONNECTOR_OPC_UA_DEBOUNCE_TIME_MS_DEFAULT_VALUE);
 
     synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
       serverKey = httpsBindPort + ":" + tcpBindPort;
@@ -327,7 +333,8 @@ public class OpcUaSink implements PipeConnector {
                                 .setPassword(password)
                                 .setSecurityDir(securityDir)
                                 .setEnableAnonymousAccess(enableAnonymousAccess)
-                                .setSecurityPolicies(securityPolicies);
+                                .setSecurityPolicies(securityPolicies)
+                                .setDebounceTimeMs(debounceTimeMs);
                         final OpcUaServer newServer = builder.build();
                         nameSpace = new OpcUaNameSpace(newServer, builder);
                         nameSpace.startup();
@@ -341,13 +348,15 @@ public class OpcUaSink implements PipeConnector {
                                 password,
                                 securityDir,
                                 enableAnonymousAccess,
-                                securityPolicies);
+                                securityPolicies,
+                                debounceTimeMs);
                         return oldValue;
                       }
                     } catch (final PipeException e) {
                       throw e;
                     } catch (final Exception e) {
-                      throw new PipeException("Failed to build and startup OpcUaServer", e);
+                      throw new PipeException(
+                          DataNodePipeMessages.FAILED_TO_BUILD_AND_STARTUP_OPCUASERVER, e);
                     }
                   })
               .getRight();
@@ -435,8 +444,7 @@ public class OpcUaSink implements PipeConnector {
       case CONNECTOR_OPC_UA_SECURITY_POLICY_AES256_SHA256_RSAPSS_VALUE:
         return SecurityPolicy.Aes256_Sha256_RsaPss;
       default:
-        throw new PipeException(
-            "The security policy can only be 'None', 'Basic128Rsa15', 'Basic256', 'Basic256Sha256', 'Aes128_Sha256_RsaOaep' or 'Aes256_Sha256_RsaPss'.");
+        throw new PipeException(DataNodePipeMessages.THE_SECURITY_POLICY_CAN_ONLY_BE_NONE);
     }
   }
 
@@ -449,7 +457,7 @@ public class OpcUaSink implements PipeConnector {
       case CONNECTOR_OPC_UA_DEFAULT_QUALITY_UNCERTAIN_VALUE:
         return StatusCode.UNCERTAIN;
       default:
-        throw new PipeException("The default quality can only be 'GOOD', 'BAD' or 'UNCERTAIN'.");
+        throw new PipeException(DataNodePipeMessages.THE_DEFAULT_QUALITY_CAN_ONLY_BE_GOOD);
     }
   }
 
@@ -479,8 +487,7 @@ public class OpcUaSink implements PipeConnector {
           } else if (Objects.nonNull(client)) {
             client.transfer(tablet, this);
           } else {
-            throw new PipeException(
-                "No OPC client or server is specified when transferring tablet");
+            throw new PipeException(DataNodePipeMessages.NO_OPC_CLIENT_OR_SERVER_IS_SPECIFIED);
           }
         });
   }
@@ -550,42 +557,38 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverKey == null) {
-      return;
-    }
+    if (serverKey != null) {
+      synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
+        final Pair<AtomicInteger, OpcUaNameSpace> pair =
+            SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
+        if (pair == null) {
+          return;
+        }
 
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
-      final Pair<AtomicInteger, OpcUaNameSpace> pair =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().shutdown();
-        } finally {
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
+        if (pair.getLeft().decrementAndGet() <= 0) {
+          try {
+            pair.getRight().shutdown();
+          } finally {
+            SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
+          }
         }
       }
     }
 
-    if (nodeUrl == null) {
-      return;
-    }
+    if (nodeUrl != null) {
+      synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
+        final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
+            CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
+        if (pair == null) {
+          return;
+        }
 
-    synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
-      final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
-          CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().disconnect();
-        } finally {
-          CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
+        if (pair.getLeft().decrementAndGet() <= 0) {
+          try {
+            pair.getRight().disconnect();
+          } finally {
+            CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
+          }
         }
       }
     }

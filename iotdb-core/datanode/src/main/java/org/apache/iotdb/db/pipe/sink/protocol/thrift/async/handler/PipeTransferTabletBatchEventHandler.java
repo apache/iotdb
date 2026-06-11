@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
@@ -69,7 +70,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     for (final Map.Entry<Pair<String, Long>, Long> entry : pipeName2BytesAccumulated.entrySet()) {
-      connector.rateLimitIfNeeded(
+      sink.rateLimitIfNeeded(
           entry.getKey().getLeft(),
           entry.getKey().getRight(),
           client.getEndPoint(),
@@ -83,7 +84,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
-      onError(new PipeException("TPipeTransferResp is null"));
+      onError(new PipeException(DataNodePipeMessages.TPIPETRANSFERRESP_IS_NULL));
       return false;
     }
 
@@ -92,13 +93,11 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector
-            .statusHandler()
-            .handle(status, response.getStatus().getMessage(), events.toString());
+        sink.statusHandler().handle(status, response.getStatus().getMessage(), events.toString());
       }
       for (final Pair<String, TEndPoint> redirectPair :
           LeaderCacheUtils.parseRecommendedRedirections(status)) {
-        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+        sink.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
 
       events.forEach(
@@ -123,7 +122,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
           events.size(),
           events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {
-      connector.addFailureEventsToRetryQueue(events);
+      sink.addFailureEventsToRetryQueue(events, exception);
     }
   }
 
@@ -131,7 +130,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   protected void doTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
-    client.pipeTransfer(req, this);
+    transferWithOptionalRequestSlicing(client, req);
   }
 
   @Override

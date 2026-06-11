@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -30,24 +31,32 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_SOURCE_DISRUPTOR;
 
 public class DisruptorQueue {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
-      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
+      new IoTDBDaemonThreadFactory(PIPE_SOURCE_DISRUPTOR.getName());
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
-
   private volatile boolean isClosed = false;
 
+  private final int dataRegionId;
+  private volatile long lastLogTime = Long.MIN_VALUE;
+
   public DisruptorQueue(
+      final int dataRegionId,
       final EventHandler<PipeRealtimeEvent> eventHandler,
       final Consumer<PipeRealtimeEvent> onAssignedHook) {
+    this.dataRegionId = dataRegionId;
     final PipeConfig config = PipeConfig.getInstance();
     final int ringBufferSize = config.getPipeSourceAssignerDisruptorRingBufferSize();
     final long ringBufferEntrySizeInBytes =
@@ -79,15 +88,29 @@ public class DisruptorQueue {
   }
 
   public void publish(final PipeRealtimeEvent event) {
+    publishOrDrop(event);
+  }
+
+  public boolean publishOrDrop(final PipeRealtimeEvent event) {
     final EnrichedEvent innerEvent = event.getEvent();
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).recordDisruptorSize(ringBuffer);
     }
-    ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
+    final boolean published =
+        ringBuffer.publishEvent(
+            (container, sequence, o) -> container.setEvent(event), event, this::isClosed);
+    if (published) {
+      mayPrintExceedingLog();
+    }
+    return published;
+  }
+
+  public void closeInput() {
+    isClosed = true;
   }
 
   public void shutdown() {
-    isClosed = true;
+    closeInput();
     // use shutdown instead of halt to ensure all published events have been handled
     disruptor.shutdown();
     allocatedMemoryBlock.close();
@@ -95,6 +118,22 @@ public class DisruptorQueue {
 
   public boolean isClosed() {
     return isClosed;
+  }
+
+  private void mayPrintExceedingLog() {
+    final long remainingCapacity = ringBuffer.remainingCapacity();
+    final long bufferSize = ringBuffer.getBufferSize();
+    if ((double) remainingCapacity / bufferSize <= 0.5
+        && System.currentTimeMillis()
+                - PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds() * 1000L
+            >= lastLogTime) {
+      LOGGER.warn(
+          DataNodePipeMessages.THE_ASSIGNER_QUEUE_CONTENT_HAS_EXCEEDED_HALF,
+          dataRegionId,
+          remainingCapacity,
+          bufferSize);
+      lastLogTime = System.currentTimeMillis();
+    }
   }
 
   private static class EventContainer {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -26,7 +27,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -42,7 +42,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_DISPATCH;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.WAIT_FOR_DISPATCH;
 
 /**
  * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will
@@ -139,8 +139,8 @@ public class ClusterScheduler implements IScheduler {
       QUERY_EXECUTION_METRICS.recordExecutionCost(WAIT_FOR_DISPATCH, System.nanoTime() - startTime);
     }
 
-    // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
-    if (queryType == QueryType.WRITE) {
+    // For the FragmentInstance of non-query, it will be executed directly when dispatching.
+    if (!isQuery()) {
       stateMachine.transitionToFinished();
       return;
     }
@@ -175,6 +175,6 @@ public class ClusterScheduler implements IScheduler {
   }
 
   private boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 }

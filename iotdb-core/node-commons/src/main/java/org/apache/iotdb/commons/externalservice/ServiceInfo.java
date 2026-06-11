@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.externalservice;
 
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.externalservice.api.IExternalService;
 
 import com.google.common.base.Objects;
@@ -36,6 +37,7 @@ public class ServiceInfo {
   private State state;
 
   private transient IExternalService serviceInstance;
+  private transient ClassLoader serviceClassLoader;
 
   public ServiceInfo(String serviceName, String className, ServiceType serviceType) {
     this.serviceName = serviceName;
@@ -77,6 +79,14 @@ public class ServiceInfo {
 
   public void setServiceInstance(IExternalService serviceInstance) {
     this.serviceInstance = serviceInstance;
+  }
+
+  public ClassLoader getServiceClassLoader() {
+    return serviceClassLoader;
+  }
+
+  public void setServiceClassLoader(ClassLoader serviceClassLoader) {
+    this.serviceClassLoader = serviceClassLoader;
   }
 
   public void serialize(OutputStream stream) throws IOException {
@@ -137,7 +147,7 @@ public class ServiceInfo {
         case 1:
           return USER_DEFINED;
         default:
-          throw new IllegalArgumentException("Unknown ServiceType: " + t);
+          throw new IllegalArgumentException(ServiceMessages.UNKNOWN_SERVICE_TYPE + t);
       }
     }
   }
@@ -163,7 +173,7 @@ public class ServiceInfo {
         case 1:
           return STOPPED;
         default:
-          throw new IllegalArgumentException("Unknown State: " + t);
+          throw new IllegalArgumentException(ServiceMessages.UNKNOWN_STATE + t);
       }
     }
   }

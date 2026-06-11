@@ -36,6 +36,7 @@
         <module>jdbc</module>
         <module>service-rpc</module>
         <module>session</module>
+        <module>subscription</module>
     </modules>
     <profiles>
         <profile>

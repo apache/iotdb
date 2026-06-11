@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
@@ -116,12 +117,14 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            eliminateProgressIndex();
-          }
-        });
+    if (needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
   }
 
   public PipeRawTabletInsertionEvent(
@@ -303,10 +306,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   protected void eliminateProgressIndex() {
-    if (needToReport) {
-      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
-      }
+    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
     }
   }
 
@@ -368,7 +369,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean isGeneratedByPipe() {
-    throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+    throw new UnsupportedOperationException(
+        DataNodePipeMessages.ISGENERATEDBYPIPE_IS_NOT_SUPPORTED);
   }
 
   @Override
@@ -387,6 +389,14 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   public void markAsNeedToReport() {
+    if (!needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
     this.needToReport = true;
   }
 
@@ -402,6 +412,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit && needToReport;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -440,6 +455,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public Tablet convertToTablet() {
     if (!shouldParseTimeOrPattern()) {
+      PipeTabletUtils.compactBitMaps(tablet);
       return tablet;
     }
     return initEventParser().convertToTablet();

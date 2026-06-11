@@ -103,6 +103,11 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     return inclusionPattern.matchesMeasurement(device, measurement)
         && !exclusionPattern.matchesMeasurement(device, measurement);

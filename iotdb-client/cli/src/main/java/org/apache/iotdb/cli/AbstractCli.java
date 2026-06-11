@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.exception.ArgsErrorException;
@@ -88,7 +89,6 @@ public abstract class AbstractCli {
   static final int CODE_ERROR = 1;
 
   static final String ISO8601_ARGS = "disableISO8601";
-  static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String RPC_COMPRESS_ARGS = "c";
   private static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String TIMEOUT_ARGS = "timeout";
@@ -260,7 +260,7 @@ public abstract class AbstractCli {
       if (isRequired) {
         String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
-        ctx.getPrinter().println("Use -help for more information");
+        ctx.getPrinter().println(CliMessages.USE_HELP_FOR_MORE);
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
         String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);

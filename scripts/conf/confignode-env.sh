@@ -192,7 +192,7 @@ else
     JAVA=java
 fi
 
-if [ -z $JAVA ] ; then
+if [ -z "$JAVA" ] ; then
     echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
     exit 1;
 fi
@@ -321,6 +321,13 @@ if [[ ! "$CONFIGNODE_JMX_OPTS" =~ -XX:MaxDirectMemorySize ]]; then CONFIGNODE_JM
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+
+# Append tsfile locale option populated by Maven at package time
+# (see conf/iotdb-common.sh; empty in default build, "-Dtsfile.locale=zh" under with-zh-locale).
+if [ -n "$TSFILE_LOCALE_JVM_OPT" ]; then
+    CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS $TSFILE_LOCALE_JVM_OPT"
+fi
+
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace ${heap_dump_dir}/confignode_heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
 #CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_dir}/confignode_heapdump.hprof"
 

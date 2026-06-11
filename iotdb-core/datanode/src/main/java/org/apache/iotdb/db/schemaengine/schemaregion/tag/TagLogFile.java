@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
@@ -64,9 +65,9 @@ public class TagLogFile implements AutoCloseable {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
       if (metadataDir.mkdirs()) {
-        logger.info("create schema folder {}.", metadataDir);
+        logger.info(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER, metadataDir);
       } else {
-        logger.info("create schema folder {} failed.", metadataDir);
+        logger.info(DataNodeSchemaMessages.CREATE_SCHEMA_FOLDER_FAILED, metadataDir);
       }
     }
 
@@ -211,8 +212,7 @@ public class TagLogFile implements AutoCloseable {
     // write read data
     int blockNumReal = byteBuffer.capacity() / MAX_LENGTH;
     if (blockNumReal < 1) {
-      throw new RuntimeException(
-          "ByteBuffer capacity is smaller than tagAttributeTotalSize, which is not allowed.");
+      throw new RuntimeException(DataNodeSchemaMessages.BYTEBUFFER_SMALLER_THAN_TAG_SIZE);
     }
     if (blockNumReal == 1 && blockOffset.size() == 1) {
       // If the original data occupies only one block and the new data occupies only one block, the
