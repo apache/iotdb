@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
@@ -287,6 +288,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       final String dbName = "test";
       final String tbName = "test";
 
+      sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
       sourceAttributes.put("source.inclusion", "all");
       sourceAttributes.put("source.capture.tree", "false");
       sourceAttributes.put("source.capture.table", "true");

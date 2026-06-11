@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -73,6 +74,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -209,6 +212,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
@@ -327,6 +332,8 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put(
+          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.capture.tree", "false");
       extractorAttributes.put("extractor.capture.table", "true");
