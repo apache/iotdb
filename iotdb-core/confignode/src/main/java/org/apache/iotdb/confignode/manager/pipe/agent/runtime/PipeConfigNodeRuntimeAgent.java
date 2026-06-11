@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenc
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.i18n.ManagerMessages;
@@ -56,6 +58,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() {
     PipeConfig.getInstance().printAllConfigs();
+    PipeLogger.setLogger(PipePeriodicalLogReducer::log);
 
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
@@ -142,19 +145,21 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     if (event.getPipeTaskMeta() != null) {
       report(event.getPipeTaskMeta(), pipeRuntimeException);
     } else {
-      LOGGER.warn(
-          ManagerMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA,
-          pipeRuntimeException);
+      PipeLogger.log(
+          LOGGER::warn,
+          pipeRuntimeException,
+          ManagerMessages.ATTEMPT_TO_REPORT_PIPE_EXCEPTION_TO_A_NULL_PIPETASKMETA);
     }
   }
 
   private void report(
       final PipeTaskMeta pipeTaskMeta, final PipeRuntimeException pipeRuntimeException) {
-    LOGGER.warn(
+    PipeLogger.log(
+        LOGGER::warn,
+        pipeRuntimeException,
         ManagerMessages.REPORT_PIPERUNTIMEEXCEPTION_TO_LOCAL_PIPETASKMETA_EXCEPTION_MESSAGE,
         pipeTaskMeta,
-        pipeRuntimeException.getMessage(),
-        pipeRuntimeException);
+        pipeRuntimeException.getMessage());
 
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
 
