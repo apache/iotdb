@@ -36,6 +36,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
 
@@ -51,24 +52,6 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
       ExternalTsFileMetadataLoader metadataLoader) {
     super(seriesPath, scanOrder, scanOptions, context, queryAllSensors, givenDataTypes);
     this.metadataLoader = metadataLoader;
-  }
-
-  public ExternalTsFileSeriesScanUtil(
-      AlignedFullPath seriesPath,
-      Ordering scanOrder,
-      SeriesScanOptions scanOptions,
-      FragmentInstanceContext context,
-      boolean queryAllSensors,
-      List<TSDataType> givenDataTypes,
-      MultiTsFileResourceIterator resourceIterator) {
-    this(
-        seriesPath,
-        scanOrder,
-        scanOptions,
-        context,
-        queryAllSensors,
-        givenDataTypes,
-        resourceIterator::loadTimeSeriesMetadata);
   }
 
   @Override
@@ -94,16 +77,15 @@ public class ExternalTsFileSeriesScanUtil extends AlignedSeriesScanUtil {
       return null;
     }
 
-    long[] deviceMeasurementNodeOffset = currentDeviceOffset.getMeasurementNodeOffset();
-    // TODO: Use deviceMeasurementNodeOffset after FileLoaderUtils supports offset-based metadata
-    // loading in this branch.
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
         resource,
         alignedPath,
         context,
         globalTimeFilter,
         resource.isSeq(),
-        context.isIgnoreAllNullRows());
+        context.isIgnoreAllNullRows(),
+        Optional.of(
+            new long[] {currentDeviceOffset.getStartOffset(), currentDeviceOffset.getEndOffset()}));
   }
 
   @FunctionalInterface

@@ -57,6 +57,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -110,8 +111,7 @@ public class FileLoaderUtils {
                     context.ignoreNotExistsDevice()
                         || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug(),
-                    context,
-                    context.isExternalTsFileScan());
+                    context);
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
@@ -199,7 +199,8 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean isSeq,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      Optional<long[]> rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -213,7 +214,12 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                rootMeasurementMetadataIndexNodeOffset);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -286,7 +292,8 @@ public class FileLoaderUtils {
       AlignedFullPath alignedPath,
       FragmentInstanceContext context,
       Filter globalTimeFilter,
-      boolean ignoreAllNullRows)
+      boolean ignoreAllNullRows,
+      Optional<long[]> rootMeasurementMetadataIndexNodeOffset)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -298,7 +305,6 @@ public class FileLoaderUtils {
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();
-    boolean isExternalTsFile = context.isExternalTsFileScan();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -311,7 +317,7 @@ public class FileLoaderUtils {
                 || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug,
             context,
-            isExternalTsFile);
+            rootMeasurementMetadataIndexNodeOffset);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
       if (valueMeasurementList.isEmpty()) {
@@ -341,7 +347,7 @@ public class FileLoaderUtils {
                       || resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug,
                   context,
-                  isExternalTsFile);
+                  rootMeasurementMetadataIndexNodeOffset);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
         }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf.readTsFile;
 
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -33,7 +34,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.LazyTsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.BufferedInputStream;
@@ -67,9 +70,7 @@ import static java.util.Objects.requireNonNull;
 public class ExternalTsFileQueryResource implements AutoCloseable {
 
   public static final String EXTERNAL_TSFILE_TMP_DIR = "external-tsfile";
-  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 1;
-  //  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
-  private static final long DEVICE_OFFSET_INSTANCE_SIZE_IN_BYTES = 32L;
+  private static final long DEVICE_TASK_BUCKET_TARGET_SIZE_IN_BYTES = 8L * 1024 * 1024;
 
   private final QueryId queryId;
   private final Path queryTempRoot;
@@ -78,10 +79,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
   private final List<TsFileResource> tsFileResources;
   private final LongConsumer ioSizeRecorder;
   private final List<DeviceEntry> deviceEntries = new ArrayList<>();
-  private List<DeviceTaskPartition> deviceTaskPartitions = Collections.emptyList();
+  private final List<DeviceTaskPartition> deviceTaskPartitions = new ArrayList<>();
   private Comparator<DeviceEntry> deviceEntryComparator;
 
-  private boolean closed;
+  private volatile boolean closed;
 
   public ExternalTsFileQueryResource(
       QueryId queryId,
@@ -122,8 +123,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
         int deviceEntryIndex = deviceEntries.size();
         deviceEntries.add(deviceEntry);
         DeviceTask deviceTask =
-            new DeviceTask(
-                deviceEntryIndex, new ArrayList<>(deviceCollector.getCurrentDeviceOffsets()));
+            new DeviceTask(deviceEntryIndex, deviceCollector.getCurrentDeviceOffsets());
         DeviceTaskPartition partition =
             deviceTaskPartitions.get(
                 Math.floorMod(deviceID.hashCode(), deviceTaskPartitions.size()));
@@ -245,7 +245,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
 
     private void add(DeviceTask deviceTask) {
       pendingDeviceTasks.add(deviceTask);
-      estimatedSizeInBytes += estimateDeviceTaskSize(deviceTask);
+      estimatedSizeInBytes += deviceTask.ramBytesUsed();
     }
 
     private void flush(Comparator<DeviceEntry> comparator) {
@@ -332,7 +332,6 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       throw new IllegalArgumentException(
           "External TsFile device task partition count must be positive");
     }
-    deviceTaskPartitions = new ArrayList<>(partitionCount);
     for (int i = 0; i < partitionCount; i++) {
       deviceTaskPartitions.add(new DeviceTaskPartition(i));
     }
@@ -363,16 +362,6 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       }
     }
     return runFile;
-  }
-
-  private static long estimateDeviceTaskSize(DeviceTask deviceTask) {
-    long size = 64L;
-    for (DeviceOffset offset : deviceTask.deviceOffsets) {
-      size +=
-          DEVICE_OFFSET_INSTANCE_SIZE_IN_BYTES
-              + (long) Long.BYTES * offset.measurementNodeOffset.length;
-    }
-    return size;
   }
 
   public class DeviceTaskRunReader implements AutoCloseable {
@@ -572,7 +561,7 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     private final Map<Integer, LazyTsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
 
     private IDeviceID currentDevice;
-    private List<DeviceOffset> currentDeviceOffsets = Collections.emptyList();
+    private List<DeviceOffset> currentDeviceOffsets;
 
     private DeviceCollector() {
       try {
@@ -637,7 +626,9 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
             && currentDevice.equals(deviceIterator.getCurrentDeviceID())) {
           deviceOffsets.add(
               new DeviceOffset(
-                  entry.getKey(), deviceIterator.getCurrentDeviceMeasurementNodeOffset()));
+                  entry.getKey(),
+                  deviceIterator.getCurrentDeviceMeasurementNodeOffset()[0],
+                  deviceIterator.getCurrentDeviceMeasurementNodeOffset()[1]));
         }
       }
       currentDeviceOffsets = deviceOffsets;
@@ -654,7 +645,10 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
     }
   }
 
-  private static class DeviceTask {
+  private static class DeviceTask implements Accountable {
+
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(DeviceTask.class);
 
     private final int deviceEntryIndex;
     private final List<DeviceOffset> deviceOffsets;
@@ -669,10 +663,8 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       ReadWriteIOUtils.write(deviceOffsets.size(), outputStream);
       for (DeviceOffset offset : deviceOffsets) {
         ReadWriteIOUtils.write(offset.fileIndex, outputStream);
-        ReadWriteIOUtils.write(offset.measurementNodeOffset.length, outputStream);
-        for (long measurementNodeOffset : offset.measurementNodeOffset) {
-          ReadWriteIOUtils.write(measurementNodeOffset, outputStream);
-        }
+        ReadWriteIOUtils.write(offset.startOffset, outputStream);
+        ReadWriteIOUtils.write(offset.endOffset, outputStream);
       }
     }
 
@@ -682,33 +674,48 @@ public class ExternalTsFileQueryResource implements AutoCloseable {
       List<DeviceOffset> offsets = new ArrayList<>(offsetSize);
       for (int i = 0; i < offsetSize; i++) {
         int fileIndex = ReadWriteIOUtils.readInt(inputStream);
-        int measurementNodeOffsetLength = ReadWriteIOUtils.readInt(inputStream);
-        long[] measurementNodeOffset = new long[measurementNodeOffsetLength];
-        for (int j = 0; j < measurementNodeOffsetLength; j++) {
-          measurementNodeOffset[j] = inputStream.readLong();
-        }
-        offsets.add(new DeviceOffset(fileIndex, measurementNodeOffset));
+        long startOffset = inputStream.readLong();
+        long endOffset = inputStream.readLong();
+        offsets.add(new DeviceOffset(fileIndex, startOffset, endOffset));
       }
       return new DeviceTask(deviceEntryIndex, offsets);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return INSTANCE_SIZE
+          + MemoryEstimationHelper.ARRAY_LIST_INSTANCE_SIZE
+          + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+          + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * deviceOffsets.size()
+          + deviceOffsets.size() * DeviceOffset.INSTANCE_SIZE;
     }
   }
 
   public static class DeviceOffset {
 
-    private final int fileIndex;
-    private final long[] measurementNodeOffset;
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(DeviceOffset.class);
 
-    private DeviceOffset(int fileIndex, long[] measurementNodeOffset) {
+    private final int fileIndex;
+    private final long startOffset;
+    private final long endOffset;
+
+    private DeviceOffset(int fileIndex, long startOffset, long endOffset) {
       this.fileIndex = fileIndex;
-      this.measurementNodeOffset = measurementNodeOffset;
+      this.startOffset = startOffset;
+      this.endOffset = endOffset;
     }
 
     public int getFileIndex() {
       return fileIndex;
     }
 
-    public long[] getMeasurementNodeOffset() {
-      return measurementNodeOffset;
+    public long getStartOffset() {
+      return startOffset;
+    }
+
+    public long getEndOffset() {
+      return endOffset;
     }
   }
 }

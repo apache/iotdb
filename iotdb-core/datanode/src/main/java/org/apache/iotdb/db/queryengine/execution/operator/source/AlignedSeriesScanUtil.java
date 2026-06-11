@@ -38,6 +38,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class AlignedSeriesScanUtil extends SeriesScanUtil {
@@ -100,7 +101,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        Optional.empty());
   }
 
   @Override
