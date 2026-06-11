@@ -125,6 +125,57 @@ public class VisibilityUtilsTest {
   }
 
   @Test
+  public void testPipeStaticMetaVisibilityDefaultsToTreeDialect() {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "false");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
+    sourceAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+
+    final PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "defaultTreePipe", 1, sourceAttributes, Collections.emptyMap(), Collections.emptyMap());
+
+    Assert.assertTrue(pipeStaticMeta.visibleUnder(false));
+    Assert.assertFalse(pipeStaticMeta.visibleUnder(true));
+  }
+
+  @Test
+  public void testPipeStaticMetaVisibilityIgnoresDoubleLiving() {
+    final Map<String, String> treeSourceAttributes = new HashMap<>();
+    treeSourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    treeSourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
+    treeSourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
+    treeSourceAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+
+    final PipeStaticMeta treePipeStaticMeta =
+        new PipeStaticMeta(
+            "treeDoubleLivingPipe",
+            1,
+            treeSourceAttributes,
+            Collections.emptyMap(),
+            Collections.emptyMap());
+    Assert.assertTrue(treePipeStaticMeta.visibleUnder(false));
+    Assert.assertFalse(treePipeStaticMeta.visibleUnder(true));
+
+    final Map<String, String> tableSourceAttributes = new HashMap<>();
+    tableSourceAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableSourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
+    tableSourceAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
+    tableSourceAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+
+    final PipeStaticMeta tablePipeStaticMeta =
+        new PipeStaticMeta(
+            "tableDoubleLivingPipe",
+            1,
+            tableSourceAttributes,
+            Collections.emptyMap(),
+            Collections.emptyMap());
+    Assert.assertFalse(tablePipeStaticMeta.visibleUnder(false));
+    Assert.assertTrue(tablePipeStaticMeta.visibleUnder(true));
+  }
+
+  @Test
   public void testPipeStaticMetaVisibilitySurvivesSerialization() throws IOException {
     final Map<String, String> tableSourceAttributes = new HashMap<>();
     tableSourceAttributes.put(
