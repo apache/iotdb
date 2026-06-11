@@ -159,7 +159,7 @@ public class PipeHeartbeatParser {
         temporaryMeta.markDataNodeCompleted(nodeId);
         PipeLogger.log(
             LOGGER::info,
-            "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}",
+            ManagerMessages.DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE,
             nodeId,
             staticMeta.getPipeName(),
             pipeHeartbeat.getRemainingEventCount(staticMeta),
@@ -172,7 +172,7 @@ public class PipeHeartbeatParser {
         if (uncompletedDataNodeIds.isEmpty()) {
           PipeLogger.log(
               LOGGER::info,
-              "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}",
+              ManagerMessages.ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED,
               staticMeta.getPipeName(),
               temporaryMeta.getGlobalRemainingEvents(),
               temporaryMeta.getGlobalRemainingTime(),

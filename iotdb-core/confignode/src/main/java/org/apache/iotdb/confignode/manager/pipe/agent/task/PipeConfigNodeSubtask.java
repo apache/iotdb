@@ -109,8 +109,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
         PipeLogger.log(
             LOGGER::warn,
             closeException,
-            ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR
-                + "Ignore this exception.");
+            ManagerMessages.FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR);
       }
       throw e;
     }

@@ -63,8 +63,12 @@ public final class ManagerMessages {
   public static final String DECREASE_REFERENCE_COUNT_FOR_SNAPSHOT_ERROR =
       "Decrease reference count for snapshot {} error.";
   public static final String DELETING_REGIONS_COSTS_MS = "Deleting regions costs {}ms";
+  public static final String DETECTED_HISTORICAL_PIPE_COMPLETION_REPORT_FROM_DATANODE =
+      "Detected historical pipe completion report from DataNode {} for pipe {}. remainingEventCount: {}, remainingTime: {}, completedDataNodes: {}";
   public static final String DETECTED_COMPLETION_OF_PIPE_STATIC_META_REMOVE_IT =
       "Detected completion of pipe {}, static meta: {}, remove it.";
+  public static final String ALL_DATANODES_REPORTED_HISTORICAL_PIPE_COMPLETED =
+      "All DataNodes reported historical pipe {} completed. globalRemainingEventCount: {}, globalRemainingTime: {}, staticMeta: {}";
   public static final String DETECT_PIPERUNTIMECRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
       "Detect PipeRuntimeCriticalException {} from agent, stop pipe {}.";
   public static final String DETECT_PIPERUNTIMESINKCRITICALEXCEPTION_FROM_AGENT_STOP_PIPE =
@@ -115,7 +119,7 @@ public final class ManagerMessages {
   public static final String FAILED_TO_CLOSE_CONSUMER_IN_CONSUMER_GROUP_RESULT_STATUS =
       "Failed to close consumer {} in consumer group {}. Result status: {}.";
   public static final String FAILED_TO_CLOSE_EXTRACTOR_AFTER_FAILED_TO_INITIALIZE_EXTRACTOR =
-      "Failed to close extractor after failed to initialize extractor. ";
+      "Failed to close extractor after failed to initialize extractor. Ignore this exception.";
   public static final String FAILED_TO_CLOSE_SINK_AFTER_FAILED_TO_INITIALIZE_IT_IGNORE =
       "Failed to close sink after failed to initialize it. Ignore this exception.";
   public static final String FAILED_TO_COLLECT_COMMITCREATETABLEPLAN =
