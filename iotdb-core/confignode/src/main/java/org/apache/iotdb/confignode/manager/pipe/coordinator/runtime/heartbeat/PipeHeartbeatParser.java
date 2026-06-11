@@ -146,11 +146,6 @@ public class PipeHeartbeatParser {
       final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
       final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
-        PipeLogger.log(
-            LOGGER::info,
-            ManagerMessages.PIPERUNTIMECOORDINATOR_MEETS_ERROR_IN_UPDATING_PIPEMETAKEEPER
-                + "pipeMetaFromAgent is null, pipeMetaFromCoordinator: {}",
-            pipeMetaFromCoordinator);
         continue;
       }
 
