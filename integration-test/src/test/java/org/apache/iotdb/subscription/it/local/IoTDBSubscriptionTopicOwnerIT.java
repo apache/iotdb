@@ -35,7 +35,6 @@ import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -56,7 +55,6 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
-  @Ignore
   @Test
   public void testTopicOwnerFencingRejectsStaleOwnerAndAllowsCurrentOwner() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
