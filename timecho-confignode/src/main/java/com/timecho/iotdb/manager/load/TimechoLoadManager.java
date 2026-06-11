@@ -28,8 +28,10 @@ import org.apache.iotdb.confignode.manager.load.cache.node.ActivationStatusCache
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeActivateInfo;
 
+import com.timecho.iotdb.commons.commission.obligation.ObligationStatus;
 import com.timecho.iotdb.manager.ITimechoManager;
 import com.timecho.iotdb.manager.load.service.TimechoHeartbeatService;
+import com.timecho.iotdb.manager.regulate.RegulateManager;
 
 import java.util.Map;
 import java.util.Set;
@@ -97,12 +99,68 @@ public class TimechoLoadManager extends LoadManager {
             .collect(Collectors.toSet());
     // Put if absent
     configNodeIdSet.forEach(
-        id -> loadCache.getActivationStatusCacheMap().putIfAbsent(id, new ActivationStatusCache()));
+        id ->
+            loadCache
+                .getActivationStatusCacheMap()
+                .compute(
+                    id,
+                    (key, cache) ->
+                        shouldRefreshConfigNodeActivationStatusPlaceholder(cache)
+                            ? createConfigNodeActivationStatusPlaceholder()
+                            : cache));
     // Remove if present
     for (Integer cnId : loadCache.getActivationStatusCacheMap().keySet()) {
       if (!configNodeIdSet.contains(cnId)) {
         loadCache.getActivationStatusCacheMap().remove(cnId);
       }
+    }
+  }
+
+  private boolean shouldRefreshConfigNodeActivationStatusPlaceholder(
+      ActivationStatusCache activationStatusCache) {
+    ObligationStatus inferredStatus = inferConfigNodeActivationStatus();
+    return activationStatusCache == null
+        || (activationStatusCache.isFake()
+            && !activationStatusCache.getActivateStatus().equals(inferredStatus));
+  }
+
+  private ActivationStatusCache createConfigNodeActivationStatusPlaceholder() {
+    ObligationStatus status = inferConfigNodeActivationStatus();
+    return ObligationStatus.UNKNOWN.equals(status)
+        ? new ActivationStatusCache()
+        : new InferredActivationStatusCache(status);
+  }
+
+  private ObligationStatus inferConfigNodeActivationStatus() {
+    if (!canInferRemoteLicenseStatus()) {
+      return ObligationStatus.UNKNOWN;
+    }
+    ObligationStatus localStatus = timechoConfigManager.getActivationManager().getActivateStatus();
+    if (localStatus.isActivated()) {
+      return ObligationStatus.PASSIVE_ACTIVATED;
+    }
+    if (localStatus.isUnactivated()) {
+      return ObligationStatus.PASSIVE_UNACTIVATED;
+    }
+    return ObligationStatus.UNKNOWN;
+  }
+
+  private boolean canInferRemoteLicenseStatus() {
+    RegulateManager activationManager = timechoConfigManager.getActivationManager();
+    return activationManager.isActive()
+        || activeNodeLive()
+        || activationManager.activeNodeExistForLeader();
+  }
+
+  private static class InferredActivationStatusCache extends ActivationStatusCache {
+
+    private InferredActivationStatusCache(ObligationStatus activateStatus) {
+      super(System.nanoTime(), activateStatus);
+    }
+
+    @Override
+    public boolean isFake() {
+      return true;
     }
   }
 }

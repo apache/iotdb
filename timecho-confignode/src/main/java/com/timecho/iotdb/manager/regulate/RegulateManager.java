@@ -98,6 +98,7 @@ public class RegulateManager {
 
   private static final String SYSTEM_INFO_VERSION = "02";
   private static final int VERSION_LENGTH = 2;
+  private static final String COMPATIBILITY_LICENSE_ISSUE_TIMESTAMP = "0";
 
   private static final String CONFIGNODE_HOME_PATH =
       System.getProperty("CONFIGNODE_HOME") == null ? "." : System.getProperty("CONFIGNODE_HOME");
@@ -143,6 +144,7 @@ public class RegulateManager {
   private final AtomicLong lastTimeHeardActiveNode = new AtomicLong(0);
 
   LicenseFileMonitor licenseFileMonitor;
+  private volatile boolean localLicenseFileMayNeedReload;
 
   static final ImmutableMap<String, Supplier<String>> configurableSystemInfoNameToItsGetter =
       ImmutableMap.of(
@@ -262,6 +264,7 @@ public class RegulateManager {
     public void onFileDelete(File file) {
       if (LICENSE_FILE_NAME.equals(file.getName())) {
         logger.info(TimechoConfigNodeMessages.LICENSE_FILE_DELETION_DETECTED);
+        localLicenseFileMayNeedReload = false;
         lottery.licenseFileNotExistOrInvalid();
         lottery.logActivateStatus(false);
       }
@@ -309,6 +312,9 @@ public class RegulateManager {
     long lastTimeWarnDisconnection = 0;
     while (true) {
       try (AutoCloseableLock ignore = AutoCloseableLock.acquire(loadLock)) {
+        if (localLicenseFileMayNeedReload) {
+          tryLoadLicenseFromFile();
+        }
         checkSystemTimeAndIssueTime();
         long now = System.currentTimeMillis();
         if (this.lottery.isActive()) {
@@ -355,7 +361,10 @@ public class RegulateManager {
         }
       }
       try {
-        long sleepInterval = lottery.getDisconnectionFromActiveNodeTimeLimit() / 10;
+        long sleepInterval =
+            localLicenseFileMayNeedReload
+                ? LICENSE_MANAGER_PERIODICAL_TASK_MINIMAL_INTERVAL
+                : lottery.getDisconnectionFromActiveNodeTimeLimit() / 10;
         // sleep interval shall not be too long or too short
         sleepInterval = Math.min(sleepInterval, LICENSE_MANAGER_PERIODICAL_TASK_MAXIMAL_INTERVAL);
         sleepInterval = Math.max(sleepInterval, LICENSE_MANAGER_PERIODICAL_TASK_MINIMAL_INTERVAL);
@@ -431,6 +440,11 @@ public class RegulateManager {
   }
 
   protected void tryLoadLicenseFromFile() {
+    localLicenseFileMayNeedReload =
+        !loadLicenseFromFile() && Files.exists(Paths.get(LICENSE_FILE_PATH));
+  }
+
+  private boolean loadLicenseFromFile() {
     try (FileReader fileReader = new FileReader(LICENSE_FILE_PATH);
         AutoCloseableLock ignore = AutoCloseableLock.acquire(loadLock)) {
       StringBuilder builder = new StringBuilder();
@@ -443,13 +457,16 @@ public class RegulateManager {
       if (!verifyAllSystemInfo(licenseProperties)) {
         throw new LicenseException("This license is not allowed to activate this ConfigNode.");
       }
-      if (lottery.loadFromProperties(licenseProperties, true)) {
-        logger.info("Load license success.");
+      if (!lottery.loadFromProperties(licenseProperties, true)) {
+        throw new LicenseException("License content cannot be parsed.");
       }
+      logger.info("Load license success.");
       checkSystemTimeAndIssueTime();
+      return true;
     } catch (Exception e) {
       logger.error("Load license fail.", e);
       lottery.licenseFileNotExistOrInvalid();
+      return false;
     }
   }
 
@@ -481,17 +498,8 @@ public class RegulateManager {
     } else if ("01".equals(licenseVersion)) {
       deprecatedLicenseContent = decryptV01(encryptedLicenseContent);
     } else if ("02".equals(licenseVersion)) {
-      List<String> systemInfoList =
-          (locations.size() > 1)
-              ? generateClusterSystemInfo(locations)
-              : Collections.singletonList(generateSystemInfoContentWithVersion());
-      if (systemInfoList.isEmpty() || (systemInfoList.size() < locations.size())) {
-        throw new IOException(
-            "systemInfo fetch exception, only get " + systemInfoList.size() + " items");
-      }
-      logger.info("Getting systemInfoList: {}", systemInfoList);
-      // Full version activation code, need
-      deprecatedLicenseContent = decryptV02(encryptedLicenseContent, systemInfoList);
+      deprecatedLicenseContent =
+          decryptV02WithAvailableSystemInfo(encryptedLicenseContent, locations);
     } else if ("03".equals(licenseVersion)) {
       // Trial activation code
       deprecatedLicenseContent = decryptV03(encryptedLicenseContent);
@@ -500,7 +508,68 @@ public class RegulateManager {
     }
     Properties licenseProperties = new Properties();
     licenseProperties.load(new StringReader(deprecatedLicenseContent));
+    normalizeLicenseProperties(licenseVersion, licenseProperties);
     return licenseProperties;
+  }
+
+  private static List<String> getSystemInfoListForV02(List<TConfigNodeLocation> locations)
+      throws LicenseException, IOException {
+    List<String> systemInfoList = getClusterSystemInfo();
+    if (!systemInfoList.isEmpty()) {
+      return systemInfoList;
+    }
+    if (locations.size() > 1) {
+      systemInfoList = generateClusterSystemInfo(locations);
+      if (systemInfoList.size() < locations.size()) {
+        throw new IOException(
+            "systemInfo fetch exception, only get " + systemInfoList.size() + " items");
+      }
+      return systemInfoList;
+    }
+    return Collections.singletonList(generateSystemInfoContentWithVersion());
+  }
+
+  private static String decryptV02WithAvailableSystemInfo(
+      String encryptedLicenseContent, List<TConfigNodeLocation> locations)
+      throws LicenseException, IOException {
+    List<String> systemInfoList = getSystemInfoListForV02(locations);
+    if (systemInfoList.isEmpty()) {
+      throw new IOException("systemInfo fetch exception, no system info is available");
+    }
+    logger.info("Getting systemInfoList: {}", systemInfoList);
+    try {
+      return decryptV02(encryptedLicenseContent, systemInfoList);
+    } catch (LicenseException e) {
+      if (systemInfoList.size() >= locations.size()) {
+        throw e;
+      }
+      logger.info(
+          "Failed to decrypt license with persisted cluster system info. "
+              + "Will try current ConfigNodes' system info.",
+          e);
+    }
+
+    List<String> currentSystemInfoList = generateCurrentClusterSystemInfo(locations);
+    if (currentSystemInfoList.size() < locations.size()) {
+      throw new IOException(
+          "systemInfo fetch exception, only get " + currentSystemInfoList.size() + " items");
+    }
+    logger.info("Getting current systemInfoList: {}", currentSystemInfoList);
+    String decryptedLicenseContent = decryptV02(encryptedLicenseContent, currentSystemInfoList);
+    String content = String.join(",", currentSystemInfoList);
+    saveClusterSystemInfoFile(content);
+    syncClusterSystemInfoFileToOtherConfigNodes(content, locations);
+    return decryptedLicenseContent;
+  }
+
+  private static void normalizeLicenseProperties(String licenseVersion, Properties properties) {
+    if (("02".equals(licenseVersion) || "03".equals(licenseVersion))
+        && !properties.containsKey(Lottery.LICENSE_ISSUE_TIMESTAMP_NAME)) {
+      // V02/V03 payloads do not carry L1. A current-time default makes the same activation
+      // code look like different licenses on different ConfigNodes.
+      properties.setProperty(
+          Lottery.LICENSE_ISSUE_TIMESTAMP_NAME, COMPATIBILITY_LICENSE_ISSUE_TIMESTAMP);
+    }
   }
 
   public static String checkLicenseVersion(String encryptedLicenseContent) {
@@ -551,21 +620,27 @@ public class RegulateManager {
             myIssueTime,
             this.lottery.getLicenseIssueTimestamp());
       } else if (remoteLicense.licenseIssueTimestamp == this.lottery.getLicenseIssueTimestamp()) {
-        // remote license is the same, just update my lastTimeHeardActiveNode
         this.heardActiveNode();
-      } else {
-        logger.info("Loading remote license...");
-        this.heardActiveNode();
-        try {
-          this.lottery.loadFromTLicense(remoteLicense);
-        } catch (LicenseException e) {
-          logger.error("Loading remote license fail.", e);
-          return;
+        if (!this.lottery.isActivated() || !remoteLicense.equals(this.lottery.toTLicense())) {
+          loadRemoteLicense(remoteLicense);
         }
-        logger.info("License updated because receive remote license");
-        checkSystemTimeAndIssueTime();
+      } else {
+        this.heardActiveNode();
+        loadRemoteLicense(remoteLicense);
       }
     }
+  }
+
+  private void loadRemoteLicense(TLicense remoteLicense) {
+    logger.info("Loading remote license...");
+    try {
+      this.lottery.loadFromTLicense(remoteLicense);
+    } catch (LicenseException e) {
+      logger.error("Loading remote license fail.", e);
+      return;
+    }
+    logger.info("License updated because receive remote license");
+    checkSystemTimeAndIssueTime();
   }
 
   public void giveUpLicense(String reason) {
@@ -746,47 +821,74 @@ public class RegulateManager {
   public static List<String> generateClusterSystemInfo(List<TConfigNodeLocation> locations)
       throws LicenseException {
     List<String> systemInfoList = getClusterSystemInfo();
-    if (systemInfoList.isEmpty()) {
-      Map<Integer, TConfigNodeLocation> configNodeLocationMap =
-          locations.stream()
-              .filter(location -> !isLocalConfigNode(location))
-              .collect(
-                  Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-
-      ConfigNodeAsyncRequestContext<Integer, String> configNodeAsyncRequestContext =
-          new ConfigNodeAsyncRequestContext<>(
-              CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
-
-      for (TConfigNodeLocation location : locations) {
-        if (!isLocalConfigNode(location)) {
-          configNodeAsyncRequestContext.putRequest(
-              location.getConfigNodeId(), location.getConfigNodeId());
-        }
+    if (!systemInfoList.isEmpty()) {
+      if (systemInfoList.size() < locations.size()) {
+        logger.warn(
+            "Persisted cluster system info only contains {} items, but there are {} ConfigNodes. "
+                + "It will be reused for the existing activation code.",
+            systemInfoList.size(),
+            locations.size());
+        trySyncClusterSystemInfoFileToOtherConfigNodes(String.join(",", systemInfoList), locations);
       }
+      return systemInfoList;
+    }
+    systemInfoList = generateCurrentClusterSystemInfo(locations);
 
-      if (!configNodeLocationMap.isEmpty()) {
-        CnToCnInternalServiceAsyncRequestManager.getInstance()
-            .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+    if (!systemInfoList.isEmpty()) {
+      String content = String.join(",", systemInfoList);
+      saveClusterSystemInfoFile(content);
+      syncClusterSystemInfoFileToOtherConfigNodes(content, locations);
+    }
+    return systemInfoList;
+  }
+
+  private static List<String> generateCurrentClusterSystemInfo(List<TConfigNodeLocation> locations)
+      throws LicenseException {
+    Map<Integer, TConfigNodeLocation> configNodeLocationMap =
+        locations.stream()
+            .filter(location -> !isLocalConfigNode(location))
+            .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+
+    ConfigNodeAsyncRequestContext<Integer, String> configNodeAsyncRequestContext =
+        new ConfigNodeAsyncRequestContext<>(
+            CnToCnNodeRequestType.GET_SYSTEM_INFO, configNodeLocationMap);
+
+    for (TConfigNodeLocation location : locations) {
+      if (!isLocalConfigNode(location)) {
+        configNodeAsyncRequestContext.putRequest(
+            location.getConfigNodeId(), location.getConfigNodeId());
       }
+    }
 
-      Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
-      for (TConfigNodeLocation location : locations) {
-        String systemInfoResp =
-            isLocalConfigNode(location)
-                ? generateSystemInfoContentWithVersion()
-                : systemInfoRespMap.get(location.getConfigNodeId());
-        if (systemInfoResp != null) {
-          systemInfoList.add(systemInfoResp);
-        }
-      }
+    if (!configNodeLocationMap.isEmpty()) {
+      CnToCnInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestWithRetry(configNodeAsyncRequestContext);
+    }
 
-      if (!systemInfoList.isEmpty()) {
-        String content = String.join(",", systemInfoList);
-        saveClusterSystemInfoFile(content);
-        syncClusterSystemInfoFileToOtherConfigNodes(content, locations);
+    List<String> systemInfoList = new ArrayList<>();
+    Map<Integer, String> systemInfoRespMap = configNodeAsyncRequestContext.getResponseMap();
+    for (TConfigNodeLocation location : locations) {
+      String systemInfoResp =
+          isLocalConfigNode(location)
+              ? generateSystemInfoContentWithVersion()
+              : systemInfoRespMap.get(location.getConfigNodeId());
+      if (systemInfoResp != null) {
+        systemInfoList.add(systemInfoResp);
       }
     }
     return systemInfoList;
+  }
+
+  private static void trySyncClusterSystemInfoFileToOtherConfigNodes(
+      String content, List<TConfigNodeLocation> locations) {
+    try {
+      syncClusterSystemInfoFileToOtherConfigNodes(content, locations);
+    } catch (LicenseException e) {
+      logger.warn(
+          "Failed to sync persisted cluster system info to all ConfigNodes. "
+              + "The existing activation code will still use local persisted system info.",
+          e);
+    }
   }
 
   private static void saveClusterSystemInfoFile(String content) throws LicenseException {
@@ -1071,13 +1173,20 @@ public class RegulateManager {
       fos.write(content.getBytes());
       fos.getFD().sync();
       logger.info("set license file success: {}", filePath);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       logger.error("set license file {} fail", filePath, e);
       TSStatus status = new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }
+    if (LICENSE_FILE_NAME.equals(fileName)) {
+      tryLoadLicenseFromFile();
+      if (localLicenseFileMayNeedReload) {
+        return new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode())
+            .setMessage("License file is written but failed to load");
+      }
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @TestOnly
@@ -1089,6 +1198,9 @@ public class RegulateManager {
   public TSStatus deleteLicenseFile(String fileName, boolean allowFail) {
     Path filePath = Paths.get(ACTIVATION_DIR_PATH, fileName);
     if (!Files.exists(filePath)) {
+      if (LICENSE_FILE_NAME.equals(fileName)) {
+        localLicenseFileMayNeedReload = false;
+      }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     try {
@@ -1100,6 +1212,9 @@ public class RegulateManager {
         status.setMessage(e.getMessage());
         return status;
       }
+    }
+    if (LICENSE_FILE_NAME.equals(fileName)) {
+      localLicenseFileMayNeedReload = false;
     }
     logger.info("delete license file：{}", filePath);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

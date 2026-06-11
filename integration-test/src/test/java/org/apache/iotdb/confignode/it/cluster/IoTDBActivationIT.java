@@ -889,7 +889,35 @@ public class IoTDBActivationIT {
       }
       try (SyncConfigNodeIServiceClient leaderClient =
           (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-        testAllNodesActivatedWithRetry(leaderClient, 6);
+        testStatusAllActiveActivate(leaderClient, 3, 3);
+      }
+      final List<ObligationStatus> expandedClusterExpectation =
+          Arrays.asList(
+              ACTIVE_ACTIVATED,
+              ACTIVE_ACTIVATED,
+              ACTIVE_ACTIVATED,
+              PASSIVE_ACTIVATED,
+              PASSIVE_ACTIVATED,
+              ACTIVATED,
+              ACTIVATED,
+              ACTIVATED);
+      final List<Integer> expandedConfigNodeIds;
+      try (SyncConfigNodeIServiceClient leaderClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        Map<Integer, String> beforeExpansionStatus =
+            getActivationStatusMapWithRetry(leaderClient, 6);
+        EnvFactory.getEnv().registerNewConfigNode(true);
+        EnvFactory.getEnv().registerNewConfigNode(true);
+        testStatusWithRetry(leaderClient, expandedClusterExpectation);
+        Map<Integer, String> afterExpansionStatus =
+            getActivationStatusMapWithRetry(leaderClient, 8);
+        expandedConfigNodeIds =
+            afterExpansionStatus.keySet().stream()
+                .filter(nodeId -> !beforeExpansionStatus.containsKey(nodeId))
+                .collect(Collectors.toList());
+        Collections.sort(expandedConfigNodeIds);
+        Assert.assertEquals(2, expandedConfigNodeIds.size());
+        testNodeStatusWithRetry(leaderClient, expandedConfigNodeIds, PASSIVE_ACTIVATED);
       }
       ImmutableMap<String, Pair<String, String>> expectation =
           ImmutableMap.of(
@@ -904,12 +932,27 @@ public class IoTDBActivationIT {
               "CpuLimit",
               new Pair<>(SKIP, "Unlimited"),
               "DeviceLimit",
-              new Pair<>("0", "Unlimited"),
+              new Pair<>(SKIP, "Unlimited"),
               "TimeSeriesLimit",
-              new Pair<>("0", "Unlimited"));
+              new Pair<>(SKIP, "Unlimited"));
       try (Statement writeStatement = createStatementOnWriteConnection(connection);
           ResultSet resultSet = writeStatement.executeQuery("show activation")) {
         checkShowActivationResult(resultSet, expectation);
+      }
+      String expandedSystemInfos = showSystemInfoTest(statement, 5);
+      String expandedSql = "activate '" + buildV02ActivationCode(expandedSystemInfos, 3) + "'";
+      try (Statement writeStatement = createStatementOnWriteConnection(connection);
+          ResultSet ignored = writeStatement.executeQuery(expandedSql)) {
+        // The result set is checked after node activation statuses converge.
+      }
+      try (SyncConfigNodeIServiceClient leaderClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        testStatusAllActiveActivate(leaderClient, 5, 3);
+      }
+      restartAllConfigNodes();
+      try (SyncConfigNodeIServiceClient leaderClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        testStatusAllActiveActivate(leaderClient, 5, 3);
       }
     }
   }
@@ -925,10 +968,15 @@ public class IoTDBActivationIT {
   }
 
   private String showSystemInfoTest(Statement statement) throws Exception {
+    return showSystemInfoTest(statement, 3);
+  }
+
+  private String showSystemInfoTest(Statement statement, int expectedConfigNodeCount)
+      throws Exception {
     ResultSet resultSet = statement.executeQuery("show system info");
     resultSet.next();
     String systemInfos = resultSet.getString("SystemInfo");
-    Assert.assertEquals(3, systemInfos.split(",").length);
+    Assert.assertEquals(expectedConfigNodeCount, systemInfos.split(",").length);
     return systemInfos;
   }
 
@@ -1214,6 +1262,15 @@ public class IoTDBActivationIT {
     saferSleep(RegulateManager.FILE_MONITOR_INTERVAL * 2);
   }
 
+  private void restartAllConfigNodes() {
+    for (ConfigNodeWrapper wrapper : EnvFactory.getEnv().getConfigNodeWrapperList()) {
+      wrapper.stopForcibly();
+    }
+    for (ConfigNodeWrapper wrapper : EnvFactory.getEnv().getConfigNodeWrapperList()) {
+      wrapper.start();
+    }
+  }
+
   private <K, V> String mapToString(Map<K, V> map) {
     StringBuilder builder = new StringBuilder();
     builder.append("{");
@@ -1277,6 +1334,81 @@ public class IoTDBActivationIT {
             .append("Expected node count is ")
             .append(expectedNodeCount)
             .append("\n");
+        if (resp != null) {
+          errBuilder.append("Actual state is ").append(mapToString(resp.getActivationStatusMap()));
+        } else {
+          errBuilder.append("Actual state is unknown, because last resp is null");
+        }
+        String errMsg = errBuilder.toString();
+        logger.error(errMsg);
+        throw new Exception(errMsg);
+      }
+      saferSleep(1000);
+    }
+  }
+
+  private Map<Integer, String> getActivationStatusMapWithRetry(
+      SyncConfigNodeIServiceClient client, int expectedNodeCount) throws Exception {
+    long startTime = System.currentTimeMillis();
+    while (true) {
+      TGetAllActivationStatusResp resp = null;
+      try {
+        resp = client.getAllActivationStatus();
+      } catch (TException ignored) {
+
+      }
+      if (resp != null
+          && TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.status.getCode()
+          && resp.getActivationStatusMap().size() == expectedNodeCount) {
+        return new HashMap<>(resp.getActivationStatusMap());
+      }
+      if (System.currentTimeMillis() - startTime > 60000) {
+        StringBuilder errBuilder = new StringBuilder();
+        errBuilder
+            .append("Test fail because activation status map size is not ")
+            .append(expectedNodeCount)
+            .append(" after 60 seconds retry.\n");
+        if (resp != null) {
+          errBuilder.append("Actual state is ").append(mapToString(resp.getActivationStatusMap()));
+        } else {
+          errBuilder.append("Actual state is unknown, because last resp is null");
+        }
+        String errMsg = errBuilder.toString();
+        logger.error(errMsg);
+        throw new Exception(errMsg);
+      }
+      saferSleep(1000);
+    }
+  }
+
+  private void testNodeStatusWithRetry(
+      SyncConfigNodeIServiceClient client, List<Integer> nodeIds, ObligationStatus expectedStatus)
+      throws Exception {
+    long startTime = System.currentTimeMillis();
+    while (true) {
+      TGetAllActivationStatusResp resp = null;
+      try {
+        resp = client.getAllActivationStatus();
+      } catch (TException ignored) {
+
+      }
+      if (resp != null && TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.status.getCode()) {
+        Map<Integer, String> activationStatusMap = resp.getActivationStatusMap();
+        if (nodeIds.stream()
+            .allMatch(
+                nodeId -> expectedStatus.toString().equals(activationStatusMap.get(nodeId)))) {
+          logger.info("check pass");
+          return;
+        }
+      }
+      if (System.currentTimeMillis() - startTime > 60000) {
+        StringBuilder errBuilder = new StringBuilder();
+        errBuilder
+            .append("Test fail because nodes ")
+            .append(nodeIds)
+            .append(" are not ")
+            .append(expectedStatus)
+            .append(" after 60 seconds retry.\n");
         if (resp != null) {
           errBuilder.append("Actual state is ").append(mapToString(resp.getActivationStatusMap()));
         } else {
