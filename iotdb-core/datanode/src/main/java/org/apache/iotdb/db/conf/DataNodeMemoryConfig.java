@@ -420,7 +420,7 @@ public class DataNodeMemoryConfig {
     setMayCacheNonExistSeries(
         Boolean.parseBoolean(
             properties.getProperty(
-                "may_cache_nonexist_series", Boolean.toString(isMetaDataCacheEnable()))));
+                "may_cache_nonexist_series", Boolean.toString(isMayCacheNonExistSeries()))));
 
     try {
       // update enable query memory estimation for memory control

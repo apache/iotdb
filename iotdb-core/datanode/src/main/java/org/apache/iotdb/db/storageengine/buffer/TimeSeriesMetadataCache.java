@@ -81,7 +81,7 @@ public class TimeSeriesMetadataCache {
           Statistics.getStatsByType(TSDataType.INT32),
           new PublicBAOS());
 
-  private Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
+  private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
@@ -240,15 +240,17 @@ public class TimeSeriesMetadataCache {
                 timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
               }
             }
+            if (timeseriesMetadata == null
+                && !ignoreNotExists
+                && memoryConfig.isMayCacheNonExistSeries()) {
+              lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
+            }
           }
         }
       }
       if (timeseriesMetadata == null || timeseriesMetadata == NULL_EXISTS_CACHE_PLACE_HOLDER) {
         if (debug) {
           DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
-        }
-        if (timeseriesMetadata == null && memoryConfig.isMayCacheNonExistSeries()) {
-          lruCache.put(key, NULL_EXISTS_CACHE_PLACE_HOLDER);
         }
         return null;
       } else {
@@ -318,27 +320,8 @@ public class TimeSeriesMetadataCache {
         evictedExistingEntryCount.get(),
         ((double) evictedNonExistingEntryCount.get()) / evictedExistingEntryCount.get(),
         lruCache.stats().requestCount());
-    lruCache =
-        Caffeine.newBuilder()
-            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
-            .weigher(
-                (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
-                    (key, value) ->
-                        (int)
-                            (key.getRetainedSizeInBytes()
-                                + (value == NULL_EXISTS_CACHE_PLACE_HOLDER
-                                    ? 0
-                                    : value.getRetainedSizeInBytes())))
-            .recordStats()
-            .evictionListener(
-                (k, v, c) -> {
-                  if (v == NULL_EXISTS_CACHE_PLACE_HOLDER) {
-                    evictedNonExistingEntryCount.incrementAndGet();
-                  } else {
-                    evictedExistingEntryCount.incrementAndGet();
-                  }
-                })
-            .build();
+    lruCache.invalidateAll();
+    lruCache.cleanUp();
     evictedNonExistingEntryCount.set(0);
     evictedExistingEntryCount.set(0);
   }

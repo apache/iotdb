@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.buffer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -29,25 +30,30 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.LongConsumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 public class TimeSeriesMetadataCacheTest {
 
@@ -205,6 +211,67 @@ public class TimeSeriesMetadataCacheTest {
       IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(true);
       testCachePlaceHolderInternal();
     } finally {
+      IoTDBDescriptor.getInstance()
+          .getMemoryConfig()
+          .setMayCacheNonExistSeries(mayCacheNonExistSeries);
+    }
+  }
+
+  @Test
+  public void testIgnoreNotExistsResultIsNotCached() throws Exception {
+    TimeSeriesMetadataCache cache = TimeSeriesMetadataCache.getInstance();
+    BloomFilterCache bloomFilterCache = BloomFilterCache.getInstance();
+    FileReaderManager fileReaderManager = FileReaderManager.getInstance();
+    boolean mayCacheNonExistSeries =
+        IoTDBDescriptor.getInstance().getMemoryConfig().isMayCacheNonExistSeries();
+    TsFileID tsFileID = new TsFileID();
+    cache.clear();
+    bloomFilterCache.clear();
+    try {
+      IoTDBDescriptor.getInstance().getMemoryConfig().setMayCacheNonExistSeries(true);
+
+      String filePath = "target/missing-device.tsfile";
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.missingDevice");
+      String measurement = "s1";
+      Set<String> allSensors = Collections.singleton(measurement);
+      TimeSeriesMetadataCacheKey key =
+          new TimeSeriesMetadataCacheKey(tsFileID, deviceID, measurement);
+
+      TsFileSequenceReader reader = Mockito.mock(TsFileSequenceReader.class);
+      fileReaderManager.getClosedFileReaderMap().put(tsFileID, reader);
+      Mockito.when(reader.readBloomFilter(Mockito.any(LongConsumer.class))).thenReturn(null);
+      Mockito.when(
+              reader.readTimeseriesMetadata(
+                  Mockito.eq(deviceID),
+                  Mockito.eq(measurement),
+                  Mockito.eq(allSensors),
+                  Mockito.eq(true),
+                  Mockito.any(LongConsumer.class)))
+          .thenReturn(Collections.emptyList());
+      Mockito.when(
+              reader.readTimeseriesMetadata(
+                  Mockito.eq(deviceID),
+                  Mockito.eq(measurement),
+                  Mockito.eq(allSensors),
+                  Mockito.eq(false),
+                  Mockito.any(LongConsumer.class)))
+          .thenThrow(new IOException("missing device"));
+
+      assertNull(cache.get(filePath, key, allSensors, true, false, new QueryContext()));
+      assertThrows(
+          IOException.class,
+          () -> cache.get(filePath, key, allSensors, false, false, new QueryContext()));
+      Mockito.verify(reader)
+          .readTimeseriesMetadata(
+              Mockito.eq(deviceID),
+              Mockito.eq(measurement),
+              Mockito.eq(allSensors),
+              Mockito.eq(false),
+              Mockito.any(LongConsumer.class));
+    } finally {
+      cache.clear();
+      bloomFilterCache.clear();
+      fileReaderManager.getClosedFileReaderMap().remove(tsFileID);
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .setMayCacheNonExistSeries(mayCacheNonExistSeries);
