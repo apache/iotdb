@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.PathParseException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -34,6 +37,12 @@ import java.util.List;
 import java.util.Map;
 
 public class PathUtils {
+
+  private static final Cache<String, SingleMeasurementCheckResult> SINGLE_MEASUREMENT_CHECK_CACHE =
+      Caffeine.newBuilder()
+          .maximumSize(
+              CommonDescriptor.getInstance().getConfig().getSingleMeasurementCheckCacheSize())
+          .build();
 
   /**
    * @param path the path will split. ex, root.ln.
@@ -162,20 +171,29 @@ public class PathUtils {
     if (measurement == null) {
       return null;
     }
+    SingleMeasurementCheckResult result =
+        SINGLE_MEASUREMENT_CHECK_CACHE.get(measurement, PathUtils::checkSingleMeasurement);
+    if (result.isLegal()) {
+      return result.getMeasurement();
+    }
+    throw new IllegalPathException(measurement);
+  }
+
+  private static SingleMeasurementCheckResult checkSingleMeasurement(String measurement) {
     if (measurement.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && measurement.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       if (checkBackQuotes(measurement.substring(1, measurement.length() - 1))) {
-        return removeBackQuotesIfNecessary(measurement);
+        return SingleMeasurementCheckResult.legal(removeBackQuotesIfNecessary(measurement));
       } else {
-        throw new IllegalPathException(measurement);
+        return SingleMeasurementCheckResult.illegal();
       }
     }
     if (IoTDBConstant.reservedWords.contains(measurement.toUpperCase())
         || isRealNumber(measurement)
         || !TsFileConstant.NODE_NAME_PATTERN.matcher(measurement).matches()) {
-      throw new IllegalPathException(measurement);
+      return SingleMeasurementCheckResult.illegal();
     }
-    return measurement;
+    return SingleMeasurementCheckResult.legal(measurement);
   }
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
@@ -224,5 +242,35 @@ public class PathUtils {
 
   public static boolean isTableModelDatabase(final String databaseName) {
     return !databaseName.startsWith("root.");
+  }
+
+  private static class SingleMeasurementCheckResult {
+
+    private static final SingleMeasurementCheckResult ILLEGAL =
+        new SingleMeasurementCheckResult(false, null);
+
+    private final boolean legal;
+    private final String measurement;
+
+    private SingleMeasurementCheckResult(boolean legal, String measurement) {
+      this.legal = legal;
+      this.measurement = measurement;
+    }
+
+    private static SingleMeasurementCheckResult legal(String measurement) {
+      return new SingleMeasurementCheckResult(true, measurement);
+    }
+
+    private static SingleMeasurementCheckResult illegal() {
+      return ILLEGAL;
+    }
+
+    private boolean isLegal() {
+      return legal;
+    }
+
+    private String getMeasurement() {
+      return measurement;
+    }
   }
 }

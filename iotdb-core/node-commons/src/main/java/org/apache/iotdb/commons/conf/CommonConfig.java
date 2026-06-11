@@ -438,6 +438,8 @@ public class CommonConfig {
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  private int singleMeasurementCheckCacheSize = 10_000;
+
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
@@ -2888,6 +2890,14 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getSingleMeasurementCheckCacheSize() {
+    return singleMeasurementCheckCacheSize;
+  }
+
+  public void setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    this.singleMeasurementCheckCacheSize = singleMeasurementCheckCacheSize;
   }
 
   public int getDatabaseLimitThreshold() {

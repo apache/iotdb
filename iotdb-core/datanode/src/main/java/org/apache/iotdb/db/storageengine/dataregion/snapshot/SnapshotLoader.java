@@ -30,7 +30,9 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -411,6 +413,8 @@ public class SnapshotLoader {
       String targetSuffix, File[] files, FolderManager folderManager) throws IOException {
     Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
+      checkTsFileResourceExists(file);
+
       String fileKey = file.getName().split("\\.")[0];
       String dataDir = fileTarget.get(fileKey);
 
@@ -442,6 +446,17 @@ public class SnapshotLoader {
                 targetSuffix),
             e);
       }
+    }
+  }
+
+  private void checkTsFileResourceExists(File file) {
+    if (!file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+      return;
+    }
+
+    String resourceFileName = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+    if (!new File(resourceFileName).exists()) {
+      LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
     }
   }
 
