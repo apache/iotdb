@@ -161,7 +161,6 @@ public abstract class AbstractCli {
     keywordSet.add("-" + TRUST_STORE_ARGS);
     keywordSet.add("-" + TRUST_STORE_PWD_ARGS);
     keywordSet.add("-" + SSL_PROTOCOL_ARGS);
-    keywordSet.add("--" + SSL_PROTOCOL_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
