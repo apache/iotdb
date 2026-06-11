@@ -24,6 +24,8 @@ import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 
+import java.util.Objects;
+
 final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
 
   SubscriptionTableProvider(
@@ -54,13 +56,16 @@ final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
       final int port,
       final String username,
       final String password,
+      final String encryptedPassword,
       final int thriftMaxFrameSize,
       final int connectionTimeoutInMs) {
+    final boolean useEncryptedPassword = Objects.nonNull(encryptedPassword);
     return new SubscriptionTableSessionBuilder()
         .host(host)
         .port(port)
         .username(username)
-        .password(password)
+        .password(useEncryptedPassword ? encryptedPassword : password)
+        .useEncryptedPassword(useEncryptedPassword)
         .thriftMaxFrameSize(thriftMaxFrameSize)
         .connectionTimeoutInMs(connectionTimeoutInMs);
   }

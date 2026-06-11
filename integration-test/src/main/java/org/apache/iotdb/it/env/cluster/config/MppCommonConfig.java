@@ -388,6 +388,27 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setConfigNodeRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "config_node_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSchemaRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "schema_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionRatisReconfigurationMaxRetryAttempts(int maxRetryAttempts) {
+    setProperty(
+        "data_region_ratis_reconfiguration_max_retry_attempts", String.valueOf(maxRetryAttempts));
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
     return this;
@@ -538,7 +559,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
     setProperty(
-        "pipe_connector_request_slice_threshold_bytes",
+        "pipe_sink_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
     return this;

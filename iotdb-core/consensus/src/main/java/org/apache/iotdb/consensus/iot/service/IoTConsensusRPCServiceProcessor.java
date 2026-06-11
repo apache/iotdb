@@ -51,6 +51,8 @@ import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncWriterSafeTimeBarrierRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
@@ -110,11 +112,17 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     }
     BatchIndexedConsensusRequest logEntriesInThisBatch =
         new BatchIndexedConsensusRequest(req.peerId);
+    final int sourceNodeId = req.peerId;
     // We use synchronized to ensure atomicity of executing multiple logs
     for (TLogEntry entry : req.getLogEntries()) {
+      long routingEpoch = entry.isSetRoutingEpoch() ? entry.getRoutingEpoch() : 0L;
+      long physicalTime = entry.isSetPhysicalTime() ? entry.getPhysicalTime() : 0L;
       logEntriesInThisBatch.add(
           impl.buildIndexedConsensusRequestForRemoteRequest(
               entry.getSearchIndex(),
+              routingEpoch,
+              physicalTime,
+              sourceNodeId,
               entry.getData().stream()
                   .map(
                       entry.isFromWAL()
@@ -132,6 +140,29 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
         IoTConsensusMessages.EXECUTE_SYNC_LOG_ENTRIES, req.consensusGroupId, writeStatus.subStatus);
     return new TSyncLogEntriesRes(writeStatus.subStatus)
         .setReceiverMemSize(deserializedRequest.getMemorySize());
+  }
+
+  @Override
+  public TSyncWriterSafeTimeBarrierRes syncWriterSafeTimeBarrier(
+      final TSyncWriterSafeTimeBarrierReq req) {
+    final ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    final IoTConsensusServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      final String message =
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "TSyncWriterSafeTimeBarrierReq");
+      LOGGER.error(message);
+      final TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      return new TSyncWriterSafeTimeBarrierRes().setStatus(status);
+    }
+    impl.observeRemoteWriterSafeTimeBarrier(
+        req.getSafePhysicalTime(), req.getWriterNodeId(), req.getBarrierLocalSeq());
+    return new TSyncWriterSafeTimeBarrierRes()
+        .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Override

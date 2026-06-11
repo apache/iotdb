@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFill
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
@@ -1295,6 +1296,27 @@ public class QueryPlanner {
                 subPlan.getRoot(),
                 previousFillAnalysis.getTimeBound().orElse(null),
                 previousFillHelperColumn,
+                groupingKeys));
+      case NEXT:
+        Analysis.NextFillAnalysis nextFillAnalysis =
+            (Analysis.NextFillAnalysis) analysis.getFill(fill.get());
+        Symbol nextFillHelperColumn = null;
+        if (nextFillAnalysis.getFieldReference().isPresent()) {
+          nextFillHelperColumn = subPlan.translate(nextFillAnalysis.getFieldReference().get());
+        }
+
+        if (nextFillAnalysis.getGroupingKeys().isPresent()) {
+          List<FieldReference> fieldReferenceList = nextFillAnalysis.getGroupingKeys().get();
+          groupingKeys = new ArrayList<>(fieldReferenceList.size());
+          subPlan = fillGroup(subPlan, fieldReferenceList, groupingKeys, nextFillHelperColumn);
+        }
+
+        return subPlan.withNewRoot(
+            new NextFillNode(
+                queryIdAllocator.genPlanNodeId(),
+                subPlan.getRoot(),
+                nextFillAnalysis.getTimeBound().orElse(null),
+                nextFillHelperColumn,
                 groupingKeys));
       case LINEAR:
         Analysis.LinearFillAnalysis linearFillAnalysis =

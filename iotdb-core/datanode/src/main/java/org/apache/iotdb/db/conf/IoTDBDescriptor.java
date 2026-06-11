@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.pipe.config.PipeDescriptor;
+import org.apache.iotdb.commons.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -37,7 +38,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
-import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -2214,6 +2214,11 @@ public class IoTDBDescriptor {
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
+
       // update Consensus config
       reloadConsensusProps(properties);
 
@@ -2964,6 +2969,17 @@ public class IoTDBDescriptor {
     conf.setSchemaRatisConsensusMaxRetryAttempts(ratisConfig.getSchemaMaxRetryAttempts());
     conf.setSchemaRatisConsensusInitialSleepTimeMs(ratisConfig.getSchemaInitialSleepTime());
     conf.setSchemaRatisConsensusMaxSleepTimeMs(ratisConfig.getSchemaMaxSleepTime());
+
+    // Optional fields: an old ConfigNode (rolling upgrade) will not set them, in which case the
+    // DataNode keeps its local default instead of overwriting it with 0.
+    if (ratisConfig.isSetDataReconfigurationMaxRetryAttempts()) {
+      conf.setDataRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getDataReconfigurationMaxRetryAttempts());
+    }
+    if (ratisConfig.isSetSchemaReconfigurationMaxRetryAttempts()) {
+      conf.setSchemaRatisConsensusReconfigurationMaxRetryAttempts(
+          ratisConfig.getSchemaReconfigurationMaxRetryAttempts());
+    }
 
     conf.setDataRatisConsensusPreserveWhenPurge(ratisConfig.getDataPreserveWhenPurge());
     conf.setSchemaRatisConsensusPreserveWhenPurge(ratisConfig.getSchemaPreserveWhenPurge());

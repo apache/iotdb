@@ -5500,6 +5500,75 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void selectAliasInGroupByAndOrderByTest() {
+    String[] expectedHeader = new String[] {"hour_time", "_col1"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T06:15:30.000Z,1,",
+          "2024-09-24T06:15:35.000Z,1,",
+          "2024-09-24T06:15:40.000Z,1,",
+          "2024-09-24T06:15:50.000Z,1,",
+          "2024-09-24T06:15:55.000Z,1,",
+        };
+    tableResultSetEqualTest(
+        "select date_bin(5s, time) as hour_time, count(*) from table1 where device_id = 'd01' group by hour_time order by hour_time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "input_province"};
+    retArray = new String[] {"d01,shanghai,", "d01,shanghai,"};
+    tableResultSetEqualTest(
+        "select device_id as province, province as input_province from table1 where device_id in ('d01', 'd09') order by province limit 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"x"};
+    retArray = new String[] {"30,", "40,", "55,"};
+    tableResultSetEqualTest(
+        "select distinct s1 as x from table1 where device_id = 'd01' and s1 is not null order by x",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s1 as x from table1 where device_id = 'd01' and s1 is not null order by x + 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"rn"};
+    retArray = new String[] {"1,", "2,", "3,", "4,", "5,"};
+    tableResultSetEqualTest(
+        "select row_number() over (order by time) as rn from table1 where device_id = 'd01' order by rn",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1 as x, count(*) from table1 where device_id = 'd01' and s1 is not null group by rollup(x) order by x nulls last",
+        "Only support one groupingSet now",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select s1 as x, count(*) from table1 where device_id = 'd01' and s1 is not null group by cube(x) order by x nulls last",
+        "Only support one groupingSet now",
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"x", "_col1"};
+    retArray = new String[] {"30,1,", "40,1,", "55,1,"};
+    tableResultSetEqualTest(
+        "select s1 as x, count(*) from table1 where device_id = 'd01' and s1 is not null group by grouping sets ((x)) order by x",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select s1 as x, s2 as x, count(*) from table1 group by rollup(x)",
+        "Column alias 'x' is ambiguous",
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest2() {
     tableAssertTestFail(
         "select count(distinct *) from table1",

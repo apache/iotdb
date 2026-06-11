@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Interse
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.NextFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -911,6 +912,20 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("TIME_COLUMN: %s", node.getHelperColumn()));
     node.getGroupingKeys()
         .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitNextFill(NextFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("NextFill-%s", node.getPlanNodeId().getId()));
+    node.getTimeBound()
+        .ifPresent(timeBound -> boxValue.add(String.format("TIME_BOUND: %s", timeBound)));
+    node.getHelperColumn()
+        .ifPresent(timeColumn -> boxValue.add(String.format("TIME_COLUMN: %s", timeColumn)));
+    node.getGroupingKeys()
+        .ifPresent(groupingKeys -> boxValue.add(String.format("FILL_GROUP: %s", groupingKeys)));
+
     return render(node, boxValue, context);
   }
 

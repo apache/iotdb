@@ -115,6 +115,7 @@ public class CteMaterializerTest {
             Mockito.any(), // Metadata
             Mockito.anyMap(), // Map<NodeRef<Table>, CteDataStore>
             Mockito.any(), // ExplainType
+            Mockito.any(), // ExplainOutputFormat
             Mockito.anyLong(), // timeOut
             Mockito.anyBoolean(), // userQuery
             Mockito.anyBoolean(), // debug
