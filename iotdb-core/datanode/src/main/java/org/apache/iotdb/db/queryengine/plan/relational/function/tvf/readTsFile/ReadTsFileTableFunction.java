@@ -45,8 +45,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -477,41 +475,14 @@ public class ReadTsFileTableFunction implements TableFunction {
 
     @Override
     public byte[] serialize() {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateSerializeSize());
-      writeString(buffer, tableName);
-      buffer.putInt(tsFilePaths.size());
-      tsFilePaths.forEach(path -> writeString(buffer, path));
-      buffer.putInt(outputColumnNames.size());
-      for (int i = 0; i < outputColumnNames.size(); i++) {
-        writeString(buffer, outputColumnNames.get(i));
-        buffer.put(outputColumnTypes.get(i).getType());
-        buffer.put(outputColumnCategories.get(i).getCategory());
-      }
-      return buffer.array();
+      throw new UnsupportedOperationException(
+          "ReadTsFileTableFunctionHandle does not support serialization");
     }
 
     @Override
     public void deserialize(byte[] bytes) {
-      ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      tableName = readString(buffer);
-      int size = buffer.getInt();
-      List<String> paths = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        paths.add(readString(buffer));
-      }
-      tsFilePaths = Collections.unmodifiableList(paths);
-      size = buffer.getInt();
-      List<String> columnNames = new ArrayList<>(size);
-      List<Type> columnTypes = new ArrayList<>(size);
-      List<TsTableColumnCategory> columnCategories = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        columnNames.add(readString(buffer));
-        columnTypes.add(Type.valueOf(buffer.get()));
-        columnCategories.add(TsTableColumnCategory.deserialize(buffer.get()));
-      }
-      outputColumnNames = Collections.unmodifiableList(columnNames);
-      outputColumnTypes = Collections.unmodifiableList(columnTypes);
-      outputColumnCategories = Collections.unmodifiableList(columnCategories);
+      throw new UnsupportedOperationException(
+          "ReadTsFileTableFunctionHandle does not support deserialization");
     }
 
     @Override
@@ -529,31 +500,6 @@ public class ReadTsFileTableFunction implements TableFunction {
           + ", outputColumnCategories="
           + outputColumnCategories
           + '}';
-    }
-
-    private int calculateSerializeSize() {
-      int size = Integer.BYTES + tableName.getBytes(StandardCharsets.UTF_8).length;
-      size += Integer.BYTES;
-      for (String path : tsFilePaths) {
-        size += Integer.BYTES + path.getBytes(StandardCharsets.UTF_8).length;
-      }
-      size += Integer.BYTES;
-      for (String columnName : outputColumnNames) {
-        size += Integer.BYTES + columnName.getBytes(StandardCharsets.UTF_8).length + 2 * Byte.BYTES;
-      }
-      return size;
-    }
-
-    private static void writeString(ByteBuffer buffer, String value) {
-      byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-      buffer.putInt(bytes.length);
-      buffer.put(bytes);
-    }
-
-    private static String readString(ByteBuffer buffer) {
-      byte[] bytes = new byte[buffer.getInt()];
-      buffer.get(bytes);
-      return new String(bytes, StandardCharsets.UTF_8);
     }
   }
 }
