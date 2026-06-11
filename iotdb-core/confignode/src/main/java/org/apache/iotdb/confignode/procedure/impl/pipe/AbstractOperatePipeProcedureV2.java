@@ -487,10 +487,11 @@ public abstract class AbstractOperatePipeProcedureV2
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         if (!resp.isSetExceptionMessages()) {
+          final String statusMessage = resp.getStatus().getMessage();
           exceptionMessageBuilder.append(
               String.format(
-                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
-                  dataNodeId));
+                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.%s",
+                  dataNodeId, statusMessage == null ? "" : " " + statusMessage));
           continue;
         }
 
