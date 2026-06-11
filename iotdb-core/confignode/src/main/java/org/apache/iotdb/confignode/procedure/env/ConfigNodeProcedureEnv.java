@@ -988,10 +988,7 @@ public class ConfigNodeProcedureEnv {
               dataNodeId, new TPushSubscriptionRuntimeReq().setRuntimeStates(runtimeStates));
         });
 
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-            readableDataNodeClientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    sendRequiredRuntimeMetaRequest(readableDataNodeClientHandler);
     sendBestEffortRuntimeMetaRequest(unreadableDataNodeClientHandler);
 
     final Map<Integer, TSStatus> responseMap =
@@ -1008,9 +1005,22 @@ public class ConfigNodeProcedureEnv {
 
   private static void sendBestEffortRuntimeMetaRequest(
       final DataNodeAsyncRequestContext<?, ?> clientHandler) {
+    sendRuntimeMetaRequest(clientHandler, true);
+  }
+
+  private static void sendRequiredRuntimeMetaRequest(
+      final DataNodeAsyncRequestContext<?, ?> clientHandler) {
+    sendRuntimeMetaRequest(clientHandler, false);
+  }
+
+  private static void sendRuntimeMetaRequest(
+      final DataNodeAsyncRequestContext<?, ?> clientHandler, final boolean keepSilent) {
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(
-            clientHandler, RUNTIME_META_PUSH_RETRY_NUM, getRuntimeMetaPushTimeoutInMs(), true);
+            clientHandler,
+            RUNTIME_META_PUSH_RETRY_NUM,
+            getRuntimeMetaPushTimeoutInMs(),
+            keepSilent);
   }
 
   private static long getRuntimeMetaPushTimeoutInMs() {
