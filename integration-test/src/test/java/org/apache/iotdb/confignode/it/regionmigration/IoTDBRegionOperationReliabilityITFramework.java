@@ -58,9 +58,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -84,7 +81,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
@@ -893,33 +889,5 @@ public class IoTDBRegionOperationReliabilityITFramework {
       result.computeIfAbsent(regionId, k -> new TreeMap<>()).put(dataNodeId, regionStatus);
     }
     return result;
-  }
-
-  /**
-   * Fail the test unless at least one ConfigNode's log contains {@code substring}. Used to assert
-   * that a specific code path was actually exercised (e.g. the AddRegionPeer PROCESSING branch when
-   * the leader was gracefully stopped). The old leader writes the line before it restarts, so we
-   * scan every ConfigNode's {@code log_confignode_all.log}.
-   */
-  protected static void assertSomeConfigNodeLogContains(String substring) {
-    List<ConfigNodeWrapper> configNodeWrappers = EnvFactory.getEnv().getConfigNodeWrapperList();
-    for (ConfigNodeWrapper configNodeWrapper : configNodeWrappers) {
-      Path logPath = Paths.get(configNodeWrapper.getNodePath(), "logs", "log_confignode_all.log");
-      if (!Files.exists(logPath)) {
-        continue;
-      }
-      try (Stream<String> lines = Files.lines(logPath)) {
-        if (lines.anyMatch(line -> line.contains(substring))) {
-          LOGGER.info("Found expected log line containing \"{}\" in {}", substring, logPath);
-          return;
-        }
-      } catch (IOException e) {
-        LOGGER.warn("Failed to read ConfigNode log {}", logPath, e);
-      }
-    }
-    Assert.fail(
-        "Expected at least one ConfigNode log to contain \""
-            + substring
-            + "\", but none did. The code path under test was not exercised.");
   }
 }

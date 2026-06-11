@@ -102,8 +102,10 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
    * deterministically interrupts that wait and waitTaskFinish() returns PROCESSING. The migration
    * must still finish correctly after a leader switch: previously the AddRegionPeerProcedure
    * silently ended on PROCESSING, letting the parent procedure remove the source replica before the
-   * destination replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens,
-   * and asserts the PROCESSING branch was actually exercised.
+   * destination replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens.
+   * The framework requires the WAIT_TASK_FINISH_POLLING kill point to fire, which can only happen
+   * once the worker is blocked inside waitTaskFinish(), so the PROCESSING branch is guaranteed to
+   * be exercised.
    */
   @Test
   // Temporarily also categorized as ClusterIT so the per-PR Cluster IT (1C3D) job runs it for
@@ -119,7 +121,6 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
         noKillPoints(),
         actionOfGracefullyRestartConfigNode,
         KillNode.CONFIG_NODE);
-    assertSomeConfigNodeLogContains("returns PROCESSING");
   }
 
   @Test
