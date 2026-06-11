@@ -106,7 +106,8 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     LOGGER.info("CommitProgressSyncProcedure: executeFromOperateOnConfigNodes");
 
     // 1. Pull commit progress from all DataNodes
-    final Map<Integer, TPullCommitProgressResp> respMap = env.pullCommitProgressFromDataNodes();
+    final Map<Integer, TPullCommitProgressResp> respMap =
+        env.pullCommitProgressFromDataNodesBestEffort();
 
     // 2. Merge all DataNode responses with existing progress using Math::max
     final Map<String, RegionProgress> mergedRegionProgress =

@@ -201,7 +201,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.debug(ProcedureMessages.PIPEMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
+    Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodesBestEffortAndGetResponse(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
       throw new PipeException(
           String.format(

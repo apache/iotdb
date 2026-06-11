@@ -129,7 +129,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
       throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.TOPICMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
+    Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodesBestEffort(env);
     if (pushTopicMetaHasException(respMap)) {
       throw new SubscriptionException(
           String.format(ProcedureMessages.FAILED_TO_PUSH_TOPIC_META_TO_DATANODES_DETAILS, respMap));

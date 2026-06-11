@@ -129,7 +129,8 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
       throws SubscriptionException, IOException {
     LOGGER.info(ProcedureMessages.CONSUMERGROUPMETASYNCPROCEDURE_EXECUTEFROMOPERATEONDATANODES);
 
-    Map<Integer, TPushConsumerGroupMetaResp> respMap = pushConsumerGroupMetaToDataNodes(env);
+    Map<Integer, TPushConsumerGroupMetaResp> respMap =
+        pushConsumerGroupMetaToDataNodesBestEffort(env);
     if (pushConsumerGroupMetaHasException(respMap)) {
       throw new SubscriptionException(
           String.format(
