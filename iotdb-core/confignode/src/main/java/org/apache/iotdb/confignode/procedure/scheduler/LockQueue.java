@@ -45,7 +45,11 @@ public class LockQueue {
     return true;
   }
 
-  public void waitProcedure(Procedure<?> procedure) {
+  public void waitProcedure(Procedure<?> procedure, ProcedureScheduler procedureScheduler) {
+    if (lockOwnerProcedure == null) {
+      procedureScheduler.addFront(procedure);
+      return;
+    }
     deque.addLast(procedure);
   }
 
