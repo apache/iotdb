@@ -2658,9 +2658,10 @@ public class CommonConfig {
   }
 
   public void setAutoResizingBufferMemoryProportion(double autoResizingBufferMemoryProportion) {
-    if (autoResizingBufferMemoryProportion <= 0 || autoResizingBufferMemoryProportion > 1) {
+    if (Double.isNaN(autoResizingBufferMemoryProportion)
+        || autoResizingBufferMemoryProportion > 1) {
       logger.warn(
-          "autoResizingBufferMemoryProportion should be in (0, 1], but was {}",
+          "autoResizingBufferMemoryProportion should be a valid number less than or equal to 1, but was {}",
           autoResizingBufferMemoryProportion);
       return;
     }

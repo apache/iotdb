@@ -787,6 +787,7 @@ partition_table_recover_max_read_megabytes_per_second=10
 datanode_memory_proportion=3:3:1:1:1:1
 
 # The proportion of GlobalMemoryManager used by AutoResizingBuffer.
+# AutoResizingBuffer memory control is disabled when this is less than or equal to 0.
 # effectiveMode: restart
 # Datatype: double
 auto_resizing_buffer_memory_proportion=0.05

@@ -55,15 +55,28 @@ public class MemoryConfig {
 
           @Override
           public synchronized boolean allocate(long sizeInBytes) {
+            if (isAutoResizingBufferMemoryControlDisabled()) {
+              return true;
+            }
             return getAutoResizingBufferMemoryBlock().allocate(sizeInBytes);
           }
 
           @Override
           public synchronized void release(long sizeInBytes) {
+            if (isAutoResizingBufferMemoryControlDisabled()) {
+              return;
+            }
             if (autoResizingBufferMemoryBlock != null
                 && !autoResizingBufferMemoryBlock.isReleased()) {
               autoResizingBufferMemoryBlock.release(sizeInBytes);
             }
+          }
+
+          private boolean isAutoResizingBufferMemoryControlDisabled() {
+            return CommonDescriptor.getInstance()
+                    .getConfig()
+                    .getAutoResizingBufferMemoryProportion()
+                <= 0;
           }
 
           private IMemoryBlock getAutoResizingBufferMemoryBlock() {
