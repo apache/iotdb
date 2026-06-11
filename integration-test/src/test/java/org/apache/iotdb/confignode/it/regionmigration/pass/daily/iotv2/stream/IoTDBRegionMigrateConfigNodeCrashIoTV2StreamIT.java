@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.stream;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.commons.utils.KillPoint.RegionMaintainKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -94,12 +95,14 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
   }
 
   /**
-   * Gracefully restart (not forcibly kill) the ConfigNode leader while AddRegionPeer is waiting for
-   * the coordinator's task to finish (DO_ADD_REGION_PEER). The graceful shutdown interrupts the
-   * procedure worker, so waitTaskFinish() returns PROCESSING. The migration must still finish
-   * correctly after a leader switch: previously the AddRegionPeerProcedure silently ended on
-   * PROCESSING, letting the parent procedure remove the source replica before the destination
-   * replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens.
+   * Gracefully restart (not forcibly kill) the ConfigNode leader while AddRegionPeer is blocked in
+   * waitTaskFinish() polling the coordinator. The kill point fires from inside waitTaskFinish()
+   * (after the first poll confirms the task is still running), so the graceful shutdown
+   * deterministically interrupts that wait and waitTaskFinish() returns PROCESSING. The migration
+   * must still finish correctly after a leader switch: previously the AddRegionPeerProcedure
+   * silently ended on PROCESSING, letting the parent procedure remove the source replica before the
+   * destination replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens,
+   * and asserts the PROCESSING branch was actually exercised.
    */
   @Test
   public void cnLeaderSwitchDuringDoAddPeerTest() throws Exception {
@@ -108,10 +111,11 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
         1,
         3,
         2,
-        buildSet(AddRegionPeerState.DO_ADD_REGION_PEER),
+        buildSet(RegionMaintainKillPoints.WAIT_TASK_FINISH_POLLING),
         noKillPoints(),
         actionOfGracefullyRestartConfigNode,
         KillNode.CONFIG_NODE);
+    assertSomeConfigNodeLogContains("returns PROCESSING");
   }
 
   @Test
