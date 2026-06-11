@@ -155,8 +155,7 @@ public class DirectoryStrategyTest {
   }
 
   @Test
-  public void testMinFolderOccupiedSpaceFirstStrategyLogThrottle()
-      throws DiskSpaceInsufficientException, IOException {
+  public void testMinFolderOccupiedSpaceFirstStrategyLogThrottle() throws Exception {
     MinFolderOccupiedSpaceFirstStrategy minFolderOccupiedSpaceFirstStrategy =
         new MinFolderOccupiedSpaceFirstStrategy();
     minFolderOccupiedSpaceFirstStrategy.setFolders(dataDirList);
@@ -171,17 +170,17 @@ public class DirectoryStrategyTest {
     logger.addAppender(appender);
 
     try {
-      PowerMockito.when(JVMCommonUtils.getOccupiedSpace(dataDirList.get(0)))
-          .thenThrow(new IOException("broken occupied space"));
+      PowerMockito.doThrow(new IOException("broken occupied space"))
+          .when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
       assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
       assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
       assertEquals(1, countLogEvents(appender, UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE));
 
-      PowerMockito.when(JVMCommonUtils.getOccupiedSpace(dataDirList.get(0))).thenReturn(0L);
+      PowerMockito.doReturn(0L).when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
       assertEquals(0, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
 
-      PowerMockito.when(JVMCommonUtils.getOccupiedSpace(dataDirList.get(0)))
-          .thenThrow(new IOException("broken occupied space again"));
+      PowerMockito.doThrow(new IOException("broken occupied space again"))
+          .when(JVMCommonUtils.class, "getOccupiedSpace", dataDirList.get(0));
       assertEquals(2, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
       assertEquals(2, countLogEvents(appender, UtilMessages.CANNOT_CALCULATE_OCCUPIED_SPACE));
     } finally {
@@ -254,8 +253,12 @@ public class DirectoryStrategyTest {
   }
 
   private long countLogEvents(ListAppender<ILoggingEvent> appender, String messagePattern) {
-    return appender.list.stream()
-        .filter(event -> messagePattern.equals(event.getMessage()))
-        .count();
+    long count = 0;
+    for (ILoggingEvent event : appender.list) {
+      if (messagePattern.equals(event.getMessage())) {
+        count++;
+      }
+    }
+    return count;
   }
 }

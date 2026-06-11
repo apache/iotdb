@@ -86,8 +86,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       "Failed to update the value of metric because of connection failure, because ";
   private static final String UPDATE_METRIC_INTERNAL_FAILURE =
       "Failed to update the value of metric because of internal error, because ";
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-  private static final Coordinator COORDINATOR = Coordinator.getInstance();
+  private final SessionManager sessionManager;
+  private final Coordinator coordinator;
   private final SessionInfo sessionInfo;
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -103,6 +103,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       new ConcurrentHashMap<>();
 
   public IoTDBInternalLocalReporter() {
+    sessionManager = SessionManager.getInstance();
+    coordinator = Coordinator.getInstance();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
     sessionInfo =
@@ -223,9 +225,9 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     request.setIsAligned(false);
 
     InsertRowStatement s = StatementGenerator.createStatement(request);
-    final long queryId = SESSION_MANAGER.requestQueryId();
+    final long queryId = sessionManager.requestQueryId();
     ExecutionResult result =
-        COORDINATOR.executeForTreeModel(
+        coordinator.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     return result.status;
   }
@@ -251,10 +253,10 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     request.setEncodings(encodings);
     request.setCompressors(compressors);
     CreateMultiTimeSeriesStatement s = StatementGenerator.createStatement(request);
-    final long queryId = SESSION_MANAGER.requestQueryId();
+    final long queryId = sessionManager.requestQueryId();
 
     ExecutionResult result =
-        COORDINATOR.executeForTreeModel(
+        coordinator.executeForTreeModel(
             s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
     if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       logAutoCreateTimeseriesFailureIfNecessary(prefix, paths, result.status);

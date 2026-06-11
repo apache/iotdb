@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.db.auth.LoginLockManager.UserLockInfo;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.junit.Before;
@@ -149,6 +150,8 @@ public class LoginLockManagerTest {
   public void testLockMessagesLoggedOnlyWhenThresholdFirstReached() {
     ch.qos.logback.classic.Logger logger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LoginLockManager.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.INFO);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.setContext(logger.getLoggerContext());
     appender.start();
@@ -163,6 +166,7 @@ public class LoginLockManagerTest {
       assertEquals(1, countLogEvents(appender, "User ID '{}' locked due to {} failed attempts"));
     } finally {
       logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
       appender.stop();
     }
   }
@@ -171,6 +175,8 @@ public class LoginLockManagerTest {
   public void testPotentialAttackWarningsLoggedOnlyOnceWhileThresholdExceeded() {
     ch.qos.logback.classic.Logger logger =
         (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(LoginLockManager.class);
+    Level previousLevel = logger.getLevel();
+    logger.setLevel(Level.INFO);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.setContext(logger.getLoggerContext());
     appender.start();
@@ -195,6 +201,7 @@ public class LoginLockManagerTest {
       assertEquals(1, countLogEvents(appender, DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS));
     } finally {
       logger.detachAppender(appender);
+      logger.setLevel(previousLevel);
       appender.stop();
     }
   }
