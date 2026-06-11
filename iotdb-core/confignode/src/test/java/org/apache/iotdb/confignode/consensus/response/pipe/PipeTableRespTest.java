@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -117,5 +119,62 @@ public class PipeTableRespTest {
 
     PipeTableResp allPipeTableResp = pipeTableResp.filter(true, null);
     Assert.assertEquals(3, allPipeTableResp.getAllPipeMeta().size());
+  }
+
+  @Test
+  public void testFilterBySqlDialectIgnoresCaptureOptions() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+
+    Map<String, String> treeExtractorAttributes = new HashMap<>();
+    treeExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+    treeExtractorAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "false");
+    treeExtractorAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
+    treeExtractorAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+    pipeMetaList.add(constructPipeMeta("treePipe", 121, treeExtractorAttributes));
+
+    Map<String, String> tableExtractorAttributes = new HashMap<>();
+    tableExtractorAttributes.put(
+        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    tableExtractorAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY, "true");
+    tableExtractorAttributes.put(PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY, "true");
+    tableExtractorAttributes.put(PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY, "true");
+    pipeMetaList.add(constructPipeMeta("tablePipe", 122, tableExtractorAttributes));
+
+    PipeTableResp treePipeTableResp =
+        new PipeTableResp(status, new ArrayList<>(pipeMetaList)).filter(false, null, false, null);
+    Assert.assertEquals(1, treePipeTableResp.getAllPipeMeta().size());
+    Assert.assertEquals(
+        "treePipe", treePipeTableResp.getAllPipeMeta().get(0).getStaticMeta().getPipeName());
+
+    PipeTableResp tablePipeTableResp =
+        new PipeTableResp(status, new ArrayList<>(pipeMetaList)).filter(false, null, true, null);
+    Assert.assertEquals(1, tablePipeTableResp.getAllPipeMeta().size());
+    Assert.assertEquals(
+        "tablePipe", tablePipeTableResp.getAllPipeMeta().get(0).getStaticMeta().getPipeName());
+  }
+
+  private PipeMeta constructPipeMeta(
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes) {
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("extractor", "iotdb-extractor");
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("host", "127.0.0.1");
+    connectorAttributes.put("port", "6667");
+
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            pipeName, creationTime, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    return new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
   }
 }
