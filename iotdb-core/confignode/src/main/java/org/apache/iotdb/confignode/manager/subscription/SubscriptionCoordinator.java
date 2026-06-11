@@ -37,7 +37,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
@@ -51,8 +50,12 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -212,36 +215,24 @@ public class SubscriptionCoordinator {
         req.getTopicName(), req.getTopicAttributes());
   }
 
-  public TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req) {
-    if (blockedOwnerLeaseRenewalTopics.contains(req.getTopicName())) {
-      return RpcUtils.getStatus(
-          TSStatusCode.SUBSCRIPTION_OWNER_FENCED,
-          String.format(
-              "Subscription: topic %s owner lease renewal is blocked by a pending owner transfer.",
-              req.getTopicName()));
+  public List<ByteBuffer> renewTopicOwnerLeasesAndSerialize() {
+    final Set<String> blockedTopicNames;
+    synchronized (blockedOwnerLeaseRenewalTopics) {
+      blockedTopicNames = new HashSet<>(blockedOwnerLeaseRenewalTopics);
     }
 
-    final TSStatus status = configManager.getProcedureManager().renewTopicOwnerLease(req);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Failed to renew topic {} owner lease for owner {} epoch {}, result status is {}.",
-          req.getTopicName(),
-          req.getOwnerId(),
-          req.getOwnerEpoch(),
-          status);
+    final List<ByteBuffer> renewedTopicMetaBinaryList = new ArrayList<>();
+    for (final TopicMeta topicMeta : subscriptionInfo.renewTopicOwnerLeases(blockedTopicNames)) {
+      try {
+        renewedTopicMetaBinaryList.add(topicMeta.serialize());
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to serialize renewed owner lease topic meta for topic {}.",
+            topicMeta.getTopicName(),
+            e);
+      }
     }
-    return status;
-  }
-
-  public TopicMeta buildRenewedTopicOwnerLeaseMeta(TRenewTopicOwnerLeaseReq req) {
-    final TopicMeta topicMeta = subscriptionInfo.deepCopyTopicMeta(req.getTopicName());
-    if (Objects.isNull(topicMeta)) {
-      return null;
-    }
-
-    topicMeta.renewOwnerLeaseWithDuration(
-        req.getOwnerId(), req.getOwnerEpoch(), req.getOwnerLeaseDurationMs());
-    return topicMeta;
+    return renewedTopicMetaBinaryList;
   }
 
   public TSStatus dropTopic(TDropTopicReq req) {

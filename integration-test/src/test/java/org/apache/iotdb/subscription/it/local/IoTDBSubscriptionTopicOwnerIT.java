@@ -132,7 +132,8 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
   }
 
   @Test
-  public void testHeartbeatRenewsOwnerLeaseAndAlterOwnerWaitsForLeaseExpiration() throws Exception {
+  public void testConfigNodeHeartbeatRenewsOwnerLeaseAndAlterOwnerWaitsForLeaseExpiration()
+      throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     final String topicName = "topic_owner_lease_renewal";

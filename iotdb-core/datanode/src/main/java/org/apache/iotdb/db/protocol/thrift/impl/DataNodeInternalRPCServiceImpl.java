@@ -2374,6 +2374,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   req.getCurrentRegionOperations()));
     }
 
+    if (req.isSetTopicMetas() && SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      final List<TopicMeta> topicMetas = new ArrayList<>();
+      for (final ByteBuffer topicMetaBuffer : req.getTopicMetas()) {
+        topicMetas.add(TopicMeta.deserialize(topicMetaBuffer));
+      }
+      final TPushTopicMetaRespExceptionMessage exceptionMessage =
+          SubscriptionAgent.topic().handleTopicMetaChanges(topicMetas);
+      if (exceptionMessage != null) {
+        LOGGER.warn(
+            "Failed to handle subscription topic meta changes from ConfigNode heartbeat: {}.",
+            exceptionMessage);
+      }
+    }
+
     return resp;
   }
 

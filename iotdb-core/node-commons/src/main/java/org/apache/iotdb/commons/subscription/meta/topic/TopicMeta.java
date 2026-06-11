@@ -290,6 +290,16 @@ public class TopicMeta {
     return ownerLeaseExpireTimeMs;
   }
 
+  public long renewOwnerLeaseWithConfiguredDuration() {
+    if (Objects.isNull(ownerLeaseDurationMs)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Subscription topic owner lease duration should be configured, topic: %s",
+              topicName));
+    }
+    return renewOwnerLeaseWithDuration(ownerId, ownerEpoch, ownerLeaseDurationMs);
+  }
+
   public void clearOwner() {
     ownerId = null;
     ownerEpoch = -1L;

@@ -564,6 +564,33 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public List<TopicMeta> renewTopicOwnerLeases(final Set<String> blockedTopicNames) {
+    acquireWriteLock();
+    try {
+      final List<TopicMeta> renewedTopicMetas = new ArrayList<>();
+      for (final TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
+        if (!topicMeta.isOwnerFencingEnabled()
+            || Objects.isNull(topicMeta.getOwnerLeaseDurationMs())
+            || blockedTopicNames.contains(topicMeta.getTopicName())) {
+          continue;
+        }
+
+        try {
+          topicMeta.renewOwnerLeaseWithConfiguredDuration();
+          renewedTopicMetas.add(topicMeta.deepCopy());
+        } catch (final IllegalArgumentException e) {
+          LOGGER.warn(
+              "Failed to renew subscription topic {} owner lease during ConfigNode heartbeat.",
+              topicMeta.getTopicName(),
+              e);
+        }
+      }
+      return renewedTopicMetas;
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   public DataSet showTopics() {
     acquireReadLock();
     try {

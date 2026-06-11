@@ -33,7 +33,6 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -268,34 +267,5 @@ public class SubscriptionTopicAgent {
       }
     }
     return RpcUtils.SUCCESS_STATUS;
-  }
-
-  public Map<String, Long> getTopicOwnerLeaseRenewalDurationMs(
-      final ConsumerConfig consumerConfig, final Iterable<String> topicNames) {
-    final String requestOwnerId = consumerConfig.getOwnerId();
-    final Long requestOwnerEpoch = consumerConfig.getOwnerEpoch();
-    if (Objects.isNull(requestOwnerId) || Objects.isNull(requestOwnerEpoch)) {
-      return new HashMap<>();
-    }
-
-    final Map<String, Long> renewedTopicOwnerLeaseDurationMs = new HashMap<>();
-    acquireReadLock();
-    try {
-      for (final String topicName : topicNames) {
-        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
-        if (Objects.isNull(topicMeta)
-            || !topicMeta.isOwnerFencingEnabled()
-            || !Objects.equals(topicMeta.getOwnerId(), requestOwnerId)
-            || topicMeta.getOwnerEpoch() != requestOwnerEpoch
-            || Objects.isNull(topicMeta.getOwnerLeaseDurationMs())) {
-          continue;
-        }
-
-        renewedTopicOwnerLeaseDurationMs.put(topicName, topicMeta.getOwnerLeaseDurationMs());
-      }
-    } finally {
-      releaseReadLock();
-    }
-    return renewedTopicOwnerLeaseDurationMs;
   }
 }

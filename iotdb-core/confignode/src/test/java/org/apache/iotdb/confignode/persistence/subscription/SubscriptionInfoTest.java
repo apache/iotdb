@@ -32,7 +32,9 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -165,6 +167,44 @@ public class SubscriptionInfoTest {
     Assert.assertEquals(
         renewedOwnerLeaseExpireTimeMs,
         subscriptionInfo.getTopicMeta(topicName).getOwnerLeaseExpireTimeMs().longValue());
+  }
+
+  @Test
+  public void testRenewTopicOwnerLeasesSkipsBlockedTopic() {
+    final String topicName = "topic-" + UUID.randomUUID();
+    final String blockedTopicName = "topic-" + UUID.randomUUID();
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+
+    final long ownerLeaseExpireTimeMs = System.currentTimeMillis() + 1000;
+    final long ownerLeaseDurationMs = 60000;
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo
+            .createTopic(
+                new CreateTopicPlan(
+                    createTopicMeta(
+                        topicName, "sn1", 5L, ownerLeaseDurationMs, ownerLeaseExpireTimeMs)))
+            .getCode());
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        subscriptionInfo
+            .createTopic(
+                new CreateTopicPlan(
+                    createTopicMeta(
+                        blockedTopicName, "sn1", 5L, ownerLeaseDurationMs, ownerLeaseExpireTimeMs)))
+            .getCode());
+
+    final List<TopicMeta> renewedTopicMetas =
+        subscriptionInfo.renewTopicOwnerLeases(Collections.singleton(blockedTopicName));
+
+    Assert.assertEquals(1, renewedTopicMetas.size());
+    Assert.assertEquals(topicName, renewedTopicMetas.get(0).getTopicName());
+    Assert.assertTrue(
+        subscriptionInfo.getTopicMeta(topicName).getOwnerLeaseExpireTimeMs()
+            > ownerLeaseExpireTimeMs);
+    Assert.assertEquals(
+        ownerLeaseExpireTimeMs,
+        subscriptionInfo.getTopicMeta(blockedTopicName).getOwnerLeaseExpireTimeMs().longValue());
   }
 
   @Test

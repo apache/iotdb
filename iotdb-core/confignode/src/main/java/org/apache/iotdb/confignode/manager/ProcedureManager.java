@@ -156,7 +156,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -1798,36 +1797,6 @@ public class ProcedureManager {
             .getSubscriptionCoordinator()
             .unblockOwnerLeaseRenewal(req.getTopicName());
       }
-    }
-  }
-
-  public TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req) {
-    try {
-      final TopicMeta updatedTopicMeta =
-          configManager
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .buildRenewedTopicOwnerLeaseMeta(req);
-      if (updatedTopicMeta == null) {
-        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-            .setMessage(
-                String.format(
-                    ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
-                    req.getTopicName()));
-      }
-
-      AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
-      executor.submitProcedure(procedure);
-      TSStatus status = waitingProcedureFinished(procedure);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
-      } else {
-        return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.SUBSCRIPTION_OWNER_EPOCH_CONFLICT.getStatusCode())
-          .setMessage(e.getMessage());
     }
   }
 

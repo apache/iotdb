@@ -138,7 +138,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TRenewTopicOwnerLeaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
@@ -807,9 +806,6 @@ public interface IManager {
 
   /** Alter Topic. */
   TSStatus alterTopic(TAlterTopicReq req);
-
-  /** Renew Topic Owner Lease. */
-  TSStatus renewTopicOwnerLease(TRenewTopicOwnerLeaseReq req);
 
   /** Drop Topic. */
   TSStatus dropTopic(TDropTopicReq req);
