@@ -43,7 +43,8 @@ public class SubscriptionOwnerLeaseSyncer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionOwnerLeaseSyncer.class);
 
-  // TODO: promote to SubscriptionConfig; invariant: lease-duration >> interval * tolerated-misses.
+  // Note: candidate for promotion to SubscriptionConfig; invariant must hold: lease-duration >>
+  // interval * tolerated-misses.
   private static final long OWNER_LEASE_HEARTBEAT_INTERVAL_SECONDS = 5;
 
   /** The owner-lease heartbeat interval {@code H}, used by the transfer admission-wait bound. */
