@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -64,7 +65,8 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMetaSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
+      TimeUnit.MINUTES.toMillis(PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes())
+          / 2;
   // No need to serialize this field
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
