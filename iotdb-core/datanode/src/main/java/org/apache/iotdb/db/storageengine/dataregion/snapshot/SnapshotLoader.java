@@ -397,7 +397,12 @@ public class SnapshotLoader {
       return;
     }
 
-    LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
+    String resourceFileName =
+        file.getAbsolutePath()
+            + TsFileResource.RESOURCE_SUFFIX;
+    if (!new File(resourceFileName).exists()) {
+      LOGGER.warn("The associated resource file of {} is not found in the snapshot", file);
+    }
   }
 
   private void createLinksFromSnapshotDirToDataDirWithLog() throws IOException {
