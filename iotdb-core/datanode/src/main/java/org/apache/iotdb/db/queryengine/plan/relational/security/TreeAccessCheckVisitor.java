@@ -852,7 +852,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitShowReceivers(
       ShowReceiversStatement statement, TreeAccessCheckContext context) {
-    return checkPipeManagement(context.setAuditLogOperation(AuditLogOperation.QUERY), () -> "");
+    // This query follows SHOW PIPES: it cannot be rejected here.
+    return StatusUtils.OK;
   }
 
   @Override

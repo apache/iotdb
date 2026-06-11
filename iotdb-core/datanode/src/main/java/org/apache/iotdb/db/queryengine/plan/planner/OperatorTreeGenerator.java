@@ -40,6 +40,7 @@ import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -326,6 +327,15 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   private static final Comparator<Binary> ASC_BINARY_COMPARATOR = Comparator.naturalOrder();
 
   private static final Comparator<Binary> DESC_BINARY_COMPARATOR = Comparator.reverseOrder();
+
+  private static UserEntity getCurrentUserEntity(final LocalExecutionPlanContext context) {
+    if (context.getDriverContext() == null
+        || context.getDriverContext().getFragmentInstanceContext() == null
+        || context.getDriverContext().getFragmentInstanceContext().getSessionInfo() == null) {
+      return null;
+    }
+    return context.getDriverContext().getFragmentInstanceContext().getSessionInfo().getUserEntity();
+  }
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -2490,7 +2500,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
                 node.getPlanNodeId(),
                 ShowReceiversOperator.class.getSimpleName());
 
-    return new ShowReceiversOperator(operatorContext, node.getPlanNodeId());
+    return new ShowReceiversOperator(
+        operatorContext, node.getPlanNodeId(), getCurrentUserEntity(context));
   }
 
   @Override

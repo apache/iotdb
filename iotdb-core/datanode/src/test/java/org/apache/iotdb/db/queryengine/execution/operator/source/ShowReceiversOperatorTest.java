@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 
 import com.google.common.collect.ImmutableList;
@@ -42,6 +45,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_CLUSTER_ID;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.SENDER_PORTS;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ShowReceiversOperatorTest {
@@ -78,6 +82,44 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testSingleSenderSingleDataNodeSingleConnectionSinglePipeOutput() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+    registry.markTransfer("data-1", 200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals(12, tsBlock.getValueColumnCount());
+    assertEquals(PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, getText(tsBlock, 0));
+    assertEquals(1, tsBlock.getColumn(1).getInt(0));
+    assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, getText(tsBlock, 2));
+    assertEquals("10.0.0.1", getText(tsBlock, 3));
+    assertEquals("9001", getText(tsBlock, 4));
+    assertEquals(1, tsBlock.getColumn(5).getInt(0));
+    assertEquals(1, tsBlock.getColumn(6).getInt(0));
+    assertTrue(getText(tsBlock, 7).contains("pipe-a@"));
+    assertEquals("root", getText(tsBlock, 8));
+    assertEquals("cluster-a", getText(tsBlock, 9));
+    assertEquals(DateTimeUtils.convertLongToDate(100, "ms"), getText(tsBlock, 10));
+    assertEquals(DateTimeUtils.convertLongToDate(200, "ms"), getText(tsBlock, 11));
+  }
+
+  @Test
   public void testUnknownReceiverNodeIdIsNull() {
     registry.registerOrUpdateSession(
         "config-1",
@@ -101,5 +143,75 @@ public class ShowReceiversOperatorTest {
     assertEquals(1, tsBlock.getPositionCount());
     assertEquals(12, tsBlock.getValueColumnCount());
     assertTrue(tsBlock.getColumn(1).isNull(0));
+  }
+
+  @Test
+  public void testNormalUserOnlySeesOwnReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(
+            null, new PlanNodeId("show-receivers"), new UserEntity(1L, "user1", "127.0.0.1"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals("10.0.0.1", getText(tsBlock, 3));
+    assertEquals("user1", getText(tsBlock, 8));
+    assertFalse(operator.hasNext());
+  }
+
+  @Test
+  public void testRootUserSeesAllReceiverSnapshots() {
+    registerUserSession("data-user1", "10.0.0.1", 9001, "user1", "cluster-a", "pipe-a", 1, 100);
+    registerUserSession("data-user2", "10.0.0.2", 9002, "user2", "cluster-b", "pipe-b", 2, 200);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(
+            null,
+            new PlanNodeId("show-receivers"),
+            new UserEntity(
+                AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "127.0.0.1"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(2, tsBlock.getPositionCount());
+    assertEquals("user1", getText(tsBlock, 8, 0));
+    assertEquals("user2", getText(tsBlock, 8, 1));
+    assertFalse(operator.hasNext());
+  }
+
+  private void registerUserSession(
+      String connectionKey,
+      String senderAddress,
+      int senderPort,
+      String userName,
+      String senderClusterId,
+      String pipeName,
+      long pipeCreationTime,
+      long handshakeTime) {
+    registry.registerOrUpdateSession(
+        connectionKey,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        senderAddress,
+        senderPort,
+        userName,
+        senderClusterId,
+        pipeName,
+        pipeCreationTime,
+        handshakeTime);
+  }
+
+  private static String getText(final TsBlock tsBlock, final int columnIndex) {
+    return getText(tsBlock, columnIndex, 0);
+  }
+
+  private static String getText(final TsBlock tsBlock, final int columnIndex, final int position) {
+    return tsBlock.getColumn(columnIndex).getBinary(position).toString();
   }
 }

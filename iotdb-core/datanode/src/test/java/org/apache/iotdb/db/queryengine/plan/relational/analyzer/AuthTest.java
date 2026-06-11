@@ -19,21 +19,27 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
+import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowReceiversStatement;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -107,6 +113,43 @@ public class AuthTest {
     } catch (Exception e) {
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testInformationSchemaReceiversUseSameLocalAuthAsPipes() {
+    final ITableAuthChecker authChecker = Mockito.mock(ITableAuthChecker.class);
+
+    try {
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.PIPES),
+          user1,
+          authChecker);
+      analyzeSQL(
+          String.format(
+              "SELECT * FROM %s.%s",
+              InformationSchema.INFORMATION_DATABASE, InformationSchema.RECEIVERS),
+          user1,
+          authChecker);
+    } catch (Exception e) {
+      fail("Unexpected exception : " + e.getMessage());
+    }
+
+    Mockito.verify(authChecker, Mockito.never()).checkGlobalPrivileges(any(), any(), any());
+  }
+
+  @Test
+  public void testTreeShowReceiversUsesSameLocalAuthAsShowPipes() {
+    final TreeAccessCheckVisitor visitor = new TreeAccessCheckVisitor();
+    final TreeAccessCheckContext context = new TreeAccessCheckContext(1, user1, "127.0.0.1");
+
+    final TSStatus showPipesStatus = visitor.visitShowPipes(new ShowPipesStatement(), context);
+    final TSStatus showReceiversStatus =
+        visitor.visitShowReceivers(new ShowReceiversStatement(), context);
+
+    assertEquals(StatusUtils.OK.getCode(), showPipesStatus.getCode());
+    assertEquals(showPipesStatus.getCode(), showReceiversStatus.getCode());
   }
 
   @Test

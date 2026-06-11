@@ -24,9 +24,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class PipeReceiverRuntimeRegistryTest {
@@ -41,6 +43,93 @@ public class PipeReceiverRuntimeRegistryTest {
   @After
   public void tearDown() {
     registry.clear();
+  }
+
+  @Test
+  public void testSingleSenderSingleDataNodeSingleConnectionSinglePipeBasicQuery() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registry.markTransfer("data-1", 200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    final PipeReceiverRuntimeSnapshot snapshot = snapshots.get(0);
+    assertEquals(PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE, snapshot.getReceiverNodeType());
+    assertEquals(1, snapshot.getReceiverNodeId());
+    assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT, snapshot.getProtocol());
+    assertEquals("10.0.0.1", snapshot.getSenderAddress());
+    assertEquals("9001", snapshot.getSenderPorts());
+    assertEquals(1, snapshot.getConnectionCount());
+    assertEquals(1, snapshot.getPipeCount());
+    assertTrue(snapshot.getPipeIds().contains("pipe-a@"));
+    assertEquals("root", snapshot.getUserName());
+    assertEquals("cluster-a", snapshot.getSenderClusterId());
+    assertEquals(100, snapshot.getLastHandshakeTime());
+    assertEquals(200, snapshot.getLastTransferTime());
+  }
+
+  @Test
+  public void testMultipleSendersAndMultipleDataNodesClusterAggregation() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession("data-2", 2, "10.0.0.1", 9002, "root", "cluster-a", "pipe-b", 2, 200);
+    registerDataSession("data-3", 2, "10.0.0.2", 9003, "root", "cluster-b", "pipe-c", 3, 300);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(3, snapshots.size());
+    assertNotNull(
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            1,
+            PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+            "10.0.0.1"));
+    assertNotNull(
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            2,
+            PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+            "10.0.0.1"));
+    assertNotNull(
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            2,
+            PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+            "10.0.0.2"));
+  }
+
+  @Test
+  public void testConfigNodeReceiversAreShownWithDataNodeResultsAndAirGapProtocol() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registry.registerOrUpdateSession(
+        "config-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+        0,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.2",
+        9002,
+        "root",
+        "cluster-b",
+        "pipe-b",
+        2,
+        200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(2, snapshots.size());
+    final PipeReceiverRuntimeSnapshot configSnapshot =
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_CONFIG_NODE,
+            0,
+            PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+            "10.0.0.2");
+    assertNotNull(configSnapshot);
+    assertEquals(PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP, configSnapshot.getProtocol());
+    assertEquals(1, configSnapshot.getConnectionCount());
+    assertEquals(1, configSnapshot.getPipeCount());
   }
 
   @Test
@@ -122,6 +211,146 @@ public class PipeReceiverRuntimeRegistryTest {
     registry.deregister("data-1");
 
     assertTrue(registry.snapshot().isEmpty());
+  }
+
+  @Test
+  public void testPipeStopOrDropUpdatesPipeIdsAndPipeCount() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession("data-2", 1, "10.0.0.1", 9002, "root", "cluster-a", "pipe-b", 2, 200);
+
+    List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    assertEquals(1, snapshots.size());
+    assertEquals(2, snapshots.get(0).getConnectionCount());
+    assertEquals(2, snapshots.get(0).getPipeCount());
+
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        null,
+        Long.MIN_VALUE,
+        300);
+
+    snapshots = registry.snapshot();
+    assertEquals(1, snapshots.size());
+    assertEquals(2, snapshots.get(0).getConnectionCount());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertFalse(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+
+    registry.deregister("data-2");
+
+    snapshots = registry.snapshot();
+    assertEquals(1, snapshots.size());
+    assertEquals(1, snapshots.get(0).getConnectionCount());
+    assertEquals(0, snapshots.get(0).getPipeCount());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getPipeIds());
+  }
+
+  @Test
+  public void testMixedVersionPipeIdsUnknownCompatibility() {
+    registerDataSession(
+        "data-1",
+        1,
+        "10.0.0.1",
+        9001,
+        "root",
+        PipeReceiverRuntimeRegistry.UNKNOWN,
+        null,
+        Long.MIN_VALUE,
+        100);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals("10.0.0.1", snapshots.get(0).getSenderAddress());
+    assertEquals("9001", snapshots.get(0).getSenderPorts());
+    assertEquals(1, snapshots.get(0).getConnectionCount());
+    assertEquals(0, snapshots.get(0).getPipeCount());
+    assertEquals(PipeReceiverRuntimeRegistry.UNKNOWN, snapshots.get(0).getPipeIds());
+  }
+
+  @Test
+  public void testReceiverRestartClearsRuntimeAndAllowsReconnect() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+
+    assertEquals(1, registry.snapshot().size());
+
+    registry.clear();
+
+    assertTrue(registry.snapshot().isEmpty());
+
+    registerDataSession("data-2", 1, "10.0.0.1", 9002, "root", "cluster-a", "pipe-b", 2, 200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    assertEquals(1, snapshots.size());
+    assertEquals("9002", snapshots.get(0).getSenderPorts());
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
+  public void testLargeActiveSessionsSnapshotPerformanceAndTransferHotPathOverhead() {
+    final int activeConnectionCount = 1000;
+    final int pipeLifecycleOperationCount = 5000;
+    for (int i = 0; i < activeConnectionCount; i++) {
+      registerDataSession(
+          "data-" + i,
+          i % 10,
+          "10.0." + (i / 100) + "." + (i % 100),
+          9000 + i,
+          "root",
+          "cluster-" + (i % 5),
+          "pipe-" + i,
+          i,
+          i);
+    }
+
+    for (int i = 0; i < pipeLifecycleOperationCount; i++) {
+      final int connectionIndex = i % activeConnectionCount;
+      registerDataSession(
+          "data-" + connectionIndex,
+          connectionIndex % 10,
+          "10.0." + (connectionIndex / 100) + "." + (connectionIndex % 100),
+          9000 + connectionIndex,
+          "root",
+          "cluster-" + (connectionIndex % 5),
+          "pipe-update-" + i,
+          i,
+          10_000L + i);
+    }
+
+    final long transferStartTime = System.nanoTime();
+    for (int i = 0; i < pipeLifecycleOperationCount; i++) {
+      registry.markTransfer("data-" + (i % activeConnectionCount), 20_000L + i);
+    }
+    final long transferDurationNanos = System.nanoTime() - transferStartTime;
+
+    final long snapshotStartTime = System.nanoTime();
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+    final long snapshotDurationNanos = System.nanoTime() - snapshotStartTime;
+
+    assertEquals(
+        activeConnectionCount,
+        snapshots.stream().mapToInt(PipeReceiverRuntimeSnapshot::getConnectionCount).sum());
+    assertEquals(
+        20_000L + pipeLifecycleOperationCount - 1,
+        snapshots.stream()
+            .mapToLong(PipeReceiverRuntimeSnapshot::getLastTransferTime)
+            .max()
+            .orElse(0));
+    assertTrue(
+        "transfer updates should stay lightweight, duration ms: "
+            + TimeUnit.NANOSECONDS.toMillis(transferDurationNanos),
+        TimeUnit.NANOSECONDS.toMillis(transferDurationNanos) < 3000);
+    assertTrue(
+        "snapshot should be built from in-memory state, duration ms: "
+            + TimeUnit.NANOSECONDS.toMillis(snapshotDurationNanos),
+        TimeUnit.NANOSECONDS.toMillis(snapshotDurationNanos) < 3000);
   }
 
   @Test
@@ -267,5 +496,46 @@ public class PipeReceiverRuntimeRegistryTest {
     assertEquals(1, snapshots.size());
     assertEquals(-1, snapshots.get(0).getReceiverNodeId());
     assertFalse(snapshots.get(0).isReceiverNodeIdKnown());
+  }
+
+  private void registerDataSession(
+      String connectionKey,
+      int receiverNodeId,
+      String senderAddress,
+      int senderPort,
+      String userName,
+      String senderClusterId,
+      String pipeName,
+      long pipeCreationTime,
+      long handshakeTime) {
+    registry.registerOrUpdateSession(
+        connectionKey,
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        receiverNodeId,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        senderAddress,
+        senderPort,
+        userName,
+        senderClusterId,
+        pipeName,
+        pipeCreationTime,
+        handshakeTime);
+  }
+
+  private static PipeReceiverRuntimeSnapshot findSnapshot(
+      List<PipeReceiverRuntimeSnapshot> snapshots,
+      String receiverNodeType,
+      int receiverNodeId,
+      String protocol,
+      String senderAddress) {
+    for (PipeReceiverRuntimeSnapshot snapshot : snapshots) {
+      if (receiverNodeType.equals(snapshot.getReceiverNodeType())
+          && receiverNodeId == snapshot.getReceiverNodeId()
+          && protocol.equals(snapshot.getProtocol())
+          && senderAddress.equals(snapshot.getSenderAddress())) {
+        return snapshot;
+      }
+    }
+    return null;
   }
 }

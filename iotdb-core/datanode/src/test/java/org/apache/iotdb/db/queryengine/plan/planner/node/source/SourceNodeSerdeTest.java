@@ -119,7 +119,7 @@ public class SourceNodeSerdeTest {
   }
 
   @Test
-  public void testShowReceiversNode() {
+  public void testShowReceiversNode() throws IllegalPathException {
     ShowReceiversNode node = new ShowReceiversNode(new PlanNodeId("test"), null);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

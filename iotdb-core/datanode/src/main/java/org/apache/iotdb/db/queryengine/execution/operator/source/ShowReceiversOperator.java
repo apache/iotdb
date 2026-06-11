@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeRegistry;
 import org.apache.iotdb.commons.pipe.receiver.runtime.PipeReceiverRuntimeSnapshot;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -44,6 +45,7 @@ public class ShowReceiversOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
+  private final UserEntity userEntity;
 
   private TsBlock tsBlock;
   private boolean hasConsumed;
@@ -55,8 +57,14 @@ public class ShowReceiversOperator implements SourceOperator {
       RamUsageEstimator.shallowSizeOfInstance(ShowReceiversOperator.class);
 
   public ShowReceiversOperator(OperatorContext operatorContext, PlanNodeId sourceId) {
+    this(operatorContext, sourceId, null);
+  }
+
+  public ShowReceiversOperator(
+      OperatorContext operatorContext, PlanNodeId sourceId, UserEntity userEntity) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
+    this.userEntity = userEntity;
   }
 
   @Override
@@ -124,7 +132,7 @@ public class ShowReceiversOperator implements SourceOperator {
             System.currentTimeMillis(), TimeUnit.MILLISECONDS);
 
     for (PipeReceiverRuntimeSnapshot snapshot :
-        PipeReceiverRuntimeRegistry.getInstance().snapshot()) {
+        PipeReceiverRuntimeSnapshotFilter.visibleSnapshots(userEntity)) {
       timeColumnBuilder.writeLong(currentTime);
       columnBuilders[0].writeBinary(BytesUtils.valueOf(snapshot.getReceiverNodeType()));
       writeReceiverNodeId(columnBuilders[1], snapshot);
