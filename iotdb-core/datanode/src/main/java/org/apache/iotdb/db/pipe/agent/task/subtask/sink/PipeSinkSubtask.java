@@ -103,6 +103,10 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       lastEvent = null;
       return true;
     }
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).shouldSkipFurtherProcessing()) {
+      clearReferenceCountAndReleaseLastEvent(event);
+      return true;
+    }
 
     try {
       if (Objects.isNull(event)) {

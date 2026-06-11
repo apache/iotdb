@@ -53,6 +53,9 @@ public abstract class EnrichedEvent implements Event {
   // This variable is used to indicate whether the event's reference count has ever been decreased
   // to zero.
   protected final AtomicBoolean isReleased;
+  // Set when the processor subtask is closed while this event is still in-flight, indicating that
+  // no further processing or transfer should happen for this event.
+  protected final AtomicBoolean shouldSkipFurtherProcessing;
 
   protected final String pipeName;
   protected final long creationTime;
@@ -98,6 +101,7 @@ public abstract class EnrichedEvent implements Event {
       final long endTime) {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
+    shouldSkipFurtherProcessing = new AtomicBoolean(false);
 
     this.pipeName = pipeName;
     this.creationTime = creationTime;
@@ -492,6 +496,14 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean isReleased() {
     return isReleased.get();
+  }
+
+  public void markShouldSkipFurtherProcessing() {
+    shouldSkipFurtherProcessing.set(true);
+  }
+
+  public boolean shouldSkipFurtherProcessing() {
+    return shouldSkipFurtherProcessing.get();
   }
 
   /**

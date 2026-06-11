@@ -239,6 +239,11 @@ public class PipeEventCollector implements EventCollector {
         return;
       }
 
+      if (enrichedEvent.shouldSkipFurtherProcessing()) {
+        enrichedEvent.clearReferenceCount(PipeEventCollector.class.getName());
+        return;
+      }
+
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId(enrichedEvent, creationTime, regionId);

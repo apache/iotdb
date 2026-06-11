@@ -138,6 +138,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     }
 
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).shouldSkipFurtherProcessing()) {
+      clearReferenceCountAndReleaseLastEvent(event);
+      return false;
+    }
+
     outputEventCollector.resetFlags();
     try {
       if (event instanceof EnrichedEvent) {
@@ -293,6 +298,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Always deregister the metrics to avoid the deletion of the data region
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
+      synchronized (this) {
+        if (lastEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) lastEvent).markShouldSkipFurtherProcessing();
+        }
+      }
       isClosed.set(true);
       pipeProcessor.close();
       // It is important to note that even if the subtask and its corresponding processor are
