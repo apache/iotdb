@@ -124,10 +124,22 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
               return warnAndRollBackAndNoMoreState(
                   env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
+              // waitTaskFinish() only returns PROCESSING when its polling loop was interrupted by
+              // an InterruptedException, i.e. this ConfigNode is shutting down / losing leadership
+              // (a user CANCEL or a coordinator disconnection both go through the FAIL branch
+              // above). The AddRegionPeerTask is still running on the coordinator DataNode, so we
+              // must NOT silently end here: doing so would let the parent RegionMigrateProcedure
+              // proceed to CHECK_ADD_REGION_PEER / REMOVE_REGION_PEER and remove the source replica
+              // before the destination replica has actually finished receiving the snapshot.
+              // Instead, stay in DO_ADD_REGION_PEER and persist it; after recovery the new leader
+              // re-enters this state and re-polls the still-running coordinator task (the
+              // isStateDeserialized() guard above prevents re-submitting the task) until it really
+              // reaches SUCCESS or FAIL.
               LOGGER.info(
                   ProcedureMessages
                       .WAITTASKFINISH_RETURNS_PROCESSING_WHICH_MEANS_THE_WAITING_HAS_BEEN_INTERRUPTED);
-              return Flow.NO_MORE_STATE;
+              setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
+              break outerSwitch;
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;

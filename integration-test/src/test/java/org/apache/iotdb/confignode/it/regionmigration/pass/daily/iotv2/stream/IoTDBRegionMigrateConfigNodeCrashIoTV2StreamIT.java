@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Before;
@@ -90,6 +91,30 @@ public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
         2,
         buildSet(AddRegionPeerState.DO_ADD_REGION_PEER),
         noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  /**
+   * Gracefully restart (not forcibly kill) the ConfigNode leader while AddRegionPeer is waiting for
+   * the coordinator's task to finish (DO_ADD_REGION_PEER). The graceful shutdown interrupts the
+   * procedure worker, so waitTaskFinish() returns PROCESSING. The migration must still finish
+   * correctly after a leader switch: previously the AddRegionPeerProcedure silently ended on
+   * PROCESSING, letting the parent procedure remove the source replica before the destination
+   * replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens.
+   */
+  @Test
+  // Temporarily also categorized as ClusterIT so the per-PR Cluster IT (1C3D) job runs it for
+  // validation; will be narrowed back to DailyIT-only before merge.
+  @Category({DailyIT.class, ClusterIT.class})
+  public void cnLeaderSwitchDuringDoAddPeerTest() throws Exception {
+    successTestWithAction(
+        1,
+        1,
+        3,
+        2,
+        buildSet(AddRegionPeerState.DO_ADD_REGION_PEER),
+        noKillPoints(),
+        actionOfGracefullyRestartConfigNode,
         KillNode.CONFIG_NODE);
   }
 
