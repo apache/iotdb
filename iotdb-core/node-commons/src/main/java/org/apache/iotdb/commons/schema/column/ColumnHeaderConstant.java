@@ -180,6 +180,7 @@ public class ColumnHeaderConstant {
 
   // column names for show migrations statement
   public static final String PROCEDURE_ID = "ProcedureId";
+  public static final String OPERATION_TYPE = "OperationType";
   public static final String FROM_NODE_ID = "FromNodeId";
   public static final String TO_NODE_ID = "ToNodeId";
   public static final String CURRENT_STATE = "CurrentState";
@@ -526,6 +527,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showMigrationsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PROCEDURE_ID, TSDataType.INT64),
+          new ColumnHeader(OPERATION_TYPE, TSDataType.TEXT),
           new ColumnHeader(REGION_ID, TSDataType.INT32),
           new ColumnHeader(TYPE, TSDataType.TEXT),
           new ColumnHeader(FROM_NODE_ID, TSDataType.INT32),

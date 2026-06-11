@@ -310,6 +310,10 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
     return coordinator;
   }
 
+  public TDataNodeLocation getTargetDataNode() {
+    return targetDataNode;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (!(obj instanceof AddRegionPeerProcedure)) {

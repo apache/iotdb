@@ -645,6 +645,23 @@ public class LoadCache {
   }
 
   /**
+   * Get the latest sampled disk usage rate (occupied disk space percentage, in [0, 1]) of every
+   * DataNode.
+   *
+   * @return a map from DataNodeId to its latest disk usage rate
+   */
+  public Map<Integer, Double> getDataNodeDiskUsageRateMap() {
+    Map<Integer, Double> diskUsageRateMap = new TreeMap<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeCache instanceof DataNodeHeartbeatCache) {
+            diskUsageRateMap.put(nodeId, ((DataNodeHeartbeatCache) nodeCache).getDiskUsageRate());
+          }
+        });
+    return diskUsageRateMap;
+  }
+
+  /**
    * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.

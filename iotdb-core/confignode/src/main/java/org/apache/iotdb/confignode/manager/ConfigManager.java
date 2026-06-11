@@ -118,6 +118,7 @@ import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.fileloader.LocalFileLoader;
+import org.apache.iotdb.confignode.manager.load.LoadBalanceMetrics;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
@@ -2200,6 +2201,7 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     MetricService.getInstance().addMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().addMetricSet(new PartitionMetrics(this));
+    MetricService.getInstance().addMetricSet(new LoadBalanceMetrics(this));
     getProcedureManager().addMetrics();
   }
 
@@ -2207,6 +2209,7 @@ public class ConfigManager implements IManager {
   public void removeMetrics() {
     MetricService.getInstance().removeMetricSet(new NodeMetrics(getNodeManager()));
     MetricService.getInstance().removeMetricSet(new PartitionMetrics(this));
+    MetricService.getInstance().removeMetricSet(new LoadBalanceMetrics(this));
     getProcedureManager().removeMetrics();
   }
 
@@ -3347,6 +3350,31 @@ public class ConfigManager implements IManager {
       }
     }
 
+    // The statistics map is built from the load cache, while the regions to balance come from the
+    // partition table. These two sources can diverge transiently (e.g. a freshly created region
+    // whose heartbeat statistics have not arrived yet, or right after a ConfigNode-Leader switch
+    // clears and repopulates the cache), leaving a region present in the partition table but
+    // missing from the statistics map. The balancer relies on every region's real disk usage to
+    // make migration decisions; substituting a default (disk=0) for missing statistics would feed
+    // wrong data into the algorithm and produce a worse distribution. So instead of guessing, we
+    // refuse to run LOAD BALANCE until every involved RegionGroup has reported its statistics, and
+    // tell the user to retry once the cluster heartbeat is ready.
+    List<TConsensusGroupId> regionsMissingStatistics = new ArrayList<>();
+    regionsMissingStatistics.addAll(
+        findRegionsMissingStatistics(dataRegions, regionGroupStatisticsMap));
+    regionsMissingStatistics.addAll(
+        findRegionsMissingStatistics(schemaRegions, regionGroupStatisticsMap));
+    if (!regionsMissingStatistics.isEmpty()) {
+      String message =
+          String.format(
+              "Load balance was not performed because statistics of %d RegionGroup(s) are not "
+                  + "ready yet: %s. Please retry later once the cluster heartbeat has refreshed "
+                  + "the statistics.",
+              regionsMissingStatistics.size(), regionsMissingStatistics);
+      LOGGER.warn("[AutoMigration] {}", message);
+      return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode()).setMessage(message);
+    }
+
     // Balance and migrate data regions
     if (!dataRegions.isEmpty()) {
       Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroupMap =
@@ -3392,6 +3420,26 @@ public class ConfigManager implements IManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage(
             "Successfully submit migrate regions task! IoTDB will migrate regions automatically.");
+  }
+
+  /**
+   * Find the RegionGroups whose statistics are missing from the load cache. The balancer needs each
+   * RegionGroup's real disk usage; a missing entry means the statistics are not ready yet and must
+   * not be substituted with a default value, otherwise the migration plan would be based on wrong
+   * data.
+   *
+   * @param regions the regions about to be balanced
+   * @param regionGroupStatisticsMap the statistics currently available from the load cache
+   * @return the ids of regions absent from {@code regionGroupStatisticsMap}
+   */
+  @TestOnly
+  static List<TConsensusGroupId> findRegionsMissingStatistics(
+      List<TRegionReplicaSet> regions,
+      Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap) {
+    return regions.stream()
+        .map(TRegionReplicaSet::getRegionId)
+        .filter(regionId -> !regionGroupStatisticsMap.containsKey(regionId))
+        .collect(Collectors.toList());
   }
 
   public String getLocalSystemInfo() {

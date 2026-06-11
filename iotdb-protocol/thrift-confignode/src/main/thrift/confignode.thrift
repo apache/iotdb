@@ -824,14 +824,20 @@ struct TMigrationInfo {
   1: required i64 procedureId
   2: required i32 regionId
   3: required common.TConsensusGroupType regionType
-  4: required i32 fromNodeId
-  5: required i32 toNodeId
+  // fromNodeId/toNodeId are optional because some region operations only have one side:
+  // EXTEND REGION has no source (only a target -> toNodeId), REMOVE REGION has no
+  // destination (only a target -> fromNodeId). The absent side is left unset.
+  4: optional i32 fromNodeId
+  5: optional i32 toNodeId
   6: required string currentState
   7: required string procedureStatus
   8: required i64 submittedTime
   9: required i64 lastUpdateTime
   10: required string duration
   11: optional string progress
+  // The kind of region operation: MIGRATE / EXTEND / REMOVE / RECONSTRUCT.
+  // Optional for rolling-upgrade compatibility with older ConfigNodes that don't set it.
+  12: optional string operationType
 }
 
 struct TShowMigrationsResp {

@@ -165,6 +165,14 @@ public class ReconstructRegionProcedure extends RegionOperationProcedure<Reconst
     return ReconstructRegionState.RECONSTRUCT_REGION_PREPARE;
   }
 
+  public TDataNodeLocation getTargetDataNode() {
+    return targetDataNode;
+  }
+
+  public TDataNodeLocation getCoordinator() {
+    return coordinator;
+  }
+
   @Override
   public String toString() {
     return super.toString()

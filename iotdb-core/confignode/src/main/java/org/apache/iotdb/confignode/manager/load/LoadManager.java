@@ -247,6 +247,40 @@ public class LoadManager {
   }
 
   /**
+   * Get the population standard deviation of disk usage rate across all DataNodes, based on the
+   * latest disk usage samples collected through heartbeat. This reflects how balanced the disk
+   * usage is across the cluster — a smaller value means more balanced — and is mainly used to
+   * observe the effect of the LOAD BALANCE feature.
+   *
+   * <p>DataNodes that have not reported a disk usage sample yet (rate == 0) are excluded so that
+   * placeholder zeros do not skew the result.
+   *
+   * @return the standard deviation of disk usage rate, or 0 if fewer than one DataNode has reported
+   */
+  public double getDataNodeDiskUsageRateStd() {
+    double[] diskUsageRates =
+        loadCache.getDataNodeDiskUsageRateMap().values().stream()
+            .mapToDouble(Double::doubleValue)
+            .filter(rate -> rate > 0)
+            .toArray();
+    if (diskUsageRates.length == 0) {
+      return 0d;
+    }
+    double mean = 0d;
+    for (double rate : diskUsageRates) {
+      mean += rate;
+    }
+    mean /= diskUsageRates.length;
+    double variance = 0d;
+    for (double rate : diskUsageRates) {
+      double diff = rate - mean;
+      variance += diff * diff;
+    }
+    variance /= diskUsageRates.length;
+    return Math.sqrt(variance);
+  }
+
+  /**
    * Get the lowest loadScore DataNode.
    *
    * @return The index of the lowest loadScore DataNode. -1 if no DataNode heartbeat received.
