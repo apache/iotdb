@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -54,7 +54,8 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
       LoggerFactory.getLogger(ConsumerGroupMetaSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      TimeUnit.MINUTES.toMillis(PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes())
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
           / 2;
   // No need to serialize this field
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);

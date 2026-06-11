@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -60,7 +60,8 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
   private static final Logger LOGGER = LoggerFactory.getLogger(CommitProgressSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
-      TimeUnit.MINUTES.toMillis(PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes())
+      TimeUnit.MINUTES.toMillis(
+              SubscriptionConfig.getInstance().getSubscriptionMetaSyncerSyncIntervalMinutes())
           / 2;
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
