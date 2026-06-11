@@ -60,6 +60,29 @@ public class AsyncRequestManagerTest {
     Assert.assertEquals(Collections.singletonList(1), context.getRequestIndices());
   }
 
+  @Test
+  public void handlerErrorFailureShouldNotEscapeDispatchFailure() throws Exception {
+    final TestAsyncRequestManager manager = new TestAsyncRequestManager(false, true, true);
+    final AsyncRequestContext<String, String, TestRequestType, TestNodeLocation> context =
+        new AsyncRequestContext<>(
+            TestRequestType.TEST,
+            "request",
+            Collections.singletonMap(1, new TestNodeLocation(new TEndPoint("localhost", 6667))));
+
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    try {
+      final Future<?> future =
+          executorService.submit(() -> manager.sendAsyncRequest(context, 1, null, true));
+      future.get(3, TimeUnit.SECONDS);
+    } finally {
+      executorService.shutdownNow();
+    }
+
+    Assert.assertEquals(1, manager.getBorrowAttempts());
+    Assert.assertTrue(context.getResponseMap().isEmpty());
+    Assert.assertEquals(Collections.singletonList(1), context.getRequestIndices());
+  }
+
   private enum TestRequestType {
     TEST
   }
@@ -77,9 +100,20 @@ public class AsyncRequestManagerTest {
       extends AsyncRequestManager<TestRequestType, TestNodeLocation, Object> {
 
     private final AtomicInteger borrowAttempts = new AtomicInteger();
+    private boolean failOnBorrow;
+    private boolean failOnDispatch;
+    private boolean failOnError;
 
     private TestAsyncRequestManager() {
+      this(true, false, false);
+    }
+
+    private TestAsyncRequestManager(
+        final boolean failOnBorrow, final boolean failOnDispatch, final boolean failOnError) {
       super(1);
+      this.failOnBorrow = failOnBorrow;
+      this.failOnDispatch = failOnDispatch;
+      this.failOnError = failOnError;
     }
 
     private int getBorrowAttempts() {
@@ -94,7 +128,10 @@ public class AsyncRequestManagerTest {
             @Override
             public Object borrowClient(final TEndPoint node) throws ClientManagerException {
               borrowAttempts.incrementAndGet();
-              throw new ClientManagerException("borrow failed");
+              if (failOnBorrow) {
+                throw new ClientManagerException("borrow failed");
+              }
+              return new Object();
             }
 
             @Override
@@ -118,8 +155,12 @@ public class AsyncRequestManagerTest {
     protected void initActionMapBuilder() {
       actionMapBuilder.put(
           TestRequestType.TEST,
-          (request, client, handler) ->
-              Assert.fail("The test client manager should fail before dispatch."));
+          (request, client, handler) -> {
+            if (failOnDispatch) {
+              throw new RuntimeException("dispatch failed");
+            }
+            Assert.fail("The test client manager should fail before dispatch.");
+          });
     }
 
     @Override
@@ -139,7 +180,8 @@ public class AsyncRequestManagerTest {
           targetNode,
           requestContext.getNodeLocationMap(),
           (Map<Integer, String>) requestContext.getResponseMap(),
-          requestContext.getCountDownLatch());
+          requestContext.getCountDownLatch(),
+          failOnError);
     }
   }
 
@@ -152,9 +194,13 @@ public class AsyncRequestManagerTest {
         final TestNodeLocation targetNode,
         final Map<Integer, TestNodeLocation> nodeLocationMap,
         final Map<Integer, String> responseMap,
-        final CountDownLatch countDownLatch) {
+        final CountDownLatch countDownLatch,
+        final boolean failOnError) {
       super(requestType, requestId, targetNode, nodeLocationMap, responseMap, countDownLatch);
+      this.failOnError = failOnError;
     }
+
+    private final boolean failOnError;
 
     @Override
     protected String generateFormattedTargetLocation(final TestNodeLocation location) {
@@ -170,6 +216,9 @@ public class AsyncRequestManagerTest {
 
     @Override
     public void onError(final Exception exception) {
+      if (failOnError) {
+        throw new RuntimeException("handler failed");
+      }
       responseMap.put(requestId, exception.getMessage());
       countDownLatch.countDown();
     }

@@ -208,7 +208,17 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           e.getMessage(),
           retryCount);
       if (handler != null) {
-        handler.onError(e);
+        try {
+          handler.onError(e);
+        } catch (final Exception handlerException) {
+          LOGGER.warn(
+              "Failed to handle async request error for request type {} on node {}: {}",
+              requestContext.getRequestType(),
+              endPoint,
+              handlerException.getMessage(),
+              handlerException);
+          requestContext.getCountDownLatch().countDown();
+        }
       } else {
         requestContext.getCountDownLatch().countDown();
       }
