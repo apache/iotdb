@@ -163,6 +163,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   private boolean isForwardingPipeRequests;
 
   private volatile boolean hasBeenStarted = false;
+  private volatile boolean closed = false;
+  private volatile EnrichedEvent inFlightSupplyEvent;
 
   private Queue<PersistentResource> pendingQueue;
   private final Map<TsFileResource, Set<String>> filteredTsFileResources2TableNames =
@@ -956,6 +958,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               skipIfNoPrivileges,
               historicalDataExtractionStartTime,
               historicalDataExtractionEndTime);
+
+      inFlightSupplyEvent = event;
+      if (closed) {
+        shouldUnpinResource = true;
+        return null;
+      }
+
       event.setHasObject(
           TierManager.getInstance().isDataRegionObjectDirExists(String.valueOf(dataRegionId)));
 
@@ -979,6 +988,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       final boolean isReferenceCountIncreased =
           event.increaseReferenceCount(
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
+
+      if (event.shouldSkipFurtherProcessing()) {
+        shouldUnpinResource = true;
+        shouldClearReplicateIndex = true;
+        event.decreaseReferenceCount(
+            PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName(), false);
+        return null;
+      }
+
       if (!isReferenceCountIncreased) {
         LOGGER.warn(
             DataNodePipeMessages.PIPE_FAILED_TO_INCREASE_REFERENCE_COUNT_FOR_1,
@@ -1096,7 +1114,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   @Override
-  public synchronized void close() {
+  public void close() {
+    closed = true;
+    final EnrichedEvent inFlightEvent = inFlightSupplyEvent;
+    if (inFlightEvent != null) {
+      inFlightEvent.markShouldSkipFurtherProcessing();
+    }
+    synchronized (this) {
+      doClose();
+    }
+  }
+
+  private void doClose() {
     if (!isTerminateSignalSent) {
       PipeTerminateEvent.clearHistoricalTransferSummary(pipeName, creationTime, dataRegionId);
     }

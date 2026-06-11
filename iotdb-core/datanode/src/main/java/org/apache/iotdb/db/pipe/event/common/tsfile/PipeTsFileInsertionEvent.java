@@ -437,7 +437,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 ? new TsFileObjectPathIterator(this, linkedObjectColumnModEntries)
                 : Collections.emptyIterator();
         final int linked =
-            PipeDataNodeResourceManager.object().linkObjectFiles(resource, pathIterator, pipeName);
+            PipeDataNodeResourceManager.object()
+                .linkObjectFiles(
+                    resource, pathIterator, pipeName, this::shouldSkipFurtherProcessing);
         hasObjectData = linked != 0;
 
         PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
