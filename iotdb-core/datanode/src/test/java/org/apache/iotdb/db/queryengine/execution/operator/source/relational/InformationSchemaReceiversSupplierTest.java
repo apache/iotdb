@@ -138,6 +138,34 @@ public class InformationSchemaReceiversSupplierTest {
   }
 
   @Test
+  public void testReceiversSupplierUsesHandshakeTimeAsInitialTransferTime() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+
+    final InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier supplier =
+        InformationSchemaContentSupplierFactory.getSupplier(
+            null, dataTypes(), rootUser(), receiversScanNode());
+
+    assertTrue(supplier.hasNext());
+    final TsBlock tsBlock = supplier.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals(100L, tsBlock.getColumn(10).getLong(0));
+    assertEquals(100L, tsBlock.getColumn(11).getLong(0));
+    assertFalse(supplier.hasNext());
+  }
+
+  @Test
   public void testReceiversSupplierWritesUnknownFieldsAsNulls() {
     registry.registerOrUpdateSession(
         "config-1",

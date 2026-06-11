@@ -124,6 +124,32 @@ public class ShowReceiversOperatorTest {
   }
 
   @Test
+  public void testLastTransferTimeUsesHandshakeTimeBeforeTransfer() {
+    registry.registerOrUpdateSession(
+        "data-1",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-a",
+        1,
+        100);
+
+    final ShowReceiversOperator operator =
+        new ShowReceiversOperator(null, new PlanNodeId("show-receivers"));
+
+    assertTrue(operator.hasNext());
+    final TsBlock tsBlock = operator.next();
+
+    assertEquals(1, tsBlock.getPositionCount());
+    assertEquals(DateTimeUtils.convertLongToDate(100, "ms"), getText(tsBlock, 10));
+    assertEquals(DateTimeUtils.convertLongToDate(100, "ms"), getText(tsBlock, 11));
+  }
+
+  @Test
   public void testUnknownReceiverNodeIdIsNull() {
     registry.registerOrUpdateSession(
         "config-1",

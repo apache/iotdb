@@ -276,6 +276,27 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testLastTransferTimeDefaultsToLastHandshakeTimeBeforeTransfer() {
+    registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
+
+    List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(1, snapshots.size());
+    assertEquals(100, snapshots.get(0).getLastHandshakeTime());
+    assertEquals(100, snapshots.get(0).getLastTransferTime());
+
+    registry.markTransfer("data-1", 50);
+    snapshots = registry.snapshot();
+
+    assertEquals(100, snapshots.get(0).getLastTransferTime());
+
+    registry.markTransfer("data-1", 200);
+    snapshots = registry.snapshot();
+
+    assertEquals(200, snapshots.get(0).getLastTransferTime());
+  }
+
+  @Test
   public void testReceiverRestartClearsRuntimeAndAllowsReconnect() {
     registerDataSession("data-1", 1, "10.0.0.1", 9001, "root", "cluster-a", "pipe-a", 1, 100);
 
