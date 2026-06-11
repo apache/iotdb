@@ -99,6 +99,43 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         stoppedDataNodeId);
   }
 
+  @Test
+  public void testShowReceiversPermissionInTreeAndTableModel() {
+    final String password = "Passwd123456@";
+    final String normalUser = "show_receiver_normal";
+    final String systemUser = "show_receiver_system";
+    final String pipeName = "show_receivers_auth_pipe";
+
+    TestUtils.executeNonQueries(
+        env,
+        Arrays.asList(
+            "create user " + normalUser + " '" + password + "'",
+            "create user " + systemUser + " '" + password + "'",
+            "grant system on root.** to user " + systemUser),
+        null);
+    createWriteBackPipe("root.show_receivers_auth", pipeName);
+
+    assertShowReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName);
+    assertShowReceivers(
+        "select * from information_schema.receivers", BaseEnv.TABLE_SQL_DIALECT, pipeName);
+
+    assertUserCannotSeeReceivers("show receivers", BaseEnv.TREE_SQL_DIALECT, normalUser, password);
+    assertUserCannotSeeReceivers(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        normalUser,
+        password);
+
+    assertShowReceiversAsUser(
+        "show receivers", BaseEnv.TREE_SQL_DIALECT, pipeName, systemUser, password);
+    assertShowReceiversAsUser(
+        "select * from information_schema.receivers",
+        BaseEnv.TABLE_SQL_DIALECT,
+        pipeName,
+        systemUser,
+        password);
+  }
+
   private void createWriteBackPipe(final String database, final String pipeName) {
     TestUtils.executeNonQueries(
         env,
@@ -129,9 +166,48 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         .untilAsserted(() -> Assert.assertTrue(hasExpectedReceiver(sql, sqlDialect, pipeName)));
   }
 
+  private void assertShowReceiversAsUser(
+      final String sql,
+      final String sqlDialect,
+      final String pipeName,
+      final String userName,
+      final String password) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                Assert.assertTrue(
+                    hasExpectedReceiver(sql, sqlDialect, pipeName, userName, password)));
+  }
+
+  private void assertUserCannotSeeReceivers(
+      final String sql, final String sqlDialect, final String userName, final String password) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> Assert.assertFalse(hasAnyReceiver(sql, sqlDialect, userName, password)));
+  }
+
   private boolean hasExpectedReceiver(
       final String sql, final String sqlDialect, final String pipeName) throws SQLException {
-    try (final Connection connection = env.getConnection(sqlDialect);
+    return hasExpectedReceiver(
+        sql, sqlDialect, pipeName, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  private boolean hasExpectedReceiver(
+      final String sql,
+      final String sqlDialect,
+      final String pipeName,
+      final String userName,
+      final String password)
+      throws SQLException {
+    try (final Connection connection = env.getConnection(userName, password, sqlDialect);
         final Statement statement = connection.createStatement();
         final ResultSet resultSet = statement.executeQuery(sql)) {
       while (resultSet.next()) {
@@ -153,6 +229,16 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
         }
       }
       return false;
+    }
+  }
+
+  private boolean hasAnyReceiver(
+      final String sql, final String sqlDialect, final String userName, final String password)
+      throws SQLException {
+    try (final Connection connection = env.getConnection(userName, password, sqlDialect);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet = statement.executeQuery(sql)) {
+      return resultSet.next();
     }
   }
 
