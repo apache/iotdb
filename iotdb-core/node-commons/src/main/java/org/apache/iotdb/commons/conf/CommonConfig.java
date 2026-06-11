@@ -416,7 +416,7 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
-  private double autoResizingBufferMemoryProportion = 0.01;
+  private double autoResizingBufferMemoryProportion = 0.05;
 
   private boolean enableBinaryAllocator = true;
 
