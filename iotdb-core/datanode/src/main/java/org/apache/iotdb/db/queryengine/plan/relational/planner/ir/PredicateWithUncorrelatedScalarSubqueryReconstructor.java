@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -153,6 +154,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
               LocalExecutionPlanner.getInstance().metadata,
               context.getCteQueries(),
               ExplainType.NONE,
+              ExplainOutputFormat.GRAPHVIZ,
               context.getTimeOut(),
               false,
               q.isDebug(),

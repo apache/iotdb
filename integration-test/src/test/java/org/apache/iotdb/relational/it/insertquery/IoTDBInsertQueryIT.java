@@ -460,7 +460,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:9: mismatched input 'INSERT'. Expecting: 'ANALYZE', 'EXECUTE', <query>"));
+                  "700: line 1:9: mismatched input 'INSERT'. Expecting: '(', 'ANALYZE', 'EXECUTE', <query>"));
     }
 
     try {
@@ -472,7 +472,7 @@ public class IoTDBInsertQueryIT {
           e.getMessage(),
           e.getMessage()
               .contains(
-                  "700: line 1:17: mismatched input 'INSERT'. Expecting: 'EXECUTE', 'VERBOSE', <query>"));
+                  "700: line 1:17: mismatched input 'INSERT'. Expecting: '(', 'EXECUTE', 'VERBOSE', <query>"));
     }
   }
 
