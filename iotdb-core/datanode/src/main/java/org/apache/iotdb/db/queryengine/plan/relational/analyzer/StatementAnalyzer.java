@@ -927,6 +927,7 @@ public class StatementAnalyzer {
     @Override
     public Scope visitExplain(Explain node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN);
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
@@ -943,6 +944,7 @@ public class StatementAnalyzer {
     public Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
+      queryContext.setExplainOutputFormat(node.getOutputFormat());
       return visitQuery((Query) node.getStatement(), context);
     }
 
