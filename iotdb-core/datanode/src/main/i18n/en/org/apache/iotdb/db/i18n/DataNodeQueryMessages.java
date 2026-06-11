@@ -30,15 +30,6 @@ public final class DataNodeQueryMessages {
   public static final String THIS_NODE_ISN_T_INSTANCE_OF_SCHEMAMEASUREMENTNODE =
       "This node isn't instance of SchemaMeasurementNode.";
 
-  // --- Execution ---
-
-  public static final String ERROR_SETTING_FUTURE_STATE_FOR =
-      "Error setting future state for {}";
-  public static final String ERROR_NOTIFYING_STATE_CHANGE_LISTENER_FOR =
-      "Error notifying state change listener for {}";
-  public static final String SERVER_IS_SHUTTING_DOWN =
-      "Server is shutting down";
-
   // --- Execution / Aggregation ---
 
   public static final String INVALID_AGGREGATION_FUNCTION =
