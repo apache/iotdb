@@ -119,8 +119,6 @@ public class SessionPool implements ISessionPool {
 
   private String sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
 
-  private String sslProviderClass = SessionConfig.DEFAULT_SSL_PROVIDER_CLASS;
-
   private ZoneId zoneId;
   // this field only take effect in write request, nothing to do with any other type requests,
   // like query, load and so on.
@@ -472,7 +470,6 @@ public class SessionPool implements ISessionPool {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.sslProtocol = SessionConfig.DEFAULT_SSL_PROTOCOL;
-    this.sslProviderClass = SessionConfig.DEFAULT_SSL_PROVIDER_CLASS;
     initThreadPool();
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
@@ -544,7 +541,6 @@ public class SessionPool implements ISessionPool {
     this.trustStore = builder.trustStore;
     this.trustStorePwd = builder.trustStorePwd;
     this.sslProtocol = builder.sslProtocol;
-    this.sslProviderClass = builder.sslProviderClass;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
@@ -603,7 +599,6 @@ public class SessionPool implements ISessionPool {
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .sslProtocol(sslProtocol)
-              .sslProviderClass(sslProviderClass)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -630,7 +625,6 @@ public class SessionPool implements ISessionPool {
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .sslProtocol(sslProtocol)
-              .sslProviderClass(sslProviderClass)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
@@ -676,7 +670,6 @@ public class SessionPool implements ISessionPool {
             trustStore,
             trustStorePwd,
             sslProtocol,
-            sslProviderClass,
             enableThriftCompression,
             version.toString());
   }
@@ -3654,11 +3647,6 @@ public class SessionPool implements ISessionPool {
 
     public Builder sslProtocol(String sslProtocol) {
       this.sslProtocol = sslProtocol;
-      return this;
-    }
-
-    public Builder sslProviderClass(String sslProviderClass) {
-      this.sslProviderClass = sslProviderClass;
       return this;
     }
 

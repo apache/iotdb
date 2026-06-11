@@ -294,18 +294,6 @@ public class TableSessionPoolBuilder extends AbstractSessionPoolBuilder {
   }
 
   /**
-   * Sets the JSSE provider class for SSL connections.
-   *
-   * @param sslProviderClass the JSSE provider class.
-   * @return the current {@link TableSessionPoolBuilder} instance.
-   * @defaultValue empty
-   */
-  public TableSessionPoolBuilder sslProviderClass(String sslProviderClass) {
-    this.sslProviderClass = sslProviderClass;
-    return this;
-  }
-
-  /**
    * Builds and returns a configured {@link ITableSessionPool} instance.
    *
    * @return a fully configured {@link ITableSessionPool}.

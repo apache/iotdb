@@ -98,7 +98,6 @@ public abstract class AbstractDataTool {
   protected static String trustStore;
   protected static String trustStorePwd;
   protected static String sslProtocol;
-  protected static String sslProviderClass;
   protected static Boolean aligned;
   protected static String database;
   protected static String startTime;
@@ -144,9 +143,6 @@ public abstract class AbstractDataTool {
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
-    }
     return builder;
   }
 
@@ -154,9 +150,6 @@ public abstract class AbstractDataTool {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
-    }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
     }
     return builder;
   }
@@ -166,9 +159,6 @@ public abstract class AbstractDataTool {
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
-    }
     return builder;
   }
 
@@ -176,9 +166,6 @@ public abstract class AbstractDataTool {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
-    }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
     }
     return builder;
   }
@@ -220,7 +207,6 @@ public abstract class AbstractDataTool {
     useSsl = Boolean.parseBoolean(useSslStr);
     if (useSsl) {
       sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
-      sslProviderClass = commandLine.getOptionValue(Constants.SSL_PROVIDER_CLASS_ARGS);
       String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
       if (givenTS != null) {
         trustStore = givenTS;

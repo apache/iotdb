@@ -522,13 +522,13 @@ public class CommonDescriptor {
     config.setTrustStorePath(
         properties.getProperty("trust_store_path", config.getTrustStorePath()));
     config.setTrustStorePwd(properties.getProperty("trust_store_pwd", config.getTrustStorePwd()));
-    config.setSslProtocol(properties.getProperty("ssl_protocol", config.getSslProtocol()));
-    config.setSslProviderClass(
-        properties.getProperty("ssl_provider_class", config.getSslProviderClass()));
+    config.setSslProtocol(
+        RpcSslUtils.normalizeStandardTlsProtocol(
+            properties.getProperty("ssl_protocol", config.getSslProtocol())));
     configureRpcSsl();
   }
 
   public void configureRpcSsl() {
-    RpcSslUtils.configure(config.getSslProtocol(), config.getSslProviderClass());
+    RpcSslUtils.configure(config.getSslProtocol());
   }
 }

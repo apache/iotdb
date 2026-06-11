@@ -52,7 +52,6 @@ public class IoTDBConnectionParams {
   private String trustStore;
   private String trustStorePwd;
   private String sslProtocol = Config.DEFAULT_SSL_PROTOCOL;
-  private String sslProviderClass = Config.DEFAULT_SSL_PROVIDER_CLASS;
 
   private String sqlDialect = TREE;
 
@@ -192,14 +191,6 @@ public class IoTDBConnectionParams {
 
   public void setSslProtocol(String sslProtocol) {
     this.sslProtocol = sslProtocol;
-  }
-
-  public String getSslProviderClass() {
-    return sslProviderClass;
-  }
-
-  public void setSslProviderClass(String sslProviderClass) {
-    this.sslProviderClass = sslProviderClass;
   }
 
   public String getSqlDialect() {

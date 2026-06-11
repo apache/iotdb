@@ -25,19 +25,15 @@ import org.apache.thrift.transport.TTransportException;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.nio.file.AccessDeniedException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.security.Provider;
-import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 import java.util.Locale;
@@ -49,62 +45,27 @@ public final class RpcSslUtils {
   private static final String PKCS12_STORE_TYPE = "PKCS12";
   private static final String JKS_STORE_TYPE = "JKS";
 
-  private static volatile SslConfig config = new SslConfig(DEFAULT_PROTOCOL, "");
+  private static volatile String protocol = DEFAULT_PROTOCOL;
 
   private RpcSslUtils() {}
 
-  public static void configure(String protocol, String providerClass) {
-    config = newSslConfig(protocol, providerClass);
+  public static void configure(String sslProtocol) {
+    protocol = normalizeProtocol(sslProtocol);
   }
 
-  public static void ensureProvider(String protocol, String providerClass)
-      throws TTransportException {
-    ensureProvider(newSslConfig(protocol, providerClass));
-  }
-
-  public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters()
-      throws TTransportException {
-    SslConfig current = config;
-    ensureProvider(current);
-    return createTSSLTransportParameters(current);
+  public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters() {
+    return createTSSLTransportParameters(protocol);
   }
 
   public static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters(
-      String protocol, String providerClass) throws TTransportException {
-    SslConfig current = newSslConfig(protocol, providerClass);
-    ensureProvider(current);
-    return createTSSLTransportParameters(current);
-  }
-
-  private static TSSLTransportFactory.TSSLTransportParameters createTSSLTransportParameters(
-      SslConfig current) {
-    return new TSSLTransportFactory.TSSLTransportParameters(current.protocol, null);
+      String sslProtocol) {
+    return new TSSLTransportFactory.TSSLTransportParameters(normalizeProtocol(sslProtocol), null);
   }
 
   public static void setKeyStore(
       TSSLTransportFactory.TSSLTransportParameters params, String keyStorePath, String keyStorePwd)
       throws TTransportException {
-    setKeyStore(params, keyStorePath, keyStorePwd, config);
-  }
-
-  public static void setKeyStore(
-      TSSLTransportFactory.TSSLTransportParameters params,
-      String keyStorePath,
-      String keyStorePwd,
-      String protocol,
-      String providerClass)
-      throws TTransportException {
-    setKeyStore(params, keyStorePath, keyStorePwd, newSslConfig(protocol, providerClass));
-  }
-
-  private static void setKeyStore(
-      TSSLTransportFactory.TSSLTransportParameters params,
-      String keyStorePath,
-      String keyStorePwd,
-      SslConfig current)
-      throws TTransportException {
     try {
-      ensureProvider(current);
       params.setKeyStore(
           keyStorePath,
           keyStorePwd,
@@ -120,27 +81,7 @@ public final class RpcSslUtils {
       String trustStorePath,
       String trustStorePwd)
       throws TTransportException {
-    setTrustStore(params, trustStorePath, trustStorePwd, config);
-  }
-
-  public static void setTrustStore(
-      TSSLTransportFactory.TSSLTransportParameters params,
-      String trustStorePath,
-      String trustStorePwd,
-      String protocol,
-      String providerClass)
-      throws TTransportException {
-    setTrustStore(params, trustStorePath, trustStorePwd, newSslConfig(protocol, providerClass));
-  }
-
-  private static void setTrustStore(
-      TSSLTransportFactory.TSSLTransportParameters params,
-      String trustStorePath,
-      String trustStorePwd,
-      SslConfig current)
-      throws TTransportException {
     try {
-      ensureProvider(current);
       params.setTrustStore(
           trustStorePath,
           trustStorePwd,
@@ -156,9 +97,9 @@ public final class RpcSslUtils {
       String keyStorePassword,
       String trustStorePath,
       String trustStorePassword)
-      throws GeneralSecurityException, IOException, TTransportException {
+      throws GeneralSecurityException, IOException {
     return createSSLContext(
-        keyStorePath, keyStorePassword, trustStorePath, trustStorePassword, config);
+        keyStorePath, keyStorePassword, trustStorePath, trustStorePassword, protocol);
   }
 
   public static SSLContext createSSLContext(
@@ -166,26 +107,9 @@ public final class RpcSslUtils {
       String keyStorePassword,
       String trustStorePath,
       String trustStorePassword,
-      String protocol,
-      String providerClass)
-      throws GeneralSecurityException, IOException, TTransportException {
-    return createSSLContext(
-        keyStorePath,
-        keyStorePassword,
-        trustStorePath,
-        trustStorePassword,
-        newSslConfig(protocol, providerClass));
-  }
-
-  private static SSLContext createSSLContext(
-      String keyStorePath,
-      String keyStorePassword,
-      String trustStorePath,
-      String trustStorePassword,
-      SslConfig current)
-      throws GeneralSecurityException, IOException, TTransportException {
-    ensureProvider(current);
-    SSLContext context = newSSLContext(current);
+      String sslProtocol)
+      throws GeneralSecurityException, IOException {
+    SSLContext context = SSLContext.getInstance(normalizeProtocol(sslProtocol));
     KeyManager[] keyManagers =
         hasText(keyStorePath) ? loadKeyManagers(keyStorePath, keyStorePassword) : null;
     TrustManager[] trustManagers =
@@ -195,44 +119,36 @@ public final class RpcSslUtils {
   }
 
   public static KeyManager[] createKeyManagers(String keyStorePath, String keyStorePassword)
-      throws GeneralSecurityException, IOException, TTransportException {
-    ensureProvider(config);
+      throws GeneralSecurityException, IOException {
     return loadKeyManagers(keyStorePath, keyStorePassword);
   }
 
   public static TrustManager[] createTrustManagers(String trustStorePath, String trustStorePassword)
-      throws GeneralSecurityException, IOException, TTransportException {
-    ensureProvider(config);
+      throws GeneralSecurityException, IOException {
     return loadTrustManagers(trustStorePath, trustStorePassword);
   }
 
   public static String getProtocol() {
-    return config.protocol;
+    return protocol;
   }
 
-  public static boolean hasConfiguredProvider() {
-    return hasText(config.providerClass);
+  public static boolean isSpecificProtocol(String sslProtocol) {
+    String trimmed = trimToEmpty(sslProtocol);
+    return !trimmed.isEmpty() && !DEFAULT_PROTOCOL.equals(trimmed.toUpperCase(Locale.ROOT));
   }
 
-  public static String getSSLContextProviderName() throws TTransportException {
-    ensureProvider(config);
-    try {
-      return newSSLContext(config).getProvider().getName();
-    } catch (GeneralSecurityException e) {
-      throw new TTransportException("Failed to initialize SSL context", e);
+  public static String normalizeStandardTlsProtocol(String sslProtocol) {
+    String protocol = normalizeProtocol(sslProtocol);
+    if (!isStandardTlsProtocol(protocol)) {
+      throw new IllegalArgumentException(
+          "Unsupported SSL protocol " + protocol + ". Only standard TLS protocols are supported.");
     }
+    return protocol;
   }
 
-  public static String[] getEnabledCipherSuites() throws TTransportException {
-    ensureProvider(config);
-    try {
-      SSLContext context = newSSLContext(config);
-      context.init(null, null, null);
-      SSLEngine engine = context.createSSLEngine();
-      return engine.getEnabledCipherSuites();
-    } catch (GeneralSecurityException e) {
-      throw new TTransportException("Failed to initialize SSL context", e);
-    }
+  public static boolean isStandardTlsProtocol(String sslProtocol) {
+    String protocol = normalizeProtocol(sslProtocol).toUpperCase(Locale.ROOT);
+    return DEFAULT_PROTOCOL.equals(protocol) || protocol.matches("TLSV\\d+(\\.\\d+)*");
   }
 
   public static void validateKeyStore(String keyStorePath, String keyStorePassword)
@@ -260,10 +176,6 @@ public final class RpcSslUtils {
         TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
     tmf.init(trustStore);
     return tmf.getTrustManagers();
-  }
-
-  private static SSLContext newSSLContext(SslConfig current) throws GeneralSecurityException {
-    return SSLContext.getInstance(current.protocol);
   }
 
   private static String detectStoreType(String storePath, String storePassword)
@@ -308,7 +220,6 @@ public final class RpcSslUtils {
   private static void validateStore(String storePath, String storePassword)
       throws TTransportException {
     try {
-      ensureProvider(config);
       KeyStore store = loadStore(storePath, storePassword);
       Enumeration<String> aliases = store.aliases();
       while (aliases.hasMoreElements()) {
@@ -322,36 +233,13 @@ public final class RpcSslUtils {
     }
   }
 
-  private static synchronized void ensureProvider(SslConfig current) throws TTransportException {
-    if (!hasText(current.providerClass)) {
-      return;
-    }
-    try {
-      String[] providerClassNames = splitProviderClasses(current.providerClass);
-      for (int i = providerClassNames.length - 1; i >= 0; i--) {
-        String providerClassName = providerClassNames[i];
-        Class<?> providerClass = Class.forName(providerClassName);
-        Constructor<?> constructor = providerClass.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        Provider provider = (Provider) constructor.newInstance();
-        Provider firstProvider = Security.getProviders()[0];
-        if (!provider.getName().equals(firstProvider.getName())) {
-          Security.removeProvider(provider.getName());
-          Security.insertProviderAt(provider, 1);
-        }
-      }
-    } catch (Exception e) {
-      throw new TTransportException("Failed to initialize SSL provider", e);
-    }
-  }
-
   private static char[] toPassword(String password) {
     return password == null ? null : password.toCharArray();
   }
 
-  private static String trimToDefault(String value, String defaultValue) {
+  private static String normalizeProtocol(String value) {
     String trimmed = trimToEmpty(value);
-    return trimmed.isEmpty() ? defaultValue : trimmed;
+    return trimmed.isEmpty() ? DEFAULT_PROTOCOL : trimmed;
   }
 
   private static String trimToEmpty(String value) {
@@ -362,17 +250,6 @@ public final class RpcSslUtils {
     return value != null && !value.trim().isEmpty();
   }
 
-  private static String[] splitProviderClasses(String providerClasses) {
-    return splitCommaSeparated(providerClasses);
-  }
-
-  private static String[] splitCommaSeparated(String value) {
-    return Stream.of(value.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .toArray(String[]::new);
-  }
-
   private static String[] storeTypeCandidates() {
     return Stream.of(KeyStore.getDefaultType(), PKCS12_STORE_TYPE, JKS_STORE_TYPE)
         .map(String::trim)
@@ -380,19 +257,5 @@ public final class RpcSslUtils {
         .filter(s -> !s.isEmpty())
         .distinct()
         .toArray(String[]::new);
-  }
-
-  private static SslConfig newSslConfig(String protocol, String providerClass) {
-    return new SslConfig(trimToDefault(protocol, DEFAULT_PROTOCOL), trimToEmpty(providerClass));
-  }
-
-  private static final class SslConfig {
-    private final String protocol;
-    private final String providerClass;
-
-    private SslConfig(String protocol, String providerClass) {
-      this.protocol = protocol;
-      this.providerClass = providerClass;
-    }
   }
 }

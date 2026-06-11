@@ -139,9 +139,6 @@ public class Utils {
     if (info.containsKey(Config.SSL_PROTOCOL)) {
       params.setSslProtocol(info.getProperty(Config.SSL_PROTOCOL));
     }
-    if (info.containsKey(Config.SSL_PROVIDER_CLASS)) {
-      params.setSslProviderClass(info.getProperty(Config.SSL_PROVIDER_CLASS));
-    }
     if (info.containsKey(Config.SQL_DIALECT)) {
       params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
     }
@@ -182,7 +179,6 @@ public class Utils {
         case Config.TRUST_STORE:
         case Config.TRUST_STORE_PWD:
         case Config.SSL_PROTOCOL:
-        case Config.SSL_PROVIDER_CLASS:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
         case Config.SQL_DIALECT:

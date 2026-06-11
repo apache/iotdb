@@ -474,18 +474,12 @@ trust_store_path=
 # Datatype: String
 trust_store_pwd=
 
-# SSL protocol used by SSL services.
+# SSL protocol used by server-side SSL services.
+# Only standard TLS protocol names are supported, such as TLS, TLSv1.2, or TLSv1.3.
 # effectiveMode: restart
 # Datatype: String
 # Privilege: SECURITY
 ssl_protocol=TLS
-
-# Optional JSSE provider class used by SSL. If set, the provider is registered with highest priority.
-# Multiple provider classes can be separated by commas.
-# effectiveMode: restart
-# Datatype: String
-# Privilege: SECURITY
-ssl_provider_class=
 
 ####################
 ### Connection Configuration

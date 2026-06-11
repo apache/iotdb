@@ -152,12 +152,7 @@ public class SessionConnection {
     this.database = database;
     try {
       init(
-          endPoint,
-          session.useSSL,
-          session.trustStore,
-          session.trustStorePwd,
-          session.sslProtocol,
-          session.sslProviderClass);
+          endPoint, session.useSSL, session.trustStore, session.trustStorePwd, session.sslProtocol);
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
@@ -190,8 +185,7 @@ public class SessionConnection {
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
-      String sslProtocol,
-      String sslProviderClass)
+      String sslProtocol)
       throws IoTDBConnectionException, StatementExecutionException {
     DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
@@ -207,8 +201,7 @@ public class SessionConnection {
                 session.connectionTimeoutInMs,
                 trustStore,
                 trustStorePwd,
-                sslProtocol,
-                sslProviderClass);
+                sslProtocol);
       } else {
         transport =
             DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -281,8 +274,7 @@ public class SessionConnection {
             session.useSSL,
             session.trustStore,
             session.trustStorePwd,
-            session.sslProtocol,
-            session.sslProviderClass);
+            session.sslProtocol);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error(SessionMessages.CLUSTER_NO_NODES);
@@ -1104,8 +1096,7 @@ public class SessionConnection {
                 session.useSSL,
                 session.trustStore,
                 session.trustStorePwd,
-                session.sslProtocol,
-                session.sslProviderClass);
+                session.sslProtocol);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.warn(SessionMessages.NODE_DOWN_TRY_NEXT, endPoint);

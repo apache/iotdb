@@ -222,7 +222,8 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
                 COMMON_CONFIG.getTrustStorePath(),
                 COMMON_CONFIG.getTrustStorePwd(),
                 COMMON_CONFIG.getKeyStorePath(),
-                COMMON_CONFIG.getKeyStorePwd())
+                COMMON_CONFIG.getKeyStorePwd(),
+                COMMON_CONFIG.getSslProtocol())
             : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // As there is a try-catch already, we do not need to use TSocket.wrap
                 endpoint.getIp(), endpoint.getPort(), timeoutMs);

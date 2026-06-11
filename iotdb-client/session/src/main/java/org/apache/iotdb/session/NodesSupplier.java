@@ -62,7 +62,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final String trustStore;
   private final String trustStorePwd;
   private final String sslProtocol;
-  private final String sslProviderClass;
   private final boolean enableRPCCompression;
   private final String userName;
 
@@ -98,7 +97,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String trustStore,
       String trustStorePwd,
       String sslProtocol,
-      String sslProviderClass,
       boolean enableRPCCompression,
       String version) {
 
@@ -115,7 +113,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
             trustStore,
             trustStorePwd,
             sslProtocol,
-            sslProviderClass,
             enableRPCCompression,
             version);
 
@@ -139,7 +136,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String trustStore,
       String trustStorePwd,
       String sslProtocol,
-      String sslProviderClass,
       boolean enableRPCCompression,
       String version) {
     this.availableNodes.addAll(new HashSet<>(endPointList));
@@ -149,7 +145,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     this.trustStore = trustStore;
     this.trustStorePwd = trustStorePwd;
     this.sslProtocol = sslProtocol;
-    this.sslProviderClass = sslProviderClass;
     this.enableRPCCompression = enableRPCCompression;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
@@ -199,7 +194,6 @@ public class NodesSupplier implements INodeSupplier, Runnable {
           trustStore,
           trustStorePwd,
           sslProtocol,
-          sslProviderClass,
           userName,
           password,
           enableRPCCompression,

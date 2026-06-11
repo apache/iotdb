@@ -470,9 +470,6 @@ public class CommonConfig {
   /** SSL protocol. */
   private String sslProtocol = "TLS";
 
-  /** SSL provider class. */
-  private String sslProviderClass = "";
-
   private String userEncryptTokenHint = "not set yet";
 
   private boolean enforceStrongPassword = false;
@@ -2825,14 +2822,6 @@ public class CommonConfig {
 
   public void setSslProtocol(String sslProtocol) {
     this.sslProtocol = sslProtocol;
-  }
-
-  public String getSslProviderClass() {
-    return sslProviderClass;
-  }
-
-  public void setSslProviderClass(String sslProviderClass) {
-    this.sslProviderClass = sslProviderClass;
   }
 
   public boolean isEnforceStrongPassword() {

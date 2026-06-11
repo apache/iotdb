@@ -58,7 +58,5 @@ public class SessionConfig {
 
   public static final String DEFAULT_SSL_PROTOCOL = "TLS";
 
-  public static final String DEFAULT_SSL_PROVIDER_CLASS = "";
-
   private SessionConfig() {}
 }

@@ -72,10 +72,6 @@ public class Constants {
   public static final String SSL_PROTOCOL_NAME = "ssl_protocol";
   public static final String SSL_PROTOCOL_DESC = "SSL protocol. (optional)";
 
-  public static final String SSL_PROVIDER_CLASS_ARGS = "ssl_provider_class";
-  public static final String SSL_PROVIDER_CLASS_NAME = "ssl_provider_class";
-  public static final String SSL_PROVIDER_CLASS_DESC = "JSSE provider class for SSL. (optional)";
-
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
   public static final String FILE_TYPE_ARGS_NAME = "format";

@@ -165,12 +165,9 @@ public class UtilsTest {
     Properties properties = new Properties();
     IoTDBConnectionParams params =
         Utils.parseUrl(
-            "jdbc:iotdb://127.0.0.1:6667?use_ssl=true&ssl_protocol=TLSv1.3"
-                + "&ssl_provider_class=com.example.ssl.Provider",
-            properties);
+            "jdbc:iotdb://127.0.0.1:6667?use_ssl=true&ssl_protocol=CUSTOMv1", properties);
 
     assertTrue(params.isUseSSL());
-    assertEquals("TLSv1.3", params.getSslProtocol());
-    assertEquals("com.example.ssl.Provider", params.getSslProviderClass());
+    assertEquals("CUSTOMv1", params.getSslProtocol());
   }
 }

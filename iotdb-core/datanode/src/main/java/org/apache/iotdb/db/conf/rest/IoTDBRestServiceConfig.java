@@ -48,9 +48,6 @@ public class IoTDBRestServiceConfig {
   /** SSL protocol. */
   private String sslProtocol = "";
 
-  /** SSL provider class. */
-  private String sslProviderClass = "";
-
   /** ssl timeout. */
   private int idleTimeoutInSeconds = 50000;
 
@@ -90,14 +87,6 @@ public class IoTDBRestServiceConfig {
 
   public void setSslProtocol(String sslProtocol) {
     this.sslProtocol = sslProtocol;
-  }
-
-  public String getSslProviderClass() {
-    return sslProviderClass;
-  }
-
-  public void setSslProviderClass(String sslProviderClass) {
-    this.sslProviderClass = sslProviderClass;
   }
 
   public int getIdleTimeoutInSeconds() {

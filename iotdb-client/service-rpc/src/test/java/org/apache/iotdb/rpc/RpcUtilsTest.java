@@ -74,4 +74,19 @@ public class RpcUtilsTest {
     Assert.assertFalse(RpcUtils.isSetSqlDialect("setsql_dialect =table"));
     Assert.assertFalse(RpcUtils.isSetSqlDialect("set           sql_dia"));
   }
+
+  @Test
+  public void testStandardTlsProtocol() {
+    Assert.assertEquals("TLS", RpcSslUtils.normalizeStandardTlsProtocol(null));
+    Assert.assertEquals("TLSv1.3", RpcSslUtils.normalizeStandardTlsProtocol(" TLSv1.3 "));
+    Assert.assertTrue(RpcSslUtils.isStandardTlsProtocol("TLSv1.2"));
+    Assert.assertFalse(RpcSslUtils.isStandardTlsProtocol("CUSTOMv1"));
+
+    try {
+      RpcSslUtils.normalizeStandardTlsProtocol("CUSTOMv1");
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("Only standard TLS protocols are supported"));
+    }
+  }
 }

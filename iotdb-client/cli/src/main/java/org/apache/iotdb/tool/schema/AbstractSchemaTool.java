@@ -56,7 +56,6 @@ public abstract class AbstractSchemaTool {
   protected static String trustStore;
   protected static String trustStorePwd;
   protected static String sslProtocol;
-  protected static String sslProviderClass;
   protected static Session session;
   protected static String queryPath;
   protected static int threadNum = 8;
@@ -82,9 +81,6 @@ public abstract class AbstractSchemaTool {
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
-    }
     return builder;
   }
 
@@ -93,9 +89,6 @@ public abstract class AbstractSchemaTool {
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
     }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
-    }
     return builder;
   }
 
@@ -103,9 +96,6 @@ public abstract class AbstractSchemaTool {
     builder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
     if (sslProtocol != null) {
       builder.sslProtocol(sslProtocol);
-    }
-    if (sslProviderClass != null) {
-      builder.sslProviderClass(sslProviderClass);
     }
     return builder;
   }
@@ -145,7 +135,6 @@ public abstract class AbstractSchemaTool {
     useSsl = Boolean.parseBoolean(useSslStr);
     if (useSsl) {
       sslProtocol = commandLine.getOptionValue(Constants.SSL_PROTOCOL_ARGS);
-      sslProviderClass = commandLine.getOptionValue(Constants.SSL_PROVIDER_CLASS_ARGS);
       String givenTS = commandLine.getOptionValue(Constants.TRUST_STORE_ARGS);
       if (givenTS != null) {
         trustStore = givenTS;

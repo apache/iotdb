@@ -252,18 +252,6 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
   }
 
   /**
-   * Sets the JSSE provider class for SSL connections.
-   *
-   * @param sslProviderClass the JSSE provider class.
-   * @return the current {@link TableSessionBuilder} instance.
-   * @defaultValue empty
-   */
-  public TableSessionBuilder sslProviderClass(String sslProviderClass) {
-    this.sslProviderClass = sslProviderClass;
-    return this;
-  }
-
-  /**
    * Enables or disables rpc compression for the connection.
    *
    * @param enableCompression whether to enable compression.
