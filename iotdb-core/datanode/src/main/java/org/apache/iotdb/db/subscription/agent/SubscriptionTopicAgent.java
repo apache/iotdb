@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
@@ -267,5 +268,30 @@ public class SubscriptionTopicAgent {
       }
     }
     return RpcUtils.SUCCESS_STATUS;
+  }
+
+  /**
+   * Apply owner lease renewals pushed by ConfigNode via the dedicated subscription owner heartbeat.
+   * The pushed remaining duration is converted to a DataNode-local expire time on the local clock,
+   * so no absolute timestamp is compared across nodes. Owner identity/epoch changes are delivered
+   * via the topic-meta push path; here we only refresh the lease for the matching current owner.
+   */
+  public void handleTopicOwnerLeases(final List<TTopicOwnerLeaseEntry> ownerLeases) {
+    if (Objects.isNull(ownerLeases) || ownerLeases.isEmpty()) {
+      return;
+    }
+    acquireWriteLock();
+    try {
+      for (final TTopicOwnerLeaseEntry lease : ownerLeases) {
+        final TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(lease.getTopicName());
+        if (Objects.isNull(topicMeta)) {
+          continue;
+        }
+        topicMeta.applyOwnerLeaseFromHeartbeat(
+            lease.getOwnerId(), lease.getOwnerEpoch(), lease.getLeaseRemainingMs());
+      }
+    } finally {
+      releaseWriteLock();
+    }
   }
 }

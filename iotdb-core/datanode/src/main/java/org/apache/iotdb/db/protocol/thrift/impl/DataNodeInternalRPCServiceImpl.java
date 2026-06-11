@@ -308,6 +308,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicOwnerLeaseReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -1547,6 +1548,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus pushTopicOwnerLease(TPushTopicOwnerLeaseReq req) {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    try {
+      SubscriptionAgent.topic().handleTopicOwnerLeases(req.getOwnerLeases());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_TOPIC_OWNER_LEASE, e);
+      return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode());
+    }
+  }
+
+  @Override
   public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
     if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
       return new TPushConsumerGroupMetaResp()
@@ -2372,20 +2387,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   req.getLogicalClock(),
                   req.getHeartbeatTimestamp(),
                   req.getCurrentRegionOperations()));
-    }
-
-    if (req.isSetTopicMetas() && SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
-      final List<TopicMeta> topicMetas = new ArrayList<>();
-      for (final ByteBuffer topicMetaBuffer : req.getTopicMetas()) {
-        topicMetas.add(TopicMeta.deserialize(topicMetaBuffer));
-      }
-      final TPushTopicMetaRespExceptionMessage exceptionMessage =
-          SubscriptionAgent.topic().handleTopicMetaChanges(topicMetas);
-      if (exceptionMessage != null) {
-        LOGGER.warn(
-            "Failed to handle subscription topic meta changes from ConfigNode heartbeat: {}.",
-            exceptionMessage);
-      }
     }
 
     return resp;

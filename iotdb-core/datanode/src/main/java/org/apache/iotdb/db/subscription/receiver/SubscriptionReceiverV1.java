@@ -939,6 +939,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
 
+    // Owner fencing: seek mutates the consumption progress, so a stale owner must not be allowed to
+    // move the position after an ownership transfer (otherwise it could corrupt the new owner's
+    // recovery point). This must be guarded just like commit.
+    final TSStatus ownerStatus =
+        SubscriptionAgent.topic().checkTopicOwner(consumerConfig, topicName);
+    if (ownerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(ownerStatus);
+    }
+
     if (seekType == SubscriptionSeekReq.SEEK_TO_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()
           .seekToTopicProgress(consumerConfig, topicName, req.getTopicProgress());

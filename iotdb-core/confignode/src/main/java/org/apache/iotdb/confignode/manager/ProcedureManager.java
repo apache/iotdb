@@ -1761,32 +1761,30 @@ public class ProcedureManager {
               .getSubscriptionManager()
               .getSubscriptionCoordinator()
               .blockOwnerLeaseRenewalIfOwnerTransfer(req);
-      while (true) {
-        final TopicMeta updatedTopicMeta =
-            configManager
-                .getSubscriptionManager()
-                .getSubscriptionCoordinator()
-                .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
-        if (updatedTopicMeta == null) {
-          return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-              .setMessage(
-                  String.format(
-                      ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
-                      req.getTopicName()));
-        }
-
-        AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
-        executor.submitProcedure(procedure);
-        TSStatus status = waitingProcedureFinished(procedure);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
-        }
-        if (isOwnerLeaseRenewalBlocked && isOwnerLeaseNotExpiredConflict(status)) {
-          continue;
-        }
+      // Owner transfers wait for the previous owner's lease to drain (lease duration + one
+      // heartbeat interval, measured on the ConfigNode clock) inside the call below before the
+      // updated meta is built; epoch fencing on DataNodes guarantees correctness in the meantime.
+      final TopicMeta updatedTopicMeta =
+          configManager
+              .getSubscriptionManager()
+              .getSubscriptionCoordinator()
+              .buildAlteredTopicMetaAfterOwnerLeaseExpired(req);
+      if (updatedTopicMeta == null) {
         return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
+            .setMessage(
+                String.format(
+                    ManagerMessages.FAILED_TO_ALTER_TOPIC_THE_TOPIC_IS_NOT_EXISTED,
+                    req.getTopicName()));
       }
+
+      AlterTopicProcedure procedure = new AlterTopicProcedure(updatedTopicMeta);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode())
           .setMessage(e.getMessage());
@@ -2031,12 +2029,6 @@ public class ProcedureManager {
           + " Please manually check later whether the procedure is executed successfully.";
     }
     return message;
-  }
-
-  private static boolean isOwnerLeaseNotExpiredConflict(final TSStatus status) {
-    return Objects.nonNull(status)
-        && Objects.nonNull(status.getMessage())
-        && status.getMessage().contains("owner lease has not expired");
   }
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {

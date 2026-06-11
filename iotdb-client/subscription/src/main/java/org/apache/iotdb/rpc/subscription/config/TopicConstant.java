@@ -74,8 +74,11 @@ public class TopicConstant {
 
   public static final String OWNER_ID_KEY = "owner-id";
   public static final String OWNER_EPOCH_KEY = "owner-epoch";
+  // Highest owner epoch ever granted for this topic. Retained across clearOwner so that owner
+  // epoch is globally monotonic and never reused, even after a clear -> re-enable cycle. Stored as
+  // a topic attribute so it survives serialization automatically (self-describing).
+  public static final String MAX_OWNER_EPOCH_KEY = "max-owner-epoch";
   public static final String OWNER_LEASE_DURATION_MS_KEY = "owner-lease-duration-ms";
-  public static final String OWNER_LEASE_EXPIRE_TIME_MS_KEY = "owner-lease-expire-time-ms";
 
   private TopicConstant() {
     throw new IllegalStateException(SubscriptionMessages.UTILITY_CLASS);

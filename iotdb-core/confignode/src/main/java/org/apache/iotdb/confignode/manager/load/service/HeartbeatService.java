@@ -49,7 +49,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -173,15 +172,6 @@ public class HeartbeatService {
     if (heartbeatCounter.get() % 100 == 0) {
       heartbeatReq.setCurrentRegionOperations(
           configManager.getProcedureManager().getRegionOperationConsensusIds());
-    }
-
-    final List<ByteBuffer> renewedTopicMetas =
-        configManager
-            .getSubscriptionManager()
-            .getSubscriptionCoordinator()
-            .renewTopicOwnerLeasesAndSerialize();
-    if (!renewedTopicMetas.isEmpty()) {
-      heartbeatReq.setTopicMetas(renewedTopicMetas);
     }
 
     /* Update heartbeat counter */

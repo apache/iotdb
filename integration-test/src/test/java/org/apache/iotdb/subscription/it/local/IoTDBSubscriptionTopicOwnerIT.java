@@ -45,15 +45,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
-
-  private static final Pattern OWNER_LEASE_EXPIRE_TIME_MS_PATTERN =
-      Pattern.compile("owner-lease-expire-time-ms=([0-9]+)");
 
   @Override
   @Before
@@ -132,12 +127,10 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
   }
 
   @Test
-  public void testConfigNodeHeartbeatRenewsOwnerLeaseAndAlterOwnerWaitsForLeaseExpiration()
-      throws Exception {
+  public void testAlterTopicOwnerWaitsForLeaseDrainBeforeInstallingNewOwner() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    final String topicName = "topic_owner_lease_renewal";
-    final long heartbeatIntervalMs = 1000L;
+    final String topicName = "topic_owner_lease_drain";
     final long ownerLeaseDurationMs = 2500L;
 
     try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
@@ -151,49 +144,24 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
           TopicConstant.OWNER_LEASE_DURATION_MS_KEY, String.valueOf(ownerLeaseDurationMs));
       session.createTopic(topicName, properties);
 
-      final Long initialOwnerLeaseExpireTimeMs = getOwnerLeaseExpireTimeMs(session, topicName);
-      Assert.assertNotNull(initialOwnerLeaseExpireTimeMs);
-      Assert.assertTrue(initialOwnerLeaseExpireTimeMs > System.currentTimeMillis());
-
-      try (final SubscriptionTreePullConsumer currentOwnerConsumer =
-          new SubscriptionTreePullConsumer.Builder()
-              .host(host)
-              .port(port)
-              .consumerId("current_sn")
-              .consumerGroupId("topic_owner_lease_group")
-              .ownerId("sn1")
-              .ownerEpoch(5L)
-              .heartbeatIntervalMs(heartbeatIntervalMs)
-              .autoCommit(false)
-              .buildPullConsumer()) {
-        currentOwnerConsumer.open();
-        currentOwnerConsumer.subscribe(topicName);
-
-        final AtomicReference<Long> renewedOwnerLeaseExpireTimeMs =
-            new AtomicReference<>(initialOwnerLeaseExpireTimeMs);
-        IoTDBSubscriptionITConstant.AWAIT.untilAsserted(
-            () -> {
-              final Long ownerLeaseExpireTimeMs = getOwnerLeaseExpireTimeMs(session, topicName);
-              Assert.assertNotNull(ownerLeaseExpireTimeMs);
-              Assert.assertTrue(ownerLeaseExpireTimeMs > initialOwnerLeaseExpireTimeMs);
-              renewedOwnerLeaseExpireTimeMs.set(ownerLeaseExpireTimeMs);
-            });
-
+      try {
+        // Transferring to a different owner must wait for the old owner's lease to drain on every
+        // DataNode before the new owner is installed. ConfigNode stops renewing and waits at least
+        // the lease duration (measured on its own clock), so the call blocks for >= the lease
+        // duration. This is the admission gate that prevents cross-DataNode double-active
+        // consuming.
         final long alterStartTimeMs = System.currentTimeMillis();
         session.alterTopicOwner(topicName, "sn2", 6L);
         final long alterElapsedTimeMs = System.currentTimeMillis() - alterStartTimeMs;
-
-        final long ownerLeaseRemainingTimeMs =
-            renewedOwnerLeaseExpireTimeMs.get() - alterStartTimeMs;
-        if (ownerLeaseRemainingTimeMs > 500L) {
-          Assert.assertTrue(alterElapsedTimeMs >= ownerLeaseRemainingTimeMs - 250L);
-        }
+        Assert.assertTrue(
+            "alterTopicOwner should block at least the lease drain duration, but only took "
+                + alterElapsedTimeMs
+                + "ms",
+            alterElapsedTimeMs >= ownerLeaseDurationMs);
 
         final String topicAttributes = getTopicAttributes(session, topicName);
         Assert.assertTrue(topicAttributes.contains("owner-id=sn2"));
         Assert.assertTrue(topicAttributes.contains("owner-epoch=6"));
-        Assert.assertFalse(topicAttributes.contains("owner-lease-duration-ms="));
-        Assert.assertFalse(topicAttributes.contains("owner-lease-expire-time-ms="));
       } finally {
         session.dropTopicIfExists(topicName);
       }
@@ -232,12 +200,5 @@ public class IoTDBSubscriptionTopicOwnerIT extends AbstractSubscriptionLocalIT {
     }
     Assert.fail("Topic " + topicName + " should exist.");
     return "";
-  }
-
-  private static Long getOwnerLeaseExpireTimeMs(
-      final SubscriptionTreeSession session, final String topicName) throws Exception {
-    final Matcher matcher =
-        OWNER_LEASE_EXPIRE_TIME_MS_PATTERN.matcher(getTopicAttributes(session, topicName));
-    return matcher.find() ? Long.parseLong(matcher.group(1)) : null;
   }
 }

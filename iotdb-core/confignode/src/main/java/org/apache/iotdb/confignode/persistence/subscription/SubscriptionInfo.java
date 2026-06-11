@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.mpp.rpc.thrift.TTopicOwnerLeaseEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -564,30 +565,34 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  public List<TopicMeta> renewTopicOwnerLeases(final Set<String> blockedTopicNames) {
-    acquireWriteLock();
+  /**
+   * Collect owner-lease entries to push via the dedicated subscription owner heartbeat. Each entry
+   * carries a relative remaining duration (the configured lease duration); the DataNode derives the
+   * local expire time on its own clock. Topics undergoing an owner transfer ({@code
+   * blockedTopicNames}) are skipped so their lease drains. This is read-only on ConfigNode: no
+   * absolute expire timestamp is ever stored or compared across nodes.
+   */
+  public List<TTopicOwnerLeaseEntry> collectTopicOwnerLeaseEntries(
+      final Set<String> blockedTopicNames) {
+    acquireReadLock();
     try {
-      final List<TopicMeta> renewedTopicMetas = new ArrayList<>();
+      final List<TTopicOwnerLeaseEntry> entries = new ArrayList<>();
       for (final TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
         if (!topicMeta.isOwnerFencingEnabled()
             || Objects.isNull(topicMeta.getOwnerLeaseDurationMs())
             || blockedTopicNames.contains(topicMeta.getTopicName())) {
           continue;
         }
-
-        try {
-          topicMeta.renewOwnerLeaseWithConfiguredDuration();
-          renewedTopicMetas.add(topicMeta.deepCopy());
-        } catch (final IllegalArgumentException e) {
-          LOGGER.warn(
-              "Failed to renew subscription topic {} owner lease during ConfigNode heartbeat.",
-              topicMeta.getTopicName(),
-              e);
-        }
+        entries.add(
+            new TTopicOwnerLeaseEntry(
+                topicMeta.getTopicName(),
+                topicMeta.getOwnerId(),
+                topicMeta.getOwnerEpoch(),
+                topicMeta.getOwnerLeaseDurationMs()));
       }
-      return renewedTopicMetas;
+      return entries;
     } finally {
-      releaseWriteLock();
+      releaseReadLock();
     }
   }
 

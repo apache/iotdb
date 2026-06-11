@@ -295,7 +295,7 @@ abstract class AbstractSubscriptionSession {
   private static boolean containsOwnerAttribute(final Properties properties) {
     return properties.containsKey(TopicConstant.OWNER_ID_KEY)
         || properties.containsKey(TopicConstant.OWNER_EPOCH_KEY)
-        || properties.containsKey(TopicConstant.OWNER_LEASE_DURATION_MS_KEY)
-        || properties.containsKey(TopicConstant.OWNER_LEASE_EXPIRE_TIME_MS_KEY);
+        || properties.containsKey(TopicConstant.MAX_OWNER_EPOCH_KEY)
+        || properties.containsKey(TopicConstant.OWNER_LEASE_DURATION_MS_KEY);
   }
 }
