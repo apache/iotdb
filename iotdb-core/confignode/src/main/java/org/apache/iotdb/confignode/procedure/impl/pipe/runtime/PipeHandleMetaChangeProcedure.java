@@ -131,7 +131,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
       return;
     }
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    pushPipeMetaToDataNodesBestEffort(env);
   }
 
   @Override

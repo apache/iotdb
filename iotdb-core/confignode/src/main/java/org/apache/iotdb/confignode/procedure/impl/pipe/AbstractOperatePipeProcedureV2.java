@@ -538,6 +538,18 @@ public abstract class AbstractOperatePipeProcedureV2
     }
   }
 
+  protected void pushPipeMetaToDataNodesBestEffort(ConfigNodeProcedureEnv env) {
+    try {
+      final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+      for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+        pipeMetaBinaryList.add(copyAndFilterOutNonWorkingDataRegionPipeTasks(pipeMeta).serialize());
+      }
+      env.pushAllPipeMetaToDataNodesBestEffort(pipeMetaBinaryList);
+    } catch (Exception e) {
+      LOGGER.info(ProcedureMessages.FAILED_TO_PUSH_PIPE_META_LIST_TO_DATA_NODES_WILL, e);
+    }
+  }
+
   /**
    * Pushing one pipeMeta to all the dataNodes, forcing an update to the pipe's runtime state.
    *
