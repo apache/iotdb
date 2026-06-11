@@ -543,6 +543,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSingleMeasurementCheckCacheSize(int singleMeasurementCheckCacheSize) {
+    dnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    cnConfig.setSingleMeasurementCheckCacheSize(singleMeasurementCheckCacheSize);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
     dnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
     cnConfig.setDnConnectionTimeoutMs(connectionTimeoutMs);
