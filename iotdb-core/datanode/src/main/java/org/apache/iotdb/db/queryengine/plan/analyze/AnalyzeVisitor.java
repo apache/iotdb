@@ -2239,10 +2239,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<TTimePartitionSlot> result = new ArrayList<>();
     TimeRange currentTimeRange = timeRangeList.get(index);
     reserveMemoryForTimePartitionSlot(
-        currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+        currentTimeRange.getMax(), currentTimeRange.getMin(), needRightAll, context);
+    boolean compressedRightUnclosedRange = false;
     while (index < size) {
       long curLeft = timeRangeList.get(index).getMin();
       long curRight = timeRangeList.get(index).getMax();
+      if (isRangeCoveringRightUnclosedPartitions(curLeft, curRight, needRightAll)) {
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(curLeft);
+        compressedRightUnclosedRange = true;
+        break;
+      }
       if (curLeft >= endTime) {
         result.add(timePartitionSlot);
         // next init
@@ -2258,13 +2264,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (index < size) {
           currentTimeRange = timeRangeList.get(index);
           reserveMemoryForTimePartitionSlot(
-              currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+              currentTimeRange.getMax(), currentTimeRange.getMin(), needRightAll, context);
         }
       }
     }
     result.add(timePartitionSlot);
 
-    if (needRightAll) {
+    if (needRightAll && !compressedRightUnclosedRange) {
       TTimePartitionSlot lastTimePartitionSlot =
           TimePartitionUtils.getTimePartitionSlot(
               timeRangeList.get(timeRangeList.size() - 1).getMin());
@@ -2276,12 +2282,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private static void reserveMemoryForTimePartitionSlot(
-      long maxTime, long minTime, MPPQueryContext context) {
-    if (maxTime == Long.MAX_VALUE || minTime == Long.MIN_VALUE) {
+      long maxTime, long minTime, boolean needRightAll, MPPQueryContext context) {
+    if (maxTime == Long.MAX_VALUE
+        || minTime == Long.MIN_VALUE
+        || isRangeCoveringRightUnclosedPartitions(minTime, maxTime, needRightAll)) {
       return;
     }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
     context.reserveMemoryForFrontEnd(estimateTimePartitionSlotMemory(size));
+  }
+
+  private static boolean isRangeCoveringRightUnclosedPartitions(
+      long minTime, long maxTime, boolean needRightAll) {
+    return needRightAll
+        && maxTime == Long.MAX_VALUE - 1
+        && TimePartitionUtils.getTimePartitionSlot(minTime).getStartTime()
+            != TimePartitionUtils.getTimePartitionSlot(Long.MAX_VALUE).getStartTime();
   }
 
   static long estimateTimePartitionSlotMemory(long timePartitionSlotCount) {

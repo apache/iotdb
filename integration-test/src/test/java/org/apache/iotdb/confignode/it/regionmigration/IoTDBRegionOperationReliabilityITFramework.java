@@ -176,6 +176,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
         killNode);
   }
 
+  public void failAndRollbackTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        actionOfKillNode,
+        false,
+        killNode,
+        true);
+  }
+
   public void killClusterTest(
       KeySetView<String, Boolean> configNodeKeywords, boolean expectMigrateSuccess)
       throws Exception {
@@ -203,6 +225,31 @@ public class IoTDBRegionOperationReliabilityITFramework {
       Consumer<KillPointContext> actionWhenDetectKeyWords,
       final boolean expectMigrateSuccess,
       KillNode killNode)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        configNodeKeywords,
+        dataNodeKeywords,
+        actionWhenDetectKeyWords,
+        expectMigrateSuccess,
+        killNode,
+        false);
+  }
+
+  private void generalTestWithAllOptions(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> configNodeKeywords,
+      KeySetView<String, Boolean> dataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
+      final boolean expectMigrateSuccess,
+      KillNode killNode,
+      boolean expectRollbackWhenFail)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -266,25 +313,41 @@ public class IoTDBRegionOperationReliabilityITFramework {
       statement.execute(buildRegionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
-      Predicate<TShowRegionResp> migrateRegionPredicate =
-          tShowRegionResp -> {
-            Map<Integer, Set<Integer>> newRegionMap =
-                getRegionMap(tShowRegionResp.getRegionInfoList());
-            Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-            return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
-          };
-      try {
-        awaitUntilSuccess(
-            client,
-            selectedRegion,
-            migrateRegionPredicate,
-            Optional.of(destDataNode),
-            Optional.of(originalDataNode));
-        success = true;
-      } catch (ConditionTimeoutException e) {
-        if (expectMigrateSuccess) {
-          LOGGER.error("Region migrate failed", e);
+      if (expectRollbackWhenFail) {
+        awaitKillPointsTriggered(configNodeKeywords);
+        awaitKillPointsTriggered(dataNodeKeywords);
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              rollbackPredicate(selectedRegion, regionMap.get(selectedRegion), destDataNode),
+              Optional.empty(),
+              Optional.of(destDataNode));
+        } catch (ConditionTimeoutException e) {
+          LOGGER.error("Region migrate did not roll back", e);
           Assert.fail();
+        }
+      } else {
+        Predicate<TShowRegionResp> migrateRegionPredicate =
+            tShowRegionResp -> {
+              Map<Integer, Set<Integer>> newRegionMap =
+                  getRegionMap(tShowRegionResp.getRegionInfoList());
+              Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+              return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+            };
+        try {
+          awaitUntilSuccess(
+              client,
+              selectedRegion,
+              migrateRegionPredicate,
+              Optional.of(destDataNode),
+              Optional.of(originalDataNode));
+          success = true;
+        } catch (ConditionTimeoutException e) {
+          if (expectMigrateSuccess) {
+            LOGGER.error("Region migrate failed", e);
+            Assert.fail();
+          }
         }
       }
       if (!expectMigrateSuccess && success) {
@@ -309,6 +372,28 @@ public class IoTDBRegionOperationReliabilityITFramework {
 
       LOGGER.info("test pass");
     }
+  }
+
+  private static Predicate<TShowRegionResp> rollbackPredicate(
+      int selectedRegion, Set<Integer> originalDataNodes, int destDataNode) {
+    return tShowRegionResp -> {
+      List<TRegionInfo> selectedDataRegionInfos =
+          tShowRegionResp.getRegionInfoList().stream()
+              .filter(
+                  regionInfo ->
+                      regionInfo.getConsensusGroupId().getType() == TConsensusGroupType.DataRegion
+                          && regionInfo.getConsensusGroupId().getId() == selectedRegion)
+              .collect(Collectors.toList());
+      Set<Integer> dataNodes =
+          selectedDataRegionInfos.stream()
+              .map(TRegionInfo::getDataNodeId)
+              .collect(Collectors.toSet());
+      return dataNodes.equals(originalDataNodes)
+          && !dataNodes.contains(destDataNode)
+          && selectedDataRegionInfos.stream()
+              .allMatch(
+                  regionInfo -> RegionStatus.Running.getStatus().equals(regionInfo.getStatus()));
+    };
   }
 
   public static Set<Integer> getAllDataNodes(Statement statement) throws Exception {
@@ -426,6 +511,13 @@ public class IoTDBRegionOperationReliabilityITFramework {
       killPoints.forEach(killPoint -> LOGGER.error("Kill point {} not triggered", killPoint));
       Assert.fail("Some kill points was not triggered");
     }
+  }
+
+  private static void awaitKillPointsTriggered(KeySetView<String, Boolean> killPoints) {
+    if (killPoints.isEmpty()) {
+      return;
+    }
+    Awaitility.await().atMost(2, TimeUnit.MINUTES).until(killPoints::isEmpty);
   }
 
   private static String buildRegionMigrateCommand(int who, int from, int to) {

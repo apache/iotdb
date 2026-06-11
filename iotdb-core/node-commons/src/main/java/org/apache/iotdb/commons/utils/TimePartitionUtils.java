@@ -87,6 +87,9 @@ public class TimePartitionUtils {
     if (time < timePartitionLowerBoundWithoutOverflow) {
       return Long.MIN_VALUE;
     }
+    if (time >= timePartitionUpperBoundWithoutOverflow) {
+      return timePartitionUpperBoundWithoutOverflow;
+    }
     if (originMayCauseOverflow) {
       return getTimePartitionStartTime(getTimePartitionIdWithoutOverflow(time));
     } else {
@@ -128,6 +131,9 @@ public class TimePartitionUtils {
 
   public static long getTimePartitionId(long time) {
     if (originMayCauseOverflow) {
+      return getTimePartitionIdWithoutOverflow(time);
+    }
+    if (time >= timePartitionUpperBoundWithoutOverflow) {
       return getTimePartitionIdWithoutOverflow(time);
     }
     time -= timePartitionOrigin;

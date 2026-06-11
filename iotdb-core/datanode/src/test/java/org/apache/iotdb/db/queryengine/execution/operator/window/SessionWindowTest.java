@@ -20,34 +20,59 @@
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.Mockito;
 
-import static org.junit.Assert.assertFalse;
+import java.util.Collections;
 
 public class SessionWindowTest {
 
   @Test
-  public void testSatisfyRejectsDistanceBeyondLongMax() {
-    SessionWindow sessionWindow = new SessionWindow(Long.MAX_VALUE, true);
-    Column firstColumn = Mockito.mock(Column.class);
-    Mockito.when(firstColumn.getLong(0)).thenReturn(Long.MIN_VALUE);
-    sessionWindow.mergeOnePoint(new Column[] {firstColumn}, 0);
+  public void satisfyHandlesOverflowedTimeDistance() {
+    SessionWindow window = new SessionWindow(1, true);
+    Column timeColumn = buildTimeColumn(Long.MIN_VALUE, Long.MAX_VALUE);
+    window.mergeOnePoint(new Column[] {timeColumn}, 0);
 
-    Column secondColumn = Mockito.mock(Column.class);
-    Mockito.when(secondColumn.getLong(0)).thenReturn(Long.MAX_VALUE);
-
-    assertFalse(sessionWindow.satisfy(secondColumn, 0));
+    Assert.assertFalse(window.satisfy(timeColumn, 1));
   }
 
   @Test
-  public void testContainsRejectsRangeBeyondLongMax() {
-    SessionWindow sessionWindow = new SessionWindow(Long.MAX_VALUE, true);
-    Column column = Mockito.mock(Column.class);
-    Mockito.when(column.getPositionCount()).thenReturn(2);
-    Mockito.when(column.getLong(0)).thenReturn(Long.MIN_VALUE);
-    Mockito.when(column.getLong(1)).thenReturn(Long.MAX_VALUE);
+  public void skipPointsOutOfCurWindowHandlesOverflowedTimeDistance() {
+    SessionWindowManager manager = new SessionWindowManager(false, 1, true);
+    manager.initCurWindow();
+    Column previousTimeColumn = buildTimeColumn(Long.MIN_VALUE);
+    manager.getCurWindow().mergeOnePoint(new Column[] {previousTimeColumn}, 0);
+    manager.next();
 
-    assertFalse(sessionWindow.contains(column));
+    TsBlock nextBlock = buildTsBlock(Long.MAX_VALUE);
+    TsBlock skippedBlock = manager.skipPointsOutOfCurWindow(nextBlock);
+
+    Assert.assertEquals(1, skippedBlock.getPositionCount());
+    Assert.assertEquals(Long.MAX_VALUE, skippedBlock.getTimeColumn().getLong(0));
+  }
+
+  @Test
+  public void containsRejectsOverflowedTimeRange() {
+    SessionWindow sessionWindow = new SessionWindow(Long.MAX_VALUE, true);
+    Column timeColumn = buildTimeColumn(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    Assert.assertFalse(sessionWindow.contains(timeColumn));
+  }
+
+  private Column buildTimeColumn(long... timestamps) {
+    return buildTsBlock(timestamps).getTimeColumn();
+  }
+
+  private TsBlock buildTsBlock(long... timestamps) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    for (long timestamp : timestamps) {
+      builder.getTimeColumnBuilder().writeLong(timestamp);
+      builder.getColumnBuilder(0).appendNull();
+      builder.declarePosition();
+    }
+    return builder.build();
   }
 }

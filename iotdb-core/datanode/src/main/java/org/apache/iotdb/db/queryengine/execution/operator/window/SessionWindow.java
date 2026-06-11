@@ -54,10 +54,9 @@ public class SessionWindow implements IWindow {
       return true;
     }
     if (index == 0) {
-      return !isTimeDistanceGreaterThan(column.getLong(index), lastTsBlockTime, timeInterval);
+      return isTimeDistanceLessThanOrEqual(column.getLong(index), lastTsBlockTime);
     }
-    return !isTimeDistanceGreaterThan(
-        column.getLong(index), column.getLong(index - 1), timeInterval);
+    return isTimeDistanceLessThanOrEqual(column.getLong(index), column.getLong(index - 1));
   }
 
   @Override
@@ -93,8 +92,8 @@ public class SessionWindow implements IWindow {
     long maxTime = Math.max(columnStartTime, columnEndTime);
 
     boolean contains =
-        isTimeDistanceLessThan(columnStartTime, lastTsBlockTime, timeInterval)
-            && !isTimeDistanceGreaterThan(maxTime, minTime, timeInterval);
+        isTimeDistanceLessThan(columnStartTime, lastTsBlockTime)
+            && isTimeDistanceLessThanOrEqual(maxTime, minTime);
     if (contains) {
       if (!initializedTimeValue) {
         startTime = Long.MAX_VALUE;
@@ -112,6 +111,22 @@ public class SessionWindow implements IWindow {
 
   public long getTimeInterval() {
     return timeInterval;
+  }
+
+  boolean isTimeDistanceLessThanOrEqual(long left, long right) {
+    return compareTimeDistance(left, right) <= 0;
+  }
+
+  private boolean isTimeDistanceLessThan(long left, long right) {
+    return compareTimeDistance(left, right) < 0;
+  }
+
+  private int compareTimeDistance(long left, long right) {
+    if (timeInterval < 0) {
+      return 1;
+    }
+    long distance = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(distance, timeInterval);
   }
 
   public long getTimeValue() {
@@ -144,21 +159,5 @@ public class SessionWindow implements IWindow {
 
   public void setLastTsBlockTime(long lastTsBlockTime) {
     this.lastTsBlockTime = lastTsBlockTime;
-  }
-
-  static boolean isTimeDistanceGreaterThan(long left, long right, long distance) {
-    if (distance < 0) {
-      return true;
-    }
-    long difference = left >= right ? left - right : right - left;
-    return difference < 0 || difference > distance;
-  }
-
-  static boolean isTimeDistanceLessThan(long left, long right, long distance) {
-    if (distance <= 0) {
-      return false;
-    }
-    long difference = left >= right ? left - right : right - left;
-    return difference >= 0 && difference < distance;
   }
 }

@@ -233,6 +233,10 @@ public class NodeManager {
     ratisConfig.setSchemaMaxRetryAttempts(conf.getSchemaRegionRatisMaxRetryAttempts());
     ratisConfig.setSchemaInitialSleepTime(conf.getSchemaRegionRatisInitialSleepTimeMs());
     ratisConfig.setSchemaMaxSleepTime(conf.getSchemaRegionRatisMaxSleepTimeMs());
+    ratisConfig.setDataReconfigurationMaxRetryAttempts(
+        conf.getDataRegionRatisReconfigurationMaxRetryAttempts());
+    ratisConfig.setSchemaReconfigurationMaxRetryAttempts(
+        conf.getSchemaRegionRatisReconfigurationMaxRetryAttempts());
 
     ratisConfig.setSchemaPreserveWhenPurge(conf.getSchemaRegionRatisPreserveLogsWhenPurge());
     ratisConfig.setDataPreserveWhenPurge(conf.getDataRegionRatisPreserveLogsWhenPurge());

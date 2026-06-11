@@ -93,8 +93,7 @@ public class SessionWindowManager implements IWindowManager {
 
     for (; i < size; i++) {
       long currentTime = timeColumn.getLong(i);
-      if (SessionWindow.isTimeDistanceGreaterThan(
-          currentTime, previousTimeValue, sessionWindow.getTimeInterval())) {
+      if (!sessionWindow.isTimeDistanceLessThanOrEqual(currentTime, previousTimeValue)) {
         sessionWindow.setTimeValue(previousTimeValue);
         break;
       }

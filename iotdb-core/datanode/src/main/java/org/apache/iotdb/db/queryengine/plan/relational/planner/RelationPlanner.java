@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
@@ -1548,7 +1549,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
                 symbol ->
                     new TableFunctionNode.PassThroughColumn(symbol, partitionBy.contains(symbol)))
             .forEach(passThroughColumns::add);
-      } else if (tableArgument.getPartitionBy().isPresent()) {
+      } else if (!TableBuiltinTableFunction.M4
+              .getFunctionName()
+              .equalsIgnoreCase(functionAnalysis.getFunctionName())
+          && tableArgument.getPartitionBy().isPresent()) {
         tableArgument.getPartitionBy().get().stream()
             // the original symbols for partitioning columns, not coerced
             .map(sourcePlanBuilder::translate)

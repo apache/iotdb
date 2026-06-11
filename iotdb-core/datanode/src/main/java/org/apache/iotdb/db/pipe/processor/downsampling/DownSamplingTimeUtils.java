@@ -29,16 +29,16 @@ public class DownSamplingTimeUtils {
     if (distance < 0) {
       return false;
     }
-    long difference = left >= right ? left - right : right - left;
-    return difference >= 0 && difference <= distance;
+    final long difference = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(difference, distance) <= 0;
   }
 
   public static boolean isTimeDistanceGreaterThanOrEqualTo(long left, long right, long distance) {
     if (distance < 0) {
       return true;
     }
-    long difference = left >= right ? left - right : right - left;
-    return difference < 0 || difference >= distance;
+    final long difference = left >= right ? left - right : right - left;
+    return Long.compareUnsigned(difference, distance) >= 0;
   }
 
   public static double timeDifferenceAsDouble(long left, long right) {
