@@ -56,6 +56,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         // Disable sender compaction to test mods
@@ -68,6 +69,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)

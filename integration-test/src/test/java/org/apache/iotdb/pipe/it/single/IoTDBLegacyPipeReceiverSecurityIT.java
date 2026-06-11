@@ -54,6 +54,7 @@ public class IoTDBLegacyPipeReceiverSecurityIT {
 
   @BeforeClass
   public static void setUp() {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setAutoResizingBufferMemoryProportion(0);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

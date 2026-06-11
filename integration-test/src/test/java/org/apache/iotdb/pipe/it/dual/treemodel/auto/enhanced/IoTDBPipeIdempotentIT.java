@@ -62,6 +62,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
@@ -75,6 +76,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)

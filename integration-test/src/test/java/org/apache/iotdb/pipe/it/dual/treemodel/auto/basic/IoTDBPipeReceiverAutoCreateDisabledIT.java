@@ -66,6 +66,7 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setAutoResizingBufferMemoryProportion(0)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1);
   }

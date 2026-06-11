@@ -36,6 +36,7 @@ abstract class AbstractPipeSingleIT {
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);

@@ -51,6 +51,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     env.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setAutoResizingBufferMemoryProportion(0)
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
