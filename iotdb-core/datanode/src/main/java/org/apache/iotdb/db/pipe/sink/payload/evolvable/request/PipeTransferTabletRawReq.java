@@ -159,6 +159,21 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       final ByteBuffer buffer, final TabletStringInternPool tabletStringInternPool) {
     final int startPosition = buffer.position();
     try {
+      // Current V1 raw tablet requests can be converted to InsertTabletStatement directly. Keep
+      // this as the first attempt to avoid the overhead of constructing an intermediate Tablet.
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(
+              buffer, false, tabletStringInternPool);
+      isAligned = insertTabletStatement.isAligned();
+      statement = insertTabletStatement;
+      return;
+    } catch (final Exception e) {
+      buffer.position(startPosition);
+    }
+
+    try {
+      // Some old senders serialize Tablet without column categories. Retry with the legacy reader
+      // before falling back to the full Tablet deserialization path.
       final InsertTabletStatement insertTabletStatement =
           TabletStatementConverter.deserializeLegacyStatementFromTabletFormat(
               buffer, tabletStringInternPool);
@@ -169,17 +184,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       buffer.position(startPosition);
     }
 
-    try {
-      final InsertTabletStatement insertTabletStatement =
-          TabletStatementConverter.deserializeStatementFromTabletFormat(
-              buffer, false, tabletStringInternPool);
-      isAligned = insertTabletStatement.isAligned();
-      statement = insertTabletStatement;
-    } catch (final Exception e) {
-      buffer.position(startPosition);
-      tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
-      isAligned = ReadWriteIOUtils.readBool(buffer);
-    }
+    tablet = PipeTabletUtils.internTablet(Tablet.deserialize(buffer), tabletStringInternPool);
+    isAligned = ReadWriteIOUtils.readBool(buffer);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
