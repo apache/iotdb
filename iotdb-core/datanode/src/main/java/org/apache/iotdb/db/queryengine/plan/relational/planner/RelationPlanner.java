@@ -360,17 +360,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     boolean useIdentityWritableViewFastPath = false;
     Map<String, Integer> sourceTagIndexMap = null;
 
-    final QualifiedName qualifiedName = analysis.getRelationName(table);
-
-    if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException(
-          DataNodeQueryMessages.TABLE + table.getName() + " has no prefix!");
-    }
-
-    QualifiedObjectName qualifiedObjectName =
-        new QualifiedObjectName(
-            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-            tableSchema.getTableName());
+    QualifiedObjectName qualifiedObjectName = getQualifiedObjectName(table, analysis);
     boolean isWritableView = tableSchema instanceof WritableViewSchema;
 
     Optional<QualifiedObjectName> originalWritableViewName = Optional.empty();
@@ -485,6 +475,19 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
               originalWritableViewName);
     }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
+  }
+
+  public static QualifiedObjectName getQualifiedObjectName(Table table, Analysis analysis) {
+    final QualifiedName qualifiedName = analysis.getRelationName(table);
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+    }
+
+    final QualifiedObjectName qualifiedObjectName =
+        new QualifiedObjectName(
+            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
+            qualifiedName.getSuffix());
+    return qualifiedObjectName;
   }
 
   @Override
