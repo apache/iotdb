@@ -135,7 +135,6 @@ public abstract class AbstractCli {
   static String trustStore;
   // TODO: Make non-static
   static String trustStorePwd;
-  // TODO: Make non-static
   static String sslProtocol;
 
   static String execute;
