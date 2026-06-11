@@ -246,7 +246,7 @@ public class PipeStaticMeta {
 
   public boolean visibleUnder(final boolean isTableModel) {
     final Visibility visibility =
-        VisibilityUtils.calculateFromExtractorParameters(sourceParameters);
+        VisibilityUtils.calculateFromPipeSourceParameters(sourceParameters);
     return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 }
