@@ -412,6 +412,80 @@ public class PipeReceiverRuntimeRegistryTest {
   }
 
   @Test
+  public void testSameSenderAddressWithDifferentUsersAreNotAggregated() {
+    registerDataSession("data-user-a", 1, "10.0.0.1", 9001, "alice", "cluster-a", "pipe-a", 1, 100);
+    registerDataSession("data-user-b", 1, "10.0.0.1", 9002, "bob", "cluster-a", "pipe-b", 2, 200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(2, snapshots.size());
+    assertEquals("alice", snapshots.get(0).getUserName());
+    assertEquals("9001", snapshots.get(0).getSenderPorts());
+    assertEquals(1, snapshots.get(0).getConnectionCount());
+    assertEquals(1, snapshots.get(0).getPipeCount());
+    assertTrue(snapshots.get(0).getPipeIds().contains("pipe-a@"));
+    assertEquals("bob", snapshots.get(1).getUserName());
+    assertEquals("9002", snapshots.get(1).getSenderPorts());
+    assertEquals(1, snapshots.get(1).getConnectionCount());
+    assertEquals(1, snapshots.get(1).getPipeCount());
+    assertTrue(snapshots.get(1).getPipeIds().contains("pipe-b@"));
+  }
+
+  @Test
+  public void testSameSenderAddressWithDifferentProtocolsAreNotAggregated() {
+    registry.registerOrUpdateSession(
+        "data-thrift",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+        "10.0.0.1",
+        9001,
+        "root",
+        "cluster-a",
+        "pipe-thrift",
+        1,
+        100);
+    registry.registerOrUpdateSession(
+        "data-air-gap",
+        PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+        1,
+        PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+        "10.0.0.1",
+        9002,
+        "root",
+        "cluster-a",
+        "pipe-air-gap",
+        2,
+        200);
+
+    final List<PipeReceiverRuntimeSnapshot> snapshots = registry.snapshot();
+
+    assertEquals(2, snapshots.size());
+    final PipeReceiverRuntimeSnapshot airGapSnapshot =
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            1,
+            PipeReceiverRuntimeRegistry.PROTOCOL_AIR_GAP,
+            "10.0.0.1");
+    final PipeReceiverRuntimeSnapshot thriftSnapshot =
+        findSnapshot(
+            snapshots,
+            PipeReceiverRuntimeRegistry.NODE_TYPE_DATA_NODE,
+            1,
+            PipeReceiverRuntimeRegistry.PROTOCOL_THRIFT,
+            "10.0.0.1");
+    assertNotNull(airGapSnapshot);
+    assertNotNull(thriftSnapshot);
+    assertEquals("9002", airGapSnapshot.getSenderPorts());
+    assertEquals(1, airGapSnapshot.getConnectionCount());
+    assertTrue(airGapSnapshot.getPipeIds().contains("pipe-air-gap@"));
+    assertEquals("9001", thriftSnapshot.getSenderPorts());
+    assertEquals(1, thriftSnapshot.getConnectionCount());
+    assertTrue(thriftSnapshot.getPipeIds().contains("pipe-thrift@"));
+  }
+
+  @Test
   public void testBlankAndMalformedRuntimeFieldsFallbackToUnknown() {
     registry.registerOrUpdateSession(
         "   ",
