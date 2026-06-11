@@ -25,7 +25,6 @@ import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateITFramew
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Test;
@@ -86,9 +85,6 @@ public class IoTDBRegionMigrateConfigNodeCrashForRatisIT
    * replica was actually Running. Uses 3 ConfigNodes so a real leader switch happens.
    */
   @Test
-  // Temporarily also categorized as ClusterIT so the per-PR Cluster IT (1C3D) job runs it for
-  // validation; will be narrowed back to DailyIT-only before merge.
-  @Category({DailyIT.class, ClusterIT.class})
   public void cnLeaderSwitchDuringDoAddPeerTest() throws Exception {
     successTestWithAction(
         1,
