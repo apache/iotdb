@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
@@ -215,7 +216,10 @@ public class PipeTaskCoordinator {
           .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
-      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
@@ -227,7 +231,7 @@ public class PipeTaskCoordinator {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
     } catch (IOException | ConsensusException e) {
-      LOGGER.warn(ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO, e);
+      PipeLogger.log(LOGGER::warn, e, ManagerMessages.FAILED_TO_GET_ALL_PIPE_INFO);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());

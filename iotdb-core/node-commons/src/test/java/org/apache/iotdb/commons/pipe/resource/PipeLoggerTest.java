@@ -43,6 +43,20 @@ public class PipeLoggerTest {
   }
 
   @Test
+  public void testLogMessageWithSlf4jPlaceholder() {
+    final AtomicReference<String> message = new AtomicReference<>();
+
+    setStringFormatLogger();
+    try {
+      PipeLogger.log(message::set, "PipeLoggerCacheMaxSizeInBytes: {}", 1024);
+    } finally {
+      setStringFormatLogger();
+    }
+
+    Assert.assertEquals("PipeLoggerCacheMaxSizeInBytes: 1024", message.get());
+  }
+
+  @Test
   public void testLogThrowableWithPercentInStackTrace() {
     final AtomicReference<String> message = new AtomicReference<>();
 
