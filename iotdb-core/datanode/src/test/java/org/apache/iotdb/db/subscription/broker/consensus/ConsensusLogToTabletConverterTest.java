@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 
@@ -34,6 +35,7 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -102,6 +104,33 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertSame(node.getTimes(), tablet.getTimestamps());
     Assert.assertSame(node.getColumns()[0], tablet.getValues()[0]);
     Assert.assertSame(node.getColumns()[2], tablet.getValues()[1]);
+  }
+
+  @Test
+  public void testConvertRelationalInsertTabletNodeSkipsNullMatchedFieldColumn() {
+    final ConsensusLogToTabletConverter converter = createConverter("m1");
+
+    final RelationalInsertTabletNode node = StatementTestUtils.genInsertTabletNode(3, 10);
+    node.getColumns()[2] = null;
+
+    Assert.assertTrue(converter.convert(node).isEmpty());
+  }
+
+  @Test
+  public void testConvertRelationalInsertTabletNodeSkipsNullTagColumn() {
+    final ConsensusLogToTabletConverter converter = createConverter("m1");
+
+    final RelationalInsertTabletNode node = StatementTestUtils.genInsertTabletNode(3, 10);
+    node.getColumns()[0] = null;
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals(1, tablet.getSchemas().size());
+    Assert.assertEquals("m1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(0));
+    Assert.assertArrayEquals(
+        new double[] {10.0, 11.0, 12.0}, (double[]) tablet.getValues()[0], 0.0);
   }
 
   @Test
@@ -175,6 +204,35 @@ public class ConsensusLogToTabletConverterTest {
     Assert.assertEquals(1, tablets.get(1).getRowSize());
     Assert.assertEquals("root.sg.d1", tablets.get(2).getDeviceId());
     Assert.assertEquals(1, tablets.get(2).getRowSize());
+  }
+
+  @Test
+  public void testConvertTreeInsertTabletNodeSkipsNullColumn() throws IllegalPathException {
+    final ConsensusLogToTabletConverter converter = createTreeConverter();
+    final InsertTabletNode node =
+        new InsertTabletNode(
+            new PlanNodeId("tablet"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT32, TSDataType.DOUBLE},
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.INT32),
+              new MeasurementSchema("s2", TSDataType.DOUBLE)
+            },
+            new long[] {1L, 2L},
+            null,
+            new Object[] {new int[] {1, 2}, null},
+            2);
+
+    final List<Tablet> tablets = converter.convert(node);
+
+    Assert.assertEquals(1, tablets.size());
+    final Tablet tablet = tablets.get(0);
+    Assert.assertEquals("root.sg.d1", tablet.getDeviceId());
+    Assert.assertEquals(1, tablet.getSchemas().size());
+    Assert.assertEquals("s1", tablet.getSchemas().get(0).getMeasurementName());
+    Assert.assertArrayEquals(new int[] {1, 2}, (int[]) tablet.getValues()[0]);
   }
 
   private static ConsensusLogToTabletConverter createConverter(final String columnPattern) {

@@ -395,7 +395,7 @@ public class TabletStatementConverter {
     for (int i = 0; i < columns; i++) {
       final boolean isValueColumnsNotNull =
           BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
-      if (isValueColumnsNotNull && types[i] == null) {
+      if (types[i] == null) {
         continue;
       }
 

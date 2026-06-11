@@ -140,9 +140,17 @@ public class InsertRows extends WrappedInsertStatement {
       @Override
       public List<Object[]> getAttributeValueList() {
         List<Object> attributeValueList = new ArrayList<>();
-        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-            attributeValueList.add(insertRowStatement.getValues()[i]);
+        final TsTableColumnCategory[] columnCategories = insertRowStatement.getColumnCategories();
+        final String[] measurements = insertRowStatement.getMeasurements();
+        final Object[] values = insertRowStatement.getValues();
+        for (int i = 0; columnCategories != null && i < columnCategories.length; i++) {
+          if (columnCategories[i] == TsTableColumnCategory.ATTRIBUTE
+              && measurements != null
+              && i < measurements.length
+              && measurements[i] != null
+              && values != null
+              && i < values.length) {
+            attributeValueList.add(values[i]);
           }
         }
         return Collections.singletonList(attributeValueList.toArray());

@@ -230,7 +230,8 @@ public class ConsensusLogToTabletConverter {
     final String[] measurements = node.getMeasurements();
     final TSDataType[] dataTypes = node.getDataTypes();
     final Object[] values = node.getValues();
-    final List<Integer> matchedColumnIndices = getMatchedTreeColumnIndices(deviceId, measurements);
+    final List<Integer> matchedColumnIndices =
+        getMatchedTreeColumnIndices(deviceId, measurements, dataTypes, values, false);
 
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
@@ -283,7 +284,8 @@ public class ConsensusLogToTabletConverter {
     final int rowCount = node.getRowCount();
 
     // Column filtering
-    final List<Integer> matchedColumnIndices = getMatchedTreeColumnIndices(deviceId, measurements);
+    final List<Integer> matchedColumnIndices =
+        getMatchedTreeColumnIndices(deviceId, measurements, dataTypes, columns, true);
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
     }
@@ -378,7 +380,9 @@ public class ConsensusLogToTabletConverter {
 
     final String[] measurements = node.getMeasurements();
     final TSDataType[] dataTypes = node.getDataTypes();
-    final List<Integer> matchedColumnIndices = getMatchedTreeColumnIndices(deviceId, measurements);
+    final Object[] values = node.getValues();
+    final List<Integer> matchedColumnIndices =
+        getMatchedTreeColumnIndices(deviceId, measurements, dataTypes, values, false);
     return matchedColumnIndices.isEmpty()
         ? null
         : new MatchedTreeRow(
@@ -455,7 +459,8 @@ public class ConsensusLogToTabletConverter {
     final TSDataType[] dataTypes = node.getDataTypes();
     final Object[] values = node.getValues();
     final List<Integer> matchedColumnIndices =
-        getMatchedTableColumnIndices(measurements, node.getColumnCategories());
+        getMatchedTableColumnIndices(
+            measurements, dataTypes, values, node.getColumnCategories(), false);
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
     }
@@ -512,7 +517,8 @@ public class ConsensusLogToTabletConverter {
     final BitMap[] bitMaps = node.getBitMaps();
     final int rowCount = node.getRowCount();
     final List<Integer> matchedColumnIndices =
-        getMatchedTableColumnIndices(measurements, node.getColumnCategories());
+        getMatchedTableColumnIndices(
+            measurements, dataTypes, columns, node.getColumnCategories(), true);
     if (matchedColumnIndices.isEmpty()) {
       return Collections.emptyList();
     }
@@ -568,12 +574,19 @@ public class ConsensusLogToTabletConverter {
    * column indices are returned.
    */
   private List<Integer> getMatchedTreeColumnIndices(
-      final IDeviceID deviceId, final String[] measurements) {
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TSDataType[] dataTypes,
+      final Object[] valuesOrColumns,
+      final boolean requireNonNullValue) {
+    if (measurements == null) {
+      return Collections.emptyList();
+    }
     if (treePattern == null || treePattern.isRoot() || treePattern.coversDevice(deviceId)) {
       // All columns match
       final List<Integer> allIndices = new ArrayList<>(measurements.length);
       for (int i = 0; i < measurements.length; i++) {
-        if (measurements[i] != null) {
+        if (isValidColumn(measurements, dataTypes, valuesOrColumns, i, requireNonNullValue)) {
           allIndices.add(i);
         }
       }
@@ -582,7 +595,8 @@ public class ConsensusLogToTabletConverter {
 
     final List<Integer> matchedIndices = new ArrayList<>();
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null && treePattern.matchesMeasurement(deviceId, measurements[i])) {
+      if (isValidColumn(measurements, dataTypes, valuesOrColumns, i, requireNonNullValue)
+          && treePattern.matchesMeasurement(deviceId, measurements[i])) {
         matchedIndices.add(i);
       }
     }
@@ -595,11 +609,18 @@ public class ConsensusLogToTabletConverter {
    * If no table column pattern is specified, all non-null columns are returned.
    */
   private List<Integer> getMatchedTableColumnIndices(
-      final String[] measurements, final TsTableColumnCategory[] columnCategories) {
+      final String[] measurements,
+      final TSDataType[] dataTypes,
+      final Object[] valuesOrColumns,
+      final TsTableColumnCategory[] columnCategories,
+      final boolean requireNonNullValue) {
+    if (measurements == null) {
+      return Collections.emptyList();
+    }
     final boolean[] selectedColumns = new boolean[measurements.length];
     boolean hasMatchedColumn = false;
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
+      if (!isValidColumn(measurements, dataTypes, valuesOrColumns, i, requireNonNullValue)) {
         continue;
       }
       if (tableColumnPattern == null || tableColumnPattern.matcher(measurements[i]).matches()) {
@@ -613,7 +634,8 @@ public class ConsensusLogToTabletConverter {
     }
 
     for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null && isTagColumn(columnCategories, i)) {
+      if (isValidColumn(measurements, dataTypes, valuesOrColumns, i, requireNonNullValue)
+          && isTagColumn(columnCategories, i)) {
         selectedColumns[i] = true;
       }
     }
@@ -629,14 +651,36 @@ public class ConsensusLogToTabletConverter {
 
   private boolean isTagColumn(
       final TsTableColumnCategory[] columnCategories, final int columnIndex) {
-    return columnCategories != null && columnCategories[columnIndex] == TsTableColumnCategory.TAG;
+    return columnCategories != null
+        && columnIndex < columnCategories.length
+        && columnCategories[columnIndex] == TsTableColumnCategory.TAG;
   }
 
   private ColumnCategory toTsFileColumnCategory(
       final TsTableColumnCategory[] columnCategories, final int columnIndex) {
-    return columnCategories != null && columnCategories[columnIndex] != null
+    return columnCategories != null
+            && columnIndex < columnCategories.length
+            && columnCategories[columnIndex] != null
         ? columnCategories[columnIndex].toTsFileColumnType()
         : ColumnCategory.FIELD;
+  }
+
+  private boolean isValidColumn(
+      final String[] measurements,
+      final TSDataType[] dataTypes,
+      final Object[] valuesOrColumns,
+      final int index,
+      final boolean requireNonNullValue) {
+    return measurements != null
+        && index >= 0
+        && index < measurements.length
+        && measurements[index] != null
+        && dataTypes != null
+        && index < dataTypes.length
+        && dataTypes[index] != null
+        && valuesOrColumns != null
+        && index < valuesOrColumns.length
+        && (!requireNonNullValue || valuesOrColumns[index] != null);
   }
 
   /**

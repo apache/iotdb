@@ -179,7 +179,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     int size = 0;
     size += Integer.BYTES;
     for (Map.Entry<String, IWritableMemChunk> entry : memChunkMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+      size += WALWriteUtils.sizeToWrite(entry.getKey());
       size += entry.getValue().serializedSize();
     }
     return size;

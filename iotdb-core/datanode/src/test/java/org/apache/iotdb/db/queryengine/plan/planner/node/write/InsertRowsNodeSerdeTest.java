@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -268,6 +269,40 @@ public class InsertRowsNodeSerdeTest {
 
       Assert.assertEquals(node, RelationalInsertRowsNode.deserialize(byteBuffer));
     }
+  }
+
+  @Test
+  public void testRelationalRowsGetDeviceIDSkipsMissingTagValue() throws IllegalPathException {
+    RelationalInsertRowsNode node = new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
+    node.addOneInsertRowNode(
+        new RelationalInsertRowNode(
+            new PlanNodeId("plan node 1"),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"id", "value"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.DOUBLE},
+            1000L,
+            new Object[] {"id1", 1.0},
+            false,
+            new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD}),
+        0);
+    node.addOneInsertRowNode(
+        new RelationalInsertRowNode(
+            new PlanNodeId("plan node 1"),
+            new PartialPath("table1", false),
+            false,
+            new String[] {"id", "value"},
+            new TSDataType[] {TSDataType.STRING, TSDataType.DOUBLE},
+            2000L,
+            new Object[] {2.0},
+            false,
+            new TsTableColumnCategory[] {TsTableColumnCategory.FIELD, TsTableColumnCategory.TAG}),
+        1);
+
+    Assert.assertEquals(
+        Factory.DEFAULT_FACTORY.create(new String[] {"table1", "id1"}), node.getDeviceID(0));
+    Assert.assertEquals(
+        Factory.DEFAULT_FACTORY.create(new String[] {"table1", null}), node.getDeviceID(1));
   }
 
   @Test

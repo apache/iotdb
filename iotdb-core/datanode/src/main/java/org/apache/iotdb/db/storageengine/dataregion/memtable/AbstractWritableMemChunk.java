@@ -37,6 +37,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -278,6 +281,20 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract void setEncryptParameter(EncryptParameter encryptParameter);
+
+  protected static byte[] serializeSchemaToWALBytes(IMeasurementSchema schema) {
+    try {
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream(schema.serializedSize());
+      schema.serializeTo(outputStream);
+      return outputStream.toByteArray();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  protected static int getSerializedSchemaSize(IMeasurementSchema schema) {
+    return serializeSchemaToWALBytes(schema).length;
+  }
 
   public synchronized TVList initWorkingListForFlushIfNecessary(
       TVList workingList, boolean needCloneTimesAndIndicesInWorkingTVList) {

@@ -548,6 +548,9 @@ public class InsertNodeMemoryEstimator {
 
   public static long sizeOfColumns(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+    if (Objects.isNull(columns)) {
+      return 0L;
+    }
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(columns)
@@ -559,7 +562,10 @@ public class InsertNodeMemoryEstimator {
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns.length);
     for (int i = 0; i < columns.length; i++) {
-      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+      if (columns[i] == null
+          || i >= measurementSchemas.length
+          || measurementSchemas[i] == null
+          || measurementSchemas[i].getType() == null) {
         continue;
       }
       switch (measurementSchemas[i].getType()) {
@@ -611,6 +617,9 @@ public class InsertNodeMemoryEstimator {
 
   public static long sizeOfValues(
       final Object[] values, final MeasurementSchema[] measurementSchemas) {
+    if (Objects.isNull(values)) {
+      return 0L;
+    }
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
       return RamUsageEstimator.shallowSizeOf(values)
@@ -622,7 +631,9 @@ public class InsertNodeMemoryEstimator {
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
     for (int i = 0; i < values.length; i++) {
-      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+      if (i >= measurementSchemas.length
+          || measurementSchemas[i] == null
+          || measurementSchemas[i].getType() == null) {
         size += NUM_BYTES_OBJECT_HEADER;
         continue;
       }
