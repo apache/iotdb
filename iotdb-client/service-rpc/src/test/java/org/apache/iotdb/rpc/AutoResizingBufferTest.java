@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -74,6 +76,58 @@ public class AutoResizingBufferTest {
     } finally {
       Assert.assertEquals(100, memoryControl.getUsedMemoryInBytes());
       buffer.close();
+    }
+  }
+
+  @Test
+  public void testElasticFramedTransportReleasesMemoryWhenClosed() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    TElasticFramedTransport transport =
+        new TElasticFramedTransport(new TMemoryBuffer(0), 100, 1024, true);
+    Assert.assertEquals(200, memoryControl.getUsedMemoryInBytes());
+
+    transport.close();
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testElasticFramedTransportReleasesMemoryWhenConstructorFails() {
+    memoryControl.setLimit(150);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try {
+      new TElasticFramedTransport(new TMemoryBuffer(0), 100, 1024, true);
+      Assert.fail("Expected TTransportException");
+    } catch (TTransportException e) {
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+    }
+  }
+
+  @Test
+  public void testSnappyElasticFramedTransportReleasesMemory() throws Exception {
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+
+    TSnappyElasticFramedTransport transport =
+        new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 100, 1024, true);
+    Assert.assertEquals(400, memoryControl.getUsedMemoryInBytes());
+
+    transport.close();
+    Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
+  }
+
+  @Test
+  public void testSnappyElasticFramedTransportReleasesMemoryWhenConstructorFails() {
+    memoryControl.setLimit(350);
+    AutoResizingBufferMemoryManager.setMemoryControl(memoryControl);
+    AutoResizingBufferMemoryManager.setMemoryAllocateRetryIntervalInMs(1);
+
+    try {
+      new TSnappyElasticFramedTransport(new TMemoryBuffer(0), 100, 1024, true);
+      Assert.fail("Expected TTransportException");
+    } catch (TTransportException e) {
+      Assert.assertEquals(0, memoryControl.getUsedMemoryInBytes());
     }
   }
 

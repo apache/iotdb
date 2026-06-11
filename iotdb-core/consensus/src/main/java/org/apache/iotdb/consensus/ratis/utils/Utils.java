@@ -67,6 +67,7 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyStore;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -192,9 +193,13 @@ public class Utils {
   public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
         createAutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
-    TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
-    status.write(protocol);
-    return ByteBuffer.wrap(byteBuffer.getBuffer());
+    try {
+      TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
+      status.write(protocol);
+      return ByteBuffer.wrap(Arrays.copyOf(byteBuffer.getBuffer(), byteBuffer.getPos()));
+    } finally {
+      byteBuffer.close();
+    }
   }
 
   private static AutoScalingBufferWriteTransport createAutoScalingBufferWriteTransport(

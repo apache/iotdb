@@ -41,7 +41,19 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
       readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
     } catch (IOException e) {
+      closeAllocatedBuffers();
       throw new TTransportException(e);
+    }
+  }
+
+  @Override
+  protected void closeAllocatedBuffers() {
+    super.closeAllocatedBuffers();
+    if (writeCompressBuffer != null) {
+      writeCompressBuffer.close();
+    }
+    if (readCompressBuffer != null) {
+      readCompressBuffer.close();
     }
   }
 

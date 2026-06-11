@@ -95,6 +95,7 @@ public class TElasticFramedTransport extends TTransport {
       readBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
       writeBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
     } catch (IOException e) {
+      closeAllocatedBuffers();
       throw new TTransportException(e);
     }
   }
@@ -121,7 +122,20 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    underlying.close();
+    try {
+      underlying.close();
+    } finally {
+      closeAllocatedBuffers();
+    }
+  }
+
+  protected void closeAllocatedBuffers() {
+    if (readBuffer != null) {
+      readBuffer.close();
+    }
+    if (writeBuffer != null) {
+      writeBuffer.close();
+    }
   }
 
   @Override

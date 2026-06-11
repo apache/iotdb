@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -142,6 +143,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       LOGGER.info(ConfigNodeMessages.STARTING_IOTDB, IoTDBConstant.VERSION_WITH_BUILD);
       ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
       checks.startUpCheck();
+      MemoryConfig.getInstance();
     } catch (StartupException | ConfigurationException | IOException e) {
       LOGGER.error(ConfigNodeMessages.MEET_ERROR_WHEN_DOING_START_CHECKING, e);
       throw new IoTDBException(ConfigNodeMessages.ERROR_STARTING, -1);
