@@ -322,12 +322,12 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
 
     dataRegion.insertTablet(insertTabletNode2);
@@ -538,13 +538,15 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
+    insertTabletNode1.markFailedMeasurement(0);
+    insertTabletNode1.markFailedMeasurement(1);
     insertTabletNode1.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode1);
@@ -561,13 +563,15 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurements,
-            dataTypes,
-            measurementSchemas,
+            measurements.clone(),
+            dataTypes.clone(),
+            measurementSchemas.clone(),
             times,
             null,
-            columns,
+            columns.clone(),
             times.length);
+    insertTabletNode2.markFailedMeasurement(0);
+    insertTabletNode2.markFailedMeasurement(1);
     insertTabletNode2.setFailedMeasurementNumber(2);
 
     dataRegion.insertTablet(insertTabletNode2);
@@ -629,6 +633,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.markFailedMeasurement(0);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -638,6 +643,7 @@ public class DataRegionTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       InsertRowNode rowNode = buildInsertRowNodeByTSRecord(record);
+      rowNode.markFailedMeasurement(0);
       rowNode.setFailedMeasurementNumber(1);
       dataRegion.insert(rowNode);
       dataRegion.syncCloseAllWorkingTsFileProcessors();

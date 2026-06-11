@@ -153,7 +153,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
       Tablet tablet;
-      if (entry.getValue().size() == measurementSchemas.length) {
+      if (entry.getValue().size() == measurementSchemas.length
+          && measurementToSchemaIndexMap.size() == measurementSchemas.length) {
         // all measurements are included
         tablet =
             new Tablet(
@@ -261,8 +262,8 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     // The index of measurement and schema is the same now.
     // However, in case one day the order changes, we need to construct an index map.
     Map<String, Integer> indexMap = new HashMap<>();
-    for (int i = 0, n = measurements.length; i < n; i++) {
-      if (measurements[i] == null) {
+    for (int i = 0, n = measurements == null ? 0 : measurements.length; i < n; i++) {
+      if (measurements[i] == null || schemas == null || i >= schemas.length) {
         continue;
       }
       // It is the same now

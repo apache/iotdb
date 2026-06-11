@@ -35,6 +35,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -271,6 +272,16 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract int serializedSize();
+
+  protected static byte[] serializeSchemaToWALBytes(IMeasurementSchema schema) {
+    byte[] bytes = new byte[schema.serializedSize()];
+    schema.serializeTo(ByteBuffer.wrap(bytes));
+    return bytes;
+  }
+
+  protected static int getSerializedSchemaSize(IMeasurementSchema schema) {
+    return schema.serializedSize();
+  }
 
   @Override
   public synchronized TVList initWorkingListForFlushIfNecessary(

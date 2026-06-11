@@ -75,7 +75,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       String[] measurements = insertRowStatement.getMeasurements();
       for (String measurement : measurements) {
-        if (!measurementSet.contains(measurement)) {
+        if (measurement != null && !measurementSet.contains(measurement)) {
           measurementList.add(measurement);
           measurementSet.add(measurement);
         }
@@ -102,6 +102,9 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
+      if (m == null) {
+        continue;
+      }
       PartialPath fullPath = devicePath.concatNode(m);
       ret.add(fullPath);
     }
