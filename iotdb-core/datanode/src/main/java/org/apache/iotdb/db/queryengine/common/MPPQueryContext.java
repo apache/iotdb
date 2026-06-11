@@ -261,7 +261,7 @@ public class MPPQueryContext implements IAuditEntity {
     }
     ExternalTsFileQueryResource externalTsFileQueryResource =
         new ExternalTsFileQueryResource(
-            queryId,
+            this,
             Paths.get(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir())
                 .resolve(ExternalTsFileQueryResource.EXTERNAL_TSFILE_TMP_DIR)
                 .resolve(queryId.getId())
@@ -515,6 +515,10 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void reserveMemoryForFrontEndImmediately() {
     this.memoryReservationManager.reserveMemoryImmediately();
+  }
+
+  public void reserveMemoryForFrontEndImmediately(final long bytes) {
+    this.memoryReservationManager.reserveMemoryImmediately(bytes);
   }
 
   public void releaseAllMemoryReservedForFrontEnd() {
