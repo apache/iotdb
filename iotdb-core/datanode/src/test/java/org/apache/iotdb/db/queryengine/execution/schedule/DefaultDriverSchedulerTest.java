@@ -42,6 +42,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -195,6 +196,47 @@ public class DefaultDriverSchedulerTest {
     Assert.assertTrue(manager.getQueryMap().get(queryId).get(instanceId).contains(testTask));
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
+  }
+
+  @Test
+  public void testAbortReadyTaskAfterPollReleasesReadyQueueReservation() throws Exception {
+    IMPPDataExchangeManager mockMPPDataExchangeManager =
+        Mockito.mock(IMPPDataExchangeManager.class);
+    manager.setBlockManager(mockMPPDataExchangeManager);
+    ITaskScheduler defaultScheduler = manager.getScheduler();
+    IDriver mockDriver = Mockito.mock(IDriver.class);
+    DriverTaskHandle driverTaskHandle =
+        new DriverTaskHandle(
+            1,
+            (MultilevelPriorityQueue) manager.getReadyQueue(),
+            OptionalInt.of(Integer.MAX_VALUE));
+
+    QueryId queryId = new QueryId("test");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
+    DriverTaskId driverTaskID = new DriverTaskId(instanceId, 0);
+    Mockito.when(mockDriver.getDriverTaskId()).thenReturn(driverTaskID);
+    DriverTask testTask =
+        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY, driverTaskHandle, 0, false);
+
+    try {
+      manager.registerTaskToQueryMap(queryId, testTask);
+      manager.submitTaskToReadyQueue(testTask);
+
+      DriverTask polledTask = manager.getReadyQueue().poll();
+      Assert.assertSame(testTask, polledTask);
+      Assert.assertEquals(1, getReadyQueueReservedSize());
+
+      manager.abortFragmentInstance(instanceId, new RuntimeException("test abort"));
+
+      Assert.assertEquals(DriverTaskStatus.ABORTED, testTask.getStatus());
+      Assert.assertEquals(0, manager.getReadyQueue().size());
+      Assert.assertEquals(0, getReadyQueueReservedSize());
+      Assert.assertFalse(defaultScheduler.readyToRunning(polledTask));
+      Assert.assertEquals(0, getReadyQueueReservedSize());
+    } finally {
+      resetReadyQueueReservedSize();
+    }
   }
 
   @Test
@@ -493,6 +535,33 @@ public class DefaultDriverSchedulerTest {
     manager.getQueryMap().clear();
     manager.getBlockedTasks().clear();
     manager.getReadyQueue().clear();
+    resetReadyQueueReservedSize();
     manager.getTimeoutQueue().clear();
+  }
+
+  private int getReadyQueueReservedSize() throws IllegalAccessException {
+    return getReadyQueueReservedSizeField().getInt(manager.getReadyQueue());
+  }
+
+  private void resetReadyQueueReservedSize() {
+    try {
+      getReadyQueueReservedSizeField().setInt(manager.getReadyQueue(), 0);
+    } catch (IllegalAccessException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  private Field getReadyQueueReservedSizeField() {
+    Class<?> queueClass = manager.getReadyQueue().getClass();
+    while (queueClass != null) {
+      try {
+        Field reservedSizeField = queueClass.getDeclaredField("reservedSize");
+        reservedSizeField.setAccessible(true);
+        return reservedSizeField;
+      } catch (NoSuchFieldException e) {
+        queueClass = queueClass.getSuperclass();
+      }
+    }
+    throw new AssertionError("Cannot find reservedSize field in readyQueue hierarchy");
   }
 }

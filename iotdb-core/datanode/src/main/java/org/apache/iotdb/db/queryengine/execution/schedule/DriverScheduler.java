@@ -347,16 +347,18 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           case READY:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.remove(task.getDriverTaskId());
+            if (readyQueue.remove(task.getDriverTaskId()) == null) {
+              readyQueue.decreaseReservedSize(task);
+            }
             break;
           case BLOCKED:
             task.setStatus(DriverTaskStatus.ABORTED);
             blockedTasks.remove(task);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case RUNNING:
             task.setStatus(DriverTaskStatus.ABORTED);
-            readyQueue.decreaseReservedSize();
+            readyQueue.decreaseReservedSize(task);
             break;
           case FINISHED:
             break;
@@ -497,6 +499,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       task.lock();
       try {
         if (task.getStatus() != DriverTaskStatus.READY) {
+          readyQueue.decreaseReservedSize(task);
           return false;
         }
 
@@ -553,7 +556,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
-        readyQueue.decreaseReservedSize();
+        readyQueue.decreaseReservedSize(task);
       } finally {
         task.unlock();
       }
