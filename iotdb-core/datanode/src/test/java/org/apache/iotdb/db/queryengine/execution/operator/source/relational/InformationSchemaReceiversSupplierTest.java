@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowReceiversOperator;
@@ -64,6 +65,37 @@ public class InformationSchemaReceiversSupplierTest {
   public void tearDown() {
     registry.clear();
     AuthorityChecker.getAuthorityFetcher().getAuthorCache().invalidAllCache();
+  }
+
+  @Test
+  public void testReceiversInformationSchemaTableDefinition() {
+    final List<TsTableColumnSchema> columns = receiversTable().getColumnList();
+
+    assertEquals(12, columns.size());
+    assertColumn(
+        columns.get(0), "receiver_node_type", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(1), "receiver_node_id", TSDataType.INT32, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(2), "protocol", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(columns.get(3), "sender_address", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(
+        columns.get(4), "sender_ports", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(
+        columns.get(5), "connection_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(columns.get(6), "pipe_count", TSDataType.INT32, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(columns.get(7), "pipe_ids", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(columns.get(8), "user_name", TSDataType.STRING, TsTableColumnCategory.TAG);
+    assertColumn(
+        columns.get(9), "sender_cluster_id", TSDataType.STRING, TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(
+        columns.get(10),
+        "last_handshake_time",
+        TSDataType.TIMESTAMP,
+        TsTableColumnCategory.ATTRIBUTE);
+    assertColumn(
+        columns.get(11),
+        "last_transfer_time",
+        TSDataType.TIMESTAMP,
+        TsTableColumnCategory.ATTRIBUTE);
   }
 
   @Test
@@ -276,6 +308,16 @@ public class InformationSchemaReceiversSupplierTest {
 
   private static TsTable receiversTable() {
     return InformationSchema.getSchemaTables().get(InformationSchema.RECEIVERS);
+  }
+
+  private static void assertColumn(
+      final TsTableColumnSchema column,
+      final String columnName,
+      final TSDataType dataType,
+      final TsTableColumnCategory columnCategory) {
+    assertEquals(columnName, column.getColumnName());
+    assertEquals(dataType, column.getDataType());
+    assertEquals(columnCategory, column.getColumnCategory());
   }
 
   private void registerUserSession(

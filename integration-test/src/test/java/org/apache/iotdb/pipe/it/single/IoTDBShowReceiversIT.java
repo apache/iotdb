@@ -58,6 +58,19 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   }
 
   @Test
+  public void testInformationSchemaReceiversWithProtocolFilter() {
+    createWriteBackPipe("root.show_receivers_filter", "show_receivers_filter_pipe");
+
+    assertShowReceivers(
+        "select receiver_node_type, receiver_node_id, protocol, sender_address, sender_ports, "
+            + "connection_count, pipe_count, pipe_ids, user_name, sender_cluster_id, "
+            + "last_handshake_time, last_transfer_time "
+            + "from information_schema.receivers where protocol = 'thrift'",
+        BaseEnv.TABLE_SQL_DIALECT,
+        "show_receivers_filter_pipe");
+  }
+
+  @Test
   public void testShowReceiversWithStoppedDataNode() throws Exception {
     Assert.assertTrue(env.getDataNodeWrapperList().size() >= 3);
     createWriteBackPipe("root.show_receivers_ha", "show_receivers_ha_pipe");
