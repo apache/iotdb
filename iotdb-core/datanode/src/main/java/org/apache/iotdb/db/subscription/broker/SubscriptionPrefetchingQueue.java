@@ -241,44 +241,8 @@ public abstract class SubscriptionPrefetchingQueue {
       onEvent();
     }
 
-    final long size = prefetchingQueue.size();
-    long count = 0;
-
-    SubscriptionEvent event;
     try {
-      while (count++ < size // limit control
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
-        if (event.isCommitted()) {
-          LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
-              this,
-              event);
-          // no need to update inFlightEvents
-          continue;
-        }
-
-        if (!event.pollable()) {
-          LOGGER.warn(
-              "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
-              this,
-              event);
-          event.nack(); // now pollable
-          // no need to update inFlightEvents and prefetchingQueue
-          continue;
-        }
-
-        // This operation should be performed before updating inFlightEvents to prevent multiple
-        // consumers from consuming the same event.
-        event.recordLastPolledTimestamp(); // now non-pollable
-
-        inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
-        event.recordLastPolledConsumerId(consumerId);
-        return event;
-      }
+      return pollPrefetchedEvent(consumerId);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
@@ -312,40 +276,8 @@ public abstract class SubscriptionPrefetchingQueue {
           onEvent();
         }
 
-        final long size = prefetchingQueue.size();
-        long count = 0;
-
-        while (count++ < size // limit control
-            && Objects.nonNull(
-                event =
-                    prefetchingQueue.poll(
-                        SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                        TimeUnit.MILLISECONDS))) {
-          if (event.isCommitted()) {
-            LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
-                this,
-                event);
-            // no need to update inFlightEvents
-            continue;
-          }
-
-          if (!event.pollable()) {
-            LOGGER.warn(
-                "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
-                this,
-                event);
-            event.nack(); // now pollable
-            // no need to update inFlightEvents and prefetchingQueue
-            continue;
-          }
-
-          // This operation should be performed before updating inFlightEvents to prevent multiple
-          // consumers from consuming the same event.
-          event.recordLastPolledTimestamp(); // now non-pollable
-
-          inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
-          event.recordLastPolledConsumerId(consumerId);
+        event = pollPrefetchedEvent(consumerId);
+        if (Objects.nonNull(event)) {
           return event;
         }
       } catch (final InterruptedException e) {
@@ -361,6 +293,49 @@ public abstract class SubscriptionPrefetchingQueue {
     return null;
   }
 
+  private synchronized SubscriptionEvent pollPrefetchedEvent(final String consumerId)
+      throws InterruptedException {
+    final long size = prefetchingQueue.size();
+    long count = 0;
+
+    SubscriptionEvent event;
+    while (count++ < size // limit control
+        && Objects.nonNull(
+            event =
+                prefetchingQueue.poll(
+                    SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                    TimeUnit.MILLISECONDS))) {
+      if (event.isCommitted()) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} poll committed event {} from prefetching queue (broken invariant), remove it",
+            this,
+            event);
+        // no need to update inFlightEvents
+        continue;
+      }
+
+      if (!event.pollable()) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingQueue {} poll non-pollable event {} from prefetching queue (broken invariant), nack and remove it",
+            this,
+            event);
+        event.nack(); // now pollable
+        // no need to update inFlightEvents and prefetchingQueue
+        continue;
+      }
+
+      // This operation should be performed before updating inFlightEvents to prevent multiple
+      // consumers from consuming the same event.
+      event.recordLastPolledTimestamp(); // now non-pollable
+
+      inFlightEvents.put(new Pair<>(consumerId, event.getCommitContext()), event);
+      event.recordLastPolledConsumerId(consumerId);
+      return event;
+    }
+
+    return null;
+  }
+
   /////////////////////////////// prefetch ///////////////////////////////
 
   public boolean executePrefetch() {
@@ -371,7 +346,12 @@ public abstract class SubscriptionPrefetchingQueue {
       }
       reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
-      if (states.shouldPrefetch()) {
+      if (Objects.nonNull(currentTerminateEvent)) {
+        tryCommitCurrentTerminateEvent();
+        remapInFlightEventsSnapshot(
+            committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
+        return true;
+      } else if (states.shouldPrefetch()) {
         tryPrefetch();
         remapInFlightEventsSnapshot(
             committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
@@ -731,7 +711,7 @@ public abstract class SubscriptionPrefetchingQueue {
     return batches.onEvent(this::prefetchEvent);
   }
 
-  private boolean tryCommitCurrentTerminateEvent() {
+  private synchronized boolean tryCommitCurrentTerminateEvent() {
     try {
       batches.emitAll(this::prefetchEvent);
     } catch (final Exception e) {
