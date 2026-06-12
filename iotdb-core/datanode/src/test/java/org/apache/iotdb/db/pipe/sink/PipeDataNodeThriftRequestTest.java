@@ -703,6 +703,43 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferTabletBatchReqFromLegacyV13BodyWithBinaryReqs() throws IOException {
+    final InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"root", "sg", "d"}),
+            false,
+            new String[] {"s"},
+            new TSDataType[] {TSDataType.INT32},
+            1,
+            new Object[] {1},
+            false);
+    final ByteBuffer binaryBuffer = ByteBuffer.wrap(new byte[] {'a', 'b'});
+
+    final TPipeTransferReq req =
+        legacyTransferReq(
+            PipeRequestType.TRANSFER_TABLET_BATCH,
+            serializeLegacyTabletBatchBody(
+                Collections.singletonList(binaryBuffer),
+                Collections.singletonList(node.serializeToByteBuffer()),
+                Collections.singletonList(serializeLegacyTabletRawBuffer(false))));
+
+    final PipeTransferTabletBatchReq deserializedReq =
+        PipeTransferTabletBatchReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializedReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializedReq.getType());
+    Assert.assertEquals(1, deserializedReq.getBinaryReqs().size());
+    Assert.assertArrayEquals(
+        new byte[] {'a', 'b'},
+        byteBufferToByteArray(deserializedReq.getBinaryReqs().get(0).getByteBuffer()));
+    Assert.assertEquals(1, deserializedReq.getInsertNodeReqs().size());
+    Assert.assertEquals(1, deserializedReq.getTabletReqs().size());
+    Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
+    assertLegacyTabletStatement(deserializedReq.getTabletReqs().get(0).constructStatement());
+  }
+
+  @Test
   public void testPipeTransferTabletRawReqWithLegacyTabletFormat() throws IOException {
     final TPipeTransferReq req = new TPipeTransferReq();
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
@@ -1271,9 +1308,21 @@ public class PipeDataNodeThriftRequestTest {
   private static ByteBuffer serializeLegacyTabletBatchBody(
       final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
       throws IOException {
+    return serializeLegacyTabletBatchBody(Collections.emptyList(), insertNodeBuffers, tabletBuffers);
+  }
+
+  private static ByteBuffer serializeLegacyTabletBatchBody(
+      final List<ByteBuffer> binaryBuffers,
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(0, outputStream);
+      ReadWriteIOUtils.write(binaryBuffers.size(), outputStream);
+      for (final ByteBuffer binaryBuffer : binaryBuffers) {
+        ReadWriteIOUtils.write(binaryBuffer.limit(), outputStream);
+        writeByteBuffer(outputStream, binaryBuffer);
+      }
 
       ReadWriteIOUtils.write(insertNodeBuffers.size(), outputStream);
       for (final ByteBuffer insertNodeBuffer : insertNodeBuffers) {
