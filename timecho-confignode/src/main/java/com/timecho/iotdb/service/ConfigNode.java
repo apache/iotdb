@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -83,12 +84,21 @@ public class ConfigNode extends org.apache.iotdb.confignode.service.ConfigNode {
   @Override
   protected void generateSystemInfoFile() {
     RegulateManager.generateSystemInfoFile();
+    if (timechoConfigManager != null) {
+      timechoConfigManager.startApiKeyFileAutoActivationIfConfigured();
+    }
   }
 
   @Override
   protected void setConfigManager() throws Exception {
     this.timechoConfigManager = new TimechoConfigManager();
     super.configManager = this.timechoConfigManager;
+  }
+
+  @Override
+  protected void start() throws IoTDBException {
+    super.start();
+    timechoConfigManager.startApiKeyFileAutoActivationIfConfigured();
   }
 
   @Override

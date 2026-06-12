@@ -393,6 +393,7 @@ public class RegulateManager {
         logger.warn(
             "License expired at {}, cluster is readonly now. Contact Timecho for more information.",
             expireTimeString);
+        configManager.triggerApiKeyFileAutoActivationIfReady("license expiration");
       } else if (timeRemain < ONE_HOUR) {
         expirationWarn(now);
         lastTimeWarn = now;
