@@ -756,8 +756,7 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
-  public void testPipeTransferTabletRawReqWithSingleColumnLegacyTabletFormat()
-      throws IOException {
+  public void testPipeTransferTabletRawReqWithSingleColumnLegacyTabletFormat() throws IOException {
     final TPipeTransferReq req = new TPipeTransferReq();
     req.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_RAW.getType();

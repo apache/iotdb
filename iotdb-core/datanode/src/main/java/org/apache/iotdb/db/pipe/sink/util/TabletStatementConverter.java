@@ -359,8 +359,7 @@ public class TabletStatementConverter {
     final byte value = ReadWriteIOUtils.readByte(buffer);
     if (value != 0 && value != 1) {
       throw new IllegalArgumentException(
-          String.format(
-              "Invalid %s flag %s in tablet format deserialization.", fieldName, value));
+          String.format("Invalid %s flag %s in tablet format deserialization.", fieldName, value));
     }
     return value == 1;
   }
@@ -474,8 +473,7 @@ public class TabletStatementConverter {
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns);
 
     for (int i = 0; i < columns; i++) {
-      final boolean isValueColumnsNotNull =
-          readBooleanByte(byteBuffer, "value column existence");
+      final boolean isValueColumnsNotNull = readBooleanByte(byteBuffer, "value column existence");
       if (types[i] == null) {
         continue;
       }
