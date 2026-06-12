@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.subscription.it.dual.tablemodel;
 
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.subscription.columnfilter.BoundColumnFilter;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterBinder;
+import org.apache.iotdb.db.subscription.columnfilter.ColumnFilterMatcher;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTableArchVerification;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -35,6 +44,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
@@ -68,7 +78,7 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       "( CATEGORY = \"field\" AND datatype IN (\"int64\", \"double\") )"
           + " OR \"column_name\" REGEXP \"tag.*\"";
   private static final String COMPLEX_OPERATOR_FILTER =
-      "NOT (datatype IS NULL)"
+      "datatype IS NOT NULL"
           + " AND column_name != \"s1\""
           + " AND column_name NOT IN (\"s1\", \"s3\")"
           + " AND column_name NOT LIKE \"unknown%\""
@@ -390,6 +400,29 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
+  public void testTreeViewColumnFilterBindingUsesSourceFieldName() throws Exception {
+    final String database = databaseName("view");
+    final String viewName = TABLE_NAME + "_view";
+    final Map<String, String> attributes = new LinkedHashMap<>();
+    attributes.put("__system.sql-dialect", "table");
+    attributes.put(TopicConstant.DATABASE_KEY, database);
+    attributes.put(TopicConstant.TABLE_KEY, viewName);
+    attributes.put(TopicConstant.COLUMN_FILTER_KEY, "column_name = \"s_view\"");
+
+    final BoundColumnFilter boundColumnFilter =
+        new ColumnFilterBinder()
+            .bind(
+                new TopicConfig(attributes),
+                Map.of(database, Map.of(viewName, createTreeViewSchema(viewName))));
+    final ColumnFilterMatcher matcher =
+        ColumnFilterMatcher.fromBoundColumnFilter(boundColumnFilter);
+
+    Assert.assertTrue(matcher.match(database, viewName, "tag1"));
+    Assert.assertTrue(matcher.match(database, viewName, "s_src"));
+    Assert.assertFalse(matcher.match(database, viewName, "s_view"));
+  }
+
+  @Test
   public void testLiveTsFileColumnFilter() throws Exception {
     final String database = databaseName("tsfile");
     final String topicName = topicName("tsfile");
@@ -585,6 +618,46 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
   }
 
   @Test
+  public void testLiveRecordHandlerRestartResnapshotsNewMatchingTable() throws Exception {
+    final String database = databaseName("restart_new");
+    final String topicName = topicName("restart_new");
+    final String consumerId = consumerName("restart_new");
+    final String consumerGroupId = consumerGroupName("restart_new");
+    final String initialTableName = TABLE_NAME + "_restart_old";
+    final String newTableName = TABLE_NAME + "_restart_new";
+
+    try {
+      createDatabaseAndTable(senderEnv, database, initialTableName, TABLE_SCHEMA);
+      createTopic(
+          topicName,
+          database,
+          TABLE_NAME + "_restart_.*",
+          TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
+          FIELD_CATEGORY_FILTER);
+      createTable(senderEnv, database, newTableName, TABLE_SCHEMA);
+
+      TestUtils.restartCluster(senderEnv);
+
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerId, consumerGroupId)) {
+        consumer.subscribe(topicName);
+        insertRows(senderEnv, database, newTableName, 240, 243);
+
+        final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(240L, 241L, 242L));
+        final ConsumedRecordStats stats =
+            pollRecordMessagesForTimestamps(consumer, expectedTimestamps, false);
+
+        Assert.assertEquals(expectedTimestamps, stats.timestamps);
+        Assert.assertEquals(
+            new LinkedHashSet<>(Arrays.asList("tag1", "s1", "s2", "s3")), stats.columnNames);
+        Assert.assertEquals(new LinkedHashSet<>(Arrays.asList(newTableName)), stats.tableNames);
+      }
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
+
+  @Test
   public void testLiveRecordHandlerStrictSnapshotRequiresAlterAfterAddColumn() throws Exception {
     final String database = databaseName("strict");
     final String topicName = topicName("strict");
@@ -629,6 +702,52 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
         Assert.assertTrue(afterAlter.columnNames.contains("s3"));
         Assert.assertTrue(afterAlter.columnNames.contains("s4"));
         Assert.assertEquals(afterAlterTimestamps, afterAlter.timestamps);
+      }
+    } finally {
+      cleanup(topicName, database);
+    }
+  }
+
+  @Test
+  public void testLiveRecordHandlerExpressionCoverageAndTagRetention() throws Exception {
+    final String database = databaseName("expr");
+    final String topicName = topicName("expr");
+    final String consumerId = consumerName("expr");
+    final String consumerGroupId = consumerGroupName("expr");
+    final String expressionFilter =
+        "database IS NOT NULL"
+            + " AND table_name IS NOT NULL"
+            + " AND (database IS NULL OR datatype IN (\"DOUBLE\", \"FLOAT\", \"INT64\"))"
+            + " AND column_name NOT IN (\"s1\", \"s3\")"
+            + " AND column_name NOT LIKE \"unknown%\""
+            + " AND column_name NOT REGEXP \"unknown.*\"";
+
+    try {
+      createDatabaseAndTable(senderEnv, database, TABLE_NAME, TABLE_SCHEMA);
+      createTopic(
+          topicName,
+          database,
+          TABLE_NAME,
+          TopicConstant.FORMAT_RECORD_HANDLER_VALUE,
+          expressionFilter);
+
+      try (final ISubscriptionTablePullConsumer consumer =
+          createConsumer(consumerId, consumerGroupId)) {
+        consumer.subscribe(topicName);
+        insertRows(senderEnv, database, TABLE_NAME, 250, 253);
+
+        final Set<Long> expectedTimestamps = new LinkedHashSet<>(Arrays.asList(250L, 251L, 252L));
+        final ConsumedRecordStats stats =
+            pollRecordMessagesForTimestamps(consumer, expectedTimestamps, false);
+
+        Assert.assertEquals(expectedTimestamps, stats.timestamps);
+        Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("tag1", "s2")), stats.columnNames);
+        Assert.assertTrue(
+            "TAG column must be retained when only FIELD matches",
+            stats.columnNames.contains("tag1"));
+        Assert.assertFalse(stats.columnNames.contains("time"));
+        Assert.assertFalse(stats.columnNames.contains("s1"));
+        Assert.assertFalse(stats.columnNames.contains("s3"));
       }
     } finally {
       cleanup(topicName, database);
@@ -838,6 +957,17 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       statement.execute("use " + database);
       statement.execute(String.format("create table %s (%s)", tableName, schema));
     }
+  }
+
+  private static TsTable createTreeViewSchema(final String viewName) {
+    final TsTable table = new TsTable(viewName);
+    table.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.view.**");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    final FieldColumnSchema sourceField = new FieldColumnSchema("s_view", TSDataType.DOUBLE);
+    TreeViewSchema.setOriginalName(sourceField, "s_src");
+    table.addColumnSchema(sourceField);
+    return table;
   }
 
   private void createTopic(
@@ -1182,6 +1312,7 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       for (final ResultSet resultSet : message.getResultSets()) {
         final SubscriptionRecordHandler.SubscriptionResultSet subscriptionResultSet =
             (SubscriptionRecordHandler.SubscriptionResultSet) resultSet;
+        stats.tableNames.add(subscriptionResultSet.getTableName());
         subscriptionResultSet
             .getColumnNames()
             .forEach(columnName -> stats.columnNames.add(columnName.toLowerCase(Locale.ROOT)));
@@ -1312,6 +1443,7 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
 
   private static final class ConsumedRecordStats {
     private final Set<String> columnNames = new LinkedHashSet<>();
+    private final Set<String> tableNames = new LinkedHashSet<>();
     private final Set<Long> timestamps = new LinkedHashSet<>();
     private final Map<Long, Boolean> timeSelectedByTimestamp = new LinkedHashMap<>();
     private int rowCount;
@@ -1321,6 +1453,8 @@ public class IoTDBSubscriptionColumnFilterIT extends AbstractSubscriptionDualIT 
       return "ConsumedRecordStats{"
           + "columnNames="
           + columnNames
+          + ", tableNames="
+          + tableNames
           + ", timestamps="
           + timestamps
           + ", timeSelectedByTimestamp="

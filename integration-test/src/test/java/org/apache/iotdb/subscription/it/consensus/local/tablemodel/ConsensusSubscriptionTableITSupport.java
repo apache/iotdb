@@ -291,6 +291,32 @@ final class ConsensusSubscriptionTableITSupport {
     return consumed;
   }
 
+  static ConsumedRecords pollAndCommitUntilContains(
+      final SubscriptionTablePullConsumer consumer,
+      final Set<String> expectedRowKeys,
+      final int maxPollRounds)
+      throws Exception {
+    final ConsumedRecords consumed = new ConsumedRecords();
+
+    for (int round = 0; round < maxPollRounds; round++) {
+      final List<SubscriptionMessage> messages = consumer.poll(DEFAULT_POLL_TIMEOUT);
+      if (messages.isEmpty()) {
+        if (consumed.getRowKeys().containsAll(expectedRowKeys)) {
+          break;
+        }
+        continue;
+      }
+
+      consumed.merge(consumeMessages(messages));
+      consumer.commitSync(messages);
+      if (consumed.getRowKeys().containsAll(expectedRowKeys)) {
+        break;
+      }
+    }
+
+    return consumed;
+  }
+
   static ConsumedRecords pollWithInfoAndCommitUntilAtLeast(
       final SubscriptionTablePullConsumer consumer,
       final Set<String> topicNames,

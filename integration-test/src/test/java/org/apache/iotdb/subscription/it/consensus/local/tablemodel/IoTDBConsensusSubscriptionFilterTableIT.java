@@ -221,6 +221,8 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
     final String database = ids.getDatabase();
     final String table = "t1";
     final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
     SubscriptionTablePullConsumer consumer = null;
 
     try {
@@ -263,6 +265,21 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
       Assert.assertTrue(consumed.getRowKeys().isEmpty());
       Assert.assertTrue(consumed.getSeenColumns().isEmpty());
       Assert.assertTrue(consumed.getSeenColumnSignatures().isEmpty());
+
+      ConsensusSubscriptionTableITSupport.alterConsensusTopicColumnFilter(
+          ids.getTopic(), "column_name = \"s2\"");
+      final Set<String> rowsAfterEmptyWindow =
+          ConsensusSubscriptionTableITSupport.insertRows(
+              database, table, 300L, 3, true, false, true);
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumedAfterEmptyWindow =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer, rowsAfterEmptyWindow.size(), 50);
+
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(
+          rowsAfterEmptyWindow, consumedAfterEmptyWindow);
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature),
+          consumedAfterEmptyWindow.getSeenColumnSignatures());
       ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
     } finally {
       ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
@@ -279,7 +296,7 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
     final String expectedColumnSignature =
         ConsensusSubscriptionTableITSupport.normalizeColumnSignature("tag1", "s2");
     final String columnFilter =
-        "NOT (datatype IS NULL)"
+        "datatype IS NOT NULL"
             + " AND column_name != \"s1\""
             + " AND column_name NOT IN (\"s1\", \"s3\")"
             + " AND column_name NOT LIKE \"unknown%\""
