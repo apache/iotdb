@@ -71,6 +71,14 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
   }
 
   @Test
+  public void testInformationSchemaReceiversProjectedColumns() {
+    final String pipeName = "show_receivers_project_pipe";
+    createWriteBackPipe("root.show_receivers_project", pipeName);
+
+    assertProjectedShowReceivers(pipeName);
+  }
+
+  @Test
   public void testShowReceiversAggregatesMultiplePipesFromSameSender() {
     final String pipeName1 = "show_receivers_aggregate_pipe_1";
     final String pipeName2 = "show_receivers_aggregate_pipe_2";
@@ -235,6 +243,15 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
                     hasAggregatedReceiver(sql, sqlDialect, firstPipeName, secondPipeName)));
   }
 
+  private void assertProjectedShowReceivers(final String pipeName) {
+    Awaitility.await()
+        .pollInSameThread()
+        .pollDelay(1L, TimeUnit.SECONDS)
+        .pollInterval(1L, TimeUnit.SECONDS)
+        .atMost(60L, TimeUnit.SECONDS)
+        .untilAsserted(() -> Assert.assertTrue(hasProjectedReceiver(pipeName)));
+  }
+
   private void assertUserCannotSeeReceivers(
       final String sql, final String sqlDialect, final String userName, final String password) {
     Awaitility.await()
@@ -304,6 +321,31 @@ public class IoTDBShowReceiversIT extends AbstractPipeSingleIT {
             && pipeIds != null
             && pipeIds.contains(firstPipeName + "@")
             && pipeIds.contains(secondPipeName + "@")) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  private boolean hasProjectedReceiver(final String pipeName) throws SQLException {
+    try (final Connection connection =
+            env.getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement();
+        final ResultSet resultSet =
+            statement.executeQuery(
+                "select receiver_node_type, sender_address, connection_count, pipe_ids "
+                    + "from information_schema.receivers where protocol = 'thrift'")) {
+      while (resultSet.next()) {
+        if ("DataNode".equals(resultSet.getString(1))
+            && resultSet.getString(2) != null
+            && !resultSet.getString(2).isEmpty()
+            && resultSet.getInt(3) >= 1
+            && resultSet.getString(4) != null
+            && resultSet.getString(4).contains(pipeName + "@")) {
           return true;
         }
       }

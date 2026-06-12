@@ -47,6 +47,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.infoSchemaTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 
 public class ShowReceiversTest {
 
@@ -100,5 +101,24 @@ public class ShowReceiversTest {
                     EQUAL, new SymbolReference(PROTOCOL_TABLE_MODEL), new StringLiteral("thrift")),
                 infoSchemaTableScan(
                     "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS))));
+  }
+
+  @Test
+  public void testSelectReceiverColumns() {
+    final LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(
+            "select receiver_node_type, sender_address, connection_count, pipe_ids "
+                + "from information_schema.receivers where protocol='thrift'");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    new ComparisonExpression(
+                        EQUAL,
+                        new SymbolReference(PROTOCOL_TABLE_MODEL),
+                        new StringLiteral("thrift")),
+                    infoSchemaTableScan(
+                        "information_schema.receivers", Optional.empty(), RECEIVERS_COLUMNS)))));
   }
 }
